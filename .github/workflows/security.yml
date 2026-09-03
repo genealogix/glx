@@ -124,10 +124,24 @@ jobs:
           go install "github.com/securego/gosec/v2/cmd/gosec@${v}"
 
       - name: Run gosec
-        run: gosec -fmt sarif -out gosec.sarif ./...
+        # Staged write + guarded upload, adapted from govulncheck above
+        # (#1029) with one key difference: unlike govulncheck's SARIF mode,
+        # gosec exits non-zero when it FINDS issues, and that exit must not
+        # prevent the rename — findings are exactly what the upload exists to
+        # ship. So the exit code is captured, the rename is gated on a
+        # non-empty report file (build/load failures produce none), and the
+        # step re-exits with gosec's status afterward so a findings run still
+        # marks the job red as before.
+        run: |
+          status=0
+          gosec -fmt sarif -out gosec.sarif.tmp ./... || status=$?
+          if [ -s gosec.sarif.tmp ]; then
+            mv gosec.sarif.tmp gosec.sarif
+          fi
+          exit "$status"
 
       - name: Upload SARIF to Code Scanning
-        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        if: always() && hashFiles('gosec.sarif') != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
         with:
           sarif_file: gosec.sarif
