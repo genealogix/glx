@@ -37,9 +37,19 @@ jobs:
         # pre-extract only https?:// URLs using the same code-block-aware awk
         # logic as scripts/check-links.sh.
         run: |
+          set -euo pipefail
           chmod +x scripts/extract-external-urls.sh
           scripts/extract-external-urls.sh > urls.txt
-          echo "Extracted $(wc -l < urls.txt) unique external URLs"
+          count=$(wc -l < urls.txt | tr -d '[:space:]')
+          echo "Extracted $count unique external URLs"
+          # The extractor swallows find errors (2>/dev/null, no -e), so a
+          # renamed source directory yields zero URLs silently — and an empty
+          # input would trip lychee-action's failIfEmpty exit-1 path with no
+          # diagnostic and no filed issue. Fail here, loudly, instead (#996).
+          if [ "$count" -eq 0 ]; then
+            echo "::error::extract-external-urls.sh produced zero URLs — check find paths (specification/ docs/) and awk"
+            exit 1
+          fi
 
       - name: Run lychee
         id: lychee
@@ -47,10 +57,16 @@ jobs:
         with:
           # --accept tolerates 403 (anti-scraping) and 429 (rate-limit) to
           # avoid weekly false-positive noise; real dead links return 404/410.
+          # Deliberate false-negative tradeoff: a genuinely dead link behind a
+          # WAF 403 or a permanent 429 wall is never reported (#996).
+          # --max-cache-age is 6d, deliberately under the weekly cron cadence:
+          # at exactly 1w each cached result sat on the expiry boundary and
+          # revalidation depended on scheduler drift; 6d makes every link
+          # deterministically re-checked each run.
           args: >-
             --no-progress
             --cache
-            --max-cache-age 1w
+            --max-cache-age 6d
             --exclude 'localhost'
             --exclude '127\.0\.0\.1'
             --exclude 'example\.com'
@@ -58,6 +74,10 @@ jobs:
             --timeout 30
             --accept '200..=299,403,429'
             urls.txt
+          # Empty input is handled at the extract step above with a clear
+          # error; without this, lychee-action's failIfEmpty default exits 1
+          # BEFORE honoring fail:false, skipping every downstream step (#996).
+          failIfEmpty: false
           fail: false
           token: ${{ secrets.GITHUB_TOKEN }}
           output: ./lychee-out.md
@@ -67,6 +87,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -euo pipefail
           num=$(gh issue list --state open --search 'in:title "Broken external links detected"' --json number,title \
             --jq '[.[] | select(.title == "Broken external links detected")][0].number // empty')
           echo "number=$num" >> "$GITHUB_OUTPUT"
@@ -82,27 +103,36 @@ jobs:
           issue-number: ${{ steps.find-issue.outputs.number }}
 
       - name: Set Bug issue type
-        # Only fire when a brand-new issue was just created (no pre-existing issue).
-        if: steps.lychee.outputs.exit_code != 0 && steps.find-issue.outputs.number == '' && steps.create-issue.outputs.issue-number != ''
+        # Idempotent (#996): fires for created AND reused issues, and no-ops
+        # when the type is already Bug. Previously gated on find-issue being
+        # empty (brand-new issues only), so an issue whose one-shot typing
+        # step errored stayed "No type" forever — every later run found the
+        # issue and skipped this step.
+        if: steps.lychee.outputs.exit_code != 0 && steps.create-issue.outputs.issue-number != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ISSUE_NUMBER: ${{ steps.create-issue.outputs.issue-number }}
         run: |
-          # `gh api graphql --jq` prints the literal string "null" when the
-          # path resolves to JSON null (e.g. missing issue, missing org-level
-          # issue-type access), so reject both empty and "null" results before
-          # treating the value as a valid ID.
-          issue_id=$(gh api graphql -f query='
+          set -euo pipefail
+          # jq's `// empty` coerces a JSON null (missing issue, missing
+          # org-level issue-type access) to an empty string; the extra "null"
+          # comparison below is belt-and-braces against a literal string.
+          issue_info=$(gh api graphql -f query='
             query($owner:String!, $repo:String!, $n:Int!) {
-              repository(owner:$owner, name:$repo) { issue(number:$n) { id } }
+              repository(owner:$owner, name:$repo) { issue(number:$n) { id issueType { name } } }
             }' \
             -F owner="${{ github.repository_owner }}" \
             -F repo="${{ github.event.repository.name }}" \
-            -F n="$ISSUE_NUMBER" \
-            --jq .data.repository.issue.id)
+            -F n="$ISSUE_NUMBER")
+          issue_id=$(echo "$issue_info" | jq -r '.data.repository.issue.id // empty')
           if [[ -z "$issue_id" || "$issue_id" == "null" ]]; then
             echo "::error::Could not resolve node ID for issue #${ISSUE_NUMBER}"
             exit 1
+          fi
+          current_type=$(echo "$issue_info" | jq -r '.data.repository.issue.issueType.name // empty')
+          if [[ "$current_type" == "Bug" ]]; then
+            echo "Issue #${ISSUE_NUMBER} already typed Bug — nothing to do."
+            exit 0
           fi
           # Paginate through organization issueTypes (API max page size is 100).
           # Stop as soon as Bug is found; only error out once all pages are
@@ -149,12 +179,15 @@ jobs:
             echo "::error::Bug issue type not found in organization ${{ github.repository_owner }}"
             exit 1
           fi
+          # `|| true`: gh exits non-zero on GraphQL errors while still printing
+          # the JSON body — without it, set -e would abort here and the
+          # friendly error summary below would never run.
           result=$(gh api graphql \
             -f query='mutation($id:ID!, $type:ID!) {
               updateIssueIssueType(input:{issueId:$id, issueTypeId:$type}) { issue { number } }
             }' \
             -F id="$issue_id" \
-            -F type="$bug_type_id")
+            -F type="$bug_type_id" || true)
           returned_number=$(echo "$result" | jq -r '.data.updateIssueIssueType.issue.number // empty' 2>/dev/null || true)
           if [[ -z "$returned_number" ]]; then
             # Collapse multi-error responses to a single line; embedded newlines
@@ -170,6 +203,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -euo pipefail
           gh issue close "${{ steps.find-issue.outputs.number }}" \
             --comment "All external links healthy as of $(date -u '+%Y-%m-%d'). Automated closure by lychee.yml."
 
