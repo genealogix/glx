@@ -32,12 +32,18 @@ env:
 
 jobs:
   npm-audit:
-    name: npm Audit
+    name: npm Audit (${{ matrix.package }})
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      # Audit every npm tree Dependabot watches (#1028): /specification was
+      # installed by CI and watched by Dependabot but never audited.
+      fail-fast: false
+      matrix:
+        package: [website, specification]
     defaults:
       run:
-        working-directory: website
+        working-directory: ${{ matrix.package }}
     steps:
       - uses: actions/checkout@v7
 
@@ -45,7 +51,7 @@ jobs:
         with:
           node-version: '24'
           cache: 'npm'
-          cache-dependency-path: website/package-lock.json
+          cache-dependency-path: ${{ matrix.package }}/package-lock.json
 
       - name: Install dependencies
         run: npm ci
