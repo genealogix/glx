@@ -30,12 +30,20 @@ permissions:
   contents: read
   issues: read   # gh label list, for the label-existence check (#946)
 
+# Match the repo's other pull_request-triggered workflows: cancel superseded
+# in-flight runs on rapid pushes to the same PR (#950).
+concurrency:
+  group: issue-templates-drift-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check-drift:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       # PyYAML is NOT preinstalled on the runner image (it's not in the
       # actions/runner-images manifest, and it's not stdlib), so install it

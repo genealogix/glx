@@ -45,11 +45,13 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
-          go-version: '1.26'
+          go-version-file: go.mod
           cache: true
           cache-dependency-path: |
             go.sum
@@ -67,11 +69,13 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
-          go-version: '1.26'
+          go-version-file: go.mod
           cache: true
 
       - name: Detect schema/code drift
@@ -83,11 +87,13 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
-          go-version: '1.26'
+          go-version-file: go.mod
           cache: true
 
       - name: Detect memory-file drift
@@ -99,6 +105,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Set up Node
         uses: actions/setup-node@v7
@@ -130,11 +138,13 @@ jobs:
       examples: ${{ steps.discover.outputs.examples }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
-          go-version: '1.26'
+          go-version-file: go.mod
           cache: true
 
       - name: Download Go modules
@@ -185,6 +195,8 @@ jobs:
         example: ${{ fromJSON(needs.build-cli.outputs.examples) }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Download glx binary
         uses: actions/download-artifact@v8
@@ -238,11 +250,13 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
-          go-version: '1.26'
+          go-version-file: go.mod
           cache: true
 
       - name: Download Go modules

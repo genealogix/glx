@@ -38,7 +38,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
-          go-version: '1.26'
+          go-version-file: go.mod
           # cache-poisoning guard (#1051): this privileged job holds id-token: write
           # for cosign keyless signing, so it must NOT restore a Go build cache that
           # pull_request-triggered workflows (security.yml, validate-spec.yml) can
