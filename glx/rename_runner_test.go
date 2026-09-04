@@ -15,6 +15,7 @@
 package main
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -341,4 +342,224 @@ func TestRenameEntities_RefusesToWriteThroughSymlink(t *testing.T) {
 	assert.Equal(t, renameFixtureBirths, string(external), "file outside the archive must be untouched")
 	assert.FileExists(t, filepath.Join(root, "persons/person-robert.glx"), "nothing else may have been written")
 	assert.NoFileExists(t, filepath.Join(root, "persons/person-robert-t.glx"))
+}
+
+// --- error paths -----------------------------------------------------------
+
+func TestRenameEntities_MissingArchivePath(t *testing.T) {
+	err := renameEntities(filepath.Join(t.TempDir(), "nope"), "person-a", "person-b", false)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "cannot access path")
+}
+
+func TestRenameEntities_InvalidYAMLInArchive(t *testing.T) {
+	root := writeRenameFixture(t)
+	require.NoError(t, os.WriteFile(filepath.Join(root, "persons/broken.glx"), []byte("persons: [unclosed\n"), 0o644))
+
+	err := renameEntities(root, "person-robert", "person-robert-t", false)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to load archive")
+	assert.FileExists(t, filepath.Join(root, "persons/person-robert.glx"))
+}
+
+func TestRenameEntities_WarnsOnDuplicateIDs(t *testing.T) {
+	// Two files defining the same entity: the loader reports a duplicate
+	// warning on stderr but the rename still proceeds.
+	root := writeRenameFixture(t)
+	require.NoError(t, os.WriteFile(filepath.Join(root, "persons/person-mary-again.glx"), []byte(renameFixtureMary), 0o644))
+
+	stderr := captureStderr(t, func() {
+		require.NoError(t, renameEntities(root, "person-robert", "person-robert-t", false))
+	})
+
+	assert.Contains(t, stderr, "Warning:")
+	assert.FileExists(t, filepath.Join(root, "persons/person-robert-t.glx"))
+}
+
+func TestRenameEntities_SingleFileInvalidYAML(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "archive.glx")
+	require.NoError(t, os.WriteFile(path, []byte("persons: [unclosed\n"), 0o644))
+
+	err := renameEntities(path, "person-a", "person-b", false)
+
+	require.Error(t, err)
+}
+
+func TestRenameEntities_SingleFileUnknownID(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "archive.glx")
+	require.NoError(t, os.WriteFile(path, []byte(renameFixtureRobert), 0o644))
+
+	err := renameEntities(path, "person-nobody", "person-b", false)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not found")
+}
+
+func TestRenameEntities_SingleFileDryRun(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "archive.glx")
+	require.NoError(t, os.WriteFile(path, []byte(renameFixtureRobert), 0o644))
+
+	require.NoError(t, renameEntities(path, "person-robert", "person-robert-t", true))
+
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.Equal(t, renameFixtureRobert, string(data))
+}
+
+func TestRenameEntities_UnsafeOldIDIsRewrittenInPlace(t *testing.T) {
+	// An entity whose ID cannot be a filename (legacy data) has no canonical
+	// file to move; the containing file is rewritten in place.
+	root := writeRenameFixture(t)
+	require.NoError(t, os.WriteFile(filepath.Join(root, "persons/odd.glx"),
+		[]byte("persons:\n  \"bad:id\":\n    properties:\n      name: Odd\n"), 0o644))
+
+	require.NoError(t, renameEntities(root, "bad:id", "person-fixed", false))
+
+	data, err := os.ReadFile(filepath.Join(root, "persons/odd.glx"))
+	require.NoError(t, err)
+	assert.Contains(t, string(data), "person-fixed:")
+	assert.NoFileExists(t, filepath.Join(root, "persons/person-fixed.glx"))
+}
+
+func TestFileNamedAfterEntity(t *testing.T) {
+	assert.True(t, fileNamedAfterEntity("persons/person-a.glx", "person-a"))
+	assert.True(t, fileNamedAfterEntity("persons/Person-A.glx", "person-a"), "case-insensitive")
+	assert.True(t, fileNamedAfterEntity("persons/person-a.glx", "Person-A"), "canonical name is lowercased")
+	assert.False(t, fileNamedAfterEntity("persons/person-b.glx", "person-a"))
+	assert.False(t, fileNamedAfterEntity("persons/person-a.yaml", "person-a"))
+	assert.False(t, fileNamedAfterEntity("persons/x.glx", "bad:id"), "unsafe ID has no canonical filename")
+}
+
+func TestPreflightFileOps_RejectsEscapingPath(t *testing.T) {
+	root := t.TempDir()
+
+	err := preflightFileOps(root, []fileOp{{relPath: filepath.Join("..", "outside.glx"), newData: []byte("x")}})
+
+	require.ErrorIs(t, err, ErrRenamePathEscapesArchive)
+}
+
+func TestPreflightFileOps_RejectsMissingSourceFile(t *testing.T) {
+	root := t.TempDir()
+
+	err := preflightFileOps(root, []fileOp{{relPath: "gone.glx", oldData: []byte("old"), newData: []byte("new")}})
+
+	require.ErrorIs(t, err, os.ErrNotExist)
+}
+
+func TestPreflightFileOps_RejectsCreateOntoExistingFile(t *testing.T) {
+	root := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(root, "taken.glx"), []byte("x"), 0o644))
+
+	err := preflightFileOps(root, []fileOp{{relPath: "taken.glx", newData: []byte("new")}})
+
+	require.ErrorIs(t, err, ErrRenameTargetFileExists)
+}
+
+func TestPreflightFileOps_ReportsUnexpectedStatError(t *testing.T) {
+	// A path component that is a regular file makes Lstat fail with
+	// ENOTDIR rather than ENOENT.
+	root := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(root, "file"), []byte("x"), 0o644))
+
+	err := preflightFileOps(root, []fileOp{{relPath: filepath.Join("file", "x.glx"), newData: []byte("new")}})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "checking")
+}
+
+func TestExecuteFileOp_RemoveFailure(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("directory permission bits are not enforced on Windows")
+	}
+	if os.Geteuid() == 0 {
+		t.Skip("root bypasses directory permissions")
+	}
+	root := t.TempDir()
+	dir := filepath.Join(root, "ro")
+	require.NoError(t, os.MkdirAll(dir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "x.glx"), []byte("x"), 0o644))
+	require.NoError(t, os.Chmod(dir, 0o555))
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+
+	err := executeFileOp(root, fileOp{relPath: filepath.Join("ro", "x.glx"), oldData: []byte("x")})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to remove")
+}
+
+func TestExecuteFileOp_MkdirFailure(t *testing.T) {
+	root := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(root, "file"), []byte("x"), 0o644))
+
+	err := executeFileOp(root, fileOp{relPath: filepath.Join("file", "x.glx"), newData: []byte("new")})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to create directory")
+}
+
+func TestRollbackFileOps_MissingCreatedFileIsFine(t *testing.T) {
+	root := t.TempDir()
+
+	err := rollbackFileOps(root, []fileOp{{relPath: "never-made.glx", newData: []byte("x")}})
+
+	require.NoError(t, err)
+}
+
+func TestRollbackFileOps_ReportsRestoreFailure(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("directory permission bits are not enforced on Windows")
+	}
+	if os.Geteuid() == 0 {
+		t.Skip("root bypasses directory permissions")
+	}
+	root := t.TempDir()
+	dir := filepath.Join(root, "ro")
+	require.NoError(t, os.MkdirAll(dir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "x.glx"), []byte("new"), 0o644))
+	require.NoError(t, os.Chmod(dir, 0o555))
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+
+	err := rollbackFileOps(root, []fileOp{{relPath: filepath.Join("ro", "x.glx"), oldData: []byte("old"), newData: []byte("new")}})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "restore")
+}
+
+// captureStderr runs fn with os.Stderr redirected to a pipe and returns what
+// was written.
+func captureStderr(t *testing.T, fn func()) string {
+	t.Helper()
+	orig := os.Stderr
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stderr = w
+	defer func() { os.Stderr = orig }()
+
+	fn()
+	require.NoError(t, w.Close())
+	data, err := io.ReadAll(r)
+	require.NoError(t, err)
+
+	return string(data)
+}
+
+func TestRenameEntities_UnreadableFileInArchive(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("file permission bits are not enforced on Windows")
+	}
+	if os.Geteuid() == 0 {
+		t.Skip("root bypasses file permissions")
+	}
+	root := writeRenameFixture(t)
+	locked := filepath.Join(root, "places/place-springfield.glx")
+	require.NoError(t, os.Chmod(locked, 0o000))
+	t.Cleanup(func() { _ = os.Chmod(locked, 0o644) })
+
+	err := renameEntities(root, "person-robert", "person-robert-t", false)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to load archive")
+	assert.FileExists(t, filepath.Join(root, "persons/person-robert.glx"))
 }

@@ -46,7 +46,8 @@ func renameEntities(archivePath, oldID, newID string, dryRun bool) error {
 	// The new ID must be usable as a filename even when the entity currently
 	// lives in a multi-entity file (and so is not moved today): a later split
 	// or full rewrite would otherwise fail on an ID we accepted here.
-	if _, err := glxlib.EntityIDToFilename(newID); err != nil {
+	newName, err := glxlib.EntityIDToFilename(newID)
+	if err != nil {
 		return err
 	}
 
@@ -74,7 +75,7 @@ func renameEntities(archivePath, oldID, newID string, dryRun bool) error {
 		return err
 	}
 
-	ops, err := planRenameWrites(files, oldID, newID)
+	ops, err := planRenameWrites(files, oldID, newID, newName)
 	if err != nil {
 		return err
 	}
@@ -128,15 +129,11 @@ type fileOp struct {
 // planRenameWrites parses every archive file as an independent fragment,
 // applies the rename to it, and returns the file operations needed to persist
 // the fragments that changed. Files the rename does not touch produce no
-// operation. A single-entity file named after oldID is renamed to newID by
-// emitting a delete of the old path and a create of the new one.
-func planRenameWrites(files map[string][]byte, oldID, newID string) ([]fileOp, error) {
+// operation. A single-entity file named after oldID is renamed to newName
+// (the canonical filename for newID) by emitting a delete of the old path and
+// a create of the new one.
+func planRenameWrites(files map[string][]byte, oldID, newID, newName string) ([]fileOp, error) {
 	serializer := createSerializer(false, true, "  ")
-
-	newName, err := glxlib.EntityIDToFilename(newID)
-	if err != nil {
-		return nil, err
-	}
 
 	// Walk in sorted order so the plan (and therefore any rollback) is
 	// deterministic regardless of map iteration order. Track existing paths
