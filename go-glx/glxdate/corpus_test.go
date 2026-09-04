@@ -77,14 +77,21 @@ var fourDigitRegexp = regexp.MustCompile(`(?:^|[^0-9])(\d{4})(?:[^0-9]|$)`)
 // never is, so this pins down exactly the class of bug reported in #1025.
 // It returns 0 when the oracle does not apply.
 func oracleYear(s string) int {
-	if m := fourDigitRegexp.FindStringSubmatch(firstComponent(s)); m != nil {
+	first := firstComponent(s)
+	if m := fourDigitRegexp.FindStringSubmatch(first); m != nil {
 		n, _ := strconv.Atoi(m[1])
+		if bceOracleRegexp.MatchString(first) {
+			return -n
+		}
 
 		return n
 	}
 
 	return 0
 }
+
+// bceOracleRegexp recognizes an era suffix; such a year is negative.
+var bceOracleRegexp = regexp.MustCompile(`(?i)\b(B\.?C\.?E?\.?|BCE)$`)
 
 // TestCorpus_YearMatchesOracle: for every corpus date whose start component
 // contains a 4-digit year, Year must return it — never the day of month.

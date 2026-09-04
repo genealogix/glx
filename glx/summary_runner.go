@@ -1127,6 +1127,10 @@ func narrativeDate(date string) string {
 		return "before " + formatReadableDate(trimmed[4:])
 	case strings.HasPrefix(upper, "AFT "):
 		return "after " + formatReadableDate(trimmed[4:])
+	case strings.HasPrefix(upper, "EST "):
+		return "an estimated " + formatReadableDate(trimmed[4:])
+	case strings.HasPrefix(upper, "CAL "):
+		return "a calculated " + formatReadableDate(trimmed[4:])
 	case strings.HasPrefix(upper, "BET "):
 		rest := trimmed[4:]
 		if idx := strings.Index(strings.ToUpper(rest), " AND "); idx >= 0 {

@@ -94,15 +94,17 @@ func TestFromGEDCOM(t *testing.T) {
 		"@#DJULIAN@":                   "@#DJULIAN@",
 		"@#DJULIAN@ BET 1700 AND 1710": "JULIAN BET 1700 AND 1710",
 
+		// Recovered dialect: unambiguous keyword spellings and eras.
+		"100 BC":           "0100 BCE",
+		"EST 1850":         "EST 1850",
+		"C. 1850":          "ABT 1850",
+		"BET. 1880 - 1890": "BET 1880 AND 1890",
+
 		// Preserved verbatim: canonicalizing would mean guessing.
 		"15/01/1900":           "15/01/1900",
 		"01/15/1900":           "01/15/1900",
 		"1731/32":              "1731/32",
 		"ABT 1731/32":          "ABT 1731/32",
-		"100 BC":               "100 BC",
-		"EST 1850":             "EST 1850",
-		"C. 1850":              "C. 1850",
-		"BET. 1880 - 1890":     "BET. 1880 - 1890",
 		"31 FEB 1850":          "31 FEB 1850",
 		"BET 1880 AND unknown": "BET 1880 AND unknown",
 		"TO 1900":              "TO 1900",

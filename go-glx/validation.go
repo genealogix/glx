@@ -1007,7 +1007,7 @@ func (glx *GLXFile) validatePlaceHierarchyCycles(result *ValidationResult) {
 // validateDateFormat validates a date string against the GENEALOGIX date format
 // by parsing it with glxdate, the single definition of a valid GLX date:
 // ISO-style dates (YYYY, YYYY-MM, YYYY-MM-DD) optionally combined with the
-// FamilySearch-style keywords (FROM, TO, ABT, BEF, AFT, BET, CAL, INT) and an
+// FamilySearch-style keywords (FROM, TO, ABT, BEF, AFT, BET, CAL, EST, INT), the BCE era suffix, and an
 // optional calendar prefix. Non-canonical dates produce a warning, not an
 // error, so archives with imperfect dates still load.
 func (glx *GLXFile) validateDateFormat(entityType EntityType, entityID, field, dateStr string, result *ValidationResult) {
@@ -1021,7 +1021,7 @@ func (glx *GLXFile) validateDateFormat(entityType EntityType, entityID, field, d
 			SourceType: entityType,
 			SourceID:   entityID,
 			Field:      field,
-			Message: fmt.Sprintf("%s[%s].%s: date '%s' should be in format YYYY, YYYY-MM, or YYYY-MM-DD, or use keywords like FROM, TO, ABT, BEF, AFT, BET, CAL, INT: %s",
+			Message: fmt.Sprintf("%s[%s].%s: date '%s' should be in format YYYY, YYYY-MM, or YYYY-MM-DD, or use keywords like FROM, TO, ABT, BEF, AFT, BET, CAL, EST, INT: %s",
 				entityType, entityID, field, dateStr, dateReason(err)),
 		})
 	}

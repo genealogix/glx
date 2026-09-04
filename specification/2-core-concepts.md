@@ -297,6 +297,7 @@ This format supports both precise dates and fuzzy/approximate dates commonly enc
   - `BEF YYYY` - Before (e.g., `BEF 1920`)
   - `AFT YYYY` - After (e.g., `AFT 1880`)
   - `CAL YYYY` - Calculated (e.g., `CAL 1850`)
+  - `EST YYYY` - Estimated from another event's date, e.g. a birth year estimated from an age at marriage (e.g., `EST 1850`)
 
 - **Date Ranges:**
   - `BET YYYY AND YYYY` - Between two dates (e.g., `BET 1880 AND 1890`)
@@ -305,6 +306,9 @@ This format supports both precise dates and fuzzy/approximate dates commonly enc
 
 - **Interpreted Dates:**
   - `INT YYYY-MM-DD (original text)` - Interpreted from original source (e.g., `INT 1850-03-15 (March 15th, 1850)`)
+
+- **Before the Common Era:**
+  - `YYYY BCE`, `YYYY-MM BCE`, `YYYY-MM-DD BCE` - A Gregorian or Julian date before year 1, written with the `BCE` suffix after the date body (e.g., `0044-03-15 BCE`, `ABT 0560 BCE`, `BET 0100 BCE AND 0050 BCE`). The suffix binds to each date in a range independently. Consumers read a BCE year as negative (`0044 BCE` is year -44), so dates order correctly across the era boundary.
 
 #### Important Notes
 
@@ -391,7 +395,7 @@ date: "FRENCH_R 1 VEND 0012"    # 1 Vendemiaire Year 12
 GENEALOGIX validates date formats at three levels:
 
 1. **Structure:** Dates must follow the format specifications above
-2. **Keywords:** Only the defined keywords (FROM, TO, ABT, BEF, AFT, BET, CAL, INT) are recognized. `AND` is a connector used inside the `BET YYYY AND YYYY` range form, not a standalone keyword.
+2. **Keywords:** Only the defined keywords (FROM, TO, ABT, BEF, AFT, BET, CAL, EST, INT, and the BCE era suffix) are recognized. `AND` is a connector used inside the `BET YYYY AND YYYY` range form, not a standalone keyword. Unambiguous spellings seen in GEDCOM exports are recovered rather than flagged: full words (`about`, `before`, `after`, `between`, `estimated`), the circa forms (`c.`, `ca.`, `cir`, `circa`), `B.C.`/`BC` for the era, and a dash in place of `AND` after `BET`. Each canonicalizes to the keyword form on import (`circa 1850` → `ABT 1850`, `510 BC` → `0510 BCE`, `BET 1675 - 1740` → `BET 1675 AND 1740`).
 3. **Calendar prefixes:** Known calendar prefixes (JULIAN, HEBREW, FRENCH_R) are stripped before validating the date body. Unknown prefixes are accepted without warning to allow extensibility
 
 Invalid date formats will generate validation warnings (not errors), allowing archives with imperfect dates to still load while alerting researchers to potential data quality issues.

@@ -171,22 +171,23 @@ func TestParse_Preserved(t *testing.T) {
 		{"15-03-1850", 1850},
 		{"1850/03/15", 1850},
 		{"1850.03.15", 1850},
-		// Dual years, BCE, GEDCOM-only keywords, free text.
+		// Dual years, dual-year BCE, glued or doubtful text, free text.
 		{"1731/32", 1731},
 		{"ABT 1731/32", 1731},
-		{"100 BC", 100},
-		{"EST 1850", 1850},
-		{"C. 1850", 1850},
+		{"1401/8 B.C.", -1401},
+		{"by 1850", 1850},
 		{"sometime in 1850", 1850},
 		{"1850?", 1850},
 		{"(c.1850)", 1850},
-		{"BET. 1880 - 1890", 1880},
+		{"1880 - 1890", 1880},
 		{"1850 or 1851", 1850},
 		{"BET 1880", 1880},
 		{"FROM 1900 TO", 1900},
-		// A start with no year of its own shares the end's year.
-		{"BET JUL AND SEP 1857", 1857},
-		{"FROM MAR TO MAY 1900", 1900},
+		// A start with no year of its own shares the end's year, but only
+		// when the end is exact does the range canonicalize (see
+		// TestParse_KeywordSynonyms); a raw end keeps the range raw.
+		{"BET JUL AND SEP 1857?", 1857},
+		{"FROM MAR TO MAY 1900?", 1900},
 		// Digits glued to letters and day-of-month tokens are never a year.
 		{"(10 Aug)", 0},
 		{"(2nd son)", 0},

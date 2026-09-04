@@ -168,6 +168,10 @@ func (p point) gedcom() string {
 		year = "0" + year
 	}
 
+	if p.bce {
+		year += " " + keywordBCE
+	}
+
 	switch p.precision {
 	case PrecisionDay:
 		return strconv.Itoa(p.day) + " " + monthAbbreviations[p.month] + " " + year

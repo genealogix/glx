@@ -17,6 +17,7 @@ package glxdate
 import (
 	"errors"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -64,6 +65,9 @@ var (
 	// dayMonthRegexp matches a day of month followed by a Gregorian month
 	// name or abbreviation, in any case ("15 MAR", "1 January", "3 sept.").
 	dayMonthRegexp = regexp.MustCompile(`(?i)\b\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Z]*\.?\b`)
+	// eraRegexp finds an era marker anywhere in a raw-preserved body, in any
+	// of its spellings ("BC", "B.C.", "BCE").
+	eraRegexp = regexp.MustCompile(`(?i)\bB\.?C\.?(E\.?)?(\b|$)`)
 )
 
 // Parse parses a GLX date string. The empty string parses to the zero Date
@@ -116,10 +120,15 @@ func (d *dateValue) parseBody(tokens []string) {
 
 	switch {
 	case kw == keywordBetween:
-		if i := indexKeyword(rest, keywordAnd); i > 0 && i < len(rest)-1 {
+		i := indexKeyword(rest, keywordAnd)
+		if i < 0 {
+			// "BET 1675 - 1740": an explicit BET with a dash for AND.
+			i = slices.Index(rest, "-")
+		}
+		if i > 0 && i < len(rest)-1 {
 			d.setRange(rangeBetween, rest[:i], rest[i+1:])
-			d.checkKeyword(tokens[0])
-			d.checkKeyword(rest[i])
+			d.checkKeyword(tokens[0], keywordBetween)
+			d.checkKeyword(rest[i], keywordAnd)
 
 			return
 		}
@@ -130,13 +139,13 @@ func (d *dateValue) parseBody(tokens []string) {
 		switch {
 		case i > 0 && i < len(rest)-1:
 			d.setRange(rangeFromTo, rest[:i], rest[i+1:])
-			d.checkKeyword(tokens[0])
-			d.checkKeyword(rest[i])
+			d.checkKeyword(tokens[0], keywordFrom)
+			d.checkKeyword(rest[i], keywordTo)
 
 			return
 		case i == -1 && len(rest) > 0:
 			d.setRange(rangeFrom, rest, nil)
-			d.checkKeyword(tokens[0])
+			d.checkKeyword(tokens[0], keywordFrom)
 
 			return
 		}
@@ -150,7 +159,7 @@ func (d *dateValue) parseBody(tokens []string) {
 		if len(rest) > 0 {
 			d.qualifier = q
 			d.setRange(rangeNone, rest, nil)
-			d.checkKeyword(tokens[0])
+			d.checkKeyword(tokens[0], kw)
 
 			return
 		}
@@ -178,12 +187,22 @@ func (d *dateValue) setRange(kind rangeKind, startTokens, endTokens []string) {
 			d.reason = d.end.reason
 		}
 		// "BET JUL AND SEP 1857": a start that is a bare month or day-month
-		// shares the end's year. The range stays invalid, but Year() is
-		// still right. Arbitrary text ("BET unknown AND 1857") inherits
-		// nothing: a year that was never written must not be reported.
+		// shares the end's year, and when the end is exact the start becomes
+		// exact too, so the range canonicalizes ("BET 1857-07 AND 1857-09").
+		// Arbitrary text ("BET unknown AND 1857") inherits nothing: a year
+		// that was never written must not be reported.
 		if d.start.year == 0 && d.end.year != 0 && isPartialMonth(startTokens) {
 			d.start.year = d.end.year
 			d.start.precision = PrecisionYear
+			if d.end.exact && !d.end.bce {
+				withYear := parsePoint(d.calendar, append(slices.Clone(startTokens), strconv.Itoa(d.end.year)))
+				if withYear.exact {
+					withYear.raw, withYear.canonical = d.start.raw, false
+					withYear.reason = "the start has no year; write " + withYear.String()
+					d.start = withYear
+					d.reason = withYear.reason
+				}
+			}
 		}
 	}
 }
@@ -206,19 +225,25 @@ func isPartialMonth(tokens []string) bool {
 	return false
 }
 
-// checkKeyword marks the date invalid when a keyword token is not written in
-// its canonical upper-case, unpunctuated form.
-func (d *dateValue) checkKeyword(tok string) {
-	if canon := keywordOf(tok); d.valid && tok != canon {
+// checkKeyword marks the date invalid when a keyword token is not written
+// exactly as the canonical keyword want ("Abt.", "about", or "-" for AND).
+func (d *dateValue) checkKeyword(tok, want string) {
+	if d.valid && tok != want {
 		d.valid = false
-		d.reason = "keyword " + tok + " must be written " + canon
+		d.reason = "keyword " + tok + " must be written " + want
 	}
 }
 
 // keywordOf normalizes a token for keyword matching: upper case, without a
-// trailing period ("Abt." → "ABT").
+// trailing period ("Abt." → "ABT"), with unambiguous synonyms folded to the
+// canonical keyword ("circa" → "ABT", "B.C." → "BCE").
 func keywordOf(tok string) string {
-	return strings.ToUpper(strings.TrimSuffix(tok, "."))
+	kw := strings.ToUpper(strings.TrimSuffix(tok, "."))
+	if canon, ok := keywordSynonyms[kw]; ok {
+		return canon
+	}
+
+	return kw
 }
 
 // indexKeyword returns the index of the first token equal to kw
@@ -275,20 +300,44 @@ func parsePoint(cal Calendar, tokens []string) point {
 		return p
 	}
 
-	if len(tokens) == 1 && parseISO(tokens[0], &p) {
-		return p
-	}
-	if parseNamedMonth(tokens, &p) {
+	body, eraTok := splitEra(tokens)
+	if len(body) > 0 && ((len(body) == 1 && parseISO(body[0], &p)) || parseNamedMonth(body, &p)) {
+		if eraTok != "" {
+			p.bce = true
+			if p.canonical && eraTok != keywordBCE {
+				p.canonical = false
+				p.reason = "the era must be written BCE; write " + p.String()
+			}
+		}
+
 		return p
 	}
 
 	p.year = heuristicYear(p.raw)
 	if p.year > 0 {
 		p.precision = PrecisionYear
+		// "abt. 1317 BC (or abt. 934 BC)": a preserved body that names an
+		// era is still dated BCE, so Year() is negative.
+		p.bce = eraRegexp.MatchString(p.raw)
 	}
 	p.reason = "date body must be YYYY, YYYY-MM, or YYYY-MM-DD"
 
 	return p
+}
+
+// splitEra separates a trailing era token ("BCE", "BC", "B.C.") from a
+// structured body, returning the remaining tokens and the era token as
+// written ("" when absent). A body that is only an era token is left alone.
+func splitEra(tokens []string) ([]string, string) {
+	if len(tokens) < 2 { //nolint:mnd // a date and its era
+		return tokens, ""
+	}
+	last := tokens[len(tokens)-1]
+	if keywordOf(last) != keywordBCE {
+		return tokens, ""
+	}
+
+	return tokens[:len(tokens)-1], last
 }
 
 // parseISO recognizes the ISO shapes Y…Y, Y…Y-MM, Y…Y-MM-DD (1–4 digit year)

@@ -58,6 +58,7 @@ const (
 	QualifierAfter                 // AFT
 	QualifierCalculated            // CAL
 	QualifierInterpreted           // INT
+	QualifierEstimated             // EST
 )
 
 // GLX date keywords as written in a DateString.
@@ -67,10 +68,14 @@ const (
 	keywordAfter       = "AFT"
 	keywordCalculated  = "CAL"
 	keywordInterpreted = "INT"
+	keywordEstimated   = "EST"
 	keywordBetween     = "BET"
 	keywordAnd         = "AND"
 	keywordFrom        = "FROM"
 	keywordTo          = "TO"
+	// keywordBCE follows a Gregorian or Julian body dated before the common
+	// era: "0044-03-15 BCE", "ABT 0560 BCE".
+	keywordBCE = "BCE"
 )
 
 // qualifierKeywords maps keywords to qualifiers.
@@ -80,6 +85,23 @@ var qualifierKeywords = map[string]Qualifier{
 	keywordAfter:       QualifierAfter,
 	keywordCalculated:  QualifierCalculated,
 	keywordInterpreted: QualifierInterpreted,
+	keywordEstimated:   QualifierEstimated,
+}
+
+// keywordSynonyms maps spelled-out and dialect keywords, as commonly written
+// in GEDCOM files, to the canonical keyword. Every entry is unambiguous, so
+// recognizing it is recovery rather than guessing; "by 1850" (before or in)
+// and a trailing "?" are not synonyms of anything and stay raw.
+var keywordSynonyms = map[string]string{
+	"ABOUT": keywordAbout, "AROUND": keywordAbout, "CIRCA": keywordAbout,
+	"CIR": keywordAbout, "CA": keywordAbout, "C": keywordAbout,
+	"BEFORE":      keywordBefore,
+	"AFTER":       keywordAfter,
+	"CALCULATED":  keywordCalculated,
+	"INTERPRETED": keywordInterpreted,
+	"ESTIMATED":   keywordEstimated,
+	"BETWEEN":     keywordBetween,
+	"BC":          keywordBCE, "B.C": keywordBCE, "B.C.E": keywordBCE,
 }
 
 // Keyword returns the GLX keyword for the qualifier ("" for QualifierNone).
@@ -97,6 +119,8 @@ func (q Qualifier) Keyword() string {
 		return keywordCalculated
 	case QualifierInterpreted:
 		return keywordInterpreted
+	case QualifierEstimated:
+		return keywordEstimated
 	}
 
 	return ""
@@ -125,6 +149,7 @@ type point struct {
 	month     int
 	day       int
 	precision Precision
+	bce       bool   // year counts backwards from the common era; rendered with a BCE suffix
 	exact     bool   // components fully determined; String renders ISO form
 	canonical bool   // raw is already in canonical GLX form
 	reason    string // why the point is not canonical (empty when it is)
@@ -137,16 +162,31 @@ func (p point) String() string {
 		return p.raw
 	}
 
+	var s string
 	switch p.precision {
 	case PrecisionDay:
-		return fmt.Sprintf("%04d-%02d-%02d", p.year, p.month, p.day)
+		s = fmt.Sprintf("%04d-%02d-%02d", p.year, p.month, p.day)
 	case PrecisionMonth:
-		return fmt.Sprintf("%04d-%02d", p.year, p.month)
+		s = fmt.Sprintf("%04d-%02d", p.year, p.month)
 	case PrecisionYear, PrecisionNone:
-		return fmt.Sprintf("%04d", p.year)
+		s = fmt.Sprintf("%04d", p.year)
+	default:
+		return p.raw
+	}
+	if p.bce {
+		s += " " + keywordBCE
 	}
 
-	return p.raw
+	return s
+}
+
+// signedYear returns the year as consumers compare it: negative for BCE.
+func (p point) signedYear() int {
+	if p.bce {
+		return -p.year
+	}
+
+	return p.year
 }
 
 // Date is an immutable, calendar-aware genealogical date or date range.
@@ -285,11 +325,13 @@ func (v *dateValue) pointDate(p point) Date {
 	return Date{v: pv}
 }
 
-// Year returns the start year, or 0 when no year could be determined.
-// For raw-preserved bodies this is a best-effort extraction that prefers a
-// 4-digit token, so a day of month is never reported as the year.
+// Year returns the start year, or 0 when no year could be determined. A
+// BCE year is negative (44 BCE → -44), so years order correctly across the
+// era boundary. For raw-preserved bodies this is a best-effort extraction
+// that prefers a 4-digit token, so a day of month is never reported as the
+// year.
 func (d Date) Year() int {
-	return d.val().start.year
+	return d.val().start.signedYear()
 }
 
 // Month returns the start month (1–12) and whether it is known. It is never
@@ -399,10 +441,14 @@ func (v *dateValue) render(gedcom bool) string {
 // outside their valid ranges produce a Date that is not Valid; it renders
 // as written ("1850-13-01") rather than as a GEDCOM date.
 // For calendars whose months are preserved raw, only the year is used.
+// A negative year is BCE (New(cal, -44, 3, 15) is "0044-03-15 BCE").
 // CalendarOther needs a prefix name that New cannot take, so it produces a
 // Date that is not Valid; use Parse for such dates.
 func New(cal Calendar, year, month, day int) Date {
 	p := point{year: year, month: month, day: day, precision: PrecisionYear, exact: true}
+	if year < 0 {
+		p.year, p.bce = -year, true
+	}
 	switch {
 	case !cal.hasStructuredMonths():
 		p.month, p.day = 0, 0

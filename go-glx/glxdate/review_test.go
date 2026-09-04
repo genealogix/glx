@@ -43,17 +43,28 @@ func TestParse_FreeTextIsNotACalendar(t *testing.T) {
 		"LIVING 1515":            1515,
 		"PRIOR 1855":             1855,
 		"UNKNOWN 87":             87,
+		"CLEARED 11/88":          11,
 	} {
 		d, err := Parse(input)
 		require.Error(t, err, input)
 		assert.Equal(t, CalendarGregorian, d.Calendar(), input)
 		assert.Equal(t, wantYear, d.Year(), input)
-		assert.Equal(t, input, d.String(), input)
 	}
+	// Placeholder words render verbatim; a keyword synonym is normalized
+	// even when the rest of the body stays raw.
+	assert.Equal(t, "LIVING 1515", stringOf("LIVING 1515"))
+	assert.Equal(t, "AFT 1839 BEFORE 1840", stringOf("AFTER 1839 BEFORE 1840"))
 
 	d, err := Parse("ROMAN 15 MAR 1731")
 	require.NoError(t, err)
 	assert.Equal(t, "ROMAN", d.CalendarName())
+}
+
+// stringOf returns Parse(s).String(), ignoring the error.
+func stringOf(s string) string {
+	d, _ := Parse(s)
+
+	return d.String()
 }
 
 // TestParse_RawCalendarNeedsTrailingYear: a raw-calendar body whose last
