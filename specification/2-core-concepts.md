@@ -308,7 +308,7 @@ This format supports both precise dates and fuzzy/approximate dates commonly enc
 
 #### Important Notes
 
-1. **Year Format:** Years must be exactly 4 digits. Pad with zeros for years before 1000 CE (e.g., `0047` for year 47, `0800` for year 800).
+1. **Year Format:** The canonical year is exactly 4 digits, zero-padded for years before 1000 CE (e.g., `0047` for year 47, `0800` for year 800). A year written with 1–3 digits (`850`, `ABT 850`) is accepted and is not flagged by validation; GEDCOM import and other canonicalization write it zero-padded.
 
 2. **Date Format:** GENEALOGIX uses YYYY-MM-DD format (e.g., `1850-03-15` for March 15, 1850). This is the international standard for date representation, chosen for its clarity and sortability.
 

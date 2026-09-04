@@ -16,6 +16,7 @@ package glxdate
 
 import (
 	"strings"
+	"unicode"
 )
 
 // Calendar identifies the calendar system a date is recorded in.
@@ -51,12 +52,16 @@ var knownPrefixes = map[string]Calendar{
 	PrefixFrenchRepublican: CalendarFrenchRepublican,
 }
 
+// calendarGregorianName names the default calendar in Calendar.String and in
+// the GEDCOM escape @#DGREGORIAN@. It is never a prefix.
+const calendarGregorianName = "GREGORIAN"
+
 // String returns the calendar's GLX prefix, or "GREGORIAN" / "OTHER" for the
 // calendars that have no fixed prefix.
 func (c Calendar) String() string {
 	switch c {
 	case CalendarGregorian:
-		return "GREGORIAN"
+		return calendarGregorianName
 	case CalendarJulian:
 		return PrefixJulian
 	case CalendarHebrew:
@@ -100,10 +105,11 @@ func (c Calendar) hasStructuredMonths() bool {
 //	SplitCalendarPrefix("JULIAN 1731-03-15") → ("JULIAN", "1731-03-15")
 //	SplitCalendarPrefix("ABT 1731")          → ("", "ABT 1731")
 func SplitCalendarPrefix(s string) (string, string) {
-	candidate, body, found := strings.Cut(s, " ")
-	if !found {
+	i := strings.IndexFunc(s, unicode.IsSpace)
+	if i < 0 {
 		return "", s
 	}
+	candidate, body := s[:i], strings.TrimLeftFunc(s[i:], unicode.IsSpace)
 
 	if _, ok := knownPrefixes[candidate]; ok || isCalendarPrefix(candidate) {
 		return candidate, body
@@ -124,15 +130,30 @@ func calendarForPrefix(prefix string) Calendar {
 	return CalendarOther
 }
 
+// notCalendarWords are upper-case tokens that can legitimately start a date
+// body and must never be read as an unknown calendar prefix: keywords and
+// their spelled-out forms, month names, seasons, and the placeholder words
+// seen at the start of free-text dates in real GEDCOM files ("LIVING 1515",
+// "PRIOR 1855", "UNKNOWN 87"). "APRIL 1688" is a Gregorian date, not an
+// APRIL calendar; "AFTER 1839 BEFORE 1840" is free text, not an AFTER calendar.
+var notCalendarWords = map[string]bool{
+	keywordAbout: true, keywordBefore: true, keywordAfter: true, keywordCalculated: true,
+	keywordInterpreted: true, keywordBetween: true, keywordAnd: true, keywordFrom: true, keywordTo: true,
+	calendarGregorianName: true,
+	"ABOUT":               true, "AFTER": true, "BEFORE": true, "BETWEEN": true, "CIRCA": true, "AROUND": true,
+	"CALCULATED": true, "ESTIMATED": true, "INTERPRETED": true, "EST": true,
+	"EARLY": true, "LATE": true, "PRIOR": true, "SINCE": true, "UNTIL": true, "DURING": true,
+	"SPRING": true, "SUMMER": true, "FALL": true, "AUTUMN": true, "WINTER": true,
+	"LIVING": true, "UNKNOWN": true, "DECEASED": true, "CLEARED": true, "INFANT": true, "CHILD": true,
+	"STILLBORN": true, "PRIVATE": true, "PRIVATIZED": true, "NOT": true, "NONE": true,
+}
+
 // isCalendarPrefix reports whether token looks like an unknown calendar prefix:
 // all uppercase letters and underscores, at least minCalendarPrefixLen long,
-// and not a keyword, month name, or seasonal term that can legitimately start
-// a date body ("APRIL 1688" is a Gregorian date, not an APRIL calendar).
+// and not a word that can legitimately start a date body (see
+// notCalendarWords).
 func isCalendarPrefix(token string) bool {
-	switch token {
-	case keywordAbout, keywordBefore, keywordAfter, keywordCalculated, keywordInterpreted,
-		keywordBetween, keywordAnd, keywordFrom, keywordTo,
-		"GREGORIAN", "EST", "SPRING", "SUMMER", "FALL", "WINTER":
+	if notCalendarWords[token] {
 		return false
 	}
 	if _, isMonth := MonthNumber(token); isMonth {

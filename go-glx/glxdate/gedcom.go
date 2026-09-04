@@ -22,27 +22,25 @@ import (
 // gedcomEscapeStart opens a GEDCOM calendar escape: "@#DJULIAN@ 15 MAR 1731".
 const gedcomEscapeStart = "@#D"
 
+// gedcomFrenchRepublicanEscape is the GEDCOM escape name for FRENCH_R; the
+// Julian and Hebrew escape names equal their GLX prefixes.
+const gedcomFrenchRepublicanEscape = "FRENCH R"
+
 // gedcomEscapes maps GLX calendar prefixes to their GEDCOM escape names (the
 // text between "@#D" and "@"). Gregorian has no prefix and no escape.
 var gedcomEscapes = map[string]string{
-	PrefixJulian:           "JULIAN",
-	PrefixHebrew:           "HEBREW",
-	PrefixFrenchRepublican: "FRENCH R",
+	PrefixJulian:           PrefixJulian,
+	PrefixHebrew:           PrefixHebrew,
+	PrefixFrenchRepublican: gedcomFrenchRepublicanEscape,
 }
 
 // gedcomEscapeNames is the inverse of gedcomEscapes plus GREGORIAN, which
 // maps to the empty prefix.
 var gedcomEscapeNames = map[string]string{
-	"JULIAN":    PrefixJulian,
-	"HEBREW":    PrefixHebrew,
-	"FRENCH R":  PrefixFrenchRepublican,
-	"GREGORIAN": "",
-}
-
-// gedcomMonthNames renders month numbers (1–12) as GEDCOM abbreviations.
-var gedcomMonthNames = [monthsPerYear + 1]string{
-	"", "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
-	"JUL", "AUG", "SEP", "OCT", "NOV", "DEC",
+	PrefixJulian:                 PrefixJulian,
+	PrefixHebrew:                 PrefixHebrew,
+	gedcomFrenchRepublicanEscape: PrefixFrenchRepublican,
+	calendarGregorianName:        "",
 }
 
 // Canonicalize returns the canonical GLX form of a date string when its
@@ -172,9 +170,9 @@ func (p point) gedcom() string {
 
 	switch p.precision {
 	case PrecisionDay:
-		return strconv.Itoa(p.day) + " " + gedcomMonthNames[p.month] + " " + year
+		return strconv.Itoa(p.day) + " " + monthAbbreviations[p.month] + " " + year
 	case PrecisionMonth:
-		return gedcomMonthNames[p.month] + " " + year
+		return monthAbbreviations[p.month] + " " + year
 	case PrecisionYear, PrecisionNone:
 		return year
 	}

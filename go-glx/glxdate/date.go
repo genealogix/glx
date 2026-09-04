@@ -322,11 +322,11 @@ func (d Date) Valid() bool {
 	return d.val().valid
 }
 
-// Equal reports whether two dates have the same canonical form in the same
-// calendar. It is textual equality of String(), not a temporal comparison:
-// "1850" and "1850-01" are not equal.
+// Equal reports whether two dates are in the same calendar and have the same
+// canonical form. It is textual equality of String(), not a temporal
+// comparison: "1850" and "1850-01" are not equal.
 func (d Date) Equal(o Date) bool {
-	return d.String() == o.String()
+	return d.Calendar() == o.Calendar() && d.CalendarName() == o.CalendarName() && d.String() == o.String()
 }
 
 // String returns the canonical GLX form of the date: an optional calendar
@@ -396,8 +396,11 @@ func (v *dateValue) render(gedcom bool) string {
 
 // New constructs an exact Gregorian or Julian date. Precision is inferred
 // from zero month/day: New(cal, 1850, 0, 0) is year precision. Components
-// outside their valid ranges produce a Date that is not Valid.
+// outside their valid ranges produce a Date that is not Valid; it renders
+// as written ("1850-13-01") rather than as a GEDCOM date.
 // For calendars whose months are preserved raw, only the year is used.
+// CalendarOther needs a prefix name that New cannot take, so it produces a
+// Date that is not Valid; use Parse for such dates.
 func New(cal Calendar, year, month, day int) Date {
 	p := point{year: year, month: month, day: day, precision: PrecisionYear, exact: true}
 	switch {
@@ -410,8 +413,13 @@ func New(cal Calendar, year, month, day int) Date {
 	}
 	p.canonical = checkComponents(&p)
 	p.raw = p.String()
+	p.exact = p.canonical
 
 	v := &dateValue{calendar: cal, start: p, valid: p.canonical, reason: p.reason}
+	if cal == CalendarOther {
+		v.valid = false
+		v.reason = "an unknown calendar needs a prefix name; use Parse"
+	}
 	v.raw = v.String()
 
 	return Date{v: v}
@@ -419,12 +427,17 @@ func New(cal Calendar, year, month, day int) Date {
 
 // NewRange constructs a BET…AND range from two point dates in the same
 // calendar. A zero end produces an open-ended FROM range. It returns
-// ErrRangeMismatch when the calendars differ or either date is itself a range.
+// ErrRangeMismatch when the calendars differ, either date is itself a range,
+// or either date carries a qualifier or interpreted text, which a range
+// endpoint cannot represent.
 func NewRange(start, end Date) (Date, error) {
 	if start.IsRange() || end.IsRange() || start.IsZero() {
 		return Date{}, ErrRangeMismatch
 	}
-	if !end.IsZero() && end.Calendar() != start.Calendar() {
+	if start.Qualifier() != QualifierNone || end.Qualifier() != QualifierNone {
+		return Date{}, ErrRangeMismatch
+	}
+	if !end.IsZero() && (end.Calendar() != start.Calendar() || end.CalendarName() != start.CalendarName()) {
 		return Date{}, ErrRangeMismatch
 	}
 

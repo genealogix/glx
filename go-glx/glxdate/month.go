@@ -21,27 +21,39 @@ import (
 // monthsPerYear is the number of months in a Gregorian or Julian year.
 const monthsPerYear = 12
 
+// monthAbbreviations are the three-letter month abbreviations (index 1–12),
+// the spelling GEDCOM uses on output.
+var monthAbbreviations = [monthsPerYear + 1]string{
+	"", "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+	"JUL", "AUG", "SEP", "OCT", "NOV", "DEC",
+}
+
 // monthNames maps upper-case Gregorian month names and abbreviations to
 // month numbers. Lookups go through MonthNumber, which folds case and strips
 // a trailing period.
-var monthNames = map[string]int{
-	"JAN": 1, "JANUARY": 1,
-	"FEB": 2, "FEBRUARY": 2,
-	"MAR": 3, "MARCH": 3,
-	"APR": 4, "APRIL": 4,
-	"MAY": 5,
-	"JUN": 6, "JUNE": 6,
-	"JUL": 7, "JULY": 7,
-	"AUG": 8, "AUGUST": 8,
-	"SEP": 9, "SEPT": 9, "SEPTEMBER": 9,
-	"OCT": 10, "OCTOBER": 10,
-	"NOV": 11, "NOVEMBER": 11,
-	"DEC": 12, "DECEMBER": 12,
+var monthNames = buildMonthNames()
+
+// buildMonthNames joins the abbreviations with the full and dialect names.
+func buildMonthNames() map[string]int {
+	names := map[string]int{
+		"JANUARY": 1, "FEBRUARY": 2, "MARCH": 3, "APRIL": 4, "JUNE": 6,
+		"JULY": 7, "AUGUST": 8, "SEPT": 9, "SEPTEMBER": 9, "OCTOBER": 10,
+		"NOVEMBER": 11, "DECEMBER": 12,
+	}
+	for m := 1; m <= monthsPerYear; m++ {
+		names[monthAbbreviations[m]] = m
+	}
+
+	return names
 }
 
 // daysInMonth is the maximum day of each month (index 1–12). February allows
-// 29 unconditionally: leap-year rules differ between the Gregorian and Julian
-// calendars and GLX preserves dates exactly as recorded.
+// 29 unconditionally, on purpose: a date with no calendar prefix is only
+// nominally Gregorian, since records before a jurisdiction's adoption of the
+// Gregorian calendar (1752 in Britain and its colonies) are Julian dates
+// written without an escape, and 29 FEB 1700 is a real Julian date. Applying
+// the Gregorian leap rule would reject genuine evidence, so GLX preserves
+// the date as recorded and leaves plausibility to temporal validation.
 var daysInMonth = [monthsPerYear + 1]int{0, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
 
 // MonthNumber returns the month number (1–12) for a Gregorian month name or

@@ -83,7 +83,7 @@ aft. 1053 (or '26?)	AFT 1053 (or '26?)	1053	year	AFT	GREGORIAN	-	false	date body
 either 1228 (or '15?	either 1228 (or '15?	1228	year		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	either 1228 (or '15?	either 1228 (or '15?	1228	false
 __________	__________	0	none		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	__________	__________	0	false
 _CAL2 23 _MON2 88 _EP2	_CAL2 23 _MON2 88 _EP2	23	year		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	_CAL2 23 _MON2 88 _EP2	_CAL2 23 _MON2 88 _EP2	23	false
-_CALENDAR 8 _MONTH 190 _EPOCH	_CALENDAR 8 _MONTH 190 _EPOCH	190	year		OTHER	-	true		_CALENDAR 8 _MONTH 190 _EPOCH	@#D CALENDAR@ 8 _MONTH 190 _EPOCH	190	true
+_CALENDAR 8 _MONTH 190 _EPOCH	_CALENDAR 8 _MONTH 190 _EPOCH	0	none		OTHER	-	false	the year must be the last token of "8 _MONTH 190 _EPOCH"	_CALENDAR 8 _MONTH 190 _EPOCH	@#D CALENDAR@ 8 _MONTH 190 _EPOCH	0	false
 _ROMAN _MONTH 76	_ROMAN _MONTH 76	76	year		OTHER	-	true		_ROMAN _MONTH 76	@#D ROMAN@ _MONTH 76	76	true
 _ROMAN _MONTH 88	_ROMAN _MONTH 88	88	year		OTHER	-	true		_ROMAN _MONTH 88	@#D ROMAN@ _MONTH 88	88	true
 _ROMAN 14 _MONTH 33	_ROMAN 14 _MONTH 33	33	year		OTHER	-	true		_ROMAN 14 _MONTH 33	@#D ROMAN@ 14 _MONTH 33	33	true
@@ -1171,7 +1171,7 @@ aft. 499 ?522	AFT 499 ?522	499	year	AFT	GREGORIAN	-	false	date body must be YYYY
 aft. 840 (or '92)	AFT 840 (or '92)	840	year	AFT	GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	aft. 840 (or '92)	AFT 840 (or '92)	840	false
 aft. 877 (or '92?)	AFT 877 (or '92?)	877	year	AFT	GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	aft. 877 (or '92?)	AFT 877 (or '92?)	877	false
 after 1839	after 1839	1839	year		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	after 1839	after 1839	1839	false
-AFTER 1839	AFTER 1839	1839	year		OTHER	-	true		AFTER 1839	@#DAFTER@ 1839	1839	true
+AFTER 1839	AFTER 1839	1839	year		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	AFTER 1839	AFTER 1839	1839	false
 After 1870	After 1870	1870	year		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	After 1870	After 1870	1870	false
 after 1940	after 1940	1940	year		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	after 1940	after 1940	1940	false
 aftter 293	aftter 293	293	year		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	aftter 293	aftter 293	293	false
@@ -2639,7 +2639,7 @@ BET AUG 1950/80 B.C. AND UNKNOWN _MONTH 31	BET AUG 1950/80 B.C. AND UNKNOWN _MON
 BET AUG 1950/80 B.C. AND UNKNOWN 58	BET AUG 1950/80 B.C. AND UNKNOWN 58	1950	year		GREGORIAN	between	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	BET AUG 1950/80 B.C. AND UNKNOWN 58	BET AUG 1950/80 B.C. AND UNKNOWN 58	1950	false
 BET AUG 1950/80 B.C. AND UNKNOWN 7 _MONTH 95	BET AUG 1950/80 B.C. AND UNKNOWN 7 _MONTH 95	1950	year		GREGORIAN	between	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	BET AUG 1950/80 B.C. AND UNKNOWN 7 _MONTH 95	BET AUG 1950/80 B.C. AND UNKNOWN 7 _MONTH 95	1950	false
 BET AUG AND SEP 1838	BET AUG AND SEP 1838	1838	year		GREGORIAN	between	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	BET AUG AND SEP 1838	BET AUG AND SEP 1838	1838	false
-BET CSA ENLISTED 16 MAY AND 1862	BET CSA ENLISTED 16 MAY AND 1862	1862	year		GREGORIAN	between	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	BET CSA ENLISTED 16 MAY AND 1862	BET CSA ENLISTED 16 MAY AND 1862	1862	false
+BET CSA ENLISTED 16 MAY AND 1862	BET CSA ENLISTED 16 MAY AND 1862	0	none		GREGORIAN	between	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	BET CSA ENLISTED 16 MAY AND 1862	BET CSA ENLISTED 16 MAY AND 1862	0	false
 Bet Dec 1333 and 11 Jun 1334	BET 1333-12 AND 1334-06-11	1333	month		GREGORIAN	between	false	month names are not canonical; write 1333-12	BET 1333-12 AND 1334-06-11	BET DEC 1333 AND 11 JUN 1334	1333	true
 BET DEC 1880 AND JUL 1881	BET 1880-12 AND 1881-07	1880	month		GREGORIAN	between	false	month names are not canonical; write 1880-12	BET 1880-12 AND 1881-07	BET DEC 1880 AND JUL 1881	1880	true
 Bet Feb 1462 and 9 May 1462	BET 1462-02 AND 1462-05-09	1462	month		GREGORIAN	between	false	month names are not canonical; write 1462-02	BET 1462-02 AND 1462-05-09	BET FEB 1462 AND 9 MAY 1462	1462	true
@@ -4296,10 +4296,10 @@ CIR 1353	CIR 1353	1353	year		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, 
 CIR 28 OCT 1407	CIR 28 OCT 1407	1407	year		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	CIR 28 OCT 1407	CIR 28 OCT 1407	1407	false
 circa 1799	circa 1799	1799	year		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	circa 1799	circa 1799	1799	false
 CLASS OF 1905	CLASS OF 1905	1905	year		OTHER	-	true		CLASS OF 1905	@#DCLASS@ OF 1905	1905	true
-CLEARED 11/88	CLEARED 11/88	88	year		OTHER	-	true		CLEARED 11/88	@#DCLEARED@ 11/88	88	true
-CLEARED JR	CLEARED JR	0	none		OTHER	-	false	no year found in "JR"	CLEARED JR	@#DCLEARED@ JR	0	false
-CLEARED PV	CLEARED PV	0	none		OTHER	-	false	no year found in "PV"	CLEARED PV	@#DCLEARED@ PV	0	false
-COLLINS CEM	COLLINS CEM	0	none		OTHER	-	false	no year found in "CEM"	COLLINS CEM	@#DCOLLINS@ CEM	0	false
+CLEARED 11/88	CLEARED 11/88	11	year		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	CLEARED 11/88	CLEARED 11/88	11	false
+CLEARED JR	CLEARED JR	0	none		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	CLEARED JR	CLEARED JR	0	false
+CLEARED PV	CLEARED PV	0	none		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	CLEARED PV	CLEARED PV	0	false
+COLLINS CEM	COLLINS CEM	0	none		OTHER	-	false	the year must be the last token of "CEM"	COLLINS CEM	@#DCOLLINS@ CEM	0	false
 COMPLETED	COMPLETED	0	none		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	COMPLETED	COMPLETED	0	false
 CON TO WILL 02 JAN 1624/5	CON TO WILL 02 JAN 1624/5	1624	year		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	CON TO WILL 02 JAN 1624/5	CON TO WILL 02 JAN 1624/5	1624	false
 Contrecoeur, Vercheres, Quebec	Contrecoeur, Vercheres, Quebec	0	none		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	Contrecoeur, Vercheres, Quebec	Contrecoeur, Vercheres, Quebec	0	false
@@ -7048,8 +7048,8 @@ la cathédrale Saints-Michel-et-Gudule brussels belgium	la cathédrale Saints-Mi
 LILLE	LILLE	0	none		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	LILLE	LILLE	0	false
 Lived 930 years	Lived 930 years	930	year		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	Lived 930 years	Lived 930 years	930	false
 Living	Living	0	none		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	Living	Living	0	false
-LIVING 1515	LIVING 1515	1515	year		OTHER	-	true		LIVING 1515	@#DLIVING@ 1515	1515	true
-LIVING 1668	LIVING 1668	1668	year		OTHER	-	true		LIVING 1668	@#DLIVING@ 1668	1668	true
+LIVING 1515	LIVING 1515	1515	year		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	LIVING 1515	LIVING 1515	1515	false
+LIVING 1668	LIVING 1668	1668	year		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	LIVING 1668	LIVING 1668	1668	false
 MAR	MAR	0	none		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	MAR	MAR	0	false
 Mar 0010	0010-03	10	month		GREGORIAN	-	false	month names are not canonical; write 0010-03	0010-03	MAR 0010	10	true
 Mar 06, 1791	1791-03-06	1791	day		GREGORIAN	-	false	month names are not canonical; write 1791-03-06	1791-03-06	6 MAR 1791	1791	true
@@ -7140,10 +7140,10 @@ on Bef. 969	on Bef. 969	969	year		GREGORIAN	-	false	date body must be YYYY, YYYY
 onbekend	onbekend	0	none		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	onbekend	onbekend	0	false
 POSS ABT 1500 BC	POSS ABT 1500 BC	1500	year		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	POSS ABT 1500 BC	POSS ABT 1500 BC	1500	false
 PRE-1913	PRE-1913	1913	year		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	PRE-1913	PRE-1913	1913	false
-PRIOR 1855	PRIOR 1855	1855	year		OTHER	-	true		PRIOR 1855	@#DPRIOR@ 1855	1855	true
+PRIOR 1855	PRIOR 1855	1855	year		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	PRIOR 1855	PRIOR 1855	1855	false
 Private	Private	0	none		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	Private	Private	0	false
 PROB. 1543	PROB. 1543	1543	year		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	PROB. 1543	PROB. 1543	1543	false
-RABUN CO.	RABUN CO.	0	none		OTHER	-	false	no year found in "CO."	RABUN CO.	@#DRABUN@ CO.	0	false
+RABUN CO.	RABUN CO.	0	none		OTHER	-	false	the year must be the last token of "CO."	RABUN CO.	@#DRABUN@ CO.	0	false
 Restricted Date	Restricted Date	0	none		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	Restricted Date	Restricted Date	0	false
 ROMAN _MONTH 88	ROMAN _MONTH 88	88	year		OTHER	-	true		ROMAN _MONTH 88	@#DROMAN@ _MONTH 88	88	true
 ROMAN 24 _MONTH 15	ROMAN 24 _MONTH 15	15	year		OTHER	-	true		ROMAN 24 _MONTH 15	@#DROMAN@ 24 _MONTH 15	15	true
@@ -7249,9 +7249,9 @@ Unk	Unk	0	none		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD
 unknown	unknown	0	none		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	unknown	unknown	0	false
 Unknown	Unknown	0	none		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	Unknown	Unknown	0	false
 UNKNOWN	UNKNOWN	0	none		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	UNKNOWN	UNKNOWN	0	false
-UNKNOWN _MONTH 17	UNKNOWN _MONTH 17	17	year		OTHER	-	true		UNKNOWN _MONTH 17	@#DUNKNOWN@ _MONTH 17	17	true
-UNKNOWN 13 _MONTH 17	UNKNOWN 13 _MONTH 17	17	year		OTHER	-	true		UNKNOWN 13 _MONTH 17	@#DUNKNOWN@ 13 _MONTH 17	17	true
-UNKNOWN 87	UNKNOWN 87	87	year		OTHER	-	true		UNKNOWN 87	@#DUNKNOWN@ 87	87	true
+UNKNOWN _MONTH 17	UNKNOWN _MONTH 17	17	year		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	UNKNOWN _MONTH 17	UNKNOWN _MONTH 17	17	false
+UNKNOWN 13 _MONTH 17	UNKNOWN 13 _MONTH 17	13	year		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	UNKNOWN 13 _MONTH 17	UNKNOWN 13 _MONTH 17	13	false
+UNKNOWN 87	UNKNOWN 87	87	year		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	UNKNOWN 87	UNKNOWN 87	87	false
 unknowne	unknowne	0	none		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	unknowne	unknowne	0	false
 unkown	unkown	0	none		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	unkown	unkown	0	false
 unmarried	unmarried	0	none		GREGORIAN	-	false	date body must be YYYY, YYYY-MM, or YYYY-MM-DD	unmarried	unmarried	0	false

@@ -17,14 +17,13 @@ package glxdate
 import (
 	"errors"
 	"regexp"
-	"slices"
 	"strconv"
 	"strings"
 )
 
-// ErrRangeMismatch is returned by NewRange when the endpoints are not point
-// dates in the same calendar.
-var ErrRangeMismatch = errors.New("glxdate: range endpoints must be point dates in the same calendar")
+// ErrRangeMismatch is returned by NewRange when the endpoints are not
+// unqualified point dates in the same calendar.
+var ErrRangeMismatch = errors.New("glxdate: range endpoints must be unqualified point dates in the same calendar")
 
 // ParseError reports why a date string is not in canonical GLX form. The
 // Date returned alongside it still carries the raw text and any components
@@ -178,13 +177,33 @@ func (d *dateValue) setRange(kind rangeKind, startTokens, endTokens []string) {
 			d.valid = false
 			d.reason = d.end.reason
 		}
-		// "BET JUL AND SEP 1857": a start with no year of its own shares the
-		// end's year. The range stays invalid, but Year() is still right.
-		if d.start.year == 0 && d.end.year != 0 {
+		// "BET JUL AND SEP 1857": a start that is a bare month or day-month
+		// shares the end's year. The range stays invalid, but Year() is
+		// still right. Arbitrary text ("BET unknown AND 1857") inherits
+		// nothing: a year that was never written must not be reported.
+		if d.start.year == 0 && d.end.year != 0 && isPartialMonth(startTokens) {
 			d.start.year = d.end.year
 			d.start.precision = PrecisionYear
 		}
 	}
+}
+
+// isPartialMonth reports whether tokens are a Gregorian month name alone or
+// preceded by a day of month ("JUL", "15 Jul"): a date component missing
+// only its year.
+func isPartialMonth(tokens []string) bool {
+	switch len(tokens) {
+	case 1:
+		_, ok := MonthNumber(tokens[0])
+
+		return ok
+	case 2: //nolint:mnd // DD MONTH
+		_, ok := MonthNumber(tokens[1])
+
+		return ok && dayToken(tokens[0]) > 0
+	}
+
+	return false
 }
 
 // checkKeyword marks the date invalid when a keyword token is not written in
@@ -215,8 +234,10 @@ func indexKeyword(tokens []string, kw string) int {
 }
 
 // splitInterpretedText separates the trailing "(original text)" of an INT
-// date from its date tokens. Without a parenthesized suffix the tokens are
-// returned unchanged with empty text.
+// date from its date tokens. Without a parenthesized suffix, or with an
+// empty one ("INT 1850 ()"), the tokens are returned unchanged with empty
+// text, so the empty parentheses stay in the raw body and the date is
+// reported invalid rather than silently rewritten as "INT 1850".
 func splitInterpretedText(tokens []string) ([]string, string) {
 	if len(tokens) == 0 || !strings.HasSuffix(tokens[len(tokens)-1], ")") {
 		return tokens, ""
@@ -224,9 +245,12 @@ func splitInterpretedText(tokens []string) ([]string, string) {
 	for i, tok := range tokens {
 		if strings.HasPrefix(tok, "(") {
 			text := strings.Join(tokens[i:], " ")
-			text = strings.TrimSuffix(strings.TrimPrefix(text, "("), ")")
+			text = strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(text, "("), ")"))
+			if text == "" {
+				return tokens, ""
+			}
 
-			return tokens[:i], strings.TrimSpace(text)
+			return tokens[:i], text
 		}
 	}
 
@@ -240,12 +264,12 @@ func parsePoint(cal Calendar, tokens []string) point {
 	p := point{raw: strings.Join(tokens, " ")}
 
 	if !cal.hasStructuredMonths() {
-		p.year = lastNumber(p.raw)
+		p.year = trailingYear(tokens)
 		if p.year > 0 {
 			p.precision = PrecisionYear
 			p.canonical = true
 		} else {
-			p.reason = "no year found in " + strconv.Quote(p.raw)
+			p.reason = "the year must be the last token of " + strconv.Quote(p.raw)
 		}
 
 		return p
@@ -379,17 +403,17 @@ func heuristicYear(raw string) int {
 	return 0
 }
 
-// lastNumber returns the last run of at most five digits in raw, or 0. It is
-// the year rule for calendars whose bodies are preserved raw: the year follows
-// the day and month ("15 TSH 5765", "1 VEND 0012").
-func lastNumber(raw string) int {
-	for _, run := range slices.Backward(standaloneNumberRegexp.FindAllString(raw, -1)) {
-		if len(run) <= maxRawYearDigits {
-			return atoi(run)
-		}
+// trailingYear returns the year of a raw-preserved calendar body, or 0. The
+// year is the last token and must be a number of at most five digits ("15
+// TSH 5765", "1 VEND 0012"); an incomplete body ("15 TSH") has no year, and
+// its day of month is never promoted to one.
+func trailingYear(tokens []string) int {
+	last := tokens[len(tokens)-1]
+	if !allDigits(last) || len(last) > maxRawYearDigits {
+		return 0
 	}
 
-	return 0
+	return atoi(last)
 }
 
 // yearToken parses a 1–4 digit year token, returning 0 for anything else.
