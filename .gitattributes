@@ -9,7 +9,7 @@
 *.yaml text diff=yaml
 *.yml text diff=yaml
 *.json text
-*.glx text diff=yaml
+*.glx text diff=yaml merge=glx
 
 # Shell scripts
 *.sh text eol=lf

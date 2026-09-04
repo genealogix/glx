@@ -64,9 +64,30 @@ Use GLX to initialize new archives, validate files, and ensure data quality.`,
 	},
 }
 
-// Execute runs the root command
+// silentExitError is returned from a Cobra RunE to terminate the process with
+// a specific exit code without printing an error message. The git merge-driver
+// protocol uses the exit code itself to signal "conflicts remain"; an extra
+// error line on stderr would pollute git's own output. Keeping the os.Exit
+// call out of RunE also lets the command return normally for unit tests.
+type silentExitError struct {
+	code int
+}
+
+func (e *silentExitError) Error() string {
+	return fmt.Sprintf("silent exit %d", e.code)
+}
+
+// Execute runs the root command.
+//
+// A *silentExitError returned by a RunE means "exit with this code, do not
+// print a message" — see runMergeDriverCmd for the canonical use. Any other
+// non-nil error is printed to stderr before exiting with code 1.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
+		var silent *silentExitError
+		if errors.As(err, &silent) {
+			os.Exit(silent.code)
+		}
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(exitCodeForError(err))
 	}
@@ -127,6 +148,7 @@ func init() {
 	rootCmd.AddCommand(searchCmd)
 	rootCmd.AddCommand(renameCmd)
 	rootCmd.AddCommand(mergeCmd)
+	rootCmd.AddCommand(mergeDriverCmd)
 	rootCmd.AddCommand(mergePersonsCmd)
 	rootCmd.AddCommand(migrateCmd)
 	rootCmd.AddCommand(linkCmd)
@@ -1754,6 +1776,51 @@ func init() {
 
 func runMerge(_ *cobra.Command, args []string) error {
 	return mergeArchives(args[0], mergeInto, mergePreview, mergeThreshold)
+}
+
+// ============================================================================
+// Merge-Driver Command (hidden — invoked by git via .gitattributes)
+// ============================================================================
+
+var mergeDriverCmd = &cobra.Command{
+	Use:    "merge-driver <base> <ours> <theirs> [origPath]",
+	Short:  "Git merge driver for GLX YAML files (invoked by git, not humans)",
+	Hidden: true,
+	Long: `Custom git merge driver that performs a structural 3-way merge of GLX
+YAML files. Configured via .gitattributes and a one-time per-user git
+config; not intended to be run directly. See docs/merge-driver.md.
+
+Arguments mirror git's merge-driver protocol: %O %A %B [%P]. The merged
+result is written to <ours> (%A) on success. Unresolved conflicts cause
+the driver to fall back to git's text merge — standard <<<<<<< markers
+land in <ours>, and a diagnostic summary listing both sides' values
+(with assertion confidence and citations when applicable) is written to
+stderr.`,
+	Args: cobra.RangeArgs(3, 4), //nolint:mnd // git merge-driver signature is %O %A %B [%P]
+	RunE: runMergeDriverCmd,
+}
+
+func runMergeDriverCmd(_ *cobra.Command, args []string) error {
+	in := mergeDriverInputs{
+		BasePath:   args[0],
+		OursPath:   args[1],
+		TheirsPath: args[2],
+	}
+	if len(args) >= 4 { //nolint:mnd // %P is git's 4th positional arg
+		in.OrigPath = args[3]
+	} else {
+		in.OrigPath = in.OursPath
+	}
+
+	code := runMergeDriver(in, os.Stderr)
+	if code == mergeDriverExitClean {
+		return nil
+	}
+	// Exit nonzero without printing a "command failed" line — git interprets
+	// the exit code itself as "conflicts remain" and prints its own message.
+	// Returning *silentExitError (rather than calling os.Exit here) keeps this
+	// RunE testable and lets Cobra's post-run hooks fire normally.
+	return &silentExitError{code: int(code)}
 }
 
 // ============================================================================
