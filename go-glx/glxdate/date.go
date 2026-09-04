@@ -139,6 +139,7 @@ const (
 	rangeBetween           // BET start AND end
 	rangeFromTo            // FROM start TO end
 	rangeFrom              // FROM start (open-ended)
+	rangeTo                // TO end (open-start); the single point is the end
 )
 
 // point is a single date within a Date: either a fully determined
@@ -158,26 +159,39 @@ type point struct {
 // String renders the canonical ISO form of an exact point and the raw text
 // of anything else.
 func (p point) String() string {
+	return p.render(renderGLX)
+}
+
+// render writes an exact point in the mode's spelling: ISO components for
+// GLX ("1850-03-15 BCE"), GEDCOM day-month-year otherwise ("15 MAR 1850
+// BCE", or "B.C." for GEDCOM 5.5.1). A point that is not exact is its raw
+// text in every mode.
+func (p point) render(mode renderMode) string {
 	if !p.exact {
 		return p.raw
 	}
 
-	var s string
-	switch p.precision {
-	case PrecisionDay:
-		s = fmt.Sprintf("%04d-%02d-%02d", p.year, p.month, p.day)
-	case PrecisionMonth:
-		s = fmt.Sprintf("%04d-%02d", p.year, p.month)
-	case PrecisionYear, PrecisionNone:
-		s = fmt.Sprintf("%04d", p.year)
-	default:
-		return p.raw
-	}
+	year := fmt.Sprintf("%04d", p.year)
 	if p.bce {
-		s += " " + keywordBCE
+		era := keywordBCE
+		if mode == renderGEDCOM551 {
+			era = gedcomEra551
+		}
+		year += " " + era
 	}
 
-	return s
+	switch {
+	case p.precision == PrecisionDay && mode == renderGLX:
+		return fmt.Sprintf("%04d-%02d-%02d", p.year, p.month, p.day) + year[maxYearDigits:]
+	case p.precision == PrecisionDay:
+		return fmt.Sprintf("%d %s %s", p.day, monthAbbreviations[p.month], year)
+	case p.precision == PrecisionMonth && mode == renderGLX:
+		return fmt.Sprintf("%04d-%02d", p.year, p.month) + year[maxYearDigits:]
+	case p.precision == PrecisionMonth:
+		return monthAbbreviations[p.month] + " " + year
+	}
+
+	return year
 }
 
 // signedYear returns the year as consumers compare it: negative for BCE.
@@ -284,7 +298,14 @@ func (d Date) IsRange() bool {
 
 // IsOpenEnded reports whether the date is a FROM range with no TO end.
 func (d Date) IsOpenEnded() bool {
-	return d.val().rng == rangeFrom
+	rng := d.val().rng
+
+	return rng == rangeFrom || rng == rangeTo
+}
+
+// IsOpenStart reports whether the date is a TO range: an end with no start.
+func (d Date) IsOpenStart() bool {
+	return d.val().rng == rangeTo
 }
 
 // Start returns the start of a range as a point date, or d itself when d is
@@ -292,6 +313,9 @@ func (d Date) IsOpenEnded() bool {
 func (d Date) Start() Date {
 	if !d.IsRange() {
 		return d
+	}
+	if d.val().rng == rangeTo {
+		return Date{}
 	}
 
 	return d.val().pointDate(d.val().start)
@@ -301,11 +325,16 @@ func (d Date) Start() Date {
 // is not a range or is open-ended.
 func (d Date) End() Date {
 	v := d.val()
-	if v.rng != rangeBetween && v.rng != rangeFromTo {
+	switch v.rng {
+	case rangeBetween, rangeFromTo:
+		return v.pointDate(v.end)
+	case rangeTo:
+		return v.pointDate(v.start)
+	case rangeNone, rangeFrom:
 		return Date{}
 	}
 
-	return v.pointDate(v.end)
+	return Date{}
 }
 
 // pointDate wraps one component of a range as a standalone Date in the same calendar.
@@ -339,7 +368,7 @@ func (d Date) Year() int {
 // names GLX preserves raw.
 func (d Date) Month() (int, bool) {
 	p := d.val().start
-	if p.precision < PrecisionMonth {
+	if p.precision < PrecisionMonth || !p.exact {
 		return 0, false
 	}
 
@@ -349,7 +378,7 @@ func (d Date) Month() (int, bool) {
 // Day returns the start day of month and whether it is known.
 func (d Date) Day() (int, bool) {
 	p := d.val().start
-	if p.precision < PrecisionDay {
+	if p.precision < PrecisionDay || !p.exact {
 		return 0, false
 	}
 
@@ -407,22 +436,26 @@ const (
 // is never half-rewritten.
 func (v *dateValue) render(mode renderMode) string {
 	var b strings.Builder
-	if name := v.prefix(); name != "" {
-		if mode != renderGLX {
-			name = gedcomEscape(name)
-		}
-		b.WriteString(name)
-		b.WriteByte(' ')
-	}
-
 	hasEnd := v.rng == rangeBetween || v.rng == rangeFromTo
 	start, end := v.start.raw, v.end.raw
 	if v.start.exact && (!hasEnd || v.end.exact) {
-		if mode != renderGLX {
-			start, end = v.start.gedcom(mode), v.end.gedcom(mode)
-		} else {
-			start, end = v.start.String(), v.end.String()
+		start, end = v.start.render(mode), v.end.render(mode)
+	}
+
+	// GLX and GEDCOM 5.5.1 put the calendar first ("JULIAN ABT 1731",
+	// "@#DJULIAN@ ABT 1731"); GEDCOM 7 puts it before each date, after the
+	// keyword ("ABT JULIAN 1731", "BET JULIAN 1700 AND JULIAN 1710").
+	switch name := v.prefix(); {
+	case name == "":
+	case mode == renderGEDCOM7:
+		start = name + " " + start
+		if hasEnd {
+			end = name + " " + end
 		}
+	case mode == renderGEDCOM551:
+		b.WriteString(gedcomEscape551(name) + " ")
+	default:
+		b.WriteString(name + " ")
 	}
 
 	switch v.rng {
@@ -432,6 +465,8 @@ func (v *dateValue) render(mode renderMode) string {
 		b.WriteString("FROM " + start + " TO " + end)
 	case rangeFrom:
 		b.WriteString("FROM " + start)
+	case rangeTo:
+		b.WriteString("TO " + start)
 	case rangeNone:
 		if kw := v.qualifier.Keyword(); kw != "" {
 			b.WriteString(kw + " ")

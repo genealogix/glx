@@ -139,9 +139,12 @@ func TestCorpus_StringIsIdempotent(t *testing.T) {
 	}
 }
 
-// standardGEDCOMRegexp matches a standard single GEDCOM Gregorian date body:
-// optional qualifier, optional day, optional English month name, 3–4 digit year.
-var standardGEDCOMRegexp = regexp.MustCompile(`(?i)^(?:(?:ABT|BEF|AFT|CAL)\s+)?(?:(?:\d{1,2}\s+)?(?:JAN(?:UARY)?|FEB(?:RUARY)?|MAR(?:CH)?|APR(?:IL)?|MAY|JUN(?:E)?|JUL(?:Y)?|AUG(?:UST)?|SEP(?:T|TEMBER)?|OCT(?:OBER)?|NOV(?:EMBER)?|DEC(?:EMBER)?)\.?\s+)?\d{3,4}$`)
+// standardGEDCOMBody is the shared shape of a standard single GEDCOM
+// Gregorian date body: optional qualifier, optional day, optional English
+// month name, 3–4 digit year. Both corpus regexes are built from it.
+const standardGEDCOMBody = `(?:(?:ABT|BEF|AFT|CAL)\s+)?(?:(?:\d{1,2}\s+)?(?:JAN(?:UARY)?|FEB(?:RUARY)?|MAR(?:CH)?|APR(?:IL)?|MAY|JUN(?:E)?|JUL(?:Y)?|AUG(?:UST)?|SEP(?:T|TEMBER)?|OCT(?:OBER)?|NOV(?:EMBER)?|DEC(?:EMBER)?)\.?\s+)?\d{3,4}$`
+
+var standardGEDCOMRegexp = regexp.MustCompile(`(?i)^` + standardGEDCOMBody)
 
 // TestCorpus_StandardFormsCanonicalize: every standard GEDCOM date body in
 // the corpus, whatever its letter case, canonicalizes to a valid GLX date

@@ -64,14 +64,30 @@ var (
 	standaloneNumberRegexp = regexp.MustCompile(`\b\d+\b`)
 	// dayMonthRegexp matches a day of month followed by a Gregorian month
 	// name or abbreviation, in any case ("15 MAR", "1 January", "3 sept.").
-	dayMonthRegexp = regexp.MustCompile(`(?i)\b\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Z]*\.?\b`)
+	// The month alternation is built from monthAbbreviations so the package
+	// has a single month table.
+	dayMonthRegexp = regexp.MustCompile(`(?i)\b\d{1,2}\s+(?:` + strings.Join(monthAbbreviations[1:], "|") + `)[A-Z]*\.?\b`)
+	// yearEraRegexp finds a number immediately followed by an era marker in
+	// any of its spellings ("1317 BC", "1401/8 B.C.", "5? BCE"): a dual-year
+	// tail or a doubt mark may sit between them, but nothing else. The
+	// captured number is compared with the selected year.
+	yearEraRegexp = regexp.MustCompile(`(?i)\b(\d{1,5})(/\d{1,4})?\??\s*B\.?C\.?(E\.?)?(\b|$)`)
+	// longNumberRegexp finds standalone numbers of 3–5 digits: the only
+	// tokens a raw-calendar body can hold as a year once the last token
+	// turned out not to be one ("15 TSH 5765 (approx)").
+	longNumberRegexp = regexp.MustCompile(`\b\d{3,5}\b`)
 )
 
-// yearEraRegexp matches the given year immediately followed by an era marker
-// in any of its spellings ("1317 BC", "1401/8 B.C.", "5? BCE"): a dual-year
-// tail or a doubt mark may sit between them, but nothing else.
-func yearEraRegexp(year int) *regexp.Regexp {
-	return regexp.MustCompile(`(?i)\b` + strconv.Itoa(year) + `(/\d{1,4})?\??\s*B\.?C\.?(E\.?)?(\b|$)`)
+// yearHasEra reports whether year appears in raw directly followed by an era
+// marker.
+func yearHasEra(raw string, year int) bool {
+	for _, m := range yearEraRegexp.FindAllStringSubmatch(raw, -1) {
+		if atoi(m[1]) == year {
+			return true
+		}
+	}
+
+	return false
 }
 
 // Parse parses a GLX date string. The empty string parses to the zero Date
@@ -170,7 +186,14 @@ func (d *dateValue) parseBody(tokens []string) {
 		reason = kw + " requires a date"
 
 	case kw == keywordTo:
-		reason = "TO must follow FROM in a FROM … TO range"
+		// "TO 1950": GEDCOM's open-start period.
+		if len(rest) > 0 && indexKeyword(rest, keywordTo) < 0 && indexKeyword(rest, keywordAnd) < 0 {
+			d.setRange(rangeTo, rest, nil)
+			d.checkKeyword(tokens[0], keywordTo)
+
+			return
+		}
+		reason = "TO takes a single end date"
 
 	case kw == keywordAnd:
 		reason = "AND must join two dates in a BET … AND range"
@@ -202,18 +225,40 @@ func (d *dateValue) setRange(kind rangeKind, startTokens, endTokens []string) {
 		// Arbitrary text ("BET unknown AND 1857") inherits nothing: a year
 		// that was never written must not be reported.
 		if d.start.year == 0 && d.end.year != 0 && isPartialMonth(startTokens) {
-			d.start.year, d.start.bce = d.end.year, d.end.bce
-			d.start.precision = PrecisionYear
-			if d.end.exact && !d.end.bce {
-				withYear := parsePoint(d.calendar, append(slices.Clone(startTokens), strconv.Itoa(d.end.year)))
-				if withYear.exact {
-					withYear.raw, withYear.canonical = d.start.raw, false
-					withYear.reason = "the start has no year; write " + withYear.String()
-					d.start = withYear
-					d.reason = withYear.reason
-				}
-			}
+			d.borrowEndYear(startTokens)
 		}
+	}
+}
+
+// borrowEndYear gives a yearless start ("JUL", "15 Jul") the end's year.
+// The year is only inherited when the start could plausibly fall in it:
+// when the end has a month, the start must not come after it ("BET 15 DEC
+// AND 5 JAN 1860" means December 1859, so nothing is inherited). The start
+// becomes exact, and the range canonicalizes, only when the end is exact to
+// at least the month, so a day-precision start is never invented from a
+// year-only end.
+func (d *dateValue) borrowEndYear(startTokens []string) {
+	withYear := parsePoint(d.calendar, append(slices.Clone(startTokens), strconv.Itoa(d.end.year)))
+	if !withYear.exact {
+		return
+	}
+	if d.end.precision >= PrecisionMonth {
+		endDay := d.end.day
+		if d.end.precision == PrecisionMonth {
+			endDay = daysInMonth[d.end.month]
+		}
+		if withYear.month > d.end.month || (withYear.month == d.end.month && withYear.day > endDay) {
+			return // the start belongs to the previous year, which was not written
+		}
+	}
+
+	d.start.year, d.start.bce = d.end.year, d.end.bce
+	d.start.precision = PrecisionYear
+	if d.end.exact && !d.end.bce && d.end.precision >= PrecisionMonth {
+		withYear.raw, withYear.canonical = d.start.raw, false
+		withYear.reason = "the start has no year; write " + withYear.String()
+		d.start = withYear
+		d.reason = withYear.reason
 	}
 }
 
@@ -303,9 +348,16 @@ func parsePoint(cal Calendar, tokens []string) point {
 		if p.year > 0 {
 			p.precision = PrecisionYear
 			p.canonical = true
-		} else {
-			p.reason = "the year must be the last token of " + strconv.Quote(p.raw)
+
+			return p
 		}
+		// "15 TSH 5765 (approx)": not canonical, but the year is still the
+		// last long number, never a 1–2 digit day of month.
+		if runs := longNumberRegexp.FindAllString(p.raw, -1); len(runs) > 0 {
+			p.year = atoi(runs[len(runs)-1])
+			p.precision = PrecisionYear
+		}
+		p.reason = "the year must be the last token of " + strconv.Quote(p.raw)
 
 		return p
 	}
@@ -330,7 +382,7 @@ func parsePoint(cal Calendar, tokens []string) point {
 		// whose year is directly followed by an era marker is dated BCE, so
 		// Year() is negative. A marker elsewhere ("1900, Vancouver BC") is
 		// not attached to the year and means nothing.
-		p.bce = yearEraRegexp(p.year).MatchString(p.raw)
+		p.bce = yearHasEra(p.raw, p.year)
 	}
 	p.reason = "date body must be YYYY, YYYY-MM, or YYYY-MM-DD"
 

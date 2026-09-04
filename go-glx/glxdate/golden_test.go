@@ -47,7 +47,7 @@ const goldenPath = "testdata/gedcom_dates.golden.tsv"
 // GEDCOM renders for it, and the year and validity of the stored form
 // (which every consumer reads).
 const goldenHeader = "input\tcanonical\tyear\tprecision\tqualifier\tcalendar\trange\tvalid\treason" +
-	"\tstored\texported\tstoredyear\tstoredvalid"
+	"\tstored\texported551\texported7\tstoredyear\tstoredvalid"
 
 // goldenRow renders one corpus input as a golden row.
 func goldenRow(input string) string {
@@ -80,6 +80,7 @@ func goldenRow(input string) string {
 		strconv.FormatBool(d.Valid()),
 		reason,
 		stored,
+		sd.GEDCOM551(),
 		sd.GEDCOM(),
 		strconv.Itoa(sd.Year()),
 		strconv.FormatBool(serr == nil),

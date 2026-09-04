@@ -70,7 +70,7 @@ func stringOf(s string) string {
 // TestParse_RawCalendarNeedsTrailingYear: a raw-calendar body whose last
 // token is not a number has no year; the day of month is never promoted.
 func TestParse_RawCalendarNeedsTrailingYear(t *testing.T) {
-	for _, input := range []string{"HEBREW 15 TSH", "FRENCH_R 1 VEND", "HEBREW TSH 5765 (approx)"} {
+	for _, input := range []string{"HEBREW 15 TSH", "FRENCH_R 1 VEND", "HEBREW TSH"} {
 		d, err := Parse(input)
 		require.Error(t, err, input)
 		assert.Equal(t, 0, d.Year(), input)
@@ -128,7 +128,7 @@ func TestNew_InvalidComponentsRenderRaw(t *testing.T) {
 
 	ok := New(CalendarJulian, 1850, 2, 29)
 	assert.True(t, ok.Valid())
-	assert.Equal(t, "@#DJULIAN@ 29 FEB 1850", ok.GEDCOM())
+	assert.Equal(t, "@#DJULIAN@ 29 FEB 1850", ok.GEDCOM551())
 }
 
 // TestNew_OtherCalendarIsInvalid: New cannot name an unknown calendar.

@@ -303,6 +303,7 @@ This format supports both precise dates and fuzzy/approximate dates commonly enc
   - `BET YYYY AND YYYY` - Between two dates (e.g., `BET 1880 AND 1890`)
   - `FROM YYYY TO YYYY` - Range with start and end (e.g., `FROM 1900 TO 1950`)
   - `FROM YYYY` - Open-ended range from a start date (e.g., `FROM 1900`)
+  - `TO YYYY` - Open-start range up to an end date (e.g., `TO 1950`); consumers that need a single year read the end year, the only one present
 
 - **Interpreted Dates:**
   - `INT YYYY-MM-DD (original text)` - Interpreted from original source (e.g., `INT 1850-03-15 (March 15th, 1850)`)
@@ -388,7 +389,7 @@ date: "FRENCH_R 1 VEND 0012"    # 1 Vendemiaire Year 12
 2. **Gregorian is the default.** Dates without a prefix are Gregorian. The `GREGORIAN` prefix is never written.
 3. **Hebrew and French Republican dates preserve raw month names** (e.g., `TSH`, `VEND`) because GENEALOGIX does not parse non-Gregorian month names into structured dates.
 4. **Unknown calendars are preserved as extension prefixes.** Following GEDCOM 7, where every non-standard calendar is an extension tag, an unknown calendar prefix starts with an underscore followed by upper-case letters, digits, or underscores (`_ROMAN 1000`, `_MAYAN_LONG_COUNT 13`). A non-standard GEDCOM calendar escape is imported in this form (`@#DROMAN@` → `_ROMAN`, `@#DNEW CAL@` → `_NEW_CAL`) and exported as `@#D_ROMAN@`. The underscore is what distinguishes a calendar from free text that happens to begin with an upper-case word: `LIVING 1515` or `CLASS OF 1905` is not a calendar date and is reported invalid.
-5. **Calendar prefixes align with [GEDCOM 7.0 calendar names](https://gedcom.io/specifications/FamilySearchGEDCOMv7.html).** GEDCOM 5.5.1 escape sequences (e.g., `@#DJULIAN@`) are converted to the equivalent prefix on import.
+5. **Calendar prefixes align with [GEDCOM 7.0 calendar names](https://gedcom.io/specifications/FamilySearchGEDCOMv7.html).** On import, both GEDCOM spellings are recognized wherever their grammar places them: 5.5.1 escapes (`@#DJULIAN@`) and 7.0 tags (`JULIAN`), whether written first or after the qualifier and before each range endpoint (`ABT JULIAN 1731`, `BET @#DJULIAN@ 1700 AND @#DJULIAN@ 1710`). When every endpoint names the same calendar it becomes the single GLX prefix; a range that mixes calendars is preserved verbatim. On export the prefix is written back in the target version's position: `@#DJULIAN@ ABT 1731` for 5.5.1, `ABT JULIAN 1731` for 7.0.
 
 #### Date Validation
 

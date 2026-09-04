@@ -57,4 +57,30 @@ jobs:
         run: npm ci
 
       - name: Run npm audit
-        run: npm audit --audit-level=moderate --fetch-timeout=60000 --fetch-retries=3
+        # npm's --fetch-retries does not cover the bulk advisories endpoint,
+        # which times out under registry load and fails the run with "audit
+        # endpoint returned an error" while reporting no vulnerabilities at
+        # all. Retry the whole command with backoff on that class of failure
+        # only: npm audit exits 1 for both network errors and real findings,
+        # so the two are told apart by the error text, and a genuine advisory
+        # is never retried or masked.
+        shell: bash
+        run: |
+          attempts=5
+          for attempt in $(seq 1 "$attempts"); do
+            if out=$(npm audit --audit-level=moderate --fetch-timeout=60000 2>&1); then
+              printf '%s\n' "$out"
+              exit 0
+            fi
+            printf '%s\n' "$out"
+            if ! grep -qE 'audit endpoint returned an error|network timeout|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|socket hang up|E50[0-9]|E429' <<<"$out"; then
+              echo "::error::npm audit reported vulnerabilities at or above the moderate level"
+              exit 1
+            fi
+            if [ "$attempt" -lt "$attempts" ]; then
+              echo "::warning::npm audit could not reach the registry (attempt $attempt of $attempts); retrying"
+              sleep $((attempt * 15))
+            fi
+          done
+          echo "::error::npm audit could not reach the registry after $attempts attempts"
+          exit 1

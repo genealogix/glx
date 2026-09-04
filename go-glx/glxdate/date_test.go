@@ -204,7 +204,6 @@ func TestParse_Preserved(t *testing.T) {
 		{"1850-02-30", 1850},
 		{"0000", 0},
 		{"HEBREW TSH", 0},
-		{"TO 1900", 1900},
 	}
 
 	for _, tt := range tests {
