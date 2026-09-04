@@ -367,3 +367,45 @@ func TestRenameEntity_ResearchLogNilSubject(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, glx.ResearchLogs["rl-1"].Subject)
 }
+
+func TestRenameInFragment_RefsOnlyWhenEntityAbsent(t *testing.T) {
+	// A fragment (one file of a multi-file archive) that references the
+	// entity without defining it: only the references change, no error.
+	fragment := &GLXFile{
+		Events: map[string]*Event{
+			"event-birth": {Participants: []Participant{{Person: "person-old", Role: "subject"}}},
+		},
+	}
+
+	changes := RenameInFragment(fragment, "person-old", "person-new")
+
+	assert.Equal(t, 1, changes)
+	assert.Equal(t, "person-new", fragment.Events["event-birth"].Participants[0].Person)
+	assert.False(t, fragment.HasEntity("person-old"))
+	assert.False(t, fragment.HasEntity("person-new"))
+}
+
+func TestRenameInFragment_MovesKeyWhenEntityPresent(t *testing.T) {
+	fragment := &GLXFile{
+		Persons: map[string]*Person{
+			"person-old": {Properties: map[string]any{"name": "Test"}},
+		},
+	}
+
+	changes := RenameInFragment(fragment, "person-old", "person-new")
+
+	assert.Equal(t, 1, changes)
+	assert.True(t, fragment.HasEntity("person-new"))
+	assert.False(t, fragment.HasEntity("person-old"))
+}
+
+func TestRenameInFragment_ZeroWhenUntouched(t *testing.T) {
+	fragment := &GLXFile{
+		Places: map[string]*Place{
+			"place-x": {Name: "X"},
+		},
+	}
+
+	assert.Equal(t, 0, RenameInFragment(fragment, "person-old", "person-new"))
+	assert.Equal(t, "X", fragment.Places["place-x"].Name)
+}

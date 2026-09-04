@@ -35,19 +35,47 @@ func RenameEntity(glx *GLXFile, oldID, newID string) (*RenameResult, error) {
 		return nil, err
 	}
 
-	// Move the map key
-	moveMapKey(glx, entityType, oldID, newID)
-
-	// Update all references
-	refs := updateAllRefs(glx, oldID, newID)
-
-	// Invalidate cached validation since maps have been mutated
-	glx.validation = nil
+	changes := RenameInFragment(glx, oldID, newID)
 
 	return &RenameResult{
 		EntityType:  entityType,
-		RefsUpdated: refs + 1, // +1 for the map key itself
+		RefsUpdated: changes, // includes the map key itself
 	}, nil
+}
+
+// RenameInFragment applies a rename to a GLXFile that may hold only part of
+// an archive — for example a single file from a multi-file archive. Unlike
+// RenameEntity it does not require oldID to be present or newID to be free:
+// the fragment's entity map key is moved if the fragment happens to hold the
+// entity, and every reference to oldID within the fragment is rewritten.
+// Callers are expected to have validated the rename against the whole archive.
+//
+// Returns the number of changes made (a moved map key counts as one), so a
+// caller can tell whether the fragment was touched at all. Invalidates the
+// validation cache when anything changed.
+func RenameInFragment(glx *GLXFile, oldID, newID string) int {
+	changes := 0
+
+	if entityType, err := findEntityType(glx, oldID); err == nil {
+		moveMapKey(glx, entityType, oldID, newID)
+		changes++
+	}
+
+	changes += updateAllRefs(glx, oldID, newID)
+
+	if changes > 0 {
+		glx.validation = nil
+	}
+
+	return changes
+}
+
+// HasEntity reports whether any entity map defines an entity with the given
+// ID. Vocabulary entries are not entities and are not consulted.
+func (g *GLXFile) HasEntity(id string) bool {
+	_, err := findEntityType(g, id)
+
+	return err == nil
 }
 
 // nonNilEntry reports whether m has a non-nil entry under id.

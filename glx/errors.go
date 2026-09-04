@@ -97,4 +97,8 @@ var (
 	ErrNotCacheFile      = errors.New("file is not a glx binary cache")
 	ErrCacheVersion      = errors.New("binary cache uses an incompatible cache format version")
 	ErrCacheTooLarge     = errors.New("binary cache file exceeds the maximum decodable size")
+
+	// ErrRenameTargetFileExists is returned by glx rename when the entity's
+	// file would be renamed onto a path that already exists in the archive.
+	ErrRenameTargetFileExists = errors.New("target file already exists")
 )
