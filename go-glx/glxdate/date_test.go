@@ -56,7 +56,7 @@ func TestParse_Canonical(t *testing.T) {
 		{input: "HEBREW BET 15 TSH 5765 AND 15 TSH 5766", calendar: CalendarHebrew, precision: PrecisionYear, year: 5765, isRange: true, endYear: 5766},
 		{input: "FRENCH_R 1 VEND 0012", calendar: CalendarFrenchRepublican, precision: PrecisionYear, year: 12},
 		{input: "FRENCH_R FROM 1 VEND 0010 TO 1 VEND 0012", calendar: CalendarFrenchRepublican, precision: PrecisionYear, year: 10, isRange: true, endYear: 12},
-		{input: "ROMAN 12", calendar: CalendarOther, precision: PrecisionYear, year: 12},
+		{input: "_ROMAN 12", calendar: CalendarOther, precision: PrecisionYear, year: 12},
 	}
 
 	for _, tt := range tests {
@@ -260,8 +260,8 @@ func TestDate_InterpretedText(t *testing.T) {
 func TestDate_CalendarName(t *testing.T) {
 	assert.Empty(t, MustParse("1850").CalendarName())
 	assert.Equal(t, "JULIAN", MustParse("JULIAN 1850").CalendarName())
-	assert.Equal(t, "MYCAL", MustParse("MYCAL 1850").CalendarName())
-	assert.Equal(t, CalendarOther, MustParse("MYCAL 1850").Calendar())
+	assert.Equal(t, "_MYCAL", MustParse("_MYCAL 1850").CalendarName())
+	assert.Equal(t, CalendarOther, MustParse("_MYCAL 1850").Calendar())
 
 	rng := MustParse("JULIAN BET 1700 AND 1710")
 	assert.Equal(t, "JULIAN 1700", rng.Start().String())
@@ -364,7 +364,7 @@ func TestSplitCalendarPrefix(t *testing.T) {
 		{"JULIAN 1731-03-15", "JULIAN", "1731-03-15"},
 		{"HEBREW 15 TSH 5765", "HEBREW", "15 TSH 5765"},
 		{"FRENCH_R 1 VEND 0012", "FRENCH_R", "1 VEND 0012"},
-		{"MYCAL 1850", "MYCAL", "1850"},
+		{"_MYCAL 1850", "_MYCAL", "1850"},
 		{"1731-03-15", "", "1731-03-15"},
 		{"ABT 1731", "", "ABT 1731"},
 		{"BET 1880 AND 1890", "", "BET 1880 AND 1890"},

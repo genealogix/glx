@@ -69,17 +69,24 @@ func firstComponent(s string) string {
 	return s
 }
 
-var fourDigitRegexp = regexp.MustCompile(`(?:^|[^0-9])(\d{4})(?:[^0-9]|$)`)
+// yearOracleRegexp finds, in text order, the first number that can only be a
+// year: a 3-digit number standing alone as a word, or a 4-digit run not
+// adjacent to other digits (it may be glued to letters, "APR1828").
+var yearOracleRegexp = regexp.MustCompile(`(?:^|\W)(\d{3})(?:\W|$)|(?:^|[^0-9])(\d{4})(?:[^0-9]|$)`)
 
-// oracleYear is an independent, deliberately simple oracle: when the start
-// component of a date contains a 4-digit number, that number is its year.
-// Real-world GEDCOM years are overwhelmingly 4 digits, and a day of month
-// never is, so this pins down exactly the class of bug reported in #1025.
+// oracleYear is an independent, deliberately simple oracle: the first
+// year-shaped number in the start component of a date is its year, provided
+// the component contains a 4-digit number somewhere (so the oracle only
+// speaks where a real year is present). A day of month never has more than
+// two digits, so this pins down exactly the class of bug reported in #1025.
 // It returns 0 when the oracle does not apply.
 func oracleYear(s string) int {
 	first := firstComponent(s)
-	if m := fourDigitRegexp.FindStringSubmatch(first); m != nil {
-		n, _ := strconv.Atoi(m[1])
+	if !fourDigitRegexp.MatchString(first) {
+		return 0
+	}
+	if m := yearOracleRegexp.FindStringSubmatch(first); m != nil {
+		n, _ := strconv.Atoi(m[1] + m[2])
 		if bceOracleRegexp.MatchString(first) {
 			return -n
 		}
@@ -89,6 +96,8 @@ func oracleYear(s string) int {
 
 	return 0
 }
+
+var fourDigitRegexp = regexp.MustCompile(`(?:^|[^0-9])(\d{4})(?:[^0-9]|$)`)
 
 // bceOracleRegexp recognizes an era suffix; such a year is negative.
 var bceOracleRegexp = regexp.MustCompile(`(?i)\b(B\.?C\.?E?\.?|BCE)$`)
@@ -170,7 +179,7 @@ func FuzzParse(f *testing.F) {
 	for _, seed := range []string{
 		"1850", "1850-03-15", "ABT 1850", "BET 1880 AND 1890", "FROM 1900",
 		"INT 1850 (text)", "HEBREW 15 TSH 5765", "1 JANUARY 1900", "15/01/1900",
-		"JULIAN BET 1700 AND 1710", "MYCAL 12", "BET AND", "FROM TO", "(", "-",
+		"JULIAN BET 1700 AND 1710", "_MYCAL 12", "BET AND", "FROM TO", "(", "-",
 	} {
 		f.Add(seed)
 	}

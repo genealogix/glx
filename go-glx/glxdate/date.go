@@ -388,18 +388,27 @@ func (d Date) String() string {
 // whole body is rendered verbatim, so a preserved date is never half-rewritten
 // ("BET JUL AND SEP 1857" stays as written rather than "BET JUL AND 1857-09").
 func (v *dateValue) String() string {
-	return v.render(false)
+	return v.render(renderGLX)
 }
 
-// render writes the date in GLX form, or in GEDCOM spelling when gedcom is
-// set (calendar escape instead of prefix, "15 MAR 1850" instead of
-// "1850-03-15"). Exact components are rendered only when every component of
-// the date was determined; otherwise the raw text is used throughout so a
-// preserved body is never half-rewritten.
-func (v *dateValue) render(gedcom bool) string {
+// renderMode selects the spelling render writes.
+type renderMode uint8
+
+const (
+	renderGLX       renderMode = iota // canonical GLX: "JULIAN 1850-03-15", "0044 BCE"
+	renderGEDCOM7                     // GEDCOM 7: "@#DJULIAN@ 15 MAR 1850", "44 BCE"
+	renderGEDCOM551                   // GEDCOM 5.5.1: as GEDCOM 7 but "44 B.C."
+)
+
+// render writes the date in GLX form, or in GEDCOM spelling (calendar escape
+// instead of prefix, "15 MAR 1850" instead of "1850-03-15"). Exact
+// components are rendered only when every component of the date was
+// determined; otherwise the raw text is used throughout so a preserved body
+// is never half-rewritten.
+func (v *dateValue) render(mode renderMode) string {
 	var b strings.Builder
 	if name := v.prefix(); name != "" {
-		if gedcom {
+		if mode != renderGLX {
 			name = gedcomEscape(name)
 		}
 		b.WriteString(name)
@@ -409,8 +418,8 @@ func (v *dateValue) render(gedcom bool) string {
 	hasEnd := v.rng == rangeBetween || v.rng == rangeFromTo
 	start, end := v.start.raw, v.end.raw
 	if v.start.exact && (!hasEnd || v.end.exact) {
-		if gedcom {
-			start, end = v.start.gedcom(), v.end.gedcom()
+		if mode != renderGLX {
+			start, end = v.start.gedcom(mode), v.end.gedcom(mode)
 		} else {
 			start, end = v.start.String(), v.end.String()
 		}
@@ -462,9 +471,15 @@ func New(cal Calendar, year, month, day int) Date {
 	p.exact = p.canonical
 
 	v := &dateValue{calendar: cal, start: p, valid: p.canonical, reason: p.reason}
-	if cal == CalendarOther {
+	switch {
+	case cal == CalendarOther:
 		v.valid = false
 		v.reason = "an unknown calendar needs a prefix name; use Parse"
+	case p.bce && !cal.hasStructuredMonths():
+		// A raw-calendar body ends with its year, so an era suffix would
+		// not parse back; the combination is not representable.
+		v.valid = false
+		v.reason = "BCE applies to Gregorian and Julian dates only"
 	}
 	v.raw = v.String()
 

@@ -1021,7 +1021,7 @@ func (glx *GLXFile) validateDateFormat(entityType EntityType, entityID, field, d
 			SourceType: entityType,
 			SourceID:   entityID,
 			Field:      field,
-			Message: fmt.Sprintf("%s[%s].%s: date '%s' should be in format YYYY, YYYY-MM, or YYYY-MM-DD, or use keywords like FROM, TO, ABT, BEF, AFT, BET, CAL, EST, INT: %s",
+			Message: fmt.Sprintf("%s[%s].%s: date '%s' should be in format YYYY, YYYY-MM, or YYYY-MM-DD, optionally with a keyword (ABT, BEF, AFT, CAL, EST, INT, BET … AND, FROM … TO), a calendar prefix (JULIAN, HEBREW, FRENCH_R), or a BCE suffix: %s",
 				entityType, entityID, field, dateStr, dateReason(err)),
 		})
 	}

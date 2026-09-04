@@ -26,6 +26,10 @@ const gedcomEscapeStart = "@#D"
 // Julian and Hebrew escape names equal their GLX prefixes.
 const gedcomFrenchRepublicanEscape = "FRENCH R"
 
+// gedcomEra551 is the era suffix of GEDCOM 5.5.1 ("44 B.C."); GEDCOM 7 and
+// GLX write BCE.
+const gedcomEra551 = "B.C."
+
 // gedcomEscapes maps GLX calendar prefixes to their GEDCOM escape names (the
 // text between "@#D" and "@"). Gregorian has no prefix and no escape.
 var gedcomEscapes = map[string]string{
@@ -76,10 +80,13 @@ func Canonicalize(s string) string {
 // the common dialect variants with full or mixed-case month names and
 // keywords ("1 January 1900", "Bet 1880 and 1890", "ABT. 1850") come out in
 // canonical GLX form. Anything that cannot be canonicalized without guessing
-// (numeric day/month forms, dual years, BCE dates, free text) is preserved
-// verbatim so it survives a roundtrip; validation later flags it.
+// (numeric day/month forms, dual years, free text) is preserved verbatim so
+// it survives a roundtrip; validation later flags it.
 //
-// An escape with no date body ("@#DJULIAN@") is preserved verbatim.
+// A non-standard calendar escape becomes an extension prefix in GEDCOM 7
+// form: an underscore, then the name with spaces folded to underscores
+// ("@#DROMAN@" → "_ROMAN", "@#DNEW CAL@" → "_NEW_CAL"). An escape with no
+// date body ("@#DJULIAN@") is preserved verbatim.
 func FromGEDCOM(s string) string {
 	s = strings.TrimSpace(s)
 	if s == "" {
@@ -108,9 +115,8 @@ func ParseGEDCOM(s string) (Date, error) {
 
 // splitGEDCOMEscape splits a leading GEDCOM calendar escape from s, returning
 // the GLX calendar prefix ("" for Gregorian), the trimmed remainder, and
-// whether an escape was present. Unknown escape names are kept as a prefix
-// with spaces folded to underscores so they form a single token; GEDCOM
-// reverses this.
+// whether an escape was present. Unknown escape names become extension
+// prefixes: an underscore, then the name with spaces folded to underscores.
 func splitGEDCOMEscape(s string) (string, string, bool) {
 	if !strings.HasPrefix(s, gedcomEscapeStart) {
 		return "", s, false
@@ -124,13 +130,17 @@ func splitGEDCOMEscape(s string) (string, string, bool) {
 	prefix, known := gedcomEscapeNames[name]
 	if !known {
 		prefix = strings.ReplaceAll(name, " ", "_")
+		if !strings.HasPrefix(prefix, "_") {
+			prefix = "_" + prefix
+		}
 	}
 
 	return prefix, strings.TrimSpace(rest), true
 }
 
 // gedcomEscape renders a GLX calendar prefix as a GEDCOM calendar escape.
-// The empty (Gregorian) prefix has no escape.
+// The empty (Gregorian) prefix has no escape; an extension prefix is
+// written as-is ("_ROMAN" → "@#D_ROMAN@").
 func gedcomEscape(prefix string) string {
 	if prefix == "" {
 		return ""
@@ -138,27 +148,38 @@ func gedcomEscape(prefix string) string {
 
 	name, known := gedcomEscapes[prefix]
 	if !known {
-		name = strings.ReplaceAll(prefix, "_", " ")
+		name = prefix
 	}
 
 	return gedcomEscapeStart + name + "@"
 }
 
-// GEDCOM renders the date as a GEDCOM DATE payload: the calendar prefix as
-// an escape and every exact component in GEDCOM spelling ("15 MAR 1850",
-// "ABT 1850", "BET 1 JAN 1880 AND 31 DEC 1890"). A body whose components
-// were not determined is rendered as [Date.String] would, so nothing is
-// invented on export that was not understood on import.
+// GEDCOM renders the date as a GEDCOM 7 DATE payload: the calendar prefix
+// as an escape and every exact component in GEDCOM spelling ("15 MAR 1850",
+// "ABT 1850", "BET 1 JAN 1880 AND 31 DEC 1890", "44 BCE"). A body whose
+// components were not determined is rendered as [Date.String] would, so
+// nothing is invented on export that was not understood on import.
 func (d Date) GEDCOM() string {
 	if d.IsZero() {
 		return ""
 	}
 
-	return d.val().render(true)
+	return d.val().render(renderGEDCOM7)
+}
+
+// GEDCOM551 renders the date as a GEDCOM 5.5.1 DATE payload. It differs
+// from [Date.GEDCOM] only in the era suffix: 5.5.1 writes "B.C." where
+// GEDCOM 7 writes "BCE".
+func (d Date) GEDCOM551() string {
+	if d.IsZero() {
+		return ""
+	}
+
+	return d.val().render(renderGEDCOM551)
 }
 
 // gedcom renders an exact point in GEDCOM spelling, and a raw point as-is.
-func (p point) gedcom() string {
+func (p point) gedcom(mode renderMode) string {
 	if !p.exact {
 		return p.raw
 	}
@@ -167,9 +188,12 @@ func (p point) gedcom() string {
 	for len(year) < maxYearDigits {
 		year = "0" + year
 	}
-
 	if p.bce {
-		year += " " + keywordBCE
+		era := keywordBCE
+		if mode == renderGEDCOM551 {
+			era = gedcomEra551
+		}
+		year += " " + era
 	}
 
 	switch p.precision {

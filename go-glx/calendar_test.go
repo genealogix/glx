@@ -136,7 +136,7 @@ func TestFormatGEDCOMDate_CalendarPrefix(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := formatGEDCOMDate(DateString(tt.input))
+			result := formatGEDCOMDate(DateString(tt.input), GEDCOM551)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -211,8 +211,8 @@ func TestExtractGLXCalendarPrefix(t *testing.T) {
 		},
 		{
 			name:          "unknown calendar with underscores roundtrips",
-			input:         "NEW_CAL 15 MAR 1731",
-			wantCalendar:  "NEW_CAL",
+			input:         "_NEW_CAL 15 MAR 1731",
+			wantCalendar:  "_NEW_CAL",
 			wantRemainder: "15 MAR 1731",
 		},
 	}

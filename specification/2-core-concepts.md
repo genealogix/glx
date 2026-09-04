@@ -286,7 +286,7 @@ This format supports both precise dates and fuzzy/approximate dates commonly enc
 
 **Simple Dates:**
 
-- `YYYY` - Year only (4 digits required, e.g., `1850`, `2020`, `0047`)
+- `YYYY` - Year only (4 digits in canonical form, e.g., `1850`, `2020`, `0047`; see note 1 on shorter years)
 - `YYYY-MM` - Year and month (e.g., `1850-03`, `2020-12`)
 - `YYYY-MM-DD` - Full date (e.g., `1850-03-15`, `2020-12-31`)
 
@@ -387,7 +387,7 @@ date: "FRENCH_R 1 VEND 0012"    # 1 Vendemiaire Year 12
 1. **No calendar conversion is performed.** Dates are preserved exactly as the source recorded them, consistent with the evidence-first methodology. A Julian date is stored as Julian, not converted to Gregorian.
 2. **Gregorian is the default.** Dates without a prefix are Gregorian. The `GREGORIAN` prefix is never written.
 3. **Hebrew and French Republican dates preserve raw month names** (e.g., `TSH`, `VEND`) because GENEALOGIX does not parse non-Gregorian month names into structured dates.
-4. **Unknown calendars are preserved.** If a GEDCOM file uses a non-standard calendar escape, the calendar name is preserved as a prefix (with spaces normalized to underscores).
+4. **Unknown calendars are preserved as extension prefixes.** Following GEDCOM 7, where every non-standard calendar is an extension tag, an unknown calendar prefix starts with an underscore followed by upper-case letters, digits, or underscores (`_ROMAN 1000`, `_MAYAN_LONG_COUNT 13`). A non-standard GEDCOM calendar escape is imported in this form (`@#DROMAN@` → `_ROMAN`, `@#DNEW CAL@` → `_NEW_CAL`) and exported as `@#D_ROMAN@`. The underscore is what distinguishes a calendar from free text that happens to begin with an upper-case word: `LIVING 1515` or `CLASS OF 1905` is not a calendar date and is reported invalid.
 5. **Calendar prefixes align with [GEDCOM 7.0 calendar names](https://gedcom.io/specifications/FamilySearchGEDCOMv7.html).** GEDCOM 5.5.1 escape sequences (e.g., `@#DJULIAN@`) are converted to the equivalent prefix on import.
 
 #### Date Validation

@@ -35,8 +35,8 @@ func TestSplitGEDCOMEscape(t *testing.T) {
 		{"@#DFRENCH R@ 1 VEND 0012", PrefixFrenchRepublican, "1 VEND 0012", true},
 		{"@#DGREGORIAN@ 15 MAR 1731", "", "15 MAR 1731", true},
 		{"@#DJULIAN@15 MAR 1731", PrefixJulian, "15 MAR 1731", true},
-		{"@#DROMAN@ 15 MAR 1731", "ROMAN", "15 MAR 1731", true},
-		{"@#DNEW CAL@ 15 MAR 1731", "NEW_CAL", "15 MAR 1731", true},
+		{"@#DROMAN@ 15 MAR 1731", "_ROMAN", "15 MAR 1731", true},
+		{"@#DNEW CAL@ 15 MAR 1731", "_NEW_CAL", "15 MAR 1731", true},
 		{"@#DJULIAN@", PrefixJulian, "", true},
 		{"15 MAR 1731", "", "15 MAR 1731", false},
 		{"@#DJULIAN 15 MAR 1731", "", "@#DJULIAN 15 MAR 1731", false},
@@ -57,8 +57,8 @@ func TestGEDCOMEscape(t *testing.T) {
 	assert.Equal(t, "@#DHEBREW@", gedcomEscape(PrefixHebrew))
 	assert.Equal(t, "@#DFRENCH R@", gedcomEscape(PrefixFrenchRepublican))
 	assert.Empty(t, gedcomEscape(""))
-	assert.Equal(t, "@#DROMAN@", gedcomEscape("ROMAN"))
-	assert.Equal(t, "@#DNEW CAL@", gedcomEscape("NEW_CAL"))
+	assert.Equal(t, "@#D_ROMAN@", gedcomEscape("_ROMAN"))
+	assert.Equal(t, "@#D_NEW_CAL@", gedcomEscape("_NEW_CAL"))
 }
 
 // TestFromGEDCOM pins the dialect variants the importer normalizes (all
@@ -90,7 +90,7 @@ func TestFromGEDCOM(t *testing.T) {
 		"@#DGREGORIAN@ 15 MAR 1731":    "1731-03-15",
 		"@#DHEBREW@ 15 TSH 5765":       "HEBREW 15 TSH 5765",
 		"@#DFRENCH R@ 1 VEND 0012":     "FRENCH_R 1 VEND 0012",
-		"@#DROMAN@ 15 MAR 1731":        "ROMAN 15 MAR 1731",
+		"@#DROMAN@ 15 MAR 1731":        "_ROMAN 15 MAR 1731",
 		"@#DJULIAN@":                   "@#DJULIAN@",
 		"@#DJULIAN@ BET 1700 AND 1710": "JULIAN BET 1700 AND 1710",
 
@@ -156,8 +156,8 @@ func TestDate_GEDCOM(t *testing.T) {
 		"JULIAN BET 1700 AND 1710":  "@#DJULIAN@ BET 1700 AND 1710",
 		"HEBREW 15 TSH 5765":        "@#DHEBREW@ 15 TSH 5765",
 		"FRENCH_R 1 VEND 0012":      "@#DFRENCH R@ 1 VEND 0012",
-		"ROMAN 15 MAR 1731":         "@#DROMAN@ 15 MAR 1731",
-		"NEW_CAL 15 MAR 1731":       "@#DNEW CAL@ 15 MAR 1731",
+		"_ROMAN 15 MAR 1731":        "@#D_ROMAN@ 15 MAR 1731",
+		"_NEW_CAL 15 MAR 1731":      "@#D_NEW_CAL@ 15 MAR 1731",
 		"@#DJULIAN@":                "@#DJULIAN@",
 		"HEBREW BET 1 TSH AND 5765": "@#DHEBREW@ BET 1 TSH AND 5765",
 

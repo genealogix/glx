@@ -30,9 +30,9 @@ func TestGEDCOMDateAdapters(t *testing.T) {
 	assert.Equal(t, DateString("15/01/1900"), parseGEDCOMDate("15/01/1900"))
 	assert.Equal(t, DateString(""), parseGEDCOMDate("  "))
 
-	assert.Equal(t, "@#DJULIAN@ 15 MAR 1731", formatGEDCOMDate("JULIAN 1731-03-15"))
-	assert.Equal(t, "15/01/1900", formatGEDCOMDate("15/01/1900"))
-	assert.Empty(t, formatGEDCOMDate(""))
+	assert.Equal(t, "@#DJULIAN@ 15 MAR 1731", formatGEDCOMDate("JULIAN 1731-03-15", GEDCOM70))
+	assert.Equal(t, "15/01/1900", formatGEDCOMDate("15/01/1900", GEDCOM551))
+	assert.Empty(t, formatGEDCOMDate("", GEDCOM70))
 }
 
 // TestDateString_Year pins the DateString convenience accessor.

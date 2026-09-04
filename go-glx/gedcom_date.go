@@ -25,8 +25,9 @@ func parseGEDCOMDate(gedcomDate string) DateString {
 	return DateString(glxdate.FromGEDCOM(gedcomDate))
 }
 
-// formatGEDCOMDate converts a GLX DateString to a GEDCOM DATE value.
-// Examples:
+// formatGEDCOMDate converts a GLX DateString to a GEDCOM DATE value in the
+// spelling of the target version; the two differ only in the era suffix
+// ("44 BCE" in 7.0, "44 B.C." in 5.5.1). Examples:
 //
 //	"1850-03-15"          -> "15 MAR 1850"
 //	"1850-03"             -> "MAR 1850"
@@ -36,8 +37,11 @@ func parseGEDCOMDate(gedcomDate string) DateString {
 //
 // A date that is not in canonical form is rendered as glxdate would render
 // it, so nothing is invented on export that was not understood on import.
-func formatGEDCOMDate(date DateString) string {
+func formatGEDCOMDate(date DateString, version GEDCOMVersion) string {
 	d, _ := date.Parse()
+	if version == GEDCOM551 {
+		return d.GEDCOM551()
+	}
 
 	return d.GEDCOM()
 }

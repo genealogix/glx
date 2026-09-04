@@ -65,10 +65,14 @@ var (
 	// dayMonthRegexp matches a day of month followed by a Gregorian month
 	// name or abbreviation, in any case ("15 MAR", "1 January", "3 sept.").
 	dayMonthRegexp = regexp.MustCompile(`(?i)\b\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Z]*\.?\b`)
-	// eraRegexp finds an era marker anywhere in a raw-preserved body, in any
-	// of its spellings ("BC", "B.C.", "BCE").
-	eraRegexp = regexp.MustCompile(`(?i)\bB\.?C\.?(E\.?)?(\b|$)`)
 )
+
+// yearEraRegexp matches the given year immediately followed by an era marker
+// in any of its spellings ("1317 BC", "1401/8 B.C.", "5? BCE"): a dual-year
+// tail or a doubt mark may sit between them, but nothing else.
+func yearEraRegexp(year int) *regexp.Regexp {
+	return regexp.MustCompile(`(?i)\b` + strconv.Itoa(year) + `(/\d{1,4})?\??\s*B\.?C\.?(E\.?)?(\b|$)`)
+}
 
 // Parse parses a GLX date string. The empty string parses to the zero Date
 // with no error.
@@ -164,6 +168,12 @@ func (d *dateValue) parseBody(tokens []string) {
 			return
 		}
 		reason = kw + " requires a date"
+
+	case kw == keywordTo:
+		reason = "TO must follow FROM in a FROM … TO range"
+
+	case kw == keywordAnd:
+		reason = "AND must join two dates in a BET … AND range"
 	}
 
 	d.setRange(rangeNone, tokens, nil)
@@ -192,7 +202,7 @@ func (d *dateValue) setRange(kind rangeKind, startTokens, endTokens []string) {
 		// Arbitrary text ("BET unknown AND 1857") inherits nothing: a year
 		// that was never written must not be reported.
 		if d.start.year == 0 && d.end.year != 0 && isPartialMonth(startTokens) {
-			d.start.year = d.end.year
+			d.start.year, d.start.bce = d.end.year, d.end.bce
 			d.start.precision = PrecisionYear
 			if d.end.exact && !d.end.bce {
 				withYear := parsePoint(d.calendar, append(slices.Clone(startTokens), strconv.Itoa(d.end.year)))
@@ -316,9 +326,11 @@ func parsePoint(cal Calendar, tokens []string) point {
 	p.year = heuristicYear(p.raw)
 	if p.year > 0 {
 		p.precision = PrecisionYear
-		// "abt. 1317 BC (or abt. 934 BC)": a preserved body that names an
-		// era is still dated BCE, so Year() is negative.
-		p.bce = eraRegexp.MatchString(p.raw)
+		// "abt. 1317 BC (or abt. 934 BC)", "1401/8 B.C.": a preserved body
+		// whose year is directly followed by an era marker is dated BCE, so
+		// Year() is negative. A marker elsewhere ("1900, Vancouver BC") is
+		// not attached to the year and means nothing.
+		p.bce = yearEraRegexp(p.year).MatchString(p.raw)
 	}
 	p.reason = "date body must be YYYY, YYYY-MM, or YYYY-MM-DD"
 
@@ -436,13 +448,22 @@ func checkComponents(p *point) bool {
 // ("5 JAN 476" → 476, "(10 Aug)" → 0). It returns 0 when nothing plausible
 // is found.
 func heuristicYear(raw string) int {
-	for _, run := range digitRunRegexp.FindAllString(raw, -1) {
-		if len(run) == maxYearDigits {
+	cleaned := dayMonthRegexp.ReplaceAllString(raw, "")
+
+	// First pass, in text order: a 4-digit run anywhere (even glued to
+	// letters, "APR1828") or a standalone 3-digit number ("ABT 800 OR
+	// 1900" → 800). Taking the earliest keeps Year the start year.
+	for _, loc := range digitRunRegexp.FindAllStringIndex(cleaned, -1) {
+		run := cleaned[loc[0]:loc[1]]
+		switch {
+		case len(run) == maxYearDigits:
+			return atoi(run)
+		case len(run) == maxYearDigits-1 && standalone(cleaned, loc):
 			return atoi(run)
 		}
 	}
 
-	cleaned := dayMonthRegexp.ReplaceAllString(raw, "")
+	// Second pass: a short standalone number ("abt 55"), never an ordinal.
 	for _, run := range standaloneNumberRegexp.FindAllString(cleaned, -1) {
 		if len(run) <= maxYearDigits {
 			return atoi(run)
@@ -450,6 +471,20 @@ func heuristicYear(raw string) int {
 	}
 
 	return 0
+}
+
+// standalone reports whether the run at loc is bounded by non-word
+// characters on both sides.
+func standalone(s string, loc []int) bool {
+	before := loc[0] == 0 || !isWordByte(s[loc[0]-1])
+	after := loc[1] == len(s) || !isWordByte(s[loc[1]])
+
+	return before && after
+}
+
+// isWordByte mirrors the regexp \w class for ASCII.
+func isWordByte(c byte) bool {
+	return c == '_' || (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
 }
 
 // trailingYear returns the year of a raw-preserved calendar body, or 0. The

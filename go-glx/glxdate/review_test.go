@@ -55,9 +55,9 @@ func TestParse_FreeTextIsNotACalendar(t *testing.T) {
 	assert.Equal(t, "LIVING 1515", stringOf("LIVING 1515"))
 	assert.Equal(t, "AFT 1839 BEFORE 1840", stringOf("AFTER 1839 BEFORE 1840"))
 
-	d, err := Parse("ROMAN 15 MAR 1731")
+	d, err := Parse("_ROMAN 15 MAR 1731")
 	require.NoError(t, err)
-	assert.Equal(t, "ROMAN", d.CalendarName())
+	assert.Equal(t, "_ROMAN", d.CalendarName())
 }
 
 // stringOf returns Parse(s).String(), ignoring the error.
@@ -141,8 +141,8 @@ func TestNew_OtherCalendarIsInvalid(t *testing.T) {
 
 // TestEqual_ComparesCalendar: equality requires the same calendar and name.
 func TestEqual_ComparesCalendar(t *testing.T) {
-	assert.True(t, MustParse("ROMAN 1000").Equal(MustParse("ROMAN 1000")))
-	assert.False(t, MustParse("ROMAN 1000").Equal(MustParse("MAYAN 1000")))
+	assert.True(t, MustParse("_ROMAN 1000").Equal(MustParse("_ROMAN 1000")))
+	assert.False(t, MustParse("_ROMAN 1000").Equal(MustParse("_MAYAN 1000")))
 	assert.False(t, MustParse("JULIAN 1731").Equal(MustParse("1731")))
 	assert.True(t, MustParse("1731").Equal(New(CalendarGregorian, 1731, 0, 0)))
 }
@@ -156,10 +156,10 @@ func TestNewRange_Rejections(t *testing.T) {
 	_, err = NewRange(MustParse("1880"), MustParse("INT 1890 (text)"))
 	require.ErrorIs(t, err, ErrRangeMismatch)
 
-	_, err = NewRange(MustParse("ROMAN 1000"), MustParse("MAYAN 1100"))
+	_, err = NewRange(MustParse("_ROMAN 1000"), MustParse("_MAYAN 1100"))
 	require.ErrorIs(t, err, ErrRangeMismatch)
 
-	r, err := NewRange(MustParse("ROMAN 1000"), MustParse("ROMAN 1100"))
+	r, err := NewRange(MustParse("_ROMAN 1000"), MustParse("_ROMAN 1100"))
 	require.NoError(t, err)
-	assert.Equal(t, "ROMAN BET 1000 AND 1100", r.String())
+	assert.Equal(t, "_ROMAN BET 1000 AND 1100", r.String())
 }

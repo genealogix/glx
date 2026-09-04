@@ -40,10 +40,9 @@ const (
 	PrefixFrenchRepublican = "FRENCH_R"
 )
 
-// minCalendarPrefixLen is the shortest token treated as an unknown calendar
-// prefix. It excludes 3-letter month abbreviations and short keywords while
-// accepting all known calendar names (JULIAN=6, HEBREW=6, FRENCH_R=8).
-const minCalendarPrefixLen = 5
+// minCalendarPrefixLen is the shortest extension calendar prefix: an
+// underscore and at least one character ("_X").
+const minCalendarPrefixLen = 2
 
 // knownPrefixes maps GLX calendar prefixes to calendars.
 var knownPrefixes = map[string]Calendar{
@@ -99,8 +98,8 @@ func (c Calendar) hasStructuredMonths() bool {
 // SplitCalendarPrefix splits a GLX calendar prefix from a date string.
 // It returns the prefix and the remaining body, or ("", s) when no prefix is
 // present. Known prefixes (JULIAN, HEBREW, FRENCH_R) are recognized directly;
-// any other all-uppercase token of at least five letters that is not a date
-// keyword is treated as an unknown calendar prefix.
+// an underscore-prefixed upper-case token ("_ROMAN") is an extension calendar
+// prefix (see isCalendarPrefix).
 //
 //	SplitCalendarPrefix("JULIAN 1731-03-15") → ("JULIAN", "1731-03-15")
 //	SplitCalendarPrefix("ABT 1731")          → ("", "ABT 1731")
@@ -130,41 +129,23 @@ func calendarForPrefix(prefix string) Calendar {
 	return CalendarOther
 }
 
-// notCalendarWords are upper-case tokens that can legitimately start a date
-// body and must never be read as an unknown calendar prefix: keywords and
-// their spelled-out forms, month names, seasons, and the placeholder words
-// seen at the start of free-text dates in real GEDCOM files ("LIVING 1515",
-// "PRIOR 1855", "UNKNOWN 87"). "APRIL 1688" is a Gregorian date, not an
-// APRIL calendar; "AFTER 1839 BEFORE 1840" is free text, not an AFTER calendar.
-var notCalendarWords = map[string]bool{
-	keywordAbout: true, keywordBefore: true, keywordAfter: true, keywordCalculated: true,
-	keywordInterpreted: true, keywordBetween: true, keywordAnd: true, keywordFrom: true, keywordTo: true,
-	calendarGregorianName: true,
-	"ABOUT":               true, "AFTER": true, "BEFORE": true, "BETWEEN": true, "CIRCA": true, "AROUND": true,
-	"CALCULATED": true, "ESTIMATED": true, "INTERPRETED": true, "EST": true,
-	"EARLY": true, "LATE": true, "PRIOR": true, "SINCE": true, "UNTIL": true, "DURING": true,
-	"SPRING": true, "SUMMER": true, "FALL": true, "AUTUMN": true, "WINTER": true,
-	"LIVING": true, "UNKNOWN": true, "DECEASED": true, "CLEARED": true, "INFANT": true, "CHILD": true,
-	"STILLBORN": true, "PRIVATE": true, "PRIVATIZED": true, "NOT": true, "NONE": true,
-}
-
-// isCalendarPrefix reports whether token looks like an unknown calendar prefix:
-// all uppercase letters and underscores, at least minCalendarPrefixLen long,
-// and not a word that can legitimately start a date body (see
-// notCalendarWords).
+// isCalendarPrefix reports whether token is an unknown (extension) calendar
+// prefix. Following GEDCOM 7, where every non-standard calendar is an
+// extension tag, such a prefix starts with an underscore followed by upper-
+// case letters, digits, or underscores ("_ROMAN", "_MAYAN_LONG_COUNT").
+// FromGEDCOM writes unknown calendar escapes in this form. Requiring the
+// underscore is what keeps free text that happens to start with an upper-
+// case word ("LIVING 1515", "CLASS OF 1905", "AFTER 1839 BEFORE 1840") from
+// being read as a calendar and reported valid.
 func isCalendarPrefix(token string) bool {
-	if notCalendarWords[token] {
+	if len(token) < minCalendarPrefixLen || token[0] != '_' {
 		return false
 	}
-	if _, isMonth := MonthNumber(token); isMonth {
-		return false
-	}
-
-	for _, r := range token {
-		if r != '_' && (r < 'A' || r > 'Z') {
+	for _, r := range token[1:] {
+		if r != '_' && (r < 'A' || r > 'Z') && (r < '0' || r > '9') {
 			return false
 		}
 	}
 
-	return len(token) >= minCalendarPrefixLen
+	return true
 }
