@@ -6,7 +6,6 @@
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](https://github.com/genealogix/glx/blob/main/LICENSE)
 [![CI](https://github.com/genealogix/glx/actions/workflows/validate-spec.yml/badge.svg?branch=main)](https://github.com/genealogix/glx/actions/workflows/validate-spec.yml)
 [![codecov](https://codecov.io/gh/genealogix/glx/branch/main/graph/badge.svg)](https://codecov.io/gh/genealogix/glx)
-[![Go Report Card](https://goreportcard.com/badge/github.com/genealogix/glx)](https://goreportcard.com/report/github.com/genealogix/glx)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/genealogix/glx/badge)](https://scorecard.dev/viewer/?uri=github.com/genealogix/glx)
 [![Contributors](https://img.shields.io/github/contributors/genealogix/glx.svg)](https://github.com/genealogix/glx/graphs/contributors)
 
