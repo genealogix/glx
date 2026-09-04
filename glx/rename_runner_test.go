@@ -258,3 +258,87 @@ func TestRenameEntities_SingleFileArchive(t *testing.T) {
 	assert.Contains(t, string(data), "person: person-robert-t")
 	assert.NotContains(t, string(data), "person-robert:")
 }
+
+func TestRenameEntities_RejectsCaseOnlyCollisionWithOtherEntity(t *testing.T) {
+	root := writeRenameFixture(t)
+
+	err := renameEntities(root, "person-robert", "Person-Mary", false)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "case-insensitive")
+	assert.FileExists(t, filepath.Join(root, "persons/person-robert.glx"))
+	assert.FileExists(t, filepath.Join(root, "persons/person-mary.glx"))
+}
+
+func TestRenameEntities_CaseOnlyChangeKeepsFilename(t *testing.T) {
+	// person-robert -> Person-Robert maps to the same canonical filename, so
+	// the file is rewritten in place rather than deleted and recreated
+	// (which on a case-insensitive filesystem would delete the new file).
+	root := writeRenameFixture(t)
+
+	require.NoError(t, renameEntities(root, "person-robert", "Person-Robert", false))
+
+	entries, err := os.ReadDir(filepath.Join(root, "persons"))
+	require.NoError(t, err)
+	names := make([]string, 0, len(entries))
+	for _, e := range entries {
+		names = append(names, e.Name())
+	}
+	assert.ElementsMatch(t, []string{"person-mary.glx", "person-robert.glx"}, names)
+	data, err := os.ReadFile(filepath.Join(root, "persons/person-robert.glx"))
+	require.NoError(t, err)
+	assert.Contains(t, string(data), "Person-Robert:")
+}
+
+func TestRenameEntities_MixedCaseIDMatchesCanonicalFilename(t *testing.T) {
+	// A mixed-case ID lives in its canonical lowercased filename. Renaming it
+	// must move the file, not rewrite the old name in place.
+	root := writeRenameFixture(t)
+	require.NoError(t, os.WriteFile(filepath.Join(root, "persons/person-mixed.glx"),
+		[]byte("persons:\n  Person-Mixed:\n    properties:\n      name: Mixed\n"), 0o644))
+
+	require.NoError(t, renameEntities(root, "Person-Mixed", "person-other", false))
+
+	assert.NoFileExists(t, filepath.Join(root, "persons/person-mixed.glx"))
+	assert.FileExists(t, filepath.Join(root, "persons/person-other.glx"))
+}
+
+func TestRenameEntities_RejectsUnsafeNewIDBeforeWriting(t *testing.T) {
+	// The entity lives in a multi-entity file, so no filename would be
+	// derived for it today; the ID must still be rejected up front.
+	root := writeRenameFixture(t)
+	before, err := os.ReadFile(filepath.Join(root, "events/event-births.glx"))
+	require.NoError(t, err)
+
+	err = renameEntities(root, "event-birth-robert", "../escape", false)
+
+	require.Error(t, err)
+	after, readErr := os.ReadFile(filepath.Join(root, "events/event-births.glx"))
+	require.NoError(t, readErr)
+	assert.Equal(t, before, after)
+}
+
+func TestRenameEntities_RefusesToWriteThroughSymlink(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation needs elevated privileges on Windows")
+	}
+
+	// events/event-births.glx is a symlink to a file outside the archive.
+	// The loader follows it when reading (so the rename plan touches it);
+	// the writer must refuse rather than clobber the external file.
+	root := writeRenameFixture(t)
+	outside := filepath.Join(t.TempDir(), "external-births.glx")
+	require.NoError(t, os.WriteFile(outside, []byte(renameFixtureBirths), 0o644))
+	link := filepath.Join(root, "events/event-births.glx")
+	require.NoError(t, os.Remove(link))
+	require.NoError(t, os.Symlink(outside, link))
+
+	err := renameEntities(root, "person-robert", "person-robert-t", false)
+
+	require.ErrorIs(t, err, ErrRenameThroughSymlink)
+	external, readErr := os.ReadFile(outside)
+	require.NoError(t, readErr)
+	assert.Equal(t, renameFixtureBirths, string(external), "file outside the archive must be untouched")
+	assert.FileExists(t, filepath.Join(root, "persons/person-robert.glx"), "nothing else may have been written")
+	assert.NoFileExists(t, filepath.Join(root, "persons/person-robert-t.glx"))
+}

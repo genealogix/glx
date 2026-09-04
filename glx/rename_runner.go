@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -40,6 +41,13 @@ func renameEntities(archivePath, oldID, newID string, dryRun bool) error {
 	info, err := os.Stat(archivePath)
 	if err != nil {
 		return fmt.Errorf("cannot access path: %w", err)
+	}
+
+	// The new ID must be usable as a filename even when the entity currently
+	// lives in a multi-entity file (and so is not moved today): a later split
+	// or full rewrite would otherwise fail on an ID we accepted here.
+	if _, err := glxlib.EntityIDToFilename(newID); err != nil {
+		return err
 	}
 
 	if !info.IsDir() {
@@ -125,11 +133,20 @@ type fileOp struct {
 func planRenameWrites(files map[string][]byte, oldID, newID string) ([]fileOp, error) {
 	serializer := createSerializer(false, true, "  ")
 
+	newName, err := glxlib.EntityIDToFilename(newID)
+	if err != nil {
+		return nil, err
+	}
+
 	// Walk in sorted order so the plan (and therefore any rollback) is
-	// deterministic regardless of map iteration order.
+	// deterministic regardless of map iteration order. Track existing paths
+	// case-folded: on a case-insensitive filesystem a create onto
+	// persons/person-new.glx would silently overwrite persons/Person-New.glx.
 	relPaths := make([]string, 0, len(files))
+	existingFold := make(map[string]string, len(files))
 	for relPath := range files {
 		relPaths = append(relPaths, relPath)
+		existingFold[strings.ToLower(relPath)] = relPath
 	}
 	sort.Strings(relPaths)
 
@@ -151,20 +168,21 @@ func planRenameWrites(files map[string][]byte, oldID, newID string) ([]fileOp, e
 			return nil, fmt.Errorf("failed to serialize %s: %w", relPath, err)
 		}
 
-		if !holdsEntity || !fileNamedAfterEntity(relPath, oldID) || !fragmentIsSingleEntity(fragment) {
+		targetPath := filepath.Join(filepath.Dir(relPath), newName)
+		moveFile := holdsEntity && fileNamedAfterEntity(relPath, oldID) && fragmentIsSingleEntity(fragment) &&
+			// A case-only change of the ID maps to the same canonical filename;
+			// keep the on-disk name rather than delete-and-create, which on a
+			// case-insensitive filesystem would remove the file just written.
+			!strings.EqualFold(targetPath, relPath)
+		if !moveFile {
 			ops = append(ops, fileOp{relPath: relPath, oldData: data, newData: newData})
 
 			continue
 		}
 
 		// Single-entity file named after the entity: move the file with it.
-		newName, err := glxlib.EntityIDToFilename(newID)
-		if err != nil {
-			return nil, err
-		}
-		targetPath := filepath.Join(filepath.Dir(relPath), newName)
-		if _, exists := files[targetPath]; exists {
-			return nil, fmt.Errorf("cannot rename %s to %s: %w", relPath, targetPath, ErrRenameTargetFileExists)
+		if clash, exists := existingFold[strings.ToLower(targetPath)]; exists {
+			return nil, fmt.Errorf("cannot rename %s to %s (%s): %w", relPath, targetPath, clash, ErrRenameTargetFileExists)
 		}
 		ops = append(ops,
 			fileOp{relPath: relPath, oldData: data},
@@ -175,13 +193,17 @@ func planRenameWrites(files map[string][]byte, oldID, newID string) ([]fileOp, e
 	return ops, nil
 }
 
-// fileNamedAfterEntity reports whether the file's basename (without the
-// .glx extension) is the entity ID, which is the layout `glx split` and the
-// full-archive writer produce.
+// fileNamedAfterEntity reports whether the file is named after the entity
+// ID the way `glx split` and the full-archive writer name files: the
+// canonical (lowercased) filename derived by EntityIDToFilename. The
+// comparison ignores case so a hand-named Person-A.glx still counts.
 func fileNamedAfterEntity(relPath, id string) bool {
-	base := filepath.Base(relPath)
+	canonical, err := glxlib.EntityIDToFilename(id)
+	if err != nil {
+		return false
+	}
 
-	return strings.TrimSuffix(base, FileExtGLX) == id && strings.HasSuffix(base, FileExtGLX)
+	return strings.EqualFold(filepath.Base(relPath), canonical)
 }
 
 // countTouchedFiles counts distinct paths across the planned operations.
@@ -196,9 +218,17 @@ func countTouchedFiles(ops []fileOp) int {
 
 // applyFileOps executes the planned operations in order. Creates and
 // rewrites happen before deletes so a rename's new file exists before its old
-// one goes away. If any operation fails, every operation already applied is
-// reverted from the bytes held in memory and the first error is returned
-// wrapped with the rollback outcome.
+// one goes away. Every path is checked up front (inside the archive, not a
+// symlink, creates don't clobber) so nothing is written unless the whole
+// plan is executable. Each write is atomic (temp file + rename), so a failed
+// write leaves its target untouched. If any operation fails, every operation
+// already applied is reverted from the bytes held in memory and the first
+// error is returned wrapped with the rollback outcome.
+//
+// Rollback state lives only in memory: a crash mid-plan can leave some
+// files updated and others not. That is a deliberate trade against the
+// directory-swap approach (#1192); per-file writes are atomic and the
+// archive is expected to be under version control for anything worse.
 func applyFileOps(rootDir string, ops []fileOp) error {
 	ordered := make([]fileOp, 0, len(ops))
 	for _, op := range ops {
@@ -210,6 +240,10 @@ func applyFileOps(rootDir string, ops []fileOp) error {
 		if op.newData == nil {
 			ordered = append(ordered, op)
 		}
+	}
+
+	if err := preflightFileOps(rootDir, ordered); err != nil {
+		return err
 	}
 
 	for i, op := range ordered {
@@ -225,9 +259,47 @@ func applyFileOps(rootDir string, ops []fileOp) error {
 	return nil
 }
 
-// executeFileOp writes op.newData to the file, or removes the file when
-// newData is nil. Writes go through the same path in place so the file keeps
-// its identity for editors and shells that have it open.
+// preflightFileOps rejects a plan before any write happens if a path would
+// escape rootDir, an existing file to be rewritten or removed is a symlink
+// (writing through it could clobber a file outside the archive; the loader
+// follows symlinks when reading, so a reference-only fragment can be one), or
+// a file to be created already exists on disk (catches case-insensitive
+// filesystem collisions the plan's map lookup could not see).
+func preflightFileOps(rootDir string, ops []fileOp) error {
+	absRoot, err := filepath.Abs(rootDir)
+	if err != nil {
+		return fmt.Errorf("resolving archive root: %w", err)
+	}
+
+	for _, op := range ops {
+		absPath := filepath.Join(absRoot, op.relPath)
+		if rel, err := filepath.Rel(absRoot, absPath); err != nil ||
+			rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+			return fmt.Errorf("%s: %w", op.relPath, ErrRenamePathEscapesArchive)
+		}
+
+		info, err := os.Lstat(absPath)
+		switch {
+		case err != nil && errors.Is(err, os.ErrNotExist):
+			if op.oldData != nil {
+				return fmt.Errorf("%s: %w", op.relPath, os.ErrNotExist)
+			}
+		case err != nil:
+			return fmt.Errorf("checking %s: %w", op.relPath, err)
+		case info.Mode()&os.ModeSymlink != 0:
+			return fmt.Errorf("%s: %w", op.relPath, ErrRenameThroughSymlink)
+		case op.oldData == nil:
+			return fmt.Errorf("cannot create %s: %w", op.relPath, ErrRenameTargetFileExists)
+		}
+	}
+
+	return nil
+}
+
+// executeFileOp writes op.newData to the file at the same path, or removes
+// the file when newData is nil. Writes are atomic (temp file in the same
+// directory, then rename) so a failure mid-write, e.g. a full disk, leaves
+// the original content intact rather than a truncated file.
 func executeFileOp(rootDir string, op fileOp) error {
 	absPath := filepath.Join(rootDir, op.relPath)
 
@@ -242,7 +314,7 @@ func executeFileOp(rootDir string, op fileOp) error {
 	if err := os.MkdirAll(filepath.Dir(absPath), dirPermissions); err != nil {
 		return fmt.Errorf("failed to create directory for %s: %w", op.relPath, err)
 	}
-	if err := os.WriteFile(absPath, op.newData, filePermissions); err != nil {
+	if err := atomicWriteFile(absPath, op.newData, filePermissions); err != nil {
 		return fmt.Errorf("failed to write %s: %w", op.relPath, err)
 	}
 
@@ -250,18 +322,20 @@ func executeFileOp(rootDir string, op fileOp) error {
 }
 
 // rollbackFileOps restores the pre-operation state of every op, in reverse
-// order. Continues past individual failures and returns them joined.
+// order. A created file that is already gone counts as restored. Continues
+// past individual failures and returns them joined.
 func rollbackFileOps(rootDir string, applied []fileOp) error {
 	var errs []error
-	for i := len(applied) - 1; i >= 0; i-- {
-		op := applied[i]
+	for _, op := range slices.Backward(applied) {
 		absPath := filepath.Join(rootDir, op.relPath)
 
 		var err error
 		if op.oldData == nil {
-			err = os.Remove(absPath)
+			if err = os.Remove(absPath); errors.Is(err, os.ErrNotExist) {
+				err = nil
+			}
 		} else {
-			err = os.WriteFile(absPath, op.oldData, filePermissions)
+			err = atomicWriteFile(absPath, op.oldData, filePermissions)
 		}
 		if err != nil {
 			errs = append(errs, fmt.Errorf("restore %s: %w", op.relPath, err))

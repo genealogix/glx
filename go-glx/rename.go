@@ -14,7 +14,10 @@
 
 package glx
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // RenameResult holds the outcome of a rename operation.
 type RenameResult struct {
@@ -31,7 +34,7 @@ func RenameEntity(glx *GLXFile, oldID, newID string) (*RenameResult, error) {
 		return nil, err
 	}
 
-	if err := checkTargetFree(glx, newID); err != nil {
+	if err := checkTargetFree(glx, oldID, newID); err != nil {
 		return nil, err
 	}
 
@@ -116,13 +119,64 @@ func findEntityType(glx *GLXFile, id string) (EntityType, error) {
 	return "", fmt.Errorf("entity %q not found in archive", id)
 }
 
-// checkTargetFree returns an error if newID already exists in any entity map.
-func checkTargetFree(glx *GLXFile, id string) error {
-	if _, err := findEntityType(glx, id); err == nil {
-		return fmt.Errorf("entity %q already exists in archive", id)
+// checkTargetFree returns an error if newID already exists in any entity map,
+// or if it differs only by case from an existing ID other than oldID. The
+// case-folded check matters because multi-file filenames are derived from
+// lowercased IDs (EntityIDToFilename), so two IDs that differ only by case
+// would collide on disk and be rejected at serialize time with
+// ErrCaseInsensitiveCollision. Renaming an entity to a case variant of its
+// own ID (oldID itself) is allowed.
+func checkTargetFree(glx *GLXFile, oldID, newID string) error {
+	if _, err := findEntityType(glx, newID); err == nil {
+		return fmt.Errorf("entity %q: %w", newID, ErrEntityAlreadyExists)
+	}
+
+	if existing, ok := findEntityIDFold(glx, newID); ok && existing != oldID {
+		return fmt.Errorf("entity %q conflicts with existing %q: %w", newID, existing, ErrCaseInsensitiveCollision)
 	}
 
 	return nil
+}
+
+// findKeyFold returns the key in m that equals id ignoring case, if any.
+func findKeyFold[T any](m map[string]*T, id string) (string, bool) {
+	for key := range m {
+		if strings.EqualFold(key, id) {
+			return key, true
+		}
+	}
+
+	return "", false
+}
+
+// entityIDFoldProbes mirrors entityIDProbes but matches IDs case-insensitively,
+// returning the existing ID that matched.
+var entityIDFoldProbes = map[EntityType]func(*GLXFile, string) (string, bool){
+	EntityTypePersons:       func(g *GLXFile, id string) (string, bool) { return findKeyFold(g.Persons, id) },
+	EntityTypeEvents:        func(g *GLXFile, id string) (string, bool) { return findKeyFold(g.Events, id) },
+	EntityTypeRelationships: func(g *GLXFile, id string) (string, bool) { return findKeyFold(g.Relationships, id) },
+	EntityTypePlaces:        func(g *GLXFile, id string) (string, bool) { return findKeyFold(g.Places, id) },
+	EntityTypeSources:       func(g *GLXFile, id string) (string, bool) { return findKeyFold(g.Sources, id) },
+	EntityTypeCitations:     func(g *GLXFile, id string) (string, bool) { return findKeyFold(g.Citations, id) },
+	EntityTypeRepositories:  func(g *GLXFile, id string) (string, bool) { return findKeyFold(g.Repositories, id) },
+	EntityTypeAssertions:    func(g *GLXFile, id string) (string, bool) { return findKeyFold(g.Assertions, id) },
+	EntityTypeMedia:         func(g *GLXFile, id string) (string, bool) { return findKeyFold(g.Media, id) },
+	EntityTypeResearchLogs:  func(g *GLXFile, id string) (string, bool) { return findKeyFold(g.ResearchLogs, id) },
+	EntityTypeStudies:       func(g *GLXFile, id string) (string, bool) { return findKeyFold(g.Studies, id) },
+}
+
+// findEntityIDFold returns the existing entity ID that equals id ignoring
+// case, searching AllEntityTypes in canonical order.
+func findEntityIDFold(glx *GLXFile, id string) (string, bool) {
+	for _, t := range AllEntityTypes {
+		if probe, ok := entityIDFoldProbes[t]; ok {
+			if existing, found := probe(glx, id); found {
+				return existing, true
+			}
+		}
+	}
+
+	return "", false
 }
 
 // moveMapKey moves an entity from oldID to newID in its entity map.

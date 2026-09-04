@@ -101,4 +101,13 @@ var (
 	// ErrRenameTargetFileExists is returned by glx rename when the entity's
 	// file would be renamed onto a path that already exists in the archive.
 	ErrRenameTargetFileExists = errors.New("target file already exists")
+
+	// ErrRenameThroughSymlink is returned by glx rename when a file it would
+	// rewrite or remove is a symlink; writing through it could clobber a file
+	// outside the archive.
+	ErrRenameThroughSymlink = errors.New("refusing to rewrite a symlinked archive file")
+
+	// ErrRenamePathEscapesArchive is returned by glx rename when a planned
+	// file path would resolve outside the archive root.
+	ErrRenamePathEscapesArchive = errors.New("planned file path escapes the archive root")
 )
