@@ -1,9 +1,3 @@
----
-title: GENEALOGIX Specification
-description: Modern, evidence-first, Git-native genealogy data standard
-layout: doc
----
-
 # GENEALOGIX Specification
 
 [![Version](https://img.shields.io/github/v/release/genealogix/glx?include_prereleases&label=version)](https://github.com/genealogix/glx/releases)
