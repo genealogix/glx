@@ -43,16 +43,17 @@ func renameEntities(archivePath, oldID, newID string, dryRun bool) error {
 		return fmt.Errorf("cannot access path: %w", err)
 	}
 
-	// The new ID must be usable as a filename even when the entity currently
-	// lives in a multi-entity file (and so is not moved today): a later split
-	// or full rewrite would otherwise fail on an ID we accepted here.
+	if !info.IsDir() {
+		return renameInSingleFile(archivePath, oldID, newID, dryRun)
+	}
+
+	// In a multi-file archive the new ID must be usable as a filename even
+	// when the entity currently lives in a multi-entity file (and so is not
+	// moved today): a later split or full rewrite would otherwise fail on an
+	// ID we accepted here. Single-file archives never derive filenames.
 	newName, err := glxlib.EntityIDToFilename(newID)
 	if err != nil {
 		return err
-	}
-
-	if !info.IsDir() {
-		return renameInSingleFile(archivePath, oldID, newID, dryRun)
 	}
 
 	files, err := collectGLXFilesFromDir(archivePath)
@@ -120,10 +121,26 @@ func renameInSingleFile(archivePath, oldID, newID string, dryRun bool) error {
 // content on disk before the operation (nil when the file did not exist) and
 // newData the content afterwards (nil when the file is to be removed). Keeping
 // both lets applyFileOps undo every completed operation if a later one fails.
+//
+// mode is the permission bits to write with, filled in by preflightFileOps
+// from the existing file so a rewrite or rollback never widens a private
+// file's permissions; modeFrom names the file a created file inherits its
+// mode from (the source of a move). Zero mode falls back to filePermissions.
 type fileOp struct {
-	relPath string
-	oldData []byte
-	newData []byte
+	relPath  string
+	oldData  []byte
+	newData  []byte
+	mode     os.FileMode
+	modeFrom string
+}
+
+// perm returns the permission bits to write the file with.
+func (op *fileOp) perm() os.FileMode {
+	if op.mode != 0 {
+		return op.mode
+	}
+
+	return filePermissions
 }
 
 // planRenameWrites parses every archive file as an independent fragment,
@@ -183,7 +200,7 @@ func planRenameWrites(files map[string][]byte, oldID, newID, newName string) ([]
 		}
 		ops = append(ops,
 			fileOp{relPath: relPath, oldData: data},
-			fileOp{relPath: targetPath, newData: newData},
+			fileOp{relPath: targetPath, newData: newData, modeFrom: relPath},
 		)
 	}
 
@@ -243,8 +260,8 @@ func applyFileOps(rootDir string, ops []fileOp) error {
 		return err
 	}
 
-	for i, op := range ordered {
-		if err := executeFileOp(rootDir, op); err != nil {
+	for i := range ordered {
+		if err := executeFileOp(rootDir, &ordered[i]); err != nil {
 			if rbErr := rollbackFileOps(rootDir, ordered[:i]); rbErr != nil {
 				return fmt.Errorf("%w; rollback failed, archive may be inconsistent: %w", err, rbErr)
 			}
@@ -268,7 +285,9 @@ func preflightFileOps(rootDir string, ops []fileOp) error {
 		return fmt.Errorf("resolving archive root: %w", err)
 	}
 
-	for _, op := range ops {
+	modes := make(map[string]os.FileMode, len(ops))
+	for i := range ops {
+		op := &ops[i]
 		absPath := filepath.Join(absRoot, op.relPath)
 		if rel, err := filepath.Rel(absRoot, absPath); err != nil ||
 			rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
@@ -287,6 +306,16 @@ func preflightFileOps(rootDir string, ops []fileOp) error {
 			return fmt.Errorf("%s: %w", op.relPath, ErrRenameThroughSymlink)
 		case op.oldData == nil:
 			return fmt.Errorf("cannot create %s: %w", op.relPath, ErrRenameTargetFileExists)
+		default:
+			op.mode = info.Mode().Perm()
+			modes[op.relPath] = op.mode
+		}
+	}
+
+	// A created file (the target of a move) inherits its source's mode.
+	for i := range ops {
+		if ops[i].mode == 0 && ops[i].modeFrom != "" {
+			ops[i].mode = modes[ops[i].modeFrom]
 		}
 	}
 
@@ -297,7 +326,7 @@ func preflightFileOps(rootDir string, ops []fileOp) error {
 // the file when newData is nil. Writes are atomic (temp file in the same
 // directory, then rename) so a failure mid-write, e.g. a full disk, leaves
 // the original content intact rather than a truncated file.
-func executeFileOp(rootDir string, op fileOp) error {
+func executeFileOp(rootDir string, op *fileOp) error {
 	absPath := filepath.Join(rootDir, op.relPath)
 
 	if op.newData == nil {
@@ -311,7 +340,7 @@ func executeFileOp(rootDir string, op fileOp) error {
 	if err := os.MkdirAll(filepath.Dir(absPath), dirPermissions); err != nil {
 		return fmt.Errorf("failed to create directory for %s: %w", op.relPath, err)
 	}
-	if err := atomicWriteFile(absPath, op.newData, filePermissions); err != nil {
+	if err := atomicWriteFile(absPath, op.newData, op.perm()); err != nil {
 		return fmt.Errorf("failed to write %s: %w", op.relPath, err)
 	}
 
@@ -323,7 +352,8 @@ func executeFileOp(rootDir string, op fileOp) error {
 // past individual failures and returns them joined.
 func rollbackFileOps(rootDir string, applied []fileOp) error {
 	var errs []error
-	for _, op := range slices.Backward(applied) {
+	for i := range slices.Backward(applied) {
+		op := &applied[i]
 		absPath := filepath.Join(rootDir, op.relPath)
 
 		var err error
@@ -332,7 +362,7 @@ func rollbackFileOps(rootDir string, applied []fileOp) error {
 				err = nil
 			}
 		} else {
-			err = atomicWriteFile(absPath, op.oldData, filePermissions)
+			err = atomicWriteFile(absPath, op.oldData, op.perm())
 		}
 		if err != nil {
 			errs = append(errs, fmt.Errorf("restore %s: %w", op.relPath, err))

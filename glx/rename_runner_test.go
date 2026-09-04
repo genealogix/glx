@@ -483,7 +483,7 @@ func TestExecuteFileOp_RemoveFailure(t *testing.T) {
 	require.NoError(t, os.Chmod(dir, 0o555))
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
 
-	err := executeFileOp(root, fileOp{relPath: filepath.Join("ro", "x.glx"), oldData: []byte("x")})
+	err := executeFileOp(root, &fileOp{relPath: filepath.Join("ro", "x.glx"), oldData: []byte("x")})
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to remove")
@@ -493,7 +493,7 @@ func TestExecuteFileOp_MkdirFailure(t *testing.T) {
 	root := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(root, "file"), []byte("x"), 0o644))
 
-	err := executeFileOp(root, fileOp{relPath: filepath.Join("file", "x.glx"), newData: []byte("new")})
+	err := executeFileOp(root, &fileOp{relPath: filepath.Join("file", "x.glx"), newData: []byte("new")})
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to create directory")
@@ -562,4 +562,57 @@ func TestRenameEntities_UnreadableFileInArchive(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to load archive")
 	assert.FileExists(t, filepath.Join(root, "persons/person-robert.glx"))
+}
+
+func TestRenameEntities_SingleFileAcceptsIDsThatAreNotFilenames(t *testing.T) {
+	// Single-file archives never derive per-entity filenames, so an ID
+	// that could not be a filename is still a valid rename target there.
+	path := filepath.Join(t.TempDir(), "archive.glx")
+	require.NoError(t, os.WriteFile(path, []byte(renameFixtureRobert), 0o644))
+
+	require.NoError(t, renameEntities(path, "person-robert", "legacy:robert", false))
+
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.Contains(t, string(data), "legacy:robert")
+}
+
+func TestRenameEntities_PreservesFileModes(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("permission bits are not preserved on Windows")
+	}
+	root := writeRenameFixture(t)
+	require.NoError(t, os.Chmod(filepath.Join(root, "events/event-births.glx"), 0o600))
+	require.NoError(t, os.Chmod(filepath.Join(root, "persons/person-robert.glx"), 0o600))
+
+	require.NoError(t, renameEntities(root, "person-robert", "person-robert-t", false))
+
+	rewritten, err := os.Stat(filepath.Join(root, "events/event-births.glx"))
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o600), rewritten.Mode().Perm(), "rewritten file keeps its mode")
+	moved, err := os.Stat(filepath.Join(root, "persons/person-robert-t.glx"))
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o600), moved.Mode().Perm(), "moved file inherits the source mode")
+}
+
+func TestRenameEntities_RollbackPreservesFileModes(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("directory permission bits are not enforced on Windows")
+	}
+	if os.Geteuid() == 0 {
+		t.Skip("root bypasses directory permissions")
+	}
+	root := writeRenameFixture(t)
+	private := filepath.Join(root, "events/event-births.glx")
+	require.NoError(t, os.Chmod(private, 0o600))
+	personsDir := filepath.Join(root, "persons")
+	require.NoError(t, os.Chmod(personsDir, 0o555))
+	t.Cleanup(func() { _ = os.Chmod(personsDir, 0o755) })
+
+	err := renameEntities(root, "person-robert", "person-robert-t", false)
+
+	require.Error(t, err)
+	info, statErr := os.Stat(private)
+	require.NoError(t, statErr)
+	assert.Equal(t, os.FileMode(0o600), info.Mode().Perm(), "rolled-back file keeps its mode")
 }
