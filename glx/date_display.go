@@ -40,9 +40,13 @@ func displayDate(date string) string {
 //   - "1863-06-18" → "June 18, 1863"
 //   - "1850-03"    → "March 1850"
 //
+// A BCE suffix is kept after the readable body ("March 15, 0044 BCE").
 // Returns the input unchanged for other formats.
 func formatReadableDate(s string) string {
 	s = strings.TrimSpace(s)
+	if body, isBCE := strings.CutSuffix(s, " BCE"); isBCE {
+		return formatReadableDate(body) + " BCE"
+	}
 	// Full date: YYYY-MM-DD
 	if isFullDate(s) {
 		month := isoDateMonths[s[5:7]]

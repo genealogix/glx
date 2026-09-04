@@ -20,84 +20,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestExtractCalendar(t *testing.T) {
-	tests := []struct {
-		name          string
-		input         string
-		wantCalendar  string
-		wantRemainder string
-	}{
-		{
-			name:          "Julian escape with trailing space",
-			input:         "@#DJULIAN@ 15 MAR 1731",
-			wantCalendar:  CalendarJulian,
-			wantRemainder: "15 MAR 1731",
-		},
-		{
-			name:          "Hebrew escape",
-			input:         "@#DHEBREW@ 15 TSH 5765",
-			wantCalendar:  CalendarHebrew,
-			wantRemainder: "15 TSH 5765",
-		},
-		{
-			name:          "French Republican escape (space in name)",
-			input:         "@#DFRENCH R@ 1 VEND 0012",
-			wantCalendar:  CalendarFrenchR,
-			wantRemainder: "1 VEND 0012",
-		},
-		{
-			name:          "Gregorian escape (maps to empty — default)",
-			input:         "@#DGREGORIAN@ 15 MAR 1731",
-			wantCalendar:  "",
-			wantRemainder: "15 MAR 1731",
-		},
-		{
-			name:          "no escape (plain date)",
-			input:         "15 MAR 1731",
-			wantCalendar:  "",
-			wantRemainder: "15 MAR 1731",
-		},
-		{
-			name:          "escape without trailing space",
-			input:         "@#DJULIAN@15 MAR 1731",
-			wantCalendar:  CalendarJulian,
-			wantRemainder: "15 MAR 1731",
-		},
-		{
-			name:          "empty string",
-			input:         "",
-			wantCalendar:  "",
-			wantRemainder: "",
-		},
-		{
-			name:          "unknown calendar preserved",
-			input:         "@#DROMAN@ 15 MAR 1731",
-			wantCalendar:  "ROMAN",
-			wantRemainder: "15 MAR 1731",
-		},
-		{
-			name:          "unknown calendar with spaces normalized to underscores",
-			input:         "@#DNEW CAL@ 15 MAR 1731",
-			wantCalendar:  "NEW_CAL",
-			wantRemainder: "15 MAR 1731",
-		},
-		{
-			name:          "escape with empty remainder",
-			input:         "@#DJULIAN@",
-			wantCalendar:  CalendarJulian,
-			wantRemainder: "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			calendar, remainder := extractCalendar(tt.input)
-			assert.Equal(t, tt.wantCalendar, calendar)
-			assert.Equal(t, tt.wantRemainder, remainder)
-		})
-	}
-}
-
 func TestParseGEDCOMDate_CalendarPreservation(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -214,7 +136,7 @@ func TestFormatGEDCOMDate_CalendarPrefix(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := formatGEDCOMDate(DateString(tt.input))
+			result := formatGEDCOMDate(DateString(tt.input), GEDCOM551)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -289,8 +211,8 @@ func TestExtractGLXCalendarPrefix(t *testing.T) {
 		},
 		{
 			name:          "unknown calendar with underscores roundtrips",
-			input:         "NEW_CAL 15 MAR 1731",
-			wantCalendar:  "NEW_CAL",
+			input:         "_NEW_CAL 15 MAR 1731",
+			wantCalendar:  "_NEW_CAL",
 			wantRemainder: "15 MAR 1731",
 		},
 	}
@@ -302,13 +224,4 @@ func TestExtractGLXCalendarPrefix(t *testing.T) {
 			assert.Equal(t, tt.wantRemainder, string(remainder))
 		})
 	}
-}
-
-func TestCalendarToGEDCOMEscape(t *testing.T) {
-	assert.Equal(t, "@#DJULIAN@", calendarToGEDCOMEscape(CalendarJulian))
-	assert.Equal(t, "@#DHEBREW@", calendarToGEDCOMEscape(CalendarHebrew))
-	assert.Equal(t, "@#DFRENCH R@", calendarToGEDCOMEscape(CalendarFrenchR))
-	assert.Empty(t, calendarToGEDCOMEscape(""))
-	assert.Equal(t, "@#DROMAN@", calendarToGEDCOMEscape("ROMAN"))
-	assert.Equal(t, "@#DNEW CAL@", calendarToGEDCOMEscape("NEW_CAL"))
 }

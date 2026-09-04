@@ -96,3 +96,10 @@ License: Apache-2.0
 Comment: GEDCOM test data files from various sources. Some files contain
  third-party copyright notices (e.g., torture-test by H. Eichmann).
  Files without explicit copyright are treated as project test fixtures.
+
+Files: go-glx/glxdate/testdata/*
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+Comment: Date-string corpus sampled by shape from GEDCOM DATE values, plus
+ golden files of the parser's expected output. Bare date strings carry no
+ authorship; the sampling and expected outcomes are project test fixtures.

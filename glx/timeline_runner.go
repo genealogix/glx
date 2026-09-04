@@ -17,7 +17,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"regexp"
 	"sort"
 	"strings"
 
@@ -382,46 +381,38 @@ func sortTimelineEntries(entries []timelineEntry) {
 	})
 }
 
-// timelineDayMonthRegexp matches day-of-month followed by a month abbreviation
-// (e.g., "15 MAR"). Used to strip day values before year extraction.
-var timelineDayMonthRegexp = regexp.MustCompile(`(?i)\b\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\b`)
-
-// dateSortKeyRegexp matches a 1–4 digit year optionally followed by -MM and -DD,
-// using word boundaries to avoid partial matches inside longer digit sequences.
-var dateSortKeyRegexp = regexp.MustCompile(`\b(\d{1,4}(?:-\d{2}(?:-\d{2})?)?)\b`)
-
-// dateSortKey extracts a sortable date string from a GLX date value.
-// Strips qualifiers like ABT, BEF, AFT, BET...AND and day-of-month values.
-// Years are zero-padded to 4 digits for correct chronological sorting.
-// Returns "\xff" for empty/unparseable dates (sorts last).
+// dateSortKey returns a string that orders GLX dates chronologically by
+// their start (for a TO range, the end). It is built from the parsed date,
+// so qualifiers, calendar prefixes, tolerated spellings, and the BCE era
+// all sort where glx validate says they belong. A CE year is its 4-digit
+// form ("1850", "0800"); a BCE year is "-" followed by its complement so
+// earlier years sort first ("-9899" for 100 BCE, "-9955" for 44 BCE, both
+// before any CE key). Month and day follow when known. Dates with no
+// determinable year return "\xff" and sort last.
 func dateSortKey(dateStr string) string {
-	if dateStr == "" {
+	d, _ := glxlib.DateString(dateStr).Parse()
+	year := d.Year()
+	if year == 0 {
 		return "\xff"
 	}
 
-	cleaned := timelineDayMonthRegexp.ReplaceAllString(dateStr, "")
-
-	match := dateSortKeyRegexp.FindString(cleaned)
-	if match == "" {
-		return "\xff"
+	key := fmt.Sprintf("%04d", year)
+	if year < 0 {
+		key = fmt.Sprintf("-%04d", dateSortKeyMaxYear+year)
 	}
-
-	// Zero-pad the year portion to 4 digits for proper string sorting.
-	if idx := strings.Index(match, "-"); idx >= 0 {
-		year := match[:idx]
-		rest := match[idx:]
-		for len(year) < 4 {
-			year = "0" + year
+	if month, ok := d.Month(); ok {
+		key += fmt.Sprintf("-%02d", month)
+		if day, ok := d.Day(); ok {
+			key += fmt.Sprintf("-%02d", day)
 		}
-
-		return year + rest
-	}
-	for len(match) < 4 {
-		match = "0" + match
 	}
 
-	return match
+	return key
 }
+
+// dateSortKeyMaxYear is the largest canonical year; BCE keys count down
+// from it so that 100 BCE sorts before 44 BCE.
+const dateSortKeyMaxYear = 9999
 
 // formatEventTypeLabel converts an event type string to a display label.
 func formatEventTypeLabel(eventType string) string {

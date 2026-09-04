@@ -23,6 +23,7 @@ import (
 	"unicode/utf8"
 
 	glxlib "github.com/genealogix/glx/go-glx"
+	"github.com/genealogix/glx/go-glx/glxdate"
 )
 
 // nameVariant holds a single name variant with its type classification.
@@ -1115,36 +1116,72 @@ func findEventDatePlace(personID, eventType string, archive *glxlib.GLXFile) (st
 	return "", ""
 }
 
-// narrativeDate converts a GLX date string to narrative form.
+// narrativeDate converts a GLX date string to narrative form. It reads the
+// parsed date rather than the text, so every keyword, range form, calendar
+// prefix, and era glxdate knows renders the same way here.
 func narrativeDate(date string) string {
-	trimmed := strings.TrimSpace(date)
-	upper := strings.ToUpper(trimmed)
+	d, _ := glxlib.DateString(date).Parse()
+	_, form := glxlib.ExtractCalendarPrefix(glxlib.DateString(d.String()))
 
 	switch {
-	case strings.HasPrefix(upper, "ABT "):
-		return "about " + formatReadableDate(trimmed[4:])
-	case strings.HasPrefix(upper, "BEF "):
-		return "before " + formatReadableDate(trimmed[4:])
-	case strings.HasPrefix(upper, "AFT "):
-		return "after " + formatReadableDate(trimmed[4:])
-	case strings.HasPrefix(upper, "BET "):
-		rest := trimmed[4:]
-		if idx := strings.Index(strings.ToUpper(rest), " AND "); idx >= 0 {
-			from := formatReadableDate(strings.TrimSpace(rest[:idx]))
-			to := formatReadableDate(strings.TrimSpace(rest[idx+5:]))
-
-			return "between " + from + " and " + to
-		}
-
-		return "between " + rest
-	default:
-		readable := formatReadableDate(trimmed)
-		if isFullDate(trimmed) {
-			return "on " + readable
-		}
-
-		return "in " + readable
+	case d.IsOpenStart():
+		return "until " + narrativePoint(d.End())
+	case d.IsOpenEnded():
+		return "from " + narrativePoint(d.Start())
+	case d.IsRange() && strings.HasPrefix(string(form), "FROM "):
+		return "from " + narrativePoint(d.Start()) + " to " + narrativePoint(d.End())
+	case d.IsRange():
+		return "between " + narrativePoint(d.Start()) + " and " + narrativePoint(d.End())
 	}
+
+	body := narrativePoint(d)
+	switch d.Qualifier() {
+	case glxdate.QualifierAbout:
+		return "about " + body
+	case glxdate.QualifierBefore:
+		return "before " + body
+	case glxdate.QualifierAfter:
+		return "after " + body
+	case glxdate.QualifierEstimated:
+		return "an estimated " + body
+	case glxdate.QualifierCalculated:
+		return "a calculated " + body
+	case glxdate.QualifierInterpreted:
+		if text, ok := d.InterpretedText(); ok {
+			return "on or about " + body + " (recorded as " + text + ")"
+		}
+
+		return "on or about " + body
+	case glxdate.QualifierNone:
+	}
+
+	if _, hasDay := d.Day(); hasDay {
+		return "on " + body
+	}
+
+	return "in " + body
+}
+
+// narrativePoint renders one date component readably: the body without its
+// calendar prefix through formatReadableDate, then the calendar name when
+// the date is not Gregorian.
+func narrativePoint(d glxdate.Date) string {
+	_, prefixed := glxlib.ExtractCalendarPrefix(glxlib.DateString(d.Start().String()))
+	body := string(prefixed)
+	// A point date carries its own qualifier and any INT text; the caller
+	// has already spoken for those.
+	if kw := d.Qualifier().Keyword(); kw != "" {
+		body = strings.TrimPrefix(body, kw+" ")
+	}
+	if text, ok := d.InterpretedText(); ok {
+		body = strings.TrimSuffix(body, " ("+text+")")
+	}
+	readable := formatReadableDate(body)
+	if name := d.CalendarName(); name != "" {
+		readable += " (" + strings.ToLower(strings.TrimPrefix(name, "_")) + " calendar)"
+	}
+
+	return readable
 }
 
 // pronounFor returns subject ("He"/"She"/"They") and possessive ("his"/"her"/"their")

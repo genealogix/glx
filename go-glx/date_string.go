@@ -16,6 +16,8 @@ package glx
 
 import (
 	"gopkg.in/yaml.v3"
+
+	"github.com/genealogix/glx/go-glx/glxdate"
 )
 
 // DateString is a string type that always marshals to YAML with quotes.
@@ -52,4 +54,19 @@ func (ds *DateString) UnmarshalYAML(node *yaml.Node) error {
 // String returns the underlying string value.
 func (ds DateString) String() string {
 	return string(ds)
+}
+
+// Parse parses the date into its calendar-aware computation model. See
+// glxdate.Parse: on a non-canonical date the error is non-nil but the
+// returned Date still preserves the raw text and any recoverable components.
+func (ds DateString) Parse() (glxdate.Date, error) {
+	return glxdate.Parse(string(ds))
+}
+
+// Year returns the start year of the date, or 0 if none can be determined.
+// For ranges only the start date is considered.
+func (ds DateString) Year() int {
+	d, _ := glxdate.Parse(string(ds)) //nolint:errcheck // best-effort year is defined even for non-canonical dates
+
+	return d.Year()
 }

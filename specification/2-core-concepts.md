@@ -286,7 +286,7 @@ This format supports both precise dates and fuzzy/approximate dates commonly enc
 
 **Simple Dates:**
 
-- `YYYY` - Year only (4 digits required, e.g., `1850`, `2020`, `0047`)
+- `YYYY` - Year only (4 digits in canonical form, e.g., `1850`, `2020`, `0047`; see note 1 on shorter years)
 - `YYYY-MM` - Year and month (e.g., `1850-03`, `2020-12`)
 - `YYYY-MM-DD` - Full date (e.g., `1850-03-15`, `2020-12-31`)
 
@@ -297,18 +297,23 @@ This format supports both precise dates and fuzzy/approximate dates commonly enc
   - `BEF YYYY` - Before (e.g., `BEF 1920`)
   - `AFT YYYY` - After (e.g., `AFT 1880`)
   - `CAL YYYY` - Calculated (e.g., `CAL 1850`)
+  - `EST YYYY` - Estimated from another event's date, e.g. a birth year estimated from an age at marriage (e.g., `EST 1850`)
 
 - **Date Ranges:**
   - `BET YYYY AND YYYY` - Between two dates (e.g., `BET 1880 AND 1890`)
   - `FROM YYYY TO YYYY` - Range with start and end (e.g., `FROM 1900 TO 1950`)
   - `FROM YYYY` - Open-ended range from a start date (e.g., `FROM 1900`)
+  - `TO YYYY` - Open-start range up to an end date (e.g., `TO 1950`); consumers that need a single year read the end year, the only one present
 
 - **Interpreted Dates:**
   - `INT YYYY-MM-DD (original text)` - Interpreted from original source (e.g., `INT 1850-03-15 (March 15th, 1850)`)
 
+- **Before the Common Era:**
+  - `YYYY BCE`, `YYYY-MM BCE`, `YYYY-MM-DD BCE` - A Gregorian or Julian date before year 1, written with the `BCE` suffix after the date body (e.g., `0044-03-15 BCE`, `ABT 0560 BCE`, `BET 0100 BCE AND 0050 BCE`). The suffix binds to each date in a range independently. Consumers read a BCE year as negative (`0044 BCE` is year -44), so dates order correctly across the era boundary.
+
 #### Important Notes
 
-1. **Year Format:** Years must be exactly 4 digits. Pad with zeros for years before 1000 CE (e.g., `0047` for year 47, `0800` for year 800).
+1. **Year Format:** The canonical year is exactly 4 digits, zero-padded for years before 1000 CE (e.g., `0047` for year 47, `0800` for year 800). A year written with 1–3 digits (`850`, `ABT 850`) is accepted and is not flagged by validation; GEDCOM import and other canonicalization write it zero-padded.
 
 2. **Date Format:** GENEALOGIX uses YYYY-MM-DD format (e.g., `1850-03-15` for March 15, 1850). This is the international standard for date representation, chosen for its clarity and sortability.
 
@@ -383,15 +388,15 @@ date: "FRENCH_R 1 VEND 0012"    # 1 Vendemiaire Year 12
 1. **No calendar conversion is performed.** Dates are preserved exactly as the source recorded them, consistent with the evidence-first methodology. A Julian date is stored as Julian, not converted to Gregorian.
 2. **Gregorian is the default.** Dates without a prefix are Gregorian. The `GREGORIAN` prefix is never written.
 3. **Hebrew and French Republican dates preserve raw month names** (e.g., `TSH`, `VEND`) because GENEALOGIX does not parse non-Gregorian month names into structured dates.
-4. **Unknown calendars are preserved.** If a GEDCOM file uses a non-standard calendar escape, the calendar name is preserved as a prefix (with spaces normalized to underscores).
-5. **Calendar prefixes align with [GEDCOM 7.0 calendar names](https://gedcom.io/specifications/FamilySearchGEDCOMv7.html).** GEDCOM 5.5.1 escape sequences (e.g., `@#DJULIAN@`) are converted to the equivalent prefix on import.
+4. **Unknown calendars are preserved as extension prefixes.** Following GEDCOM 7, where every non-standard calendar is an extension tag, an unknown calendar prefix starts with an underscore followed by upper-case letters, digits, or underscores (`_ROMAN 1000`, `_MAYAN_LONG_COUNT 13`). A non-standard GEDCOM calendar escape is imported in this form (`@#DROMAN@` → `_ROMAN`, `@#DNEW CAL@` → `_NEW_CAL`) and exported as `@#D_ROMAN@`. The underscore is what distinguishes a calendar from free text that happens to begin with an upper-case word: `LIVING 1515` or `CLASS OF 1905` is not a calendar date and is reported invalid.
+5. **Calendar prefixes align with [GEDCOM 7.0 calendar names](https://gedcom.io/specifications/FamilySearchGEDCOMv7.html).** On import, both GEDCOM spellings are recognized wherever their grammar places them: 5.5.1 escapes (`@#DJULIAN@`) and 7.0 tags (`JULIAN`), whether written first or after the qualifier and before each range endpoint (`ABT JULIAN 1731`, `BET @#DJULIAN@ 1700 AND @#DJULIAN@ 1710`). When every endpoint names the same calendar it becomes the single GLX prefix; a range that mixes calendars is preserved verbatim. On export the prefix is written back in the target version's position: `@#DJULIAN@ ABT 1731` for 5.5.1, `ABT JULIAN 1731` for 7.0.
 
 #### Date Validation
 
 GENEALOGIX validates date formats at three levels:
 
 1. **Structure:** Dates must follow the format specifications above
-2. **Keywords:** Only the defined keywords (FROM, TO, ABT, BEF, AFT, BET, CAL, INT) are recognized. `AND` is a connector used inside the `BET YYYY AND YYYY` range form, not a standalone keyword.
+2. **Keywords:** Only the defined keywords (FROM, TO, ABT, BEF, AFT, BET, CAL, EST, INT, and the BCE era suffix) are recognized. `AND` is a connector used inside the `BET YYYY AND YYYY` range form, not a standalone keyword. Unambiguous spellings seen in GEDCOM exports are recovered rather than flagged: full words (`about`, `before`, `after`, `between`, `estimated`), the circa forms (`c.`, `ca.`, `cir`, `circa`), `B.C.`/`BC` for the era, and a dash in place of `AND` after `BET`. Each canonicalizes to the keyword form on import (`circa 1850` → `ABT 1850`, `510 BC` → `0510 BCE`, `BET 1675 - 1740` → `BET 1675 AND 1740`).
 3. **Calendar prefixes:** Known calendar prefixes (JULIAN, HEBREW, FRENCH_R) are stripped before validating the date body. Unknown prefixes are accepted without warning to allow extensibility
 
 Invalid date formats will generate validation warnings (not errors), allowing archives with imperfect dates to still load while alerting researchers to potential data quality issues.
