@@ -367,3 +367,128 @@ func TestRenameEntity_ResearchLogNilSubject(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, glx.ResearchLogs["rl-1"].Subject)
 }
+
+func TestRenameInFragment_RefsOnlyWhenEntityAbsent(t *testing.T) {
+	// A fragment (one file of a multi-file archive) that references the
+	// entity without defining it: only the references change, no error.
+	fragment := &GLXFile{
+		Events: map[string]*Event{
+			"event-birth": {Participants: []Participant{{Person: "person-old", Role: "subject"}}},
+		},
+	}
+
+	changes := RenameInFragment(fragment, EntityTypePersons, "person-old", "person-new")
+
+	assert.Equal(t, 1, changes)
+	assert.Equal(t, "person-new", fragment.Events["event-birth"].Participants[0].Person)
+	assert.False(t, fragment.HasEntity("person-old"))
+	assert.False(t, fragment.HasEntity("person-new"))
+}
+
+func TestRenameInFragment_MovesKeyWhenEntityPresent(t *testing.T) {
+	fragment := &GLXFile{
+		Persons: map[string]*Person{
+			"person-old": {Properties: map[string]any{"name": "Test"}},
+		},
+	}
+
+	changes := RenameInFragment(fragment, EntityTypePersons, "person-old", "person-new")
+
+	assert.Equal(t, 1, changes)
+	assert.True(t, fragment.HasEntity("person-new"))
+	assert.False(t, fragment.HasEntity("person-old"))
+}
+
+func TestRenameInFragment_ZeroWhenUntouched(t *testing.T) {
+	fragment := &GLXFile{
+		Places: map[string]*Place{
+			"place-x": {Name: "X"},
+		},
+	}
+
+	assert.Equal(t, 0, RenameInFragment(fragment, EntityTypePersons, "person-old", "person-new"))
+	assert.Equal(t, "X", fragment.Places["place-x"].Name)
+}
+
+func TestEntityIDIgnoringCase(t *testing.T) {
+	glx := &GLXFile{
+		Persons: map[string]*Person{
+			"person-mary": {Properties: map[string]any{"name": "Mary"}},
+		},
+		Events: map[string]*Event{
+			"event-x": {Type: "birth"},
+		},
+	}
+
+	existing, ok := glx.EntityIDIgnoringCase(EntityTypePersons, "Person-Mary")
+	require.True(t, ok)
+	assert.Equal(t, "person-mary", existing)
+
+	existing, ok = glx.EntityIDIgnoringCase(EntityTypeEvents, "EVENT-X")
+	require.True(t, ok)
+	assert.Equal(t, "event-x", existing)
+
+	// Scoped to the type: persons and events live in separate directories.
+	_, ok = glx.EntityIDIgnoringCase(EntityTypePersons, "EVENT-X")
+	assert.False(t, ok)
+
+	// The exact ID is never reported, only a different colliding key; the
+	// answer must not depend on map iteration order when both are present.
+	_, ok = glx.EntityIDIgnoringCase(EntityTypePersons, "person-mary")
+	assert.False(t, ok)
+	glx.Persons["Person-Mary"] = &Person{}
+	for range 20 {
+		existing, ok := glx.EntityIDIgnoringCase(EntityTypePersons, "Person-Mary")
+		require.True(t, ok)
+		assert.Equal(t, "person-mary", existing)
+	}
+	delete(glx.Persons, "Person-Mary")
+
+	_, ok = glx.EntityIDIgnoringCase(EntityTypePersons, "person-nobody")
+	assert.False(t, ok)
+
+	// Lowercase, not EqualFold: "ſ" folds to "s" but lowercases to itself,
+	// and EntityIDToFilename would give the two distinct filenames.
+	glx.Persons["person-ſ"] = &Person{}
+	_, ok = glx.EntityIDIgnoringCase(EntityTypePersons, "person-s")
+	assert.False(t, ok)
+
+	// RenameEntity itself is storage-agnostic and allows case-distinct keys.
+	_, err := RenameEntity(glx, "event-x", "Person-Mary")
+	require.NoError(t, err)
+}
+
+func TestRenameEntity_AllowsCaseOnlyChangeOfOwnID(t *testing.T) {
+	glx := &GLXFile{
+		Persons: map[string]*Person{
+			"person-old": {Properties: map[string]any{"name": "Old"}},
+		},
+	}
+
+	result, err := RenameEntity(glx, "person-old", "Person-Old")
+
+	require.NoError(t, err)
+	assert.Equal(t, EntityTypePersons, result.EntityType)
+	assert.Contains(t, glx.Persons, "Person-Old")
+	assert.NotContains(t, glx.Persons, "person-old")
+}
+
+func TestRenameInFragment_OnlyMovesSelectedType(t *testing.T) {
+	// The same ID defined under two entity types: only the selected type's
+	// key moves, references are updated regardless.
+	fragment := &GLXFile{
+		Persons: map[string]*Person{"shared-id": {Properties: map[string]any{"name": "P"}}},
+		Events: map[string]*Event{
+			"shared-id":   {Type: "birth"},
+			"event-other": {Participants: []Participant{{Person: "shared-id", Role: "subject"}}},
+		},
+	}
+
+	changes := RenameInFragment(fragment, EntityTypePersons, "shared-id", "person-renamed")
+
+	assert.Equal(t, 2, changes, "key move plus one reference")
+	assert.Contains(t, fragment.Persons, "person-renamed")
+	assert.NotContains(t, fragment.Persons, "shared-id")
+	assert.Contains(t, fragment.Events, "shared-id", "event with the same ID must be untouched")
+	assert.Equal(t, "person-renamed", fragment.Events["event-other"].Participants[0].Person)
+}

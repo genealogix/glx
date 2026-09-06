@@ -14,7 +14,9 @@
 
 package glx
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // RenameResult holds the outcome of a rename operation.
 type RenameResult struct {
@@ -35,19 +37,50 @@ func RenameEntity(glx *GLXFile, oldID, newID string) (*RenameResult, error) {
 		return nil, err
 	}
 
-	// Move the map key
-	moveMapKey(glx, entityType, oldID, newID)
-
-	// Update all references
-	refs := updateAllRefs(glx, oldID, newID)
-
-	// Invalidate cached validation since maps have been mutated
-	glx.validation = nil
+	changes := RenameInFragment(glx, entityType, oldID, newID)
 
 	return &RenameResult{
 		EntityType:  entityType,
-		RefsUpdated: refs + 1, // +1 for the map key itself
+		RefsUpdated: changes, // includes the map key itself
 	}, nil
+}
+
+// RenameInFragment applies a rename to a GLXFile that may hold only part of
+// an archive — for example a single file from a multi-file archive. Unlike
+// RenameEntity it does not require oldID to be present or newID to be free:
+// the fragment's map key for oldID is moved if the fragment holds an entity
+// of the given type under it, and every reference to oldID within the
+// fragment is rewritten. The type is what RenameEntity reported for the
+// whole archive, so an archive that (legitimately) defines the same ID under
+// two entity types only has the selected one renamed. Callers are expected
+// to have validated the rename against the whole archive.
+//
+// Returns the number of changes made (a moved map key counts as one), so a
+// caller can tell whether the fragment was touched at all. Invalidates the
+// validation cache when anything changed.
+func RenameInFragment(glx *GLXFile, entityType EntityType, oldID, newID string) int {
+	changes := 0
+
+	if probe, ok := entityIDProbes[entityType]; ok && probe(glx, oldID) {
+		moveMapKey(glx, entityType, oldID, newID)
+		changes++
+	}
+
+	changes += updateAllRefs(glx, oldID, newID)
+
+	if changes > 0 {
+		glx.validation = nil
+	}
+
+	return changes
+}
+
+// HasEntity reports whether any entity map defines an entity with the given
+// ID. Vocabulary entries are not entities and are not consulted.
+func (g *GLXFile) HasEntity(id string) bool {
+	_, err := findEntityType(g, id)
+
+	return err == nil
 }
 
 // nonNilEntry reports whether m has a non-nil entry under id.
@@ -88,13 +121,72 @@ func findEntityType(glx *GLXFile, id string) (EntityType, error) {
 	return "", fmt.Errorf("entity %q not found in archive", id)
 }
 
-// checkTargetFree returns an error if newID already exists in any entity map.
+// checkTargetFree returns an error if id already exists in any entity map.
+// Case-folded collisions are a storage concern (multi-file filenames derive
+// from lowercased IDs) and are left to the caller; see EntityIDIgnoringCase.
 func checkTargetFree(glx *GLXFile, id string) error {
 	if _, err := findEntityType(glx, id); err == nil {
-		return fmt.Errorf("entity %q already exists in archive", id)
+		return fmt.Errorf("entity %q: %w", id, ErrEntityAlreadyExists)
 	}
 
 	return nil
+}
+
+// findKeyFold returns a key in m other than id itself whose canonical
+// multi-file filename (EntityIDToFilename) equals id's, if any. Comparing
+// derived filenames rather than using strings.EqualFold matches what the
+// serializer does on disk; the two differ for some Unicode (e.g. "ſ" and "s"
+// are EqualFold-equal but lowercase to distinct filenames). An id or key with
+// no valid filename cannot collide. The exact key is skipped, not reported,
+// so the answer does not depend on map iteration order when id is present.
+func findKeyFold[T any](m map[string]*T, id string) (string, bool) {
+	want, err := EntityIDToFilename(id)
+	if err != nil {
+		return "", false
+	}
+	for key := range m {
+		if key == id {
+			continue
+		}
+		if name, err := EntityIDToFilename(key); err == nil && name == want {
+			return key, true
+		}
+	}
+
+	return "", false
+}
+
+// entityIDFoldProbes mirrors entityIDProbes but matches IDs case-insensitively,
+// returning the existing ID that matched.
+var entityIDFoldProbes = map[EntityType]func(*GLXFile, string) (string, bool){
+	EntityTypePersons:       func(g *GLXFile, id string) (string, bool) { return findKeyFold(g.Persons, id) },
+	EntityTypeEvents:        func(g *GLXFile, id string) (string, bool) { return findKeyFold(g.Events, id) },
+	EntityTypeRelationships: func(g *GLXFile, id string) (string, bool) { return findKeyFold(g.Relationships, id) },
+	EntityTypePlaces:        func(g *GLXFile, id string) (string, bool) { return findKeyFold(g.Places, id) },
+	EntityTypeSources:       func(g *GLXFile, id string) (string, bool) { return findKeyFold(g.Sources, id) },
+	EntityTypeCitations:     func(g *GLXFile, id string) (string, bool) { return findKeyFold(g.Citations, id) },
+	EntityTypeRepositories:  func(g *GLXFile, id string) (string, bool) { return findKeyFold(g.Repositories, id) },
+	EntityTypeAssertions:    func(g *GLXFile, id string) (string, bool) { return findKeyFold(g.Assertions, id) },
+	EntityTypeMedia:         func(g *GLXFile, id string) (string, bool) { return findKeyFold(g.Media, id) },
+	EntityTypeResearchLogs:  func(g *GLXFile, id string) (string, bool) { return findKeyFold(g.ResearchLogs, id) },
+	EntityTypeStudies:       func(g *GLXFile, id string) (string, bool) { return findKeyFold(g.Studies, id) },
+}
+
+// EntityIDIgnoringCase returns the existing ID of the given entity type that
+// lowercases to the same string as id. Multi-file archive filenames derive
+// from lowercased IDs (EntityIDToFilename) and each entity type lives in its
+// own directory, so a caller about to introduce an ID into such an archive
+// can use this to detect the per-type collision that would otherwise surface
+// as ErrCaseInsensitiveCollision at serialize time. The exact id itself is
+// never reported (use HasEntity for that), so the check is well-defined
+// whether or not id is already present.
+func (g *GLXFile) EntityIDIgnoringCase(entityType EntityType, id string) (string, bool) {
+	probe, ok := entityIDFoldProbes[entityType]
+	if !ok {
+		return "", false
+	}
+
+	return probe(g, id)
 }
 
 // moveMapKey moves an entity from oldID to newID in its entity map.

@@ -97,4 +97,24 @@ var (
 	ErrNotCacheFile      = errors.New("file is not a glx binary cache")
 	ErrCacheVersion      = errors.New("binary cache uses an incompatible cache format version")
 	ErrCacheTooLarge     = errors.New("binary cache file exceeds the maximum decodable size")
+
+	// ErrRenameTargetFileExists is returned by glx rename when the entity's
+	// file would be renamed onto a path that already exists in the archive.
+	ErrRenameTargetFileExists = errors.New("target file already exists")
+
+	// ErrRenameThroughSymlink is returned by glx rename when a file it would
+	// rewrite or remove is a symlink; writing through it could clobber a file
+	// outside the archive.
+	ErrRenameThroughSymlink = errors.New("refusing to rewrite a symlinked archive file")
+
+	// ErrRenamePathEscapesArchive is returned by glx rename when a planned
+	// file path would resolve outside the archive root.
+	ErrRenamePathEscapesArchive = errors.New("planned file path escapes the archive root")
+
+	// ErrRenameFileChanged is returned by glx rename when a file it is about
+	// to rewrite no longer holds the bytes that were loaded: it was edited
+	// concurrently, or the loader resolved it through a Git symlink
+	// placeholder (Windows, core.symlinks=false) and the on-disk file is
+	// really the placeholder.
+	ErrRenameFileChanged = errors.New("file changed on disk since the archive was loaded")
 )
