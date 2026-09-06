@@ -420,15 +420,25 @@ func TestEntityIDIgnoringCase(t *testing.T) {
 		},
 	}
 
-	existing, ok := glx.EntityIDIgnoringCase("Person-Mary")
+	existing, ok := glx.EntityIDIgnoringCase(EntityTypePersons, "Person-Mary")
 	require.True(t, ok)
 	assert.Equal(t, "person-mary", existing)
 
-	existing, ok = glx.EntityIDIgnoringCase("EVENT-X")
+	existing, ok = glx.EntityIDIgnoringCase(EntityTypeEvents, "EVENT-X")
 	require.True(t, ok)
 	assert.Equal(t, "event-x", existing)
 
-	_, ok = glx.EntityIDIgnoringCase("person-nobody")
+	// Scoped to the type: persons and events live in separate directories.
+	_, ok = glx.EntityIDIgnoringCase(EntityTypePersons, "EVENT-X")
+	assert.False(t, ok)
+
+	_, ok = glx.EntityIDIgnoringCase(EntityTypePersons, "person-nobody")
+	assert.False(t, ok)
+
+	// Lowercase, not EqualFold: "ſ" folds to "s" but lowercases to itself,
+	// and EntityIDToFilename would give the two distinct filenames.
+	glx.Persons["person-ſ"] = &Person{}
+	_, ok = glx.EntityIDIgnoringCase(EntityTypePersons, "person-s")
 	assert.False(t, ok)
 
 	// RenameEntity itself is storage-agnostic and allows case-distinct keys.

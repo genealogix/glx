@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -71,17 +72,19 @@ func renameEntities(archivePath, oldID, newID string, dryRun bool) error {
 		fmt.Fprintf(os.Stderr, "Warning: %s\n", d)
 	}
 
-	// Multi-file filenames derive from lowercased IDs, so a new ID that
-	// differs only by case from another entity's would collide on disk (the
-	// serializer would refuse it as ErrCaseInsensitiveCollision on the next
-	// full write). A case variant of the entity's own ID is fine.
-	if existing, ok := whole.EntityIDIgnoringCase(newID); ok && existing != oldID && existing != newID {
-		return fmt.Errorf("entity %q conflicts with existing %q: %w", newID, existing, glxlib.ErrCaseInsensitiveCollision)
-	}
-
 	result, err := glxlib.RenameEntity(whole, oldID, newID)
 	if err != nil {
 		return err
+	}
+
+	// Multi-file filenames derive from lowercased IDs and each type has its
+	// own directory, so a new ID that differs only by case from another
+	// entity's of the same type would collide on disk (the serializer would
+	// refuse it as ErrCaseInsensitiveCollision on the next full write).
+	// `whole` has already been renamed, so newID itself is present and is
+	// excluded; a different type's same-cased ID is not a collision.
+	if existing, ok := whole.EntityIDIgnoringCase(result.EntityType, newID); ok && existing != newID {
+		return fmt.Errorf("entity %q conflicts with existing %q: %w", newID, existing, glxlib.ErrCaseInsensitiveCollision)
 	}
 
 	ops, err := planRenameWrites(files, result.EntityType, oldID, newID, newName)
@@ -324,6 +327,17 @@ func preflightFileOps(rootDir string, ops []fileOp) error {
 		case op.oldData == nil:
 			return fmt.Errorf("cannot create %s: %w", op.relPath, ErrRenameTargetFileExists)
 		default:
+			// The bytes on disk must be the bytes that were loaded. A mismatch
+			// means a concurrent edit, or a Git symlink placeholder (Windows,
+			// core.symlinks=false) that the loader resolved to its target:
+			// overwriting it would turn the repository symlink into a file.
+			onDisk, err := os.ReadFile(absPath) //nolint:gosec // path is inside the archive root, checked above
+			if err != nil {
+				return fmt.Errorf("checking %s: %w", op.relPath, err)
+			}
+			if !bytes.Equal(onDisk, op.oldData) {
+				return fmt.Errorf("%s: %w", op.relPath, ErrRenameFileChanged)
+			}
 			op.mode = info.Mode().Perm()
 			op.hasMode = true
 			modes[op.relPath] = op.mode

@@ -16,7 +16,6 @@ package glx
 
 import (
 	"fmt"
-	"strings"
 )
 
 // RenameResult holds the outcome of a rename operation.
@@ -133,10 +132,19 @@ func checkTargetFree(glx *GLXFile, id string) error {
 	return nil
 }
 
-// findKeyFold returns the key in m that equals id ignoring case, if any.
+// findKeyFold returns the key in m whose canonical multi-file filename
+// (EntityIDToFilename) equals id's, if any. Comparing derived filenames
+// rather than using strings.EqualFold matches what the serializer does on
+// disk; the two differ for some Unicode (e.g. "ſ" and "s" are EqualFold-equal
+// but lowercase to distinct filenames). An id or key with no valid filename
+// cannot collide.
 func findKeyFold[T any](m map[string]*T, id string) (string, bool) {
+	want, err := EntityIDToFilename(id)
+	if err != nil {
+		return "", false
+	}
 	for key := range m {
-		if strings.EqualFold(key, id) {
+		if name, err := EntityIDToFilename(key); err == nil && name == want {
 			return key, true
 		}
 	}
@@ -160,22 +168,20 @@ var entityIDFoldProbes = map[EntityType]func(*GLXFile, string) (string, bool){
 	EntityTypeStudies:       func(g *GLXFile, id string) (string, bool) { return findKeyFold(g.Studies, id) },
 }
 
-// EntityIDIgnoringCase returns the existing entity ID that equals id ignoring
-// case, searching AllEntityTypes in canonical order. Multi-file archive
-// filenames derive from lowercased IDs (EntityIDToFilename), so a caller
-// about to introduce an ID into such an archive can use this to detect a
-// collision that would otherwise surface as ErrCaseInsensitiveCollision at
-// serialize time. An exact match is returned too.
-func (g *GLXFile) EntityIDIgnoringCase(id string) (string, bool) {
-	for _, t := range AllEntityTypes {
-		if probe, ok := entityIDFoldProbes[t]; ok {
-			if existing, found := probe(g, id); found {
-				return existing, true
-			}
-		}
+// EntityIDIgnoringCase returns the existing ID of the given entity type that
+// lowercases to the same string as id. Multi-file archive filenames derive
+// from lowercased IDs (EntityIDToFilename) and each entity type lives in its
+// own directory, so a caller about to introduce an ID into such an archive
+// can use this to detect the per-type collision that would otherwise surface
+// as ErrCaseInsensitiveCollision at serialize time. An exact match is
+// returned too.
+func (g *GLXFile) EntityIDIgnoringCase(entityType EntityType, id string) (string, bool) {
+	probe, ok := entityIDFoldProbes[entityType]
+	if !ok {
+		return "", false
 	}
 
-	return "", false
+	return probe(g, id)
 }
 
 // moveMapKey moves an entity from oldID to newID in its entity map.

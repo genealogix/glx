@@ -637,3 +637,35 @@ func TestRenameEntities_SameIDUnderTwoTypesRenamesOnlySelected(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, eventData, string(after), "event file with the same ID must be untouched")
 }
+
+func TestRenameEntities_CaseCollisionIsPerEntityType(t *testing.T) {
+	// persons/ and events/ are separate directories, so a person may take an
+	// ID that differs only by case from an event's.
+	root := writeRenameFixture(t)
+
+	require.NoError(t, renameEntities(root, "person-robert", "Event-Birth-Mary", false))
+
+	assert.FileExists(t, filepath.Join(root, "persons/event-birth-mary.glx"))
+	assert.FileExists(t, filepath.Join(root, "events/event-births.glx"))
+}
+
+func TestPreflightFileOps_RejectsFileChangedSinceLoad(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "x.glx")
+	require.NoError(t, os.WriteFile(path, []byte("on disk now\n"), 0o644))
+
+	err := preflightFileOps(root, []fileOp{{relPath: "x.glx", oldData: []byte("what was loaded\n"), newData: []byte("new\n")}})
+
+	require.ErrorIs(t, err, ErrRenameFileChanged)
+}
+
+func TestPreflightFileOps_AcceptsUnchangedFile(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "x.glx")
+	loaded := []byte("same\n")
+	require.NoError(t, os.WriteFile(path, loaded, 0o644))
+
+	ops := []fileOp{{relPath: "x.glx", oldData: loaded, newData: []byte("new\n")}}
+	require.NoError(t, preflightFileOps(root, ops))
+	assert.True(t, ops[0].hasMode)
+}
