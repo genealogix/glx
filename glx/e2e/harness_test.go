@@ -37,6 +37,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -161,8 +162,14 @@ func copyTreeFollowingSymlinks(t *testing.T, src, dst string) {
 			return err
 		}
 		if info.IsDir() {
-			// A symlink to a directory: copy its contents.
-			copyTreeFollowingSymlinks(t, path, target)
+			// A symlink to a directory: WalkDir does not follow it, so walk
+			// the resolved target instead. Recursing on the link path itself
+			// would hit this branch again forever.
+			resolved, err := filepath.EvalSymlinks(path)
+			if err != nil {
+				return err
+			}
+			copyTreeFollowingSymlinks(t, resolved, target)
 
 			return nil
 		}
@@ -236,4 +243,29 @@ func diffTrees(before, after map[string][]byte) treeDiff {
 	sort.Strings(d.removed)
 
 	return d
+}
+
+func TestCopyTreeFollowingSymlinks_DirectorySymlink(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation needs elevated privileges on Windows")
+	}
+	// src/linked -> elsewhere/, containing a file. The copy must contain the
+	// file under linked/ as a real directory, and must terminate.
+	src := t.TempDir()
+	elsewhere := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(elsewhere, "inner.glx"), []byte("x\n"), 0o644))
+	require.NoError(t, os.Symlink(elsewhere, filepath.Join(src, "linked")))
+	require.NoError(t, os.WriteFile(filepath.Join(src, "top.glx"), []byte("y\n"), 0o644))
+	dst := filepath.Join(t.TempDir(), "copy")
+
+	copyTreeFollowingSymlinks(t, src, dst)
+
+	info, err := os.Lstat(filepath.Join(dst, "linked"))
+	require.NoError(t, err)
+	assert.True(t, info.IsDir())
+	assert.Zero(t, info.Mode()&os.ModeSymlink, "copied directory must not be a symlink")
+	data, err := os.ReadFile(filepath.Join(dst, "linked", "inner.glx"))
+	require.NoError(t, err)
+	assert.Equal(t, "x\n", string(data))
+	assert.FileExists(t, filepath.Join(dst, "top.glx"))
 }

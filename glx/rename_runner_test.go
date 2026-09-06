@@ -669,3 +669,35 @@ func TestPreflightFileOps_AcceptsUnchangedFile(t *testing.T) {
 	require.NoError(t, preflightFileOps(root, ops))
 	assert.True(t, ops[0].hasMode)
 }
+
+func TestPreflightFileOps_RejectsSymlinkedParentDirectory(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation needs elevated privileges on Windows")
+	}
+	// root/persons -> outside/. A lexically-inside path would write outside.
+	root := t.TempDir()
+	outside := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(outside, "x.glx"), []byte("old\n"), 0o644))
+	require.NoError(t, os.Symlink(outside, filepath.Join(root, "persons")))
+
+	err := preflightFileOps(root, []fileOp{{relPath: filepath.Join("persons", "x.glx"), oldData: []byte("old\n"), newData: []byte("new\n")}})
+
+	require.ErrorIs(t, err, ErrRenamePathEscapesArchive)
+}
+
+func TestPreflightFileOps_AllowsSymlinkedArchiveRoot(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation needs elevated privileges on Windows")
+	}
+	// The archive itself reached through a symlink is fine: containment is
+	// judged against the resolved root.
+	realRoot := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(realRoot, "persons"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(realRoot, "persons", "x.glx"), []byte("old\n"), 0o644))
+	link := filepath.Join(t.TempDir(), "archive-link")
+	require.NoError(t, os.Symlink(realRoot, link))
+
+	err := preflightFileOps(link, []fileOp{{relPath: filepath.Join("persons", "x.glx"), oldData: []byte("old\n"), newData: []byte("new\n")}})
+
+	require.NoError(t, err)
+}

@@ -306,13 +306,24 @@ func preflightFileOps(rootDir string, ops []fileOp) error {
 		return fmt.Errorf("resolving archive root: %w", err)
 	}
 
+	// The root itself may legitimately be reached through a symlink (a user
+	// cd'ing through one); containment is judged against where it resolves.
+	realRoot, err := filepath.EvalSymlinks(absRoot)
+	if err != nil {
+		return fmt.Errorf("resolving archive root: %w", err)
+	}
+
 	modes := make(map[string]os.FileMode, len(ops))
 	for i := range ops {
 		op := &ops[i]
 		absPath := filepath.Join(absRoot, op.relPath)
-		if rel, err := filepath.Rel(absRoot, absPath); err != nil ||
-			rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+		if escapes(absRoot, absPath) {
 			return fmt.Errorf("%s: %w", op.relPath, ErrRenamePathEscapesArchive)
+		}
+		// A symlinked directory component would let the write land outside
+		// the archive even though the lexical path is inside it.
+		if err := parentStaysInside(realRoot, absPath); err != nil {
+			return fmt.Errorf("%s: %w", op.relPath, err)
 		}
 
 		info, err := os.Lstat(absPath)
@@ -415,4 +426,40 @@ func fragmentIsSingleEntity(fragment *glxlib.GLXFile) bool {
 	counts := countEntities(fragment)
 
 	return counts.Total() == 1
+}
+
+// escapes reports whether absPath is lexically outside root.
+func escapes(root, absPath string) bool {
+	rel, err := filepath.Rel(root, absPath)
+
+	return err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator))
+}
+
+// parentStaysInside resolves symlinks in the nearest existing ancestor of
+// absPath and reports ErrRenamePathEscapesArchive if that resolved directory
+// is outside realRoot (the archive root with its own symlinks resolved). The
+// file itself is checked separately by Lstat; this guards the directories
+// above it, which an archive could otherwise use to redirect a write.
+func parentStaysInside(realRoot, absPath string) error {
+	dir := filepath.Dir(absPath)
+	for {
+		if _, err := os.Lstat(dir); err == nil {
+			break
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+
+	realDir, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		return fmt.Errorf("resolving %s: %w", dir, err)
+	}
+	if realDir != realRoot && escapes(realRoot, realDir) {
+		return ErrRenamePathEscapesArchive
+	}
+
+	return nil
 }
