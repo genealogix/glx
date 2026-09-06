@@ -71,12 +71,20 @@ func renameEntities(archivePath, oldID, newID string, dryRun bool) error {
 		fmt.Fprintf(os.Stderr, "Warning: %s\n", d)
 	}
 
+	// Multi-file filenames derive from lowercased IDs, so a new ID that
+	// differs only by case from another entity's would collide on disk (the
+	// serializer would refuse it as ErrCaseInsensitiveCollision on the next
+	// full write). A case variant of the entity's own ID is fine.
+	if existing, ok := whole.EntityIDIgnoringCase(newID); ok && existing != oldID && existing != newID {
+		return fmt.Errorf("entity %q conflicts with existing %q: %w", newID, existing, glxlib.ErrCaseInsensitiveCollision)
+	}
+
 	result, err := glxlib.RenameEntity(whole, oldID, newID)
 	if err != nil {
 		return err
 	}
 
-	ops, err := planRenameWrites(files, oldID, newID, newName)
+	ops, err := planRenameWrites(files, result.EntityType, oldID, newID, newName)
 	if err != nil {
 		return err
 	}
@@ -122,21 +130,24 @@ func renameInSingleFile(archivePath, oldID, newID string, dryRun bool) error {
 // newData the content afterwards (nil when the file is to be removed). Keeping
 // both lets applyFileOps undo every completed operation if a later one fails.
 //
-// mode is the permission bits to write with, filled in by preflightFileOps
-// from the existing file so a rewrite or rollback never widens a private
-// file's permissions; modeFrom names the file a created file inherits its
-// mode from (the source of a move). Zero mode falls back to filePermissions.
+// mode is the permission bits to write with (valid when hasMode is set),
+// filled in by preflightFileOps from the existing file so a rewrite or
+// rollback never widens a private file's permissions; modeFrom names the
+// file a created file inherits its mode from (the source of a move). Without
+// a captured mode, writes use filePermissions. hasMode is tracked separately
+// so a legitimate mode of 000 is preserved rather than read as "unset".
 type fileOp struct {
 	relPath  string
 	oldData  []byte
 	newData  []byte
 	mode     os.FileMode
+	hasMode  bool
 	modeFrom string
 }
 
 // perm returns the permission bits to write the file with.
 func (op *fileOp) perm() os.FileMode {
-	if op.mode != 0 {
+	if op.hasMode {
 		return op.mode
 	}
 
@@ -149,7 +160,7 @@ func (op *fileOp) perm() os.FileMode {
 // operation. A single-entity file named after oldID is renamed to newName
 // (the canonical filename for newID) by emitting a delete of the old path and
 // a create of the new one.
-func planRenameWrites(files map[string][]byte, oldID, newID, newName string) ([]fileOp, error) {
+func planRenameWrites(files map[string][]byte, entityType glxlib.EntityType, oldID, newID, newName string) ([]fileOp, error) {
 	serializer := createSerializer(false, true, "  ")
 
 	// Walk in sorted order so the plan (and therefore any rollback) is
@@ -172,10 +183,12 @@ func planRenameWrites(files map[string][]byte, oldID, newID, newName string) ([]
 			return nil, fmt.Errorf("failed to parse %s: %w", relPath, err)
 		}
 
-		holdsEntity := fragment.HasEntity(oldID)
-		if glxlib.RenameInFragment(fragment, oldID, newID) == 0 {
+		if glxlib.RenameInFragment(fragment, entityType, oldID, newID) == 0 {
 			continue
 		}
+		// The fragment held the selected entity (not merely a reference, and
+		// not a same-ID entity of another type) iff the key moved.
+		movedKey := fragment.HasEntity(newID) && !fragment.HasEntity(oldID)
 
 		newData, err := serializer.SerializeSingleFileBytes(fragment)
 		if err != nil {
@@ -183,11 +196,13 @@ func planRenameWrites(files map[string][]byte, oldID, newID, newName string) ([]
 		}
 
 		targetPath := filepath.Join(filepath.Dir(relPath), newName)
-		moveFile := holdsEntity && fileNamedAfterEntity(relPath, oldID) && fragmentIsSingleEntity(fragment) &&
+		moveFile := movedKey && fileNamedAfterEntity(relPath, oldID) && fragmentIsSingleEntity(fragment) &&
 			// A case-only change of the ID maps to the same canonical filename;
 			// keep the on-disk name rather than delete-and-create, which on a
 			// case-insensitive filesystem would remove the file just written.
-			!strings.EqualFold(targetPath, relPath)
+			// The basename is lowercased the way EntityIDToFilename lowercases
+			// IDs (not EqualFold, which differs for some Unicode).
+			strings.ToLower(filepath.Base(relPath)) != newName
 		if !moveFile {
 			ops = append(ops, fileOp{relPath: relPath, oldData: data, newData: newData})
 
@@ -210,14 +225,16 @@ func planRenameWrites(files map[string][]byte, oldID, newID, newName string) ([]
 // fileNamedAfterEntity reports whether the file is named after the entity
 // ID the way `glx split` and the full-archive writer name files: the
 // canonical (lowercased) filename derived by EntityIDToFilename. The
-// comparison ignores case so a hand-named Person-A.glx still counts.
+// basename is lowercased the same way so a hand-named Person-A.glx still
+// counts; strings.ToLower rather than EqualFold because that is the exact
+// transformation the filename derivation applies.
 func fileNamedAfterEntity(relPath, id string) bool {
 	canonical, err := glxlib.EntityIDToFilename(id)
 	if err != nil {
 		return false
 	}
 
-	return strings.EqualFold(filepath.Base(relPath), canonical)
+	return strings.ToLower(filepath.Base(relPath)) == canonical
 }
 
 // countTouchedFiles counts distinct paths across the planned operations.
@@ -308,14 +325,19 @@ func preflightFileOps(rootDir string, ops []fileOp) error {
 			return fmt.Errorf("cannot create %s: %w", op.relPath, ErrRenameTargetFileExists)
 		default:
 			op.mode = info.Mode().Perm()
+			op.hasMode = true
 			modes[op.relPath] = op.mode
 		}
 	}
 
 	// A created file (the target of a move) inherits its source's mode.
 	for i := range ops {
-		if ops[i].mode == 0 && ops[i].modeFrom != "" {
-			ops[i].mode = modes[ops[i].modeFrom]
+		if ops[i].hasMode || ops[i].modeFrom == "" {
+			continue
+		}
+		if mode, ok := modes[ops[i].modeFrom]; ok {
+			ops[i].mode = mode
+			ops[i].hasMode = true
 		}
 	}
 

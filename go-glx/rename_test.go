@@ -377,7 +377,7 @@ func TestRenameInFragment_RefsOnlyWhenEntityAbsent(t *testing.T) {
 		},
 	}
 
-	changes := RenameInFragment(fragment, "person-old", "person-new")
+	changes := RenameInFragment(fragment, EntityTypePersons, "person-old", "person-new")
 
 	assert.Equal(t, 1, changes)
 	assert.Equal(t, "person-new", fragment.Events["event-birth"].Participants[0].Person)
@@ -392,7 +392,7 @@ func TestRenameInFragment_MovesKeyWhenEntityPresent(t *testing.T) {
 		},
 	}
 
-	changes := RenameInFragment(fragment, "person-old", "person-new")
+	changes := RenameInFragment(fragment, EntityTypePersons, "person-old", "person-new")
 
 	assert.Equal(t, 1, changes)
 	assert.True(t, fragment.HasEntity("person-new"))
@@ -406,24 +406,34 @@ func TestRenameInFragment_ZeroWhenUntouched(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, 0, RenameInFragment(fragment, "person-old", "person-new"))
+	assert.Equal(t, 0, RenameInFragment(fragment, EntityTypePersons, "person-old", "person-new"))
 	assert.Equal(t, "X", fragment.Places["place-x"].Name)
 }
 
-func TestRenameEntity_RejectsCaseOnlyCollision(t *testing.T) {
-	// Filenames derive from lowercased IDs, so "Person-Mary" and
-	// "person-mary" would collide on disk even though the map keys differ.
+func TestEntityIDIgnoringCase(t *testing.T) {
 	glx := &GLXFile{
 		Persons: map[string]*Person{
-			"person-old":  {Properties: map[string]any{"name": "Old"}},
 			"person-mary": {Properties: map[string]any{"name": "Mary"}},
+		},
+		Events: map[string]*Event{
+			"event-x": {Type: "birth"},
 		},
 	}
 
-	_, err := RenameEntity(glx, "person-old", "Person-Mary")
+	existing, ok := glx.EntityIDIgnoringCase("Person-Mary")
+	require.True(t, ok)
+	assert.Equal(t, "person-mary", existing)
 
-	require.ErrorIs(t, err, ErrCaseInsensitiveCollision)
-	assert.Contains(t, glx.Persons, "person-old", "archive must be untouched on rejection")
+	existing, ok = glx.EntityIDIgnoringCase("EVENT-X")
+	require.True(t, ok)
+	assert.Equal(t, "event-x", existing)
+
+	_, ok = glx.EntityIDIgnoringCase("person-nobody")
+	assert.False(t, ok)
+
+	// RenameEntity itself is storage-agnostic and allows case-distinct keys.
+	_, err := RenameEntity(glx, "event-x", "Person-Mary")
+	require.NoError(t, err)
 }
 
 func TestRenameEntity_AllowsCaseOnlyChangeOfOwnID(t *testing.T) {
@@ -439,4 +449,24 @@ func TestRenameEntity_AllowsCaseOnlyChangeOfOwnID(t *testing.T) {
 	assert.Equal(t, EntityTypePersons, result.EntityType)
 	assert.Contains(t, glx.Persons, "Person-Old")
 	assert.NotContains(t, glx.Persons, "person-old")
+}
+
+func TestRenameInFragment_OnlyMovesSelectedType(t *testing.T) {
+	// The same ID defined under two entity types: only the selected type's
+	// key moves, references are updated regardless.
+	fragment := &GLXFile{
+		Persons: map[string]*Person{"shared-id": {Properties: map[string]any{"name": "P"}}},
+		Events: map[string]*Event{
+			"shared-id":   {Type: "birth"},
+			"event-other": {Participants: []Participant{{Person: "shared-id", Role: "subject"}}},
+		},
+	}
+
+	changes := RenameInFragment(fragment, EntityTypePersons, "shared-id", "person-renamed")
+
+	assert.Equal(t, 2, changes, "key move plus one reference")
+	assert.Contains(t, fragment.Persons, "person-renamed")
+	assert.NotContains(t, fragment.Persons, "shared-id")
+	assert.Contains(t, fragment.Events, "shared-id", "event with the same ID must be untouched")
+	assert.Equal(t, "person-renamed", fragment.Events["event-other"].Participants[0].Person)
 }

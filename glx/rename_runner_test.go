@@ -616,3 +616,24 @@ func TestRenameEntities_RollbackPreservesFileModes(t *testing.T) {
 	require.NoError(t, statErr)
 	assert.Equal(t, os.FileMode(0o600), info.Mode().Perm(), "rolled-back file keeps its mode")
 }
+
+func TestRenameEntities_SameIDUnderTwoTypesRenamesOnlySelected(t *testing.T) {
+	// persons/shared-id.glx and events/shared-id.glx both define "shared-id".
+	// RenameEntity resolves it as a person (canonical type order), so only
+	// the person file moves; the event keeps its ID and file.
+	root := writeRenameFixture(t)
+	require.NoError(t, os.WriteFile(filepath.Join(root, "persons/shared-id.glx"),
+		[]byte("persons:\n  shared-id:\n    properties:\n      name: Shared\n"), 0o644))
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "events"), 0o755))
+	eventFile := filepath.Join(root, "events/shared-id.glx")
+	eventData := "events:\n  shared-id:\n    type: birth\n    date: \"1900-01-01\"\n"
+	require.NoError(t, os.WriteFile(eventFile, []byte(eventData), 0o644))
+
+	require.NoError(t, renameEntities(root, "shared-id", "person-shared", false))
+
+	assert.FileExists(t, filepath.Join(root, "persons/person-shared.glx"))
+	assert.NoFileExists(t, filepath.Join(root, "persons/shared-id.glx"))
+	after, err := os.ReadFile(eventFile)
+	require.NoError(t, err)
+	assert.Equal(t, eventData, string(after), "event file with the same ID must be untouched")
+}

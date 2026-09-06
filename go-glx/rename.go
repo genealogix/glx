@@ -34,11 +34,11 @@ func RenameEntity(glx *GLXFile, oldID, newID string) (*RenameResult, error) {
 		return nil, err
 	}
 
-	if err := checkTargetFree(glx, oldID, newID); err != nil {
+	if err := checkTargetFree(glx, newID); err != nil {
 		return nil, err
 	}
 
-	changes := RenameInFragment(glx, oldID, newID)
+	changes := RenameInFragment(glx, entityType, oldID, newID)
 
 	return &RenameResult{
 		EntityType:  entityType,
@@ -49,17 +49,20 @@ func RenameEntity(glx *GLXFile, oldID, newID string) (*RenameResult, error) {
 // RenameInFragment applies a rename to a GLXFile that may hold only part of
 // an archive — for example a single file from a multi-file archive. Unlike
 // RenameEntity it does not require oldID to be present or newID to be free:
-// the fragment's entity map key is moved if the fragment happens to hold the
-// entity, and every reference to oldID within the fragment is rewritten.
-// Callers are expected to have validated the rename against the whole archive.
+// the fragment's map key for oldID is moved if the fragment holds an entity
+// of the given type under it, and every reference to oldID within the
+// fragment is rewritten. The type is what RenameEntity reported for the
+// whole archive, so an archive that (legitimately) defines the same ID under
+// two entity types only has the selected one renamed. Callers are expected
+// to have validated the rename against the whole archive.
 //
 // Returns the number of changes made (a moved map key counts as one), so a
 // caller can tell whether the fragment was touched at all. Invalidates the
 // validation cache when anything changed.
-func RenameInFragment(glx *GLXFile, oldID, newID string) int {
+func RenameInFragment(glx *GLXFile, entityType EntityType, oldID, newID string) int {
 	changes := 0
 
-	if entityType, err := findEntityType(glx, oldID); err == nil {
+	if probe, ok := entityIDProbes[entityType]; ok && probe(glx, oldID) {
 		moveMapKey(glx, entityType, oldID, newID)
 		changes++
 	}
@@ -119,20 +122,12 @@ func findEntityType(glx *GLXFile, id string) (EntityType, error) {
 	return "", fmt.Errorf("entity %q not found in archive", id)
 }
 
-// checkTargetFree returns an error if newID already exists in any entity map,
-// or if it differs only by case from an existing ID other than oldID. The
-// case-folded check matters because multi-file filenames are derived from
-// lowercased IDs (EntityIDToFilename), so two IDs that differ only by case
-// would collide on disk and be rejected at serialize time with
-// ErrCaseInsensitiveCollision. Renaming an entity to a case variant of its
-// own ID (oldID itself) is allowed.
-func checkTargetFree(glx *GLXFile, oldID, newID string) error {
-	if _, err := findEntityType(glx, newID); err == nil {
-		return fmt.Errorf("entity %q: %w", newID, ErrEntityAlreadyExists)
-	}
-
-	if existing, ok := findEntityIDFold(glx, newID); ok && existing != oldID {
-		return fmt.Errorf("entity %q conflicts with existing %q: %w", newID, existing, ErrCaseInsensitiveCollision)
+// checkTargetFree returns an error if id already exists in any entity map.
+// Case-folded collisions are a storage concern (multi-file filenames derive
+// from lowercased IDs) and are left to the caller; see EntityIDIgnoringCase.
+func checkTargetFree(glx *GLXFile, id string) error {
+	if _, err := findEntityType(glx, id); err == nil {
+		return fmt.Errorf("entity %q: %w", id, ErrEntityAlreadyExists)
 	}
 
 	return nil
@@ -165,12 +160,16 @@ var entityIDFoldProbes = map[EntityType]func(*GLXFile, string) (string, bool){
 	EntityTypeStudies:       func(g *GLXFile, id string) (string, bool) { return findKeyFold(g.Studies, id) },
 }
 
-// findEntityIDFold returns the existing entity ID that equals id ignoring
-// case, searching AllEntityTypes in canonical order.
-func findEntityIDFold(glx *GLXFile, id string) (string, bool) {
+// EntityIDIgnoringCase returns the existing entity ID that equals id ignoring
+// case, searching AllEntityTypes in canonical order. Multi-file archive
+// filenames derive from lowercased IDs (EntityIDToFilename), so a caller
+// about to introduce an ID into such an archive can use this to detect a
+// collision that would otherwise surface as ErrCaseInsensitiveCollision at
+// serialize time. An exact match is returned too.
+func (g *GLXFile) EntityIDIgnoringCase(id string) (string, bool) {
 	for _, t := range AllEntityTypes {
 		if probe, ok := entityIDFoldProbes[t]; ok {
-			if existing, found := probe(glx, id); found {
+			if existing, found := probe(g, id); found {
 				return existing, true
 			}
 		}
