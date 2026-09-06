@@ -132,18 +132,22 @@ func checkTargetFree(glx *GLXFile, id string) error {
 	return nil
 }
 
-// findKeyFold returns the key in m whose canonical multi-file filename
-// (EntityIDToFilename) equals id's, if any. Comparing derived filenames
-// rather than using strings.EqualFold matches what the serializer does on
-// disk; the two differ for some Unicode (e.g. "ſ" and "s" are EqualFold-equal
-// but lowercase to distinct filenames). An id or key with no valid filename
-// cannot collide.
+// findKeyFold returns a key in m other than id itself whose canonical
+// multi-file filename (EntityIDToFilename) equals id's, if any. Comparing
+// derived filenames rather than using strings.EqualFold matches what the
+// serializer does on disk; the two differ for some Unicode (e.g. "ſ" and "s"
+// are EqualFold-equal but lowercase to distinct filenames). An id or key with
+// no valid filename cannot collide. The exact key is skipped, not reported,
+// so the answer does not depend on map iteration order when id is present.
 func findKeyFold[T any](m map[string]*T, id string) (string, bool) {
 	want, err := EntityIDToFilename(id)
 	if err != nil {
 		return "", false
 	}
 	for key := range m {
+		if key == id {
+			continue
+		}
 		if name, err := EntityIDToFilename(key); err == nil && name == want {
 			return key, true
 		}
@@ -173,8 +177,9 @@ var entityIDFoldProbes = map[EntityType]func(*GLXFile, string) (string, bool){
 // from lowercased IDs (EntityIDToFilename) and each entity type lives in its
 // own directory, so a caller about to introduce an ID into such an archive
 // can use this to detect the per-type collision that would otherwise surface
-// as ErrCaseInsensitiveCollision at serialize time. An exact match is
-// returned too.
+// as ErrCaseInsensitiveCollision at serialize time. The exact id itself is
+// never reported (use HasEntity for that), so the check is well-defined
+// whether or not id is already present.
 func (g *GLXFile) EntityIDIgnoringCase(entityType EntityType, id string) (string, bool) {
 	probe, ok := entityIDFoldProbes[entityType]
 	if !ok {

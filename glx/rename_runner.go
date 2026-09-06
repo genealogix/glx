@@ -81,9 +81,10 @@ func renameEntities(archivePath, oldID, newID string, dryRun bool) error {
 	// own directory, so a new ID that differs only by case from another
 	// entity's of the same type would collide on disk (the serializer would
 	// refuse it as ErrCaseInsensitiveCollision on the next full write).
-	// `whole` has already been renamed, so newID itself is present and is
-	// excluded; a different type's same-cased ID is not a collision.
-	if existing, ok := whole.EntityIDIgnoringCase(result.EntityType, newID); ok && existing != newID {
+	// `whole` has already been renamed, so newID itself is present; the
+	// lookup never reports the exact ID. A different type's same-cased ID is
+	// not a collision.
+	if existing, ok := whole.EntityIDIgnoringCase(result.EntityType, newID); ok {
 		return fmt.Errorf("entity %q conflicts with existing %q: %w", newID, existing, glxlib.ErrCaseInsensitiveCollision)
 	}
 
@@ -331,7 +332,7 @@ func preflightFileOps(rootDir string, ops []fileOp) error {
 			// means a concurrent edit, or a Git symlink placeholder (Windows,
 			// core.symlinks=false) that the loader resolved to its target:
 			// overwriting it would turn the repository symlink into a file.
-			onDisk, err := os.ReadFile(absPath) //nolint:gosec // path is inside the archive root, checked above
+			onDisk, err := os.ReadFile(absPath) // #nosec G304 -- absPath is under the archive root, checked above
 			if err != nil {
 				return fmt.Errorf("checking %s: %w", op.relPath, err)
 			}

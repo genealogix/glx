@@ -432,6 +432,18 @@ func TestEntityIDIgnoringCase(t *testing.T) {
 	_, ok = glx.EntityIDIgnoringCase(EntityTypePersons, "EVENT-X")
 	assert.False(t, ok)
 
+	// The exact ID is never reported, only a different colliding key; the
+	// answer must not depend on map iteration order when both are present.
+	_, ok = glx.EntityIDIgnoringCase(EntityTypePersons, "person-mary")
+	assert.False(t, ok)
+	glx.Persons["Person-Mary"] = &Person{}
+	for range 20 {
+		existing, ok := glx.EntityIDIgnoringCase(EntityTypePersons, "Person-Mary")
+		require.True(t, ok)
+		assert.Equal(t, "person-mary", existing)
+	}
+	delete(glx.Persons, "Person-Mary")
+
 	_, ok = glx.EntityIDIgnoringCase(EntityTypePersons, "person-nobody")
 	assert.False(t, ok)
 
