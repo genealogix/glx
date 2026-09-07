@@ -9,6 +9,15 @@ permissions:
   contents: read
   issues: write
 
+# The broken-links issue is deduped by a non-atomic find-then-create; an
+# overlapping dispatch + cron pair could both see "no open issue" and file
+# duplicates. Serialize instead: queue (never cancel — a cancelled run could
+# stop mid issue-mutation). Static group: this is a singleton maintenance job
+# with no per-ref dimension. (#995)
+concurrency:
+  group: check-external-links
+  cancel-in-progress: false
+
 env:
   GIT_CONFIG_COUNT: 2
   GIT_CONFIG_KEY_0: init.defaultBranch
@@ -23,6 +32,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Restore lychee cache
         uses: actions/cache@v6
