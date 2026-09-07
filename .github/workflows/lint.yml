@@ -21,6 +21,10 @@ on:
 
 permissions:
   contents: read
+  # only-new-issues needs the PR-diff API endpoint; without this scope the
+  # action's diff fetch 403s, is silently swallowed, and it lints the entire
+  # tree instead of just the changed lines (#958).
+  pull-requests: read
 
 concurrency:
   group: lint-${{ github.event.pull_request.number || github.ref }}
@@ -39,10 +43,12 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-go@v7
         with:
-          go-version: '1.26'
+          go-version-file: go.mod
           cache: false
 
       - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
