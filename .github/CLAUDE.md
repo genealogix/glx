@@ -8,8 +8,8 @@
 
 1. **Third-party actions (the default rule): full-commit-SHA pin plus a
    trailing `# vX.Y.Z` comment.** This is the OpenSSF Scorecard
-   "pin dependencies" form and what every third-party `uses:` in the repo
-   follows today, e.g.
+   "pin dependencies" form and the default every third-party `uses:` in the
+   repo follows today, apart from the exceptions in rule 3, e.g.
 
    ```yaml
    uses: golangci/golangci-lint-action@82606bf257cbaff209d206a39f5134f0cfbfd2ee # v9.2.1
@@ -31,10 +31,10 @@
    comment so nobody "tidies" it back to `@vN`, which fails with
    `Unable to resolve action <owner>/<repo>@vN`:
 
-   | Action | Pin floor | Issue |
+   | Action | Pin form | Issue |
    |---|---|---|
-   | `sigstore/cosign-installer` | `@v4.1.2` exact tag | #938 |
-   | `ossf/scorecard-action` | SHA-pinned since #1019 | #779 (original lesson) |
+   | `sigstore/cosign-installer` | `@v4.1.2` exact tag (no floating `@v4`) | #938 |
+   | `ossf/scorecard-action` | full SHA + `# vX.Y.Z` comment (no floating `@v2`) | #779 |
 
 **Verify before you push.** Before editing any `uses:` line, check what tags
 the action actually publishes:
@@ -90,12 +90,12 @@ know which one you're about to trip before you push:
   (the single source of truth), then update the `Area` dropdown in every
   `ISSUE_TEMPLATE/*.yml` form (each must keep its `id: area` key) or
   `issue-templates-drift.yml` hard-fails. Also create the matching repo
-  label: a missing label doesn't trip the drift check today — it surfaces
-  later, as `issue-labeler.yml` hard-failing `--add-label` on the first
-  issue filed with that Area, leaving the issue unlabeled (#946; PR #1183
-  adds a PR-time gate for it). The labeler and the drift check read that
-  YAML with deliberately chosen parsers (#947 has the history) — don't
-  swap them casually.
+  label: the same workflow queries the repo's labels and hard-fails the PR
+  when an Area has no matching label (#946, PR #1183) — without that gate,
+  the gap would only surface as `issue-labeler.yml` failing `--add-label`
+  on the first issue filed with that Area, leaving it unlabeled. The
+  labeler and the drift check read that YAML with deliberately chosen
+  parsers (#947 has the history) — don't swap them casually.
 
 ## Workflow injection: never interpolate untrusted input into `run:`
 
