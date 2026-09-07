@@ -26,6 +26,8 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Run reuse lint
         # Verifies every version-controlled file has SPDX copyright/license
@@ -39,11 +41,13 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
-          go-version: '1.26'
+          go-version-file: go.mod
           cache: true
 
       - name: Download Go modules
