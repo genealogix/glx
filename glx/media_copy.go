@@ -56,7 +56,7 @@ func copyMediaFiles(streams *IOStreams, archiveDir string, mediaFiles []glxlib.M
 			copyCount++
 
 		case glxlib.MediaSourceBlob:
-			decoded, err := decodeGEDCOMBlob(mf.BlobData)
+			decoded, err := glxlib.DecodeGEDCOMBlob(mf.BlobData)
 			if err != nil {
 				streams.Printf("Warning: could not decode BLOB for %s: %v\n", mf.MediaID, err)
 				warnCount++
@@ -179,71 +179,4 @@ func copyFile(src, dst string) error {
 	}
 
 	return nil
-}
-
-// decodeGEDCOMBlob decodes GEDCOM 5.5.1 BLOB-encoded text to raw bytes.
-// GEDCOM BLOB uses a custom encoding where each character's value minus 0x2E ('.')
-// gives a 6-bit value. Groups of 4 characters encode 3 bytes.
-func decodeGEDCOMBlob(blobText string) ([]byte, error) {
-	// Strip whitespace and newlines
-	cleaned := strings.NewReplacer("\n", "", "\r", "", " ", "").Replace(blobText)
-
-	if len(cleaned) == 0 {
-		return nil, ErrEmptyBlobData
-	}
-
-	if len(cleaned) == 1 {
-		return nil, fmt.Errorf("%w: 1 (minimum 2 characters required)", ErrInvalidBlobLength)
-	}
-
-	result := make([]byte, 0, len(cleaned)*3/4)
-	fullGroups := (len(cleaned) / 4) * 4 //nolint:mnd // 4 chars per group
-
-	for i := 0; i < fullGroups; i += 4 {
-		// Validate each character is in valid GEDCOM BLOB range (0x2E '.' to 0x6D 'm')
-		// This gives 6-bit values (0-63) after subtracting 0x2E
-		for j := range 4 {
-			char := cleaned[i+j]
-			if char < '.' || char > 'm' {
-				return nil, fmt.Errorf("invalid BLOB character at position %d: %q (must be in range '.' to 'm')", i+j, char)
-			}
-		}
-
-		b1 := cleaned[i] - '.'
-		b2 := cleaned[i+1] - '.'
-		b3 := cleaned[i+2] - '.'
-		b4 := cleaned[i+3] - '.'
-
-		//nolint:mnd // well-known base64 bit shifts
-		result = append(result,
-			(b1<<2)|(b2>>4),
-			(b2<<4)|(b3>>2),
-			(b3<<6)|b4,
-		)
-	}
-
-	// Handle trailing characters (2 chars → 1 byte, 3 chars → 2 bytes)
-	trailing := len(cleaned) - fullGroups
-	if trailing == 1 {
-		return nil, fmt.Errorf("%w: %d (trailing single character cannot encode a full byte)", ErrInvalidBlobLength, len(cleaned))
-	}
-	if trailing >= 2 { //nolint:mnd // trailing group sizes
-		for j := range trailing {
-			char := cleaned[fullGroups+j]
-			if char < '.' || char > 'm' {
-				return nil, fmt.Errorf("%w at position %d: %q", ErrInvalidBlobChar, fullGroups+j, char)
-			}
-		}
-
-		b1 := cleaned[fullGroups] - '.'
-		b2 := cleaned[fullGroups+1] - '.'
-		result = append(result, (b1<<2)|(b2>>4)) //nolint:mnd // well-known base64 bit shifts
-
-		if trailing == 3 { //nolint:mnd // 3-char trailing group
-			b3 := cleaned[fullGroups+2] - '.'
-			result = append(result, (b2<<4)|(b3>>2)) //nolint:mnd // well-known base64 bit shifts
-		}
-	}
-
-	return result, nil
 }
