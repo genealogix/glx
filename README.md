@@ -1,18 +1,11 @@
----
-title: GENEALOGIX Specification
-description: Modern, evidence-first, Git-native genealogy data standard
-layout: doc
----
-
 # GENEALOGIX Specification
 
 [![Version](https://img.shields.io/github/v/release/genealogix/glx?include_prereleases&label=version)](https://github.com/genealogix/glx/releases)
 [![Go Reference](https://pkg.go.dev/badge/github.com/genealogix/glx.svg)](https://pkg.go.dev/github.com/genealogix/glx)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/genealogix/glx)](https://github.com/genealogix/glx/blob/main/go.mod)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](https://github.com/genealogix/glx/blob/main/LICENSE)
-[![CI](https://github.com/genealogix/glx/workflows/Validate%20Specification/badge.svg)](https://github.com/genealogix/glx/actions)
+[![CI](https://github.com/genealogix/glx/actions/workflows/validate-spec.yml/badge.svg?branch=main)](https://github.com/genealogix/glx/actions/workflows/validate-spec.yml)
 [![codecov](https://codecov.io/gh/genealogix/glx/branch/main/graph/badge.svg)](https://codecov.io/gh/genealogix/glx)
-[![Go Report Card](https://goreportcard.com/badge/github.com/genealogix/glx)](https://goreportcard.com/report/github.com/genealogix/glx)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/genealogix/glx/badge)](https://scorecard.dev/viewer/?uri=github.com/genealogix/glx)
 [![Contributors](https://img.shields.io/github/contributors/genealogix/glx.svg)](https://github.com/genealogix/glx/graphs/contributors)
 

@@ -6,18 +6,21 @@
 #                                                   check below enforces match)
 #   - .github/ISSUE_TEMPLATE/feature_request.yml   (likewise)
 #   - .github/ISSUE_TEMPLATE/enhancement.yml       (likewise)
-#   - .github/workflows/issue-labeler.yml          (reads this file with
-#                                                   Python + PyYAML to compute
-#                                                   VALID_LABELS at runtime)
+#   - .github/workflows/issue-labeler.yml          (reads this file with the
+#                                                   runner's manifest-pinned yq
+#                                                   to compute VALID_LABELS at
+#                                                   runtime, #947)
 #
 # Enforced by:
 #   - .github/workflows/issue-templates-drift.yml  (fails CI if any template's
 #                                                   Area dropdown options diverge
-#                                                   from this list, or if any
+#                                                   from this list, if any
 #                                                   template's Area dropdown
 #                                                   lacks the `id: area` key
 #                                                   the drift check uses to
-#                                                   locate it)
+#                                                   locate it, or if any area
+#                                                   here has no matching repo
+#                                                   label, #946)
 #
 # Note on `id: area`: it is currently consumed by the drift check above (to
 # locate each template's Area dropdown by id rather than label-text) and is
@@ -26,8 +29,9 @@
 # markdown body via awk — but having the id in place now means a future
 # tooling swap won't need to touch the templates again.
 #
-# To add or rename an area: edit this file. CI will tell you which template(s)
-# also need their Area dropdown updated to match.
+# To add or rename an area: edit this file AND create the matching repo label
+# (gh label create <area>). CI will tell you which template(s) also need their
+# Area dropdown updated to match, and fails if the label is missing.
 
 areas:
   - cli
