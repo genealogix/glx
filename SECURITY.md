@@ -4,9 +4,15 @@
 
 ## Supported Versions
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 0.x.x   | :white_check_mark: |
+| Version        | Supported          |
+| -------------- | ------------------ |
+| Latest 0.x.x   | :white_check_mark: |
+| Older 0.x.x    | :x:                |
+
+GLX is pre-1.0: security fixes target the **latest 0.x.x release only** (the
+most recent tag, not the whole minor line). An older release stops receiving
+security updates the moment the next release ships — upgrade to the newest
+release to stay covered.
 
 ## Reporting a Vulnerability
 
