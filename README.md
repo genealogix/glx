@@ -150,6 +150,7 @@ sources:
 - [🛠 CLI Reference](https://genealogix.io/cli) — every command and flag
 - [📐 Best Practices](/guides/best-practices) — recommended workflows
 - [🔁 Migration from GEDCOM](/guides/migration-from-gedcom) — manual conversion guidance
+- [🔀 GLX-aware Git merge driver](/docs/merge-driver) — genealogy-aware conflict resolution for .glx files
 - [📖 Specification](/specification/) — full spec
 - [📋 JSON Schemas](/specification/schema/) — machine-readable schemas
 - [📚 Glossary](/specification/6-glossary) — key terms and concepts
