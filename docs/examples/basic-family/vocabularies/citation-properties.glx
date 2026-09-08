@@ -1,1 +1,49 @@
-../../../../specification/5-standard-vocabularies/citation-properties.glx
+# Standard Citation Properties
+# This file defines the standard properties for citation entities.
+# These properties describe the specific location and content of cited material.
+# Archives can extend this with custom properties by adding additional entries.
+
+citation_properties:
+  locator:
+    label: "Locator"
+    description: "Location within source where cited material can be found (e.g., 'Page 45', 'Film 1234567, Image 87', 'Entry 123')"
+    value_type: string
+    gedcom: "PAGE"
+
+  text_from_source:
+    label: "Text from Source"
+    description: "Transcription or excerpt of relevant text from the source"
+    value_type: string
+    gedcom: "TEXT"
+
+  source_date:
+    label: "Source Date"
+    description: "Date when the source recorded the information (from GEDCOM DATA.DATE)"
+    value_type: date
+    gedcom: "DATE"
+
+  accessed:
+    label: "Accessed Date"
+    description: "Date when an online source or digital record was last accessed or retrieved"
+    value_type: date
+
+  url:
+    label: "URL"
+    description: "Direct web address for the specific cited material (e.g., a permalink to a record or image viewer)"
+    value_type: string
+
+  original_place_name:
+    label: "Original Place Name"
+    description: "Place name exactly as recorded in the source, before normalization to a place entity (e.g., 'The Town Of Oakdale, Hartford, Wisconsin, United States' vs the normalized place reference)"
+    value_type: string
+
+  external_ids:
+    label: "External Identifiers"
+    description: "Identifiers from external systems for the specific cited record (e.g., FamilySearch ARK, Ancestry record ID)"
+    value_type: string
+    multi_value: true
+    gedcom: "EXID"
+    fields:
+      type:
+        label: "Identifier Type"
+        description: "Authority or system that issued this identifier (e.g., familysearch, ancestry, wikitree). Often a URI, especially when imported from GEDCOM 7 EXID.TYPE."

@@ -19,10 +19,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
-	"runtime"
 	"strings"
 )
 
@@ -119,42 +118,18 @@ func isDirectoryEmpty(path string) error {
 	return fmt.Errorf("%w (found: %s)", ErrNonEmptyDirectory, listing)
 }
 
-// collectGLXFilesFromDir recursively collects all GLX/YAML files from a directory
+// collectGLXFilesFromDir recursively collects all GLX files from a directory
 // into a map with relative paths as keys and file contents as values.
-// Only files with .glx, .yaml, or .yml extensions are included.
+// Only files with the .glx extension are included. Reads are contained to
+// rootDir (see walkGLXFiles): a symlink inside the archive that points outside
+// it fails the load rather than pulling the target's contents in.
 func collectGLXFilesFromDir(rootDir string) (map[string][]byte, error) {
 	files := make(map[string][]byte)
 
-	err := filepath.WalkDir(rootDir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
+	err := walkGLXFiles(rootDir, func(relPath string, data []byte, readErr error) error {
+		if readErr != nil {
+			return fmt.Errorf("failed to read %s: %w", filepath.Join(rootDir, relPath), readErr)
 		}
-		if d.IsDir() {
-			return nil
-		}
-		if !isGLXFile(d.Name()) {
-			return nil
-		}
-
-		path = filepath.Clean(path)
-		// #nosec G122 -- a symlink inside the archive can redirect this read outside
-		// the walked root; containment via root-scoped (os.Root) reads is tracked in #1090.
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return fmt.Errorf("failed to read %s: %w", path, err)
-		}
-
-		// On Windows, Git stores symlinks as text files containing the
-		// target path. Detect these and read the actual target file.
-		if runtime.GOOS == "windows" {
-			data = resolveSymlinkPlaceholder(path, data)
-		}
-
-		relPath, err := filepath.Rel(rootDir, path)
-		if err != nil {
-			return fmt.Errorf("failed to get relative path: %w", err)
-		}
-
 		files[relPath] = data
 
 		return nil
@@ -166,8 +141,11 @@ func collectGLXFilesFromDir(rootDir string) (map[string][]byte, error) {
 // resolveSymlinkPlaceholder detects Git symlink placeholders on Windows.
 // Git stores symlinks as small text files containing the target path when
 // core.symlinks is false (the default on Windows). This function detects
-// such files and reads the actual target content.
-func resolveSymlinkPlaceholder(filePath string, data []byte) []byte {
+// such files and reads the actual target content. relPath is the
+// placeholder's slash-separated path relative to root; the target is read
+// through the same root, so a placeholder whose target escapes the archive
+// directory is left unresolved instead of being followed.
+func resolveSymlinkPlaceholder(root *os.Root, relPath string, data []byte) []byte {
 	content := strings.TrimSpace(string(data))
 	// Symlink placeholders are short, single-line, and look like relative paths
 	if len(content) > maxSymlinkPlaceholderLength || strings.ContainsAny(content, symlinkPlaceholderInvalidChars) {
@@ -182,11 +160,10 @@ func resolveSymlinkPlaceholder(filePath string, data []byte) []byte {
 		return data
 	}
 
-	// Resolve the target path relative to the file's directory
-	dir := filepath.Dir(filePath)
-	targetPath := filepath.Join(dir, filepath.FromSlash(content))
-	targetPath = filepath.Clean(targetPath)
-	targetData, err := os.ReadFile(targetPath) //nolint:gosec // path is relative to archive, not user input
+	// Resolve the target path relative to the placeholder's directory, inside
+	// the archive root. os.Root rejects any target that climbs out of root.
+	target := path.Join(path.Dir(relPath), filepath.ToSlash(content))
+	targetData, err := root.ReadFile(target)
 	if err != nil {
 		return data // Not a valid symlink placeholder; return original content
 	}

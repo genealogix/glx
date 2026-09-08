@@ -17,6 +17,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -165,6 +166,60 @@ func TestResolveSiteMedia_RejectsTraversal(t *testing.T) {
 		}
 		if entries, _ := os.ReadDir(filepath.Join(out, "media")); len(entries) > 0 {
 			t.Errorf("uri %q: media dir must stay empty, found %d entries", uri, len(entries))
+		}
+	}
+}
+
+// TestResolveSiteMedia_RejectsSymlinkEscape covers the residual left by the
+// lexical guard: a symlink placed inside the archive whose target is outside
+// it passes isPathWithin, so containment must also hold at read time. Both
+// the copy path and the embed (data URI) path are exercised.
+func TestResolveSiteMedia_RejectsSymlinkEscape(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation is privilege-gated on Windows")
+	}
+	base := t.TempDir()
+	outside := t.TempDir()
+	secret := filepath.Join(outside, "secret.jpg")
+	writeFile(t, secret, []byte("TOP SECRET"))
+	if err := os.MkdirAll(filepath.Join(base, "media"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(secret, filepath.Join(base, "media", "portrait.jpg")); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, embed := range []bool{false, true} {
+		archive := &glxlib.GLXFile{
+			Persons: map[string]*glxlib.Person{
+				"person-x": {Properties: map[string]any{"name": "X"}},
+			},
+			Media: map[string]*glxlib.Media{
+				"media-link": {URI: "media/portrait.jpg", MimeType: "image/jpeg"},
+			},
+			Assertions: map[string]*glxlib.Assertion{
+				"assertion-x": {Subject: glxlib.EntityRef{Person: "person-x"}, Media: []string{"media-link"}},
+			},
+		}
+		model := buildSiteModel(archive, siteModelOptions{})
+		out := t.TempDir()
+		copied, err := resolveSiteMedia(model, base, out, embed)
+		if err != nil {
+			t.Fatalf("embed=%v: resolveSiteMedia: %v", embed, err)
+		}
+		if copied != 0 {
+			t.Errorf("embed=%v: expected 0 files copied, got %d", embed, copied)
+		}
+
+		item := personMediaItem(t, model, "person-x")
+		if !item.Missing {
+			t.Errorf("embed=%v: expected Missing=true (symlink escape blocked), got Src=%q", embed, item.Src)
+		}
+		if strings.Contains(item.Src, "VE9QIFNFQ1JFVA") { // base64("TOP SECRET")
+			t.Errorf("embed=%v: secret contents were embedded into the site", embed)
+		}
+		if entries, _ := os.ReadDir(filepath.Join(out, "media")); len(entries) > 0 {
+			t.Errorf("embed=%v: media dir must stay empty, found %d entries", embed, len(entries))
 		}
 	}
 }

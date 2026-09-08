@@ -1,1 +1,85 @@
-../../../../specification/5-standard-vocabularies/media-properties.glx
+# Standard Media Properties
+# This file defines the standard properties for media entities.
+# These properties describe characteristics of media objects (photos, documents, audio, video).
+# Archives can extend this with custom properties by adding additional entries.
+
+media_properties:
+  description:
+    label: "Media Description"
+    description: "Detailed description of the media content"
+    value_type: string
+
+  subjects:
+    label: "Subjects"
+    description: "People depicted in the media"
+    reference_type: persons
+    multi_value: true
+
+  width:
+    label: "Width"
+    description: "Width in pixels (for images and video)"
+    value_type: integer
+
+  height:
+    label: "Height"
+    description: "Height in pixels (for images and video)"
+    value_type: integer
+
+  duration:
+    label: "Duration"
+    description: "Duration in seconds (for audio and video)"
+    value_type: integer
+
+  file_size:
+    label: "File Size"
+    description: "File size in bytes"
+    value_type: integer
+
+  crop:
+    label: "Crop"
+    description: "Crop coordinates for displaying a region of the media"
+    value_type: integer
+    gedcom: "CROP"
+    fields:
+      top:
+        label: "Top"
+        description: "Top edge position in pixels"
+        value_type: integer
+      left:
+        label: "Left"
+        description: "Left edge position in pixels"
+        value_type: integer
+      width:
+        label: "Width"
+        description: "Crop region width in pixels"
+        value_type: integer
+      height:
+        label: "Height"
+        description: "Crop region height in pixels"
+        value_type: integer
+
+  medium:
+    label: "Medium"
+    description: "Physical medium type (e.g., photograph, document, film)"
+    value_type: string
+    gedcom: "MEDI"
+
+  original_filename:
+    label: "Original Filename"
+    description: "Original filename before import or renaming"
+    value_type: string
+
+  photographer:
+    label: "Photographer"
+    description: "Person who created the media (photographer, videographer, etc.)"
+    reference_type: persons
+
+  location:
+    label: "Location"
+    description: "Place where the media was created"
+    reference_type: places
+
+  blob_size:
+    label: "BLOB Size"
+    description: "Length in bytes of the encoded BLOB text imported from GEDCOM 5.5.1 BLOB records, as the BLOB/CONT lines joined with newlines (pre-decode; includes the line separators, and is not the decoded file size)"
+    value_type: integer

@@ -86,33 +86,120 @@ func TestAtomicWriteFile_InvalidDir(t *testing.T) {
 	assert.Contains(t, err.Error(), "creating temp file")
 }
 
+// openTestRoot opens dir as an os.Root for placeholder tests and closes it
+// when the test ends.
+func openTestRoot(t *testing.T, dir string) *os.Root {
+	t.Helper()
+	root, err := os.OpenRoot(dir)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = root.Close() })
+
+	return root
+}
+
 func TestResolveSymlinkPlaceholder_ResolvesTargetContent(t *testing.T) {
 	dir := t.TempDir()
 	targetPath := filepath.Join(dir, "target.glx")
 	require.NoError(t, os.WriteFile(targetPath, []byte("resolved"), 0o644))
 
-	placeholderPath := filepath.Join(dir, "link.glx")
-	got := resolveSymlinkPlaceholder(placeholderPath, []byte("./target.glx"))
+	got := resolveSymlinkPlaceholder(openTestRoot(t, dir), "link.glx", []byte("./target.glx"))
 
 	assert.Equal(t, []byte("resolved"), got)
 }
 
+func TestResolveSymlinkPlaceholder_ResolvesNestedRelativeTarget(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "persons"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "shared"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "shared", "p.glx"), []byte("shared"), 0o644))
+
+	got := resolveSymlinkPlaceholder(openTestRoot(t, dir), "persons/link.glx", []byte("../shared/p.glx"))
+
+	assert.Equal(t, []byte("shared"), got)
+}
+
+func TestResolveSymlinkPlaceholder_RejectsTargetOutsideRoot(t *testing.T) {
+	outside := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(outside, "secret.glx"), []byte("secret"), 0o644))
+	dir := filepath.Join(outside, "archive")
+	require.NoError(t, os.MkdirAll(dir, 0o755))
+
+	content := "../secret.glx"
+	got := resolveSymlinkPlaceholder(openTestRoot(t, dir), "link.glx", []byte(content))
+
+	assert.Equal(t, []byte(content), got, "placeholder escaping the archive root must not be followed")
+}
+
 func TestResolveSymlinkPlaceholder_RejectsLongPlaceholderContent(t *testing.T) {
 	dir := t.TempDir()
-	placeholderPath := filepath.Join(dir, "link.glx")
 	longContent := "a/" + strings.Repeat("b", maxSymlinkPlaceholderLength)
 
-	got := resolveSymlinkPlaceholder(placeholderPath, []byte(longContent))
+	got := resolveSymlinkPlaceholder(openTestRoot(t, dir), "link.glx", []byte(longContent))
 
 	assert.Equal(t, []byte(longContent), got)
 }
 
 func TestResolveSymlinkPlaceholder_RejectsInvalidCharacters(t *testing.T) {
 	dir := t.TempDir()
-	placeholderPath := filepath.Join(dir, "link.glx")
 	content := "nested/\nfile.glx"
 
-	got := resolveSymlinkPlaceholder(placeholderPath, []byte(content))
+	got := resolveSymlinkPlaceholder(openTestRoot(t, dir), "link.glx", []byte(content))
 
 	assert.Equal(t, []byte(content), got)
+}
+
+func TestCollectGLXFilesFromDir_ReadsNestedFiles(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "persons"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "persons", "p1.glx"), []byte("persons: {}"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "README.md"), []byte("not glx"), 0o644))
+
+	files, err := collectGLXFilesFromDir(dir)
+	require.NoError(t, err)
+
+	assert.Len(t, files, 1)
+	assert.Equal(t, []byte("persons: {}"), files[filepath.Join("persons", "p1.glx")])
+}
+
+func TestCollectGLXFilesFromDir_MissingDir(t *testing.T) {
+	_, err := collectGLXFilesFromDir(filepath.Join(t.TempDir(), "nope"))
+	assert.Error(t, err)
+}
+
+func TestCollectGLXFilesFromDir_RejectsSymlinkEscapingArchive(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation is privilege-gated on Windows")
+	}
+	outside := t.TempDir()
+	secret := filepath.Join(outside, "secret.glx")
+	require.NoError(t, os.WriteFile(secret, []byte("persons: {leaked: {}}"), 0o644))
+
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "persons"), 0o755))
+	require.NoError(t, os.Symlink(secret, filepath.Join(dir, "persons", "p1.glx")))
+
+	files, err := collectGLXFilesFromDir(dir)
+
+	require.Error(t, err, "an archive symlink pointing outside the archive must fail containment")
+	assert.Contains(t, err.Error(), "p1.glx")
+	for _, data := range files {
+		assert.NotContains(t, string(data), "leaked", "target contents must not be read")
+	}
+}
+
+func TestCollectGLXFilesFromDir_FollowsSymlinkInsideArchive(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation is privilege-gated on Windows")
+	}
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "persons"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "shared"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "shared", "p.glx"), []byte("persons: {}"), 0o644))
+	require.NoError(t, os.Symlink(filepath.Join("..", "shared", "p.glx"), filepath.Join(dir, "persons", "link.glx")))
+
+	files, err := collectGLXFilesFromDir(dir)
+	require.NoError(t, err)
+
+	assert.Equal(t, []byte("persons: {}"), files[filepath.Join("persons", "link.glx")])
+	assert.Equal(t, []byte("persons: {}"), files[filepath.Join("shared", "p.glx")])
 }
