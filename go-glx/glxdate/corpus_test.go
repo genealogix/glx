@@ -183,6 +183,7 @@ func FuzzParse(f *testing.F) {
 		"1850", "1850-03-15", "ABT 1850", "BET 1880 AND 1890", "FROM 1900",
 		"INT 1850 (text)", "HEBREW 15 TSH 5765", "1 JANUARY 1900", "15/01/1900",
 		"JULIAN BET 1700 AND 1710", "_MYCAL 12", "BET AND", "FROM TO", "(", "-",
+		"BET JUL AND 1857-13", "BET JUL AND SEP 44 BCE",
 	} {
 		f.Add(seed)
 	}

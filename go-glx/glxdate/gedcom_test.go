@@ -66,13 +66,15 @@ func TestFromGEDCOM_CalendarPlacement(t *testing.T) {
 }
 
 // TestGEDCOMEscape551 pins the prefix → 5.5.1 escape direction; an extension
-// prefix drops its underscore so the escape it came from is written back.
+// prefix drops its underscore and restores spaces so the escape it came from
+// is written back.
 func TestGEDCOMEscape551(t *testing.T) {
 	assert.Equal(t, "@#DJULIAN@", gedcomEscape551(PrefixJulian))
 	assert.Equal(t, "@#DHEBREW@", gedcomEscape551(PrefixHebrew))
 	assert.Equal(t, "@#DFRENCH R@", gedcomEscape551(PrefixFrenchRepublican))
 	assert.Equal(t, "@#DROMAN@", gedcomEscape551("_ROMAN"))
-	assert.Equal(t, "@#DNEW_CAL@", gedcomEscape551("_NEW_CAL"))
+	assert.Equal(t, "@#DNEW CAL@", gedcomEscape551("_NEW_CAL"))
+	assert.Equal(t, "@#DMAYAN LONG COUNT@", gedcomEscape551("_MAYAN_LONG_COUNT"))
 }
 
 // TestFromGEDCOM pins the dialect variants the importer normalizes (all
@@ -189,7 +191,7 @@ func TestDate_GEDCOM(t *testing.T) {
 		{"HEBREW 15 TSH 5765", "@#DHEBREW@ 15 TSH 5765", "HEBREW 15 TSH 5765"},
 		{"FRENCH_R 1 VEND 0012", "@#DFRENCH R@ 1 VEND 0012", "FRENCH_R 1 VEND 0012"},
 		{"_ROMAN 15 MAR 1731", "@#DROMAN@ 15 MAR 1731", "_ROMAN 15 MAR 1731"},
-		{"_NEW_CAL 15 MAR 1731", "@#DNEW_CAL@ 15 MAR 1731", "_NEW_CAL 15 MAR 1731"},
+		{"_NEW_CAL 15 MAR 1731", "@#DNEW CAL@ 15 MAR 1731", "_NEW_CAL 15 MAR 1731"},
 		{"HEBREW BET 1 TSH AND 5765", "@#DHEBREW@ BET 1 TSH AND 5765", "BET HEBREW 1 TSH AND HEBREW 5765"},
 		{"JULIAN FROM 1700", "@#DJULIAN@ FROM 1700", "FROM JULIAN 1700"},
 		{"0044-03-15 BCE", "15 MAR 0044 B.C.", "15 MAR 0044 BCE"},

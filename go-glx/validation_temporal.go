@@ -214,10 +214,12 @@ func isParentChildRelType(relType string) bool {
 
 // ExtractFirstYear extracts the first (or start) year from a date string.
 // It is a convenience wrapper over glxdate.Parse: for ranges only the start
-// date is considered, non-Gregorian bodies take the year that follows the
-// day and month ("HEBREW 15 TSH 5765" → 5765), and raw-preserved Gregorian
-// bodies prefer a 4-digit token so a day of month is never reported as the
-// year ("1 JANUARY 1900" → 1900, not 1). Returns 0 if no year is found.
+// date is considered (for an open-start "TO 1950" the end year, the only
+// one present), a BCE year is negative, non-Gregorian bodies take the year
+// that follows the day and month ("HEBREW 15 TSH 5765" → 5765), and
+// raw-preserved Gregorian bodies prefer a 4-digit token so a day of month
+// is never reported as the year ("1 JANUARY 1900" → 1900, not 1). Returns 0
+// if no year is found.
 func ExtractFirstYear(dateStr string) int {
 	return DateString(dateStr).Year()
 }

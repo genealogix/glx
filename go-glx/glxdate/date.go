@@ -291,16 +291,16 @@ func (d Date) InterpretedText() (string, bool) {
 	return v.interpreted, v.qualifier == QualifierInterpreted && v.interpreted != ""
 }
 
-// IsRange reports whether the date is a BET…AND, FROM…TO, or open-ended FROM range.
+// IsRange reports whether the date is a BET…AND, FROM…TO, open-ended FROM,
+// or open-start TO range.
 func (d Date) IsRange() bool {
 	return d.val().rng != rangeNone
 }
 
-// IsOpenEnded reports whether the date is a FROM range with no TO end.
+// IsOpenEnded reports whether the date is a FROM range with no TO end. It is
+// false for a TO range, which IsOpenStart reports; the two are exclusive.
 func (d Date) IsOpenEnded() bool {
-	rng := d.val().rng
-
-	return rng == rangeFrom || rng == rangeTo
+	return d.val().rng == rangeFrom
 }
 
 // IsOpenStart reports whether the date is a TO range: an end with no start.
@@ -321,8 +321,9 @@ func (d Date) Start() Date {
 	return d.val().pointDate(d.val().start)
 }
 
-// End returns the end of a range as a point date. It is the zero Date when d
-// is not a range or is open-ended.
+// End returns the end of a range as a point date, including the single date
+// of a TO range. It is the zero Date when d is not a range or is an
+// open-ended FROM range.
 func (d Date) End() Date {
 	v := d.val()
 	switch v.rng {
@@ -354,11 +355,13 @@ func (v *dateValue) pointDate(p point) Date {
 	return Date{v: pv}
 }
 
-// Year returns the start year, or 0 when no year could be determined. A
+// Year returns the start year, or 0 when no year could be determined. For a
+// TO range, which has no start, it is the end year, the only one present. A
 // BCE year is negative (44 BCE → -44), so years order correctly across the
 // era boundary. For raw-preserved bodies this is a best-effort extraction
-// that prefers a 4-digit token, so a day of month is never reported as the
-// year.
+// that takes the earliest year-shaped number (a 4-digit run or a standalone
+// 3-digit number) before any shorter one, so a day of month is never
+// reported as the year.
 func (d Date) Year() int {
 	return d.val().start.signedYear()
 }
@@ -385,10 +388,12 @@ func (d Date) Day() (int, bool) {
 	return p.day, true
 }
 
-// Valid reports whether the date is in canonical GLX form as defined by the
-// specification's Date Format Standard. A date parsed from tolerated input
-// ("15 March 1850") is not valid even though its components are known; its
-// String form is.
+// Valid reports whether the date is a well-formed GLX date as defined by the
+// specification's Date Format Standard, which is what validation warns
+// about. A date parsed from tolerated input ("15 March 1850", "Abt 1850") is
+// not valid even though its components are known; its String form is. Valid
+// does not mean String() == Raw(): surrounding or repeated whitespace and a
+// 1–3 digit year ("850", see #127) are accepted and normalized on output.
 func (d Date) Valid() bool {
 	return d.val().valid
 }
@@ -425,8 +430,8 @@ type renderMode uint8
 
 const (
 	renderGLX       renderMode = iota // canonical GLX: "JULIAN 1850-03-15", "0044 BCE"
-	renderGEDCOM7                     // GEDCOM 7: "@#DJULIAN@ 15 MAR 1850", "44 BCE"
-	renderGEDCOM551                   // GEDCOM 5.5.1: as GEDCOM 7 but "44 B.C."
+	renderGEDCOM7                     // GEDCOM 7: calendar tag before each date, "JULIAN 15 MAR 1850", "0044 BCE"
+	renderGEDCOM551                   // GEDCOM 5.5.1: calendar escape first, "@#DJULIAN@ 15 MAR 1850", "0044 B.C."
 )
 
 // render writes the date in GLX form, or in GEDCOM spelling (calendar escape
@@ -487,7 +492,8 @@ func (v *dateValue) render(mode renderMode) string {
 // For calendars whose months are preserved raw, only the year is used.
 // A negative year is BCE (New(cal, -44, 3, 15) is "0044-03-15 BCE").
 // CalendarOther needs a prefix name that New cannot take, so it produces a
-// Date that is not Valid; use Parse for such dates.
+// Date that is not Valid; use Parse for such dates. A Calendar value outside
+// the defined constants likewise produces a Date that is not Valid.
 func New(cal Calendar, year, month, day int) Date {
 	p := point{year: year, month: month, day: day, precision: PrecisionYear, exact: true}
 	if year < 0 {
@@ -507,6 +513,9 @@ func New(cal Calendar, year, month, day int) Date {
 
 	v := &dateValue{calendar: cal, start: p, valid: p.canonical, reason: p.reason}
 	switch {
+	case cal > CalendarOther:
+		v.valid = false
+		v.reason = "not a defined Calendar value"
 	case cal == CalendarOther:
 		v.valid = false
 		v.reason = "an unknown calendar needs a prefix name; use Parse"

@@ -220,12 +220,14 @@ func ParseGEDCOM(s string) (Date, error) {
 }
 
 // gedcomEscape551 renders a GLX calendar prefix as a GEDCOM 5.5.1 calendar
-// escape. An extension prefix drops its leading underscore, so a calendar
-// read from "@#DROMAN@" is written back the same way.
+// escape. An extension prefix drops its leading underscore and restores the
+// spaces FromGEDCOM folded, so a calendar read from "@#DROMAN@" or
+// "@#DNEW CAL@" is written back the same way (extensionPrefix is the
+// inverse). GEDCOM 7 export keeps the tag as is; see Date.GEDCOM.
 func gedcomEscape551(prefix string) string {
 	name, known := gedcomEscapes[prefix]
 	if !known {
-		name = strings.TrimPrefix(prefix, "_")
+		name = strings.ReplaceAll(strings.TrimPrefix(prefix, "_"), "_", " ")
 	}
 
 	return gedcomEscapeStart + name + "@"

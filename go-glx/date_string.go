@@ -64,7 +64,9 @@ func (ds DateString) Parse() (glxdate.Date, error) {
 }
 
 // Year returns the start year of the date, or 0 if none can be determined.
-// For ranges only the start date is considered.
+// For ranges only the start date is considered, except an open-start TO
+// range ("TO 1950"), whose end year is the only one present. A BCE year is
+// negative.
 func (ds DateString) Year() int {
 	d, _ := glxdate.Parse(string(ds)) //nolint:errcheck // best-effort year is defined even for non-canonical dates
 

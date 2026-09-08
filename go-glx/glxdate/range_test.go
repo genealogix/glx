@@ -27,7 +27,7 @@ func TestParse_ToRange(t *testing.T) {
 	d, err := Parse("TO 1950")
 	require.NoError(t, err)
 	assert.True(t, d.IsRange())
-	assert.True(t, d.IsOpenEnded())
+	assert.False(t, d.IsOpenEnded(), "TO has an end; IsOpenStart is its predicate")
 	assert.True(t, d.IsOpenStart())
 	assert.True(t, d.Start().IsZero())
 	assert.Equal(t, 1950, d.End().Year())
@@ -59,7 +59,9 @@ func TestParse_RangeBorrowGuard(t *testing.T) {
 		"BET 15 JUL AND 1857":        {"BET 15 JUL AND 1857", 1857},        // year-only end: no invented day precision
 		"BET 31 MAR AND MAR 1900":    {"BET 1900-03-31 AND 1900-03", 1900}, // within the end's month
 		"BET 1 APR AND MAR 1900":     {"BET 1 APR AND MAR 1900", 0},        // after the end's month
-		"BET JUL AND SEP 0044 BCE":   {"BET JUL AND SEP 0044 BCE", -44},
+		"BET JUL AND SEP 0044 BCE":   {"BET 0044-07 BCE AND 0044-09 BCE", -44},
+		"BET JUL AND SEP 44 BC":      {"BET 0044-07 BCE AND 0044-09 BCE", -44},
+		"BET 15 JUL AND 44 BC":       {"BET 15 JUL AND 44 BC", -44}, // year-only end: the start inherits the era but no precision
 		"BET 5 JAN AND 15 JAN 1860":  {"BET 1860-01-05 AND 1860-01-15", 1860},
 	} {
 		assert.Equal(t, want.canonical, Canonicalize(input), input)
@@ -106,6 +108,41 @@ func TestParse_EraMustFollowYear(t *testing.T) {
 	} {
 		d, _ := Parse(input)
 		assert.Equal(t, want, d.Year(), input)
+	}
+}
+
+// TestParse_RangeEndWithInvalidMonth: an end whose month is out of range
+// gives the start nothing to compare against, so no year is inherited and
+// nothing panics (this indexed the month table with 13).
+func TestParse_RangeEndWithInvalidMonth(t *testing.T) {
+	for _, input := range []string{"BET JUL AND 1857-13", "BET 15 JUL AND 1857-99", "FROM JUL TO 1857-00"} {
+		var d Date
+		var err error
+		require.NotPanics(t, func() { d, err = Parse(input) }, input)
+		require.Error(t, err, input)
+		assert.Equal(t, input, d.String(), input)
+		assert.Equal(t, 0, d.Year(), input)
+	}
+}
+
+// TestParse_EraReasonSpellsCanonicalForm: a reason that spells out the
+// canonical form includes the era.
+func TestParse_EraReasonSpellsCanonicalForm(t *testing.T) {
+	for input, want := range map[string]string{
+		"MAR 44 BC":      "month names are not canonical; write 0044-03 BCE",
+		"15 MAR 44 BC":   "month names are not canonical; write 0044-03-15 BCE",
+		"0044-03 BC":     "the era must be written BCE; write 0044-03 BCE",
+		"0044-03-15 BCE": "",
+	} {
+		_, err := Parse(input)
+		if want == "" {
+			require.NoError(t, err, input)
+
+			continue
+		}
+		var perr *ParseError
+		require.ErrorAs(t, err, &perr, input)
+		assert.Equal(t, want, perr.Reason, input)
 	}
 }
 

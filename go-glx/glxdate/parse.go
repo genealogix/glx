@@ -93,11 +93,13 @@ func yearHasEra(raw string, year int) bool {
 // Parse parses a GLX date string. The empty string parses to the zero Date
 // with no error.
 //
-// Parse never loses information: when the input is not in canonical form it
-// returns a *ParseError explaining why together with a Date that preserves
-// the raw text and exposes whatever could be recovered (in particular
-// Date.Year). Callers that only need the year may ignore the error; callers
-// that validate must not.
+// Parse never loses information: when the input is not a well-formed GLX
+// date it returns a *ParseError explaining why together with a Date that
+// preserves the raw text and exposes whatever could be recovered (in
+// particular Date.Year). Callers that only need the year may ignore the
+// error; callers that validate must not. Surrounding or repeated whitespace
+// and a 1–3 digit year (see #127) are not errors even though String
+// normalizes them, so err == nil does not imply String() == Raw().
 func Parse(s string) (Date, error) {
 	s = strings.TrimSpace(s)
 	if s == "" {
@@ -230,19 +232,28 @@ func (d *dateValue) setRange(kind rangeKind, startTokens, endTokens []string) {
 	}
 }
 
-// borrowEndYear gives a yearless start ("JUL", "15 Jul") the end's year.
-// The year is only inherited when the start could plausibly fall in it:
-// when the end has a month, the start must not come after it ("BET 15 DEC
-// AND 5 JAN 1860" means December 1859, so nothing is inherited). The start
-// becomes exact, and the range canonicalizes, only when the end is exact to
-// at least the month, so a day-precision start is never invented from a
-// year-only end.
+// borrowEndYear gives a yearless start ("JUL", "15 Jul") the end's year and
+// era ("BET JUL AND SEP 44 BCE" starts in 44 BCE). The year is only
+// inherited when the start could plausibly fall in it: when the end has a
+// month, the start must not come after it ("BET 15 DEC AND 5 JAN 1860"
+// means December 1859, so nothing is inherited), and an end whose month is
+// out of range ("BET JUL AND 1857-13") gives nothing to compare against.
+// The start becomes exact, and the range canonicalizes, only when the end
+// is exact to at least the month, so a day-precision start is never
+// invented from a year-only end.
 func (d *dateValue) borrowEndYear(startTokens []string) {
-	withYear := parsePoint(d.calendar, append(slices.Clone(startTokens), strconv.Itoa(d.end.year)))
+	yearTokens := append(slices.Clone(startTokens), strconv.Itoa(d.end.year))
+	if d.end.bce {
+		yearTokens = append(yearTokens, keywordBCE)
+	}
+	withYear := parsePoint(d.calendar, yearTokens)
 	if !withYear.exact {
 		return
 	}
 	if d.end.precision >= PrecisionMonth {
+		if d.end.month < 1 || d.end.month > monthsPerYear {
+			return // no month to compare the start against
+		}
 		endDay := d.end.day
 		if d.end.precision == PrecisionMonth {
 			endDay = daysInMonth[d.end.month]
@@ -254,7 +265,7 @@ func (d *dateValue) borrowEndYear(startTokens []string) {
 
 	d.start.year, d.start.bce = d.end.year, d.end.bce
 	d.start.precision = PrecisionYear
-	if d.end.exact && !d.end.bce && d.end.precision >= PrecisionMonth {
+	if d.end.exact && d.end.precision >= PrecisionMonth {
 		withYear.raw, withYear.canonical = d.start.raw, false
 		withYear.reason = "the start has no year; write " + withYear.String()
 		d.start = withYear
@@ -362,27 +373,27 @@ func parsePoint(cal Calendar, tokens []string) point {
 		return p
 	}
 
+	// The era is known before the body is parsed so that a reason which
+	// spells out the canonical form includes it ("write 0044-03 BCE").
 	body, eraTok := splitEra(tokens)
+	p.bce = eraTok != ""
 	if len(body) > 0 && ((len(body) == 1 && parseISO(body[0], &p)) || parseNamedMonth(body, &p)) {
-		if eraTok != "" {
-			p.bce = true
-			if p.canonical && eraTok != keywordBCE {
-				p.canonical = false
-				p.reason = "the era must be written BCE; write " + p.String()
-			}
+		if p.bce && p.canonical && eraTok != keywordBCE {
+			p.canonical = false
+			p.reason = "the era must be written BCE; write " + p.String()
 		}
 
 		return p
 	}
 
 	p.year = heuristicYear(p.raw)
+	// "abt. 1317 BC (or abt. 934 BC)", "1401/8 B.C.": a preserved body
+	// whose year is directly followed by an era marker is dated BCE, so
+	// Year() is negative. A marker elsewhere ("1900, Vancouver BC") is
+	// not attached to the year and means nothing.
+	p.bce = p.year > 0 && yearHasEra(p.raw, p.year)
 	if p.year > 0 {
 		p.precision = PrecisionYear
-		// "abt. 1317 BC (or abt. 934 BC)", "1401/8 B.C.": a preserved body
-		// whose year is directly followed by an era marker is dated BCE, so
-		// Year() is negative. A marker elsewhere ("1900, Vancouver BC") is
-		// not attached to the year and means nothing.
-		p.bce = yearHasEra(p.raw, p.year)
 	}
 	p.reason = "date body must be YYYY, YYYY-MM, or YYYY-MM-DD"
 
@@ -494,11 +505,12 @@ func checkComponents(p *point) bool {
 }
 
 // heuristicYear extracts a best-effort year from a raw Gregorian/Julian body
-// that did not parse. A standalone 4-digit number is preferred, so a day of
-// month is never mistaken for the year; otherwise "DD MONTH" pairs are
-// stripped and the first remaining number of at most four digits is used
-// ("5 JAN 476" → 476, "(10 Aug)" → 0). It returns 0 when nothing plausible
-// is found.
+// that did not parse. "DD MONTH" pairs are stripped first, then the
+// earliest year-shaped number in text order is taken: a 4-digit run or a
+// standalone 3-digit number ("ABT 800 OR 1900" → 800, "5 JAN 476" → 476).
+// A shorter standalone number is a last resort ("abt 55" → 55), so a day of
+// month is never mistaken for the year when a real year is present
+// ("(10 Aug)" → 0). It returns 0 when nothing plausible is found.
 func heuristicYear(raw string) int {
 	cleaned := dayMonthRegexp.ReplaceAllString(raw, "")
 
