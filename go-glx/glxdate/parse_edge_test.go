@@ -139,6 +139,16 @@ func TestNew_OtherCalendarIsInvalid(t *testing.T) {
 	assert.False(t, d.Equal(New(CalendarGregorian, 1850, 0, 0)))
 }
 
+// TestNew_UndefinedCalendarIsInvalid: a Calendar value outside the defined
+// constants is not a date, so it cannot render as "1850" and reparse as
+// Gregorian.
+func TestNew_UndefinedCalendarIsInvalid(t *testing.T) {
+	d := New(Calendar(99), 1850, 3, 15)
+	assert.False(t, d.Valid())
+	assert.False(t, d.Equal(New(CalendarGregorian, 1850, 0, 0)))
+	assert.NotPanics(t, func() { _ = d.String(); _ = d.GEDCOM() })
+}
+
 // TestEqual_ComparesCalendar: equality requires the same calendar and name.
 func TestEqual_ComparesCalendar(t *testing.T) {
 	assert.True(t, MustParse("_ROMAN 1000").Equal(MustParse("_ROMAN 1000")))

@@ -384,11 +384,13 @@ func sortTimelineEntries(entries []timelineEntry) {
 // dateSortKey returns a string that orders GLX dates chronologically by
 // their start (for a TO range, the end). It is built from the parsed date,
 // so qualifiers, calendar prefixes, tolerated spellings, and the BCE era
-// all sort where glx validate says they belong. A CE year is its 4-digit
-// form ("1850", "0800"); a BCE year is "-" followed by its complement so
-// earlier years sort first ("-9899" for 100 BCE, "-9955" for 44 BCE, both
-// before any CE key). Month and day follow when known. Dates with no
-// determinable year return "\xff" and sort last.
+// all sort where glx validate says they belong. A CE year is its 5-digit
+// form ("01850", "00800"), wide enough for the five-digit years glxdate
+// accepts in Hebrew and extension-calendar bodies, so "10000" never sorts
+// before "9999"; a BCE year is "-" followed by its complement so earlier
+// years sort first ("-99899" for 100 BCE, "-99955" for 44 BCE, both before
+// any CE key). Month and day follow when known. Dates with no determinable
+// year return "\xff" and sort last.
 func dateSortKey(dateStr string) string {
 	d, _ := glxlib.DateString(dateStr).Parse()
 	year := d.Year()
@@ -396,9 +398,9 @@ func dateSortKey(dateStr string) string {
 		return "\xff"
 	}
 
-	key := fmt.Sprintf("%04d", year)
+	key := fmt.Sprintf("%05d", year)
 	if year < 0 {
-		key = fmt.Sprintf("-%04d", dateSortKeyMaxYear+year)
+		key = fmt.Sprintf("-%05d", dateSortKeyMaxYear+year)
 	}
 	if month, ok := d.Month(); ok {
 		key += fmt.Sprintf("-%02d", month)
@@ -410,9 +412,9 @@ func dateSortKey(dateStr string) string {
 	return key
 }
 
-// dateSortKeyMaxYear is the largest canonical year; BCE keys count down
-// from it so that 100 BCE sorts before 44 BCE.
-const dateSortKeyMaxYear = 9999
+// dateSortKeyMaxYear is the largest year a five-digit key can hold; BCE keys
+// count down from it so that 100 BCE sorts before 44 BCE.
+const dateSortKeyMaxYear = 99999
 
 // formatEventTypeLabel converts an event type string to a display label.
 func formatEventTypeLabel(eventType string) string {

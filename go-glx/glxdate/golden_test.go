@@ -60,6 +60,8 @@ func goldenRow(input string) string {
 
 	rng := "-"
 	switch {
+	case d.IsOpenStart():
+		rng = "to"
 	case d.IsOpenEnded():
 		rng = "from"
 	case d.IsRange():

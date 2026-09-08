@@ -16,9 +16,11 @@
 //
 // It implements the "Date Format Standard" from the GLX specification
 // (specification/2-core-concepts.md): ISO-style simple dates (YYYY, YYYY-MM,
-// YYYY-MM-DD), the keyword qualifiers ABT/BEF/AFT/CAL/INT, the range forms
-// BET…AND, FROM…TO and open-ended FROM, and calendar prefixes (JULIAN, HEBREW,
-// FRENCH_R, or any preserved unknown calendar name).
+// YYYY-MM-DD), the keyword qualifiers ABT/BEF/AFT/CAL/EST/INT, the range
+// forms BET…AND, FROM…TO, open-ended FROM and open-start TO, the BCE era
+// suffix on Gregorian and Julian dates ("0044-03-15 BCE"), and calendar
+// prefixes (JULIAN, HEBREW, FRENCH_R, or an underscore-prefixed extension
+// calendar such as _ROMAN).
 //
 // Every consumer that needs to parse, validate, canonicalize, or extract a
 // component from a date string funnels through [Parse], so "parse vs extract
@@ -30,20 +32,23 @@
 //     case, abbreviated or in full ("15 March 1850", "1 JANUARY 1900",
 //     "March 15, 1850"), are recognized and canonicalize to ISO form.
 //     A month name is unambiguous, so this is recovery, not guessing.
-//   - Keywords are matched case-insensitively ("Abt 1850", "Bet 1880 and 1890").
+//   - Keywords are matched case-insensitively and unambiguous spellings are
+//     folded ("Abt 1850", "Bet 1880 and 1890", "circa 1850", "before 1900"),
+//     as are the era spellings BC, B.C. and B.C.E. ("510 BC" → "0510 BCE").
 //   - Numeric day/month forms ("15/01/1900", "01-15-1900") are never
 //     interpreted: the spec forbids guessing day-vs-month order. Such dates,
-//     dual years ("1731/32"), BCE dates and other free text are preserved
-//     verbatim and reported as invalid, while [Date.Year] still returns the
-//     best-effort year (a 4-digit token is preferred, so a day of month is
-//     never mistaken for the year).
-//   - Hebrew, French Republican and unknown-calendar bodies keep their raw
-//     month names; only the year (the last number) is extracted.
+//     dual years ("1731/32") and other free text are preserved verbatim and
+//     reported as invalid, while [Date.Year] still returns the best-effort
+//     year (the earliest 4-digit run or standalone 3-digit number, so a day
+//     of month is never mistaken for the year).
+//   - Hebrew, French Republican and extension-calendar bodies keep their raw
+//     month names; only the year (the last token) is extracted.
 //   - No calendar conversion is ever performed.
 //
-// [Date.Valid] reports whether the input is in canonical GLX form, which is
-// what validation warns about. [Date.String] renders the canonical form
-// whenever the components were determined, and the raw text otherwise.
+// [Date.Valid] reports whether the input is a well-formed GLX date, which is
+// what validation warns about; whitespace and 1–3 digit years are normalized
+// without being reported. [Date.String] renders the canonical form whenever
+// the components were determined, and the raw text otherwise.
 //
 // The GEDCOM encoding of the same model lives here as well, so the GLX
 // grammar is never re-implemented by a converter: [FromGEDCOM] turns a
