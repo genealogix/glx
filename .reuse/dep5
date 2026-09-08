@@ -90,6 +90,14 @@ Files: glx/testdata/valid/* glx/testdata/invalid/*
 Copyright: 2025 Oracynth, Inc.
 License: Apache-2.0
 
+Files: glx/testdata/merge-driver/*
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+Comment: Three-way merge fixtures for `glx merge-driver`. The bytes of each
+ base/ours/theirs file are the test input, so none can carry an inline SPDX
+ header without changing what is being merged (the malformed-yaml case in
+ particular must stay byte-exact).
+
 Files: glx/testdata/gedcom/*
 Copyright: various
 License: Apache-2.0
