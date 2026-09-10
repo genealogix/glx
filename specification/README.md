@@ -10,12 +10,12 @@ Version 0.0.0-beta.11
 
 ## Table of Contents
 
-1. [Introduction](1-introduction)
+1. [Introduction](1-introduction.md)
    - Purpose and Scope
    - Design Principles
    - Terminology
 
-2. [Core Concepts](2-core-concepts)
+2. [Core Concepts](2-core-concepts.md)
    - Archive-Owned Vocabularies
    - Entity Relationships
    - Data Types (Primitive, Temporal, Reference)
@@ -23,29 +23,29 @@ Version 0.0.0-beta.11
    - Evidence Chain
    - Collaboration with Git
 
-3. [Archive Organization](3-archive-organization)
+3. [Archive Organization](3-archive-organization.md)
    - Repository Layout
    - Naming Conventions
    - File Organization Patterns
 
 4. [Entity Types](4-entity-types/)
-   - [Person](4-entity-types/person) - Individual records
-   - [Relationship](4-entity-types/relationship) - Connections between people
-   - [Event](4-entity-types/event) - Occurrences in time and place
-   - [Place](4-entity-types/place) - Geographic locations with hierarchy
-   - [Assertion](4-entity-types/assertion) - Evidence-based conclusions
-   - [Source](4-entity-types/source) - Bibliographic resources
-   - [Citation](4-entity-types/citation) - References to specific evidence
-   - [Repository](4-entity-types/repository) - Institutions holding sources
-   - [Media](4-entity-types/media) - Photographs, documents, etc.
-   - [ResearchLog](4-entity-types/research-log) - Research investigations and search history
-   - [Study](4-entity-types/study) - Research-project scope (One Place / One Name / family reconstruction)
-   - [Vocabularies](4-entity-types/vocabularies) - Controlled type definitions (not an entity type)
+   - [Person](4-entity-types/person.md) - Individual records
+   - [Relationship](4-entity-types/relationship.md) - Connections between people
+   - [Event](4-entity-types/event.md) - Occurrences in time and place
+   - [Place](4-entity-types/place.md) - Geographic locations with hierarchy
+   - [Assertion](4-entity-types/assertion.md) - Evidence-based conclusions
+   - [Source](4-entity-types/source.md) - Bibliographic resources
+   - [Citation](4-entity-types/citation.md) - References to specific evidence
+   - [Repository](4-entity-types/repository.md) - Institutions holding sources
+   - [Media](4-entity-types/media.md) - Photographs, documents, etc.
+   - [ResearchLog](4-entity-types/research-log.md) - Research investigations and search history
+   - [Study](4-entity-types/study.md) - Research-project scope (One Place / One Name / family reconstruction)
+   - [Vocabularies](4-entity-types/vocabularies.md) - Controlled type definitions (not an entity type)
 
 5. [Standard Vocabularies](5-standard-vocabularies/)
    - Standard vocabulary templates for archive initialization
 
-6. [Glossary](6-glossary)
+6. [Glossary](6-glossary.md)
    - Key terms and definitions
 
 ## Specification Status
@@ -102,18 +102,18 @@ relationships:
 
 ## Getting Started
 
-1. Read [Introduction](1-introduction) for overview
-2. Review [Glossary](6-glossary) for key terms and definitions
-3. Read [Core Concepts](2-core-concepts) to understand the architecture
+1. Read [Introduction](1-introduction.md) for overview
+2. Review [Glossary](6-glossary.md) for key terms and definitions
+3. Read [Core Concepts](2-core-concepts.md) to understand the architecture
 4. Review [Entity Types](4-entity-types/) to understand data structure
-5. Check [Archive Organization](3-archive-organization) for organization patterns
+5. Check [Archive Organization](3-archive-organization.md) for organization patterns
 6. Review [Standard Vocabularies](5-standard-vocabularies/) for controlled type definitions
-7. See [examples/](/examples/) for working examples
-8. Use [glx CLI](/cli) for validation
+7. See [examples/](../docs/examples/README.md) for working examples
+8. Use [glx CLI](../docs/cli/index.md) for validation
 
 ## Contributing
 
-Major changes are discussed via GitHub issues and discussions. See [Contributing](/development/contributing)
+Major changes are discussed via GitHub issues and discussions. See [Contributing](../CONTRIBUTING.md)
 
 ## License
 

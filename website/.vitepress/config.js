@@ -1,9 +1,59 @@
 import { defineConfig } from 'vitepress'
 import { fileURLToPath } from 'url'
 import path from 'path'
+import { relativeLinksPlugin } from './relative-links.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const websiteNodeModules = path.resolve(__dirname, '../node_modules')
+
+// Rewrite paths to map source directories to desired URL structure
+// Paths are relative to srcDir (parent directory)
+// IMPORTANT: Specific rewrites must come BEFORE wildcards
+//
+// Hoisted so relative-links.js can apply the same table to relative
+// markdown links (see the `markdown` option below).
+const rewrites = {
+  // Website homepage
+  'website/index.md': 'index.md',
+
+  // Docs section - specific files first
+  'docs/quickstart.md': 'quickstart.md',
+  'docs/examples/README.md': 'examples/index.md',
+
+  // Root-level docs to development section
+  'CONTRIBUTING.md': 'development/contributing.md',
+  'CODE_OF_CONDUCT.md': 'development/code-of-conduct.md',
+  'SECURITY-POSTURE.md': 'development/security-posture.md',
+
+  // GLX CLI documentation — per-command pages auto-generated under docs/cli/
+  // by `make docs-cli`; the index page is hand-written. Specific rule for
+  // index.md maps it to /cli (matches the historical URL); wildcard handles
+  // per-command pages at /cli/glx_init etc.
+  'docs/cli/index.md': 'cli.md',
+  'docs/cli/:page*': 'cli/:page*',
+
+  'docs/examples/basic-family/README.md': 'examples/basic-family/index.md',
+  'docs/examples/complete-family/README.md': 'examples/complete-family/index.md',
+  'docs/examples/minimal/README.md': 'examples/minimal/index.md',
+  'docs/examples/single-file/README.md': 'examples/single-file/index.md',
+  'docs/examples/temporal-properties/README.md': 'examples/temporal-properties/index.md',
+  'docs/examples/participant-assertions/README.md': 'examples/participant-assertions/index.md',
+  'docs/examples/assertion-workflow/README.md': 'examples/assertion-workflow/index.md',
+  'docs/examples/westeros/README.md': 'examples/westeros/index.md',
+  'docs/guides/:page*': 'guides/:page*',
+  'docs/examples/:page*': 'examples/:page*',
+  'docs/decisions/README.md': 'decisions/index.md',
+  'docs/decisions/:page*': 'decisions/:page*',
+
+  // Specification section - specific files first, then wildcards
+  'specification/README.md': 'specification/index.md',
+  'specification/schema/README.md': 'specification/schema/index.md',
+  'specification/4-entity-types/README.md': 'specification/4-entity-types/index.md',
+  'specification/5-standard-vocabularies/README.md':
+    'specification/5-standard-vocabularies/index.md',
+  'specification/:page*': 'specification/:page*'
+}
+
 
 export default defineConfig({
   title: 'GENEALOGIX',
@@ -73,49 +123,15 @@ export default defineConfig({
     }
   },
 
-  // Rewrite paths to map source directories to desired URL structure
-  // Paths are now relative to srcDir (parent directory)
-  // IMPORTANT: Specific rewrites must come BEFORE wildcards
-  rewrites: {
-    // Website homepage
-    'website/index.md': 'index.md',
+  rewrites,
 
-    // Docs section - specific files first
-    'docs/quickstart.md': 'quickstart.md',
-    'docs/examples/README.md': 'examples/index.md',
-
-    // Root-level docs to development section
-    'CONTRIBUTING.md': 'development/contributing.md',
-    'CODE_OF_CONDUCT.md': 'development/code-of-conduct.md',
-    'SECURITY-POSTURE.md': 'development/security-posture.md',
-
-    // GLX CLI documentation — per-command pages auto-generated under docs/cli/
-    // by `make docs-cli`; the index page is hand-written. Specific rule for
-    // index.md maps it to /cli (matches the historical URL); wildcard handles
-    // per-command pages at /cli/glx_init etc.
-    'docs/cli/index.md': 'cli.md',
-    'docs/cli/:page*': 'cli/:page*',
-
-    'docs/examples/basic-family/README.md': 'examples/basic-family/index.md',
-    'docs/examples/complete-family/README.md': 'examples/complete-family/index.md',
-    'docs/examples/minimal/README.md': 'examples/minimal/index.md',
-    'docs/examples/single-file/README.md': 'examples/single-file/index.md',
-    'docs/examples/temporal-properties/README.md': 'examples/temporal-properties/index.md',
-    'docs/examples/participant-assertions/README.md': 'examples/participant-assertions/index.md',
-    'docs/examples/assertion-workflow/README.md': 'examples/assertion-workflow/index.md',
-    'docs/examples/westeros/README.md': 'examples/westeros/index.md',
-    'docs/guides/:page*': 'guides/:page*',
-    'docs/examples/:page*': 'examples/:page*',
-    'docs/decisions/README.md': 'decisions/index.md',
-    'docs/decisions/:page*': 'decisions/:page*',
-
-    // Specification section - specific files first, then wildcards
-    'specification/README.md': 'specification/index.md',
-    'specification/schema/README.md': 'specification/schema/index.md',
-    'specification/4-entity-types/README.md': 'specification/4-entity-types/index.md',
-    'specification/5-standard-vocabularies/README.md':
-      'specification/5-standard-vocabularies/index.md',
-    'specification/:page*': 'specification/:page*'
+  // Make relative markdown links (the form GitHub needs) resolve on the
+  // website too, by mapping them through `rewrites` before VitePress
+  // normalises and dead-link-checks them. See relative-links.js. (#1196)
+  markdown: {
+    config(md) {
+      md.use(relativeLinksPlugin, { srcDir: path.resolve(__dirname, '../..'), rewrites })
+    }
   },
 
   themeConfig: {

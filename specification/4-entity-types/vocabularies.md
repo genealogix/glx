@@ -6,7 +6,7 @@ layout: doc
 
 # Vocabularies
 
-[← Back to Entity Types](README)
+[← Back to Entity Types](README.md)
 
 ## Overview
 
@@ -58,7 +58,7 @@ When creating an archive with `glx init` or `glx import`, these files are automa
 
 **Default file**: `vocabularies/event-types.glx`
 
-**Used By**: [Event Entity](event#event-types)
+**Used By**: [Event Entity](event.md#event-types)
 
 **Purpose**: Defines all event and fact types used in the archive (birth, marriage, death, immigration, etc.)
 
@@ -87,7 +87,7 @@ event_types:
     category: "lifecycle"
 ```
 
-**Note:** Attributes like occupation, residence, religion, and nationality are represented as temporal properties on Person entities, not as events. See [Person Entity](person) for details.
+**Note:** Attributes like occupation, residence, religion, and nationality are represented as temporal properties on Person entities, not as events. See [Person Entity](person.md) for details.
 
 ### Fields
 
@@ -130,7 +130,7 @@ event_types:
 
 **Default file**: `vocabularies/relationship-types.glx`
 
-**Used By**: [Relationship Entity](relationship#relationship-types)
+**Used By**: [Relationship Entity](relationship.md#relationship-types)
 
 **Purpose**: Defines all relationship types between persons (marriage, parent-child, sibling, etc.)
 
@@ -199,7 +199,7 @@ relationship_types:
 
 **Default file**: `vocabularies/place-types.glx`
 
-**Used By**: [Place Entity](place#place-types)
+**Used By**: [Place Entity](place.md#place-types)
 
 **Purpose**: Defines geographic and administrative place classifications (country, state, city, parish, etc.)
 
@@ -276,7 +276,7 @@ place_types:
 
 **Default file**: `vocabularies/source-types.glx`
 
-**Used By**: [Source Entity](source#source-types)
+**Used By**: [Source Entity](source.md#source-types)
 
 **Purpose**: Defines categories of sources (vital records, census, church registers, newspapers, etc.)
 
@@ -341,7 +341,7 @@ source_types:
 
 **Default file**: `vocabularies/media-types.glx`
 
-**Used By**: [Media Entity](media#media-types)
+**Used By**: [Media Entity](media.md#media-types)
 
 **Purpose**: Defines categories of media objects (photographs, documents, audio, video, etc.)
 
@@ -418,7 +418,7 @@ media_types:
 
 **Default file**: `vocabularies/confidence-levels.glx`
 
-**Used By**: [Assertion Entity](assertion#confidence)
+**Used By**: [Assertion Entity](assertion.md#confidence)
 
 **Purpose**: Defines confidence levels for assertions
 
@@ -466,7 +466,7 @@ confidence_levels:
 - **Archive-defined**: Each archive can customize the meaning of confidence levels
 - **Rank is optional**: Archives that extend the vocabulary with custom levels can opt into `glx diff` upgrade detection by supplying a `rank`. Levels without a rank are still valid; they just don't contribute to the confidence-upgrade/downgrade counters.
 
-See [Assertion Entity - Confidence](assertion#confidence) for usage details.
+See [Assertion Entity - Confidence](assertion.md#confidence) for usage details.
 
 ---
 
@@ -474,7 +474,7 @@ See [Assertion Entity - Confidence](assertion#confidence) for usage details.
 
 **Default file**: `vocabularies/repository-types.glx`
 
-**Used By**: [Repository Entity](repository#repository-types)
+**Used By**: [Repository Entity](repository.md#repository-types)
 
 **Purpose**: Defines categories of repositories (archives, libraries, churches, online databases, etc.)
 
@@ -520,7 +520,7 @@ repository_types:
 
 ### Standard Repository Types
 
-See [Repository Entity](repository#repository-types) for the complete list of standard repository types.
+See [Repository Entity](repository.md#repository-types) for the complete list of standard repository types.
 
 ---
 
@@ -528,7 +528,7 @@ See [Repository Entity](repository#repository-types) for the complete list of st
 
 **Default file**: `vocabularies/participant-roles.glx`
 
-**Used By**: [Event Entity](event#participant-roles), [Relationship Entity](relationship#participant-roles)
+**Used By**: [Event Entity](event.md#participant-roles), [Relationship Entity](relationship.md#participant-roles)
 
 **Purpose**: Defines roles that people play in events and relationships (principal, witness, officiant, etc.)
 
@@ -619,7 +619,7 @@ Common relationship roles:
 
 **Default file**: `vocabularies/search-result-types.glx`
 
-**Used By**: [ResearchLog Entity](research-log#search-results)
+**Used By**: [ResearchLog Entity](research-log.md#search-results)
 
 **Purpose**: Defines the outcome of each search recorded in a research log (found, not found, inconclusive, partial, not searched). Negative evidence (`not_found`) is a first-class outcome, supporting the [Genealogical Proof Standard](https://bcgcertification.org/ethics-standards/) requirement for a "reasonably exhaustive search."
 
@@ -659,7 +659,7 @@ search_result_types:
 
 ### Standard Search Result Types
 
-See [ResearchLog Entity - Search results](research-log#search-results) for the standard search result types and guidance on when to use each.
+See [ResearchLog Entity - Search results](research-log.md#search-results) for the standard search result types and guidance on when to use each.
 
 ---
 
@@ -667,7 +667,7 @@ See [ResearchLog Entity - Search results](research-log#search-results) for the s
 
 **Default file**: `vocabularies/research-log-status-types.glx`
 
-**Used By**: [ResearchLog Entity](research-log#status-lifecycle)
+**Used By**: [ResearchLog Entity](research-log.md#status-lifecycle)
 
 **Purpose**: Defines the lifecycle status of a research investigation (open, in progress, complete, blocked).
 
@@ -703,7 +703,7 @@ research_log_status_types:
 
 ### Standard Research Log Status Types
 
-See [ResearchLog Entity - Status lifecycle](research-log#status-lifecycle) for the standard status values and the investigation lifecycle.
+See [ResearchLog Entity - Status lifecycle](research-log.md#status-lifecycle) for the standard status values and the investigation lifecycle.
 
 ---
 
@@ -711,7 +711,7 @@ See [ResearchLog Entity - Status lifecycle](research-log#status-lifecycle) for t
 
 **Default file**: `vocabularies/study-types.glx`
 
-**Used By**: [Study Entity](study#type)
+**Used By**: [Study Entity](study.md#type)
 
 **Purpose**: Classifies the kind of research project a Study represents (one place study, one name study, family reconstruction, brick-wall investigation, etc.)
 
@@ -748,7 +748,7 @@ study_types:
 
 ### Standard Study Types
 
-See [Study Entity](study#type) for the full list of standard types.
+See [Study Entity](study.md#type) for the full list of standard types.
 
 ---
 
@@ -756,7 +756,7 @@ See [Study Entity](study#type) for the full list of standard types.
 
 **Default file**: `vocabularies/study-statuses.glx`
 
-**Used By**: [Study Entity](study#status)
+**Used By**: [Study Entity](study.md#status)
 
 **Purpose**: Indicates the current state of a research project (active, paused, completed, abandoned).
 
@@ -792,7 +792,7 @@ study_statuses:
 
 ### Standard Study Statuses
 
-See [Study Entity](study#status) for the full list of standard statuses.
+See [Study Entity](study.md#status) for the full list of standard statuses.
 
 ---
 
@@ -800,7 +800,7 @@ See [Study Entity](study#status) for the full list of standard statuses.
 
 **Default file**: `vocabularies/sex-types.glx`
 
-**Used By**: [Person Entity](person) via the `sex` person property.
+**Used By**: [Person Entity](person.md) via the `sex` person property.
 
 **Purpose**: Defines the recorded-sex values used in source documents (GEDCOM `SEX`, census enumerations, vital records). For self-identified gender identity, see the Gender Types Vocabulary below.
 
@@ -822,7 +822,7 @@ See [Study Entity](study#status) for the full list of standard statuses.
 
 **Default file**: `vocabularies/gender-types.glx`
 
-**Used By**: [Person Entity](person) via the `gender` person property.
+**Used By**: [Person Entity](person.md) via the `gender` person property.
 
 **Purpose**: Defines self-identified gender identity values, primarily relevant for modern records and living persons. For sex as recorded in historical sources, see the Sex Types Vocabulary above. GEDCOM has no direct mapping for gender identity (it defers to `FACT`); archives may extend entries with a `gedcom:` field if they choose to export identity to a specific tag.
 
@@ -843,7 +843,7 @@ See [Study Entity](study#status) for the full list of standard statuses.
 
 **Default file**: `vocabularies/legal-statuses.glx`
 
-**Used By**: [Relationship Entity](relationship) via the `legal_status` relationship property, primarily for distinguishing forms of coerced labor on the `enslavement` relationship type.
+**Used By**: [Relationship Entity](relationship.md) via the `legal_status` relationship property, primarily for distinguishing forms of coerced labor on the `enslavement` relationship type.
 
 **Purpose**: Captures the legal form under which a relationship operated when the distinction is historically meaningful (e.g., chattel slavery vs. indentured servitude vs. debt bondage).
 
@@ -864,7 +864,7 @@ See [Study Entity](study#status) for the full list of standard statuses.
 
 **Default file**: `vocabularies/source-natures.glx`
 
-**Used By**: [Source Entity](source#source-classification-evidence-explained) via the `source_nature` source property.
+**Used By**: [Source Entity](source.md#source-classification-evidence-explained) via the `source_nature` source property.
 
 **Purpose**: Classifies a source by how it was produced relative to the event it documents, following the "source" axis of [Evidence Explained](https://www.evidenceexplained.com/) (Elizabeth Shown Mills, 4th ed., 2024). This axis is independent of the information-quality axis below — a source carries one nature but may convey both primary and secondary information.
 
@@ -884,7 +884,7 @@ See [Study Entity](study#status) for the full list of standard statuses.
 
 **Default file**: `vocabularies/information-types.glx`
 
-**Used By**: [Source Entity](source#source-classification-evidence-explained) via the `information_type` source property.
+**Used By**: [Source Entity](source.md#source-classification-evidence-explained) via the `information_type` source property.
 
 **Purpose**: Classifies the information a source conveys by the informant's relationship to the event, following the "information" axis of Evidence Explained. A single source can carry both primary and secondary information (a death certificate records the death firsthand but the deceased's birth date secondhand); at the source level this records the predominant or default quality, with fact-level variation expressed per item.
 
@@ -934,7 +934,7 @@ vocabularies/
 
 **Default file**: `vocabularies/person-properties.glx`
 
-**Used By**: [Person Entity](person#properties)
+**Used By**: [Person Entity](person.md#properties)
 
 **Purpose**: Defines properties that can be set on person entities (name, sex, gender, occupation, residence, etc.)
 
@@ -965,7 +965,7 @@ GENEALOGIX provides standard person properties:
 
 **Default file**: `vocabularies/event-properties.glx`
 
-**Used By**: [Event Entity](event#properties)
+**Used By**: [Event Entity](event.md#properties)
 
 **Purpose**: Defines properties that can be set on event entities
 
@@ -982,7 +982,7 @@ Event properties are generally less common than person properties, since most ev
 
 **Default file**: `vocabularies/relationship-properties.glx`
 
-**Used By**: [Relationship Entity](relationship#properties)
+**Used By**: [Relationship Entity](relationship.md#properties)
 
 **Purpose**: Defines properties that can be set on relationship entities
 
@@ -998,7 +998,7 @@ Standard properties include:
 
 **Default file**: `vocabularies/place-properties.glx`
 
-**Used By**: [Place Entity](place#properties)
+**Used By**: [Place Entity](place.md#properties)
 
 **Purpose**: Defines properties that can be set on place entities
 
@@ -1017,7 +1017,7 @@ Standard properties include:
 
 **Default file**: `vocabularies/media-properties.glx`
 
-**Used By**: [Media Entity](media#properties)
+**Used By**: [Media Entity](media.md#properties)
 
 **Purpose**: Defines properties that can be set on media entities
 
@@ -1038,7 +1038,7 @@ Standard properties include:
 
 **Default file**: `vocabularies/repository-properties.glx`
 
-**Used By**: [Repository Entity](repository#properties)
+**Used By**: [Repository Entity](repository.md#properties)
 
 **Purpose**: Defines properties that can be set on repository entities for contact information, access details, and holdings
 
@@ -1056,7 +1056,7 @@ Standard properties include:
 
 **Default file**: `vocabularies/source-properties.glx`
 
-**Used By**: [Source Entity](source#properties)
+**Used By**: [Source Entity](source.md#properties)
 
 **Purpose**: Defines properties that can be set on source entities for bibliographic metadata
 
@@ -1078,7 +1078,7 @@ Standard properties include:
 
 **Default file**: `vocabularies/citation-properties.glx`
 
-**Used By**: [Citation Entity](citation#properties)
+**Used By**: [Citation Entity](citation.md#properties)
 
 **Purpose**: Defines properties that can be set on citation entities for locator, transcription, record-level links, and external identifier details
 
@@ -1457,7 +1457,7 @@ properties:
       date: "FROM 1920 TO 1950"
 ```
 
-See [Core Concepts - Data Types - Temporal Properties](../2-core-concepts#temporal-properties) for complete documentation.
+See [Core Concepts - Data Types - Temporal Properties](../2-core-concepts.md#temporal-properties) for complete documentation.
 
 ### Adding Additional Properties
 
@@ -1753,14 +1753,14 @@ Vocabulary files are validated by the `glx validate` command using these schemas
 ## See Also
 
 - **[Standard Vocabularies](../5-standard-vocabularies/)** - Complete default vocabulary files with all standard types
-- [Core Concepts - Archive-Owned Vocabularies](../2-core-concepts#archive-owned-vocabularies)
-- [Archive Organization](../3-archive-organization) - Where vocabulary files are stored
-- [Event Entity](event) - Event types vocabulary
-- [Relationship Entity](relationship) - Relationship types vocabulary
-- [Place Entity](place) - Place types vocabulary
-- [Source Entity](source) - Source types vocabulary
-- [Media Entity](media) - Media types vocabulary
-- [Citation Entity](citation) - Citation documentation
-- [ResearchLog Entity](research-log) - Search result types and research log status types vocabularies
+- [Core Concepts - Archive-Owned Vocabularies](../2-core-concepts.md#archive-owned-vocabularies)
+- [Archive Organization](../3-archive-organization.md) - Where vocabulary files are stored
+- [Event Entity](event.md) - Event types vocabulary
+- [Relationship Entity](relationship.md) - Relationship types vocabulary
+- [Place Entity](place.md) - Place types vocabulary
+- [Source Entity](source.md) - Source types vocabulary
+- [Media Entity](media.md) - Media types vocabulary
+- [Citation Entity](citation.md) - Citation documentation
+- [ResearchLog Entity](research-log.md) - Search result types and research log status types vocabularies
 
 ---

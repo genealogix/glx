@@ -84,6 +84,7 @@ Always push with `-u` flag. Retry up to 4 times with exponential backoff (2s, 4s
 - **go-glx must never do I/O** — see `go-glx/CLAUDE.md` for details
 - **Cobra handlers with `_` params must be thin wrappers** — see `glx/CLAUDE.md` for the pattern
 - **File a GitHub Issue** when discovering pre-existing bugs outside current task scope
+- **Markdown links are relative repo paths ending in `.md`** (`../docs/quickstart.md`), never website routes like `/quickstart` or extensionless targets: both 404 on GitHub. The website maps relative links via `website/.vitepress/relative-links.js`; `make check-links` enforces it
 - **When given "Never do X" / "Always do Y" instructions**, update the appropriate CLAUDE.md
 
 ## Entity Types

@@ -594,7 +594,7 @@ Properties can be recorded quickly during initial data entry. Assertions documen
 
 ## Assertion-Aware Data Model
 
-> **See Also:** For complete assertion entity specification, see [Assertion Entity](4-entity-types/assertion)
+> **See Also:** For complete assertion entity specification, see [Assertion Entity](4-entity-types/assertion.md)
 
 ### The Problem with Traditional Models
 
@@ -920,4 +920,4 @@ Git provides automatic provenance tracking for all research work, showing when c
 
 ## Next Steps
 
-Now that you understand the core concepts and architecture, the next step is understanding how to organize your archive files. See [Archive Organization](3-archive-organization) for details on file formats, directory structures, and organization strategies.
+Now that you understand the core concepts and architecture, the next step is understanding how to organize your archive files. See [Archive Organization](3-archive-organization.md) for details on file formats, directory structures, and organization strategies.

@@ -138,7 +138,7 @@ Across all files in an archive, the validator checks:
 
 > **Note:** Temporal checks are warnings rather than errors because dates in genealogical records are often estimates (e.g., `ABT 1850`). A flagged inconsistency may indicate a data entry error or simply imprecise dating.
 
-See [Vocabularies - Vocabulary Validation](4-entity-types/vocabularies#vocabulary-validation) for complete validation policy.
+See [Vocabularies - Vocabulary Validation](4-entity-types/vocabularies.md#vocabulary-validation) for complete validation policy.
 
 ## Organization Strategies
 
@@ -321,7 +321,7 @@ family-archive/
 
 The standard location for local media files (images, documents, audio, video) within any GLX archive is **`media/files/`** at the archive root. Media entity metadata (`.glx` files) references these files via the `uri` field using paths relative to the archive root (e.g., `media/files/portrait.jpg`).
 
-This convention applies to all organization strategies — single-file, multi-file, and hybrid. The `glx import` command automatically populates `media/files/` when importing from GEDCOM. See [Media Entity - File Storage](4-entity-types/media#file-storage) for details.
+This convention applies to all organization strategies — single-file, multi-file, and hybrid. The `glx import` command automatically populates `media/files/` when importing from GEDCOM. See [Media Entity - File Storage](4-entity-types/media.md#file-storage) for details.
 
 ## ID Format Standards
 
@@ -405,7 +405,7 @@ relationship_types:
 
 When you run `glx init` or `glx import`, the CLI copies the standard vocabulary templates from [Standard Vocabularies](5-standard-vocabularies/) into a `vocabularies/` directory. You can then customize these files to add archive-specific types, or move them to a different location.
 
-See [Core Concepts](2-core-concepts#archive-owned-vocabularies) for details on defining custom vocabulary entries and [Standard Vocabularies](5-standard-vocabularies/) for the complete set of standard vocabulary files.
+See [Core Concepts](2-core-concepts.md#archive-owned-vocabularies) for details on defining custom vocabulary entries and [Standard Vocabularies](5-standard-vocabularies/) for the complete set of standard vocabulary files.
 
 ## Important Notes
 

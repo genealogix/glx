@@ -6,7 +6,7 @@ layout: doc
 
 # Relationship Entity
 
-[← Back to Entity Types](README)
+[← Back to Entity Types](README.md)
 
 ## Overview
 
@@ -79,13 +79,13 @@ relationships:
       description: "Co-owners of Smith & Brown Ironworks"
 ```
 
-**See [Vocabularies - Relationship Properties](vocabularies#relationship-properties-vocabulary) for the full vocabulary definition.**
+**See [Vocabularies - Relationship Properties](vocabularies.md#relationship-properties-vocabulary) for the full vocabulary definition.**
 
 ## Relationship Types
 
 Relationship types are defined in the archive's `vocabularies/relationship-types.glx` file. Each archive includes standard types and can define custom types as needed.
 
-**See [Vocabularies - Relationship Types](vocabularies#relationship-types-vocabulary) for:**
+**See [Vocabularies - Relationship Types](vocabularies.md#relationship-types-vocabulary) for:**
 
 - Complete list of standard relationship types
 - How to add custom relationship types
@@ -114,7 +114,7 @@ relationships:
 
 Marriage appears in both event types and relationship types by design:
 
-- **Event type `marriage`** ([Event Entity](event)): The wedding ceremony - records the date, place, officiant, witnesses, and other ceremony details
+- **Event type `marriage`** ([Event Entity](event.md)): The wedding ceremony - records the date, place, officiant, witnesses, and other ceremony details
 - **Relationship type `marriage`** (this entity): The ongoing marital state - connects two spouses, tracks duration, and can reference when/how it ended
 
 Link them using `start_event` to reference the ceremony. Use both when you have ceremony details; use just the relationship if you only know they were married without specifics about the wedding.
@@ -168,7 +168,7 @@ relationships:
 
 Similar to how marriage works in GLX:
 
-- **Event type `adoption`** ([Event Entity](event)): The legal adoption proceeding - records the date, place, court, and other details of when the adoption was finalized
+- **Event type `adoption`** ([Event Entity](event.md)): The legal adoption proceeding - records the date, place, court, and other details of when the adoption was finalized
 - **Relationship type `adoptive_parent_child`** (this entity): The ongoing parent-child relationship - connects adoptive parent(s) to the adopted child
 
 Link them using `start_event` to reference the adoption event. Use both when you have details about when the adoption occurred; use just the relationship if you only know the relationship exists without specifics.
@@ -207,7 +207,7 @@ relationships:
 
 Godparent appears in both participant roles and relationship types by design:
 
-- **Participant role `godparent`** ([Event Entity](event)): A person's role at a baptism or christening ceremony - records who served as spiritual sponsor
+- **Participant role `godparent`** ([Event Entity](event.md)): A person's role at a baptism or christening ceremony - records who served as spiritual sponsor
 - **Relationship type `godparent`** (this entity): The ongoing godparent-godchild bond that may continue throughout their lives
 
 Use the participant role when recording event details; use the relationship type to model the ongoing connection. Link them with `start_event` when you have both.
@@ -360,11 +360,11 @@ The `debt_bondage` legal status follows the same shape — `start_event` referen
 
 #### Archive-local event types
 
-The events bounding enslavement relationships — `sale`/`purchase`, `manumission`, `apprenticeship_binding`/`apprenticeship_released`, `indenture_signed`/`indenture_discharged` — are not part of the [standard event-types vocabulary](../5-standard-vocabularies/#event-types). Archives should add them to archive-local `event_types` following the [additional-event-types extension pattern](./vocabularies#adding-additional-event-types), at which point references like `type: sale` in the examples above validate cleanly. Whether to elevate any of these to the standard vocabulary is a separate question tracked outside this section.
+The events bounding enslavement relationships — `sale`/`purchase`, `manumission`, `apprenticeship_binding`/`apprenticeship_released`, `indenture_signed`/`indenture_discharged` — are not part of the [standard event-types vocabulary](../5-standard-vocabularies/#event-types). Archives should add them to archive-local `event_types` following the [additional-event-types extension pattern](./vocabularies.md#adding-additional-event-types), at which point references like `type: sale` in the examples above validate cleanly. Whether to elevate any of these to the standard vocabulary is a separate question tracked outside this section.
 
 #### Source provenance
 
-Source provenance for enslavement relationships (bills of sale, estate inventories, tax lists, manumission deeds) uses the standard [Citation](citation) → [Source](source) → [Repository](repository) chain. No relationship-level field encodes the source type — citations carry that, and the same enslavement relationship may be attested by multiple citations as additional records surface.
+Source provenance for enslavement relationships (bills of sale, estate inventories, tax lists, manumission deeds) uses the standard [Citation](citation.md) → [Source](source.md) → [Repository](repository.md) chain. No relationship-level field encodes the source type — citations carry that, and the same enslavement relationship may be attested by multiple citations as additional records surface.
 
 #### Further reading
 
@@ -372,7 +372,7 @@ The GLX project does not endorse a specific reconciliation methodology. The foll
 
 - [Enslaved.org](https://enslaved.org/) — Peoples of the Historical Slave Trade
 - [Beyond Kin](https://www.beyondkin.org/) — Documenting enslaved ancestors in family tree software
-- See also [Enslaved Persons Research](../../docs/use-cases#enslaved-persons-research) in the GLX use-case guide for additional ethical framing.
+- See also [Enslaved Persons Research](../../docs/use-cases.md#enslaved-persons-research) in the GLX use-case guide for additional ethical framing.
 
 ### Possibly Same Person
 
@@ -411,8 +411,8 @@ are two **records** that may, on further research, turn out to refer to a
 single individual. Once the identification is confirmed (or refuted),
 follow-up actions are research decisions outside the scope of GLX —
 typically merging the records or recording the disproof on the assertion's
-`status` field. See [Assertion Entity](assertion#confidence) for the
-evidence model and [Confidence Levels](vocabularies#confidence-levels-vocabulary)
+`status` field. See [Assertion Entity](assertion.md#confidence) for the
+evidence model and [Confidence Levels](vocabularies.md#confidence-levels-vocabulary)
 for the standard vocabulary. There is no direct GEDCOM mapping (see
 [GEDCOM Mapping](#gedcom-mapping)).
 
@@ -459,13 +459,13 @@ relationships:
     start_event: event-marriage-1875
 ```
 
-Per-participant properties use the same vocabulary as relationship properties (`relationship-properties.glx`) and are validated against it. This is the same pattern used for [event participant properties](event#census-event-with-per-participant-properties).
+Per-participant properties use the same vocabulary as relationship properties (`relationship-properties.glx`) and are validated against it. This is the same pattern used for [event participant properties](event.md#census-event-with-per-participant-properties).
 
 ## Participant Roles
 
 Participant roles (spouse, parent, child, etc.) are defined in the archive's `vocabularies/participant-roles.glx` file.
 
-**See [Vocabularies - Participant Roles](vocabularies#participant-roles-vocabulary) for:**
+**See [Vocabularies - Participant Roles](vocabularies.md#participant-roles-vocabulary) for:**
 
 - Complete list of standard participant roles
 - How to add custom roles
@@ -474,10 +474,10 @@ Participant roles (spouse, parent, child, etc.) are defined in the archive's `vo
 
 ## Validation Rules
 
-- Relationship type must be from the [relationship types vocabulary](vocabularies#relationship-types-vocabulary)
+- Relationship type must be from the [relationship types vocabulary](vocabularies.md#relationship-types-vocabulary)
 - `participants` array must contain at least 2 participants
 - All person references must point to existing Person entities
-- Participant roles should be from the [participant roles vocabulary](vocabularies#participant-roles-vocabulary) (unknown roles generate warnings)
+- Participant roles should be from the [participant roles vocabulary](vocabularies.md#participant-roles-vocabulary) (unknown roles generate warnings)
 - If `start_event` or `end_event` is specified, it must reference an existing Event entity
 - If both `start_event` and `end_event` are specified and both reference events with known dates, the start event's date should precede the end event's date. Reversed ordering generates a warning (not an error) because fuzzy dates and data-entry errors are common; relationships where either date is missing or unparseable are not checked
 
@@ -529,6 +529,6 @@ See [relationship.schema.json](../schema/v1/relationship.schema.json) for the co
 
 ## See Also
 
-- [Person Entity](person) - Entities connected by relationships
-- [Event Entity](event) - Events that start/end relationships
-- [Core Concepts](../2-core-concepts#archive-owned-vocabularies) - Overview of vocabulary system
+- [Person Entity](person.md) - Entities connected by relationships
+- [Event Entity](event.md) - Events that start/end relationships
+- [Core Concepts](../2-core-concepts.md#archive-owned-vocabularies) - Overview of vocabulary system

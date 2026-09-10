@@ -6,7 +6,7 @@ layout: doc
 
 # Citation Entity
 
-[← Back to Entity Types](README)
+[← Back to Entity Types](README.md)
 
 ## Overview
 
@@ -72,7 +72,7 @@ The following are standard properties from the default vocabulary; archives can 
 | `original_place_name` | string | Verbatim place name from the source before normalization to a place entity (e.g., "The Town Of Oakdale" vs the normalized place reference) |
 | `external_ids` | string (multi) | Identifiers from external systems for the specific cited record (e.g., FamilySearch ARK, Ancestry record ID) |
 
-**See [Vocabularies - Citation Properties](vocabularies#citation-properties-vocabulary) for the full vocabulary definition.**
+**See [Vocabularies - Citation Properties](vocabularies.md#citation-properties-vocabulary) for the full vocabulary definition.**
 
 ## Usage Patterns
 
@@ -185,13 +185,13 @@ Or more commonly, citations are referenced by ID from assertions.
 ## Validation Rules
 
 - Source ID must reference an existing Source entity
-- Properties should follow the [citation properties vocabulary](vocabularies#citation-properties-vocabulary)
+- Properties should follow the [citation properties vocabulary](vocabularies.md#citation-properties-vocabulary)
 - Text transcriptions should accurately represent source material
 - Repository, if specified, must exist
 
 ## Evidence Hierarchy
 
-Citations are part of the GENEALOGIX evidence chain. See [Core Concepts - Evidence Chain](../2-core-concepts#evidence-chain) for the complete evidence chain from Repository → Source → Citation → Assertion.
+Citations are part of the GENEALOGIX evidence chain. See [Core Concepts - Evidence Chain](../2-core-concepts.md#evidence-chain) for the complete evidence chain from Repository → Source → Citation → Assertion.
 
 ## Schema Reference
 
@@ -199,6 +199,6 @@ See [citation.schema.json](../schema/v1/citation.schema.json) for the complete J
 
 ## See Also
 
-- [Source Entity](source) - Bibliographic resource
-- [Assertion Entity](assertion) - Evidence conclusions
-- [Repository Entity](repository) - Where sources are held
+- [Source Entity](source.md) - Bibliographic resource
+- [Assertion Entity](assertion.md) - Evidence conclusions
+- [Repository Entity](repository.md) - Where sources are held
