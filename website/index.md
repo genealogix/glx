@@ -43,20 +43,6 @@ features:
 
 Traditional genealogy software traps your research in proprietary databases and limited file formats. GENEALOGIX gives you **true data ownership** with human-readable files you can edit in any text editor, store anywhere, and collaborate on using Git. Whether you're documenting traditional family trees, researching local history, or building biographical databases, GLX adapts to **your research needs** - not the other way around. It's a **permanent foundation** for your work that will outlast any single software tool.
 
-### Quick Comparison
-
-| Feature               | GEDCOM                       | GENEALOGIX                    |
-| --------------------- | ---------------------------- | ----------------------------- |
-| **Collaboration**     | File sharing only            | Git-native workflows          |
-| **Evidence Tracking** | Basic source records         | Complete evidence chains      |
-| **Version Control**   | Manual or difficult          | Built-in Git integration      |
-| **Human Readability** | Binary-like format           | Clear YAML structure          |
-| **Validation**        | Inconsistent implementations | Schema-based validation       |
-| **Extensibility**     | Limited                      | JSON Schema based             |
-| **Data Portability**  | Vendor lock-in               | Open format you own           |
-| **Interoperability**  | GEDCOM export only           | Import/export + Git workflows |
-| **Custom Types**      | Fixed schema                 | Archive-defined vocabularies  |
-
 ## What is a GLX Archive?
 
 A GENEALOGIX archive is a collection of plain YAML files — one per person, event, place, source, and so on — organized in a simple folder structure. Each archive also includes vocabulary files that define the types your research uses (event types, relationship types, etc.), so the archive is completely self-describing.
