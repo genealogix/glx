@@ -170,8 +170,11 @@ func isCalendarTag(tok string) bool {
 // tokens. A tag counts only in calendar position: first, or directly after
 // a qualifier, BET, FROM, AND, or TO ("_MONTH" inside a body is an extension
 // month, not a calendar). A leading tag covers the whole date; otherwise
-// every endpoint of a range must name the same calendar, since an endpoint
-// with no tag is Gregorian. It reports false when the calendars disagree.
+// every endpoint of a range must be in the same calendar, an endpoint with
+// no tag being Gregorian — so a GREGORIAN tag on one endpoint agrees with an
+// untagged one ("BET @#DGREGORIAN@ 1816 AND 1817"), while any other calendar
+// on only one endpoint does not ("BET JULIAN 1700 AND 1710"). It reports
+// false when the calendars disagree.
 func liftCalendar(tokens []string) (string, []string, bool) {
 	if len(tokens) == 0 {
 		return "", tokens, true
@@ -206,7 +209,11 @@ func liftCalendar(tokens []string) (string, []string, bool) {
 		prefix, tagged = cal, tagged+1
 	}
 
-	if tagged > 0 && !leading && tagged != endpoints {
+	// An untagged endpoint is Gregorian, so a partially tagged range only
+	// disagrees when the tag names some other calendar: "BET @#DGREGORIAN@
+	// 1816 AND 1817" is wholly Gregorian and lifts to no prefix, while "BET
+	// JULIAN 1700 AND 1710" leaves one endpoint in a different calendar.
+	if prefix != "" && tagged > 0 && !leading && tagged != endpoints {
 		return "", tokens, false // one endpoint named a calendar, the other is Gregorian
 	}
 

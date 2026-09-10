@@ -202,7 +202,13 @@ func (d *dateValue) parseBody(tokens []string) {
 	}
 
 	d.setRange(rangeNone, tokens, nil)
+	// A keyword form that did not parse is never a valid point date, even
+	// when the whole token list happens to satisfy the calendar's point
+	// grammar: a raw-month calendar takes its last token as the year, so
+	// "HEBREW BET 5765" would otherwise be reported valid as a point date
+	// while its reason says the BET range is incomplete.
 	if reason != "" {
+		d.valid = false
 		d.reason = reason
 	}
 }

@@ -57,9 +57,18 @@ func TestFromGEDCOM_CalendarPlacement(t *testing.T) {
 		"BET JULIAN 1700 AND JULIAN 1710":           "JULIAN BET 1700 AND 1710",
 		"FROM GREGORIAN JAN 1689 TO GREGORIAN 1700": "FROM 1689-01 TO 1700",
 		"ABT _ROMAN 1000":                           "_ROMAN ABT 1000",
+		// An endpoint with no tag is Gregorian, so an explicit GREGORIAN on
+		// only one endpoint agrees with it and the range still lifts.
+		"BET @#DGREGORIAN@ 1816 AND 1817":         "BET 1816 AND 1817",
+		"BET 1816 AND @#DGREGORIAN@ 1817":         "BET 1816 AND 1817",
+		"BET GREGORIAN 1700 AND 1710":             "BET 1700 AND 1710",
+		"BET 12 OCT 1950 AND GREGORIAN 22 JAN 92": "BET 1950-10-12 AND 0092-01-22",
+		"FROM GREGORIAN 1689 TO 1700":             "FROM 1689 TO 1700",
 		// Mixed calendars cannot be lifted and stay verbatim.
 		"FROM JULIAN 1000 TO HEBREW 5000":        "FROM JULIAN 1000 TO HEBREW 5000",
 		"BET GREGORIAN JUL 1950 AND JULIAN 1428": "BET GREGORIAN JUL 1950 AND JULIAN 1428",
+		"BET JULIAN 1700 AND 1710":               "BET JULIAN 1700 AND 1710",
+		"BET 1700 AND JULIAN 1710":               "BET 1700 AND JULIAN 1710",
 	} {
 		assert.Equal(t, want, FromGEDCOM(input), input)
 	}

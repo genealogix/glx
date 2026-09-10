@@ -83,6 +83,29 @@ func TestParse_RawCalendarNeedsTrailingYear(t *testing.T) {
 	assert.Equal(t, 5765, d.Year())
 }
 
+// TestParse_IncompleteKeywordFormIsInvalid: a keyword form that did not
+// parse stays invalid even when the whole token list satisfies the
+// calendar's point grammar. A raw-month calendar takes its last token as
+// the year, so "HEBREW BET 5765" would otherwise be reported as a valid
+// point date while its reason says the BET range is incomplete.
+func TestParse_IncompleteKeywordFormIsInvalid(t *testing.T) {
+	for _, input := range []string{
+		"HEBREW BET 5765", "HEBREW AND 5765", "_ROMAN AND 1000",
+		"HEBREW BET 15 TSH 5765", "FRENCH_R BET 12",
+	} {
+		d, err := Parse(input)
+		require.Error(t, err, input)
+		assert.False(t, d.Valid(), input)
+		assert.Equal(t, input, d.String(), input)
+	}
+
+	// The open-ended forms are real GLX dates, not incomplete ranges.
+	for _, input := range []string{"HEBREW TO 5765", "HEBREW FROM 5765"} {
+		_, err := Parse(input)
+		require.NoError(t, err, input)
+	}
+}
+
 // TestParse_RangeStartInheritsYearOnlyFromPartialMonth: "BET JUL AND SEP
 // 1857" starts in 1857, but arbitrary text never borrows the end's year.
 func TestParse_RangeStartInheritsYearOnlyFromPartialMonth(t *testing.T) {
@@ -129,6 +152,17 @@ func TestNew_InvalidComponentsRenderRaw(t *testing.T) {
 	ok := New(CalendarJulian, 1850, 2, 29)
 	assert.True(t, ok.Valid())
 	assert.Equal(t, "@#DJULIAN@ 29 FEB 1850", ok.GEDCOM551())
+
+	// A year wider than the canonical four digits must not spill into the
+	// day: the era is a suffix, not a slice of the rendered year.
+	wide := New(CalendarGregorian, 12345, 3, 15)
+	assert.False(t, wide.Valid())
+	assert.Equal(t, "12345-03-15", wide.String())
+	assert.Equal(t, "12345-03-15", wide.Raw())
+
+	wideBCE := New(CalendarGregorian, -12345, 3, 15)
+	assert.False(t, wideBCE.Valid())
+	assert.Equal(t, "12345-03-15 BCE", wideBCE.String())
 }
 
 // TestNew_OtherCalendarIsInvalid: New cannot name an unknown calendar.

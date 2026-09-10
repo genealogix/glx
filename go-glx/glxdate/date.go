@@ -171,22 +171,25 @@ func (p point) render(mode renderMode) string {
 		return p.raw
 	}
 
-	year := fmt.Sprintf("%04d", p.year)
+	// The era is a separate suffix rather than a slice of the rendered year:
+	// a year needing more than four digits (only reachable through New with
+	// an out-of-range year) must not leak its overflow digits into the day.
+	era := ""
 	if p.bce {
-		era := keywordBCE
+		era = " " + keywordBCE
 		if mode == renderGEDCOM551 {
-			era = gedcomEra551
+			era = " " + gedcomEra551
 		}
-		year += " " + era
 	}
+	year := fmt.Sprintf("%04d", p.year) + era
 
 	switch {
 	case p.precision == PrecisionDay && mode == renderGLX:
-		return fmt.Sprintf("%04d-%02d-%02d", p.year, p.month, p.day) + year[maxYearDigits:]
+		return fmt.Sprintf("%04d-%02d-%02d", p.year, p.month, p.day) + era
 	case p.precision == PrecisionDay:
 		return fmt.Sprintf("%d %s %s", p.day, monthAbbreviations[p.month], year)
 	case p.precision == PrecisionMonth && mode == renderGLX:
-		return fmt.Sprintf("%04d-%02d", p.year, p.month) + year[maxYearDigits:]
+		return fmt.Sprintf("%04d-%02d", p.year, p.month) + era
 	case p.precision == PrecisionMonth:
 		return monthAbbreviations[p.month] + " " + year
 	}
