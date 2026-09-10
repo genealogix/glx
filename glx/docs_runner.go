@@ -66,8 +66,12 @@ func runDocsGen(cmd *cobra.Command, outDir string) error {
 	frontmatter := func(_ string) string {
 		return generatedDocFrontmatter + "\n"
 	}
+	// Cross-references between generated pages are plain sibling links
+	// (glx_add.md, not /cli/glx_add): they render on GitHub as-is, and the
+	// website maps relative .md links through its rewrites table (see
+	// website/.vitepress/relative-links.js), so one form serves both. (#1196)
 	linkHandler := func(name string) string {
-		return "/cli/" + strings.TrimSuffix(name, ".md")
+		return name
 	}
 	if err := doc.GenMarkdownTreeCustom(cmd, outDir, frontmatter, linkHandler); err != nil {
 		return fmt.Errorf("generate cobra markdown tree: %w", err)

@@ -62,8 +62,8 @@ shown by 'glx cache status', but do not affect staleness. Only multi-file
 
 ### SEE ALSO
 
-* [glx](/cli/glx)	 - GENEALOGIX CLI - Manage and validate genealogy archives
-* [glx cache build](/cli/glx_cache_build)	 - Build (or rebuild) the binary cache for an archive
-* [glx cache clean](/cli/glx_cache_clean)	 - Remove the binary cache for an archive
-* [glx cache status](/cli/glx_cache_status)	 - Show binary cache status (exists, fresh/stale, size, contents)
+* [glx](glx.md)	 - GENEALOGIX CLI - Manage and validate genealogy archives
+* [glx cache build](glx_cache_build.md)	 - Build (or rebuild) the binary cache for an archive
+* [glx cache clean](glx_cache_clean.md)	 - Remove the binary cache for an archive
+* [glx cache status](glx_cache_status.md)	 - Show binary cache status (exists, fresh/stale, size, contents)
 

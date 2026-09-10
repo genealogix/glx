@@ -12,7 +12,7 @@ layout: doc
 
 An Event entity represents a single occurrence in time, place, and context that is relevant to the family archive. Events are discrete happenings like birth, marriage, death, baptism, etc.
 
-**Note:** Facts and attributes such as occupation, nationality, and religion are typically represented as temporal properties on Person entities rather than events. Residence is an exception: it can be modeled as either a person property (for simple place references) or a `residence` event (when participants, dates, or detailed evidence are needed). See [Person Entity](person) for details on temporal properties.
+**Note:** Facts and attributes such as occupation, nationality, and religion are typically represented as temporal properties on Person entities rather than events. Residence is an exception: it can be modeled as either a person property (for simple place references) or a `residence` event (when participants, dates, or detailed evidence are needed). See [Person Entity](person.md) for details on temporal properties.
 
 ## File Format
 
@@ -65,7 +65,7 @@ Domain-specific events can be added via vocabularies:
 | Field | Type | Description |
 |-------|------|-------------|
 | `title` | string | Short label for the event (e.g., "1860 Census — Webb Household"). Distinct from `properties.description`, which is a longer narrative |
-| `date` | string | Date or date range (see [Date Format](../2-core-concepts#date-format-standard)) |
+| `date` | string | Date or date range (see [Date Format](../2-core-concepts.md#date-format-standard)) |
 | `place` | string | Reference to Place entity |
 | `properties` | object | Vocabulary-defined properties |
 | `notes` | string \| string[] | Free-form notes |
@@ -103,7 +103,7 @@ Event properties are defined in the archive's `vocabularies/event-properties.glx
 
 **Note:** Event timing and location are handled by the `date` and `place` fields, not properties.
 
-**See [Vocabularies - Event Properties](vocabularies#event-properties-vocabulary) for:**
+**See [Vocabularies - Event Properties](vocabularies.md#event-properties-vocabulary) for:**
 
 - Complete list of standard event properties
 - How to add custom event properties
@@ -112,7 +112,7 @@ Event properties are defined in the archive's `vocabularies/event-properties.glx
 
 Event types are defined in the archive's `vocabularies/event-types.glx` file. Each archive includes standard types and can define custom types as needed.
 
-**See [Vocabularies - Event Types](vocabularies#event-types-vocabulary) for:**
+**See [Vocabularies - Event Types](vocabularies.md#event-types-vocabulary) for:**
 
 - Complete list of standard event types
 - How to add custom event types
@@ -236,7 +236,7 @@ For events with multiple participants, GLX uses the ASSO (Associate) tag pattern
 
 Participant roles (principal, witness, officiant, etc.) are defined in the archive's `vocabularies/participant-roles.glx` file.
 
-**See [Vocabularies - Participant Roles](vocabularies#participant-roles-vocabulary) for:**
+**See [Vocabularies - Participant Roles](vocabularies.md#participant-roles-vocabulary) for:**
 
 - Complete list of standard participant roles
 - How to add custom roles
@@ -249,16 +249,16 @@ Events require at least one participant. GLX is a genealogy format, and every ev
 
 ## Validation Rules
 
-- Event type must be from the [event types vocabulary](vocabularies#event-types-vocabulary)
+- Event type must be from the [event types vocabulary](vocabularies.md#event-types-vocabulary)
 - At least one participant is required
 - Place, if referenced, must exist in the archive
 - All person references must point to existing Person entities
 - Date formats must follow genealogical date conventions
-- Participant roles should be from the [participant roles vocabulary](vocabularies#participant-roles-vocabulary) (unknown roles generate warnings)
+- Participant roles should be from the [participant roles vocabulary](vocabularies.md#participant-roles-vocabulary) (unknown roles generate warnings)
 
 ## Confidence and Provenance
 
-All supporting evidence for an event is stored in [Assertion Entities](assertion) that reference the event in their `subject` field. This keeps the event record clean while allowing for a rich, explicit evidence trail.
+All supporting evidence for an event is stored in [Assertion Entities](assertion.md) that reference the event in their `subject` field. This keeps the event record clean while allowing for a rich, explicit evidence trail.
 
 ## Schema Reference
 
@@ -266,7 +266,7 @@ See [event.schema.json](../schema/v1/event.schema.json) for the complete JSON Sc
 
 ## See Also
 
-- [Person Entity](person) - Participates in events
-- [Assertion Entity](assertion) - Provides evidence for events
-- [Place Entity](place) - Geographic context for events
-- [Relationship Entity](relationship) - Multi-person events
+- [Person Entity](person.md) - Participates in events
+- [Assertion Entity](assertion.md) - Provides evidence for events
+- [Place Entity](place.md) - Geographic context for events
+- [Relationship Entity](relationship.md) - Multi-person events
