@@ -13,15 +13,21 @@ on:
 permissions:
   contents: read
 
-# Serialize release runs. The sanctioned re-run flow (.github/CLAUDE.md,
-# "never move a published tag") cuts a NEW patch tag rather than moving a
-# published one, so a per-ref group would never serialize anything — key on the
-# workflow so a hotfix tag pushed behind a still-running release queues instead
-# of racing its asset uploads, cosign signing, and Discord announce.
-# cancel-in-progress MUST stay false — cancelling between asset upload and
-# signing would leave an unsigned/partially-signed release. (#1008)
+# Key on the tag ref, not the workflow. GitHub keeps only ONE pending run per
+# concurrency group: queueing a third run cancels the one already waiting, and
+# cancel-in-progress: false protects only the run that is already executing. A
+# workflow-wide group would therefore silently drop a release — push three tags
+# together (a batched `git push --tags`) and the middle tag's run is cancelled
+# before it starts, producing no archives, no checksums, no cosign signature, no
+# attestation and no announce, reported as "cancelled" rather than failed. Since
+# the sanctioned re-run flow (.github/CLAUDE.md, "never move a published tag")
+# cuts a NEW patch tag, distinct releases land in distinct groups and run in
+# parallel, which is what we want; the group still collapses a genuine duplicate
+# run of the same tag. cancel-in-progress MUST stay false — cancelling between
+# asset upload and signing would leave an unsigned/partially-signed release.
+# (#1008)
 concurrency:
-  group: release
+  group: release-${{ github.ref }}
   cancel-in-progress: false
 
 env:
