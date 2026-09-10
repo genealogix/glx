@@ -1,1 +1,85 @@
-../../../../specification/5-standard-vocabularies/place-types.glx
+# Standard Place Types
+# This file defines the standard place types for GENEALOGIX archives.
+# Archives can extend this with custom types by adding additional entries.
+
+place_types:
+  country:
+    label: "Country"
+    description: "Nation state or country"
+    category: "administrative"
+  
+  state:
+    label: "State/Province"
+    description: "State, province, or region"
+    category: "administrative"
+
+  county:
+    label: "County"
+    description: "County or similar administrative division"
+    category: "administrative"
+
+  city:
+    label: "City"
+    description: "Incorporated city or large municipality"
+    category: "administrative"
+
+  town:
+    label: "Town"
+    description: "Town, village, or small municipality"
+    category: "administrative"
+
+  township:
+    label: "Township"
+    description: "Township or civil subdivision of a county (common in U.S. land survey and census records)"
+    category: "administrative"
+
+  parish:
+    label: "Parish"
+    description: "Church parish or ecclesiastical division"
+    category: "religious"
+
+  church:
+    label: "Church"
+    description: "Church building or religious structure"
+    category: "religious"
+  
+  district:
+    label: "District"
+    description: "Administrative district"
+    category: "administrative"
+  
+  region:
+    label: "Region"
+    description: "Geographic region"
+    category: "geographic"
+  
+  locality:
+    label: "Locality"
+    description: "General locality or inhabited area"
+    category: "geographic"
+
+  neighborhood:
+    label: "Neighborhood"
+    description: "Residential area or subdivision within a city or town"
+    category: "geographic"
+  
+  street:
+    label: "Street"
+    description: "Street or road"
+    category: "geographic"
+  
+  building:
+    label: "Building"
+    description: "Specific building or structure"
+    category: "geographic"
+
+  hospital:
+    label: "Hospital"
+    description: "Hospital or medical facility"
+    category: "institution"
+
+  cemetery:
+    label: "Cemetery"
+    description: "Cemetery or burial ground"
+    category: "institution"
+

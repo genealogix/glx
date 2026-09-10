@@ -216,10 +216,12 @@ jobs:
       - name: Install and verify glx
         run: |
           # Verify the published checksum before running the binary — never pipe
-          # an unverified download straight into a shell. For full reproducibility,
-          # replace "latest/download" with a pinned "download/vX.Y.Z".
+          # an unverified download straight into a shell. Pin the version rather
+          # than using "latest/download": while GLX is in prerelease, every
+          # published release is a beta, and betas are flagged as GitHub
+          # prereleases, which /releases/latest excludes.
           mkdir -p .bin
-          base="https://github.com/genealogix/glx/releases/latest/download"
+          base="https://github.com/genealogix/glx/releases/download/v0.0.0-beta.11"
           curl -fsSL -o glx_Linux_x86_64.tar.gz "$base/glx_Linux_x86_64.tar.gz"
           curl -fsSL -o checksums.txt "$base/checksums.txt"
           grep ' glx_Linux_x86_64.tar.gz$' checksums.txt | sha256sum -c -
