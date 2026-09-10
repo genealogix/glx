@@ -276,7 +276,7 @@ func TestValidatePropertyValue_TemporalSimpleValueTypeMismatch(t *testing.T) {
 	propDef := &PropertyDefinition{
 		Label:     "Birth Year",
 		ValueType: "integer",
-		Temporal:  new(true),
+		Temporal:  boolPtr(true), //nolint:modernize // keep helper style consistent in tests
 	}
 
 	result := &ValidationResult{}
@@ -314,7 +314,7 @@ func TestValidatePropertyValue_TemporalSingleObjectValueTypeMismatch(t *testing.
 	propDef := &PropertyDefinition{
 		Label:     "Birth Year",
 		ValueType: "integer",
-		Temporal:  new(true),
+		Temporal:  boolPtr(true), //nolint:modernize // keep helper style consistent in tests
 	}
 
 	result := &ValidationResult{}
@@ -355,7 +355,7 @@ func TestValidatePropertyValue_TemporalListItemValueTypeMismatch(t *testing.T) {
 	propDef := &PropertyDefinition{
 		Label:     "Birth Year",
 		ValueType: "integer",
-		Temporal:  new(true),
+		Temporal:  boolPtr(true), //nolint:modernize // keep helper style consistent in tests
 	}
 
 	result := &ValidationResult{}
@@ -713,6 +713,7 @@ func TestValidateTemporalConsistency_WiredIntoValidate(t *testing.T) {
 	for _, w := range result.Warnings {
 		if strings.Contains(w.Message, "death year") {
 			hasTemporalWarning = true
+
 			break
 		}
 	}

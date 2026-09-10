@@ -79,7 +79,7 @@ func BenchmarkValidateGLXFileStructure_MultiFile(b *testing.B) {
 			for b.Loop() {
 				peak := measureValidationMemory(func() {
 					doc := generateTestGLXDoc()
-					for i := 0; i < count; i++ {
+					for range count {
 						issues := ValidateGLXFileStructure(doc)
 						if len(issues) > 0 {
 							b.Fatalf("validation failed: %v", issues)

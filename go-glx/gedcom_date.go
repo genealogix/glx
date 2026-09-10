@@ -109,6 +109,7 @@ func parseGEDCOMDate(gedcomDate string) DateString {
 		if calendar != "" {
 			return DateString(calendar + " " + string(parsed))
 		}
+
 		return parsed
 	}
 

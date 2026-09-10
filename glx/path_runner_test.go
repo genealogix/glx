@@ -20,9 +20,10 @@ import (
 	"strings"
 	"testing"
 
-	glxlib "github.com/genealogix/glx/go-glx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 // newTestArchiveForPath creates a test archive with a family network:
@@ -224,7 +225,7 @@ func TestBuildPathResult_Found(t *testing.T) {
 	assert.Equal(t, "person-child", result.To)
 	assert.Equal(t, 2, result.Hops)
 	assert.Len(t, result.Path, 3)
-	assert.Equal(t, "", result.Message)
+	assert.Empty(t, result.Message)
 	assert.Equal(t, "Grandparent Smith", result.Path[0].PersonName)
 	assert.Equal(t, "Child Smith", result.Path[2].PersonName)
 }

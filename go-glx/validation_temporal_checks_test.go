@@ -55,4 +55,3 @@ func TestExtractFirstYear(t *testing.T) {
 		}
 	}
 }
-

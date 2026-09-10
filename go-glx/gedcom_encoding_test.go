@@ -124,6 +124,7 @@ func TestImport_CP1252PlaceNames(t *testing.T) {
 	for _, place := range glxFile.Places {
 		if place.Name == "Straßburg" {
 			foundPlace = true
+
 			break
 		}
 	}
@@ -161,6 +162,7 @@ func TestImport_CP1252PersonTitle(t *testing.T) {
 			default:
 				t.Fatalf("unexpected title type: %T", title)
 			}
+
 			return
 		}
 	}
@@ -187,6 +189,7 @@ func TestImport_CP1252EventTitle(t *testing.T) {
 		if event.Type == EventTypeBirth {
 			assert.Contains(t, string(event.Title), "Günter", "event title should contain decoded name")
 			assert.Contains(t, string(event.Title), "Müller", "event title should contain decoded surname")
+
 			return
 		}
 	}

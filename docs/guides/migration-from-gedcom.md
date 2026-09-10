@@ -140,7 +140,7 @@ Unknown event types fall back to Title Case of the snake_case type (e.g., `milit
 
 The importer handles three types of media references:
 
-- **Relative file paths**: Copied to `media/files/` in your archive, with paths rewritten automatically. Duplicate filenames are deduplicated (e.g., `photo.jpg` → `photo-2.jpg`).
+- **Relative file paths**: Copied to `media/files/` in your archive, with paths rewritten automatically. Duplicate filenames are deduplicated (e.g., `photo.jpg` → `photo-2.jpg`), and the source file's basename is preserved in `media.properties.original_filename`. A GEDCOM 7.0 `FILE` payload is a URI reference, so a percent-encoded basename is decoded before it is recorded (`CharlotteBront%C3%AB.jpg` → `CharlotteBrontë.jpg`) — a malformed encoding, or one that decodes to something that is not a bare filename, keeps the raw basename. GEDCOM 5.5.1 payloads are plain paths and are recorded verbatim, so a literal `%` survives untouched. A ref already pointing into `media/files/` (a re-imported GLX export) is not stamped — its basename is the canonicalized name, not an original — unless a collision during the new import renames it, in which case the pre-rename name is recorded.
 - **URLs and absolute paths**: Preserved as-is in the media entity's URI field.
 - **BLOB data** (GEDCOM 5.5.1): Binary data is decoded and written to files in `media/files/`.
 
@@ -286,7 +286,7 @@ Repositories are automatically deduplicated by name, city, and country. If two G
 
 | GEDCOM Tag | GLX Field | Notes |
 |------------|-----------|-------|
-| `FILE` | `media.uri` | Relative paths rewritten to `media/files/` |
+| `FILE` | `media.uri` | Relative paths rewritten to `media/files/`; source basename kept in `media.properties.original_filename` (percent-decoded for 7.0; import-only, not emitted on export) |
 | `FILE.FORM` | (MIME inference) | GEDCOM 5.5.1 format |
 | `FILE.MIME` | `media.mime_type` | GEDCOM 7.0 explicit MIME |
 | `FILE.TITL` | `media.title` | |

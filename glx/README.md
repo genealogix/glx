@@ -1,7 +1,5 @@
 # GLX - GENEALOGIX CLI Tool
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/genealogix/glx)](https://goreportcard.com/report/github.com/genealogix/glx)
-
 The official command-line tool for working with GENEALOGIX (GLX) family archives. Validates GLX files, initializes new archives, and checks schema conformance.
 
 ## Features

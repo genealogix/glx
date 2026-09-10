@@ -104,8 +104,8 @@ func TestRoundtrip_MinimalFamily(t *testing.T) {
 	require.NoError(t, err, "re-import failed")
 
 	// Step 4: Compare entity counts
-	assert.Equal(t, len(glx1.Persons), len(glx2.Persons), "person count mismatch after roundtrip")
-	assert.Equal(t, len(glx1.Relationships), len(glx2.Relationships), "relationship count mismatch after roundtrip")
+	assert.Len(t, glx2.Persons, len(glx1.Persons), "person count mismatch after roundtrip")
+	assert.Len(t, glx2.Relationships, len(glx1.Relationships), "relationship count mismatch after roundtrip")
 
 	// Step 5: Verify key data preserved
 	// Find John Smith in the re-imported data
@@ -296,7 +296,7 @@ func TestRoundtrip_GEDCOM70(t *testing.T) {
 	glx2, _, err := ImportGEDCOM(strings.NewReader(exportedStr), nil)
 	require.NoError(t, err)
 
-	assert.Equal(t, len(glx1.Persons), len(glx2.Persons))
+	assert.Len(t, glx2.Persons, len(glx1.Persons))
 
 	// Verify the person survived
 	var foundAlice bool
@@ -366,8 +366,8 @@ func TestRoundtrip_SourcesAndRepositories(t *testing.T) {
 	glx2, _, err := ImportGEDCOM(strings.NewReader(exportedStr), nil)
 	require.NoError(t, err)
 
-	assert.Equal(t, len(glx1.Sources), len(glx2.Sources), "source count mismatch")
-	assert.Equal(t, len(glx1.Repositories), len(glx2.Repositories), "repository count mismatch")
+	assert.Len(t, glx2.Sources, len(glx1.Sources), "source count mismatch")
+	assert.Len(t, glx2.Repositories, len(glx1.Repositories), "repository count mismatch")
 }
 
 // TestRoundtrip_StandardSourceTypesPreserved verifies that every standard
@@ -474,7 +474,7 @@ func TestRoundtrip_MultipleRelationshipTypes(t *testing.T) {
 	glx2, _, err := ImportGEDCOM(strings.NewReader(exportedStr), nil)
 	require.NoError(t, err)
 
-	assert.Equal(t, len(glx1.Persons), len(glx2.Persons), "person count mismatch")
+	assert.Len(t, glx2.Persons, len(glx1.Persons), "person count mismatch")
 
 	// Verify divorce event preserved
 	var foundDivorce bool

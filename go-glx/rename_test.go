@@ -27,13 +27,12 @@ func TestRenameEntity_PersonMapKey(t *testing.T) {
 			"person-old": {Properties: map[string]any{"name": "Test"}},
 		},
 	}
-	
 
 	result, err := RenameEntity(glx, "person-old", "person-new")
 	require.NoError(t, err)
 	assert.Contains(t, glx.Persons, "person-new")
 	assert.NotContains(t, glx.Persons, "person-old")
-	assert.Greater(t, result.RefsUpdated, 0)
+	assert.Positive(t, result.RefsUpdated)
 }
 
 func TestRenameEntity_PersonRefsInEvents(t *testing.T) {
@@ -50,7 +49,6 @@ func TestRenameEntity_PersonRefsInEvents(t *testing.T) {
 			},
 		},
 	}
-	
 
 	_, err := RenameEntity(glx, "person-old", "person-new")
 	require.NoError(t, err)
@@ -60,7 +58,7 @@ func TestRenameEntity_PersonRefsInEvents(t *testing.T) {
 func TestRenameEntity_PersonRefsInRelationships(t *testing.T) {
 	glx := &GLXFile{
 		Persons: map[string]*Person{
-			"person-old": {},
+			"person-old":   {},
 			"person-other": {},
 		},
 		Relationships: map[string]*Relationship{
@@ -73,7 +71,6 @@ func TestRenameEntity_PersonRefsInRelationships(t *testing.T) {
 			},
 		},
 	}
-	
 
 	_, err := RenameEntity(glx, "person-old", "person-new")
 	require.NoError(t, err)
@@ -97,7 +94,6 @@ func TestRenameEntity_PersonRefsInAssertions(t *testing.T) {
 			},
 		},
 	}
-	
 
 	_, err := RenameEntity(glx, "person-old", "person-new")
 	require.NoError(t, err)
@@ -118,7 +114,6 @@ func TestRenameEntity_PlaceRefs(t *testing.T) {
 			"a-1": {Subject: EntityRef{Place: "place-old"}},
 		},
 	}
-	
 
 	_, err := RenameEntity(glx, "place-old", "place-new")
 	require.NoError(t, err)
@@ -143,7 +138,6 @@ func TestRenameEntity_SourceRefs(t *testing.T) {
 			"media-1": {Source: "source-old"},
 		},
 	}
-	
 
 	_, err := RenameEntity(glx, "source-old", "source-new")
 	require.NoError(t, err)
@@ -165,7 +159,6 @@ func TestRenameEntity_EventRefs(t *testing.T) {
 			"a-1": {Subject: EntityRef{Event: "event-old"}},
 		},
 	}
-	
 
 	_, err := RenameEntity(glx, "event-old", "event-new")
 	require.NoError(t, err)
@@ -177,7 +170,6 @@ func TestRenameEntity_EventRefs(t *testing.T) {
 
 func TestRenameEntity_NotFound(t *testing.T) {
 	glx := &GLXFile{}
-	
 
 	_, err := RenameEntity(glx, "nonexistent", "new-id")
 	assert.Error(t, err)
@@ -191,7 +183,6 @@ func TestRenameEntity_TargetExists(t *testing.T) {
 			"person-new": {},
 		},
 	}
-	
 
 	_, err := RenameEntity(glx, "person-old", "person-new")
 	assert.Error(t, err)
@@ -213,7 +204,6 @@ func TestRenameEntity_CitationAndRepoRefs(t *testing.T) {
 			"src-1": {RepositoryID: "repo-old"},
 		},
 	}
-	
 
 	// Rename citation
 	_, err := RenameEntity(glx, "cit-old", "cit-new")
@@ -243,7 +233,6 @@ func TestRenameEntity_MediaRefs(t *testing.T) {
 			"a-1": {Media: []string{"media-old"}},
 		},
 	}
-	
 
 	_, err := RenameEntity(glx, "media-old", "media-new")
 	require.NoError(t, err)

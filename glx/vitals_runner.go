@@ -76,6 +76,7 @@ func findPerson(archive *glxlib.GLXFile, query string) (string, *glxlib.Person, 
 		if person == nil {
 			return "", nil, fmt.Errorf("person %q exists in archive but has no data", query)
 		}
+
 		return query, person, nil
 	}
 

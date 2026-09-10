@@ -1,18 +1,12 @@
----
-title: GENEALOGIX Specification
-description: Modern, evidence-first, Git-native genealogy data standard
-layout: doc
----
-
 # GENEALOGIX Specification
 
 [![Version](https://img.shields.io/github/v/release/genealogix/glx?include_prereleases&label=version)](https://github.com/genealogix/glx/releases)
 [![Go Reference](https://pkg.go.dev/badge/github.com/genealogix/glx.svg)](https://pkg.go.dev/github.com/genealogix/glx)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/genealogix/glx)](https://github.com/genealogix/glx/blob/main/go.mod)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](https://github.com/genealogix/glx/blob/main/LICENSE)
-[![CI](https://github.com/genealogix/glx/workflows/Validate%20Specification/badge.svg)](https://github.com/genealogix/glx/actions)
+[![CI](https://github.com/genealogix/glx/actions/workflows/validate-spec.yml/badge.svg?branch=main)](https://github.com/genealogix/glx/actions/workflows/validate-spec.yml)
 [![codecov](https://codecov.io/gh/genealogix/glx/branch/main/graph/badge.svg)](https://codecov.io/gh/genealogix/glx)
-[![Go Report Card](https://goreportcard.com/badge/github.com/genealogix/glx)](https://goreportcard.com/report/github.com/genealogix/glx)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/genealogix/glx/badge)](https://scorecard.dev/viewer/?uri=github.com/genealogix/glx)
 [![Contributors](https://img.shields.io/github/contributors/genealogix/glx.svg)](https://github.com/genealogix/glx/graphs/contributors)
 
 The official specification for **GENEALOGIX (GLX)** — a portable, extensible archive format for genealogical research and beyond. Built on Git, designed for collaboration, and customizable through archive-owned vocabularies. Your data, your way, forever.
@@ -156,6 +150,7 @@ sources:
 - [🛠 CLI Reference](https://genealogix.io/cli) — every command and flag
 - [📐 Best Practices](/guides/best-practices) — recommended workflows
 - [🔁 Migration from GEDCOM](/guides/migration-from-gedcom) — manual conversion guidance
+- [🔀 GLX-aware Git merge driver](/docs/merge-driver) — genealogy-aware conflict resolution for .glx files
 - [📖 Specification](/specification/) — full spec
 - [📋 JSON Schemas](/specification/schema/) — machine-readable schemas
 - [📚 Glossary](/specification/6-glossary) — key terms and concepts

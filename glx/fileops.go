@@ -16,6 +16,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -95,7 +96,7 @@ func isDirectoryEmpty(path string) error {
 	// io.EOF as "empty directory".
 	const displayLimit = 5
 	names, err := f.Readdirnames(displayLimit + 1)
-	if err != nil && err != io.EOF {
+	if err != nil && !errors.Is(err, io.EOF) {
 		return fmt.Errorf("error reading directory: %w", err)
 	}
 
@@ -114,6 +115,7 @@ func isDirectoryEmpty(path string) error {
 	if truncated {
 		listing += ", ..."
 	}
+
 	return fmt.Errorf("%w (found: %s)", ErrNonEmptyDirectory, listing)
 }
 

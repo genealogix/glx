@@ -169,6 +169,7 @@ func PersonDisplayName(person *Person) string {
 			}
 		}
 	}
+
 	return ""
 }
 
@@ -183,6 +184,7 @@ func eventTypeLabel(eventType string) string {
 			words[i] = strings.ToUpper(w[:1]) + w[1:]
 		}
 	}
+
 	return strings.Join(words, " ")
 }
 
@@ -193,5 +195,6 @@ func filterNonEmpty(ss []string) []string {
 			result = append(result, s)
 		}
 	}
+
 	return result
 }

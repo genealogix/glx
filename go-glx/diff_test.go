@@ -24,7 +24,7 @@ import (
 func TestDiffArchives_EmptyArchives(t *testing.T) {
 	old := &GLXFile{}
 	newArchive := &GLXFile{}
-	result := DiffArchives(old, newArchive,"")
+	result := DiffArchives(old, newArchive, "")
 	assert.Empty(t, result.Changes)
 	assert.Equal(t, 0, result.Stats.Added)
 	assert.Equal(t, 0, result.Stats.Modified)
@@ -46,7 +46,7 @@ func TestDiffArchives_AddedPerson(t *testing.T) {
 		},
 	}
 
-	result := DiffArchives(old, newArchive,"")
+	result := DiffArchives(old, newArchive, "")
 
 	require.Len(t, result.Changes, 1)
 	assert.Equal(t, ChangeAdded, result.Changes[0].Kind)
@@ -68,7 +68,7 @@ func TestDiffArchives_RemovedPerson(t *testing.T) {
 		Persons: map[string]*Person{},
 	}
 
-	result := DiffArchives(old, newArchive,"")
+	result := DiffArchives(old, newArchive, "")
 
 	require.Len(t, result.Changes, 1)
 	assert.Equal(t, ChangeRemoved, result.Changes[0].Kind)
@@ -99,7 +99,7 @@ func TestDiffArchives_ModifiedPerson(t *testing.T) {
 		},
 	}
 
-	result := DiffArchives(old, newArchive,"")
+	result := DiffArchives(old, newArchive, "")
 
 	require.Len(t, result.Changes, 1)
 	c := result.Changes[0]
@@ -131,7 +131,7 @@ func TestDiffArchives_UnchangedEntity(t *testing.T) {
 		},
 	}
 
-	result := DiffArchives(old, newArchive,"")
+	result := DiffArchives(old, newArchive, "")
 	assert.Empty(t, result.Changes)
 }
 
@@ -152,7 +152,7 @@ func TestDiffArchives_MultipleEntityTypes(t *testing.T) {
 		},
 	}
 
-	result := DiffArchives(old, newArchive,"")
+	result := DiffArchives(old, newArchive, "")
 
 	assert.Equal(t, 3, result.Stats.Added)
 	assert.Equal(t, 1, result.Stats.NewSources)
@@ -181,7 +181,7 @@ func TestDiffArchives_ConfidenceUpgrade(t *testing.T) {
 		},
 	}
 
-	result := DiffArchives(old, newArchive,"")
+	result := DiffArchives(old, newArchive, "")
 
 	assert.Equal(t, 1, result.Stats.ConfidenceUpgrades)
 	assert.Equal(t, 0, result.Stats.ConfidenceDowngrades)
@@ -209,7 +209,7 @@ func TestDiffArchives_ConfidenceDowngrade(t *testing.T) {
 		},
 	}
 
-	result := DiffArchives(old, newArchive,"")
+	result := DiffArchives(old, newArchive, "")
 
 	assert.Equal(t, 0, result.Stats.ConfidenceUpgrades)
 	assert.Equal(t, 1, result.Stats.ConfidenceDowngrades)
@@ -229,7 +229,7 @@ func TestDiffArchives_PersonFilter(t *testing.T) {
 		},
 	}
 
-	result := DiffArchives(old, newArchive,"person-mary")
+	result := DiffArchives(old, newArchive, "person-mary")
 	require.Len(t, result.Changes, 1)
 	assert.Equal(t, "person-mary", result.Changes[0].ID)
 }
@@ -253,7 +253,7 @@ func TestDiffArchives_PersonFilter_IncludesAssertions(t *testing.T) {
 		},
 	}
 
-	result := DiffArchives(old, newArchive,"person-mary")
+	result := DiffArchives(old, newArchive, "person-mary")
 	require.Len(t, result.Changes, 1)
 	assert.Equal(t, "assertion-1", result.Changes[0].ID)
 }
@@ -275,7 +275,7 @@ func TestDiffArchives_PersonFilter_IncludesEvents(t *testing.T) {
 		},
 	}
 
-	result := DiffArchives(old, newArchive,"person-mary")
+	result := DiffArchives(old, newArchive, "person-mary")
 	require.Len(t, result.Changes, 1)
 	assert.Equal(t, "event-1", result.Changes[0].ID)
 }
@@ -292,7 +292,7 @@ func TestDiffArchives_SortOrder(t *testing.T) {
 		},
 	}
 
-	result := DiffArchives(old, newArchive,"")
+	result := DiffArchives(old, newArchive, "")
 
 	require.Len(t, result.Changes, 3)
 	// Persons should come before sources
@@ -382,7 +382,7 @@ func TestDiffArchives_AddedEvent(t *testing.T) {
 		},
 	}
 
-	result := DiffArchives(old, newArchive,"")
+	result := DiffArchives(old, newArchive, "")
 
 	require.Len(t, result.Changes, 1)
 	assert.Equal(t, ChangeAdded, result.Changes[0].Kind)
@@ -402,7 +402,7 @@ func TestDiffArchives_ModifiedEvent_NotesChange(t *testing.T) {
 		},
 	}
 
-	result := DiffArchives(old, newArchive,"")
+	result := DiffArchives(old, newArchive, "")
 
 	require.Len(t, result.Changes, 1)
 	assert.Equal(t, ChangeModified, result.Changes[0].Kind)
@@ -426,7 +426,7 @@ func TestDiffArchives_AddedRelationship(t *testing.T) {
 		},
 	}
 
-	result := DiffArchives(old, newArchive,"")
+	result := DiffArchives(old, newArchive, "")
 
 	require.Len(t, result.Changes, 1)
 	assert.Equal(t, ChangeAdded, result.Changes[0].Kind)
@@ -457,7 +457,7 @@ func TestDiffArchives_PersonFilter_IncludesRelationships(t *testing.T) {
 		},
 	}
 
-	result := DiffArchives(old, newArchive,"person-mary")
+	result := DiffArchives(old, newArchive, "person-mary")
 	require.Len(t, result.Changes, 1)
 	assert.Equal(t, "rel-1", result.Changes[0].ID)
 }
@@ -562,7 +562,7 @@ func TestDiffArchives_PersonFilter_StatsReflectFilteredSet(t *testing.T) {
 		},
 	}
 
-	result := DiffArchives(old, newArchive,"person-mary")
+	result := DiffArchives(old, newArchive, "person-mary")
 	require.Len(t, result.Changes, 1)
 	assert.Equal(t, 1, result.Stats.Added, "stats should reflect filtered set, not full archive")
 }
@@ -589,7 +589,7 @@ func TestDiffArchives_ConfidenceUnknownLevel_NotCounted(t *testing.T) {
 		},
 	}
 
-	result := DiffArchives(old, newArchive,"")
+	result := DiffArchives(old, newArchive, "")
 	assert.Equal(t, 0, result.Stats.ConfidenceUpgrades, "unknown old confidence should not count as upgrade")
 }
 
@@ -755,7 +755,7 @@ func TestDiffArchives_EventWithTitle(t *testing.T) {
 		},
 	}
 
-	result := DiffArchives(old, newArchive,"")
+	result := DiffArchives(old, newArchive, "")
 	require.Len(t, result.Changes, 1)
 	assert.Equal(t, "1860 Census — Webb Household", result.Changes[0].Summary)
 }

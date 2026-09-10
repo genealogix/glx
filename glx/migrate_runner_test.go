@@ -17,9 +17,10 @@ package main
 import (
 	"testing"
 
-	glxlib "github.com/genealogix/glx/go-glx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 func TestMigrate_CreatesBirthEventFromProperties(t *testing.T) {
@@ -54,6 +55,7 @@ func TestMigrate_CreatesBirthEventFromProperties(t *testing.T) {
 	for _, event := range archive.Events {
 		if event.Type == glxlib.EventTypeBirth {
 			birthEvent = event
+
 			break
 		}
 	}
@@ -92,6 +94,7 @@ func TestMigrate_CreatesDeathEventFromProperties(t *testing.T) {
 	for _, event := range archive.Events {
 		if event.Type == glxlib.EventTypeDeath {
 			deathEvent = event
+
 			break
 		}
 	}
@@ -209,6 +212,7 @@ func TestMigrate_ConvertsPropertyAssertionsToEventAssertions(t *testing.T) {
 	for id, event := range archive.Events {
 		if event.Type == glxlib.EventTypeBirth {
 			birthEventID = id
+
 			break
 		}
 	}
@@ -255,6 +259,7 @@ func TestMigrate_HandlesBornAtWithoutBornOn(t *testing.T) {
 	for _, event := range archive.Events {
 		if event.Type == glxlib.EventTypeBirth {
 			birthEvent = event
+
 			break
 		}
 	}

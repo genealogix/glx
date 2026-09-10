@@ -54,7 +54,7 @@ func TestBuildCluster_CensusHousehold(t *testing.T) {
 	ids := map[string]bool{}
 	for _, a := range result.Associates {
 		ids[a.PersonID] = true
-		assert.Greater(t, a.Score, 0)
+		assert.Positive(t, a.Score)
 		require.Len(t, a.Links, 1)
 		assert.Equal(t, "census_household", a.Links[0].Type)
 		assert.Equal(t, "event-census-1860", a.Links[0].EventID)
@@ -408,9 +408,9 @@ func TestYearsOverlap(t *testing.T) {
 
 func TestYearInRange(t *testing.T) {
 	tests := []struct {
-		name                  string
-		year, before, after   int
-		want                  bool
+		name                string
+		year, before, after int
+		want                bool
 	}{
 		{"no filter", 1860, 0, 0, true},
 		{"zero year passes", 0, 1850, 1840, true},
@@ -516,11 +516,11 @@ func TestResolvePersonForCluster_NilPerson(t *testing.T) {
 func TestPlaceIsDescendant(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Places: map[string]*glxlib.Place{
-			"place-ironton":  {Name: "Ironton", ParentID: "place-sauk-co"},
-			"place-sauk-co":  {Name: "Sauk County", ParentID: "place-wi"},
-			"place-wi":       {Name: "Wisconsin", ParentID: ""},
-			"place-nyc":      {Name: "New York City", ParentID: "place-ny"},
-			"place-ny":       {Name: "New York", ParentID: ""},
+			"place-ironton": {Name: "Ironton", ParentID: "place-sauk-co"},
+			"place-sauk-co": {Name: "Sauk County", ParentID: "place-wi"},
+			"place-wi":      {Name: "Wisconsin", ParentID: ""},
+			"place-nyc":     {Name: "New York City", ParentID: "place-ny"},
+			"place-ny":      {Name: "New York", ParentID: ""},
 		},
 	}
 

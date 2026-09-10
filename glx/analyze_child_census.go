@@ -175,5 +175,6 @@ func uniqueSorted(s []string) []string {
 		}
 	}
 	sort.Strings(result)
+
 	return result
 }

@@ -17,6 +17,7 @@ package main
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
@@ -34,6 +35,7 @@ func deathYearUpperBound(raw any) int {
 	if year > 0 && strings.HasPrefix(dateStringWithoutCalendarPrefix(dateStr), "BEF ") {
 		year--
 	}
+
 	return year
 }
 
@@ -50,6 +52,7 @@ func deathYearFromEvent(archive *glxlib.GLXFile, personID string) int {
 	if year > 0 && strings.HasPrefix(dateStringWithoutCalendarPrefix(dateStr), "BEF ") {
 		year--
 	}
+
 	return year
 }
 
@@ -72,6 +75,7 @@ func extractDateString(raw any) string {
 			}
 		}
 	}
+
 	return ""
 }
 
@@ -465,6 +469,7 @@ func emitCensusSuggestions(
 			})
 		}
 	}
+
 	return issues
 }
 
@@ -492,6 +497,7 @@ func buildBurialYearIndex(archive *glxlib.GLXFile) map[string]int {
 			}
 		}
 	}
+
 	return index
 }
 
@@ -539,12 +545,13 @@ func indexCensusSource(src *glxlib.Source, personID string, personCensusYears ma
 			personCensusYears[personID] = make(map[int]bool)
 		}
 		personCensusYears[personID][year] = true
+
 		return
 	}
 
 	// Fall back to matching any census year in the title
 	for _, censusYear := range usFederalCensusYears {
-		if strings.Contains(src.Title, fmt.Sprintf("%d", censusYear)) {
+		if strings.Contains(src.Title, strconv.Itoa(censusYear)) {
 			if personCensusYears[personID] == nil {
 				personCensusYears[personID] = make(map[int]bool)
 			}
@@ -574,6 +581,7 @@ func suggestVitalRecords(archive *glxlib.GLXFile) []AnalysisIssue {
 			source := archive.Sources[sourceID]
 			if source != nil && source.Type == glxlib.SourceTypeVitalRecord {
 				hasVitalSource = true
+
 				break
 			}
 		}
@@ -587,6 +595,7 @@ func suggestVitalRecords(archive *glxlib.GLXFile) []AnalysisIssue {
 				source := archive.Sources[cit.SourceID]
 				if source != nil && source.Type == glxlib.SourceTypeVitalRecord {
 					hasVitalSource = true
+
 					break
 				}
 			}
@@ -622,7 +631,7 @@ func suggestVitalRecords(archive *glxlib.GLXFile) []AnalysisIssue {
 			Category: "suggestion",
 			Severity: "info",
 			Person:   id,
-			Message:  fmt.Sprintf("%s — search vital records (dates exist but no vital record source)", name),
+			Message:  name + " — search vital records (dates exist but no vital record source)",
 		})
 	}
 

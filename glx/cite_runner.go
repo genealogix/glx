@@ -75,6 +75,7 @@ func showAllCitations(archivePath string) error {
 	ids := sortedKeys(archive.Citations)
 	if len(ids) == 0 {
 		fmt.Println("No citations found.")
+
 		return nil
 	}
 

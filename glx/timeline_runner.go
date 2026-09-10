@@ -96,6 +96,7 @@ func findPersonForTimeline(archive *glxlib.GLXFile, query string) (string, *glxl
 		if person == nil {
 			return "", nil, fmt.Errorf("person %q exists in archive but has no data", query)
 		}
+
 		return query, person, nil
 	}
 
@@ -412,11 +413,13 @@ func dateSortKey(dateStr string) string {
 		for len(year) < 4 {
 			year = "0" + year
 		}
+
 		return year + rest
 	}
 	for len(match) < 4 {
 		match = "0" + match
 	}
+
 	return match
 }
 

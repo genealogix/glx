@@ -308,7 +308,7 @@ func TestCalendarToGEDCOMEscape(t *testing.T) {
 	assert.Equal(t, "@#DJULIAN@", calendarToGEDCOMEscape(CalendarJulian))
 	assert.Equal(t, "@#DHEBREW@", calendarToGEDCOMEscape(CalendarHebrew))
 	assert.Equal(t, "@#DFRENCH R@", calendarToGEDCOMEscape(CalendarFrenchR))
-	assert.Equal(t, "", calendarToGEDCOMEscape(""))
+	assert.Empty(t, calendarToGEDCOMEscape(""))
 	assert.Equal(t, "@#DROMAN@", calendarToGEDCOMEscape("ROMAN"))
 	assert.Equal(t, "@#DNEW CAL@", calendarToGEDCOMEscape("NEW_CAL"))
 }

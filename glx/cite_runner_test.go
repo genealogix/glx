@@ -17,15 +17,16 @@ package main
 import (
 	"testing"
 
-	glxlib "github.com/genealogix/glx/go-glx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 func fullCiteArchive() *glxlib.GLXFile {
 	return &glxlib.GLXFile{
 		Repositories: map[string]*glxlib.Repository{
-			"repo-fs": {Name: "FamilySearch"},
+			"repo-fs":   {Name: "FamilySearch"},
 			"repo-nara": {Name: "NARA"},
 		},
 		Sources: map[string]*glxlib.Source{
@@ -84,7 +85,7 @@ func TestFormatCitation_Full(t *testing.T) {
 	assert.Contains(t, result, "https://example.com/record/123")
 	assert.Contains(t, result, "2024-02-29")
 	assert.Contains(t, result, "it 1 cn 02350")
-	assert.True(t, result[len(result)-1] == '.', "should end with period")
+	assert.Equal(t, byte('.'), result[len(result)-1], "should end with period")
 }
 
 func TestFormatCitation_NoURL(t *testing.T) {
@@ -126,16 +127,16 @@ func TestResolveSourceTitle(t *testing.T) {
 	archive := fullCiteArchive()
 
 	assert.Equal(t, "Wisconsin, Marriages, 1836-1930", resolveSourceTitle("source-marriages", archive))
-	assert.Equal(t, "", resolveSourceTitle("nonexistent", archive))
-	assert.Equal(t, "", resolveSourceTitle("", archive))
+	assert.Empty(t, resolveSourceTitle("nonexistent", archive))
+	assert.Empty(t, resolveSourceTitle("", archive))
 }
 
 func TestResolveSourceType(t *testing.T) {
 	archive := fullCiteArchive()
 
 	assert.Equal(t, "vital_record", resolveSourceType("source-marriages", archive))
-	assert.Equal(t, "", resolveSourceType("source-bare", archive))
-	assert.Equal(t, "", resolveSourceType("nonexistent", archive))
+	assert.Empty(t, resolveSourceType("source-bare", archive))
+	assert.Empty(t, resolveSourceType("nonexistent", archive))
 }
 
 func TestResolveRepositoryName(t *testing.T) {
@@ -151,7 +152,7 @@ func TestResolveRepositoryName(t *testing.T) {
 
 	// No repo
 	cit = archive.Citations["cit-bare"]
-	assert.Equal(t, "", resolveRepositoryName(cit, archive))
+	assert.Empty(t, resolveRepositoryName(cit, archive))
 }
 
 func TestBuildAccessClause(t *testing.T) {
@@ -189,19 +190,19 @@ func TestCitationProperty(t *testing.T) {
 	assert.Equal(t, "https://example.com", citationProperty(cit, "url"))
 	assert.Equal(t, "Page 5", citationProperty(cit, "locator"))
 	assert.Equal(t, "42", citationProperty(cit, "number"))
-	assert.Equal(t, "", citationProperty(cit, "missing"))
+	assert.Empty(t, citationProperty(cit, "missing"))
 }
 
 func TestCitationProperty_NilProperties(t *testing.T) {
 	cit := &glxlib.Citation{}
-	assert.Equal(t, "", citationProperty(cit, "url"))
+	assert.Empty(t, citationProperty(cit, "url"))
 }
 
 func TestJoinNonEmpty(t *testing.T) {
 	assert.Equal(t, "a : b", joinNonEmpty(" : ", "a", "b"))
 	assert.Equal(t, "a", joinNonEmpty(" : ", "a", ""))
 	assert.Equal(t, "b", joinNonEmpty(" : ", "", "b"))
-	assert.Equal(t, "", joinNonEmpty(" : ", "", ""))
+	assert.Empty(t, joinNonEmpty(" : ", "", ""))
 }
 
 func TestShowCitation_CompleteFamily(t *testing.T) {

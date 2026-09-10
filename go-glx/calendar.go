@@ -33,9 +33,9 @@ var knownCalendars = map[string]string{
 // gedcomEscapeToCalendar maps GEDCOM calendar escape names to GLX prefixes.
 // The key is the text between @#D and @ (e.g., "JULIAN", "HEBREW", "FRENCH R").
 var gedcomEscapeToCalendar = map[string]string{
-	"JULIAN":   CalendarJulian,
-	"HEBREW":   CalendarHebrew,
-	"FRENCH R": CalendarFrenchR,
+	"JULIAN":    CalendarJulian,
+	"HEBREW":    CalendarHebrew,
+	"FRENCH R":  CalendarFrenchR,
 	"GREGORIAN": "", // Gregorian is the default — no prefix needed
 }
 

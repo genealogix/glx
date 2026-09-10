@@ -19,10 +19,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	glxlib "github.com/genealogix/glx/go-glx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
+
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 func TestReadCensusTemplate(t *testing.T) {
@@ -174,7 +175,7 @@ func TestWriteCensusEntities_FilterVocabularies(t *testing.T) {
 	require.NoError(t, err)
 
 	// Should write entity files but not vocabulary files
-	assert.Greater(t, count, 0)
+	assert.Positive(t, count)
 
 	// Vocabularies dir should NOT be created
 	vocabDir := filepath.Join(archiveDir, "vocabularies")

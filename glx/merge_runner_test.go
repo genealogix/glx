@@ -232,9 +232,11 @@ func snapshotDir(t *testing.T, root string) map[string]int64 {
 			}
 			snapshot[rel] = info.Size()
 		}
+
 		return nil
 	})
 	require.NoError(t, err)
+
 	return snapshot
 }
 

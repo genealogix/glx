@@ -133,6 +133,12 @@ const (
 	RelationshipPropertyNumberOfChildren = "number_of_children" // Known child count; maps to GEDCOM FAM.NCHI
 )
 
+// Standard Media Property Names - commonly used properties on Media entities
+const (
+	MediaPropertyOriginalFilename = "original_filename" // Source filename before import canonicalization or collision renaming
+	MediaPropertyBlobSize         = "blob_size"         // Length in bytes of the encoded GEDCOM 5.5.1 BLOB text as the BLOB/CONT lines joined with newlines (pre-decode; includes the line separators, not the decoded file size)
+)
+
 // Deprecated property constants - these properties have been removed from the spec.
 // Use birth/death/burial events instead. Kept for validation error messages and migration tooling.
 const (

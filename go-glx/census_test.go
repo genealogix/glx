@@ -609,7 +609,6 @@ func TestValidateCensusTemplate_MemberMissingName(t *testing.T) {
 	assert.Contains(t, err.Error(), "name")
 }
 
-
 func TestBuildCensusEntities_CustomEventTitle(t *testing.T) {
 	tpl := &CensusTemplate{
 		Census: CensusData{

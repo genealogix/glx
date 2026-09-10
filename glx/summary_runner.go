@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -150,6 +151,7 @@ func findPersonByQuery(archive *glxlib.GLXFile, query string) (string, *glxlib.P
 		if person == nil {
 			return "", nil, fmt.Errorf("person %q exists in archive but has no data", query)
 		}
+
 		return query, person, nil
 	}
 
@@ -626,6 +628,7 @@ func findSpouses(personID string, archive *glxlib.GLXFile) []spouseInfo {
 	sort.SliceStable(spouses, func(i, j int) bool {
 		ki := dateSortKey(spouses[i].MarriageDate)
 		kj := dateSortKey(spouses[j].MarriageDate)
+
 		return ki < kj
 	})
 
@@ -710,6 +713,7 @@ func findChildIDs(personID string, archive *glxlib.GLXFile) []string {
 		for _, p := range rel.Participants {
 			if p.Person == personID && strings.EqualFold(p.Role, "parent") {
 				isParent = true
+
 				break
 			}
 		}
@@ -740,8 +744,10 @@ func findChildIDs(personID string, archive *glxlib.GLXFile) []string {
 			if yj == 0 {
 				return true
 			}
+
 			return yi < yj
 		}
+
 		return result[i] < result[j]
 	})
 
@@ -755,6 +761,7 @@ func birthYear(archive *glxlib.GLXFile, personID string) int {
 	if event == nil {
 		return 0
 	}
+
 	return glxlib.ExtractFirstYear(string(event.Date))
 }
 
@@ -1125,14 +1132,17 @@ func narrativeDate(date string) string {
 		if idx := strings.Index(strings.ToUpper(rest), " AND "); idx >= 0 {
 			from := formatReadableDate(strings.TrimSpace(rest[:idx]))
 			to := formatReadableDate(strings.TrimSpace(rest[idx+5:]))
+
 			return "between " + from + " and " + to
 		}
+
 		return "between " + rest
 	default:
 		readable := formatReadableDate(trimmed)
 		if isFullDate(trimmed) {
 			return "on " + readable
 		}
+
 		return "in " + readable
 	}
 }
@@ -1169,7 +1179,8 @@ func numberWord(n int) string {
 	if n >= 0 && n < len(words) {
 		return words[n]
 	}
-	return fmt.Sprintf("%d", n)
+
+	return strconv.Itoa(n)
 }
 
 // joinNames joins names with commas and "and" before the last.
@@ -1194,10 +1205,7 @@ func joinNames(names []string) string {
 func sectionHeader(title string) string {
 	const width = 50
 	prefix := "── " + title + " "
-	remaining := width - utf8.RuneCountInString(prefix)
-	if remaining < 2 {
-		remaining = 2
-	}
+	remaining := max(width-utf8.RuneCountInString(prefix), 2)
 
 	return prefix + strings.Repeat("─", remaining)
 }
