@@ -81,14 +81,18 @@ func (e *silentExitError) Error() string {
 //
 // A *silentExitError returned by a RunE means "exit with this code, do not
 // print a message" — see runMergeDriverCmd for the canonical use. Any other
-// non-nil error is printed to stderr before exiting with code 1.
+// non-nil error is printed to stderr before exiting with code 1. The message
+// is passed through sanitizeForTerminal first: errors routinely embed
+// archive-controlled text (a symlink's filename from a containment failure,
+// an entity ID from a reference error), and this is the one print site that
+// every runner's returned error funnels through.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		var silent *silentExitError
 		if errors.As(err, &silent) {
 			os.Exit(silent.code)
 		}
-		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintln(os.Stderr, sanitizeForTerminal(err.Error()))
 		os.Exit(exitCodeForError(err))
 	}
 }

@@ -66,17 +66,22 @@ func TestIOStreams() (*IOStreams, *bytes.Buffer, *bytes.Buffer) {
 	return &IOStreams{Out: out, MachineOut: out, ErrOut: errOut}, out, errOut
 }
 
-// Printf writes a formatted string to the standard output stream.
+// Printf writes a formatted string to the standard output stream. The
+// rendered text is passed through sanitizeForTerminal, so archive-controlled
+// values (names, notes, IDs) that reach Out cannot inject terminal control
+// sequences. MachineOut is not written through this method and is left
+// byte-faithful.
 func (s *IOStreams) Printf(format string, args ...any) {
-	fmt.Fprintf(s.Out, format, args...) //nolint:errcheck // CLI output
+	fmt.Fprint(s.Out, sanitizeForTerminal(fmt.Sprintf(format, args...))) //nolint:errcheck // CLI output
 }
 
-// Println writes a line to the standard output stream.
+// Println writes a line to the standard output stream, sanitized as in Printf.
 func (s *IOStreams) Println(msg string) {
-	fmt.Fprintln(s.Out, msg) //nolint:errcheck // CLI output
+	fmt.Fprintln(s.Out, sanitizeForTerminal(msg)) //nolint:errcheck // CLI output
 }
 
-// Errorf writes a formatted string to the error output stream.
+// Errorf writes a formatted string to the error output stream, sanitized as
+// in Printf.
 func (s *IOStreams) Errorf(format string, args ...any) {
-	fmt.Fprintf(s.ErrOut, format, args...) //nolint:errcheck // CLI output
+	fmt.Fprint(s.ErrOut, sanitizeForTerminal(fmt.Sprintf(format, args...))) //nolint:errcheck // CLI output
 }
