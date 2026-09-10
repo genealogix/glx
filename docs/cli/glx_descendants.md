@@ -51,5 +51,5 @@ glx descendants <person-id> [flags]
 
 ### SEE ALSO
 
-* [glx](/cli/glx)	 - GENEALOGIX CLI - Manage and validate genealogy archives
+* [glx](glx.md)	 - GENEALOGIX CLI - Manage and validate genealogy archives
 

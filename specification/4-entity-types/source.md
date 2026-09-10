@@ -6,7 +6,7 @@ layout: doc
 
 # Source Entity
 
-[← Back to Entity Types](README)
+[← Back to Entity Types](README.md)
 
 ## Overview
 
@@ -258,22 +258,22 @@ sources:
       coverage: "Leeds, Yorkshire, 1840-1860"
 ```
 
-**See [Vocabularies - Source Properties](vocabularies#source-properties-vocabulary) for the full vocabulary definition.**
+**See [Vocabularies - Source Properties](vocabularies.md#source-properties-vocabulary) for the full vocabulary definition.**
 
 ## Source Classification (Evidence Explained)
 
 [Evidence Explained](https://www.evidenceexplained.com/) (Elizabeth Shown Mills, 4th ed., 2024) — the de-facto standard for genealogical source analysis — classifies evidence along two independent axes. GENEALOGIX captures both as standard source properties so the analysis is structured and queryable rather than buried in free-text notes.
 
-- **Source nature** (`source_nature`, validated against the [`source_natures`](vocabularies#source-natures-vocabulary) vocabulary) — how the source was *produced*:
+- **Source nature** (`source_nature`, validated against the [`source_natures`](vocabularies.md#source-natures-vocabulary) vocabulary) — how the source was *produced*:
   - `original` — first-recorded or first-issued form, created at or near the event (an original vital register, a deed as filed).
   - `derivative` — produced from an earlier source by copying, abstracting, transcribing, indexing, or translating (a published transcription, a database index, a later certified copy).
   - `authored` — selects, analyzes, narrates, or synthesizes other sources into a new work (a compiled genealogy, a county history, a journal article).
-- **Information type** (`information_type`, validated against the [`information_types`](vocabularies#information-types-vocabulary) vocabulary) — the informant's relationship to the event:
+- **Information type** (`information_type`, validated against the [`information_types`](vocabularies.md#information-types-vocabulary) vocabulary) — the informant's relationship to the event:
   - `primary` — reported by someone with firsthand knowledge.
   - `secondary` — reported by someone without firsthand knowledge.
   - `indeterminate` — informant or origin unknown (Evidence Explained: "undetermined").
 
-The two axes are independent: an original civil death register (`source_nature: original`) records the death itself firsthand but the deceased's birth date secondhand, so a single source can carry both primary and secondary information. At the source level, `information_type` records the **predominant or default** information quality. Because Evidence Explained treats "information" as a property of each individual item, facts within one source can diverge from that default; there is no *standard* citation property for per-fact classification yet, so today an archive that needs it extends its `citation_properties` with a **custom** property (`vocabulary_type: information_types` — the [`information_types`](vocabularies#information-types-vocabulary) vocabulary is already loaded, so custom values validate the same way), and standardizing a citation-level `information_type` is tracked in [#988](https://github.com/genealogix/glx/issues/988). The third Evidence Explained axis — *evidence* (direct / indirect / negative), which is relative to a research question rather than intrinsic to the source — is expressed per [Assertion](assertion) rather than on the Source.
+The two axes are independent: an original civil death register (`source_nature: original`) records the death itself firsthand but the deceased's birth date secondhand, so a single source can carry both primary and secondary information. At the source level, `information_type` records the **predominant or default** information quality. Because Evidence Explained treats "information" as a property of each individual item, facts within one source can diverge from that default; there is no *standard* citation property for per-fact classification yet, so today an archive that needs it extends its `citation_properties` with a **custom** property (`vocabulary_type: information_types` — the [`information_types`](vocabularies.md#information-types-vocabulary) vocabulary is already loaded, so custom values validate the same way), and standardizing a citation-level `information_type` is tracked in [#988](https://github.com/genealogix/glx/issues/988). The third Evidence Explained axis — *evidence* (direct / indirect / negative), which is relative to a research question rather than intrinsic to the source — is expressed per [Assertion](assertion.md) rather than on the Source.
 
 ```yaml
 sources:
@@ -455,7 +455,7 @@ sources:
 
 Source types are defined in the archive's `vocabularies/source-types.glx` file.
 
-**See [Vocabularies - Source Types](vocabularies#source-types-vocabulary) for:**
+**See [Vocabularies - Source Types](vocabularies.md#source-types-vocabulary) for:**
 
 - Complete list of standard source types
 - How to add custom source types
@@ -512,7 +512,7 @@ Media
 - If `repository` is specified, it must reference an existing Repository entity
 - If `media` array is present, all IDs must reference existing Media entities
 - `date` should follow standard date formats (YYYY, YYYY-MM-DD, or `FROM YYYY TO YYYY` for ranges)
-- If `type` is specified, it must be from the [source types vocabulary](vocabularies#source-types-vocabulary)
+- If `type` is specified, it must be from the [source types vocabulary](vocabularies.md#source-types-vocabulary)
 
 ## GEDCOM Mapping
 
@@ -602,8 +602,8 @@ See [source.schema.json](../schema/v1/source.schema.json) for the complete JSON 
 
 ## See Also
 
-- [Core Concepts - Evidence Chain](../2-core-concepts#evidence-chain) - Understanding the evidence chain
-- [Repository Entity](repository) - Where sources are held
-- [Citation Entity](citation) - Specific references within sources
-- [Media Entity](media) - Digital preservation of sources
-- [Assertion Entity](assertion) - Conclusions drawn from sources
+- [Core Concepts - Evidence Chain](../2-core-concepts.md#evidence-chain) - Understanding the evidence chain
+- [Repository Entity](repository.md) - Where sources are held
+- [Citation Entity](citation.md) - Specific references within sources
+- [Media Entity](media.md) - Digital preservation of sources
+- [Assertion Entity](assertion.md) - Conclusions drawn from sources

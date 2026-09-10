@@ -241,10 +241,13 @@ All checks must pass before merge.
 
 ### Internal Links
 
-Specification documents omit the `.md` file extension for VitePress compatibility:
+Link between markdown files with relative repository paths that include the `.md` extension. That is the form GitHub renders; the website maps the same links through its rewrites table (`website/.vitepress/relative-links.js`), so one form serves both.
 
-- Good: `[Person Entity](4-entity-types/person)`
-- Bad: `[Person Entity](4-entity-types/person.md)`
+- Good: `[Person Entity](4-entity-types/person.md)`, `[Quickstart](../docs/quickstart.md)`
+- Bad: `[Person Entity](4-entity-types/person)` (GitHub does not append `.md`)
+- Bad: `[Quickstart](/quickstart)` (a website route; on GitHub it resolves to `github.com/quickstart`)
+
+`make check-links` enforces this for `specification/`, `docs/`, the root `*.md` files and `.github/SUPPORT.md`. Absolute routes are fine in `website/` itself, which is never read on GitHub.
 
 ### Markdown Linting
 

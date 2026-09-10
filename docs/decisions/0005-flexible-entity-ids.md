@@ -15,7 +15,7 @@ Accepted
 Every entity in a GLX archive (persons, events, places, sources, etc.) needs a unique identifier. Several patterns were considered:
 
 - **UUID (36 chars, `550e8400-e29b-41d4-a716-...`)** — globally unique, never collides, but long and visually noisy in a YAML file.
-- **Auto-incrementing integers** — compact, but require a central counter, which clashes with [ADR-0004](0004-git-native-archives): two researchers working on parallel branches would both pick `person-42`.
+- **Auto-incrementing integers** — compact, but require a central counter, which clashes with [ADR-0004](0004-git-native-archives.md): two researchers working on parallel branches would both pick `person-42`.
 - **Short random hex (e.g., 8 characters = 2³² ≈ 4.3 billion possible values)** — compact, collision-rare at archive scale, no central counter needed.
 - **Descriptive strings (`john-smith-1850`, `leeds-parish`)** — readable, but require authors to know the entity's "real name", which may be private or unknown.
 
@@ -25,7 +25,7 @@ A third is **filesystem layout**. In multi-file archives, filenames are derived 
 
 ## Decision
 
-The specification (see [Archive Organization — ID Format Standards](/specification/3-archive-organization#id-format-standards)) constrains entity IDs to 1–64 characters, alphanumeric (`a–z`, `A–Z`, `0–9`) and hyphens only. The spec is the source of truth for the full ID grammar and uniqueness scope.
+The specification (see [Archive Organization — ID Format Standards](../../specification/3-archive-organization.md#id-format-standards)) constrains entity IDs to 1–64 characters, alphanumeric (`a–z`, `A–Z`, `0–9`) and hyphens only. The spec is the source of truth for the full ID grammar and uniqueness scope.
 
 Within those constraints, two patterns are explicitly documented and recommended:
 

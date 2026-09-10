@@ -309,11 +309,11 @@ Contributions are welcome! Please:
 
 ## Related Documentation
 
-- [GENEALOGIX Specification](/specification/)
-- [JSON Schemas](/specification/schema/)
-- [Examples](/examples/)
+- [GENEALOGIX Specification](../specification/README.md)
+- [JSON Schemas](../specification/schema/README.md)
+- [Examples](../docs/examples/README.md)
 - [Test Data Documentation](https://github.com/genealogix/glx/blob/main/glx/testdata/README.md)
-- [Contributing Guide](/development/contributing)
+- [Contributing Guide](../CONTRIBUTING.md)
 
 ## License
 
@@ -321,7 +321,7 @@ Apache License 2.0 - See [LICENSE](https://github.com/genealogix/glx/blob/main/L
 
 ## Support
 
-- 📖 [Specification](/specification/)
-- 💡 [Examples](/examples/)
+- 📖 [Specification](../specification/README.md)
+- 💡 [Examples](../docs/examples/README.md)
 - 🐛 [Issue Tracker](https://github.com/genealogix/glx/issues)
 - 💬 [Discussions](https://github.com/genealogix/glx/discussions)

@@ -27,7 +27,7 @@ Version control systems already solve all four problems, and Git in particular h
 
 A GLX archive is a **Git repository** whose contents are YAML files organized by a specified directory layout. The `glx` CLI reads, writes, and validates those files; Git itself provides history, branching, merging, and backup.
 
-From the [Introduction](/specification/1-introduction):
+From the [Introduction](../../specification/1-introduction.md):
 
 > GLX is designed to work naturally with Git because genealogical research shares the same needs: History (every edit recorded), Collaboration (multiple researchers merge changes), Backup (archive lives in Git repository mirrored anywhere).
 

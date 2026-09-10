@@ -6,7 +6,7 @@ layout: doc
 
 # Person Entity
 
-[← Back to Entity Types](README)
+[← Back to Entity Types](README.md)
 
 ## Overview
 
@@ -167,7 +167,7 @@ properties:
 
 The `type` field on name entries distinguishes why multiple names exist. Use it not just for temporal changes (birth to married) but also for alternate spellings, abbreviations, and names as recorded in specific documents.
 
-The authoritative list of name `type` values is defined in the [person properties vocabulary](vocabularies#person-properties-vocabulary). The table below highlights common values and how to use them.
+The authoritative list of name `type` values is defined in the [person properties vocabulary](vocabularies.md#person-properties-vocabulary). The table below highlights common values and how to use them.
 
 **Common name type values:**
 
@@ -266,18 +266,18 @@ properties:
       date: "FROM 1895"
 ```
 
-> **See Also:** [Temporal Properties Example](/examples/temporal-properties/) for a complete working archive demonstrating temporal values with assertions and evidence chains.
+> **See Also:** [Temporal Properties Example](../../docs/examples/temporal-properties/README.md) for a complete working archive demonstrating temporal values with assertions and evidence chains.
 
-**See [Vocabularies - Person Properties](vocabularies#person-properties-vocabulary) for the full vocabulary definition.**
+**See [Vocabularies - Person Properties](vocabularies.md#person-properties-vocabulary) for the full vocabulary definition.**
 
 **Key Points:**
 
 - All properties are optional
 - Property names and types are validated against the `person_properties` vocabulary
 - The `sex` and `gender` properties are constrained by the [sex types](../5-standard-vocabularies/#sex-types) and [gender types](../5-standard-vocabularies/#gender-types) vocabularies — out-of-vocabulary values produce a warning
-- Properties can be temporal (change over time) - see [Core Concepts - Data Types](../2-core-concepts#temporal-properties)
+- Properties can be temporal (change over time) - see [Core Concepts - Data Types](../2-core-concepts.md#temporal-properties)
 - Custom properties can be added by extending the vocabulary
-- Birth and death information is stored on [Event entities](event) of type `birth` and `death`, not as person properties
+- Birth and death information is stored on [Event entities](event.md) of type `birth` and `death`, not as person properties
 
 ## Usage Patterns
 
@@ -342,11 +342,11 @@ persons/
 | `properties.residence` | `INDI.RESI` | Residence |
 | `notes` | `INDI.NOTE` | Notes |
 
-**Note:** GEDCOM birth/death events (`INDI.BIRT`, `INDI.DEAT`) are imported as [Event entities](event) of type `birth` and `death`, not as person properties.
+**Note:** GEDCOM birth/death events (`INDI.BIRT`, `INDI.DEAT`) are imported as [Event entities](event.md) of type `birth` and `death`, not as person properties.
 
 ## Validation Rules
 
-- Properties should be from the [person properties vocabulary](vocabularies#person-properties-vocabulary) (unknown properties generate warnings)
+- Properties should be from the [person properties vocabulary](vocabularies.md#person-properties-vocabulary) (unknown properties generate warnings)
 - All place references must point to existing Place entities
 - Date formats must follow genealogical date conventions
 
@@ -357,8 +357,8 @@ complete JSON Schema definition.
 
 ## See Also
 
-- [Event Entity](event) - Life events for this person
-- [Relationship Entity](relationship) - Connections to other people
-- [Assertion Entity](assertion) - Evidence for person properties
-- [Core Concepts - Data Types](../2-core-concepts#data-types) - Date and property formats
-- [Vocabularies](vocabularies#person-properties-vocabulary) - Person properties vocabulary
+- [Event Entity](event.md) - Life events for this person
+- [Relationship Entity](relationship.md) - Connections to other people
+- [Assertion Entity](assertion.md) - Evidence for person properties
+- [Core Concepts - Data Types](../2-core-concepts.md#data-types) - Date and property formats
+- [Vocabularies](vocabularies.md#person-properties-vocabulary) - Person properties vocabulary

@@ -6,10 +6,10 @@ layout: doc
 
 # Quickstart Guide
 
-Get started with GENEALOGIX in 5 minutes! This guide walks you through creating your first family archive from scratch. If you'd like to understand the concepts behind GLX first, read the [Introduction](/specification/1-introduction) and [Core Concepts](/specification/2-core-concepts).
+Get started with GENEALOGIX in 5 minutes! This guide walks you through creating your first family archive from scratch. If you'd like to understand the concepts behind GLX first, read the [Introduction](../specification/1-introduction.md) and [Core Concepts](../specification/2-core-concepts.md).
 
 ::: tip Already have a GEDCOM file?
-See the [Migration from GEDCOM](/guides/migration-from-gedcom) guide to import your existing data.
+See the [Migration from GEDCOM](guides/migration-from-gedcom.md) guide to import your existing data.
 :::
 
 ## What You'll Learn
@@ -55,13 +55,13 @@ glx init
 glx init --single-file
 ```
 
-This creates a directory structure with folders for all [entity types](/specification/4-entity-types/), standard [vocabularies](/specification/4-entity-types/vocabularies), a `.gitignore`, and a `README.md`. See the [CLI README](https://github.com/genealogix/glx/blob/main/glx/README.md#glx-init) for the full layout and [Archive Organization](/specification/3-archive-organization) for how archives are structured.
+This creates a directory structure with folders for all [entity types](../specification/4-entity-types/README.md), standard [vocabularies](../specification/4-entity-types/vocabularies.md), a `.gitignore`, and a `README.md`. See the [CLI README](https://github.com/genealogix/glx/blob/main/glx/README.md#glx-init) for the full layout and [Archive Organization](../specification/3-archive-organization.md) for how archives are structured.
 
 ## Step 3: Add Your First Person
 
 Create your first person file. All GLX files use the `.glx` extension and are written in [YAML](https://yaml.org/), a plain text format where indentation shows structure and colons separate labels from values.
 
-Here's the basic pattern: each file starts with the **entity type** (`persons`), then an **entity ID** (`person-john-smith`), then the entity's **[properties](/specification/2-core-concepts#properties-recording-conclusions)** — the facts you know about this person. See the full [Person specification](/specification/4-entity-types/person) for all available fields.
+Here's the basic pattern: each file starts with the **entity type** (`persons`), then an **entity ID** (`person-john-smith`), then the entity's **[properties](../specification/2-core-concepts.md#properties-recording-conclusions)** — the facts you know about this person. See the full [Person specification](../specification/4-entity-types/person.md) for all available fields.
 
 **Create `persons/person-john-smith.glx`:**
 
@@ -82,12 +82,12 @@ persons:
 ```
 
 ::: details What's the difference between `value` and `fields`?
-Properties in GLX can have a simple `value` (the human-readable form) and optional `fields` that break it into structured parts. For a name, `value` is what you'd display ("John Smith") while `fields` lets software know which part is the given name and which is the surname. You can also add a `type` field to classify the name (e.g., "birth", "married", "alias"). See [Properties](/specification/2-core-concepts#properties-recording-conclusions) in the specification for the full details.
+Properties in GLX can have a simple `value` (the human-readable form) and optional `fields` that break it into structured parts. For a name, `value` is what you'd display ("John Smith") while `fields` lets software know which part is the given name and which is the surname. You can also add a `type` field to classify the name (e.g., "birth", "married", "alias"). See [Properties](../specification/2-core-concepts.md#properties-recording-conclusions) in the specification for the full details.
 :::
 
 ## Step 4: Add a Place
 
-Places are their own [entities](/specification/4-entity-types/place) in GLX, so they can be referenced by multiple events and shared across your archive.
+Places are their own [entities](../specification/4-entity-types/place.md) in GLX, so they can be referenced by multiple events and shared across your archive.
 
 **Create `places/place-leeds.glx`:**
 
@@ -105,7 +105,7 @@ places:
 
 ## Step 5: Add a Birth Event
 
-[Events](/specification/4-entity-types/event) connect people to places and dates. Notice how `place` and `person` refer to the IDs you created in the previous steps — this is how GLX [entities link together](/specification/2-core-concepts#entity-relationships).
+[Events](../specification/4-entity-types/event.md) connect people to places and dates. Notice how `place` and `person` refer to the IDs you created in the previous steps — this is how GLX [entities link together](../specification/2-core-concepts.md#entity-relationships).
 
 **Create `events/event-john-birth.glx`:**
 
@@ -143,7 +143,7 @@ You can also validate specific directories or single files. See the [CLI README]
 
 ## Step 7: Add a Source and Citation
 
-Good research tracks where information comes from. GLX models this as an **[evidence chain](/specification/2-core-concepts#evidence-chain)**: a **[Source](/specification/4-entity-types/source)** describes a document or record, and a **[Citation](/specification/4-entity-types/citation)** points to a specific detail within that source.
+Good research tracks where information comes from. GLX models this as an **[evidence chain](../specification/2-core-concepts.md#evidence-chain)**: a **[Source](../specification/4-entity-types/source.md)** describes a document or record, and a **[Citation](../specification/4-entity-types/citation.md)** points to a specific detail within that source.
 
 First, create the source — the parish register where you found the birth record:
 
@@ -178,7 +178,7 @@ citations:
 
 ## Step 8: Record Your Conclusion
 
-You've documented *where* the information comes from (source and citation). Now record *what you conclude* from it using an **[Assertion](/specification/4-entity-types/assertion)** — a formal statement that links your evidence to a claim about a person.
+You've documented *where* the information comes from (source and citation). Now record *what you conclude* from it using an **[Assertion](../specification/4-entity-types/assertion.md)** — a formal statement that links your evidence to a claim about a person.
 
 **Create `assertions/assertion-john-birth.glx`:**
 
@@ -195,11 +195,11 @@ assertions:
     status: proven                        # Research verification state
 ```
 
-This is the complete **evidence chain**: Source → Citation → Assertion. It traces your conclusion all the way back to the original document. See [Evidence Chain](/specification/2-core-concepts#evidence-chain) in the specification for more on this model.
+This is the complete **evidence chain**: Source → Citation → Assertion. It traces your conclusion all the way back to the original document. See [Evidence Chain](../specification/2-core-concepts.md#evidence-chain) in the specification for more on this model.
 
 ## Step 9: Version Control with Git
 
-GLX is designed to work naturally with Git for version control and [collaboration](/specification/2-core-concepts#collaboration). Track your research:
+GLX is designed to work naturally with Git for version control and [collaboration](../specification/2-core-concepts.md#collaboration). Track your research:
 
 ```bash
 # Initialize git repository (if not already done)
@@ -221,11 +221,11 @@ git commit -m "Initial commit: Add John Smith family data
 - All files validated successfully"
 ```
 
-For branching strategies, collaboration patterns, and using branches to isolate research hypotheses, see the [Git Workflow Guide](/guides/git-workflow).
+For branching strategies, collaboration patterns, and using branches to isolate research hypotheses, see the [Git Workflow Guide](guides/git-workflow.md).
 
 ## Step 10: Customize Vocabularies for Your Research
 
-GLX isn't limited to traditional genealogy! Each archive defines its own [controlled vocabularies](/specification/2-core-concepts#archive-owned-vocabularies) — the types that matter to your research. Vocabulary files can live anywhere in your archive — the examples below use the default `vocabularies/` directory created by `glx init`. See the [Vocabularies specification](/specification/4-entity-types/vocabularies) and [Standard Vocabularies](/specification/5-standard-vocabularies/) for the full reference.
+GLX isn't limited to traditional genealogy! Each archive defines its own [controlled vocabularies](../specification/2-core-concepts.md#archive-owned-vocabularies) — the types that matter to your research. Vocabulary files can live anywhere in your archive — the examples below use the default `vocabularies/` directory created by `glx init`. See the [Vocabularies specification](../specification/4-entity-types/vocabularies.md) and [Standard Vocabularies](../specification/5-standard-vocabularies/README.md) for the full reference.
 
 ### Example: Maritime History Research
 
@@ -344,18 +344,18 @@ glx export . -o my-family.ged
 glx export . -o my-family.ged --format 70
 ```
 
-See the [CLI reference](/cli) for full documentation of all commands.
+See the [CLI reference](cli/index.md) for full documentation of all commands.
 
 ## Next Steps
 
 Your archive has a person, place, event, source, citation, and assertion — the core building blocks of GLX. Here's what to try next:
 
 - **Add more family members** — create more person files in `persons/` and link them with events
-- **Add [relationships](/specification/4-entity-types/relationship)** — create files in `relationships/` to record marriages, parent-child connections, and other relationships (see the [Basic Family](/examples/basic-family/) example)
-- **Explore all entity types** — the [Complete Family](/examples/complete-family/) example shows every entity type working together, or browse the [Entity Types](/specification/4-entity-types/) reference
-- **Read the specification** — the [Introduction](/specification/1-introduction) and [Core Concepts](/specification/2-core-concepts) explain the architecture behind what you just built
-- **Read the Best Practices** — [recommended workflows](/guides/best-practices) for evidence documentation, Git usage, and file organization
-- **Learn the Git workflows** — the [Git Workflow Guide](/guides/git-workflow) covers branching strategies, collaboration patterns, and branch-based research
+- **Add [relationships](../specification/4-entity-types/relationship.md)** — create files in `relationships/` to record marriages, parent-child connections, and other relationships (see the [Basic Family](examples/basic-family/README.md) example)
+- **Explore all entity types** — the [Complete Family](examples/complete-family/README.md) example shows every entity type working together, or browse the [Entity Types](../specification/4-entity-types/README.md) reference
+- **Read the specification** — the [Introduction](../specification/1-introduction.md) and [Core Concepts](../specification/2-core-concepts.md) explain the architecture behind what you just built
+- **Read the Best Practices** — [recommended workflows](guides/best-practices.md) for evidence documentation, Git usage, and file organization
+- **Learn the Git workflows** — the [Git Workflow Guide](guides/git-workflow.md) covers branching strategies, collaboration patterns, and branch-based research
 
 **Get help:**
 

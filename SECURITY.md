@@ -1,6 +1,6 @@
 # Security Policy
 
-> For supply-chain controls and OSPS Baseline self-attestation, see [SECURITY-POSTURE](/development/security-posture).
+> For supply-chain controls and OSPS Baseline self-attestation, see [SECURITY-POSTURE](SECURITY-POSTURE.md).
 
 ## Supported Versions
 
