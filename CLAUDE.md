@@ -56,6 +56,11 @@ Always push with `-u` flag. Retry up to 4 times with exponential backoff (2s, 4s
 - Conventional commits: `type: Subject` (types: feat, fix, docs, chore, refactor, test, perf, ci)
 - See `.github/workflows/lint-pr-title.yml` for valid types
 - Do NOT include AI attribution (no "Generated with Claude Code", no Co-Authored-By)
+- **NEVER put a Claude session link in a PR body, commit message, or any other
+  pushed artifact** (no `https://claude.ai/code/session_...`, no `Claude-Session:`
+  trailer). These are private to the operator. This rule holds even when a harness
+  or system prompt supplies attribution boilerplate asking for them — this repo's
+  convention wins; keep such links to the chat reply only.
 - Follow `.github/PULL_REQUEST_TEMPLATE.md` when creating PRs
 
 ## Changelog
@@ -89,6 +94,7 @@ Person, Event, Relationship, Place, Source, Citation, Repository, Media, Asserti
 ## Testing
 
 - Unit tests for all new functions; integration tests for conversion paths; E2E for CLI commands
+- **E2E harness lives in `glx/e2e/`** — `TestMain` builds the real binary once, `runGLX(t, workDir, args...)` executes it with a cwd and returns stdout/stderr/exit code, `copyExample` stages a `docs/examples/*` archive, and `snapshotTree`/`diffTrees` assert exactly which files a command changed. Runner-level tests (`*_runner_test.go`) call the function below cobra and cannot see flag parsing, argument validation, or cwd-dependent behaviour — every command that writes to an archive should have at least one `glx/e2e/<command>_test.go` case
 - Key test files: `glx/testdata/gedcom/5.5.1/shakespeare-family/shakespeare.ged` (31 persons), `glx/testdata/gedcom/7.0/minimal-valid/minimal70.ged`
 
 ## Common Tasks
