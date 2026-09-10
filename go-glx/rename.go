@@ -20,8 +20,11 @@ import (
 
 // RenameResult holds the outcome of a rename operation.
 type RenameResult struct {
-	EntityType  EntityType // which entity map contained the ID (e.g., EntityTypePersons)
-	RefsUpdated int        // number of reference fields updated
+	EntityType EntityType // which entity map contained the ID (e.g., EntityTypePersons)
+	// RefsUpdated is the total number of changes made, which is the number of
+	// reference fields rewritten plus one for the entity's own map key. It is
+	// not a count of references alone; present it to users as "changes".
+	RefsUpdated int
 }
 
 // RenameEntity renames an entity ID throughout the archive, updating all

@@ -221,7 +221,7 @@ func TestRenameEntities_RollsBackOnWriteFailure(t *testing.T) {
 	assert.NoFileExists(t, filepath.Join(root, "persons/person-robert-t.glx"))
 }
 
-func TestApplyFileOps_RollbackRemovesCreatedFiles(t *testing.T) {
+func TestExecuteFileOps_RollbackRemovesCreatedFiles(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("directory permission bits are not enforced on Windows")
 	}
@@ -240,10 +240,60 @@ func TestApplyFileOps_RollbackRemovesCreatedFiles(t *testing.T) {
 		{relPath: filepath.Join("b", "blocked.glx"), newData: []byte("never\n")},
 	}
 
-	err := applyFileOps(root, ops)
+	ordered := orderFileOps(ops)
+	require.NoError(t, preflightFileOps(root, ordered))
+	err := executeFileOps(root, ordered)
 
 	require.Error(t, err)
 	assert.NoFileExists(t, filepath.Join(root, "a", "new.glx"), "created file must be removed on rollback")
+}
+
+func TestPreflightFileOps_RejectsDuplicateTargets(t *testing.T) {
+	// A plan that wrote the same path twice would leave rollback unable to
+	// restore the state between the two writes, so it must be refused.
+	root := t.TempDir()
+
+	err := preflightFileOps(root, []fileOp{
+		{relPath: "dup.glx", newData: []byte("first\n")},
+		{relPath: "dup.glx", newData: []byte("second\n")},
+	})
+
+	require.ErrorIs(t, err, ErrRenameDuplicatePlanPath)
+}
+
+func TestRenameEntities_DryRunReportsPlanThatCannotBeApplied(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation needs elevated privileges on Windows")
+	}
+	// --dry-run exists to answer "would this work?", so it must run the same
+	// filesystem checks the real write does rather than reporting success for
+	// a plan that applyFileOps would refuse.
+	root := writeRenameFixture(t)
+	target := filepath.Join(root, "shared/event-births.yaml")
+	require.NoError(t, os.MkdirAll(filepath.Dir(target), 0o755))
+	require.NoError(t, os.WriteFile(target, []byte(renameFixtureBirths), 0o644))
+	link := filepath.Join(root, "events/event-births.glx")
+	require.NoError(t, os.Remove(link))
+	require.NoError(t, os.Symlink(filepath.Join("..", "shared", "event-births.yaml"), link))
+
+	err := renameEntities(root, "person-robert", "person-robert-t", true)
+
+	require.ErrorIs(t, err, ErrRenameThroughSymlink)
+}
+
+func TestRenameEntities_ReportsNothingWhenThePlanIsRefused(t *testing.T) {
+	// The summary line must not be printed for a rename that never happens.
+	root := writeRenameFixture(t)
+	stray := filepath.Join(root, "persons/person-robert-t.glx")
+	require.NoError(t, os.WriteFile(stray, []byte("persons:\n  person-other:\n    properties: {}\n"), 0o644))
+
+	var err error
+	stdout := captureStdout(t, func() {
+		err = renameEntities(root, "person-robert", "person-robert-t", false)
+	})
+
+	require.Error(t, err)
+	assert.NotContains(t, stdout, "Renaming person-robert")
 }
 
 func TestRenameEntities_SingleFileArchive(t *testing.T) {

@@ -52,7 +52,7 @@ func TestRename_FromInsideArchiveRoot_DefaultArchiveFlag(t *testing.T) {
 	assert.Contains(t, res.stdout, "Renaming "+renameOldID+" → "+renameNewID+" (persons)")
 	// Five files rewritten in place plus Robert's own file, which moves to
 	// the new name — a move is one touched file, not a delete plus a create.
-	assert.Contains(t, res.stdout, "Updated 6 reference(s) in 6 file(s)")
+	assert.Contains(t, res.stdout, "Updated 6 change(s) in 6 file(s)")
 	assert.Empty(t, res.stderr)
 
 	// The directory the user's shell is sitting in is still the archive.

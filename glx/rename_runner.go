@@ -97,8 +97,19 @@ func renameEntities(archivePath, oldID, newID string, dryRun bool) error {
 		return err
 	}
 
+	// Check the plan against the filesystem before reporting anything. A dry
+	// run that skipped this would print a rename the real run then refuses
+	// (a touched file that is a symlink or has changed since it was loaded, a
+	// target path occupied by something the loader did not collect), which is
+	// exactly what --dry-run exists to find out. Reporting after the check
+	// also keeps a failed run from printing a success line it did not earn.
+	ordered := orderFileOps(ops)
+	if err := preflightFileOps(archivePath, ordered); err != nil {
+		return err
+	}
+
 	fmt.Printf("Renaming %s → %s (%s)\n", oldID, newID, result.EntityType)
-	fmt.Printf("  Updated %d reference(s) in %d file(s)\n", result.RefsUpdated, countTouchedFiles(ops))
+	fmt.Printf("  Updated %d change(s) in %d file(s)\n", result.RefsUpdated, countTouchedFiles(ops))
 
 	if dryRun {
 		fmt.Println("\n(dry run — no files written)")
@@ -106,7 +117,7 @@ func renameEntities(archivePath, oldID, newID string, dryRun bool) error {
 		return nil
 	}
 
-	return applyFileOps(archivePath, ops)
+	return executeFileOps(archivePath, ordered)
 }
 
 // renameInSingleFile handles the single-file archive form of glx rename. perm
@@ -125,7 +136,7 @@ func renameInSingleFile(archivePath, oldID, newID string, dryRun bool, perm os.F
 	}
 
 	fmt.Printf("Renaming %s → %s (%s)\n", oldID, newID, result.EntityType)
-	fmt.Printf("  Updated %d reference(s)\n", result.RefsUpdated)
+	fmt.Printf("  Updated %d change(s)\n", result.RefsUpdated)
 
 	if dryRun {
 		fmt.Println("\n(dry run — no files written)")
@@ -271,20 +282,13 @@ func countTouchedFiles(ops []fileOp) int {
 	return len(seen)
 }
 
-// applyFileOps executes the planned operations in order. Creates and
-// rewrites happen before deletes so a rename's new file exists before its old
-// one goes away. Every path is checked up front (inside the archive, not a
-// symlink, creates don't clobber) so nothing is written unless the whole
-// plan is executable. Each write is atomic (temp file + rename), so a failed
-// write leaves its target untouched. If any operation fails, every operation
-// already applied is reverted from the bytes held in memory and the first
-// error is returned wrapped with the rollback outcome.
-//
-// Rollback state lives only in memory: a crash mid-plan can leave some
-// files updated and others not. That is a deliberate trade against the
-// directory-swap approach (#1192); per-file writes are atomic and the
-// archive is expected to be under version control for anything worse.
-func applyFileOps(rootDir string, ops []fileOp) error {
+// orderFileOps returns the operations in the order they must be executed:
+// creates and rewrites first, deletes last, so a rename's new file exists
+// before its old one goes away. Relative order within each group is
+// preserved, which keeps the plan (and therefore any rollback) deterministic.
+// The returned slice is a copy; preflightFileOps fills in the modes on it and
+// executeFileOps must be handed that same slice.
+func orderFileOps(ops []fileOp) []fileOp {
 	ordered := make([]fileOp, 0, len(ops))
 	for _, op := range ops {
 		if op.newData != nil {
@@ -297,10 +301,20 @@ func applyFileOps(rootDir string, ops []fileOp) error {
 		}
 	}
 
-	if err := preflightFileOps(rootDir, ordered); err != nil {
-		return err
-	}
+	return ordered
+}
 
+// executeFileOps runs preflighted operations in the order given. Each write is
+// atomic (temp file + rename), so a failed write leaves its target untouched.
+// If any operation fails, every operation already applied is reverted from the
+// bytes held in memory and the first error is returned wrapped with the
+// rollback outcome.
+//
+// Rollback state lives only in memory: a crash mid-plan can leave some
+// files updated and others not. That is a deliberate trade against the
+// directory-swap approach (#1192); per-file writes are atomic and the
+// archive is expected to be under version control for anything worse.
+func executeFileOps(rootDir string, ordered []fileOp) error {
 	for i := range ordered {
 		if err := executeFileOp(rootDir, &ordered[i]); err != nil {
 			if rbErr := rollbackFileOps(rootDir, ordered[:i]); rbErr != nil {
@@ -314,12 +328,14 @@ func applyFileOps(rootDir string, ops []fileOp) error {
 	return nil
 }
 
-// preflightFileOps rejects a plan before any write happens if a path would
-// escape rootDir, an existing file to be rewritten or removed is a symlink
-// (writing through it could clobber a file outside the archive; the loader
-// follows symlinks when reading, so a reference-only fragment can be one), or
-// a file to be created already exists on disk (catches case-insensitive
-// filesystem collisions the plan's map lookup could not see).
+// preflightFileOps rejects a plan before any write happens if two operations
+// target the same path (the second would overwrite the first and rollback
+// could not restore the state in between), a path would escape rootDir, an
+// existing file to be rewritten or removed is a symlink (writing through it
+// could clobber a file outside the archive; the loader follows symlinks when
+// reading, so a reference-only fragment can be one), or a file to be created
+// already exists on disk (catches case-insensitive filesystem collisions the
+// plan's map lookup could not see).
 func preflightFileOps(rootDir string, ops []fileOp) error {
 	absRoot, err := filepath.Abs(rootDir)
 	if err != nil {
@@ -333,9 +349,14 @@ func preflightFileOps(rootDir string, ops []fileOp) error {
 		return fmt.Errorf("resolving archive root: %w", err)
 	}
 
+	seen := make(map[string]struct{}, len(ops))
 	modes := make(map[string]os.FileMode, len(ops))
 	for i := range ops {
 		op := &ops[i]
+		if _, dup := seen[op.relPath]; dup {
+			return fmt.Errorf("%s: %w", op.relPath, ErrRenameDuplicatePlanPath)
+		}
+		seen[op.relPath] = struct{}{}
 		absPath := filepath.Join(absRoot, op.relPath)
 		if escapes(absRoot, absPath) {
 			return fmt.Errorf("%s: %w", op.relPath, ErrRenamePathEscapesArchive)

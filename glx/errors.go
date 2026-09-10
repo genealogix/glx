@@ -108,6 +108,12 @@ var (
 	// file path would resolve outside the archive root.
 	ErrRenamePathEscapesArchive = errors.New("planned file path escapes the archive root")
 
+	// ErrRenameDuplicatePlanPath is returned by glx rename when its write plan
+	// contains more than one operation for the same path. Applying both would
+	// make the second overwrite the first, and rollback could not restore the
+	// state in between, so the plan is refused before anything is written.
+	ErrRenameDuplicatePlanPath = errors.New("write plan targets the same file twice")
+
 	// ErrRenameFileChanged is returned by glx rename when a file it is about
 	// to rewrite no longer holds the bytes that were loaded: it was edited
 	// concurrently, or the loader resolved it through a Git symlink
