@@ -45,7 +45,8 @@ func renameEntities(archivePath, oldID, newID string, dryRun bool) error {
 	}
 
 	if !info.IsDir() {
-		return renameInSingleFile(archivePath, oldID, newID, dryRun)
+		// Rewritten in place, so it keeps the permissions it already has.
+		return renameInSingleFile(archivePath, oldID, newID, dryRun, info.Mode().Perm())
 	}
 
 	// In a multi-file archive the new ID must be usable as a filename even
@@ -68,7 +69,10 @@ func renameEntities(archivePath, oldID, newID string, dryRun bool) error {
 	if err != nil {
 		return fmt.Errorf("failed to load archive: %w", err)
 	}
-	for _, d := range duplicates {
+	// These warnings quote archive-controlled entity IDs and filenames, and
+	// this path deserializes directly rather than going through
+	// LoadArchiveWithOptions, so it must sanitize them itself (#925).
+	for _, d := range sanitizeDuplicateWarnings(duplicates) {
 		fmt.Fprintf(os.Stderr, "Warning: %s\n", d)
 	}
 
@@ -105,8 +109,11 @@ func renameEntities(archivePath, oldID, newID string, dryRun bool) error {
 	return applyFileOps(archivePath, ops)
 }
 
-// renameInSingleFile handles the single-file archive form of glx rename.
-func renameInSingleFile(archivePath, oldID, newID string, dryRun bool) error {
+// renameInSingleFile handles the single-file archive form of glx rename. perm
+// is the mode the archive file already carries; the rewrite preserves it
+// rather than falling back to the default, matching what the multi-file path
+// does for the files it touches.
+func renameInSingleFile(archivePath, oldID, newID string, dryRun bool, perm os.FileMode) error {
 	archive, err := readSingleFileArchive(archivePath, false)
 	if err != nil {
 		return err
@@ -126,7 +133,7 @@ func renameInSingleFile(archivePath, oldID, newID string, dryRun bool) error {
 		return nil
 	}
 
-	return writeSingleFileArchive(archivePath, archive, false)
+	return writeSingleFileArchiveWithMode(archivePath, archive, false, perm)
 }
 
 // fileOp is one planned change to a file in the archive. oldData is the
@@ -241,10 +248,23 @@ func fileNamedAfterEntity(relPath, id string) bool {
 	return strings.ToLower(filepath.Base(relPath)) == canonical
 }
 
-// countTouchedFiles counts distinct paths across the planned operations.
+// countTouchedFiles counts the files the plan changes as a user would count
+// them. A move is planned as two operations — a delete of the old path and a
+// create of the new one, linked by the create's modeFrom — but it is one file
+// on disk, so the source path of a move is not counted separately.
 func countTouchedFiles(ops []fileOp) int {
+	movedFrom := make(map[string]struct{}, len(ops))
+	for _, op := range ops {
+		if op.modeFrom != "" {
+			movedFrom[op.modeFrom] = struct{}{}
+		}
+	}
+
 	seen := make(map[string]struct{}, len(ops))
 	for _, op := range ops {
+		if _, moved := movedFrom[op.relPath]; moved {
+			continue
+		}
 		seen[op.relPath] = struct{}{}
 	}
 
