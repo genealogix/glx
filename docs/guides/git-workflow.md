@@ -8,7 +8,7 @@ layout: doc
 
 A GLX archive is a Git repository of YAML files. That single design decision gives genealogy four things databases struggle with — history, collaboration, backup, and longevity — but only if you actually use the Git side of the format. This guide shows how: daily commit habits, hypothesis branches, collaborating with other researchers, and reading history as a research log.
 
-> **Background:** For *why* archives are Git repositories, see [ADR-0004](/decisions/0004-git-native-archives) and [Core Concepts — Collaboration](/specification/2-core-concepts#collaboration). For general archive hygiene, see the [Best Practices Guide](/guides/best-practices).
+> **Background:** For *why* archives are Git repositories, see [ADR-0004](../decisions/0004-git-native-archives.md) and [Core Concepts — Collaboration](../../specification/2-core-concepts.md#collaboration). For general archive hygiene, see the [Best Practices Guide](best-practices.md).
 
 This is not a general Git tutorial — it assumes you know `clone`, `add`, `commit`, `push`, and `pull`. If you don't yet, the [Git book](https://git-scm.com/book/en/v2) chapters 1–3 cover everything this guide uses.
 
@@ -35,7 +35,7 @@ git add .gitattributes
 git commit -m "Pin LF line endings for archive files"
 ```
 
-Entity filenames are derived from entity IDs and lowercased at serialize time, so avoid IDs that differ only by case — they collide on the case-insensitive filesystems common on Windows and macOS. See [Best Practices — ID Generation](/guides/best-practices#id-generation).
+Entity filenames are derived from entity IDs and lowercased at serialize time, so avoid IDs that differ only by case — they collide on the case-insensitive filesystems common on Windows and macOS. See [Best Practices — ID Generation](best-practices.md#id-generation).
 
 ### Remote Backup
 
@@ -164,7 +164,7 @@ Negative findings merged to `main` keep the archive honest about what is known *
 
 ### Comparing Branches
 
-Plain `git diff main..research/thomas-smith-paternity` shows the textual changes, and because GLX stores one entity per file, the file list alone tells you which people and events the hypothesis touches. For a genealogy-aware comparison, check out both states and use [`glx diff`](/cli/glx_diff):
+Plain `git diff main..research/thomas-smith-paternity` shows the textual changes, and because GLX stores one entity per file, the file list alone tells you which people and events the hypothesis touches. For a genealogy-aware comparison, check out both states and use [`glx diff`](../cli/glx_diff.md):
 
 ```bash
 git worktree add /tmp/archive-main main
@@ -199,7 +199,7 @@ For looser collaborations — a one-name study, a local history society, a stran
 
 A pull request review on an archive is a proof-standard check, not a code review. Things a reviewer should ask of every PR:
 
-- Does every new assertion cite a source? (No orphan conclusions — see [Best Practices](/guides/best-practices#complete-evidence-chains).)
+- Does every new assertion cite a source? (No orphan conclusions — see [Best Practices](best-practices.md#complete-evidence-chains).)
 - Are `confidence` and `status` honest? `status: proven` should be rare in a PR; most incoming research is `speculative` until corroborated.
 - Does new evidence conflict with existing assertions? If so, the PR should *record* the conflict (`status: disputed` on both sides), not silently overwrite the old conclusion.
 - Does `glx validate` pass? Don't burn human review time on what a machine checks — automate it:
@@ -227,7 +227,7 @@ jobs:
       - run: ./.bin/glx validate
 ```
 
-For shared archives, also agree on vocabulary governance — who may add custom event or relationship types, and how. See [Best Practices — Vocabulary Governance](/guides/best-practices#vocabulary-governance).
+For shared archives, also agree on vocabulary governance — who may add custom event or relationship types, and how. See [Best Practices — Vocabulary Governance](best-practices.md#vocabulary-governance).
 
 ## Merging and Conflict Resolution
 
@@ -236,9 +236,9 @@ First, a distinction that trips people up. There are two different "merges":
 | | Use |
 |---|---|
 | `git merge` | Combining **branches of the same repository** — hypothesis branches, collaborators' PRs. Git matches files line-by-line. |
-| [`glx merge`](/cli/glx_merge) | Combining **two separate archives** — a cousin's independently-built archive into yours. Entities are copied by ID; there is no shared Git history to merge. |
+| [`glx merge`](../cli/glx_merge.md) | Combining **two separate archives** — a cousin's independently-built archive into yours. Entities are copied by ID; there is no shared Git history to merge. |
 
-If you and your cousin both cloned the same repository, you want `git merge` (via pull requests). If you built archives independently and discovered the overlap later, you want `glx merge` — see the [Hands-On CLI Guide](/guides/hands-on-cli-guide#archive-merging).
+If you and your cousin both cloned the same repository, you want `git merge` (via pull requests). If you built archives independently and discovered the overlap later, you want `glx merge` — see the [Hands-On CLI Guide](hands-on-cli-guide.md#archive-merging).
 
 ### Why Conflicts Are Rare
 
@@ -267,7 +267,7 @@ persons:
 Resolve it by editing the file to the correct YAML, then `git add` and complete the merge. But pause on *why* it conflicted:
 
 - **Same fact, refined reading** — one side corrected a transcription the other also touched. Keep the better reading; done.
-- **Genuinely conflicting evidence** — the 1851 census says blacksmith, the 1861 says farrier, and both are right for their year, or the sources actually disagree. Don't let the merge force a choice the evidence doesn't support: keep **both** as assertions with their own citations, mark them `status: disputed` if they're irreconcilable, and record the reasoning. The textual conflict was a symptom; the evidential conflict is the real data. See [Best Practices — Conflicting Evidence](/guides/best-practices#conflicting-evidence).
+- **Genuinely conflicting evidence** — the 1851 census says blacksmith, the 1861 says farrier, and both are right for their year, or the sources actually disagree. Don't let the merge force a choice the evidence doesn't support: keep **both** as assertions with their own citations, mark them `status: disputed` if they're irreconcilable, and record the reasoning. The textual conflict was a symptom; the evidential conflict is the real data. See [Best Practices — Conflicting Evidence](best-practices.md#conflicting-evidence).
 
 ::: warning
 Never resolve a merge by silently discarding another researcher's cited assertion. If you believe their conclusion is wrong, the archive has a vocabulary for that — `status: disputed` or `disproven`, with a note saying why. Deleting cited evidence in a merge is the Git equivalent of tearing a page out of a shared notebook.
@@ -280,7 +280,7 @@ glx validate      # cross-references intact, no duplicate IDs
 glx duplicates    # did the merge introduce the same person twice under different IDs?
 ```
 
-If `glx duplicates` finds that you and your collaborator each created the same ancestor independently, fold one into the other with [`glx merge-persons`](/cli/glx_merge-persons).
+If `glx duplicates` finds that you and your collaborator each created the same ancestor independently, fold one into the other with [`glx merge-persons`](../cli/glx_merge-persons.md).
 
 ## History as a Research Log
 
@@ -318,8 +318,8 @@ Git handles tens of thousands of small YAML files comfortably — text is what i
 
 ## See Also
 
-- [ADR-0004: Archives are Git repositories](/decisions/0004-git-native-archives) — the reasoning behind Git-native design
-- [Best Practices Guide](/guides/best-practices) — evidence chains, vocabulary governance, validation habits
-- [Hands-On CLI Guide](/guides/hands-on-cli-guide) — `glx merge`, `glx diff`, `glx duplicates` walkthroughs
-- [Core Concepts — Collaboration](/specification/2-core-concepts#collaboration) — the specification's collaboration model
-- [Quickstart](/quickstart) — create your first archive
+- [ADR-0004: Archives are Git repositories](../decisions/0004-git-native-archives.md) — the reasoning behind Git-native design
+- [Best Practices Guide](best-practices.md) — evidence chains, vocabulary governance, validation habits
+- [Hands-On CLI Guide](hands-on-cli-guide.md) — `glx merge`, `glx diff`, `glx duplicates` walkthroughs
+- [Core Concepts — Collaboration](../../specification/2-core-concepts.md#collaboration) — the specification's collaboration model
+- [Quickstart](../quickstart.md) — create your first archive

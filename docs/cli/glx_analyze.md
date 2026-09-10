@@ -63,5 +63,5 @@ glx analyze [person] [flags]
 
 ### SEE ALSO
 
-* [glx](/cli/glx)	 - GENEALOGIX CLI - Manage and validate genealogy archives
+* [glx](glx.md)	 - GENEALOGIX CLI - Manage and validate genealogy archives
 

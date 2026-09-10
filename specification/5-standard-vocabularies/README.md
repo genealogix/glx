@@ -52,7 +52,7 @@ Defines lifecycle events (birth, death, marriage, adoption), religious events (b
   title="vocabularies/event-types.glx"
 />
 
-**View Source:** [event-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/event-types.glx) | **See Also:** [Event Entity Documentation](../4-entity-types/event) | [Vocabularies Specification](../4-entity-types/vocabularies#event-types-vocabulary)
+**View Source:** [event-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/event-types.glx) | **See Also:** [Event Entity Documentation](../4-entity-types/event.md) | [Vocabularies Specification](../4-entity-types/vocabularies.md#event-types-vocabulary)
 
 ---
 
@@ -65,7 +65,7 @@ Defines relationships between people including marriage, parent-child (biologica
   title="vocabularies/relationship-types.glx"
 />
 
-**View Source:** [relationship-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/relationship-types.glx) | **See Also:** [Relationship Entity Documentation](../4-entity-types/relationship) | [Vocabularies Specification](../4-entity-types/vocabularies#relationship-types-vocabulary)
+**View Source:** [relationship-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/relationship-types.glx) | **See Also:** [Relationship Entity Documentation](../4-entity-types/relationship.md) | [Vocabularies Specification](../4-entity-types/vocabularies.md#relationship-types-vocabulary)
 
 ---
 
@@ -78,7 +78,7 @@ Defines geographic and administrative place classifications from countries down 
   title="vocabularies/place-types.glx"
 />
 
-**View Source:** [place-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/place-types.glx) | **See Also:** [Place Entity Documentation](../4-entity-types/place) | [Vocabularies Specification](../4-entity-types/vocabularies#place-types-vocabulary)
+**View Source:** [place-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/place-types.glx) | **See Also:** [Place Entity Documentation](../4-entity-types/place.md) | [Vocabularies Specification](../4-entity-types/vocabularies.md#place-types-vocabulary)
 
 ---
 
@@ -91,7 +91,7 @@ Defines categories of genealogical sources including vital records, census, chur
   title="vocabularies/source-types.glx"
 />
 
-**View Source:** [source-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/source-types.glx) | **See Also:** [Source Entity Documentation](../4-entity-types/source) | [Vocabularies Specification](../4-entity-types/vocabularies#source-types-vocabulary)
+**View Source:** [source-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/source-types.glx) | **See Also:** [Source Entity Documentation](../4-entity-types/source.md) | [Vocabularies Specification](../4-entity-types/vocabularies.md#source-types-vocabulary)
 
 ---
 
@@ -104,7 +104,7 @@ Defines categories of media objects including photographs, documents, audio reco
   title="vocabularies/media-types.glx"
 />
 
-**View Source:** [media-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/media-types.glx) | **See Also:** [Media Entity Documentation](../4-entity-types/media) | [Vocabularies Specification](../4-entity-types/vocabularies#media-types-vocabulary)
+**View Source:** [media-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/media-types.glx) | **See Also:** [Media Entity Documentation](../4-entity-types/media.md) | [Vocabularies Specification](../4-entity-types/vocabularies.md#media-types-vocabulary)
 
 ---
 
@@ -117,7 +117,7 @@ Defines confidence levels for assertions, representing researcher certainty in c
   title="vocabularies/confidence-levels.glx"
 />
 
-**View Source:** [confidence-levels.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/confidence-levels.glx) | **See Also:** [Assertion Entity Documentation](../4-entity-types/assertion) | [Vocabularies Specification](../4-entity-types/vocabularies#confidence-levels-vocabulary)
+**View Source:** [confidence-levels.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/confidence-levels.glx) | **See Also:** [Assertion Entity Documentation](../4-entity-types/assertion.md) | [Vocabularies Specification](../4-entity-types/vocabularies.md#confidence-levels-vocabulary)
 
 ---
 
@@ -130,7 +130,7 @@ Defines roles that people play in events and relationships (principal, witness, 
   title="vocabularies/participant-roles.glx"
 />
 
-**View Source:** [participant-roles.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/participant-roles.glx) | **See Also:** [Event Entity Documentation](../4-entity-types/event) | [Relationship Entity Documentation](../4-entity-types/relationship) | [Vocabularies Specification](../4-entity-types/vocabularies#participant-roles-vocabulary)
+**View Source:** [participant-roles.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/participant-roles.glx) | **See Also:** [Event Entity Documentation](../4-entity-types/event.md) | [Relationship Entity Documentation](../4-entity-types/relationship.md) | [Vocabularies Specification](../4-entity-types/vocabularies.md#participant-roles-vocabulary)
 
 ---
 
@@ -143,7 +143,7 @@ Defines categories of institutions that hold genealogical sources (archives, lib
   title="vocabularies/repository-types.glx"
 />
 
-**View Source:** [repository-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/repository-types.glx) | **See Also:** [Repository Entity Documentation](../4-entity-types/repository) | [Vocabularies Specification](../4-entity-types/vocabularies#repository-types-vocabulary)
+**View Source:** [repository-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/repository-types.glx) | **See Also:** [Repository Entity Documentation](../4-entity-types/repository.md) | [Vocabularies Specification](../4-entity-types/vocabularies.md#repository-types-vocabulary)
 
 ---
 
@@ -156,7 +156,7 @@ Defines controlled values for the `sex` person property (male, female, unknown, 
   title="vocabularies/sex-types.glx"
 />
 
-**View Source:** [sex-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/sex-types.glx) | **See Also:** [Person Entity Documentation](../4-entity-types/person) | [Vocabularies Specification](../4-entity-types/vocabularies#property-definition-structure)
+**View Source:** [sex-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/sex-types.glx) | **See Also:** [Person Entity Documentation](../4-entity-types/person.md) | [Vocabularies Specification](../4-entity-types/vocabularies.md#property-definition-structure)
 
 ---
 
@@ -169,33 +169,33 @@ Defines controlled values for the `gender` person property — self-identified g
   title="vocabularies/gender-types.glx"
 />
 
-**View Source:** [gender-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/gender-types.glx) | **See Also:** [Person Entity Documentation](../4-entity-types/person) | [Vocabularies Specification](../4-entity-types/vocabularies#property-definition-structure)
+**View Source:** [gender-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/gender-types.glx) | **See Also:** [Person Entity Documentation](../4-entity-types/person.md) | [Vocabularies Specification](../4-entity-types/vocabularies.md#property-definition-structure)
 
 ---
 
 ### Search Result Types
 
-Defines the outcome of each search recorded in a [research log](../4-entity-types/research-log) (found, not found, inconclusive, partial, not searched). Negative evidence (`not_found`) is a first-class outcome, supporting a "reasonably exhaustive search" per the Genealogical Proof Standard.
+Defines the outcome of each search recorded in a [research log](../4-entity-types/research-log.md) (found, not found, inconclusive, partial, not searched). Negative evidence (`not_found`) is a first-class outcome, supporting a "reasonably exhaustive search" per the Genealogical Proof Standard.
 
 <YamlFile
   :content="vocabularies['search-result-types']"
   title="vocabularies/search-result-types.glx"
 />
 
-**View Source:** [search-result-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/search-result-types.glx) | **See Also:** [ResearchLog Entity Documentation](../4-entity-types/research-log) | [Vocabularies Specification](../4-entity-types/vocabularies#search-result-types-vocabulary)
+**View Source:** [search-result-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/search-result-types.glx) | **See Also:** [ResearchLog Entity Documentation](../4-entity-types/research-log.md) | [Vocabularies Specification](../4-entity-types/vocabularies.md#search-result-types-vocabulary)
 
 ---
 
 ### Research Log Status Types
 
-Defines the lifecycle status of a [research log](../4-entity-types/research-log) investigation (open, in progress, complete, blocked).
+Defines the lifecycle status of a [research log](../4-entity-types/research-log.md) investigation (open, in progress, complete, blocked).
 
 <YamlFile
   :content="vocabularies['research-log-status-types']"
   title="vocabularies/research-log-status-types.glx"
 />
 
-**View Source:** [research-log-status-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/research-log-status-types.glx) | **See Also:** [ResearchLog Entity Documentation](../4-entity-types/research-log) | [Vocabularies Specification](../4-entity-types/vocabularies#research-log-status-types-vocabulary)
+**View Source:** [research-log-status-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/research-log-status-types.glx) | **See Also:** [ResearchLog Entity Documentation](../4-entity-types/research-log.md) | [Vocabularies Specification](../4-entity-types/vocabularies.md#research-log-status-types-vocabulary)
 
 ---
 
@@ -208,7 +208,7 @@ Defines classifications for research-project Study entities (one place study, on
   title="vocabularies/study-types.glx"
 />
 
-**View Source:** [study-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/study-types.glx) | **See Also:** [Study Entity Documentation](../4-entity-types/study) | [Vocabularies Specification](../4-entity-types/vocabularies#study-types-vocabulary)
+**View Source:** [study-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/study-types.glx) | **See Also:** [Study Entity Documentation](../4-entity-types/study.md) | [Vocabularies Specification](../4-entity-types/vocabularies.md#study-types-vocabulary)
 
 ---
 
@@ -221,7 +221,7 @@ Defines status values for Study entities indicating the current state of a resea
   title="vocabularies/study-statuses.glx"
 />
 
-**View Source:** [study-statuses.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/study-statuses.glx) | **See Also:** [Study Entity Documentation](../4-entity-types/study) | [Vocabularies Specification](../4-entity-types/vocabularies#study-statuses-vocabulary)
+**View Source:** [study-statuses.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/study-statuses.glx) | **See Also:** [Study Entity Documentation](../4-entity-types/study.md) | [Vocabularies Specification](../4-entity-types/vocabularies.md#study-statuses-vocabulary)
 
 ---
 
@@ -234,7 +234,7 @@ Defines legal-status values for relationships, primarily for distinguishing form
   title="vocabularies/legal-statuses.glx"
 />
 
-**View Source:** [legal-statuses.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/legal-statuses.glx) | **See Also:** [Relationship Entity Documentation](../4-entity-types/relationship) | [Vocabularies Specification](../4-entity-types/vocabularies#legal-statuses-vocabulary)
+**View Source:** [legal-statuses.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/legal-statuses.glx) | **See Also:** [Relationship Entity Documentation](../4-entity-types/relationship.md) | [Vocabularies Specification](../4-entity-types/vocabularies.md#legal-statuses-vocabulary)
 
 ---
 
@@ -247,7 +247,7 @@ Classifies a source by how it was produced relative to the event it documents, f
   title="vocabularies/source-natures.glx"
 />
 
-**View Source:** [source-natures.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/source-natures.glx) | **See Also:** [Source Entity Documentation](../4-entity-types/source) | [Vocabularies Specification](../4-entity-types/vocabularies#source-natures-vocabulary)
+**View Source:** [source-natures.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/source-natures.glx) | **See Also:** [Source Entity Documentation](../4-entity-types/source.md) | [Vocabularies Specification](../4-entity-types/vocabularies.md#source-natures-vocabulary)
 
 ---
 
@@ -260,7 +260,7 @@ Classifies the information a source conveys by the informant's relationship to t
   title="vocabularies/information-types.glx"
 />
 
-**View Source:** [information-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/information-types.glx) | **See Also:** [Source Entity Documentation](../4-entity-types/source) | [Vocabularies Specification](../4-entity-types/vocabularies#information-types-vocabulary)
+**View Source:** [information-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/information-types.glx) | **See Also:** [Source Entity Documentation](../4-entity-types/source.md) | [Vocabularies Specification](../4-entity-types/vocabularies.md#information-types-vocabulary)
 
 ---
 
@@ -291,7 +291,7 @@ Defines standard and custom properties for person entities (name, sex, gender, o
 - `national_id` - National identification number, e.g. US SSN, UK NI number, Canadian SIN, Australian TFN (GEDCOM: SSN)
 - `external_ids` - External identifiers from other systems (multi-value, GEDCOM: EXID)
 
-**See Also:** [Person Entity Documentation](../4-entity-types/person#properties) | [Vocabularies Specification](../4-entity-types/vocabularies#person-properties-vocabulary)
+**See Also:** [Person Entity Documentation](../4-entity-types/person.md#properties) | [Vocabularies Specification](../4-entity-types/vocabularies.md#person-properties-vocabulary)
 
 ---
 
@@ -310,7 +310,7 @@ Defines standard and custom properties for event entities.
 
 **Note:** Event timing and location are handled by the `date` and `place` fields directly on events, not as properties. The `notes` field is a common entity field, not a property.
 
-**See Also:** [Event Entity Documentation](../4-entity-types/event#properties) | [Vocabularies Specification](../4-entity-types/vocabularies#event-properties-vocabulary)
+**See Also:** [Event Entity Documentation](../4-entity-types/event.md#properties) | [Vocabularies Specification](../4-entity-types/vocabularies.md#event-properties-vocabulary)
 
 ---
 
@@ -327,7 +327,7 @@ Defines standard and custom properties for relationship entities.
 - `location` - Location of the relationship (reference)
 - `description` - Relationship description
 
-**See Also:** [Relationship Entity Documentation](../4-entity-types/relationship#properties) | [Vocabularies Specification](../4-entity-types/vocabularies#relationship-properties-vocabulary)
+**See Also:** [Relationship Entity Documentation](../4-entity-types/relationship.md#properties) | [Vocabularies Specification](../4-entity-types/vocabularies.md#relationship-properties-vocabulary)
 
 ---
 
@@ -348,7 +348,7 @@ Defines standard and custom properties for place entities.
 - `alternative_names` - Historical or alternate names (temporal, multi-value)
 - `external_ids` - External identifiers from geographic databases like GeoNames, Wikidata (multi-value, GEDCOM: EXID)
 
-**See Also:** [Place Entity Documentation](../4-entity-types/place#properties) | [Vocabularies Specification](../4-entity-types/vocabularies#place-properties-vocabulary)
+**See Also:** [Place Entity Documentation](../4-entity-types/place.md#properties) | [Vocabularies Specification](../4-entity-types/vocabularies.md#place-properties-vocabulary)
 
 ---
 
@@ -370,7 +370,7 @@ Defines standard and custom properties for media entities.
 - `photographer` - Person who captured the media (reference)
 - `location` - Location where media was captured (reference)
 
-**See Also:** [Media Entity Documentation](../4-entity-types/media#properties) | [Vocabularies Specification](../4-entity-types/vocabularies#media-properties-vocabulary)
+**See Also:** [Media Entity Documentation](../4-entity-types/media.md#properties) | [Vocabularies Specification](../4-entity-types/vocabularies.md#media-properties-vocabulary)
 
 ---
 
@@ -390,7 +390,7 @@ Defines standard and custom properties for repository entities including contact
 - `holding_types` - Types of materials held (microfilm, digital, books, etc.) (multi-value)
 - `external_ids` - External identifiers from other systems like FamilySearch, WikiTree (multi-value)
 
-**See Also:** [Repository Entity Documentation](../4-entity-types/repository#properties) | [Vocabularies Specification](../4-entity-types/vocabularies#repository-properties-vocabulary)
+**See Also:** [Repository Entity Documentation](../4-entity-types/repository.md#properties) | [Vocabularies Specification](../4-entity-types/vocabularies.md#repository-properties-vocabulary)
 
 ---
 
@@ -411,7 +411,7 @@ Defines standard and custom properties for source entities including bibliograph
 - `publication_info` - Publication details: publisher, place, edition (from GEDCOM PUBL)
 - `url` - Web address where the source can be accessed online
 
-**See Also:** [Source Entity Documentation](../4-entity-types/source#properties) | [Vocabularies Specification](../4-entity-types/vocabularies#source-properties-vocabulary)
+**See Also:** [Source Entity Documentation](../4-entity-types/source.md#properties) | [Vocabularies Specification](../4-entity-types/vocabularies.md#source-properties-vocabulary)
 
 ---
 
@@ -431,14 +431,14 @@ Defines standard and custom properties for citation entities including location,
 - `original_place_name` - Verbatim place name from the source before normalization to a place entity
 - `external_ids` - Identifiers from external systems for the specific cited record (multi-value; use provider-prefixed values to avoid collisions, e.g., `fs:ark:/...`, `ancestry:record-id:...`)
 
-**See Also:** [Citation Entity Documentation](../4-entity-types/citation#properties) | [Vocabularies Specification](../4-entity-types/vocabularies#citation-properties-vocabulary)
+**See Also:** [Citation Entity Documentation](../4-entity-types/citation.md#properties) | [Vocabularies Specification](../4-entity-types/vocabularies.md#citation-properties-vocabulary)
 
 ---
 
 ## Customizing Vocabularies
 
 ::: tip Complete Syntax Reference
-For detailed field requirements, validation rules, and exact syntax for each vocabulary type, see the [Vocabularies Specification](../4-entity-types/vocabularies).
+For detailed field requirements, validation rules, and exact syntax for each vocabulary type, see the [Vocabularies Specification](../4-entity-types/vocabularies.md).
 :::
 
 ### Adding Custom Types
@@ -493,6 +493,6 @@ $ glx validate
 
 ## See Also
 
-- [Vocabularies Documentation](../4-entity-types/vocabularies) - Complete vocabulary reference
-- [Core Concepts - Archive-Owned Vocabularies](../2-core-concepts#archive-owned-vocabularies)
-- [Archive Organization](../3-archive-organization#vocabulary-files)
+- [Vocabularies Documentation](../4-entity-types/vocabularies.md) - Complete vocabulary reference
+- [Core Concepts - Archive-Owned Vocabularies](../2-core-concepts.md#archive-owned-vocabularies)
+- [Archive Organization](../3-archive-organization.md#vocabulary-files)

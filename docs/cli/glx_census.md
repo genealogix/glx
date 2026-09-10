@@ -28,6 +28,6 @@ Subcommands:
 
 ### SEE ALSO
 
-* [glx](/cli/glx)	 - GENEALOGIX CLI - Manage and validate genealogy archives
-* [glx census add](/cli/glx_census_add)	 - Import a census template into the archive
+* [glx](glx.md)	 - GENEALOGIX CLI - Manage and validate genealogy archives
+* [glx census add](glx_census_add.md)	 - Import a census template into the archive
 

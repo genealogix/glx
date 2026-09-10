@@ -6,7 +6,7 @@ layout: doc
 
 # Place Entity
 
-[← Back to Entity Types](README)
+[← Back to Entity Types](README.md)
 
 ## Overview
 
@@ -109,13 +109,13 @@ places:
           date: "FROM 1626 TO 1664"
 ```
 
-**See [Vocabularies - Place Properties](vocabularies#place-properties-vocabulary) for the full vocabulary definition.**
+**See [Vocabularies - Place Properties](vocabularies.md#place-properties-vocabulary) for the full vocabulary definition.**
 
 ## Place Types
 
 Place types are defined in `vocabularies/place-types.glx` within each archive.
 
-**See [Vocabularies - Place Types](vocabularies#place-types-vocabulary) for:**
+**See [Vocabularies - Place Types](vocabularies.md#place-types-vocabulary) for:**
 
 - Complete list of standard place types
 - How to add custom place types
@@ -238,7 +238,7 @@ places/
 - Coordinates, if present, must be valid WGS84 values
 - `latitude` and `longitude` must be supplied together — setting one without the other is rejected by schema validation
 - Parent place must reference an existing Place entity
-- If `type` is specified, it must be from the [place types vocabulary](vocabularies#place-types-vocabulary)
+- If `type` is specified, it must be from the [place types vocabulary](vocabularies.md#place-types-vocabulary)
 
 ## Schema Reference
 
@@ -246,7 +246,7 @@ See [place.schema.json](../schema/v1/place.schema.json) for the complete JSON Sc
 
 ## See Also
 
-- [Event Entity](event) - Events that occur at places
-- [Person Entity](person) - Residence and birth/death places
-- [Vocabularies](vocabularies#place-types-vocabulary) - Place types vocabulary
-- [Core Concepts - Data Types](../2-core-concepts#data-types) - Coordinate and date formats
+- [Event Entity](event.md) - Events that occur at places
+- [Person Entity](person.md) - Residence and birth/death places
+- [Vocabularies](vocabularies.md#place-types-vocabulary) - Place types vocabulary
+- [Core Concepts - Data Types](../2-core-concepts.md#data-types) - Coordinate and date formats

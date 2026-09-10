@@ -6,7 +6,7 @@ layout: doc
 
 # Hands-On CLI Guide
 
-This guide walks through every `glx` command using the [Westeros demo archive](/examples/westeros/) — a large-scale genealogy of 790+ characters from *A Song of Ice and Fire*. By the end, you'll know how to validate, query, explore, and export any GLX archive.
+This guide walks through every `glx` command using the [Westeros demo archive](../examples/westeros/README.md) — a large-scale genealogy of 790+ characters from *A Song of Ice and Fire*. By the end, you'll know how to validate, query, explore, and export any GLX archive.
 
 ## Setup
 
@@ -771,15 +771,15 @@ The command creates birth/death/burial events from the property values, converts
 
 Now that you've explored the Westeros archive, try these on your own data:
 
-1. **Import a GEDCOM file**: `glx import family.ged -o family-archive` — see the [Migration Guide](/guides/migration-from-gedcom)
-2. **Create an archive from scratch**: `glx init my-archive` — see the [Quickstart](/quickstart)
+1. **Import a GEDCOM file**: `glx import family.ged -o family-archive` — see the [Migration Guide](migration-from-gedcom.md)
+2. **Create an archive from scratch**: `glx init my-archive` — see the [Quickstart](../quickstart.md)
 3. **Add custom vocabularies**: Define domain-specific event types and relationship types for your research
 4. **Track evidence**: Build assertion chains from sources through citations to conclusions
 
 ## See Also
 
-- [Westeros Example Archive](/examples/westeros/) — Details on the archive structure and contents
-- [CLI Reference](/cli) — Full documentation for every command and flag
-- [Quickstart Guide](/quickstart) — Create your first archive from scratch
-- [Migration from GEDCOM](/guides/migration-from-gedcom) — Import existing GEDCOM files
-- [Git Workflow Guide](/guides/git-workflow) — Branching strategies and collaboration patterns
+- [Westeros Example Archive](../examples/westeros/README.md) — Details on the archive structure and contents
+- [CLI Reference](../cli/index.md) — Full documentation for every command and flag
+- [Quickstart Guide](../quickstart.md) — Create your first archive from scratch
+- [Migration from GEDCOM](migration-from-gedcom.md) — Import existing GEDCOM files
+- [Git Workflow Guide](git-workflow.md) — Branching strategies and collaboration patterns

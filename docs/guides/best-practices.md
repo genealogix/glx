@@ -10,7 +10,7 @@ Practical recommendations for maintaining GENEALOGIX archives.
 
 ## Evidence Documentation
 
-> **Background:** For an explanation of the assertion-based evidence model, see [Core Concepts](/specification/2-core-concepts#assertion-aware-data-model).
+> **Background:** For an explanation of the assertion-based evidence model, see [Core Concepts](../../specification/2-core-concepts.md#assertion-aware-data-model).
 
 ### Complete Evidence Chains
 
@@ -43,7 +43,7 @@ assertions:
     citations: [citation-birth-cert, citation-baptism]
 ```
 
-Use `confidence` to express certainty and `status` to track research state (`proven`, `speculative`, `disputed`, `disproven`, `unresearched`). These are independent — `confidence: high` + `status: speculative` means "I'm fairly sure, but haven't verified yet"; `status: unresearched` flags claims that haven't been investigated at all. See [Assertion Entity](/specification/4-entity-types/assertion#status).
+Use `confidence` to express certainty and `status` to track research state (`proven`, `speculative`, `disputed`, `disproven`, `unresearched`). These are independent — `confidence: high` + `status: speculative` means "I'm fairly sure, but haven't verified yet"; `status: unresearched` flags claims that haven't been investigated at all. See [Assertion Entity](../../specification/4-entity-types/assertion.md#status).
 
 ### Transcribe Key Evidence
 
@@ -61,7 +61,7 @@ citations:
 
 ## Git Workflow
 
-> **See also:** The [Git Workflow Guide](/guides/git-workflow) covers this topic in depth — branching strategies, collaboration patterns, merging, and conflict resolution.
+> **See also:** The [Git Workflow Guide](git-workflow.md) covers this topic in depth — branching strategies, collaboration patterns, merging, and conflict resolution.
 
 ### Validation Before Commit
 
@@ -262,6 +262,6 @@ glx validate
 
 ## See Also
 
-- [Entity Types](/specification/4-entity-types/) - Entity specifications
-- [CLI Documentation](/cli) - Command reference
-- [Git Workflow Guide](/guides/git-workflow) - Branching strategies and collaboration patterns
+- [Entity Types](../../specification/4-entity-types/README.md) - Entity specifications
+- [CLI Documentation](../cli/index.md) - Command reference
+- [Git Workflow Guide](git-workflow.md) - Branching strategies and collaboration patterns
