@@ -672,18 +672,18 @@ func lifeSpan(birth, death *glxlib.Event) string {
 	}
 }
 
-// eventYear extracts a 4-digit year string from a GLX date, or "" if unparseable.
+// eventYear extracts the year of a GLX date for display ("1850", "44 BCE"),
+// or "" if none can be determined.
 func eventYear(date string) string {
-	key := dateSortKey(date)
-	if key == "\xff" {
+	year := glxlib.ExtractFirstYear(date)
+	switch {
+	case year == 0:
 		return ""
+	case year < 0:
+		return strconv.Itoa(-year) + " BCE"
 	}
-	if i := strings.Index(key, "-"); i >= 0 {
-		key = key[:i]
-	}
-	// Strip zero-padding added by dateSortKey. An all-zero year is a
-	// placeholder/malformed date, not year 0 — treat it as unknown ("").
-	return strings.TrimLeft(key, "0")
+
+	return strconv.Itoa(year)
 }
 
 // placeFullName builds a hierarchical place name by walking parent places,

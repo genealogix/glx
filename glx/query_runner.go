@@ -18,10 +18,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"regexp"
 	"slices"
 	"sort"
-	"strconv"
 	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
@@ -677,31 +675,11 @@ func propertyString(props map[string]any, key string) string {
 	return fmt.Sprint(raw)
 }
 
-// queryDayMonthRegexp matches day-of-month followed by a month abbreviation
-// (e.g., "15 MAR"). Used to strip day values before year extraction so that
-// 1–2 digit days are not mistaken for 1–2 digit years.
-var queryDayMonthRegexp = regexp.MustCompile(`(?i)\b\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\b`)
-
-// yearRegexp matches the first 1–4 digit year in a date string.
-var yearRegexp = regexp.MustCompile(`\b(\d{1,4})\b`)
-
-// extractDateYear extracts the first year (1–4 digits) from a date string.
-// Handles formats like "1850", "1850-01-15", "ABT 1850", "BET 1880 AND 1890",
-// "800", "ABT 476". Day-of-month values are stripped first.
+// extractDateYear returns the year of a GLX date string, or 0 when none can
+// be determined. It is glxlib.ExtractFirstYear under the name this file's
+// callers use: one parser, so `glx query` and `glx validate` agree.
 func extractDateYear(dateStr string) int {
-	cleaned := queryDayMonthRegexp.ReplaceAllString(dateStr, "")
-
-	match := yearRegexp.FindStringSubmatch(cleaned)
-	if len(match) < 2 {
-		return 0
-	}
-
-	year, err := strconv.Atoi(match[1])
-	if err != nil {
-		return 0
-	}
-
-	return year
+	return glxlib.ExtractFirstYear(dateStr)
 }
 
 // personMatchesBirthplace checks if a person's birth event place matches the query.

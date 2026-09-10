@@ -78,7 +78,7 @@ A reference from one entity to another entity in the archive (e.g., event refere
 
 ### Date Keywords
 
-Keywords used in GENEALOGIX date formats to express uncertainty or ranges: ABT (about), BEF (before), AFT (after), BET (between), FROM, TO, CAL (calculated), INT (interpreted). Can be combined with calendar prefixes (e.g., `JULIAN ABT 1731`).
+Keywords used in GENEALOGIX date formats to express uncertainty or ranges: ABT (about), BEF (before), AFT (after), BET (between), FROM, TO, CAL (calculated), EST (estimated from another event's date), INT (interpreted). Can be combined with calendar prefixes (e.g., `JULIAN ABT 1731`). The separate `BCE` era suffix marks a Gregorian or Julian date before the common era (e.g., `ABT 0560 BCE`); see the Date Format Standard.
 
 > **See Also:** [Date Format Standard](2-core-concepts.md#date-format-standard)
 
