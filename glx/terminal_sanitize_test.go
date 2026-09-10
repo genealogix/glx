@@ -19,6 +19,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -38,7 +39,10 @@ func TestSanitizeForTerminal(t *testing.T) {
 		{"delete", "a\x7fb", `a\x7fb`},
 		{"c1 csi", "a\u009bb", `a\x9bb`},
 		{"backspace", "a\bb", `a\x08b`},
-		{"invalid utf8 passes through", "a\xffb", "a\xffb"},
+		{"invalid utf8 escaped", "a\xffb", `a\xffb`},
+		{"raw c1 csi byte escaped", "a\x9b[2Jb", `a\x9b[2Jb`},
+		{"raw c1 byte with no valid control rune", "\x9b[2J", `\x9b[2J`},
+		{"truncated multibyte escaped", "Bront\xc3", `Bront\xc3`},
 		{"empty", "", ""},
 	}
 	for _, tt := range tests {
@@ -58,6 +62,23 @@ func TestSanitizeForTerminal_NeverEmitsControlBytes(t *testing.T) {
 	assert.False(t, strings.ContainsFunc(got, isTerminalControl))
 	assert.Contains(t, got, "\t")
 	assert.Contains(t, got, "\n")
+}
+
+// TestSanitizeForTerminal_NeverEmitsRawHighBytes feeds every single byte
+// value as a raw byte (not a rune), so 0x80–0xff arrive as invalid UTF-8
+// rather than as encoded C1 code points. None may survive: a raw 0x9b is a
+// single-byte CSI to a terminal that honors eight-bit controls.
+func TestSanitizeForTerminal_NeverEmitsRawHighBytes(t *testing.T) {
+	raw := make([]byte, 0, 0x100)
+	for i := range 0x100 {
+		raw = append(raw, byte(i))
+	}
+	got := sanitizeForTerminal(string(raw))
+
+	assert.True(t, utf8.ValidString(got))
+	assert.False(t, strings.ContainsFunc(got, isTerminalControl))
+	assert.Contains(t, got, `\x9b`)
+	assert.Contains(t, got, `\xff`)
 }
 
 func TestIOStreams_SanitizeOutAndErrOut(t *testing.T) {

@@ -35,13 +35,15 @@ func isTerminalControl(r rune) bool {
 
 // sanitizeForTerminal returns s with terminal control characters replaced by
 // their visible Go-style hex escape (for example ESC becomes `\x1b`), so a
-// string taken from an archive — a person's name, a place name, a note —
-// cannot inject control sequences into human-readable CLI output. Tab and
-// newline are preserved. Bytes that are not valid UTF-8 are passed through
-// unchanged. Applying this at the output boundary keeps YAML values
+// string taken from an archive — a person's name, a place name, a note, a
+// filename — cannot inject control sequences into human-readable CLI output.
+// Tab and newline are preserved. Bytes that are not valid UTF-8 are escaped
+// the same way rather than copied through: on Unix a filename may carry raw
+// bytes, and a raw 0x9b is a single-byte CSI to a terminal that honors
+// eight-bit controls. Applying this at the output boundary keeps YAML values
 // untouched and keeps JSON output (already escaped by encoding/json) as-is.
 func sanitizeForTerminal(s string) string {
-	if !strings.ContainsFunc(s, isTerminalControl) {
+	if utf8.ValidString(s) && !strings.ContainsFunc(s, isTerminalControl) {
 		return s
 	}
 
@@ -51,7 +53,7 @@ func sanitizeForTerminal(s string) string {
 		r, size := utf8.DecodeRuneInString(s[i:])
 		switch {
 		case r == utf8.RuneError && size == 1:
-			b.WriteByte(s[i])
+			fmt.Fprintf(&b, `\x%02x`, s[i])
 		case isTerminalControl(r):
 			fmt.Fprintf(&b, `\x%02x`, r)
 		default:

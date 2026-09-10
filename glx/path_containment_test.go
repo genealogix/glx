@@ -130,6 +130,25 @@ func TestOpenWithin_FollowsSymlinkInsideBase(t *testing.T) {
 	assert.Equal(t, "real", string(data))
 }
 
+// TestOpenWithin_RejectsAbsoluteSymlinkEvenInsideBase pins a documented
+// restriction: os.Root refuses every absolute symlink target, including one
+// that resolves back inside the base, so a link created with an absolute
+// path must be rewritten as a relative one. This is deliberate — resolving
+// the target and re-checking containment would reopen the TOCTOU window the
+// helper exists to close.
+func TestOpenWithin_RejectsAbsoluteSymlinkEvenInsideBase(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation is privilege-gated on Windows")
+	}
+	base := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(base, "files"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(base, "files", "real.txt"), []byte("real"), 0o644))
+	require.NoError(t, os.Symlink(filepath.Join(base, "files", "real.txt"), filepath.Join(base, "alias.txt")))
+
+	_, err := readFileWithin(base, filepath.Join(base, "alias.txt"))
+	require.Error(t, err, "absolute symlink targets are refused by os.Root even when they resolve inside the base")
+}
+
 func TestOpenWithin_SymlinkedBaseDirIsAllowed(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("symlink creation is privilege-gated on Windows")

@@ -70,9 +70,13 @@ func isPathWithin(child, parent string) bool {
 // inside baseDir. Containment is enforced both lexically (via relWithin) and
 // at the filesystem level: the file is opened through an os.Root scoped to
 // baseDir, so a symbolic link inside baseDir whose target lies outside it is
-// rejected rather than followed. Symlinks that stay inside baseDir are
-// followed. baseDir itself may be a symlink to a directory; only escapes from
-// the resolved base are rejected. Lexical escapes return ErrPathEscapesDir.
+// rejected rather than followed. Relative symlinks that stay inside baseDir
+// are followed. Absolute symlinks are always refused, even when their target
+// resolves inside baseDir: os.Root rejects any absolute link target, and
+// resolving the target ourselves to re-check containment would reopen the
+// TOCTOU window this helper closes. Such links must be rewritten as relative.
+// baseDir itself may be a symlink to a directory; only escapes from the
+// resolved base are rejected. Lexical escapes return ErrPathEscapesDir.
 func openWithin(baseDir, path string) (*os.File, error) {
 	rel, ok := relWithin(path, baseDir)
 	if !ok {
@@ -108,7 +112,9 @@ func readFileWithin(baseDir, path string) ([]byte, error) {
 // an os.Root scoped to rootDir, so a symlink in the tree whose target lies
 // outside rootDir yields a read error instead of the target's contents, and a
 // path swapped for a symlink between the directory listing and the read
-// (CWE-367) cannot redirect the read outside the root either. A read failure
+// (CWE-367) cannot redirect the read outside the root either. As with
+// openWithin, an absolute symlink is refused even when it resolves inside
+// rootDir; only relative in-root links are followed. A read failure
 // is passed to visit as err (with nil data); visit decides whether it aborts
 // the walk. On Windows, Git symlink placeholders are resolved within the same
 // root before visit is called.

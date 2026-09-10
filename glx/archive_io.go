@@ -285,6 +285,13 @@ func LoadArchiveWithOptions(rootPath string, schemaValidate bool) (*glxlib.GLXFi
 	if err != nil {
 		return nil, nil, err
 	}
+	// The duplicate warnings quote archive-controlled entity IDs and file
+	// names and exist only to be printed as diagnostics — two dozen runners
+	// write them to stderr, several with a bare fmt.Fprintf. Sanitize them
+	// here, once, so no print site can leak a control sequence.
+	for i, d := range duplicates {
+		duplicates[i] = sanitizeForTerminal(d)
+	}
 
 	// Load standard vocabularies as defaults for any vocabulary maps not
 	// already defined by the archive. This enables property reference
