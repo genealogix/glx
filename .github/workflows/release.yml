@@ -13,13 +13,15 @@ on:
 permissions:
   contents: read
 
-# Serialize runs per tag: a delete-and-repush of the same tag (the tag-move
-# hotfix flow in .github/CLAUDE.md) or two pushes in quick succession must not
-# race asset uploads, cosign signing, and the Discord announce on one Release.
+# Serialize release runs. The sanctioned re-run flow (.github/CLAUDE.md,
+# "never move a published tag") cuts a NEW patch tag rather than moving a
+# published one, so a per-ref group would never serialize anything — key on the
+# workflow so a hotfix tag pushed behind a still-running release queues instead
+# of racing its asset uploads, cosign signing, and Discord announce.
 # cancel-in-progress MUST stay false — cancelling between asset upload and
 # signing would leave an unsigned/partially-signed release. (#1008)
 concurrency:
-  group: release-${{ github.ref }}
+  group: release
   cancel-in-progress: false
 
 env:
@@ -68,11 +70,12 @@ jobs:
         uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
           # Pin the GoReleaser tool to a minor (patch-floating), not '~> v2':
-          # the action SHA pin above does not pin the tool binary it downloads,
-          # and a moved-tag re-run months later must not silently build with a
-          # newer GoReleaser whose defaults differ. Dependabot does NOT manage
-          # this input — bump it deliberately. (#1009)
-          version: '~> v2.17'
+          # the action SHA pin above pins the action, not the tool binary it
+          # downloads, so '~> v2' would build a tagged release with whatever
+          # v2.x is newest at run time — different artifacts from the same
+          # source. Dependabot does NOT manage this input, and no currency gate
+          # watches it yet (#1215): bump it deliberately. (#1009)
+          version: '~> v2.18'
           args: release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
