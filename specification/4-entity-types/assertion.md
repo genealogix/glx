@@ -336,7 +336,7 @@ status: unresearched
 
 ### `notes`
 
-- Type: String
+- Type: String or array of strings (a single string is shorthand for a one-element list)
 - Required: No
 - Description: General notes about the assertion
 
@@ -382,12 +382,14 @@ assertions:
 
 ### Conflicting Participant Evidence
 
+Roles are scoped by the vocabulary's `applies_to`: `parent` is a relationship role, so conflicting paternity evidence is asserted against the parent-child relationship rather than the birth event.
+
 ```yaml
 assertions:
   # One source claims person-john is the father
   assertion-john-father-cert:
     subject:
-      event: event-birth-1850
+      relationship: rel-parents-child-1850
     participant:
       person: person-john-smith
       role: parent
@@ -399,7 +401,7 @@ assertions:
   # Another source claims person-thomas is the father
   assertion-thomas-father-letter:
     subject:
-      event: event-birth-1850
+      relationship: rel-parents-child-1850
     participant:
       person: person-thomas-brown
       role: parent
@@ -620,7 +622,8 @@ For conflicting evidence where sources disagree and resolution is unclear, set t
 - All citation references must point to existing Citation entities
 - All source references must point to existing Source entities
 - All media references must point to existing Media entities
-- `property` values should match properties defined in the appropriate [property vocabulary](vocabularies.md#property-vocabularies) (unknown properties generate warnings)
+- `participant.person` must reference an existing Person entity; `participant.role`, if present, must be from the [participant roles vocabulary](vocabularies.md#participant-roles-vocabulary) (unknown roles are errors)
+- `property` values should match properties defined in the appropriate [property vocabulary](vocabularies.md#property-vocabularies) (unknown properties generate warnings). Structural entity fields — `date`, `place`, and `title` on events; `name`, `type`, and `parent` on places; `type`, `start_event`, and `end_event` on relationships — are valid `property` targets without a vocabulary entry
 - Confidence must be from the [confidence levels vocabulary](vocabularies.md#confidence-levels-vocabulary); out-of-vocabulary values are a hard error. To use a custom level, add it to the archive's `confidence-levels.glx` first.
 
 ## File Organization

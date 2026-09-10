@@ -104,7 +104,7 @@ A log with only an entity ID is a valid, minimal placeholder; `objective` and a 
 | `searches` | array | List of `Search` entries — one per search attempt |
 | `citations` | array | Citations produced by this log (denormalized from per-search refs) |
 | `conclusions` | string | Summary of findings |
-| `properties` | object | Vocabulary-defined properties |
+| `properties` | object | Vocabulary-extensible metadata. There is no research-log property vocabulary in this revision, so keys are not validated and unknown keys do not produce warnings |
 | `notes` | string \| string[] | Free-form notes about the log |
 
 ### Search entry fields
@@ -209,9 +209,9 @@ research_logs/
 ResearchLog tracks individual searches and their outcomes. It is intentionally distinct from related concepts being designed in parallel:
 
 - **Research investigation** ([#660](https://github.com/genealogix/glx/issues/660)): a higher-level workflow tracker for a research question — leads, hypotheses, next steps. ResearchLog records *what was searched*; Research records *what we are trying to figure out*.
-- **[Study](study.md)** (issue #226, shipped in beta.11): defines the scope of a research project (e.g., a One Place Study). A Study contains many ResearchLogs.
+- **[Study](study.md)** (issue #226, shipped in beta.11): defines the scope of a research project (e.g., a One Place Study). Logs performed within a study are associated by convention (shared `subject`, places, or sources); there is no linking field between the two entities in this revision.
 
-CLI commands for adding and querying logs (`glx log add`, `glx log list`, `glx log report`) are out of scope for the entity-spec PR and tracked separately.
+CLI commands for adding and querying logs are tracked separately and are not part of this specification.
 
 ## GEDCOM Mapping
 

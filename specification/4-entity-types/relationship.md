@@ -62,6 +62,10 @@ Relationship properties capture additional details that don't fit into the stand
 | `location` | reference | Location where the relationship occurred (reference to Place) |
 | `description` | string | Detailed description of the relationship |
 | `number_of_children` | integer | Recorded number of children of a couple (from GEDCOM `FAM.NCHI`); may differ from the count of individually-linked children |
+| `legal_status` | `vocabulary_type: legal_statuses` | Legal form of a coerced-labor relationship (`chattel`, `indentured`, `debt_bondage`, `apprenticeship`); see [Enslavement Relationship](#enslavement-relationship) |
+| `name_as_recorded` | string (with fields) | Per-participant name as written in the source, when it differs from the person's recorded name |
+
+`started_on` / `ended_on` record a date directly on the relationship; `start_event` / `end_event` point at Event entities that carry their own dates. Use the event references when the boundary is a documented event (a wedding, a sale, a court order) and the date properties when only a date is known. When both are present, the property is not required to match the event's date; tooling reads the event.
 
 Example:
 
@@ -477,7 +481,7 @@ Participant roles (spouse, parent, child, etc.) are defined in the archive's `vo
 - Relationship type must be from the [relationship types vocabulary](vocabularies.md#relationship-types-vocabulary)
 - `participants` array must contain at least 2 participants
 - All person references must point to existing Person entities
-- Participant roles should be from the [participant roles vocabulary](vocabularies.md#participant-roles-vocabulary) (unknown roles generate warnings)
+- Participant roles must be from the [participant roles vocabulary](vocabularies.md#participant-roles-vocabulary); an unknown role is an error, like any other structural type field (see [Vocabulary Validation](vocabularies.md#validation-errors-hard-failures))
 - If `start_event` or `end_event` is specified, it must reference an existing Event entity
 - If both `start_event` and `end_event` are specified and both reference events with known dates, the start event's date should precede the end event's date. Reversed ordering generates a warning (not an error) because fuzzy dates and data-entry errors are common; relationships where either date is missing or unparseable are not checked
 

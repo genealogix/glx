@@ -11,9 +11,9 @@ Version 0.0.0-beta.12
 ## Table of Contents
 
 1. [Introduction](1-introduction.md)
-   - Purpose and Scope
-   - Design Principles
-   - Terminology
+   - What is GENEALOGIX?
+   - Why GENEALOGIX?
+   - Comparison with Existing Formats
 
 2. [Core Concepts](2-core-concepts.md)
    - Archive-Owned Vocabularies
@@ -24,9 +24,9 @@ Version 0.0.0-beta.12
    - Collaboration with Git
 
 3. [Archive Organization](3-archive-organization.md)
-   - Repository Layout
-   - Naming Conventions
-   - File Organization Patterns
+   - GLX File Format and Archive Metadata
+   - Validation Levels
+   - Organization Strategies, Media File Storage, and ID Format Standards
 
 4. [Entity Types](4-entity-types/)
    - [Person](4-entity-types/person.md) - Individual records

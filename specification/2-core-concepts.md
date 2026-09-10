@@ -184,8 +184,9 @@ The `glx validate` command enforces vocabulary consistency with different severi
 
 **Warnings (flexible):**
 
-- Unknown properties not defined in property vocabularies
+- Unknown properties not defined in property vocabularies (Study and ResearchLog have no property vocabulary, so their `properties` are not checked at all)
 - Unknown assertion properties not defined in property vocabularies
+- Out-of-vocabulary values on properties declared with `vocabulary_type` (e.g. `sex`, `gender`, `source_nature`)
 - Warnings allow rapid data entry and emerging properties without breaking validation
 
 This policy balances strictness (broken references are errors) with flexibility (unknown properties generate warnings, not errors).
@@ -203,7 +204,7 @@ Person ←→ Relationship ←→ Person
 Person ←→ Event ←→ Place
 Source ←→ Citation → Assertion → Person/Event/Place/Relationship
 Repository → Source
-Media → (any entity)
+Media → Source; Citation/Source/Assertion → Media
 ResearchLog → Search → Repository/Source/Citation
 Study → Place/Source (scope declaration)
 ```
@@ -224,7 +225,7 @@ Study → Place/Source (scope declaration)
 
 ### Validation Dependencies
 
-These relationships create validation requirements that ensure archive integrity. The `glx validate` command enforces referential integrity (citations → sources, assertions → citations/sources/media, events → places, participants → persons, relationships → persons). See [Validation Behavior](#validation-behavior) for complete validation policy.
+These relationships create validation requirements that ensure archive integrity. The `glx validate` command enforces referential integrity on every cross-reference field: citations → sources/repositories/media, sources → repositories/media, media → sources, assertions → citations/sources/media and their typed subject, events → places, participants → persons, relationships → persons and start/end events, places → parent places, research-log searches → repositories/sources/citations, studies → places/sources. See [Validation Behavior](#validation-behavior) for complete validation policy.
 
 ## Data Types
 
@@ -395,7 +396,7 @@ date: "FRENCH_R 1 VEND 0012"    # 1 Vendemiaire Year 12
 
 GENEALOGIX validates date formats at three levels:
 
-1. **Structure:** Dates must follow the format specifications above
+1. **Structure:** Dates should follow the format specifications above; a date that does not parse is reported as a warning, not an error (see below)
 2. **Keywords:** Only the defined keywords (FROM, TO, ABT, BEF, AFT, BET, CAL, EST, INT, and the BCE era suffix) are recognized. `AND` is a connector used inside the `BET YYYY AND YYYY` range form, not a standalone keyword. Unambiguous spellings seen in GEDCOM exports are recovered rather than flagged: full words (`about`, `before`, `after`, `between`, `estimated`), the circa forms (`c.`, `ca.`, `cir`, `circa`), `B.C.`/`BC` for the era, and a dash in place of `AND` after `BET`. Each canonicalizes to the keyword form on import (`circa 1850` → `ABT 1850`, `510 BC` → `0510 BCE`, `BET 1675 - 1740` → `BET 1675 AND 1740`).
 3. **Calendar prefixes:** Known calendar prefixes (JULIAN, HEBREW, FRENCH_R) are stripped before validating the date body. Extension prefixes, which start with an underscore as design note 4 defines (`_ROMAN 1000`), are accepted without warning to allow extensibility; a bare leading word (`ROMAN 1000`, `CLASS OF 1905`) is not a calendar prefix and the date is validated, and warned on, as free text
 
@@ -509,8 +510,9 @@ This is common when a source (like an obituary, biographical sketch, or family l
 
 Each list entry includes:
 
-- `value` - The property value, conforming to the property's `value_type` or `reference_type`
+- `value` - The property value, conforming to the property's `value_type` or `reference_type` (an array when the property is `multi_value: true`)
 - `date` - Optional date string specifying when the value applied
+- `fields` - Optional structured breakdown, when the property defines `fields` (see [Structured Properties](#structured-properties))
 
 Dated and undated entries can be mixed in the same list — use dates where you have them, omit where you don't.
 
@@ -542,16 +544,15 @@ properties:
 
 The `value` field preserves the original recorded form, while `fields` provide structured access to components. This is the recommended approach for most structured properties.
 
-**3. Fields only** (when there's no natural single-value representation):
+**3. Fields only** (when there's no natural single-value representation) — written as a bare map of the field values, with no `value` key and no `fields:` wrapper:
 
 ```yaml
 properties:
   crop:
-    fields:
-      top: 450
-      left: 100
-      width: 800
-      height: 200
+    top: 450
+    left: 100
+    width: 800
+    height: 200
 ```
 
 ### Notes Field
