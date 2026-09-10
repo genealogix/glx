@@ -306,42 +306,53 @@ func validatePaths(streams *IOStreams, args []string) error {
 }
 
 // validateSingleFilePaths runs structural validation on individual files
-// (used when a single file is specified, not a directory).
+// (used when a single file is specified, not a directory). A path that names
+// a directory is walked with reads contained to that directory (see
+// walkGLXFiles); a path that names a file is read as given, since the user
+// asked for that exact file.
 func validateSingleFilePaths(paths []string) (int, []string) {
 	var allErrors []string
 	var fileCount int
 
+	checkFile := func(filePath string, data []byte, readErr error) {
+		fileCount++
+		if readErr != nil {
+			allErrors = append(allErrors, fmt.Sprintf("Error reading %s: %v", filePath, readErr))
+
+			return
+		}
+
+		doc, err := ParseYAMLFile(data)
+		if err != nil {
+			allErrors = append(allErrors, fmt.Sprintf("Error parsing YAML in %s: %v", filePath, err))
+
+			return
+		}
+
+		issues := ValidateGLXFileStructure(doc)
+		for _, issue := range issues {
+			allErrors = append(allErrors, fmt.Sprintf("Error in %s: %s", filePath, issue))
+		}
+	}
+
 	for _, path := range paths {
-		_ = filepath.WalkDir(path, func(filePath string, d fs.DirEntry, err error) error {
-			if err != nil {
-				return err
+		path = filepath.Clean(path)
+		info, err := os.Stat(path)
+		if err != nil {
+			continue
+		}
+		if !info.IsDir() {
+			if !isGLXFile(path) {
+				continue
 			}
-			if d.IsDir() || !isGLXFile(d.Name()) {
-				return nil
-			}
+			data, readErr := os.ReadFile(path) // #nosec G304 -- user-supplied path to validate
+			checkFile(path, data, readErr)
 
-			fileCount++
-			filePath = filepath.Clean(filePath)
-			// #nosec G122 -- TOCTOU between WalkDir's lstat and this read of a
-			// user-supplied validation path; root-scoped (os.Root) reads tracked in #1090.
-			data, err := os.ReadFile(filePath)
-			if err != nil {
-				allErrors = append(allErrors, fmt.Sprintf("Error reading %s: %v", filePath, err))
+			continue
+		}
 
-				return nil
-			}
-
-			doc, err := ParseYAMLFile(data)
-			if err != nil {
-				allErrors = append(allErrors, fmt.Sprintf("Error parsing YAML in %s: %v", filePath, err))
-
-				return nil
-			}
-
-			issues := ValidateGLXFileStructure(doc)
-			for _, issue := range issues {
-				allErrors = append(allErrors, fmt.Sprintf("Error in %s: %s", filePath, issue))
-			}
+		_ = walkGLXFiles(path, func(relPath string, data []byte, readErr error) error {
+			checkFile(filepath.Join(path, relPath), data, readErr)
 
 			return nil
 		})

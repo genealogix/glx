@@ -61,8 +61,18 @@ const (
 	// cacheFileName is the binary cache file inside cacheDirName.
 	cacheFileName = "cache.bin"
 	// cacheFormatVersion is bumped whenever the on-disk layout changes in a way
-	// that makes older caches unreadable. A mismatch triggers a rebuild.
-	cacheFormatVersion uint32 = 1
+	// that makes older caches unreadable, or whenever the loader's trust
+	// boundary changes so that a cache built by the old loader must not be
+	// trusted. A mismatch triggers a rebuild.
+	//
+	//   1: initial format.
+	//   2: archive reads are contained with os.Root (#1090). A v1 cache
+	//      could have been built from a symlink escaping the archive; its
+	//      stat-only fingerprint (path, size, mtime) would still match and
+	//      the GLXVersion gate is no help for locally built "dev" binaries,
+	//      so v1 caches are rebuilt. Duplicate warnings are also stored
+	//      terminal-sanitized from v2 on.
+	cacheFormatVersion uint32 = 2
 )
 
 // cacheMagic is a fixed prefix written before the gob stream so a foreign or

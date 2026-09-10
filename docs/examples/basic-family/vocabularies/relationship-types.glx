@@ -1,1 +1,124 @@
-../../../../specification/5-standard-vocabularies/relationship-types.glx
+# Standard Relationship Types
+# This file defines the standard relationship types for GENEALOGIX archives.
+# Archives can extend this with custom types by adding additional entries.
+
+relationship_types:
+  marriage:
+    label: "Marriage"
+    description: "Legal or religious union of two people"
+    gedcom: "MARR"
+
+  civil_union:
+    label: "Civil Union"
+    description: "Legally recognized union distinct from marriage in its jurisdiction (GEDCOM X CivilUnion, Gramps CIVIL UNION)"
+    # No direct GEDCOM equivalent — GEDCOM 7.0 expresses this as MARR with TYPE "civil union", which rounds back to a marriage relationship in this implementation; no gedcom mapping is declared so the reverse MARR lookup stays unambiguous
+
+  common_law_marriage:
+    label: "Common-Law Marriage"
+    description: "Marriage established by cohabitation and repute rather than ceremony or registration, where the jurisdiction recognizes it (GEDCOM X CommonLawMarriage)"
+    # No direct GEDCOM equivalent — GEDCOM 7.0 expresses this as MARR with TYPE "common law", which rounds back to a marriage relationship in this implementation; no gedcom mapping is declared so the reverse MARR lookup stays unambiguous
+
+  parent_child:
+    label: "Parent-Child"
+    description: "Parent-child relationship (unspecified type)"
+    gedcom: "CHIL/FAMC"
+
+  biological_parent_child:
+    label: "Biological Parent-Child"
+    description: "Biological parent-child relationship"
+    gedcom: "CHIL/FAMC with PEDI birth"
+
+  adoptive_parent_child:
+    label: "Adoptive Parent-Child"
+    description: "Adoptive parent-child relationship"
+    gedcom: "CHIL/FAMC with PEDI adopted"
+
+  foster_parent_child:
+    label: "Foster Parent-Child"
+    description: "Foster parent-child relationship"
+    gedcom: "CHIL/FAMC with PEDI foster"
+
+  sibling:
+    label: "Sibling"
+    description: "Brother or sister relationship"
+    gedcom: "SIBL"
+
+  step_parent:
+    label: "Step-Parent"
+    description: "Step-parent through marriage"
+    # No direct GEDCOM equivalent — GEDCOM 7.0 has no general step-parent tag; PEDI `sealed` carries LDS sealing-to-parents semantics and is mapped to generic parent_child by this implementation (see specification/4-entity-types/relationship.md PEDI section)
+
+  godparent:
+    label: "Godparent"
+    description: "Ongoing godparent-godchild bond (use baptism/christening event for the ceremony)"
+    # No direct GEDCOM equivalent — GEDCOM 7.0 ASSO with ROLE GODP records the godparent as a participant role on a baptism/christening event, not as a standalone relationship; see participant-roles vocabulary
+
+  guardian:
+    label: "Guardian"
+    description: "Legal guardian relationship"
+    # No direct GEDCOM equivalent
+
+  partner:
+    label: "Partner"
+    description: "Domestic partnership or cohabitation"
+    # No direct GEDCOM equivalent — GEDCOM has no standard tag for non-marital partnership; MARR with TYPE "domestic partnership" rounds back to a marriage relationship in this implementation
+
+  neighbor:
+    label: "Neighbor"
+    description: "People who lived near each other"
+    # No direct GEDCOM equivalent
+
+  coworker:
+    label: "Coworker"
+    description: "People who worked together"
+    # No direct GEDCOM equivalent
+
+  housemate:
+    label: "Housemate"
+    description: "People who shared a household without a family relationship"
+    # No direct GEDCOM equivalent
+
+  apprenticeship:
+    label: "Apprenticeship"
+    description: "Master-apprentice relationship for learning a trade or skill"
+    # No direct GEDCOM equivalent
+
+  employment:
+    label: "Employment"
+    description: "Employer-employee relationship"
+    # No direct GEDCOM equivalent
+
+  enslavement:
+    label: "Enslavement"
+    description: |
+      Enslaver-enslaved relationship. Model each distinct enslaver as a
+      separate relationship bounded by start_event/end_event (e.g. sale,
+      inheritance, manumission). Children born to enslaved mothers were
+      legally enslaved at birth — model with a parent_child relationship to
+      the mother plus an enslavement relationship to her enslaver, both
+      citing the same source. Use the legal_status relationship property
+      to distinguish chattel slavery, indentured servitude, debt bondage,
+      and apprenticeship-as-enslavement. See the Enslavement Relationship
+      section in specification/4-entity-types/relationship.md for full
+      usage patterns and references to scholarly vocabularies.
+    # No direct GEDCOM equivalent
+
+  relative:
+    label: "Relative"
+    description: "Generic kinship relationship when the specific type is unknown or not applicable"
+    # No direct GEDCOM equivalent
+
+  possibly_same_person:
+    label: "Possibly Same Person"
+    description: "Two person records that may refer to the same individual but cannot yet be confirmed (pair with an Assertion as subject to record confidence)"
+
+  associate:
+    label: "Associate"
+    description: "Known social connection — friend, colleague, or community member. Use for durable FAN-research links between persons (e.g. families that repeatedly witness each other's vital events, migrate together, or appear together in legal records)."
+    # No direct GEDCOM equivalent — GEDCOM 7.0 ASSO with ROLE FRIEND records the association as an event-participant link, not a standalone relationship
+
+  boarder:
+    label: "Boarder"
+    description: "Asymmetric household-membership relationship between a head of household and a dependent — boarder, lodger, ward, or servant — as recorded in census or household records. Pair participants with the household_head and boarder roles. Distinct from `housemate` (symmetric cohabitation) and `apprenticeship` (trade-training)."
+    # No direct GEDCOM equivalent
+

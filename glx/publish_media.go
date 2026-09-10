@@ -251,8 +251,9 @@ func (r *mediaResolver) resolve(item *mediaItem) error {
 // non-fatal and recorded so the template shows a placeholder.
 func (r *mediaResolver) resolveFile(item *mediaItem, srcPath string) (mediaResult, error) {
 	if r.embed && item.Kind == mediaKindImage {
-		// srcPath is confined to baseDir (checked by sourcePath).
-		data, err := os.ReadFile(srcPath) // #nosec G304 -- confined to baseDir by sourcePath
+		// srcPath is confined to baseDir lexically (sourcePath) and at open
+		// time (readFileWithin refuses symlinks that escape baseDir).
+		data, err := readFileWithin(r.baseDir, srcPath)
 		if err != nil {
 			return mediaResult{missing: true}, nil //nolint:nilerr // missing media is non-fatal
 		}
@@ -277,7 +278,9 @@ func (r *mediaResolver) resolveFile(item *mediaItem, srcPath string) (mediaResul
 // An unopenable source returns ("", nil) so the caller records the item as
 // missing media; failures creating or writing the output are fatal.
 func (r *mediaResolver) copyMedia(srcPath, uri string) (string, error) {
-	src, err := os.Open(srcPath) // #nosec G304 -- confined to baseDir by sourcePath
+	// Confined to baseDir lexically (sourcePath) and at open time (openWithin
+	// refuses symlinks that escape baseDir); either failure is "missing".
+	src, err := openWithin(r.baseDir, srcPath)
 	if err != nil {
 		return "", nil //nolint:nilerr // missing media is non-fatal
 	}
@@ -316,7 +319,9 @@ func (r *mediaResolver) copyMedia(srcPath, uri string) (string, error) {
 // exact handling is platform-specific — is accepted ONLY if isPathWithin
 // confirms it is inside baseDir. Do not rely on Join alone for confinement.
 // Mirrors copyMediaFile's guard in media_copy.go so the viewer never reads
-// files outside the archive directory, even from an untrusted archive.
+// files outside the archive directory, even from an untrusted archive. The
+// lexical check here is complemented by openWithin/readFileWithin at read
+// time, which also refuse symlinks whose targets lie outside baseDir.
 func (r *mediaResolver) sourcePath(uri string) (string, bool) {
 	normalized := strings.ReplaceAll(uri, "\\", "/")
 	srcPath := filepath.Join(r.baseDir, normalized)
