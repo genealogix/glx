@@ -1,0 +1,6 @@
+kind: Added
+body: |-
+  **Temporal validation: relationship `start_event` must precede `end_event`** — `validateTemporalConsistency()` gains a fourth check: relationships that set both `start_event` and `end_event` now warn when the end event's date resolves to a year before the start event's, catching common data-entry errors like swapped marriage/divorce event references. Reported as a warning (not an error), matching the severity of the existing temporal checks (death before birth, parent younger than child, marriage before birth), because fuzzy dates and data-entry errors are common; relationships where either event reference is unset, dangling (caught separately by reference validation), or has a missing/unparseable date are skipped, and same-year boundaries (e.g. shared transfer events) do not warn. The ordering constraint is now also documented under Validation Rules in `specification/4-entity-types/relationship.md`, which previously only required that the references resolve.
+time: 2026-06-05T12:00:00Z
+custom:
+  Issue: "#669"

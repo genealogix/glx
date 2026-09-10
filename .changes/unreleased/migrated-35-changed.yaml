@@ -1,0 +1,6 @@
+kind: Changed
+body: |-
+  **`/compact-changelog` command gained `allowed-tools`/`model` frontmatter** — `.claude/commands/compact-changelog.md` was the only command in `.claude/` without tool/model frontmatter, unlike its `check-*` siblings. It now declares a minimal `allowed-tools` surface (`Read`, `Edit`, `Write`, `Grep`, and the specific `git` invocations it runs), pins `model: claude-opus-4-8` to match the siblings, sets `disable-model-invocation: true` so a file-mutating command is never auto-fired mid-session, and adds an `argument-hint`.
+time: 2026-06-05T12:00:00Z
+custom:
+  Issue: "#854"

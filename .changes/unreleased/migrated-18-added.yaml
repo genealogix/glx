@@ -1,0 +1,6 @@
+kind: Added
+body: |-
+  **Git Workflow Guide (`docs/guides/git-workflow.md`)** — New user guide documenting how to actually use Git workflows for genealogy research, filling the gap behind the "Git-native" headline feature: setting up an archive repository (`git init` after `glx init`, line-ending pinning, private-by-default remotes for living-person data), the edit→`glx validate`→commit research cycle with a pre-commit validation hook, branch-based research (hypothesis branches carrying `status: speculative` assertions, merged as `proven` when confirmed or — deliberately — merged as `disproven` when refuted, so negative findings stay on the record), collaboration patterns (shared-repository for family teams, fork-and-PR maintainer model for societies, PR review as genealogical proof-standard review, CI validation), merging and conflict resolution (the `git merge` vs `glx merge` distinction, resolving textual conflicts vs recording evidential conflicts as `status: disputed`, post-merge `glx validate`/`glx duplicates`), history as a research log (`git log --follow`, `git blame`, milestone tags, correct-don't-erase), and scale concerns (Git LFS for `media/files/`, partial clone). Registered in the website nav and guides sidebar, and cross-linked from the Quickstart, Best Practices, and Hands-On CLI guides.
+time: 2026-06-05T12:00:00Z
+custom:
+  Issue: "#508"

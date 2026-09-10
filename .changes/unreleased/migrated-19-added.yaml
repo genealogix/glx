@@ -1,0 +1,6 @@
+kind: Added
+body: |-
+  **Deterministic memory-file drift detection (`make check-memory-drift`)** — A new offline, API-key-free Go tool under `tools/memcheck` checks every `CLAUDE.md` (and `AGENTS.md` if adopted) against the repository and fails when an instruction has rotted: it asserts that every referenced `make` target exists in the `Makefile`, every concrete file/directory path resolves on disk (relative to the repo root or the memory file's own directory), and every `github.com/<org>/<repo>` import path under the module's org matches the `go.mod` module line. It closes the project's own dogfooding gap (it lints docs↔schema parity in CI but not memory-file↔reality parity) and runs as a dedicated CI job in `validate-spec.yml` alongside `check-code-drift`. Path references are recognized syntactically (a slash plus a known file extension, or a multi-segment trailing-slash directory) so look-alikes such as `actions/checkout`, `os/exec`, and the `claude/` branch prefix don't produce false positives; intentional exceptions live in `.claude/memory-drift-allowlist.yaml`. Surfaced and corrected two stale fixture paths in the root `CLAUDE.md` in the process.
+time: 2026-06-05T12:00:00Z
+custom:
+  Issue: "#1053, epic #1016"

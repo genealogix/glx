@@ -1,0 +1,6 @@
+kind: Changed
+body: |-
+  **Added a top-level read-only `permissions:` default to the `auto-update-branches.yml` workflow** — the workflow set `permissions:` only at the job level, leaving the top-level `GITHUB_TOKEN` scope at the repository default. OpenSSF Scorecard flags this under Token-Permissions ("no topLevel permission defined"): a future job added without its own `permissions:` block would silently inherit the broad default. A top-level `permissions: contents: read` least-privilege default is now declared; the single `update-branches` job keeps its explicit `contents: write` / `pull-requests: write` grant, so behavior is unchanged. Matches the top-level read-only default already used by `lint.yml` and `release.yml`.
+time: 2026-06-05T12:00:00Z
+custom:
+  Issue: "PR #979"

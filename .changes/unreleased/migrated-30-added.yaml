@@ -1,0 +1,6 @@
+kind: Added
+body: |-
+  **`glx validate --stdin --entity-type`** — Validate a single entity snippet piped on stdin against its entity-type schema, without writing a temp file or wrapping it in archive shape. `echo '<yaml>' | glx validate --stdin --entity-type person` runs structural validation only (Pass 1 / JSON Schema — no cross-reference resolution) and exits `1` on a structural failure or malformed-YAML input (content *was* piped but is unparseable — a content failure, like a structural one), `2` on a bad invocation (unknown or missing `--entity-type`, stray path arguments, empty stdin — *nothing* piped, or combining `--stdin` with `--report`); the `--entity-type` allow-list is derived by reflection from `glxlib.AllEntityTypes` (entity singulars such as `person`) and the `GLXFile` vocabulary collection keys (`event_types`, `place_types`, `confidence_levels`, …), so a vocabulary entry is validated against **its own** schema — e.g. a `place_types` entry's `category: administrative` passes against the place-type enum instead of being rejected by the event-type one. New vocabularies added to `GLXFile` are picked up automatically with no parallel list to maintain. Lets the `check-*` drift skills validate documentation fragments directly instead of the mktemp/`cat`/`rm` temp-file dance.
+time: 2026-06-05T12:00:00Z
+custom:
+  Issue: "#910, #1016"

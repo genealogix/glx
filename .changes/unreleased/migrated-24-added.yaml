@@ -1,0 +1,6 @@
+kind: Added
+body: |-
+  **`glx proof` command** — Compiles the evidence bearing on a specific research question about a person into a structured proof summary following the BCG Genealogical Proof Standard (GPS). `glx proof <person> --question <parentage|birth|death|marriage|identity>` gathers every assertion relevant to the question (including assertions on the person's events and relationships), resolves each assertion's citations and sources to complete, human-readable references (GPS element 2), surfaces the relevant missing records from the coverage checklist as evidence gaps (GPS element 1), flags conflicting assertions and reports whether each conflict has been resolved via the assertion `status` field — `proven` over `disproven` (GPS element 4), lists any logged research searches that document a reasonably exhaustive search, and ends with a conclusion: `PROVEN`, `PROBABLE`, `POSSIBLE`, `INSUFFICIENT EVIDENCE`, or `CONFLICTED` (GPS element 5). Output is terminal text by default, with `--format json` and `--format markdown` for tooling and research reports.
+time: 2026-06-05T12:00:00Z
+custom:
+  Issue: "#118"

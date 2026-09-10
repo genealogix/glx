@@ -1,0 +1,6 @@
+kind: Added
+body: |-
+  **`glx migrate --strip-event-title-year`** — New opt-in flag on `glx migrate` that removes the stale `(YEAR)` suffix GEDCOM imports before #1026 appended to auto-generated event titles. Titles are stored, not regenerated, so archives imported before that fix keep the suffix indefinitely — including the buggy day-as-year form (`Birth of John Smith (15)`) produced by the `ExtractFirstYear` mis-parse tracked in #1025. The migration is gated so hand-authored titles are never modified: a trailing space-plus-`(NNNN)` suffix (1–4 digits) is stripped only when the remaining body is byte-for-byte identical to the title import would auto-generate for that event from its type and principal/spouse participant names (`Burial`, `Birth of John Smith`, `Marriage of Robert Webb and Jane Miller`) — so `Family reunion (1955)`, `Census (Webb Household)`, and `1860 Census — Webb Household` are untouched. One accepted residual: a hand-typed title identical to the auto-shape including the year is indistinguishable from a stale auto-title and is stripped; the result equals the current canonical title and the year remains in the event's `date` field. Idempotent; follows the report-then-write pattern of the sibling migrate flags.
+time: 2026-06-05T12:00:00Z
+custom:
+  Issue: "#1032"
