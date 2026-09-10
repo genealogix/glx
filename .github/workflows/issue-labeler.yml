@@ -15,6 +15,8 @@ jobs:
     steps:
       - name: Checkout repo (for .github/issue-areas.yml)
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Ensure needs-triage label exists
         env:
