@@ -187,6 +187,31 @@ func TestCollectGLXFilesFromDir_RejectsSymlinkEscapingArchive(t *testing.T) {
 	}
 }
 
+// TestCollectGLXFilesFromDir_EscapeErrorIsTerminalSafeAfterSanitize covers
+// the path a containment failure takes to the user: the error embeds the
+// archive-controlled filename verbatim (it must, so the user can find the
+// offending link), and Execute sanitizes the message before printing it.
+func TestCollectGLXFilesFromDir_EscapeErrorIsTerminalSafeAfterSanitize(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation is privilege-gated on Windows")
+	}
+	outside := t.TempDir()
+	secret := filepath.Join(outside, "secret.glx")
+	require.NoError(t, os.WriteFile(secret, []byte("persons: {}"), 0o644))
+
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "persons"), 0o755))
+	require.NoError(t, os.Symlink(secret, filepath.Join(dir, "persons", "bad\x1b[2J.glx")))
+
+	_, err := collectGLXFilesFromDir(dir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "\x1b[2J", "the raw error carries the filename as-is")
+
+	printed := sanitizeForTerminal(err.Error())
+	assert.NotContains(t, printed, "\x1b")
+	assert.Contains(t, printed, `bad\x1b[2J.glx`)
+}
+
 func TestCollectGLXFilesFromDir_FollowsSymlinkInsideArchive(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("symlink creation is privilege-gated on Windows")
