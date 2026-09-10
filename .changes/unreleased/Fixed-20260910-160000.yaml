@@ -1,0 +1,6 @@
+kind: Fixed
+body: |-
+  **Prerelease tags now publish as GitHub prereleases** — `.goreleaser.yml` had no `release:` stanza, so GoReleaser's `prerelease: false` default published every `-beta` tag as a full release; `v0.0.0-beta.1` through `v0.0.0-beta.11` are all stored as non-prereleases, and `/releases/latest` resolves to a beta. `release.prerelease: auto` now flags `-alpha`/`-beta`/`-rc` tags automatically. Existing releases are not retroactively re-flagged (#1216), so `/releases/latest` will keep pointing at `v0.0.0-beta.11`; the documented install snippet in the Git workflow guide now downloads from a pinned tag instead, which is the reproducible form it already recommended. Consumers resolving `/releases/latest` themselves will (correctly) start skipping future betas.
+time: 2026-09-10T16:00:00Z
+custom:
+  Issue: "#1007"
