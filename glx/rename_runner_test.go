@@ -324,9 +324,43 @@ func TestRenameEntities_RefusesToWriteThroughSymlink(t *testing.T) {
 		t.Skip("symlink creation needs elevated privileges on Windows")
 	}
 
-	// events/event-births.glx is a symlink to a file outside the archive.
-	// The loader follows it when reading (so the rename plan touches it);
-	// the writer must refuse rather than clobber the external file.
+	// events/event-births.glx is a symlink to another file inside the
+	// archive. The loader resolves it when reading (so the rename plan
+	// touches it), but rewriting it would replace the link with a regular
+	// file and leave the real content behind, so the writer must refuse.
+	//
+	// The target deliberately has a non-.glx extension so the walker does
+	// not also collect it directly, which would make the archive report a
+	// duplicate of every entity in it.
+	root := writeRenameFixture(t)
+	target := filepath.Join(root, "shared/event-births.yaml")
+	require.NoError(t, os.MkdirAll(filepath.Dir(target), 0o755))
+	require.NoError(t, os.WriteFile(target, []byte(renameFixtureBirths), 0o644))
+	link := filepath.Join(root, "events/event-births.glx")
+	require.NoError(t, os.Remove(link))
+	require.NoError(t, os.Symlink(filepath.Join("..", "shared", "event-births.yaml"), link))
+
+	err := renameEntities(root, "person-robert", "person-robert-t", false)
+
+	require.ErrorIs(t, err, ErrRenameThroughSymlink)
+	linked, readErr := os.ReadFile(target)
+	require.NoError(t, readErr)
+	assert.Equal(t, renameFixtureBirths, string(linked), "the symlink target must be untouched")
+	info, statErr := os.Lstat(link)
+	require.NoError(t, statErr)
+	assert.NotZero(t, info.Mode()&os.ModeSymlink, "the symlink must not have been replaced by a regular file")
+	assert.FileExists(t, filepath.Join(root, "persons/person-robert.glx"), "nothing else may have been written")
+	assert.NoFileExists(t, filepath.Join(root, "persons/person-robert-t.glx"))
+}
+
+func TestRenameEntities_RejectsSymlinkEscapingArchive(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation needs elevated privileges on Windows")
+	}
+
+	// A symlink pointing outside the archive never reaches the write path:
+	// the os.Root-based loader refuses to follow it (#1207). The rename must
+	// fail on that and leave the external file alone.
 	root := writeRenameFixture(t)
 	outside := filepath.Join(t.TempDir(), "external-births.glx")
 	require.NoError(t, os.WriteFile(outside, []byte(renameFixtureBirths), 0o644))
@@ -336,11 +370,12 @@ func TestRenameEntities_RefusesToWriteThroughSymlink(t *testing.T) {
 
 	err := renameEntities(root, "person-robert", "person-robert-t", false)
 
-	require.ErrorIs(t, err, ErrRenameThroughSymlink)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to load archive")
 	external, readErr := os.ReadFile(outside)
 	require.NoError(t, readErr)
 	assert.Equal(t, renameFixtureBirths, string(external), "file outside the archive must be untouched")
-	assert.FileExists(t, filepath.Join(root, "persons/person-robert.glx"), "nothing else may have been written")
+	assert.FileExists(t, filepath.Join(root, "persons/person-robert.glx"), "nothing may have been written")
 	assert.NoFileExists(t, filepath.Join(root, "persons/person-robert-t.glx"))
 }
 
@@ -376,6 +411,28 @@ func TestRenameEntities_WarnsOnDuplicateIDs(t *testing.T) {
 
 	assert.Contains(t, stderr, "Warning:")
 	assert.FileExists(t, filepath.Join(root, "persons/person-robert-t.glx"))
+}
+
+func TestRenameEntities_SanitizesDuplicateIDWarnings(t *testing.T) {
+	// Duplicate warnings quote archive-controlled entity IDs. This path
+	// deserializes directly instead of going through LoadArchiveWithOptions,
+	// so it has to sanitize them itself or an archive can clear the user's
+	// terminal from a warning message (#925).
+	//
+	// The \e in the double-quoted YAML scalar is YAML's own escape for ESC,
+	// so the parsed entity ID carries a real control character.
+	fragment := "persons:\n  \"person-\\e[2Jevil\":\n    properties:\n      name: Evil\n"
+	root := writeRenameFixture(t)
+	require.NoError(t, os.WriteFile(filepath.Join(root, "persons/evil-a.glx"), []byte(fragment), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "persons/evil-b.glx"), []byte(fragment), 0o644))
+
+	stderr := captureStderr(t, func() {
+		require.NoError(t, renameEntities(root, "person-robert", "person-robert-t", false))
+	})
+
+	assert.Contains(t, stderr, "Warning:")
+	assert.NotContains(t, stderr, "\x1b", "a raw control byte must not reach the terminal")
+	assert.Contains(t, stderr, `\x1b[2Jevil`, "the control byte is shown as a visible escape")
 }
 
 func TestRenameEntities_SingleFileInvalidYAML(t *testing.T) {
@@ -421,6 +478,43 @@ func TestRenameEntities_UnsafeOldIDIsRewrittenInPlace(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, string(data), "person-fixed:")
 	assert.NoFileExists(t, filepath.Join(root, "persons/person-fixed.glx"))
+}
+
+func TestCountTouchedFiles_CountsAMoveOnce(t *testing.T) {
+	// A move is planned as a delete of the old path plus a create of the new
+	// one, linked by modeFrom, but the user sees one file.
+	ops := []fileOp{
+		{relPath: "events/event-births.glx", oldData: []byte("a"), newData: []byte("b")},
+		{relPath: "persons/person-robert.glx", oldData: []byte("a")},
+		{relPath: "persons/person-robert-t.glx", newData: []byte("b"), modeFrom: "persons/person-robert.glx"},
+	}
+
+	assert.Equal(t, 2, countTouchedFiles(ops))
+}
+
+func TestCountTouchedFiles_CountsPlainRewrites(t *testing.T) {
+	ops := []fileOp{
+		{relPath: "a.glx", oldData: []byte("a"), newData: []byte("b")},
+		{relPath: "b.glx", oldData: []byte("a"), newData: []byte("b")},
+	}
+
+	assert.Equal(t, 2, countTouchedFiles(ops))
+	assert.Equal(t, 0, countTouchedFiles(nil))
+}
+
+func TestRenameEntities_ReportsAMovedFileOnce(t *testing.T) {
+	// Only Robert's own file changes: it moves to the new name. That is one
+	// touched file, not a delete plus a create.
+	root := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "persons"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "persons/person-robert.glx"),
+		[]byte(renameFixtureRobert), 0o644))
+
+	stdout := captureStdout(t, func() {
+		require.NoError(t, renameEntities(root, "person-robert", "person-robert-t", false))
+	})
+
+	assert.Contains(t, stdout, "in 1 file(s)")
 }
 
 func TestFileNamedAfterEntity(t *testing.T) {
@@ -593,6 +687,26 @@ func TestRenameEntities_PreservesFileModes(t *testing.T) {
 	moved, err := os.Stat(filepath.Join(root, "persons/person-robert-t.glx"))
 	require.NoError(t, err)
 	assert.Equal(t, os.FileMode(0o600), moved.Mode().Perm(), "moved file inherits the source mode")
+}
+
+func TestRenameEntities_SingleFilePreservesFileMode(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("permission bits are not preserved on Windows")
+	}
+	// A single-file archive is rewritten in place too, so a deliberately
+	// private archive must not come back world-readable because the write
+	// went through a fresh temp file.
+	path := filepath.Join(t.TempDir(), "archive.glx")
+	require.NoError(t, os.WriteFile(path, []byte(renameFixtureRobert), 0o600))
+
+	require.NoError(t, renameEntities(path, "person-robert", "person-robert-t", false))
+
+	info, err := os.Stat(path)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o600), info.Mode().Perm(), "single-file archive keeps its mode")
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.Contains(t, string(data), "person-robert-t:")
 }
 
 func TestRenameEntities_RollbackPreservesFileModes(t *testing.T) {
