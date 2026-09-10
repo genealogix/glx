@@ -104,7 +104,7 @@ Repository → Source → Citation → Assertion ─┬─→ Property (e.g. nam
 4. **Assertion**: `assertion-robert-birth` (claim that Robert was born March 22, 1955)
 5. **Event**: `event-robert-birth` with date `"1955-03-22"` and place `place-new-york`
 
-> **Learn More:** The evidence chain supports the [Genealogical Proof Standard](https://www.bcgcertification.org/resources/standard.html) (GPS), which requires (1) reasonably exhaustive research, (2) complete source citations, (3) analysis of evidence, (4) resolution of conflicts, and (5) a soundly reasoned conclusion. GLX's assertion model provides the data structure for documenting all five elements. See [ADR-0002: Evidence-first data model](/decisions/0002-evidence-first-data-model) for the rationale.
+> **Learn More:** The evidence chain supports the [Genealogical Proof Standard](https://www.bcgcertification.org/resources/standard.html) (GPS), which requires (1) reasonably exhaustive research, (2) complete source citations, (3) analysis of evidence, (4) resolution of conflicts, and (5) a soundly reasoned conclusion. GLX's assertion model provides the data structure for documenting all five elements. See [ADR-0002: Evidence-first data model](../../decisions/0002-evidence-first-data-model.md) for the rationale.
 
 ## Recommended Workflow
 
@@ -260,7 +260,7 @@ sources:
       information_type: secondary # …but Sarah relays the birth secondhand
 ```
 
-Both sources are `original` in **nature** — the two axes are independent — yet they differ in **information** quality, and it is that `primary` vs `secondary` distinction that justifies resolving the conflict in the certificate's favor. See [Source — Source Classification](/specification/4-entity-types/source#source-classification-evidence-explained).
+Both sources are `original` in **nature** — the two axes are independent — yet they differ in **information** quality, and it is that `primary` vs `secondary` distinction that justifies resolving the conflict in the certificate's favor. See [Source — Source Classification](../../../specification/4-entity-types/source.md#source-classification-evidence-explained).
 
 Both assertions point at the **same property of the same event** but carry **different values** — that is what makes this a conflict rather than [corroboration](#multiple-evidence-for-same-property). The `status` field records the outcome of the analysis:
 
@@ -268,7 +268,7 @@ Both assertions point at the **same property of the same event** but carry **dif
 - `status: disproven` — evidence was found that contradicts the claim
 - `status: disputed` — sources conflict and the resolution is still unclear
 
-> **Not yet resolved?** If you have analyzed the conflict but cannot yet decide, leave both competing assertions in place, or record a single assertion citing the conflicting sources with `status: disputed`. Reserve `proven`/`disproven` for conflicts you have actually resolved. See [Assertion Entity — `status`](/specification/4-entity-types/assertion#status) for the full pattern.
+> **Not yet resolved?** If you have analyzed the conflict but cannot yet decide, leave both competing assertions in place, or record a single assertion citing the conflicting sources with `status: disputed`. Reserve `proven`/`disproven` for conflicts you have actually resolved. See [Assertion Entity — `status`](../../../specification/4-entity-types/assertion.md#status) for the full pattern.
 
 ## Temporal Properties with Assertions
 
@@ -310,5 +310,5 @@ assertions:
 - [Temporal Properties Example](../temporal-properties/) - Detailed temporal value patterns
 - [Complete Family Example](../complete-family/) - Full multi-file archive structure
 - [Participant Assertions Example](../participant-assertions/) - Evidencing who participated in an event
-- [Core Concepts - Assertion-Aware Data Model](/specification/2-core-concepts#assertion-aware-data-model)
-- [Assertion Entity - Existential Assertions](/specification/4-entity-types/assertion#existential-assertions)
+- [Core Concepts - Assertion-Aware Data Model](../../../specification/2-core-concepts.md#assertion-aware-data-model)
+- [Assertion Entity - Existential Assertions](../../../specification/4-entity-types/assertion.md#existential-assertions)

@@ -6,7 +6,7 @@ layout: doc
 
 # Repository Entity
 
-[← Back to Entity Types](README)
+[← Back to Entity Types](README.md)
 
 ## Overview
 
@@ -47,7 +47,7 @@ GENEALOGIX supports various repository types:
 - **Government Agency**: Government record-keeping agency
 - **Other**: Other institution type
 
-**See [Vocabularies - Repository Types](vocabularies#repository-types-vocabulary) for:**
+**See [Vocabularies - Repository Types](vocabularies.md#repository-types-vocabulary) for:**
 
 - Complete list of standard repository types
 - How to add custom repository types
@@ -94,7 +94,7 @@ Contact information and access details are stored in the `properties` field. The
 | `holding_types` | string[] | Types of materials held |
 | `external_ids` | string[] | External identifiers (FamilySearch, WikiTree, etc.) |
 
-**See [Vocabularies - Repository Properties](vocabularies#repository-properties-vocabulary) for the full vocabulary definition.**
+**See [Vocabularies - Repository Properties](vocabularies.md#repository-properties-vocabulary) for the full vocabulary definition.**
 
 ## Usage Patterns
 
@@ -217,9 +217,9 @@ repositories/
 ## Validation Rules
 
 - `name` must be present and non-empty
-- `type` must be from the [repository types vocabulary](vocabularies#repository-types-vocabulary)
+- `type` must be from the [repository types vocabulary](vocabularies.md#repository-types-vocabulary)
 - If `website` is specified, it should be a valid URL
-- Properties should be from the [repository properties vocabulary](vocabularies#repository-properties-vocabulary) (unknown properties generate warnings)
+- Properties should be from the [repository properties vocabulary](vocabularies.md#repository-properties-vocabulary) (unknown properties generate warnings)
 
 ## GEDCOM Mapping
 
@@ -255,5 +255,5 @@ See [repository.schema.json](../schema/v1/repository.schema.json) for the comple
 
 ## See Also
 
-- [Source Entity](source) - Collections held in repositories
-- [Citation Entity](citation) - References to specific materials in repositories
+- [Source Entity](source.md) - Collections held in repositories
+- [Citation Entity](citation.md) - References to specific materials in repositories

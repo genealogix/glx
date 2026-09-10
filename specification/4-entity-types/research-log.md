@@ -6,7 +6,7 @@ layout: doc
 
 # ResearchLog Entity
 
-[← Back to Entity Types](README)
+[← Back to Entity Types](README.md)
 
 ## Overview
 
@@ -68,7 +68,7 @@ Each `Search` records one query and its outcome. The standard outcomes are:
 - `partial` — some relevant information was located, but the objective was not fully met
 - `not_searched` — search is planned but has not yet been performed (use to record outstanding work alongside completed searches)
 
-**See [Vocabularies - Search Result Types](vocabularies#search-result-types-vocabulary)** for the full vocabulary.
+**See [Vocabularies - Search Result Types](vocabularies.md#search-result-types-vocabulary)** for the full vocabulary.
 
 ### Status lifecycle
 
@@ -79,7 +79,7 @@ Each `Search` records one query and its outcome. The standard outcomes are:
 - `complete` — objective met, conclusions documented
 - `blocked` — cannot proceed (waiting on access, missing records, etc.)
 
-**See [Vocabularies - Research Log Status Types](vocabularies#research-log-status-types-vocabulary).**
+**See [Vocabularies - Research Log Status Types](vocabularies.md#research-log-status-types-vocabulary).**
 
 ## Fields
 
@@ -199,9 +199,9 @@ research_logs/
 ## Validation Rules
 
 - `subject` if present must reference an existing entity of the type indicated (Person, Event, Relationship, or Place)
-- `status` if present must be from the [research log status types vocabulary](vocabularies#research-log-status-types-vocabulary)
+- `status` if present must be from the [research log status types vocabulary](vocabularies.md#research-log-status-types-vocabulary)
 - Each search's `repository`, `source`, and `citation` if present must reference existing entities
-- Each search's `result` if present must be from the [search result types vocabulary](vocabularies#search-result-types-vocabulary)
+- Each search's `result` if present must be from the [search result types vocabulary](vocabularies.md#search-result-types-vocabulary)
 - `citations` entries must reference existing Citation entities
 
 ## Related Issues
@@ -209,7 +209,7 @@ research_logs/
 ResearchLog tracks individual searches and their outcomes. It is intentionally distinct from related concepts being designed in parallel:
 
 - **Research investigation** ([#660](https://github.com/genealogix/glx/issues/660)): a higher-level workflow tracker for a research question — leads, hypotheses, next steps. ResearchLog records *what was searched*; Research records *what we are trying to figure out*.
-- **[Study](study)** (issue #226, shipped in beta.11): defines the scope of a research project (e.g., a One Place Study). A Study contains many ResearchLogs.
+- **[Study](study.md)** (issue #226, shipped in beta.11): defines the scope of a research project (e.g., a One Place Study). A Study contains many ResearchLogs.
 
 CLI commands for adding and querying logs (`glx log add`, `glx log list`, `glx log report`) are out of scope for the entity-spec PR and tracked separately.
 
@@ -223,6 +223,6 @@ See [research-log.schema.json](../schema/v1/research-log.schema.json) for the co
 
 ## See Also
 
-- [Citation Entity](citation) — the per-record evidence produced by a successful search
-- [Repository Entity](repository) — the institution searched
-- [Source Entity](source) — the bibliographic resource searched
+- [Citation Entity](citation.md) — the per-record evidence produced by a successful search
+- [Repository Entity](repository.md) — the institution searched
+- [Source Entity](source.md) — the bibliographic resource searched
