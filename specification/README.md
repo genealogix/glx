@@ -6,7 +6,7 @@ layout: doc
 
 # GENEALOGIX Specification
 
-Version 0.0.0-beta.11
+Version 0.0.0-beta.12
 
 ## Table of Contents
 
@@ -52,7 +52,7 @@ Version 0.0.0-beta.11
 
 This specification is under active development.
 
-- **Version**: 0.0.0-beta.11
+- **Version**: 0.0.0-beta.12
 - **Status**: Beta
 - **Stability**: Unstable API (breaking changes possible)
 

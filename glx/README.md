@@ -12,6 +12,7 @@ The official command-line tool for working with GENEALOGIX (GLX) family archives
 - 🔍 **Validate Files** - Structural and referential integrity validation
 - 🔄 **Split/Join** - Convert between single-file and multi-file formats
 - 🔀 **Merge** - Combine two GLX archives with duplicate detection and dry-run support
+- 🔀 **Merge Driver** - Structural 3-way git merge for `.glx` files (`glx merge-driver`) that auto-resolves safe concurrent edits and falls back to text merge otherwise
 - 📊 **Stats** - Display a summary dashboard of entity counts, assertion confidence, and coverage
 - 📍 **Places** - Analyze places for data quality issues (duplicates, missing coordinates, hierarchy gaps)
 - 🔍 **Search** - Full-text search across all entity types with case-sensitive and type-filter options
@@ -26,6 +27,7 @@ The official command-line tool for working with GENEALOGIX (GLX) family archives
 - 🔗 **Path** - Find the shortest relationship path between two people using BFS
 - 🔬 **Analyze** - Research gap analysis: evidence gaps, quality issues, chronological inconsistencies, and suggestions
 - ⚖️ **Proof** - Compile evidence for a research question into a structured proof summary following the Genealogical Proof Standard (GPS)
+- ⚖️ **Evidence** - Lay out every assertion for one person+property side-by-side, grouped by value, to weigh conflicting evidence
 - 📋 **Census Import** - Generate GLX entities from structured census templates with person matching, assertions, and dry-run preview
 - 🔗 **Link** - Create a FamilySearch citation (and repository/source scaffolding) from an ARK URL, offline
 - ➕ **Add** - Create person, place, event, repository, source, citation, relationship, or assertion entities from CLI flags with vocabulary and reference validation
@@ -103,7 +105,8 @@ glx --version
 ### Using Go Install
 
 ```bash
-go install github.com/genealogix/glx/glx@latest
+# Pin the release tag: GLX releases are prereleases, which @latest skips
+go install github.com/genealogix/glx/glx@v0.0.0-beta.12
 ```
 
 ### From Source

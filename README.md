@@ -18,7 +18,8 @@ Download the latest pre-compiled binary for your operating system from the [GitH
 Developers can install from source:
 
 ```bash
-go install github.com/genealogix/glx/glx@latest
+# Pin the release tag: GLX releases are prereleases, which @latest skips
+go install github.com/genealogix/glx/glx@v0.0.0-beta.12
 ```
 
 ## Quick Start
@@ -158,7 +159,7 @@ sources:
 
 ## Specification Status
 
-This specification follows [Semantic Versioning](https://semver.org/). Current release: **v0.0.0-beta.10** (Beta).
+This specification follows [Semantic Versioning](https://semver.org/). Current release: **v0.0.0-beta.12** (Beta).
 
 - **Draft** — under active development, may change significantly
 - **Release Candidate** — stable, final review before release
