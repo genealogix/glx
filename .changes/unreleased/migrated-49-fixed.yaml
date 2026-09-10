@@ -1,0 +1,6 @@
+kind: Fixed
+body: |-
+  **Release builds are reproducible again (`main.date` now commit-pinned)** — `.goreleaser.yml` embedded the build-invocation timestamp (GoReleaser's `.Date` template variable) into the binary via `-X main.date=...`, so two builds of the same tagged commit produced different bytes — defeating the reproducibility the build's other settings (`CGO_ENABLED=0`, `-trimpath`, and the `.CommitTimestamp`-pinned `mod_timestamp`) are engineered to provide, and failing any rebuild-and-compare supply-chain audit. The ldflag now uses the `.CommitDate` template variable, pinning the embedded date to the commit like the archive timestamps already were. (Raw GoReleaser template syntax is avoided in this entry because this page is rendered by VitePress, where double-brace mustaches are Vue interpolation.) `main.date` is display-only (`glx version`), so the only user-visible change is that the reported date is the release commit's date rather than the moment CI ran.
+time: 2026-06-05T12:00:00Z
+custom:
+  Issue: "#1049"

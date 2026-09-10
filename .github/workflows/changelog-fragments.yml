@@ -1,0 +1,72 @@
+name: Changelog fragments
+
+# Validates changie changelog fragments on every PR (#858, implements #321):
+# fragments parse/render and carry an issue/PR reference, and a user-facing PR
+# adds at least one fragment (escape with the 'no-changelog' label). Replaces the
+# advisory CHANGELOG.md reminder now that changes are file-per-change fragments.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  fragments:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.26'
+          cache: true
+
+      # GOBIN names the install dir instead of deriving it from `go env GOPATH`
+      # — GOPATH is a list, so "$(go env GOPATH)/bin" builds a bogus path
+      # ("/path/one:/path/two/bin") whenever it holds more than one entry.
+      - name: Install changie
+        run: GOBIN="$RUNNER_TEMP/gobin" go install github.com/miniscruff/changie@v1.24.0
+
+      - name: Validate fragments parse and carry a reference
+        run: |
+          export PATH="$RUNNER_TEMP/gobin:$PATH"
+          bash scripts/check-changelog-fragments.sh
+
+      - name: Require a changelog fragment (unless 'no-changelog' label)
+        if: ${{ !contains(github.event.pull_request.labels.*.name, 'no-changelog') }}
+        env:
+          BASE: ${{ github.base_ref }}
+        run: |
+          # Fetch the base branch explicitly so the diff base is always present,
+          # even on shallow checkouts; FETCH_HEAD then points at the base tip and
+          # "FETCH_HEAD...HEAD" diffs from the merge-base.
+          git fetch --no-tags origin "$BASE"
+          # A release-prep PR (changie batch) deletes the unreleased fragments and
+          # adds a per-version file .changes/<version>.md instead of a new fragment;
+          # the changelog-migration PR likewise adds the per-version files. In both
+          # cases an added .changes/<version>.md (anything but header.tpl.md) means
+          # the changelog was updated, so waive the new-fragment requirement.
+          VERSION_FILE=$(git diff --name-only --diff-filter=A "FETCH_HEAD...HEAD" -- '.changes/*.md' \
+            | grep -vE '(^|/)header\.tpl\.md$' || true)
+          if [ -n "$VERSION_FILE" ]; then
+            echo "Per-version changelog file(s) added (release batch / migration) — new-fragment requirement waived:"
+            echo "$VERSION_FILE"
+            exit 0
+          fi
+          # Count added (A) AND modified (M) fragments: editing an existing sibling
+          # fragment to fold in a follow-up (the consolidation discipline this PR
+          # documents) is a modification, and must satisfy the gate too.
+          TOUCHED=$(git diff --name-only --diff-filter=AM "FETCH_HEAD...HEAD" -- '.changes/unreleased/' \
+            | grep -vE '/\.gitkeep$' || true)
+          if [ -z "$TOUCHED" ]; then
+            echo "::error::This PR adds or updates no changelog fragment. Run 'make changelog' (changie new) to add one (or edit an existing sibling fragment), or apply the 'no-changelog' label if the change is not user-facing." >&2
+            exit 1
+          fi
+          echo "Changelog fragment(s) added/updated:"
+          echo "$TOUCHED"

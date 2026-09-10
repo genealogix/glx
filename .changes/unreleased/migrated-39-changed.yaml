@@ -1,0 +1,6 @@
+kind: Changed
+body: |-
+  **Auto-generated event titles no longer append the year in parentheses** — GEDCOM import titles drop the trailing `(YEAR)` suffix: `Birth of John Smith (1850)` becomes `Birth of John Smith`, and `Marriage of John Smith and Jane Doe (1850)` becomes `Marriage of John Smith and Jane Doe`. The year was redundant with the event's own `date` field, and was frequently wrong: it came from `ExtractFirstYear`, which only reliably parses dates the importer normalized to ISO, so non-ISO dates (full month names, mixed case, numeric `DD/MM/YYYY`) surfaced the day-of-month instead of the year (e.g. `Birth of John Smith (15)`). The parenthetical was an implementation choice in #99, not an acceptance criterion of the originating feature request (#86). `GenerateEventTitle` no longer takes a date argument. The underlying `ExtractFirstYear` mis-parse (which also affects temporal validation, duplicate detection, and privacy cutoffs) is tracked separately in #1025.
+time: 2026-06-05T12:00:00Z
+custom:
+  Issue: "#1024"

@@ -1,0 +1,6 @@
+kind: Added
+body: |-
+  **`NOTICE` file for Apache 2.0 third-party attribution** — Adds a top-level `NOTICE` file declaring the GENEALOGIX (GLX) copyright and attributing the third-party Go components statically linked into the distributed `glx` binary, grouped by direct vs. transitive dependency with each component's SPDX license, copyright holder(s), and source URL. The component list is derived from the modules actually compiled into the binary (`go version -m`), not the source-tree `go.mod`, so test-only dependencies such as `github.com/stretchr/testify` (which are not redistributed) are intentionally omitted. The file is also added to the GoReleaser archive `files` list so it ships alongside `LICENSE` in every release archive.
+time: 2026-06-05T17:30:00Z
+custom:
+  Issue: "#427"

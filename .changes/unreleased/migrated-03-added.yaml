@@ -1,0 +1,6 @@
+kind: Added
+body: |-
+  **`assertion-workflow` example now demonstrates conflicting evidence** — The example's README repeatedly promised conflicting-evidence support ("Doesn't capture conflicting evidence", "Documenting conflicting evidence", the "Conflicts: Hidden vs Documented" table row), but the `archive.glx` contained only corroborating assertions. Added a genuine conflict on Robert's birth year: a new `citation-robert-birth-lore` (family oral history placing his birth in 1956) backs a `disproven`, low-confidence `assertion-robert-birth-lore` that contradicts the `proven` birth-certificate assertion (`1955-03-22`) — two assertions on the same property of the same event with different values, resolved in favor of the primary source. A new "Conflicting Evidence (and Its Resolution)" README section walks through the `proven`/`disproven`/`disputed` status pattern, demonstrating GPS element 4 (resolution of conflicting evidence).
+time: 2026-06-05T12:00:03Z
+custom:
+  Issue: "#575"

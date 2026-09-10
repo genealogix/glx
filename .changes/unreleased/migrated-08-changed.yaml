@@ -1,0 +1,6 @@
+kind: Changed
+body: |-
+  **`make build-cli` now builds with GoReleaser's `-trimpath` and stripped ldflags** — the target builds with `-trimpath` and `-ldflags "-s -w -X main.version=$(VERSION)"` instead of a bare `go build`, so local binaries report a version (`glx --version`), strip debug symbols (~27% smaller), and drop local filesystem paths for reproducibility. A new `VERSION` variable defaults to `dev` (matching the `glx/cli_commands.go` fallback) and can be overridden, e.g. `make build-cli VERSION=0.1.0-local`. This aligns the target on stripping, `-trimpath`, and version injection; GoReleaser additionally injects `commit`/`date` (added in #384), which the Makefile omits to keep local builds git-independent.
+time: 2026-06-05T12:00:08Z
+custom:
+  Issue: "#440"

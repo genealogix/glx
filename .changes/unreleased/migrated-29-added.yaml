@@ -1,0 +1,6 @@
+kind: Added
+body: |-
+  **Release binaries now carry SLSA build-provenance attestations** — The `release.yml` workflow runs `actions/attest` (pinned to the `v4.1.0` commit SHA) after GoReleaser, taking GoReleaser's `checksums.txt` as `subject-checksums` so a single attestation covers every released archive. The provenance is signed keyless via the GitHub OIDC token and stored on GitHub, letting downloaders verify a binary was built by this repo's CI with `gh attestation verify --owner genealogix <file>`. This is on top of the existing cosign keyless signing of the checksums file (the two are complementary: cosign proves the checksums file's integrity, the attestation proves build provenance per SLSA). Required adding the `attestations: write` permission to the release job. `actions/attest-build-provenance` is only a composite wrapper around `actions/attest` that forwards empty predicate inputs, so calling `actions/attest` directly — which defaults to the SLSA provenance predicate when no predicate is supplied — is equivalent. SBOM generation is tracked separately in #269.
+time: 2026-06-05T12:00:00Z
+custom:
+  Issue: "#256"

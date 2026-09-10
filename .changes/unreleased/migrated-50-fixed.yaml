@@ -1,0 +1,6 @@
+kind: Fixed
+body: |-
+  **CI warning-gate in `test-conformance` no longer races its own log file** — The "fail on `Warning:` stderr" gate in `validate-spec.yml` captured `go test` stderr through an async process-substitution `tee` (`2> >(tee … >&2)`); bash runs that process list asynchronously and never waits for it, so the `grep` could inspect the log before `tee` had flushed warnings written near process exit — a load-dependent false-pass on exactly the signal the gate exists to enforce. Stderr is now captured with a plain synchronous redirect (complete by the time the next command runs), surfaced with `cat`, and the `go test` exit code is propagated explicitly. The match was also broadened from line-anchored `^Warning:` to `(^|[[:space:]])Warning:` so indented or mid-line warnings (e.g. from a test logger) are caught too; stderr is deliberately **not** merged into stdout, so test stdout that legitimately contains the literal string (golden output, `t.Log` of expected warnings) cannot trip the gate.
+time: 2026-06-05T12:00:00Z
+custom:
+  Issue: "#1033"

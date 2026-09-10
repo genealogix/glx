@@ -1,0 +1,6 @@
+kind: Fixed
+body: |-
+  **All standard source types now survive a GLX → GEDCOM 7.0 → GLX round-trip** — The GEDCOM 7.0 exporter writes `Source.Type` verbatim as the `TYPE` value, but the importer resolved it only through the short-alias table (`vital`, `church`, `tax`, …), so any canonical key whose alias differs from the key itself (`vital_record`, `church_register`, `population_register`, `tax_record`, `notarial_record`) or that had no alias at all (`immigration`, `directory`, `oral_history`, `correspondence`) re-imported as `other`. `mapSourceType` now first checks whether the (case-normalized) `TYPE` value already is a canonical GLX source type and passes it through unchanged, before consulting the alias table — so every current and future standard type round-trips with no per-key alias maintenance. The per-key identity mappings added for the #563 types in #1004 are superseded by this check and removed. The #1004 round-trip test now covers the full source-type vocabulary, driven from the canonical set so future additions stay covered automatically.
+time: 2026-06-05T12:00:00Z
+custom:
+  Issue: "#1005"

@@ -1,0 +1,6 @@
+kind: Fixed
+body: |-
+  **gosec pin bumped to v2.28.0** — `.gosec-version` was pinned at `v2.27.1`, so the weekly `gosec Pin Currency` check was failing as designed. Verified against the tree as CI sees it (`GOOS=linux gosec -quiet ./...`, matching the `ubuntu-latest` runner): the `v2.28.0` analyzer set introduces no new findings.
+time: 2026-06-05T12:00:00Z
+custom:
+  Issue: "#1146"

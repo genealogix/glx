@@ -1,0 +1,6 @@
+kind: Changed
+body: |-
+  **Added a top-level read-only `permissions:` default to the `auto-resolve-conflicts.yml` workflow** — the sibling fix to #979. This workflow (triggered by `auto-update-branches.yml`) likewise set `permissions:` only at the job level, leaving the top-level `GITHUB_TOKEN` scope at the repository default — the same OpenSSF Scorecard Token-Permissions finding ("no topLevel permission defined"). A top-level `permissions: contents: read` least-privilege default is now declared; the single `resolve-conflicts` job keeps its explicit `contents: write` / `pull-requests: read` grant, so behavior is unchanged. This was the last workflow in the repo missing a top-level `permissions:` block.
+time: 2026-06-05T12:00:00Z
+custom:
+  Issue: "PR #1054"

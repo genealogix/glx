@@ -1,0 +1,51 @@
+# Changie configuration — file-per-change changelog management (#858).
+# Each change is authored as a fragment under .changes/unreleased/ (one file per
+# change, so concurrent branches never edit a shared CHANGELOG.md). At release
+# time `changie batch <version>` assembles the fragments into .changes/<version>.md
+# and `changie merge` regenerates CHANGELOG.md from header.tpl.md + every version
+# file. Run `make changelog` (or `changie new`) to add a fragment.
+changesDir: .changes
+unreleasedDir: unreleased
+headerPath: header.tpl.md
+changelogPath: CHANGELOG.md
+versionExt: md
+envPrefix: CHANGIE_
+# Keep a Changelog headers. Frozen pre-changie history keeps its original
+# wording verbatim in the per-version files; these formats govern NEW versions.
+versionFormat: '## [{{.Version}}] - {{.Time.Format "2006-01-02"}}'
+kindFormat: '### {{.Kind}}'
+changeFormat: '- {{.Body}} ({{.Custom.Issue}})'
+# Keep a Changelog v1.1.0 kind order (Added, Changed, Deprecated, Removed,
+# Fixed, Security). Pinning it here fixes the Fixed/Removed transposition (#853)
+# by construction — changie always emits kinds in this order.
+kinds:
+    - label: Added
+      auto: minor
+    - label: Changed
+      auto: major
+    - label: Deprecated
+      auto: minor
+    - label: Removed
+      auto: major
+    - label: Fixed
+      auto: patch
+    - label: Security
+      auto: patch
+# Every fragment must carry an issue/PR reference (CONTRIBUTING step 6). Making
+# the field required-by-default (no `optional: true`) makes `changie new` refuse
+# to create a fragment without one in CI/non-interactive mode; the fragment-lint
+# CI job is the backstop for fragments hand-written without `changie new`.
+# Multi-ref values containing a comma must be passed via the CHANGIE_CUSTOM_Issue
+# env var (the --custom/-m flag comma-splits): e.g.
+#   CHANGIE_CUSTOM_Issue="#41, #775" changie new -k Added -b "..." --interactive=false
+custom:
+    - key: Issue
+      type: string
+      label: Issue or PR reference (e.g. "#123", "#41, #775", "PR #456")
+      minLength: 2
+newlines:
+    afterChangelogHeader: 0
+    beforeChangelogVersion: 1
+    endOfVersion: 1
+    beforeKind: 1
+    afterKind: 1

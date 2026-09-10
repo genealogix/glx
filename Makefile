@@ -1,5 +1,5 @@
 # GENEALOGIX Makefile
-.PHONY: help check build build-cli build-website install-deps install-hooks lint lint-fix lint-codeowners fix fix-diff test test-verbose test-race test-coverage bench mod-tidy mod-verify tidy-check ci-tools-tidy-check clean fmt check-schemas check-drift-allowlist check-code-drift check-memory-drift test-scripts check-links validate-examples docs-cli release-snapshot vulncheck gosec license-check
+.PHONY: help check build build-cli build-website install-deps install-hooks lint lint-fix lint-codeowners fix fix-diff test test-verbose test-race test-coverage bench mod-tidy mod-verify tidy-check ci-tools-tidy-check clean fmt check-schemas check-drift-allowlist check-code-drift check-memory-drift test-scripts check-links validate-examples docs-cli release-snapshot vulncheck gosec license-check changelog changelog-check
 
 .DEFAULT_GOAL := help
 
@@ -187,6 +187,61 @@ docs-cli: build-cli ## Regenerate per-command CLI reference under docs/cli/
 ## Release
 release-snapshot: ## Build cross-platform binaries locally (no publish)
 	goreleaser release --snapshot --clean
+
+## Changelog
+# changie version pin — bump alongside any .changie.yaml format changes.
+CHANGIE_VERSION ?= v1.24.0
+
+# Ensure the *pinned* changie is runnable, installing it on demand, and export
+# its absolute path as $CHANGIE for the recipe and for
+# scripts/check-changelog-fragments.sh (which falls back to a PATH lookup when
+# the variable is unset, e.g. in CI where the workflow installs changie itself).
+#
+# A changie already on PATH is only used when it IS $(CHANGIE_VERSION);
+# otherwise the pinned build is installed and used, so `make changelog` renders
+# the same fragments on every machine. The version comes from `go version -m`
+# (the module version recorded in the binary), not `changie --version`: a
+# `go install` build reports "vdev" for the latter, so comparing against it
+# would reinstall on every single run. The first `go version -m` doubles as the
+# probe for Windows, where `command -v changie` resolves to an extension-less
+# path that `go` cannot stat — an empty result means retry with GOEXE appended.
+#
+# Exporting a path rather than extending PATH is deliberate, and fixes two
+# separate bugs in doing so:
+#
+#   * `go env GOPATH` is a *list*. "$(go env GOPATH)/bin" builds a bogus
+#     directory ("/path/one:/path/two/bin") for anyone with more than one
+#     entry, and the separator is ';' on Windows where the entries themselves
+#     contain ':' — make has no portable way to split it. Naming the
+#     destination via GOBIN on the install sidesteps the question entirely.
+#   * A Windows path cannot go on PATH under git-bash at all: PATH is
+#     colon-separated there, so "C:/repo/bin" splits into "C" and "/repo/bin".
+#
+# The install dir is GOBIN when set, else this repo's ./bin; `go env GOEXE`
+# supplies the .exe suffix on Windows. `make clean` removes ./bin, so a
+# subsequent run reinstalls.
+define ensure_changie
+	CHANGIE="$$(command -v changie || true)"; \
+	if [ -n "$$CHANGIE" ] && [ -z "$$(go version -m "$$CHANGIE" 2>/dev/null)" ]; then \
+		CHANGIE="$$CHANGIE$$(go env GOEXE)"; \
+	fi; \
+	if [ "$$(go version -m "$$CHANGIE" 2>/dev/null | awk '$$1 == "mod" { print $$3; exit }')" != "$(CHANGIE_VERSION)" ]; then \
+		GO_BIN_DIR="$$(go env GOBIN)"; \
+		if [ -z "$$GO_BIN_DIR" ]; then GO_BIN_DIR="$(CURDIR)/bin"; fi; \
+		echo "Installing changie $(CHANGIE_VERSION) into $$GO_BIN_DIR via 'go install'..."; \
+		GOBIN="$$GO_BIN_DIR" go install github.com/miniscruff/changie@$(CHANGIE_VERSION); \
+		CHANGIE="$$GO_BIN_DIR/changie$$(go env GOEXE)"; \
+	fi; \
+	export CHANGIE;
+endef
+
+changelog: ## Add a changelog fragment for a change (interactive `changie new`)
+	@$(ensure_changie) \
+	"$$CHANGIE" new
+
+changelog-check: ## Validate changie fragments parse and carry an issue/PR reference
+	@$(ensure_changie) \
+	bash scripts/check-changelog-fragments.sh
 
 ## Link Checking
 check-links: ## Validate internal markdown links

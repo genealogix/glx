@@ -1,0 +1,6 @@
+kind: Added
+body: |-
+  **`go-glx`: exported GEDCOM 5.5.1 BLOB decoder (`DecodeGEDCOMBlob`)** — The BLOB decoder previously lived unexported in the CLI (`decodeGEDCOMBlob` in `glx/media_copy.go`), so library consumers receiving `MediaFileSource.BlobData` had to reimplement the 5.5.1 decoding — including validation and the trailing-group edge cases — themselves. The function now lives in `go-glx` as `DecodeGEDCOMBlob`, together with its sentinel errors `ErrGEDCOMBlobEmpty`, `ErrGEDCOMBlobLength`, and `ErrGEDCOMBlobChar` (moved out of the CLI package and renamed to match), and the CLI is a caller. Pure function, no I/O. The full-group invalid-character error now wraps `ErrGEDCOMBlobChar` like the trailing-group path already did, so all invalid-character failures are detectable via `errors.Is`; both paths report the offending byte — as a quoted character and as hex, since `%q` alone renders any byte above 0x7F as the wrong code point — and its position before the "must be in range '.' to 'm'" hint. Decoding is also more tolerant of exporter whitespace: tabs, vertical tabs and form feeds are now stripped alongside spaces and line breaks, where previously they were rejected as invalid BLOB characters. Prerequisite for library-level GEDZIP import (#1141).
+time: 2026-06-05T12:00:00Z
+custom:
+  Issue: "#1140"

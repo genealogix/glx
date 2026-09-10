@@ -1,0 +1,6 @@
+kind: Fixed
+body: |-
+  **`website` dependencies bumped to clear the `npm audit` CI gate** — `vite` 7.3.2 → 7.3.5 (lockfile only) patches a high-severity advisory ([GHSA-fx2h-pf6j-xcff](https://github.com/advisories/GHSA-fx2h-pf6j-xcff)) and a transitive `launch-editor` advisory ([GHSA-v6wh-96g9-6wx3](https://github.com/advisories/GHSA-v6wh-96g9-6wx3)) that were failing the `Security` workflow's `npm audit --audit-level=moderate` job on every PR.
+time: 2026-06-05T12:00:00Z
+custom:
+  Issue: "PR #1102"
