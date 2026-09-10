@@ -51,7 +51,7 @@ Traditional formats like GEDCOM solve file exchange but stop short of modern col
 | **Interoperability** | GEDCOM export only | Import/export + Git workflows |
 | **Custom Types** | Fixed schema | Archive-defined vocabularies |
 
-For a side-by-side look at the GEDCOM-vs-GLX wire formats and the assertion model that backs every claim with evidence, see [Core Concepts](/specification/2-core-concepts).
+For a side-by-side look at the GEDCOM-vs-GLX wire formats and the assertion model that backs every claim with evidence, see [Core Concepts](specification/2-core-concepts.md).
 
 ## Features
 
@@ -145,15 +145,15 @@ sources:
 
 ## Documentation
 
-- [🚀 Quickstart](/quickstart) — 5-minute getting started
-- [💡 Examples](/examples/) — runnable sample archives
+- [🚀 Quickstart](docs/quickstart.md) — 5-minute getting started
+- [💡 Examples](docs/examples/README.md) — runnable sample archives
 - [🛠 CLI Reference](https://genealogix.io/cli) — every command and flag
-- [📐 Best Practices](/guides/best-practices) — recommended workflows
-- [🔁 Migration from GEDCOM](/guides/migration-from-gedcom) — manual conversion guidance
-- [🔀 GLX-aware Git merge driver](/docs/merge-driver) — genealogy-aware conflict resolution for .glx files
-- [📖 Specification](/specification/) — full spec
-- [📋 JSON Schemas](/specification/schema/) — machine-readable schemas
-- [📚 Glossary](/specification/6-glossary) — key terms and concepts
+- [📐 Best Practices](docs/guides/best-practices.md) — recommended workflows
+- [🔁 Migration from GEDCOM](docs/guides/migration-from-gedcom.md) — manual conversion guidance
+- [🔀 GLX-aware Git merge driver](docs/merge-driver.md) — genealogy-aware conflict resolution for .glx files
+- [📖 Specification](specification/README.md) — full spec
+- [📋 JSON Schemas](specification/schema/README.md) — machine-readable schemas
+- [📚 Glossary](specification/6-glossary.md) — key terms and concepts
 - [🧱 Dev Container](https://github.com/genealogix/glx/tree/main/.devcontainer) — preconfigured dev environment
 
 ## Specification Status
@@ -172,7 +172,7 @@ This specification follows [Semantic Versioning](https://semver.org/). Current r
 | **Discussions & Q&A** | [github.com/genealogix/glx/discussions](https://github.com/genealogix/glx/discussions) |
 | **Chat** | [Discord](https://genealogix.io/discord) |
 | **Mailing list** | [groups.google.com/g/genealogix](https://groups.google.com/g/genealogix) |
-| **Contributing** | [CONTRIBUTING.md](CONTRIBUTING.md) · [website guide](/development/contributing) |
+| **Contributing** | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | **Code of Conduct** | [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) |
 | **Security** | [SECURITY.md](SECURITY.md) · [SECURITY-POSTURE.md](SECURITY-POSTURE.md) (OSPS Baseline, EU CRA readiness) |
 | **Releases** | [GitHub Releases](https://github.com/genealogix/glx/releases) |

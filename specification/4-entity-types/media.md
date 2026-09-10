@@ -6,7 +6,7 @@ layout: doc
 
 # Media Entity
 
-[← Back to Entity Types](README)
+[← Back to Entity Types](README.md)
 
 ## Overview
 
@@ -223,7 +223,7 @@ media:
         height: 200
 ```
 
-**See [Vocabularies - Media Properties](vocabularies#media-properties-vocabulary) for the full vocabulary definition.**
+**See [Vocabularies - Media Properties](vocabularies.md#media-properties-vocabulary) for the full vocabulary definition.**
 
 ## Usage Patterns
 
@@ -309,7 +309,7 @@ media:
 
 Media types are defined in the archive's `vocabularies/media-types.glx` file.
 
-**See [Vocabularies - Media Types](vocabularies#media-types-vocabulary) for:**
+**See [Vocabularies - Media Types](vocabularies.md#media-types-vocabulary) for:**
 
 - Complete list of standard media types
 - How to add custom media types
@@ -399,7 +399,7 @@ When using external URIs, no local file is stored. The media entity simply refer
 ## Validation Rules
 
 - `uri` must be a valid URI or path
-- `type` must be from the [media types vocabulary](vocabularies#media-types-vocabulary)
+- `type` must be from the [media types vocabulary](vocabularies.md#media-types-vocabulary)
 - If `mime_type` is specified, it should follow standard MIME type format
 - If `hash` is specified, it should follow `algorithm:hexstring` format
 - If `date` is specified, it should follow standard date formats
@@ -489,8 +489,8 @@ See [media.schema.json](../schema/v1/media.schema.json) for the complete JSON Sc
 
 ## See Also
 
-- [Source Entity](source) - Sources that media documents
-- [Citation Entity](citation) - Citations that media supports
-- [Assertion Entity](assertion) - Assertions that media can directly evidence
-- [Person Entity](person) - People depicted in media
-- [Archive Organization](../3-archive-organization#organization-strategies) - Organizing media files
+- [Source Entity](source.md) - Sources that media documents
+- [Citation Entity](citation.md) - Citations that media supports
+- [Assertion Entity](assertion.md) - Assertions that media can directly evidence
+- [Person Entity](person.md) - People depicted in media
+- [Archive Organization](../3-archive-organization.md#organization-strategies) - Organizing media files

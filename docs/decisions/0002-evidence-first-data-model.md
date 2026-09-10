@@ -30,7 +30,7 @@ Model evidence as a four-entity chain:
 3. **Citation** — a reference to a particular part of a source (e.g., "Leeds Parish Register, 1850–1855, entry #42, Baptism of John Smith, 15 March 1850").
 4. **Assertion** — a source-backed conclusion about a fact, with a confidence level, referencing one or more citations.
 
-From the [Assertion Entity specification](/specification/4-entity-types/assertion):
+From the [Assertion Entity specification](../../specification/4-entity-types/assertion.md):
 
 > An Assertion entity represents a source-backed conclusion about a specific genealogical fact. Assertions form the core of the GENEALOGIX evidence model, separating *what sources say* (citations) from *what we conclude* (assertions).
 
