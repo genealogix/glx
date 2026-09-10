@@ -285,6 +285,7 @@ func LoadArchiveWithOptions(rootPath string, schemaValidate bool) (*glxlib.GLXFi
 	if err != nil {
 		return nil, nil, err
 	}
+	duplicates = sanitizeDuplicateWarnings(duplicates)
 
 	// Load standard vocabularies as defaults for any vocabulary maps not
 	// already defined by the archive. This enables property reference
@@ -298,6 +299,21 @@ func LoadArchiveWithOptions(rootPath string, schemaValidate bool) (*glxlib.GLXFi
 	glx.InvalidateCache()
 
 	return glx, duplicates, nil
+}
+
+// sanitizeDuplicateWarnings makes deserializer duplicate warnings safe to
+// print. The warnings quote archive-controlled entity IDs and file names and
+// exist only to be shown as diagnostics — two dozen runners write them to
+// stderr, several with a bare fmt.Fprintf. Every caller of
+// DeserializeMultiFileFromMap must pass its duplicates through here so no
+// print site can leak a control sequence (genealogix/glx#925). The slice is
+// sanitized in place and returned for convenience.
+func sanitizeDuplicateWarnings(duplicates []string) []string {
+	for i, d := range duplicates {
+		duplicates[i] = sanitizeForTerminal(d)
+	}
+
+	return duplicates
 }
 
 // createSerializer creates a new serializer with the specified options
@@ -328,8 +344,18 @@ func readSingleFileArchive(path string, validate bool) (*glxlib.GLXFile, error) 
 	return glx, nil
 }
 
-// writeSingleFileArchive serializes and writes a single-file GLX archive
+// writeSingleFileArchive serializes and writes a single-file GLX archive with
+// the default file permissions. Callers rewriting a file that already exists
+// should use writeSingleFileArchiveWithMode instead.
 func writeSingleFileArchive(path string, glx *glxlib.GLXFile, validate bool) error {
+	return writeSingleFileArchiveWithMode(path, glx, validate, filePermissions)
+}
+
+// writeSingleFileArchiveWithMode is writeSingleFileArchive with an explicit
+// permission mode. In-place rewrites pass the mode the file already has so a
+// deliberately private archive (0600, say) does not come back world-readable
+// because the write went through a fresh temp file.
+func writeSingleFileArchiveWithMode(path string, glx *glxlib.GLXFile, validate bool, perm os.FileMode) error {
 	serializer := createSerializer(validate, true, "  ")
 
 	yamlBytes, err := serializer.SerializeSingleFileBytes(glx)
@@ -337,7 +363,7 @@ func writeSingleFileArchive(path string, glx *glxlib.GLXFile, validate bool) err
 		return fmt.Errorf("failed to serialize GLX file: %w", err)
 	}
 
-	if err := atomicWriteFile(path, yamlBytes, filePermissions); err != nil {
+	if err := atomicWriteFile(path, yamlBytes, perm); err != nil {
 		return fmt.Errorf("failed to write GLX file: %w", err)
 	}
 

@@ -18,6 +18,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -32,6 +33,46 @@ func TestRunValidate_SingleValidFile(t *testing.T) {
 	require.NoError(t, err, "should successfully validate a valid GLX file")
 	require.Contains(t, out.String(), "Cross-reference validation skipped")
 	require.Contains(t, out.String(), "passed structural and semantic validation")
+}
+
+func TestValidateSingleFilePaths_FileAndDirectory(t *testing.T) {
+	dir := t.TempDir()
+	good := "persons:\n  person-a:\n    properties:\n      name: A\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "a.glx"), []byte(good), 0o644))
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "sub"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "sub", "b.glx"), []byte(good), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "sub", "bad.glx"), []byte("persons: [\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "sub", "notes.txt"), []byte("ignored"), 0o644))
+
+	count, errs := validateSingleFilePaths([]string{filepath.Join(dir, "a.glx")})
+	require.Equal(t, 1, count)
+	require.Empty(t, errs)
+
+	count, errs = validateSingleFilePaths([]string{filepath.Join(dir, "sub")})
+	require.Equal(t, 2, count)
+	require.Len(t, errs, 1)
+	require.Contains(t, errs[0], "Error parsing YAML in "+filepath.Join(dir, "sub", "bad.glx"))
+
+	count, errs = validateSingleFilePaths([]string{filepath.Join(dir, "missing.glx")})
+	require.Equal(t, 0, count)
+	require.Empty(t, errs)
+}
+
+func TestValidateSingleFilePaths_DirectorySymlinkEscape(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation is privilege-gated on Windows")
+	}
+	outside := t.TempDir()
+	secret := filepath.Join(outside, "secret.glx")
+	require.NoError(t, os.WriteFile(secret, []byte("persons: {}\n"), 0o644))
+
+	dir := t.TempDir()
+	require.NoError(t, os.Symlink(secret, filepath.Join(dir, "link.glx")))
+
+	count, errs := validateSingleFilePaths([]string{dir})
+	require.Equal(t, 1, count)
+	require.Len(t, errs, 1, "a symlink escaping the validated directory must be reported, not read")
+	require.Contains(t, errs[0], "Error reading "+filepath.Join(dir, "link.glx"))
 }
 
 func TestRunValidate_ValidDirectory(t *testing.T) {

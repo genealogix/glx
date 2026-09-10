@@ -1,1 +1,141 @@
-../../../../specification/5-standard-vocabularies/person-properties.glx
+# Standard Person Properties
+# This file defines the standard properties for person entities.
+# These properties represent the concluded or accepted values for a person.
+# Archives can extend this with custom properties by adding additional entries.
+
+person_properties:
+  name:
+    label: "Name"
+    description: "Person's name as recorded, with optional structured breakdown"
+    value_type: string
+    temporal: true
+    gedcom: "NAME"
+    fields:
+      type:
+        label: "Name Type"
+        description: "Classification of name usage or origin. Standard values: birth, married, maiden, alias, aka, immigrant, anglicized, religious, formal, professional, as_recorded"
+      prefix:
+        label: "Prefix"
+        description: "Honorific prefix (Dr., Rev., Hon.)"
+      given:
+        label: "Given Name"
+        description: "Given/first name(s)"
+      nickname:
+        label: "Nickname"
+        description: "Familiar or descriptive name"
+      surname_prefix:
+        label: "Surname Prefix"
+        description: "Article or prefix (von, van, de)"
+      surname:
+        label: "Surname"
+        description: "Family name"
+      suffix:
+        label: "Suffix"
+        description: "Generational suffix (Jr., Sr., III)"
+
+  sex:
+    label: "Sex"
+    description: "Sex as recorded in source documents (e.g., GEDCOM SEX, census enumerations)"
+    vocabulary_type: sex_types
+    temporal: true
+    gedcom: "SEX"
+
+  gender:
+    label: "Gender"
+    description: "Self-identified gender identity (modern/living persons)"
+    vocabulary_type: gender_types
+    temporal: true
+    # No direct GEDCOM equivalent — identity defers to FACT in GEDCOM 7.0
+
+  occupation:
+    label: "Occupation"
+    description: "Profession or trade"
+    value_type: string
+    temporal: true
+    gedcom: "OCCU"
+
+  title:
+    label: "Title"
+    description: "Nobility or honorific title"
+    value_type: string
+    temporal: true
+    gedcom: "TITL"
+
+  residence:
+    label: "Residence"
+    description: "Place of residence"
+    reference_type: places
+    temporal: true
+    gedcom: "RESI"
+  
+  religion:
+    label: "Religion"
+    description: "Religious affiliation"
+    value_type: string
+    temporal: true
+    gedcom: "RELI"
+  
+  education:
+    label: "Education"
+    description: "Educational attainment"
+    value_type: string
+    temporal: true
+    gedcom: "EDUC"
+  
+  ethnicity:
+    label: "Ethnicity"
+    description: "Ethnic background"
+    value_type: string
+    temporal: true
+    # No direct GEDCOM equivalent
+  
+  race:
+    label: "Race"
+    description: "Racial classification as recorded in historical documents (e.g., census records)"
+    value_type: string
+    temporal: true
+    # No direct GEDCOM equivalent (sometimes recorded as a GEDCOM census FACT)
+
+  nationality:
+    label: "Nationality"
+    description: "National citizenship"
+    value_type: string
+    temporal: true
+    gedcom: "NATI"
+
+  caste:
+    label: "Caste"
+    description: "Caste, tribe, or social group"
+    value_type: string
+    temporal: true
+    gedcom: "CAST"
+
+  national_id:
+    label: "National Identification Number"
+    description: "National identification number (e.g., US SSN, UK NI number, Canadian SIN, Australian TFN). The GEDCOM SSN tag (a US Social Security Number) maps here on import/export."
+    value_type: string
+    gedcom: "SSN"
+
+  primary_name:
+    label: "Primary Name"
+    description: "Simple display name for the person, used as a fallback when the structured name property is not available"
+    value_type: string
+    # No GEDCOM equivalent — GLX-specific display name
+
+  external_ids:
+    label: "External Identifiers"
+    description: "Identifiers from external systems (e.g., FamilySearch, WikiTree)"
+    value_type: string
+    multi_value: true
+    gedcom: "EXID"
+    fields:
+      type:
+        label: "Identifier Type"
+        description: "Authority or system that issued this identifier (e.g., familysearch, ancestry, wikitree). Often a URI, especially when imported from GEDCOM 7 EXID.TYPE."
+
+  living:
+    label: "Living"
+    description: "Opt-in marker that the person is currently living. Honored by `glx export --privatize-living` and any other tooling that redacts living-person data; otherwise informational. When unset, export privacy filters fall back to a heuristic (no recorded death/burial/cremation event AND born less than 100 years ago)."
+    value_type: boolean
+    # No GEDCOM equivalent — GLX-specific privacy marker.
+

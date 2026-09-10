@@ -14,31 +14,31 @@ This glossary defines key terms used in the GENEALOGIX specification.
 
 A date with uncertainty or imprecision, expressed using keywords like ABT (about), BEF (before), AFT (after), or BET (between). Part of GENEALOGIX's fuzzy date support. Can be combined with calendar prefixes (e.g., `JULIAN ABT 1731`).
 
-> **See Also:** [Date Format Standard](2-core-concepts#date-format-standard)
+> **See Also:** [Date Format Standard](2-core-concepts.md#date-format-standard)
 
 ### Archive
 
 A complete GENEALOGIX repository containing family history data organized in a Git repository with standardized directory structure and validation.
 
-> **See Also:** [Archive Organization](3-archive-organization)
+> **See Also:** [Archive Organization](3-archive-organization.md)
 
 ### Archive-Level Validation
 
 Validation performed across all files in an archive, checking for duplicate entity IDs, broken cross-references, and undefined vocabulary types. Generates both errors (hard failures) and warnings (soft failures).
 
-> **See Also:** [Validation Levels](3-archive-organization#validation-levels)
+> **See Also:** [Validation Levels](3-archive-organization.md#validation-levels)
 
 ### Archive-Owned Vocabularies
 
 Controlled vocabulary definitions owned by each archive, allowing archives to customize and extend type systems while maintaining validation and consistency. Vocabulary files are identified by their top-level keys (e.g., `event_types`, `place_types`) and can be placed anywhere in the archive, though `vocabularies/` is the conventional directory.
 
-> **See Also:** [Archive-Owned Vocabularies](2-core-concepts#archive-owned-vocabularies)
+> **See Also:** [Archive-Owned Vocabularies](2-core-concepts.md#archive-owned-vocabularies)
 
 ### Assertion
 
 A discrete, evidence-backed claim about a person, event, place, or relationship. Assertions separate conclusions from evidence, allowing multiple claims about the same fact with different supporting evidence.
 
-> **See Also:** [Assertion Entity](4-entity-types/assertion)
+> **See Also:** [Assertion Entity](4-entity-types/assertion.md)
 
 ## C
 
@@ -46,7 +46,7 @@ A discrete, evidence-backed claim about a person, event, place, or relationship.
 
 A specific reference to a location within a source document, including locator information and optional transcription. Citations link evidence to assertions.
 
-> **See Also:** [Citation Entity](4-entity-types/citation)
+> **See Also:** [Citation Entity](4-entity-types/citation.md)
 
 ### Conflicting Evidence Resolution
 
@@ -56,7 +56,7 @@ The process of evaluating multiple sources with different conclusions and determ
 
 An assessment of how certain a conclusion is based on available evidence. Common levels include: high, medium, low. Disputed conclusions — where sources conflict — are tracked via the assertion `status` field rather than as a confidence level.
 
-> **See Also:** [Confidence Levels Vocabulary](4-entity-types/vocabularies#confidence-levels-vocabulary), [Assertion → status](4-entity-types/assertion#status)
+> **See Also:** [Confidence Levels Vocabulary](4-entity-types/vocabularies.md#confidence-levels-vocabulary), [Assertion → status](4-entity-types/assertion.md#status)
 
 ### Corroboration
 
@@ -66,7 +66,7 @@ Supporting evidence from multiple independent sources that agree on a conclusion
 
 An optional prefix on a DateString indicating the calendar system: JULIAN, HEBREW, or FRENCH_R. Gregorian is the default (no prefix). Imported from GEDCOM calendar escape sequences (e.g., `@#DJULIAN@`).
 
-> **See Also:** [Non-Gregorian Calendar Dates](2-core-concepts#non-gregorian-calendar-dates)
+> **See Also:** [Non-Gregorian Calendar Dates](2-core-concepts.md#non-gregorian-calendar-dates)
 
 ### Cross-Reference
 
@@ -80,7 +80,7 @@ A reference from one entity to another entity in the archive (e.g., event refere
 
 Keywords used in GENEALOGIX date formats to express uncertainty or ranges: ABT (about), BEF (before), AFT (after), BET (between), FROM, TO, CAL (calculated), EST (estimated from another event's date), INT (interpreted). Can be combined with calendar prefixes (e.g., `JULIAN ABT 1731`). The separate `BCE` era suffix marks a Gregorian or Julian date before the common era (e.g., `ABT 0560 BCE`); see the Date Format Standard.
 
-> **See Also:** [Date Format Standard](2-core-concepts#date-format-standard)
+> **See Also:** [Date Format Standard](2-core-concepts.md#date-format-standard)
 
 ### Derivative Evidence
 
@@ -110,31 +110,31 @@ A typed record in a GENEALOGIX archive representing a person, event, place, rela
 
 A unique identifier for each entity, used as the YAML map key. Format: 1-64 alphanumeric characters with hyphens. Can be descriptive (john-smith-1850) or random (a1b2c3d4).
 
-> **See Also:** [ID (Identifier)](#id-identifier), [ID Format Standards](3-archive-organization#id-format-standards)
+> **See Also:** [ID (Identifier)](#id-identifier), [ID Format Standards](3-archive-organization.md#id-format-standards)
 
 ### Existential Assertion
 
 An assertion with only a `subject` and evidence — no `property`, `value`, or `participant`. It asserts that the subject entity exists, backed by the cited sources. Useful during early research phases when evidence establishes an entity's existence but specific property values have not yet been determined.
 
-> **See Also:** [Assertion Entity - Existential Assertions](4-entity-types/assertion#existential-assertions), [Core Concepts - Existential Assertions](2-core-concepts#existential-assertions)
+> **See Also:** [Assertion Entity - Existential Assertions](4-entity-types/assertion.md#existential-assertions), [Core Concepts - Existential Assertions](2-core-concepts.md#existential-assertions)
 
 ### Event
 
 A discrete occurrence in time and place such as birth, marriage, death, baptism, or burial. Events have participants, dates, places, and descriptions. Note: attributes like occupation are represented as temporal properties on Person entities, not as events. Residence can be either a temporal person property (for simple place references) or a `residence` event (when participants, dates, or detailed evidence are needed).
 
-> **See Also:** [Event Entity](4-entity-types/event)
+> **See Also:** [Event Entity](4-entity-types/event.md)
 
 ### Event Type
 
 Classification of life events including birth, marriage, death, baptism, burial, military service, immigration, naturalization, etc. Note: attributes like occupation are temporal properties on Person entities, not events. Residence can be modeled as either a person property or an event.
 
-> **See Also:** [Event Types Vocabulary](4-entity-types/vocabularies#event-types-vocabulary)
+> **See Also:** [Event Types Vocabulary](4-entity-types/vocabularies.md#event-types-vocabulary)
 
 ### Evidence Chain
 
 The complete path from physical repository through source and citation to genealogical assertion. A complete chain includes repository → source → citation → assertion.
 
-> **See Also:** [Evidence Chain](2-core-concepts#evidence-chain)
+> **See Also:** [Evidence Chain](2-core-concepts.md#evidence-chain)
 
 ### Evidence Evaluation
 
@@ -164,13 +164,13 @@ Structured components within properties that break down complex values into name
 
 Validation performed on individual GLX files, checking for valid YAML syntax, proper entity type keys, schema compliance, and properly formatted entity IDs.
 
-> **See Also:** [Validation Levels](3-archive-organization#validation-levels)
+> **See Also:** [Validation Levels](3-archive-organization.md#validation-levels)
 
 ### Fuzzy Date
 
 A date with imprecision or uncertainty, such as "about 1850" or "between 1880 and 1890". GENEALOGIX supports fuzzy dates through date keywords.
 
-> **See Also:** [Date Format Standard](2-core-concepts#date-format-standard), [Approximate Date](#approximate-date)
+> **See Also:** [Date Format Standard](2-core-concepts.md#date-format-standard), [Approximate Date](#approximate-date)
 
 ## G
 
@@ -210,7 +210,7 @@ A unique identifier for each entity, used as the map key in YAML. Format: 1-64 a
 
 > **Note:** Examples use prefixes (e.g., `person-`) for readability. Prefixes are not required.
 >
-> **See Also:** [ID Format Standards](3-archive-organization#id-format-standards), [Entity ID](#entity-id)
+> **See Also:** [ID Format Standards](3-archive-organization.md#id-format-standards), [Entity ID](#entity-id)
 
 ### Indirect Evidence
 
@@ -220,7 +220,7 @@ Evidence that requires interpretation or additional information to support a con
 
 Standard vocabulary (`information_types`) backing the `information_type` source property. Following Evidence Explained, classifies the information a source conveys by the informant's relationship to the event: `primary` (firsthand), `secondary` (secondhand), `indeterminate` (origin unknown). At the source level this records the predominant or default quality; because Evidence Explained treats information as a property of each item, fact-level variation is better expressed per item. There is no standard citation property for this yet, so an archive needing per-fact classification extends `citation_properties` with a custom property (`vocabulary_type: information_types`); standardizing it is tracked in [#988](https://github.com/genealogix/glx/issues/988). Archives may extend with custom values.
 
-> **See Also:** [Information Types Vocabulary](4-entity-types/vocabularies#information-types-vocabulary), [Source Entity — Source Classification](4-entity-types/source#source-classification-evidence-explained)
+> **See Also:** [Information Types Vocabulary](4-entity-types/vocabularies.md#information-types-vocabulary), [Source Entity — Source Classification](4-entity-types/source.md#source-classification-evidence-explained)
 
 ## L
 
@@ -228,7 +228,7 @@ Standard vocabulary (`information_types`) backing the `information_type` source 
 
 Standard vocabulary (`legal_statuses`) backing the `legal_status` relationship property. Distinguishes forms of coerced labor on enslavement relationships: `chattel`, `indentured`, `debt_bondage`, `apprenticeship`. Archives may extend with custom values.
 
-> **See Also:** [Legal Statuses Vocabulary](4-entity-types/vocabularies#legal-statuses-vocabulary), [Relationship Entity](4-entity-types/relationship)
+> **See Also:** [Legal Statuses Vocabulary](4-entity-types/vocabularies.md#legal-statuses-vocabulary), [Relationship Entity](4-entity-types/relationship.md)
 
 ### Locator
 
@@ -246,7 +246,7 @@ The YAML map key used to identify entities. In GENEALOGIX, entity IDs serve as m
 
 Supporting files such as photos, documents, audio recordings, or videos that provide evidence or context for genealogical assertions.
 
-> **See Also:** [Media Entity](4-entity-types/media)
+> **See Also:** [Media Entity](4-entity-types/media.md)
 
 ### MIME Type
 
@@ -256,7 +256,7 @@ Media type identifier (e.g., "image/jpeg", "application/pdf") that specifies the
 
 An archive organization strategy where each entity is stored in a separate file, recommended for collaborative projects due to better Git diff granularity and merge conflict resolution.
 
-> **See Also:** [One Entity Per File](3-archive-organization#one-entity-per-file-recommended-for-collaboration)
+> **See Also:** [One Entity Per File](3-archive-organization.md#one-entity-per-file-recommended-for-collaboration)
 
 ### Multi-Value Property
 
@@ -288,37 +288,37 @@ A person involved in an event with a specific role such as subject, witness, off
 
 An assertion whose `participant` field (instead of `property`/`value`) makes a claim about a specific person's involvement in an event or relationship — e.g., that a witness was present, or that a child belongs to a family. Participant assertions allow evidence to be attached directly to who was involved, independent of other claims about the event or relationship.
 
-> **See Also:** [Assertion Entity - Participant Assertions](4-entity-types/assertion#participant-assertions)
+> **See Also:** [Assertion Entity - Participant Assertions](4-entity-types/assertion.md#participant-assertions)
 
 ### Participant Role
 
 The specific function or relationship a person has in an event (e.g., bride, groom, witness, officiant).
 
-> **See Also:** [Participant Roles Vocabulary](4-entity-types/vocabularies#participant-roles-vocabulary)
+> **See Also:** [Participant Roles Vocabulary](4-entity-types/vocabularies.md#participant-roles-vocabulary)
 
 ### Per-Participant Properties
 
 Properties attached to an individual participant within an event or relationship (rather than to the event/relationship as a whole) — e.g., age at marriage, legal status, or marital state at time of the census. Per-participant properties are validated against the `event_properties` or `relationship_properties` vocabulary depending on context.
 
-> **See Also:** [Relationship Entity - Per-Participant Properties](4-entity-types/relationship#per-participant-properties)
+> **See Also:** [Relationship Entity - Per-Participant Properties](4-entity-types/relationship.md#per-participant-properties)
 
 ### Person
 
 An individual human being with biographical information including name, dates, places, and relationships.
 
-> **See Also:** [Person Entity](4-entity-types/person)
+> **See Also:** [Person Entity](4-entity-types/person.md)
 
 ### Place
 
 A geographic location with hierarchical organization, including coordinates, alternative names, and type classification.
 
-> **See Also:** [Place Entity](4-entity-types/place)
+> **See Also:** [Place Entity](4-entity-types/place.md)
 
 ### Place Type
 
 Classification of geographic locations including country, county, city, parish, cemetery, church, etc.
 
-> **See Also:** [Place Types Vocabulary](4-entity-types/vocabularies#place-types-vocabulary)
+> **See Also:** [Place Types Vocabulary](4-entity-types/vocabularies.md#place-types-vocabulary)
 
 ### Primary Evidence
 
@@ -328,13 +328,13 @@ Information created at the time of the event by someone with direct knowledge (b
 
 A vocabulary-defined attribute of an entity (e.g., `sex`, `occupation`, `residence`, `gender`). Properties are defined in property vocabularies and used in the `properties` field of entities.
 
-> **See Also:** [Property Vocabularies](4-entity-types/vocabularies#property-vocabularies)
+> **See Also:** [Property Vocabularies](4-entity-types/vocabularies.md#property-vocabularies)
 
 ### Property Vocabulary
 
 A special vocabulary type that defines available properties for each entity type, including property names, data types, whether they're temporal, and whether they have structured fields.
 
-> **See Also:** [Property Vocabularies](2-core-concepts#property-vocabularies)
+> **See Also:** [Property Vocabularies](2-core-concepts.md#property-vocabularies)
 
 ### Provenance
 
@@ -356,25 +356,25 @@ The requirement that all entity references (person IDs, place IDs, etc.) must po
 
 A property value type that indicates the value is an entity ID reference rather than a literal value. Reference types specify which entity collection the reference points to (persons, places, events, etc.).
 
-> **See Also:** [Reference Types](2-core-concepts#reference-types)
+> **See Also:** [Reference Types](2-core-concepts.md#reference-types)
 
 ### Relationship
 
 A connection between people such as parent-child, marriage, adoption, or other family/social connections.
 
-> **See Also:** [Relationship Entity](4-entity-types/relationship)
+> **See Also:** [Relationship Entity](4-entity-types/relationship.md)
 
 ### Relationship Type
 
 Classification of connections between people including parent-child, marriage, adoption, guardianship, etc.
 
-> **See Also:** [Relationship Types Vocabulary](4-entity-types/vocabularies#relationship-types-vocabulary)
+> **See Also:** [Relationship Types Vocabulary](4-entity-types/vocabularies.md#relationship-types-vocabulary)
 
 ### Repository
 
 A physical or digital archive, library, church, or institution that holds genealogical sources.
 
-> **See Also:** [Repository Entity](4-entity-types/repository)
+> **See Also:** [Repository Entity](4-entity-types/repository.md)
 
 ### Required Fields
 
@@ -392,13 +392,13 @@ Documented analysis and decision-making process for genealogical conclusions, in
 
 First-class entity that records research investigations: an objective, a status, and an embedded list of `Search` entries documenting every query performed (including searches that found nothing). Backs the Genealogical Proof Standard requirement for a "reasonably exhaustive search" by making negative evidence machine-readable.
 
-> **See Also:** [ResearchLog Entity](4-entity-types/research-log), [Search](#search), [Negative Evidence](#negative-evidence)
+> **See Also:** [ResearchLog Entity](4-entity-types/research-log.md), [Search](#search), [Negative Evidence](#negative-evidence)
 
 ### Research Log Status
 
 Lifecycle state of a [ResearchLog](#researchlog), validated against the `research_log_status_types` vocabulary. Standard values: `open`, `in_progress`, `complete`, `blocked`.
 
-> **See Also:** [Research Log Status Types Vocabulary](4-entity-types/vocabularies#research-log-status-types-vocabulary)
+> **See Also:** [Research Log Status Types Vocabulary](4-entity-types/vocabularies.md#research-log-status-types-vocabulary)
 
 ## S
 
@@ -406,13 +406,13 @@ Lifecycle state of a [ResearchLog](#researchlog), validated against the `researc
 
 A single query performed during a research investigation, embedded as a sub-entity within a [ResearchLog](#researchlog). Records the repository / source / citation searched, the date, the query, the `result` (see [Search Result](#search-result)), and — when something was located — the citation produced.
 
-> **See Also:** [ResearchLog Entity](4-entity-types/research-log), [Negative Evidence](#negative-evidence)
+> **See Also:** [ResearchLog Entity](4-entity-types/research-log.md), [Negative Evidence](#negative-evidence)
 
 ### Search Result
 
 Outcome of a [Search](#search) within a [ResearchLog](#researchlog). One of: `found`, `not_found`, `inconclusive`, `partial`, `not_searched`. Backed by the standard `search_result_types` vocabulary.
 
-> **See Also:** [ResearchLog Entity](4-entity-types/research-log)
+> **See Also:** [ResearchLog Entity](4-entity-types/research-log.md)
 
 ### Schema
 
@@ -432,7 +432,7 @@ Information created later, often compiled from primary sources (published indexe
 
 An archive organization strategy where all entities are stored in a single GLX file, recommended for personal research and small family trees.
 
-> **See Also:** [Single File Archive](3-archive-organization#single-file-archive)
+> **See Also:** [Single File Archive](3-archive-organization.md#single-file-archive)
 
 ### Soft Failure
 
@@ -444,7 +444,7 @@ A validation warning that indicates a potential issue but doesn't prevent the ar
 
 An original document, record, publication, or material containing genealogical information.
 
-> **See Also:** [Source Entity](4-entity-types/source)
+> **See Also:** [Source Entity](4-entity-types/source.md)
 
 ### Source Analysis
 
@@ -454,13 +454,13 @@ Examining original documents for content, context, and credibility to extract ge
 
 Standard vocabulary (`source_natures`) backing the `source_nature` source property. Following Evidence Explained, classifies a source by how it was produced relative to the event it documents: `original` (first-recorded form), `derivative` (copy, abstract, transcription, or index of an earlier source), `authored` (a work synthesizing other sources). Independent of the `information_type` axis. Archives may extend with custom values.
 
-> **See Also:** [Source Natures Vocabulary](4-entity-types/vocabularies#source-natures-vocabulary), [Source Entity — Source Classification](4-entity-types/source#source-classification-evidence-explained)
+> **See Also:** [Source Natures Vocabulary](4-entity-types/vocabularies.md#source-natures-vocabulary), [Source Entity — Source Classification](4-entity-types/source.md#source-classification-evidence-explained)
 
 ### Source Type
 
 Classification of original materials including vital_record, census, church_register, newspaper, letter, etc.
 
-> **See Also:** [Source Types Vocabulary](4-entity-types/vocabularies#source-types-vocabulary)
+> **See Also:** [Source Types Vocabulary](4-entity-types/vocabularies.md#source-types-vocabulary)
 
 ### Structural Validation
 
@@ -470,37 +470,37 @@ Checking that files are valid YAML, have proper entity type keys at the top leve
 
 A property with structured fields that break down complex values into named components. The `value` field preserves the original form while `fields` provide structured access.
 
-> **See Also:** [Structured Properties](2-core-concepts#structured-properties)
+> **See Also:** [Structured Properties](2-core-concepts.md#structured-properties)
 
 ### Study
 
 A formal declaration of the scope of a research project within an archive — for example a One Place Study, One Name Study, family reconstruction, or brick-wall investigation. A Study collects the places, sources, and date range that bound the project so tooling can report coverage and progress. GLX-native; no GEDCOM equivalent.
 
-> **See Also:** [Study Entity](4-entity-types/study)
+> **See Also:** [Study Entity](4-entity-types/study.md)
 
 ### Study Status
 
 Lifecycle state of a Study, validated against the `study_statuses` vocabulary. Standard values: `active`, `paused`, `completed`, `abandoned`.
 
-> **See Also:** [Study Statuses Vocabulary](4-entity-types/vocabularies#study-statuses-vocabulary)
+> **See Also:** [Study Statuses Vocabulary](4-entity-types/vocabularies.md#study-statuses-vocabulary)
 
 ### Study Type
 
 Classification of a Study, validated against the `study_types` vocabulary. Standard values: `one_place_study`, `one_name_study`, `family_reconstruction`, `descendancy_study`, `ancestry_study`, `brick_wall`, `other`.
 
-> **See Also:** [Study Types Vocabulary](4-entity-types/vocabularies#study-types-vocabulary)
+> **See Also:** [Study Types Vocabulary](4-entity-types/vocabularies.md#study-types-vocabulary)
 
 ### Status (Assertion)
 
 The research verification state of an assertion, independent of confidence. Common values include `proven` (verified through primary evidence), `speculative` (hypothesis needing further research), `disproven` (evidence contradicts the assertion), and `unresearched` (no search has been conducted yet — tracks research gaps). Free-text; archives may use any labels.
 
-> **See Also:** [Assertion Entity - Status](4-entity-types/assertion#status)
+> **See Also:** [Assertion Entity - Status](4-entity-types/assertion.md#status)
 
 ### Subject
 
 In assertions, the typed reference to the entity the assertion is about. The subject field specifies both the entity type and entity ID.
 
-> **See Also:** [Assertion Entity](4-entity-types/assertion)
+> **See Also:** [Assertion Entity](4-entity-types/assertion.md)
 
 ## T
 
@@ -512,13 +512,13 @@ A reference that specifies both the entity type and entity ID, used in assertion
 
 Validation checks that verify chronological plausibility of dates across related entities — for example, death before birth, parent younger than child, or marriage before birth. Temporal consistency issues generate warnings (not errors) because fuzzy dates and data-entry errors are common in genealogical records.
 
-> **See Also:** [Validation Levels](3-archive-organization#validation-levels)
+> **See Also:** [Validation Levels](3-archive-organization.md#validation-levels)
 
 ### Temporal Existential Assertion
 
 An existential assertion (one with no `property`/`value`, asserting only that the subject existed) that carries a `date` field to specify when the subject existed — for example, "this person was alive in 1850." Useful when evidence supports existence at a point in time without establishing any other fact.
 
-> **See Also:** [Assertion Entity - Existential Assertions](4-entity-types/assertion#existential-assertions)
+> **See Also:** [Assertion Entity - Existential Assertions](4-entity-types/assertion.md#existential-assertions)
 
 ### Temporal Property
 
@@ -542,13 +542,13 @@ The specific data or content of a property in an assertion (e.g., "1850-01-15" f
 
 The data type specification for a property value: string, date, integer, boolean, or a reference type pointing to entities.
 
-> **See Also:** [Data Types](2-core-concepts#data-types)
+> **See Also:** [Data Types](2-core-concepts.md#data-types)
 
 ### Vocabularies
 
 Controlled lists of valid types and categories used throughout a GENEALOGIX archive. Conventionally stored in the `vocabularies/` directory, but can be placed in any `.glx` file.
 
-> **See Also:** [Vocabularies](4-entity-types/vocabularies), [Standard Vocabularies](5-standard-vocabularies/)
+> **See Also:** [Vocabularies](4-entity-types/vocabularies.md), [Standard Vocabularies](5-standard-vocabularies/)
 
 ## W
 

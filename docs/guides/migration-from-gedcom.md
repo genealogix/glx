@@ -326,7 +326,7 @@ properties:
 
 The importer also handles GEDCOM name substructure tags (`NPFX`, `GIVN`, `NICK`, `SPFX`, `SURN`, `NSFX`) which override the parsed values when present.
 
-**Multiple NAME records** on a single individual are imported as a temporal name list. The `TYPE` subrecord (e.g., `birth`, `married`, `aka`) is preserved as the `type` field. See [Name Variations](/specification/4-entity-types/person#name-variation-examples) for all supported type values.
+**Multiple NAME records** on a single individual are imported as a temporal name list. The `TYPE` subrecord (e.g., `birth`, `married`, `aka`) is preserved as the `type` field. See [Name Variations](../../specification/4-entity-types/person.md#name-variation-examples) for all supported type values.
 
 Recognized surname prefixes include: von, van, de, der, den, del, della, di, da, le, la, du, des, af, av.
 
@@ -388,7 +388,7 @@ GEDCOM dates are converted to ISO 8601 format where possible. Qualified and rang
 | `@#DFRENCH R@ 1 VEND 0012` | `FRENCH_R 1 VEND 0012` | French Republican (raw preserved) |
 | `@#DGREGORIAN@ 15 MAR 1731` | `1731-03-15` | Gregorian (default, no prefix) |
 
-See [Core Concepts - Data Types](/specification/2-core-concepts#data-types) for the complete date format specification.
+See [Core Concepts - Data Types](../../specification/2-core-concepts.md#data-types) for the complete date format specification.
 
 ### Evidence Chains
 
@@ -555,7 +555,7 @@ Most differences are handled transparently by the importer, but it helps to know
 
 ## See Also
 
-- [Quickstart Guide](/quickstart) - Create a new archive from scratch
-- [Entity Types](/specification/4-entity-types/) - Entity specifications
-- [Best Practices](best-practices) - Workflow recommendations
-- [CLI Documentation](/cli) - Command reference
+- [Quickstart Guide](../quickstart.md) - Create a new archive from scratch
+- [Entity Types](../../specification/4-entity-types/README.md) - Entity specifications
+- [Best Practices](best-practices.md) - Workflow recommendations
+- [CLI Documentation](../cli/index.md) - Command reference

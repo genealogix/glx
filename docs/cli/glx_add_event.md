@@ -61,5 +61,5 @@ glx add event [flags]
 
 ### SEE ALSO
 
-* [glx add](/cli/glx_add)	 - Create entities (person, place, event, …) from CLI flags
+* [glx add](glx_add.md)	 - Create entities (person, place, event, …) from CLI flags
 

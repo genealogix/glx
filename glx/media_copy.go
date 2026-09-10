@@ -84,27 +84,11 @@ func copyMediaFiles(streams *IOStreams, archiveDir string, mediaFiles []glxlib.M
 	return nil
 }
 
-// isPathWithin checks whether child is contained within the parent directory.
-// Uses filepath.Rel to handle edge cases like parent being "." or "/".
-func isPathWithin(child, parent string) bool {
-	absChild, err := filepath.Abs(filepath.Clean(child))
-	if err != nil {
-		return false
-	}
-	absParent, err := filepath.Abs(filepath.Clean(parent))
-	if err != nil {
-		return false
-	}
-	rel, err := filepath.Rel(absParent, absChild)
-	if err != nil {
-		return false
-	}
-
-	return !strings.HasPrefix(rel, "..") && rel != "."
-}
-
 // copyMediaFile copies a single media file from the GEDCOM source directory.
 // It tries the path as-is first, then URL-decoded (for GEDCOM 7.0 percent-encoded paths).
+// The source must stay inside gedcomDir: "../" traversal and absolute paths are
+// rejected lexically, and a symlink inside gedcomDir that points outside it is
+// refused at open time (see openWithin) rather than followed.
 func copyMediaFile(gedcomDir, relativePath, destPath string) error {
 	// Normalize backslashes to forward slashes for cross-platform compatibility
 	normalized := strings.ReplaceAll(relativePath, "\\", "/")
@@ -114,7 +98,7 @@ func copyMediaFile(gedcomDir, relativePath, destPath string) error {
 	if !isPathWithin(srcPath, gedcomDir) {
 		return fmt.Errorf("path traversal detected in media reference: %s", relativePath)
 	}
-	err := copyFile(srcPath, destPath)
+	err := copyContainedFile(gedcomDir, srcPath, destPath)
 	if err == nil {
 		return nil
 	}
@@ -138,7 +122,7 @@ func copyMediaFile(gedcomDir, relativePath, destPath string) error {
 	if !isPathWithin(decodedPath, gedcomDir) {
 		return fmt.Errorf("path traversal detected in media reference: %s", relativePath)
 	}
-	err = copyFile(decodedPath, destPath)
+	err = copyContainedFile(gedcomDir, decodedPath, destPath)
 	if err == nil {
 		return nil
 	}
@@ -158,13 +142,31 @@ func copyFile(src, dst string) error {
 	}
 	defer func() { _ = srcFile.Close() }()
 
+	return writeFileFrom(dst, srcFile)
+}
+
+// copyContainedFile copies src, which must lie inside baseDir (see openWithin),
+// to dst using streaming I/O.
+func copyContainedFile(baseDir, src, dst string) error {
+	srcFile, err := openWithin(baseDir, src)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = srcFile.Close() }()
+
+	return writeFileFrom(dst, srcFile)
+}
+
+// writeFileFrom streams src into a newly created file at dst, removing the
+// partial file if the copy or close fails.
+func writeFileFrom(dst string, src io.Reader) error {
 	dst = filepath.Clean(dst)
 	dstFile, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
 
-	_, copyErr := io.Copy(dstFile, srcFile)
+	_, copyErr := io.Copy(dstFile, src)
 	closeErr := dstFile.Close()
 
 	if copyErr != nil {

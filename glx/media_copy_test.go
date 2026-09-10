@@ -16,8 +16,10 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -144,6 +146,65 @@ func TestCopyMediaFile_PathTraversal(t *testing.T) {
 		if !strings.Contains(err.Error(), "path traversal") {
 			t.Errorf("expected path traversal error for %q, got: %v", p, err)
 		}
+	}
+}
+
+func TestCopyMediaFile_SymlinkEscapeRejected(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation is privilege-gated on Windows")
+	}
+	outside := t.TempDir()
+	secret := filepath.Join(outside, "secret.txt")
+	if err := os.WriteFile(secret, []byte("secret"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	srcDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(srcDir, "media"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(secret, filepath.Join(srcDir, "media", "portrait.jpg")); err != nil {
+		t.Fatal(err)
+	}
+	destPath := filepath.Join(t.TempDir(), "out.jpg")
+
+	err := copyMediaFile(srcDir, "media/portrait.jpg", destPath)
+	if err == nil {
+		t.Fatal("expected error for symlink escaping the GEDCOM directory, got nil")
+	}
+	if errors.Is(err, ErrMediaFileNotFound) {
+		t.Errorf("symlink escape must not be reported as a missing file: %v", err)
+	}
+	if _, statErr := os.Stat(destPath); statErr == nil {
+		t.Error("destination must not be written when the source escapes the GEDCOM directory")
+	}
+}
+
+func TestCopyMediaFile_SymlinkInsideDirFollowed(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation is privilege-gated on Windows")
+	}
+	srcDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(srcDir, "media"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(srcDir, "media", "real.jpg"), []byte("img"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("real.jpg", filepath.Join(srcDir, "media", "alias.jpg")); err != nil {
+		t.Fatal(err)
+	}
+	destPath := filepath.Join(t.TempDir(), "out.jpg")
+
+	if err := copyMediaFile(srcDir, "media/alias.jpg", destPath); err != nil {
+		t.Fatalf("symlink staying inside the GEDCOM directory should copy, got: %v", err)
+	}
+	data, err := os.ReadFile(destPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "img" {
+		t.Errorf("copied content = %q, want %q", data, "img")
 	}
 }
 

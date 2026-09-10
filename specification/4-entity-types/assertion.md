@@ -6,7 +6,7 @@ layout: doc
 
 # Assertion Entity
 
-[← Back to Entity Types](README)
+[← Back to Entity Types](README.md)
 
 ## Overview
 
@@ -129,7 +129,7 @@ subject:
 - Required: No — both are optional and mutually exclusive. When neither is present, the assertion is an [existential assertion](#existential-assertions).
 - Description: Either a property name being asserted, or a participant object for event/relationship participation
 
-> **Note:** The `property` field corresponds to property names defined in [property vocabularies](vocabularies#property-vocabularies). For example, `property: occupation` references the `occupation` property from the person properties vocabulary, or `property: date` references the `date` field on an event. Unknown properties generate validation warnings.
+> **Note:** The `property` field corresponds to property names defined in [property vocabularies](vocabularies.md#property-vocabularies). For example, `property: occupation` references the `occupation` property from the person properties vocabulary, or `property: date` references the `date` field on an event. Unknown properties generate validation warnings.
 
 Common property types:
 
@@ -263,7 +263,7 @@ assertions:
     confidence: high
 ```
 
-Date formats follow the standard [date format](../2-core-concepts#date-format-standard). If omitted, the assertion applies to the property value without temporal context.
+Date formats follow the standard [date format](../2-core-concepts.md#date-format-standard). If omitted, the assertion applies to the property value without temporal context.
 
 ### `confidence`
 
@@ -281,7 +281,7 @@ For conflicting evidence, use the `status` field with value `disputed` rather th
 
 Archives can customize these descriptions or add additional levels to match their research methodology.
 
-**See [Vocabularies - Confidence Levels](vocabularies#confidence-levels-vocabulary) for:**
+**See [Vocabularies - Confidence Levels](vocabularies.md#confidence-levels-vocabulary) for:**
 
 - Customizing confidence level definitions for your archive
 - Adding custom confidence levels
@@ -620,8 +620,8 @@ For conflicting evidence where sources disagree and resolution is unclear, set t
 - All citation references must point to existing Citation entities
 - All source references must point to existing Source entities
 - All media references must point to existing Media entities
-- `property` values should match properties defined in the appropriate [property vocabulary](vocabularies#property-vocabularies) (unknown properties generate warnings)
-- Confidence must be from the [confidence levels vocabulary](vocabularies#confidence-levels-vocabulary); out-of-vocabulary values are a hard error. To use a custom level, add it to the archive's `confidence-levels.glx` first.
+- `property` values should match properties defined in the appropriate [property vocabulary](vocabularies.md#property-vocabularies) (unknown properties generate warnings)
+- Confidence must be from the [confidence levels vocabulary](vocabularies.md#confidence-levels-vocabulary); out-of-vocabulary values are a hard error. To use a custom level, add it to the archive's `confidence-levels.glx` first.
 
 ## File Organization
 
@@ -740,9 +740,9 @@ See [assertion.schema.json](../schema/v1/assertion.schema.json) for the complete
 
 ## See Also
 
-- [Core Concepts - Assertion-Aware Data Model](../2-core-concepts#assertion-aware-data-model) - Overview of assertion philosophy
-- [Core Concepts - Evidence Chain](../2-core-concepts#evidence-chain) - Understanding evidence quality
-- [Citation Entity](citation) - Evidence references that support assertions
-- [Source Entity](source) - Original sources cited by assertions
-- [Person Entity](person) - Common subject of assertions
-- [Core Concepts - Data Types](../2-core-concepts#data-types)
+- [Core Concepts - Assertion-Aware Data Model](../2-core-concepts.md#assertion-aware-data-model) - Overview of assertion philosophy
+- [Core Concepts - Evidence Chain](../2-core-concepts.md#evidence-chain) - Understanding evidence quality
+- [Citation Entity](citation.md) - Evidence references that support assertions
+- [Source Entity](source.md) - Original sources cited by assertions
+- [Person Entity](person.md) - Common subject of assertions
+- [Core Concepts - Data Types](../2-core-concepts.md#data-types)

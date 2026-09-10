@@ -78,3 +78,7 @@ func (e *StructuredValidationError) Error() string {
 func (e *StructuredValidationError) Unwrap() error {
 	return ErrValidationHasErrors
 }
+
+// ErrEntityAlreadyExists is returned by RenameEntity when the target ID is
+// already defined by an entity in the archive.
+var ErrEntityAlreadyExists = errors.New("entity already exists in archive")

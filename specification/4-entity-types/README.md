@@ -10,77 +10,77 @@ This section defines the core entity types in GENEALOGIX. Each entity represents
 
 ## Core Entities
 
-### [Person](person)
+### [Person](person.md)
 
 Represents an individual in the family archive. Contains personal identity information, names, events, and relationships.
 
 - **Key Properties**: Names, sex, occupation, residence
 - **GEDCOM Equivalent**: INDI (Individual Record)
 
-### [Relationship](relationship)
+### [Relationship](relationship.md)
 
 Represents connections between people such as spouse, parent-child, and other family relationships.
 
 - **Key Properties**: Relationship type, participants, start/end events
 - **GEDCOM Equivalent**: FAM (Family Record)
 
-### [Event](event)
+### [Event](event.md)
 
 Represents occurrences in time and place: births, marriages, deaths, baptisms, etc.
 
 - **Key Properties**: Type, date, place, participants, notes
 - **GEDCOM Equivalent**: BIRT, DEAT, MARR, BAPM, etc.
 
-### [Place](place)
+### [Place](place.md)
 
 Represents geographic locations forming a hierarchical structure. Supports multiple names and historical variations.
 
 - **Key Properties**: Name, type, hierarchy, coordinates, alternative names (via properties)
 - **GEDCOM Equivalent**: PLAC (Place structures)
 
-### [Assertion](assertion)
+### [Assertion](assertion.md)
 
 Represents an evidence-based conclusion about a specific genealogical fact. Forms the core of the GENEALOGIX assertion model.
 
 - **Key Properties**: Subject, property, value, citations/sources/media, confidence, status
 - **GEDCOM Equivalent**: Implicit (derived from GEDCOM structure and SOUR references)
 
-### [Source](source)
+### [Source](source.md)
 
 Represents a bibliographic resource or information source. Can be books, documents, databases, websites, etc.
 
 - **Key Properties**: Title, author, publication info, repository
 - **GEDCOM Equivalent**: SOUR (Source Record)
 
-### [Citation](citation)
+### [Citation](citation.md)
 
 Represents a specific reference to evidence within a source. Links sources to specific pages, records, or items.
 
 - **Key Properties**: Source reference, locator, text from source, accessed date
 - **GEDCOM Equivalent**: SOUR.PAGE, SOUR.QUAY
 
-### [Repository](repository)
+### [Repository](repository.md)
 
 Represents an institution or organization that holds genealogical sources (archives, libraries, databases, etc.).
 
 - **Key Properties**: Name, type, address, contact info, access restrictions
 - **GEDCOM Equivalent**: REPO (Repository Record)
 
-### [Media](media)
+### [Media](media.md)
 
 Represents digital or physical media objects associated with genealogical entities (photographs, documents, audio, etc.).
 
 - **Key Properties**: Title, URI, MIME type, description
 - **GEDCOM Equivalent**: OBJE (Object/Media Record)
 
-### [ResearchLog](research-log)
+### [ResearchLog](research-log.md)
 
 Represents a documented research investigation, capturing every search performed (including searches that found nothing). Supports a "reasonably exhaustive search" per the Genealogical Proof Standard by treating negative evidence as a first-class outcome.
 
 - **Key Properties**: Subject, objective, status, searches, conclusions
 - **GEDCOM Equivalent**: None (no direct mapping)
 
-### [Study](study)
+### [Study](study.md)
 
 Represents the formal scope of a research project — One Place Studies, One Name Studies, family reconstructions, and brick-wall investigations. Studies declare which places, sources, and time period a project covers.
 
@@ -153,7 +153,7 @@ Study
 
 ## See Also
 
-- [Archive Organization](../3-archive-organization) - How entities are organized in files
-- [Core Concepts](../2-core-concepts#evidence-chain) - How entities relate to evidence and provenance
-- [Vocabularies](vocabularies) - Complete reference for all vocabulary types
+- [Archive Organization](../3-archive-organization.md) - How entities are organized in files
+- [Core Concepts](../2-core-concepts.md#evidence-chain) - How entities relate to evidence and provenance
+- [Vocabularies](vocabularies.md) - Complete reference for all vocabulary types
 - Entity type documentation includes GEDCOM mapping information

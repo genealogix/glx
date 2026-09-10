@@ -38,5 +38,5 @@ glx completion powershell [flags]
 
 ### SEE ALSO
 
-* [glx completion](/cli/glx_completion)	 - Generate the autocompletion script for the specified shell
+* [glx completion](glx_completion.md)	 - Generate the autocompletion script for the specified shell
 
