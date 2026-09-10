@@ -49,6 +49,9 @@ func analyzeConflicts(archive *glxlib.GLXFile) []AnalysisIssue {
 		if personID == "" || a.Property == "" || a.Value == "" {
 			continue
 		}
+		if isTemporalProperty(archive, a.Property) {
+			continue
+		}
 
 		key := conflictPropKey{personID: personID, property: a.Property}
 		propValues[key] = append(propValues[key], conflictValueInfo{
@@ -103,6 +106,12 @@ func analyzeConflicts(archive *glxlib.GLXFile) []AnalysisIssue {
 	sortIssues(issues)
 
 	return issues
+}
+
+func isTemporalProperty(archive *glxlib.GLXFile, property string) bool {
+	def, ok := archive.PersonProperties[property]
+
+	return ok && def != nil && def.Temporal != nil && *def.Temporal
 }
 
 // resolveConflictValue converts entity IDs to display names for place-reference

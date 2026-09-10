@@ -620,6 +620,27 @@ func TestAnalyzeConflicts_NoConflictWhenSameValue(t *testing.T) {
 	}
 }
 
+func TestAnalyzeConflicts_SkipsTemporalProperties(t *testing.T) {
+	temporal := true
+	archive := &glxlib.GLXFile{
+		Persons:          map[string]*glxlib.Person{"person-a": {Properties: map[string]any{"name": "Person A"}}},
+		PersonProperties: map[string]*glxlib.PropertyDefinition{"residence": {Temporal: &temporal}},
+		Assertions: map[string]*glxlib.Assertion{
+			"a-1": {Subject: glxlib.EntityRef{Person: "person-a"}, Property: "residence", Value: "place-leeds", Date: "1851"},
+			"a-2": {Subject: glxlib.EntityRef{Person: "person-a"}, Property: "residence", Value: "place-london", Date: "FROM 1870 TO 1920"},
+		},
+	}
+
+	require.Empty(t, analyzeConflicts(archive))
+}
+
+func TestAnalyzeConflicts_TemporalPropertiesExample(t *testing.T) {
+	archive, err := loadArchiveForAnalyze("../docs/examples/temporal-properties")
+	require.NoError(t, err)
+
+	require.Empty(t, analyzeConflicts(archive))
+}
+
 // --- Duplicate Sibling Names ---
 
 func TestAnalyzeConsistency_DuplicateSiblingNames(t *testing.T) {
