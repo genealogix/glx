@@ -492,7 +492,7 @@ func exportPersonEvent(event *Event, expCtx *ExportContext) *GEDCOMRecord {
 
 	// DATE
 	if event.Date != "" {
-		gedcomDate := formatGEDCOMDate(event.Date)
+		gedcomDate := formatGEDCOMDate(event.Date, expCtx.Version)
 		if gedcomDate != "" {
 			record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
 				Tag:   GedcomTagDate,
@@ -621,7 +621,7 @@ func exportResidenceRecords(personID string, person *Person, expCtx *ExportConte
 		}
 
 		if dateStr != "" {
-			gedcomDate := formatGEDCOMDate(DateString(dateStr))
+			gedcomDate := formatGEDCOMDate(DateString(dateStr), expCtx.Version)
 			if gedcomDate != "" {
 				record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
 					Tag:   GedcomTagDate,
@@ -736,7 +736,7 @@ func exportMappedPersonProperties(personID string, person *Person, expCtx *Expor
 			if item.date != "" {
 				propRecord.SubRecords = append(propRecord.SubRecords, &GEDCOMRecord{
 					Tag:   GedcomTagDate,
-					Value: formatGEDCOMDate(DateString(item.date)),
+					Value: formatGEDCOMDate(DateString(item.date), expCtx.Version),
 				})
 			}
 
@@ -901,7 +901,7 @@ func exportCitationAsSOUR(citation *Citation, sourceXRef string, expCtx *ExportC
 	if dateStr, ok := getStringProperty(citation.Properties, "date"); ok {
 		dataSubRecords = append(dataSubRecords, &GEDCOMRecord{
 			Tag:   GedcomTagDate,
-			Value: formatGEDCOMDate(DateString(dateStr)),
+			Value: formatGEDCOMDate(DateString(dateStr), expCtx.Version),
 		})
 	}
 	if text, ok := getStringProperty(citation.Properties, "description"); ok {

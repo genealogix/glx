@@ -32,6 +32,7 @@ Rationale: testability without filesystem, usable in non-CLI contexts (web serve
 - `gedcom_converter.go` — main GEDCOM conversion orchestrator
 - `serializer.go` — single/multi-file serialization
 - `vocabularies.go` — vocabulary embedding via `go:embed` + `sync.Once` cache
+- `glxdate/` — the single date parser (`glxdate.Parse`). Never add a second date regex or month table: import, validation (`validateDateFormat`), and year extraction (`DateString.Year`/`ExtractFirstYear`) all go through it. GEDCOM encoding lives there too (`glxdate/gedcom.go`: `FromGEDCOM`, `Canonicalize`, `Date.GEDCOM`); `gedcom_date.go` in this package is only the `DateString` adapter. Corpus outcomes are pinned in `glxdate/testdata/gedcom_dates.golden.tsv` (`go test ./go-glx/glxdate/ -run TestCorpus_Golden -update` to regenerate; review the diff).
 
 ## Performance Profiling
 

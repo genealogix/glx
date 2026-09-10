@@ -15,231 +15,38 @@
 package glx
 
 import (
-	"fmt"
-	"strconv"
-	"strings"
-	"time"
+	"github.com/genealogix/glx/go-glx/glxdate"
 )
 
-// Month names to numbers
-var monthMap = map[string]int{
-	"JAN": 1, "FEB": 2, "MAR": 3, "APR": 4, "MAY": 5, "JUN": 6,
-	"JUL": 7, "AUG": 8, "SEP": 9, "OCT": 10, "NOV": 11, "DEC": 12,
-}
-
-// parseGEDCOMDate parses a GEDCOM date string to GLX format
-// Handles: exact dates, ranges, qualifiers (ABT, BEF, AFT, etc.)
-// Returns: DateString in GLX format (e.g., "ABT 1850", "BEF 1920-01-15", "BET 1880 AND 1890")
+// parseGEDCOMDate converts a GEDCOM DATE value to a GLX DateString. The
+// calendar escape, canonicalization, and preservation rules all live in
+// glxdate.FromGEDCOM; this is only the DateString adapter.
 func parseGEDCOMDate(gedcomDate string) DateString {
-	if gedcomDate == "" {
-		return ""
-	}
-
-	date := strings.TrimSpace(gedcomDate)
-
-	// Handle date ranges - convert to GLX keyword format
-	if strings.Contains(date, "BET ") && strings.Contains(date, " AND ") {
-		// BET date1 AND date2 (e.g., "BET 1880 AND 1890")
-		parts := strings.Split(date, " AND ")
-		if len(parts) == 2 {
-			start := strings.TrimPrefix(parts[0], "BET ")
-			end := parts[1]
-			startDate := parseExactDate(strings.TrimSpace(start))
-			endDate := parseExactDate(strings.TrimSpace(end))
-			if startDate != "" && endDate != "" {
-				return DateString("BET " + startDate + " AND " + endDate)
-			}
-		}
-	}
-
-	if after, ok := strings.CutPrefix(date, "FROM "); ok {
-		if strings.Contains(date, " TO ") {
-			// FROM date1 TO date2 (e.g., "FROM 1900 TO 1950")
-			parts := strings.Split(date, " TO ")
-			if len(parts) == 2 {
-				start := strings.TrimPrefix(parts[0], "FROM ")
-				end := parts[1]
-				startDate := parseExactDate(strings.TrimSpace(start))
-				endDate := parseExactDate(strings.TrimSpace(end))
-				if startDate != "" && endDate != "" {
-					return DateString("FROM " + startDate + " TO " + endDate)
-				}
-			}
-		} else {
-			// FROM date (open-ended, e.g., "FROM 1900")
-			dateStr := after
-			startDate := parseExactDate(strings.TrimSpace(dateStr))
-			if startDate != "" {
-				return DateString("FROM " + startDate)
-			}
-		}
-	}
-
-	// Handle qualifiers - preserve them in GLX keyword format
-	// GLX uses same keywords as GEDCOM: ABT, BEF, AFT, CAL
-	qualifiers := []string{"ABT ", "CAL ", "BEF ", "AFT "}
-	for _, qual := range qualifiers {
-		if after, ok := strings.CutPrefix(date, qual); ok {
-			dateStr := after
-			exactDate := parseExactDate(strings.TrimSpace(dateStr))
-			if exactDate != "" {
-				// Return as "ABT 1850-03-15" format (keyword + YYYY-MM-DD)
-				return DateString(qual + exactDate)
-			}
-		}
-	}
-
-	// Try to parse as exact date - return YYYY-MM-DD format
-	if result := parseExactDate(date); result != "" {
-		return DateString(result)
-	}
-
-	// Extract calendar escape sequences (@#DJULIAN@, @#DHEBREW@, @#DFRENCH R@, @#DGREGORIAN@)
-	// and preserve the calendar system as a GLX prefix on the DateString.
-	calendar, remainder := extractCalendar(date)
-	if remainder != date {
-		// Try to parse the remainder as a standard date.
-		parsed := parseGEDCOMDateBody(remainder)
-		if parsed == "" {
-			// Calendar escape with no date body (e.g., "@#DJULIAN@" or "@#DGREGORIAN@").
-			// Preserve the original raw GEDCOM string so roundtrip
-			// can re-emit the same value.
-			return DateString(gedcomDate)
-		}
-		if calendar != "" {
-			return DateString(calendar + " " + string(parsed))
-		}
-
-		return parsed
-	}
-
-	// Preserve the raw GEDCOM date string for non-standard formats
-	// (BCE dates, dual dates like 1731/32)
-	// so they survive roundtrip rather than being silently dropped
-	return DateString(date)
+	return DateString(glxdate.FromGEDCOM(gedcomDate))
 }
 
-// parseGEDCOMDateBody parses a GEDCOM date string that has already had any
-// calendar escape stripped. It handles qualifiers, ranges, and exact dates.
-func parseGEDCOMDateBody(dateStr string) DateString {
-	date := strings.TrimSpace(dateStr)
-	if date == "" {
-		return ""
-	}
-
-	// Handle qualifiers: ABT, BEF, AFT, CAL
-	qualifiers := []string{"ABT ", "CAL ", "BEF ", "AFT "}
-	for _, qual := range qualifiers {
-		if after, ok := strings.CutPrefix(date, qual); ok {
-			exactDate := parseExactDate(strings.TrimSpace(after))
-			if exactDate != "" {
-				return DateString(qual + exactDate)
-			}
-		}
-	}
-
-	// Handle ranges: BET ... AND ..., FROM ... TO ..., FROM ...
-	if strings.Contains(date, "BET ") && strings.Contains(date, " AND ") {
-		parts := strings.Split(date, " AND ")
-		if len(parts) == 2 {
-			start := strings.TrimPrefix(parts[0], "BET ")
-			end := parts[1]
-			startDate := parseExactDate(strings.TrimSpace(start))
-			endDate := parseExactDate(strings.TrimSpace(end))
-			if startDate != "" && endDate != "" {
-				return DateString("BET " + startDate + " AND " + endDate)
-			}
-		}
-	}
-
-	if after, ok := strings.CutPrefix(date, "FROM "); ok {
-		if strings.Contains(date, " TO ") {
-			parts := strings.Split(date, " TO ")
-			if len(parts) == 2 {
-				start := strings.TrimPrefix(parts[0], "FROM ")
-				end := parts[1]
-				startDate := parseExactDate(strings.TrimSpace(start))
-				endDate := parseExactDate(strings.TrimSpace(end))
-				if startDate != "" && endDate != "" {
-					return DateString("FROM " + startDate + " TO " + endDate)
-				}
-			}
-		} else {
-			startDate := parseExactDate(strings.TrimSpace(after))
-			if startDate != "" {
-				return DateString("FROM " + startDate)
-			}
-		}
-	}
-
-	// Try exact date
-	if result := parseExactDate(date); result != "" {
-		return DateString(result)
-	}
-
-	// Preserve raw (non-Gregorian month names, dual dates, etc.)
-	return DateString(date)
-}
-
-// parseExactDate parses an exact GEDCOM date to YYYY-MM-DD format
-// Formats: "DD MMM YYYY" -> "YYYY-MM-DD", "MMM YYYY" -> "YYYY-MM", "YYYY" -> "YYYY"
+// formatGEDCOMDate converts a GLX DateString to a GEDCOM DATE value in the
+// spelling of the target version. GEDCOM 7 writes the calendar as a tag
+// before each date and the era as BCE; 5.5.1 writes a calendar escape first
+// and B.C. Anything other than GEDCOM70 gets the 5.5.1 spelling, matching
+// ExportGEDCOM's header choice. Examples:
 //
-//nolint:gocyclo // GEDCOM conversion has inherent branching complexity
-func parseExactDate(dateStr string) string {
-	if dateStr == "" {
-		return ""
+//	"1850-03-15"          -> "15 MAR 1850"
+//	"ABT 1850-03-15"      -> "ABT 15 MAR 1850"
+//	"JULIAN ABT 1731"     -> "ABT JULIAN 1731"        (7.0)
+//	"JULIAN ABT 1731"     -> "@#DJULIAN@ ABT 1731"    (5.5.1)
+//	"0044 BCE"            -> "0044 BCE" (7.0), "0044 B.C." (5.5.1)
+//
+// A date that is not in canonical form is rendered as glxdate would render
+// it, so nothing is invented on export that was not understood on import.
+// INT dates are written with their keyword in both versions; GEDCOM 7 moved
+// interpreted text to a PHRASE substructure, which the exporter does not
+// emit yet.
+func formatGEDCOMDate(date DateString, version GEDCOMVersion) string {
+	d, _ := date.Parse()
+	if version == GEDCOM70 {
+		return d.GEDCOM()
 	}
 
-	parts := strings.Fields(dateStr)
-	if len(parts) == 0 {
-		return ""
-	}
-
-	// Try different formats
-	switch len(parts) {
-	case 1:
-		// Just year: "1900"
-		year, err := strconv.Atoi(parts[0])
-		if err != nil || year <= 0 || year >= 3000 {
-			return ""
-		}
-
-		return fmt.Sprintf("%04d", year)
-
-	case 2:
-		// Month and year: "JAN 1900"
-		month, ok := monthMap[strings.ToUpper(parts[0])]
-		if !ok {
-			return ""
-		}
-		year, err := strconv.Atoi(parts[1])
-		if err != nil || year <= 0 || year >= 3000 {
-			return ""
-		}
-
-		return fmt.Sprintf("%04d-%02d", year, month)
-
-	case 3:
-		// Day, month, year: "15 JAN 1900"
-		day, err := strconv.Atoi(parts[0])
-		if err != nil || day <= 0 || day > 31 {
-			return ""
-		}
-		month, ok := monthMap[strings.ToUpper(parts[1])]
-		if !ok {
-			return ""
-		}
-		year, err := strconv.Atoi(parts[2])
-		if err != nil || year <= 0 || year >= 3000 {
-			return ""
-		}
-
-		// Validate the date
-		date := time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC)
-		if date.Year() == year && int(date.Month()) == month && date.Day() == day {
-			return fmt.Sprintf("%04d-%02d-%02d", year, month, day)
-		}
-	}
-
-	return ""
+	return d.GEDCOM551()
 }
