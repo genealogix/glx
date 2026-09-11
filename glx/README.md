@@ -2,42 +2,6 @@
 
 The official command-line tool for working with GENEALOGIX (GLX) family archives. Validates GLX files, initializes new archives, and checks schema conformance.
 
-## Features
-
-- ✅ **Initialize Archives** - Create new single-file or multi-file genealogy archives
-- 📥 **GEDCOM Import** - Import GEDCOM 5.5.1 and 7.0 files (and GEDZIP `.gdz` archives with bundled media) to GLX format
-- 📤 **GEDCOM Export** - Export GLX archives back to GEDCOM 5.5.1 or 7.0 format
-- 🌐 **JSON-LD Export** - Export GLX archives as Schema.org-aligned JSON-LD for linked-data interop
-- 🌐 **Publish** - Generate a self-contained static HTML site (person profiles, timelines, family links, source/place indexes, client-side search) for sharing with non-technical family
-- 🔍 **Validate Files** - Structural and referential integrity validation
-- 🔄 **Split/Join** - Convert between single-file and multi-file formats
-- 🔀 **Merge** - Combine two GLX archives with duplicate detection and dry-run support
-- 🔀 **Merge Driver** - Structural 3-way git merge for `.glx` files (`glx merge-driver`) that auto-resolves safe concurrent edits and falls back to text merge otherwise
-- 📊 **Stats** - Display a summary dashboard of entity counts, assertion confidence, and coverage
-- 📍 **Places** - Analyze places for data quality issues (duplicates, missing coordinates, hierarchy gaps)
-- 🔍 **Search** - Full-text search across all entity types with case-sensitive and type-filter options
-- 🔎 **Query** - Filter and list entities from an archive by name, date, type, source, and more
-- 👤 **Vitals** - Display vital records (birth, death, burial) for a person
-- 📅 **Timeline** - Show chronological events for a person, including family events
-- 🧭 **Migrations** - Trace a person's geographic movement over time and find others with the same migration pattern
-- 📝 **Summary** - Comprehensive person profile with auto-generated life history narrative
-- 🌳 **Ancestors/Descendants** - Display ancestor and descendant trees with box-drawing characters
-- 📎 **Cite** - Generate formatted citation text from structured citation data
-- 🔗 **Cluster** - FAN club analysis identifying associates through census, events, and place overlap
-- 🔗 **Path** - Find the shortest relationship path between two people using BFS
-- 🔬 **Analyze** - Research gap analysis: evidence gaps, quality issues, chronological inconsistencies, and suggestions
-- ⚖️ **Proof** - Compile evidence for a research question into a structured proof summary following the Genealogical Proof Standard (GPS)
-- ⚖️ **Evidence** - Lay out every assertion for one person+property side-by-side, grouped by value, to weigh conflicting evidence
-- 📋 **Census Import** - Generate GLX entities from structured census templates with person matching, assertions, and dry-run preview
-- 🔗 **Link** - Create a FamilySearch citation (and repository/source scaffolding) from an ARK URL, offline
-- ➕ **Add** - Create person, place, event, repository, source, citation, relationship, or assertion entities from CLI flags with vocabulary and reference validation
-- 🔄 **Migrate** - Convert deprecated person properties to birth/death events
-- 🖥️ **Serve** - Run a local web server with a browser-based read-only viewer (dashboard, person profiles, family tree, sources)
-- ⚡ **Cache** - Build a binary archive cache (`.glx/cache.bin`) so repeated commands skip the YAML parse; transparently used by read commands, with git + filesystem staleness detection
-- 📋 **Schema Validation** - Verify JSON schemas have required metadata
-- 🧪 **Test Suite** - Comprehensive test fixtures with coverage reporting
-- 📚 **Examples Validation** - Automatically validates documentation examples
-
 ## Installation
 
 ### From GitHub Releases (Recommended)
@@ -45,6 +9,7 @@ The official command-line tool for working with GENEALOGIX (GLX) family archives
 Download the latest pre-built binary for your platform from the [Releases page](https://github.com/genealogix/glx/releases):
 
 **macOS (Apple Silicon):**
+
 ```bash
 # Download and extract (replace VERSION with the version number)
 curl -L https://github.com/genealogix/glx/releases/download/VERSION/glx_Darwin_arm64.tar.gz | tar xz
@@ -57,6 +22,7 @@ glx --version
 ```
 
 **macOS (Intel):**
+
 ```bash
 # Download and extract (replace VERSION with the version number)
 curl -L https://github.com/genealogix/glx/releases/download/VERSION/glx_Darwin_x86_64.tar.gz | tar xz
@@ -69,6 +35,7 @@ glx --version
 ```
 
 **Linux (ARM64):**
+
 ```bash
 # Download and extract (replace VERSION with the version number)
 curl -L https://github.com/genealogix/glx/releases/download/VERSION/glx_Linux_arm64.tar.gz | tar xz
@@ -81,6 +48,7 @@ glx --version
 ```
 
 **Linux (x86_64):**
+
 ```bash
 # Download and extract (replace VERSION with the version number)
 curl -L https://github.com/genealogix/glx/releases/download/VERSION/glx_Linux_x86_64.tar.gz | tar xz
@@ -93,11 +61,13 @@ glx --version
 ```
 
 **Windows (ARM64):**
+
 - Download `glx_Windows_arm64.zip` from the [Releases page](https://github.com/genealogix/glx/releases)
 - Extract the ZIP file
 - Add the directory to your PATH or move `glx.exe` to a directory in your PATH
 
 **Windows (x86_64):**
+
 - Download `glx_Windows_x86_64.zip` from the [Releases page](https://github.com/genealogix/glx/releases)
 - Extract the ZIP file
 - Add the directory to your PATH or move `glx.exe` to a directory in your PATH
@@ -197,118 +167,44 @@ glx query sources
 glx validate persons/
 glx validate archive.glx
 glx validate persons/ events/
-
-# Check JSON schemas
-glx check-schemas
 ```
 
-## Commands
+## Features
 
-The `glx` CLI groups its commands into archive management, import/export, exploration, data entry, and analysis. The full per-command reference (flags, examples, aliases) is regenerated on demand by `make docs-cli` from the live Cobra command tree, and CI fails on any drift between the source and the committed pages:
-
-- Browse online: <https://genealogix.io/cli/commands>
-- Read in this repo: [`docs/cli/glx.md`](https://github.com/genealogix/glx/blob/main/docs/cli/glx.md)
-- Regenerate locally: `make docs-cli`
-
-CI fails on any drift between the Cobra command tree (as defined across the `glx/` package) and the committed pages under `docs/cli/`. To change the docs for a command, edit its `Use`/`Short`/`Long`/`Example` strings — typically in `glx/cli_commands.go` — and re-run `make docs-cli`.
-
-## File Format
-
-GENEALOGIX uses YAML files with `.glx` extension. Entities are stored as maps where the key is the entity ID.
-
-### Single-File Format
-
-```yaml
-# archive.glx
-persons:
-  person-john-smith:
-    properties:
-      name:
-        value: "John Smith"
-        fields:
-          given: "John"
-          surname: "Smith"
-
-relationships:
-  rel-marriage:
-    type: "marriage"
-    persons:
-      - person-john-smith
-      - person-mary-brown
-
-events:
-  event-john-birth:
-    type: "birth"
-    date: "1850-01-15"
-    place: place-leeds
-```
-
-### Multi-File Format
-
-Each file contains one entity type:
-
-```yaml
-# persons/person-john-smith.glx
-persons:
-  person-john-smith:
-    properties:
-      name:
-        value: "John Smith"
-        fields:
-          given: "John"
-          surname: "Smith"
-```
-
-```yaml
-# events/event-john-birth.glx
-events:
-  event-john-birth:
-    
-    type: "birth"
-    date: "1850-01-15"
-    place: place-leeds
-    participants:
-      - person: person-john-smith
-        role: "principal"
-```
-
-## Testing
-
-```bash
-# Run all tests
-make test
-
-# Run all tests with verbose output
-make test-verbose
-```
-
-See [testdata/README.md](https://github.com/genealogix/glx/blob/main/glx/testdata/README.md) for test data documentation.
+- ✅ **Initialize Archives** - Create new single-file or multi-file genealogy archives
+- 📥 **GEDCOM Import** - Import GEDCOM 5.5.1 and 7.0 files (and GEDZIP `.gdz` archives with bundled media) to GLX format
+- 📤 **GEDCOM Export** - Export GLX archives back to GEDCOM 5.5.1 or 7.0 format
+- 🌐 **JSON-LD Export** - Export GLX archives as Schema.org-aligned JSON-LD for linked-data interop
+- 🌐 **Publish** - Generate a self-contained static HTML site (person profiles, timelines, family links, source/place indexes, client-side search) for sharing with non-technical family
+- 🔍 **Validate Files** - Structural and referential integrity validation
+- 🔄 **Split/Join** - Convert between single-file and multi-file formats
+- 🔀 **Merge** - Combine two GLX archives with duplicate detection and dry-run support
+- 🔀 **Merge Driver** - Structural 3-way git merge for `.glx` files (`glx merge-driver`) that auto-resolves safe concurrent edits and falls back to text merge otherwise
+- 📊 **Stats** - Display a summary dashboard of entity counts, assertion confidence, and coverage
+- 📍 **Places** - Analyze places for data quality issues (duplicates, missing coordinates, hierarchy gaps)
+- 🔍 **Search** - Full-text search across all entity types with case-sensitive and type-filter options
+- 🔎 **Query** - Filter and list entities from an archive by name, date, type, source, and more
+- 👤 **Vitals** - Display vital records (birth, death, burial) for a person
+- 📅 **Timeline** - Show chronological events for a person, including family events
+- 🧭 **Migrations** - Trace a person's geographic movement over time and find others with the same migration pattern
+- 📝 **Summary** - Comprehensive person profile with auto-generated life history narrative
+- 🌳 **Ancestors/Descendants** - Display ancestor and descendant trees with box-drawing characters
+- 📎 **Cite** - Generate formatted citation text from structured citation data
+- 🔗 **Cluster** - FAN club analysis identifying associates through census, events, and place overlap
+- 🔗 **Path** - Find the shortest relationship path between two people using BFS
+- 🔬 **Analyze** - Research gap analysis: evidence gaps, quality issues, chronological inconsistencies, and suggestions
+- ⚖️ **Proof** - Compile evidence for a research question into a structured proof summary following the Genealogical Proof Standard (GPS)
+- ⚖️ **Evidence** - Lay out every assertion for one person+property side-by-side, grouped by value, to weigh conflicting evidence
+- 📋 **Census Import** - Generate GLX entities from structured census templates with person matching, assertions, and dry-run preview
+- 🔗 **Link** - Create a FamilySearch citation (and repository/source scaffolding) from an ARK URL, offline
+- ➕ **Add** - Create person, place, event, repository, source, citation, relationship, or assertion entities from CLI flags with vocabulary and reference validation
+- 🔄 **Migrate** - Convert deprecated person properties to birth/death events
+- 🖥️ **Serve** - Run a local web server with a browser-based read-only viewer (dashboard, person profiles, family tree, sources)
+- ⚡ **Cache** - Build a binary archive cache (`.glx/cache.bin`) so repeated commands skip the YAML parse; transparently used by read commands, with git + filesystem staleness detection
 
 ## Development
 
-### Prerequisites
-
-- Go (see `go.mod` for minimum version)
-- Git
-
-### Building
-
-```bash
-make build
-```
-
-### Dependencies
-
-See `go.mod` for the current dependency list.
-
-### Contributing
-
-Contributions are welcome! Please:
-
-1. Write tests for new functionality
-2. Run `make test` before submitting
-3. Follow Go conventions and idioms
-4. Update documentation
+Build, test, and contribution workflow — prerequisites, `make` targets, DCO sign-off, and the pull request process — are documented in the [Contributing Guide](../CONTRIBUTING.md).
 
 ## Related Documentation
 
@@ -316,7 +212,7 @@ Contributions are welcome! Please:
 - [JSON Schemas](../specification/schema/README.md)
 - [Examples](../docs/examples/README.md)
 - [Test Data Documentation](https://github.com/genealogix/glx/blob/main/glx/testdata/README.md)
-- [Contributing Guide](../CONTRIBUTING.md)
+- [CLI Command Reference](../docs/cli/index.md)
 
 ## License
 
