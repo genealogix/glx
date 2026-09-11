@@ -320,6 +320,7 @@ export default defineConfig({
           text: 'CLI Tool',
           items: [
             { text: 'Overview', link: '/cli' },
+            { text: 'Installation', link: '/glx/README#installation' },
             { text: 'glx (root)', link: '/cli/glx' }
           ]
         },
