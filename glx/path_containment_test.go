@@ -192,3 +192,40 @@ func TestWalkGLXFiles_ReportsReadErrorPerFile(t *testing.T) {
 	assert.Equal(t, 1, readErrs)
 	assert.Equal(t, map[string]string{"ok.glx": "ok"}, seen)
 }
+
+func TestWalkGLXFiles_SkipsDotDirectories(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "ok.glx"), []byte("ok"), 0o644))
+	for _, hidden := range []string{".git", ".glx", filepath.Join(".claude", "worktrees", "copy", "persons")} {
+		require.NoError(t, os.MkdirAll(filepath.Join(dir, hidden), 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, hidden, "ok.glx"), []byte("dup"), 0o644))
+	}
+
+	seen := map[string]string{}
+	err := walkGLXFiles(dir, func(relPath string, data []byte, readErr error) error {
+		require.NoError(t, readErr)
+		seen[relPath] = string(data)
+
+		return nil
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, map[string]string{"ok.glx": "ok"}, seen)
+}
+
+func TestWalkGLXFiles_DotPrefixedRootIsWalked(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), ".archive")
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "persons"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "persons", "a.glx"), []byte("a"), 0o644))
+
+	var seen []string
+	err := walkGLXFiles(dir, func(relPath string, _ []byte, readErr error) error {
+		require.NoError(t, readErr)
+		seen = append(seen, relPath)
+
+		return nil
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{filepath.Join("persons", "a.glx")}, seen)
+}

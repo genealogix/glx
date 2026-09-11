@@ -129,7 +129,14 @@ func walkGLXFiles(rootDir string, visit func(relPath string, data []byte, err er
 		if walkErr != nil {
 			return walkErr
 		}
-		if d.IsDir() || !isGLXFile(d.Name()) {
+		if d.IsDir() {
+			if entryPath != "." && isDotDir(d.Name()) {
+				return fs.SkipDir
+			}
+
+			return nil
+		}
+		if !isGLXFile(d.Name()) {
 			return nil
 		}
 
