@@ -23,6 +23,7 @@ Validation behavior:
 - Single file: Validates file structure only, skips cross-reference checks
 - Directory: Validates all .glx files with full cross-reference validation
 - No arguments: Validates current directory with full cross-reference validation
+- Dot-prefixed directories (.git, .glx, .claude, ...) are skipped
 
 Use --report to generate a confidence summary showing assertion coverage
 and highlighting unsupported claims.

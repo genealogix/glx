@@ -60,6 +60,13 @@ func isGLXFile(filename string) bool {
 	return filepath.Ext(filename) == FileExtGLX
 }
 
+// isDotDir reports whether a directory name starts with ".". Such directories
+// hold tool state (.git, the .glx cache, .claude worktrees), never entities,
+// so archive walks skip them.
+func isDotDir(name string) bool {
+	return strings.HasPrefix(name, ".")
+}
+
 // isGEDZIPPath reports whether the given file path has the .gdz extension.
 // Match is case-insensitive because user-supplied filenames vary by platform.
 func isGEDZIPPath(p string) bool {
@@ -120,7 +127,8 @@ func isDirectoryEmpty(path string) error {
 
 // collectGLXFilesFromDir recursively collects all GLX files from a directory
 // into a map with relative paths as keys and file contents as values.
-// Only files with the .glx extension are included. Reads are contained to
+// Only files with the .glx extension are included; dot-prefixed directories
+// are skipped (see walkGLXFiles). Reads are contained to
 // rootDir (see walkGLXFiles): a symlink inside the archive that points outside
 // it fails the load rather than pulling the target's contents in.
 func collectGLXFilesFromDir(rootDir string) (map[string][]byte, error) {

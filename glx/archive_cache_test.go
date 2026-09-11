@@ -233,6 +233,12 @@ func TestCacheStalenessFSFingerprint(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, cacheIsFresh(dir, header2))
 
+	// A .glx file under a dot-prefixed directory is not part of the archive.
+	nested := filepath.Join(dir, ".claude", "worktrees", "copy", "persons")
+	require.NoError(t, os.MkdirAll(nested, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(nested, "person-a.glx"), []byte("x"), 0o644))
+	assert.True(t, cacheIsFresh(dir, header2), "files under dot directories must not affect the fingerprint")
+
 	// Touching a file's mtime invalidates too.
 	future := time.Now().Add(2 * time.Hour)
 	require.NoError(t, os.Chtimes(filepath.Join(dir, "persons", "person-a.glx"), future, future))
