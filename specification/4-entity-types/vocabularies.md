@@ -87,7 +87,7 @@ event_types:
     category: "lifecycle"
 ```
 
-**Note:** Attributes like occupation, residence, religion, and nationality are represented as temporal properties on Person entities, not as events. See [Person Entity](person.md) for details.
+**Note:** Attributes like occupation, religion, and nationality are represented as temporal properties on Person entities, not as events. Residence can be either: a temporal `residence` person property for a simple place reference, or a `residence` event when participants, dates, or detailed evidence are needed. See [Person Entity](person.md) and [Event Entity](event.md) for details.
 
 ### Fields
 
@@ -120,7 +120,7 @@ event_types:
   land-grant:
     label: "Land Grant"
     description: "Receipt of land grant or patent"
-    category: "property"
+    category: "legal"
     gedcom: "_LAND"
 ```
 
@@ -221,8 +221,8 @@ place_types:
   
   city:
     label: "City"
-    description: "City or town"
-    category: "geographic"
+    description: "Incorporated city or large municipality"
+    category: "administrative"
   
   parish:
     label: "Parish"
@@ -246,7 +246,7 @@ place_types:
 
 ### Standard Place Types
 
-**Standard Place Types**: GENEALOGIX provides standardized place type codes including administrative divisions (country, state, county, district, township), geographic features (city, town, locality, region, neighborhood, street, building), religious divisions (parish, church), and institutions (hospital, cemetery).
+**Standard Place Types**: GENEALOGIX provides standardized place type codes including administrative divisions (country, state, county, city, town, township, district), geographic features (region, locality, neighborhood, street, building), religious divisions (parish, church), and institutions (hospital, cemetery).
 
 **Complete List**: See [Standard Vocabularies - Place Types](../5-standard-vocabularies/#place-types) for the complete default vocabulary file with all standard types.
 
@@ -961,6 +961,8 @@ GENEALOGIX provides standard person properties:
 | `external_ids` | string (multi) | No | EXID | External identifiers from other systems |
 | `living` | boolean | No | | Opt-in marker that the person is currently living; honored by `glx export --privatize-living` (see [#288](https://github.com/genealogix/glx/issues/288)) |
 
+**Upgrading archives from earlier betas.** Several standard keys were renamed or moved in the beta.11 and beta.12 releases; `glx migrate` rewrites existing archives in place, one flag per change: `--rename-ssn-to-national-id` (person `ssn` → `national_id`), `--rename-gender-to-sex` (the pre-split `gender` property → `sex`), `--confidence-disputed-to-status` (assertion `confidence: disputed` → `status: disputed`), `--source-description-to-property` and `--media-description-to-property` (top-level `description` → `properties.description`), and `--strip-event-title-year` (stale `(YEAR)` suffix on imported event titles). See `glx migrate --help` for details.
+
 ### Event Properties Vocabulary
 
 **Default file**: `vocabularies/event-properties.glx`
@@ -974,6 +976,8 @@ Event properties are generally less common than person properties, since most ev
 - `age_at_event` - Age of the person at the time of the event (GEDCOM: AGE)
 - `cause` - Cause of the event, e.g., cause of death (GEDCOM: CAUS)
 - `event_subtype` - Further classification of the event type (GEDCOM: TYPE)
+- `marriage_type` - Free-text `MARR TYPE` value preserved on import (civil, religious, common law, …)
+- `name_as_recorded` - Per-participant name as written in the source (structured, with name fields)
 - `description` - Event description
 
 **Note:** Event timing and location are handled by the `date` and `place` fields directly on the event, not as properties. The `notes` field is a standard entity field available on all entity types, not a property.
@@ -993,6 +997,8 @@ Standard properties include:
 - `location` - Location of the relationship
 - `description` - Relationship description
 - `number_of_children` - Recorded number of children of a couple (GEDCOM `FAM.NCHI`)
+- `legal_status` - Legal form of a coerced-labor relationship (validated against `legal_statuses`)
+- `name_as_recorded` - Per-participant name as written in the source (structured, with name fields)
 
 ### Place Properties Vocabulary
 
@@ -1023,6 +1029,7 @@ Standard properties include:
 
 Standard properties include:
 
+- `description` - Detailed description of the media content
 - `subjects` - People or entities depicted/recorded
 - `width` - Width in pixels (for images/video)
 - `height` - Height in pixels (for images/video)
@@ -1033,6 +1040,7 @@ Standard properties include:
 - `original_filename` - Original filename when imported
 - `photographer` - Person who captured the media
 - `location` - Location where media was captured
+- `blob_size` - Length in bytes of the encoded GEDCOM 5.5.1 BLOB text (pre-decode), when imported from a BLOB record
 
 ### Repository Properties Vocabulary
 
@@ -1320,6 +1328,8 @@ When a property has `fields` defined, the property value can be either:
            surname: "Smith"
    ```
 
+   Entries in a temporal list may omit `date` (an *undated list*, for values known without dates), and dated and undated entries may be mixed. For properties that are also `multi_value: true`, each entry's `value` is an array. These are the same shapes described under [Core Concepts - Temporal Properties](../2-core-concepts.md#temporal-properties) and [Structured Properties](../2-core-concepts.md#structured-properties).
+
 #### When to Use Fields
 
 Use `fields` when:
@@ -1382,17 +1392,16 @@ properties:
       surname: "Smith"
 ```
 
-When there is no natural single-value representation, fields-only is valid:
+When there is no natural single-value representation, fields-only is valid. A fields-only value is written as a bare map of the field values, with no `value` key and no `fields:` wrapper:
 
 ```yaml
 # Fields only: appropriate for structured data like coordinates
 properties:
   crop:
-    fields:
-      top: 450
-      left: 100
-      width: 800
-      height: 200
+    top: 450
+    left: 100
+    width: 800
+    height: 200
 ```
 
 #### Custom Structured Properties
@@ -1505,6 +1514,8 @@ The validator:
 5. Validates the value according to the property's `value_type` or `reference_type`
 6. **Emits errors for broken references** when a property is defined with `reference_type` but the referenced entity doesn't exist
 
+Structural entity fields are valid `property` targets without a vocabulary entry: `date`, `place`, and `title` on event subjects; `name`, `type`, and `parent` on place subjects; `type`, `start_event`, and `end_event` on relationship subjects. `property: date` on an event is the most common assertion in the specification's examples.
+
 ---
 
 ## Vocabulary Validation
@@ -1610,7 +1621,7 @@ event_types:
   land-grant:
     label: "Land Grant"
     description: "Receipt of land grant or patent"
-    category: "property"
+    category: "legal"
     gedcom: "_LAND"  # Non-standard GEDCOM tag
 ```
 
@@ -1746,7 +1757,7 @@ All vocabulary schemas are located in `specification/schema/v1/vocabularies/` an
 - Required top-level key (e.g., `event_types`, `relationship_types`)
 - Required fields for each entry (typically `label`)
 - Optional fields (e.g., `description`, `gedcom`)
-- Pattern properties for vocabulary keys (alphanumeric with hyphens, 1-64 characters)
+- Vocabulary keys themselves are not pattern-constrained by the schemas; by convention they are lowercase with underscores (`parent_child`, `vital_record`), matching the standard vocabularies
 
 Vocabulary files are validated by the `glx validate` command using these schemas.
 

@@ -112,7 +112,7 @@ GENEALOGIX validation operates at two levels:
 Each `.glx` file must:
 
 - Be valid YAML with proper structure
-- Have at least one top-level entity type key (persons, events, relationships, etc.)
+- Have at least one recognized top-level key: an entity type plural (persons, events, relationships, etc.), a vocabulary collection (event_types, person_properties, etc.), or `metadata`
 - Pass JSON schema validation for structural correctness
 - Contain properly formatted entity IDs (alphanumeric with hyphens, 1-64 characters)
 
@@ -135,6 +135,7 @@ Across all files in an archive, the validator checks:
   - Death year before birth year
   - Parent born after child (in parent-child relationships)
   - Marriage event before a participant's birth year
+  - Relationship `end_event` dated before its `start_event`
 
 > **Note:** Temporal checks are warnings rather than errors because dates in genealogical records are often estimates (e.g., `ABT 1850`). A flagged inconsistency may indicate a data entry error or simply imprecise dating.
 
@@ -412,7 +413,7 @@ See [Core Concepts](2-core-concepts.md#archive-owned-vocabularies) for details o
 - **Folder names are conventions**, not requirements
 - **Parser must scan ALL** `.glx` and `.yaml` files in the archive
 - **Duplicate entity IDs** across files is an error
-- **Entity type keys are required** at the top level of every file
+- **At least one recognized top-level key is required** in every file — an entity type plural, a vocabulary collection, or `metadata`
 - **Cross-references are validated** at archive level
 - **Vocabularies define valid types** - entities must reference types from vocabulary files
 

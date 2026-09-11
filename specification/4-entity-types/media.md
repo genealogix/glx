@@ -194,6 +194,7 @@ Media entities support vocabulary-defined properties through the `properties` fi
 media:
   media-family-portrait:
     uri: "media/files/smith-family-1890.jpg"
+    type: photograph
     mime_type: "image/jpeg"
     title: "Smith Family Portrait, 1890"
     properties:
