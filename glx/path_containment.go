@@ -108,8 +108,7 @@ func readFileWithin(baseDir, path string) ([]byte, error) {
 }
 
 // walkGLXFiles calls visit for every .glx file under rootDir with the file's
-// path relative to rootDir (OS separators) and its contents. Dot-prefixed
-// directories below rootDir are not entered. Reads go through
+// path relative to rootDir (OS separators) and its contents. Reads go through
 // an os.Root scoped to rootDir, so a symlink in the tree whose target lies
 // outside rootDir yields a read error instead of the target's contents, and a
 // path swapped for a symlink between the directory listing and the read

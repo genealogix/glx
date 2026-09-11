@@ -374,14 +374,7 @@ func validateSingleFileSemantics(paths []string) ([]string, []string) {
 			if walkErr != nil {
 				return walkErr
 			}
-			if d.IsDir() {
-				if filePath != path && isDotDir(d.Name()) {
-					return filepath.SkipDir
-				}
-
-				return nil
-			}
-			if !isGLXFile(d.Name()) {
+			if d.IsDir() || !isGLXFile(d.Name()) {
 				return nil
 			}
 
@@ -442,7 +435,6 @@ func isSingleFileIssue(msg string) bool {
 }
 
 // countGLXFiles counts .glx files in a directory without reading them.
-// Dot-prefixed directories are skipped, matching walkGLXFiles.
 func countGLXFiles(root string) int {
 	var count int
 	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {

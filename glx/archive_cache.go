@@ -195,8 +195,8 @@ func cachePath(root string) string { return filepath.Join(root, cacheDirName, ca
 // computeFSFingerprint walks every .glx entity file under root and returns a
 // SHA-256 hash of the sorted (relative-path, size, mtime) tuples. It performs
 // stat calls only — no file reads — so it stays cheap even on large archives.
-// Dot-prefixed directories (.glx cache, .git, .claude) are skipped, matching
-// walkGLXFiles; this also keeps the fingerprint independent of cache writes.
+// The .glx (cache) and .git directories are skipped: neither holds entity
+// files, and skipping them keeps the fingerprint independent of cache writes.
 func computeFSFingerprint(root string) (string, error) {
 	type fileMeta struct {
 		rel  string
@@ -210,7 +210,7 @@ func computeFSFingerprint(root string) (string, error) {
 			return err
 		}
 		if d.IsDir() {
-			if path != root && isDotDir(d.Name()) {
+			if path != root && (d.Name() == cacheDirName || d.Name() == ".git") {
 				return filepath.SkipDir
 			}
 
