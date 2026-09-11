@@ -54,7 +54,7 @@ For a side-by-side look at the GEDCOM-vs-GLX wire formats and the assertion mode
 
 ## CLI Commands
 
-The `glx` CLI groups its commands into archive management, import/export, exploration, data entry, analysis, and shell completion. See the [full CLI reference](https://genealogix.io/cli) for flags, examples, and per-command details.
+The `glx` CLI groups its commands into archive management, import/export, exploration, data entry, analysis, and shell completion. See the [full CLI reference](https://genealogix.io/cli/commands) for flags, examples, and per-command details.
 
 ### Archive Management
 
@@ -136,7 +136,7 @@ sources:
 
 - [🚀 Quickstart](docs/quickstart.md) — 5-minute getting started
 - [💡 Examples](docs/examples/README.md) — runnable sample archives
-- [🛠 CLI Reference](https://genealogix.io/cli) — every command and flag
+- [🛠 CLI Reference](https://genealogix.io/cli/commands) — every command and flag
 - [📐 Best Practices](docs/guides/best-practices.md) — recommended workflows
 - [🔁 Migration from GEDCOM](docs/guides/migration-from-gedcom.md) — manual conversion guidance
 - [🔀 GLX-aware Git merge driver](docs/merge-driver.md) — genealogy-aware conflict resolution for .glx files
