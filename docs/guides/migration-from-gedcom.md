@@ -27,7 +27,7 @@ Understanding how GENEALOGIX differs from GEDCOM helps you get the most out of y
 
 ### Prerequisites
 
-- The `glx` CLI tool installed ([installation instructions](https://github.com/genealogix/glx/blob/main/glx/README.md#installation))
+- The `glx` CLI tool installed ([installation instructions](../../glx/README.md#installation))
 - Your GEDCOM file (`.ged`)
 - Git installed (recommended for version control)
 
