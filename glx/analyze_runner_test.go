@@ -620,18 +620,92 @@ func TestAnalyzeConflicts_NoConflictWhenSameValue(t *testing.T) {
 	}
 }
 
-func TestAnalyzeConflicts_SkipsTemporalProperties(t *testing.T) {
+func temporalArchive(assertions map[string]*glxlib.Assertion) *glxlib.GLXFile {
 	temporal := true
-	archive := &glxlib.GLXFile{
-		Persons:          map[string]*glxlib.Person{"person-a": {Properties: map[string]any{"name": "Person A"}}},
-		PersonProperties: map[string]*glxlib.PropertyDefinition{"residence": {Temporal: &temporal}},
-		Assertions: map[string]*glxlib.Assertion{
-			"a-1": {Subject: glxlib.EntityRef{Person: "person-a"}, Property: "residence", Value: "place-leeds", Date: "1851"},
-			"a-2": {Subject: glxlib.EntityRef{Person: "person-a"}, Property: "residence", Value: "place-london", Date: "FROM 1870 TO 1920"},
-		},
-	}
 
-	require.Empty(t, analyzeConflicts(archive))
+	return &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{"person-a": {Properties: map[string]any{"name": "Person A"}}},
+		PersonProperties: map[string]*glxlib.PropertyDefinition{
+			"residence":  {Temporal: &temporal},
+			"occupation": {Temporal: &temporal},
+		},
+		Assertions: assertions,
+	}
+}
+
+func temporalAssertion(property, value, date string) *glxlib.Assertion {
+	return &glxlib.Assertion{Subject: glxlib.EntityRef{Person: "person-a"}, Property: property, Value: value, Date: glxlib.DateString(date)}
+}
+
+func TestAnalyzeConflicts_TemporalNoOverlap(t *testing.T) {
+	tests := []struct {
+		name string
+		a, b string
+	}{
+		{"year before range", "1851", "FROM 1870 TO 1920"},
+		{"adjacent years", "1851", "1852"},
+		{"adjacent months", "1851-03", "1851-04"},
+		{"adjacent days", "1851-03-15", "1851-03-16"},
+		{"before open-ended range", "1851", "FROM 1870"},
+		{"after open-start range", "1900", "TO 1860"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			archive := temporalArchive(map[string]*glxlib.Assertion{
+				"a-1": temporalAssertion("residence", "place-leeds", tt.a),
+				"a-2": temporalAssertion("residence", "place-london", tt.b),
+			})
+
+			require.Empty(t, analyzeConflicts(archive))
+		})
+	}
+}
+
+func TestAnalyzeConflicts_TemporalOverlap(t *testing.T) {
+	tests := []struct {
+		name string
+		a, b string
+	}{
+		{"same day", "1851-03-15", "1851-03-15"},
+		{"year within range", "1851", "FROM 1850 TO 1860"},
+		{"month within year", "1851-03", "1851"},
+		{"day within month", "1851-03-15", "1851-03"},
+		{"overlapping ranges", "BET 1840 AND 1855", "FROM 1850 TO 1860"},
+		{"inside open-ended range", "1900", "FROM 1870"},
+		{"inside open-start range", "1851", "TO 1860"},
+		{"qualified point", "ABT 1851", "1851"},
+		{"tolerated spelling", "Abt 1851", "1851"},
+		{"one undated", "1851", ""},
+		{"both undated", "", ""},
+		{"no year", "1851", "spring"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			archive := temporalArchive(map[string]*glxlib.Assertion{
+				"a-1": temporalAssertion("residence", "place-leeds", tt.a),
+				"a-2": temporalAssertion("residence", "place-london", tt.b),
+			})
+
+			issues := analyzeConflicts(archive)
+			require.Len(t, issues, 1)
+			require.Equal(t, "residence", issues[0].Property)
+			require.Contains(t, issues[0].Message, "2 conflicting values")
+			require.Contains(t, issues[0].Message, "place-leeds, place-london")
+		})
+	}
+}
+
+func TestAnalyzeConflicts_TemporalListsOverlappingOnly(t *testing.T) {
+	archive := temporalArchive(map[string]*glxlib.Assertion{
+		"a-1": temporalAssertion("occupation", "miller", "1950"),
+		"a-2": temporalAssertion("occupation", "driver", "1950"),
+		"a-3": temporalAssertion("occupation", "farmer", "1970"),
+		"a-4": temporalAssertion("occupation", "miller", "1980"),
+	})
+
+	issues := analyzeConflicts(archive)
+	require.Len(t, issues, 1)
+	require.Equal(t, "Person A — occupation has 2 conflicting values: driver, miller", issues[0].Message)
 }
 
 func TestAnalyzeConflicts_TemporalPropertiesExample(t *testing.T) {
