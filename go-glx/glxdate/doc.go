@@ -50,6 +50,11 @@
 // without being reported. [Date.String] renders the canonical form whenever
 // the components were determined, and the raw text otherwise.
 //
+// [Date.Span] places a date on a day-granular number line so two dates can
+// be compared without re-deriving the qualifier and precision rules: the
+// resulting [Span] answers [Span.Precedes], [Span.Overlaps], [Span.During],
+// [Span.Equals] and, for the common question, [Span.Intersects].
+//
 // The GEDCOM encoding of the same model lives here as well, so the GLX
 // grammar is never re-implemented by a converter: [FromGEDCOM] turns a
 // GEDCOM DATE payload (calendar escape, any tolerated spelling) into the
