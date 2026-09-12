@@ -620,6 +620,238 @@ func TestAnalyzeConflicts_NoConflictWhenSameValue(t *testing.T) {
 	}
 }
 
+func temporalArchive(assertions map[string]*glxlib.Assertion) *glxlib.GLXFile {
+	temporal := true
+
+	return &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{"person-a": {Properties: map[string]any{"name": "Person A"}}},
+		PersonProperties: map[string]*glxlib.PropertyDefinition{
+			"residence":  {Temporal: &temporal},
+			"occupation": {Temporal: &temporal},
+		},
+		Assertions: assertions,
+	}
+}
+
+func temporalAssertion(property, value, date string) *glxlib.Assertion {
+	return &glxlib.Assertion{Subject: glxlib.EntityRef{Person: "person-a"}, Property: property, Value: value, Date: glxlib.DateString(date)}
+}
+
+func TestAnalyzeConflicts_TemporalNoOverlap(t *testing.T) {
+	tests := []struct {
+		name string
+		a, b string
+	}{
+		{"year before range", "1851", "FROM 1870 TO 1920"},
+		{"adjacent years", "1851", "1852"},
+		{"adjacent months", "1851-03", "1851-04"},
+		{"adjacent days", "1851-03-15", "1851-03-16"},
+		{"before open-ended range", "1851", "FROM 1870"},
+		{"after open-start range", "1900", "TO 1860"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			archive := temporalArchive(map[string]*glxlib.Assertion{
+				"a-1": temporalAssertion("residence", "place-leeds", tt.a),
+				"a-2": temporalAssertion("residence", "place-london", tt.b),
+			})
+
+			require.Empty(t, analyzeConflicts(archive))
+		})
+	}
+}
+
+func TestAnalyzeConflicts_TemporalOverlap(t *testing.T) {
+	tests := []struct {
+		name string
+		a, b string
+	}{
+		{"same day", "1851-03-15", "1851-03-15"},
+		{"year within range", "1851", "FROM 1850 TO 1860"},
+		{"month within year", "1851-03", "1851"},
+		{"day within month", "1851-03-15", "1851-03"},
+		{"overlapping ranges", "BET 1840 AND 1855", "FROM 1850 TO 1860"},
+		{"inside open-ended range", "1900", "FROM 1870"},
+		{"inside open-start range", "1851", "TO 1860"},
+		{"qualified point", "ABT 1851", "1851"},
+		{"tolerated spelling", "Abt 1851", "1851"},
+		{"one undated", "1851", ""},
+		{"both undated", "", ""},
+		{"no year", "1851", "spring"},
+		{"after open point", "AFT 1900", "1950"},
+		{"before open point", "BEF 1900", "1880"},
+		{"inverted range", "FROM 1920 TO 1870", "1900"},
+		{"inverted between", "BET 1920 AND 1870", "1900"},
+		{"range end without year", "FROM 1850 TO spring", "1900"},
+		{"range end without year at known start", "FROM 1850 TO spring", "1850"},
+		{"range start without year", "FROM spring TO 1850", "1800"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			archive := temporalArchive(map[string]*glxlib.Assertion{
+				"a-1": temporalAssertion("residence", "place-leeds", tt.a),
+				"a-2": temporalAssertion("residence", "place-london", tt.b),
+			})
+
+			issues := analyzeConflicts(archive)
+			require.Len(t, issues, 1)
+			require.Equal(t, "residence", issues[0].Property)
+			require.Contains(t, issues[0].Message, "2 conflicting values")
+			require.Contains(t, issues[0].Message, "place-leeds, place-london")
+		})
+	}
+}
+
+// BEF and AFT are read the same way everywhere else in the codebase that
+// gives them a direction: the named date is excluded and the far side is
+// open. extractRelationshipBoundaryYear reads AFT Y as active from Y+1 and
+// BEF Y as active through Y-1; deathYearUpperBound reads a death BEF Y as
+// alive through Y-1; glx query and glx cluster treat --before N and
+// --after N strictly. The conflict check keys spans by day, so the excluded
+// unit is the date at its written precision: AFT 1900-03-15 starts on
+// 1900-03-16, BEF 1900-03 ends on the last day of February 1900. ABT, EST,
+// CAL, and INT are never widened anywhere, so they stay exactly the named
+// date. BCE and sub-year Hebrew or French Republican dates are deliberately
+// absent: the codebase has no settled rule for them yet.
+func TestAnalyzeConflicts_TemporalQualifierBounds(t *testing.T) {
+	tests := []struct {
+		name    string
+		a, b    string
+		overlap bool
+	}{
+		// Year precision: named year excluded, neighbouring year included.
+		{"after excludes named year", "AFT 1900", "1900", false},
+		{"before excludes named year", "BEF 1900", "1900", false},
+		{"after includes the following year", "AFT 1900", "1901", true},
+		{"before includes the preceding year", "BEF 1900", "1899", true},
+
+		// Far side open: two of a kind always overlap.
+		{"two befores", "BEF 1900", "BEF 1850", true},
+		{"two afters", "AFT 1900", "AFT 1950", true},
+
+		// After and before facing each other.
+		{"after then later before", "AFT 1900", "BEF 1950", true},
+		{"after past an earlier before", "AFT 1950", "BEF 1900", false},
+		{"after and next-year before are adjacent", "AFT 1900", "BEF 1901", false},
+		{"after and before two years on share a year", "AFT 1900", "BEF 1902", true},
+
+		// Written precision: the excluded unit is the day or month, not the year.
+		{"after day excludes that day", "AFT 1900-03-15", "1900-03-15", false},
+		{"after day includes the next day", "AFT 1900-03-15", "1900-03-16", true},
+		{"after mid-month still overlaps that month", "AFT 1900-03-15", "1900-03", true},
+		{"after january first still covers the year", "AFT 1900-01-01", "1900", true},
+		{"after month excludes its last day", "AFT 1900-03", "1900-03-31", false},
+		{"after month includes the first of the next", "AFT 1900-03", "1900-04-01", true},
+		{"after december excludes its own year", "AFT 1900-12", "1900", false},
+		{"after december overlaps the next year", "AFT 1900-12", "1901", true},
+		{"before month excludes its first day", "BEF 1900-03", "1900-03-01", false},
+		{"before month includes the previous month", "BEF 1900-03", "1900-02", true},
+		{"before month includes the last day of the previous", "BEF 1900-03", "1900-02-28", true},
+		{"before day excludes that day", "BEF 1900-03-15", "1900-03-15", false},
+		{"before day includes the previous day", "BEF 1900-03-15", "1900-03-14", true},
+		{"before january first excludes that year", "BEF 1900-01-01", "1900", false},
+		{"before january first includes the previous year", "BEF 1900-01-01", "1899", true},
+
+		// Against open and closed ranges, whose endpoints stay inclusive.
+		{"after year meets open-start range ending that year", "AFT 1900", "TO 1900", false},
+		{"after year overlaps open-start range ending next year", "AFT 1900", "TO 1901", true},
+		{"before year meets open-ended range starting that year", "BEF 1900", "FROM 1900", false},
+		{"before year overlaps open-ended range starting the year before", "BEF 1900", "FROM 1899", true},
+		{"after year against one-year closed range", "AFT 1900", "FROM 1900 TO 1900", false},
+		{"after year against between range reaching next year", "AFT 1900", "BET 1900 AND 1901", true},
+
+		// Calendar prefixes and tolerated spellings carry the qualifier through.
+		{"julian after is open on the far side", "JULIAN AFT 1900", "1950", true},
+		{"julian after excludes its named year", "JULIAN AFT 1900", "1900", false},
+		{"julian before excludes its named year", "JULIAN BEF 1900", "1900", false},
+		{"lower-case before is still a qualifier", "bef 1900", "1900", false},
+		{"spelled-out after is still a qualifier", "AFTER 1900", "1900", false},
+		{"spelled-out before is still a qualifier", "before 1900", "1900", false},
+
+		// Approximations are not widened, so they meet BEF/AFT exactly at the edge.
+		{"about is not widened", "ABT 1900", "1901", false},
+		{"estimated is not widened", "EST 1900", "1901", false},
+		{"after and about the same year do not meet", "AFT 1900", "ABT 1900", false},
+		{"before and about the previous year do meet", "BEF 1901", "ABT 1900", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			archive := temporalArchive(map[string]*glxlib.Assertion{
+				"a-1": temporalAssertion("residence", "place-leeds", tt.a),
+				"a-2": temporalAssertion("residence", "place-london", tt.b),
+			})
+
+			issues := analyzeConflicts(archive)
+			if !tt.overlap {
+				require.Empty(t, issues, "%q and %q do not overlap", tt.a, tt.b)
+
+				return
+			}
+			require.Len(t, issues, 1, "%q and %q overlap", tt.a, tt.b)
+			require.Equal(t, "residence", issues[0].Property)
+			require.Contains(t, issues[0].Message, "place-leeds, place-london")
+		})
+	}
+}
+
+func TestAnalyzeConflicts_TemporalListsOverlappingOnly(t *testing.T) {
+	archive := temporalArchive(map[string]*glxlib.Assertion{
+		"a-1": temporalAssertion("occupation", "miller", "1950"),
+		"a-2": temporalAssertion("occupation", "driver", "1950"),
+		"a-3": temporalAssertion("occupation", "farmer", "1970"),
+		"a-4": temporalAssertion("occupation", "miller", "1980"),
+	})
+
+	issues := analyzeConflicts(archive)
+	require.Len(t, issues, 1)
+	require.Equal(t, "Person A — occupation has 2 conflicting values: driver, miller", issues[0].Message)
+}
+
+func TestAnalyzeConflicts_TemporalPropertiesExample(t *testing.T) {
+	archive, err := loadArchiveForAnalyze("../docs/examples/temporal-properties")
+	require.NoError(t, err)
+
+	require.Empty(t, analyzeConflicts(archive))
+}
+
+func TestAnalyzeConflicts_TemporalPropertiesExampleSingleFile(t *testing.T) {
+	archive, err := loadArchiveForAnalyze("../docs/examples/temporal-properties/archive.glx")
+	require.NoError(t, err)
+
+	require.Empty(t, analyzeConflicts(archive))
+}
+
+// Non-temporal properties must keep the date-blind comparison: two different
+// values conflict no matter how far apart their dates are. Only a property
+// whose definition says temporal: true gets the overlap check.
+func TestAnalyzeConflicts_NonTemporalIgnoresDates(t *testing.T) {
+	temporalFalse := false
+	tests := []struct {
+		name       string
+		definition *glxlib.PropertyDefinition
+	}{
+		{"undefined property", nil},
+		{"temporal false", &glxlib.PropertyDefinition{Temporal: &temporalFalse}},
+		{"temporal unset", &glxlib.PropertyDefinition{}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			archive := temporalArchive(map[string]*glxlib.Assertion{
+				"a-1": temporalAssertion("birthplace", "place-leeds", "1851"),
+				"a-2": temporalAssertion("birthplace", "place-london", "1901"),
+			})
+			if tt.definition != nil {
+				archive.PersonProperties["birthplace"] = tt.definition
+			}
+
+			issues := analyzeConflicts(archive)
+			require.Len(t, issues, 1)
+			require.Equal(t, "birthplace", issues[0].Property)
+			require.Contains(t, issues[0].Message, "2 conflicting values")
+		})
+	}
+}
+
 // --- Duplicate Sibling Names ---
 
 func TestAnalyzeConsistency_DuplicateSiblingNames(t *testing.T) {

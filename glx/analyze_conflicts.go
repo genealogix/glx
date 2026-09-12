@@ -16,10 +16,12 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
+	"github.com/genealogix/glx/go-glx/glxdate"
 )
 
 // analyzeConflicts detects assertions with conflicting values for the same
@@ -30,10 +32,12 @@ type conflictPropKey struct {
 	property string
 }
 
-// conflictValueInfo holds a value and its confidence level.
+// conflictValueInfo holds a value, its confidence level and, for a temporal
+// property, the assertion's date.
 type conflictValueInfo struct {
 	value      string
 	confidence string
+	date       string
 }
 
 func analyzeConflicts(archive *glxlib.GLXFile) []AnalysisIssue {
@@ -50,11 +54,13 @@ func analyzeConflicts(archive *glxlib.GLXFile) []AnalysisIssue {
 			continue
 		}
 
+		info := conflictValueInfo{value: a.Value, confidence: a.Confidence}
+		if isTemporalProperty(archive, a.Property) {
+			info.date = a.Date.String()
+		}
+
 		key := conflictPropKey{personID: personID, property: a.Property}
-		propValues[key] = append(propValues[key], conflictValueInfo{
-			value:      a.Value,
-			confidence: a.Confidence,
-		})
+		propValues[key] = append(propValues[key], info)
 	}
 
 	var issues []AnalysisIssue
@@ -75,6 +81,9 @@ func analyzeConflicts(archive *glxlib.GLXFile) []AnalysisIssue {
 	// Find properties with multiple distinct values
 	for _, key := range keys {
 		values := propValues[key]
+		if isTemporalProperty(archive, key.property) {
+			values = overlappingValues(values)
+		}
 		distinct := distinctValues(values)
 		if len(distinct) < 2 {
 			continue
@@ -103,6 +112,78 @@ func analyzeConflicts(archive *glxlib.GLXFile) []AnalysisIssue {
 	sortIssues(issues)
 
 	return issues
+}
+
+func isTemporalProperty(archive *glxlib.GLXFile, property string) bool {
+	def, ok := archive.PersonProperties[property]
+
+	return ok && def != nil && def.Temporal != nil && *def.Temporal
+}
+
+// overlappingValues keeps the entries whose date overlaps the date of an
+// entry with a different value. An entry without a year overlaps every other.
+func overlappingValues(values []conflictValueInfo) []conflictValueInfo {
+	var out []conflictValueInfo
+	for i, v := range values {
+		lo, hi := spanOf(v.date)
+		for j, o := range values {
+			olo, ohi := spanOf(o.date)
+			if i != j && v.value != o.value && lo <= ohi && olo <= hi {
+				out = append(out, v)
+
+				break
+			}
+		}
+	}
+
+	return out
+}
+
+// spanOf returns the first and last day key a date covers: the year for
+// "1851", the month for "1851-03", the range for BET and FROM…TO, an open
+// end for FROM or TO alone, all time for a date without a year. A qualifier
+// does not widen it.
+func spanOf(date string) (lo, hi int) {
+	d, _ := glxdate.Parse(date) //nolint:errcheck // best-effort components are defined even for non-canonical dates
+	lo, hi = math.MinInt, math.MaxInt
+	if d.Year() == 0 {
+		return lo, hi
+	}
+	if !d.IsRange() {
+		return pointSpan(d)
+	}
+	if !d.IsOpenStart() {
+		lo, _ = pointSpan(d.Start())
+	}
+	if !d.IsOpenEnded() {
+		_, hi = pointSpan(d.End())
+	}
+
+	return lo, hi
+}
+
+// lastDayKey closes a month or year span; no month has more days.
+const lastDayKey = 31
+
+// pointSpan returns the first and last day key a point date covers.
+func pointSpan(d glxdate.Date) (lo, hi int) {
+	y := d.Year()
+	month, hasMonth := d.Month()
+	day, hasDay := d.Day()
+	switch {
+	case hasDay:
+		return dayKey(y, month, day), dayKey(y, month, day)
+	case hasMonth:
+		return dayKey(y, month, 1), dayKey(y, month, lastDayKey)
+	default:
+		return dayKey(y, 1, 1), dayKey(y, 12, lastDayKey)
+	}
+}
+
+// dayKey orders dates as integers: year, then month, then day. A BCE year
+// is negative.
+func dayKey(year, month, day int) int {
+	return year*10000 + month*100 + day
 }
 
 // resolveConflictValue converts entity IDs to display names for place-reference
