@@ -437,11 +437,18 @@ func isSingleFileIssue(msg string) bool {
 // countGLXFiles counts .glx files in a directory without reading them.
 func countGLXFiles(root string) int {
 	var count int
-	_ = filepath.WalkDir(root, func(_ string, d fs.DirEntry, err error) error {
+	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if !d.IsDir() && isGLXFile(d.Name()) {
+		if d.IsDir() {
+			if path != root && isDotDir(d.Name()) {
+				return filepath.SkipDir
+			}
+
+			return nil
+		}
+		if isGLXFile(d.Name()) {
 			count++
 		}
 
