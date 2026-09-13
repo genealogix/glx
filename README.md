@@ -129,7 +129,7 @@ sources:
 - Entity IDs are map keys: `person-john-smith` or `person-a1b2c3d4`
 - IDs can be descriptive or random (1–64 alphanumeric/hyphens)
 - Files can contain any combination of entity types
-- Parser collates all entities across all .glx files in repository
+- Parser collates all entities across all .glx files in repository, except under dot-prefixed directories (`.git`, `.glx`, editor scratch dirs), which are not archive content
 - Controlled vocabularies define valid types in `vocabularies/` directory
 
 ## Documentation

@@ -118,6 +118,11 @@ func readFileWithin(baseDir, path string) ([]byte, error) {
 // is passed to visit as err (with nil data); visit decides whether it aborts
 // the walk. On Windows, Git symlink placeholders are resolved within the same
 // root before visit is called.
+//
+// Dot-prefixed directories and files are not archive content and are skipped
+// (see isDotName). The skip governs reads as well as traversal: a symlink at a
+// visible path whose target resolves inside a dot directory is skipped too,
+// because following it would read back the very entities the skip excludes.
 func walkGLXFiles(rootDir string, visit func(relPath string, data []byte, err error) error) error {
 	root, err := os.OpenRoot(rootDir)
 	if err != nil {
@@ -125,18 +130,30 @@ func walkGLXFiles(rootDir string, visit func(relPath string, data []byte, err er
 	}
 	defer func() { _ = root.Close() }()
 
+	// Resolved root for symlink-target containment checks. If the root itself
+	// cannot be resolved, fall back to the literal path: os.Root still
+	// enforces containment at read time, so the only thing lost is the
+	// dot-directory check on symlink targets.
+	resolvedRoot, err := filepath.EvalSymlinks(rootDir)
+	if err != nil {
+		resolvedRoot = rootDir
+	}
+
 	return fs.WalkDir(root.FS(), ".", func(entryPath string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
 		if d.IsDir() {
-			if entryPath != "." && isDotDir(d.Name()) {
+			if entryPath != "." && isDotName(d.Name()) {
 				return fs.SkipDir
 			}
 
 			return nil
 		}
-		if !isGLXFile(d.Name()) {
+		if isDotName(d.Name()) || !isGLXFile(d.Name()) {
+			return nil
+		}
+		if d.Type()&fs.ModeSymlink != 0 && symlinkTargetIsExcluded(resolvedRoot, entryPath) {
 			return nil
 		}
 
@@ -149,4 +166,26 @@ func walkGLXFiles(rootDir string, visit func(relPath string, data []byte, err er
 
 		return visit(filepath.FromSlash(entryPath), data, readErr)
 	})
+}
+
+// symlinkTargetIsExcluded reports whether the symlink at entryRel (slash
+// separated, relative to resolvedRoot) resolves to a path inside the archive
+// that lives under a dot-prefixed directory.
+//
+// EvalSymlinks follows the whole chain, so a link pointing at another link
+// pointing into .git is caught too. Two cases deliberately return false: an
+// unresolvable link (let the subsequent read report the real error) and a
+// target outside the root (os.Root refuses that read already, and reporting it
+// as an error rather than silently skipping it is the established behavior).
+func symlinkTargetIsExcluded(resolvedRoot, entryRel string) bool {
+	resolved, err := filepath.EvalSymlinks(filepath.Join(resolvedRoot, filepath.FromSlash(entryRel)))
+	if err != nil {
+		return false
+	}
+	rel, ok := relWithin(resolved, resolvedRoot)
+	if !ok {
+		return false
+	}
+
+	return pathHasDotComponent(rel)
 }

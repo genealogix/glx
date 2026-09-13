@@ -72,7 +72,16 @@ const (
 	//      the GLXVersion gate is no help for locally built "dev" binaries,
 	//      so v1 caches are rebuilt. Duplicate warnings are also stored
 	//      terminal-sanitized from v2 on.
-	cacheFormatVersion uint32 = 2
+	//   3: dot-prefixed directories and files are no longer archive content
+	//      (#1212). A v2 cache holds the entities the old loader read out of
+	//      dot-prefixed worktree copies, along with the duplicate-ID warnings
+	//      they produced, and computeFSFingerprint is unchanged for the files
+	//      both loaders agree on — so the fingerprint of a v2 cache still
+	//      matches and nothing else would force a rebuild. Locally built
+	//      binaries all report GLXVersion "dev", so that gate is no help
+	//      either. Without this bump a stale v2 cache is served as fresh and
+	//      replays exactly the duplicates this release removes.
+	cacheFormatVersion uint32 = 3
 )
 
 // cacheMagic is a fixed prefix written before the gob stream so a foreign or
@@ -195,8 +204,18 @@ func cachePath(root string) string { return filepath.Join(root, cacheDirName, ca
 // computeFSFingerprint walks every .glx entity file under root and returns a
 // SHA-256 hash of the sorted (relative-path, size, mtime) tuples. It performs
 // stat calls only — no file reads — so it stays cheap even on large archives.
-// The .glx (cache) and .git directories are skipped: neither holds entity
-// files, and skipping them keeps the fingerprint independent of cache writes.
+//
+// The walk skips exactly what the loader skips: dot-prefixed directories and
+// files (see isDotName), which covers the .glx cache directory and .git. The
+// two sets must match. When the fingerprint covered more than the loader did,
+// an edit inside a dot-prefixed worktree copy invalidated a cache whose contents
+// could not have changed, and an unreadable dot directory made the cache
+// permanently un-buildable while the loader succeeded.
+//
+// root is resolved with EvalSymlinks first. filepath.WalkDir lstats its root,
+// so a symlinked archive path would otherwise walk zero files and hash the
+// empty string — a fingerprint that matches forever, leaving the cache "fresh"
+// no matter how the archive changes.
 func computeFSFingerprint(root string) (string, error) {
 	type fileMeta struct {
 		rel  string
@@ -205,18 +224,24 @@ func computeFSFingerprint(root string) (string, error) {
 	}
 	var metas []fileMeta
 
+	resolvedRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return "", fmt.Errorf("resolving archive root: %w", err)
+	}
+	root = resolvedRoot
+
 	walkErr := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if d.IsDir() {
-			if path != root && (d.Name() == cacheDirName || d.Name() == ".git") {
+			if path != root && isDotName(d.Name()) {
 				return filepath.SkipDir
 			}
 
 			return nil
 		}
-		if !isGLXFile(d.Name()) {
+		if isDotName(d.Name()) || !isGLXFile(d.Name()) {
 			return nil
 		}
 		info, err := d.Info()

@@ -411,11 +411,43 @@ See [Core Concepts](2-core-concepts.md#archive-owned-vocabularies) for details o
 ## Important Notes
 
 - **Folder names are conventions**, not requirements
-- **Parser must scan ALL** `.glx` and `.yaml` files in the archive
+- **Parser must scan ALL** `.glx` and `.yaml` files in the archive, except the entries excluded by [Dot-Prefixed Entries](#dot-prefixed-entries)
 - **Duplicate entity IDs** across files is an error
 - **At least one recognized top-level key is required** in every file — an entity type plural, a vocabulary collection, or `metadata`
 - **Cross-references are validated** at archive level
 - **Vocabularies define valid types** - entities must reference types from vocabulary files
+
+### Dot-Prefixed Entries
+
+Directories and files whose name begins with `.` are not archive content. A
+conforming parser:
+
+- MUST NOT descend into a dot-prefixed directory
+- MUST NOT load a dot-prefixed file, whatever its extension
+- MUST NOT follow a symbolic link whose target resolves inside a dot-prefixed
+  directory, even when the link itself sits at a normal path
+
+An archive is normally a Git repository, and the tooling around a repository
+keeps whole copies of the archive in dot-prefixed directories: `.git` objects
+and worktrees, the `.glx` cache directory, editor and sync-client scratch
+directories. A parser that reads those copies sees a duplicate ID for every
+entity in the archive and rejects a repository that is in fact valid.
+Dot-prefixed files are the same problem one level down: `._person.glx`
+AppleDouble sidecars and `.#person.glx` editor lock links are not GLX documents
+and fail the load of the archive that contains them.
+
+The exclusion applies to entries **found within** an archive, never to the
+archive root itself. A directory whose own name begins with `.` is a valid
+archive root, and a parser pointed at one scans it normally.
+
+Two consequences for archive authors and tools:
+
+- An entity that is meant to be part of the archive MUST live at a path with no
+  dot-prefixed component. Moving entity files under a dot-prefixed directory
+  removes them from the archive and leaves any reference to them dangling.
+- A writer that rewrites an archive MUST preserve the dot-prefixed entries it
+  finds. Because a parser never reads them, a writer that re-emits only what it
+  read would silently destroy them.
 
 ## Git Workflow Integration
 

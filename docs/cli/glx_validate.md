@@ -24,8 +24,13 @@ Validation behavior:
 - Directory: Validates all .glx files with full cross-reference validation
 - No arguments: Validates current directory with full cross-reference validation
 
+Dot-prefixed directories and files (.git, .glx, .worktrees, ._name.glx) are not
+archive content and are skipped, including symlinks that point into them. An
+archive whose own root directory is dot-named is still validated normally.
+
 Use --report to generate a confidence summary showing assertion coverage
-and highlighting unsupported claims.
+and highlighting unsupported claims. The archive is validated first, so
+--report fails on an archive that plain validate rejects.
 
 ```
 glx validate [paths...] [flags]
