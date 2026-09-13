@@ -4,7 +4,7 @@ The official command-line tool for working with [GENEALOGIX (GLX)](../../README.
 
 The per-command pages linked below are auto-generated from the live Cobra command tree by `make docs-cli`. To change a command's documentation, edit its `Use`/`Short`/`Long`/`Example` strings in [`glx/cli_commands.go`](https://github.com/genealogix/glx/blob/main/glx/cli_commands.go) (or its `*_runner.go` file) and re-run the target. CI fails on any drift between the source command tree and the committed pages.
 
-For installation instructions, see [`glx/README.md`](https://github.com/genealogix/glx/blob/main/glx/README.md). For a guided walkthrough, see the [Hands-On CLI Guide](../guides/hands-on-cli-guide.md).
+For installation instructions, see [`glx/README.md`](../../glx/README.md). For a guided walkthrough, see the [Hands-On CLI Guide](../guides/hands-on-cli-guide.md).
 
 ## Commands
 

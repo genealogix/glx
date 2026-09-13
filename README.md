@@ -18,7 +18,8 @@ Download the latest pre-compiled binary for your operating system from the [GitH
 Developers can install from source:
 
 ```bash
-go install github.com/genealogix/glx/glx@latest
+# Pin the release tag: GLX releases are prereleases, which @latest skips
+go install github.com/genealogix/glx/glx@v0.0.0-beta.12
 ```
 
 ## Quick Start
@@ -53,7 +54,7 @@ For a side-by-side look at the GEDCOM-vs-GLX wire formats and the assertion mode
 
 ## CLI Commands
 
-The `glx` CLI groups its commands into archive management, import/export, exploration, data entry, analysis, and shell completion. See the [full CLI reference](https://genealogix.io/cli) for flags, examples, and per-command details.
+The `glx` CLI groups its commands into archive management, import/export, exploration, data entry, analysis, and shell completion. See the [full CLI reference](https://genealogix.io/cli/commands) for flags, examples, and per-command details.
 
 ### Archive Management
 
@@ -128,14 +129,14 @@ sources:
 - Entity IDs are map keys: `person-john-smith` or `person-a1b2c3d4`
 - IDs can be descriptive or random (1–64 alphanumeric/hyphens)
 - Files can contain any combination of entity types
-- Parser collates all entities across all .glx files in repository
+- Parser collates all entities across all .glx files in repository, except under dot-prefixed directories (`.git`, `.glx`, editor scratch dirs), which are not archive content
 - Controlled vocabularies define valid types in `vocabularies/` directory
 
 ## Documentation
 
 - [🚀 Quickstart](docs/quickstart.md) — 5-minute getting started
 - [💡 Examples](docs/examples/README.md) — runnable sample archives
-- [🛠 CLI Reference](https://genealogix.io/cli) — every command and flag
+- [🛠 CLI Reference](https://genealogix.io/cli/commands) — every command and flag
 - [📐 Best Practices](docs/guides/best-practices.md) — recommended workflows
 - [🔁 Migration from GEDCOM](docs/guides/migration-from-gedcom.md) — manual conversion guidance
 - [🔀 GLX-aware Git merge driver](docs/merge-driver.md) — genealogy-aware conflict resolution for .glx files
@@ -146,7 +147,7 @@ sources:
 
 ## Specification Status
 
-This specification follows [Semantic Versioning](https://semver.org/). Current release: **v0.0.0-beta.10** (Beta).
+This specification follows [Semantic Versioning](https://semver.org/). Current release: **v0.0.0-beta.12** (Beta).
 
 - **Draft** — under active development, may change significantly
 - **Release Candidate** — stable, final review before release

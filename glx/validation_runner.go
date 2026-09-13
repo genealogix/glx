@@ -251,9 +251,18 @@ func validatePaths(streams *IOStreams, args []string) error {
 	// Directory: single-pass load with schema validation + cross-reference checks.
 	// LoadArchiveWithOptions(true) reads each file once, runs JSON schema validation,
 	// then deserializes into Go structs — avoiding the previous double file-read.
-	fileCount := countGLXFiles(archiveRoot)
+	// Collect once and take the file count off the map: the archive's file set
+	// is whatever the loader read, by definition.
+	files, err := collectGLXFilesFromDir(archiveRoot)
+	if err != nil {
+		formatted := formatValidationError(err, defaultShowFirstErrors)
+		streams.Errorf("Error loading archive: %v\n", formatted)
 
-	archive, duplicates, err := LoadArchiveWithOptions(archiveRoot, true)
+		return ErrStructuralValidationFailed
+	}
+	fileCount := len(files)
+
+	archive, duplicates, err := loadArchiveFromFiles(archiveRoot, files, true)
 	if err != nil {
 		formatted := formatValidationError(err, defaultShowFirstErrors)
 		streams.Errorf("Error loading archive: %v\n", formatted)
@@ -361,6 +370,30 @@ func validateSingleFilePaths(paths []string) (int, []string) {
 	return fileCount, allErrors
 }
 
+// validateAndReport runs the full validation pass and then prints the
+// confidence report for the same path.
+//
+// The --report flag used to replace validation rather than follow it, so
+// `glx validate . --report` exited 0 on archives that plain `glx validate`
+// rejects: duplicate entity IDs, missing required properties, broken
+// references. A CI step written with --report was permanently green. The
+// report is a summary of a valid archive, so validation has to gate it.
+func validateAndReport(streams *IOStreams, args []string) error {
+	if len(args) > 1 {
+		return errReportTooManyArgs
+	}
+	path := "."
+	if len(args) == 1 {
+		path = args[0]
+	}
+
+	if err := validatePaths(streams, args); err != nil {
+		return err
+	}
+
+	return confidenceReport(path)
+}
+
 // validateSingleFileSemantics runs semantic validation (deprecated properties,
 // date formats, property types) on single files. Cross-reference errors are
 // filtered out since we don't have the full archive context.
@@ -374,7 +407,24 @@ func validateSingleFileSemantics(paths []string) ([]string, []string) {
 			if walkErr != nil {
 				return walkErr
 			}
-			if d.IsDir() || !isGLXFile(d.Name()) {
+			// Skip the same entries the archive loader skips. Without this,
+			// the two passes of a single validate invocation disagree about
+			// which files are the archive: one reports an unparseable file
+			// under a dot directory as an error the other never saw, and every
+			// warning from a worktree copy is emitted twice.
+			if d.IsDir() {
+				if filePath != path && isDotName(d.Name()) {
+					return filepath.SkipDir
+				}
+
+				return nil
+			}
+			// A dot-prefixed file named explicitly on the command line is
+			// still validated; only ones discovered by the walk are skipped.
+			if filePath != path && isDotName(d.Name()) {
+				return nil
+			}
+			if !isGLXFile(d.Name()) {
 				return nil
 			}
 
@@ -434,29 +484,6 @@ func isSingleFileIssue(msg string) bool {
 	return true
 }
 
-// countGLXFiles counts .glx files in a directory without reading them.
-func countGLXFiles(root string) int {
-	var count int
-	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			if path != root && isDotDir(d.Name()) {
-				return filepath.SkipDir
-			}
-
-			return nil
-		}
-		if isGLXFile(d.Name()) {
-			count++
-		}
-
-		return nil
-	})
-
-	return count
-}
 
 // validateMediaFileExistence checks that media entities with local relative URIs
 // point to files that actually exist on disk. Returns warnings for missing files.
@@ -464,6 +491,16 @@ func validateMediaFileExistence(archive *glxlib.GLXFile, archiveRoot string) []s
 	var warnings []string
 	for mediaID, media := range archive.Media {
 		if !isLocalMediaURI(media.URI) {
+			continue
+		}
+		// A URI with a dot-prefixed component points outside archive content
+		// (see isDotName), so the file it names is not carried by the archive
+		// even when it happens to exist on this machine right now.
+		if pathHasDotComponent(media.URI) {
+			warnings = append(warnings, fmt.Sprintf(
+				"media[%s]: referenced file is under a dot-prefixed path and is not archive content: %s",
+				mediaID, media.URI))
+
 			continue
 		}
 		filePath := filepath.Join(archiveRoot, media.URI)

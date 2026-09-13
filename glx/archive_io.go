@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -118,6 +119,15 @@ func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
 		return fmt.Errorf("preserving non-archive files: %w", err)
 	}
 
+	// Entries the loader skips are never re-emitted by the serializer, so the
+	// fresh tmpDir cannot contain them. Carry them across the swap for the
+	// same reason foreign top-level entries are carried across: otherwise the
+	// swap destroys them silently.
+	if err := preserveSkippedDotEntries(backupDir, destPath); err != nil {
+		// Leave backupDir in place so the user can recover. Do not mark success.
+		return fmt.Errorf("preserving skipped entries: %w", err)
+	}
+
 	// The serializer writes Media entity YAML under media/ but never touches
 	// media/files/, so the fresh tmpDir has no binaries. Move the dest's
 	// pre-existing media/files/ across the swap; without this every safe-write
@@ -171,6 +181,14 @@ func removeStaleBackup(backupDir string) error {
 	default:
 		return fmt.Errorf("inspecting %s: %w", mediaFilesDir, err)
 	}
+	// A dot-prefixed entry nested inside a managed directory (persons/.drafts/)
+	// is skipped by the loader, so it was never re-emitted into the new
+	// archive. Like media/files/, it is unrecovered data — refuse to delete it.
+	if nested, err := firstNestedDotEntry(backupDir); err != nil {
+		return err
+	} else if nested != "" {
+		return fmt.Errorf("%w: %s contains %q", ErrStaleBackupForeignFile, backupDir, nested)
+	}
 	if err := os.RemoveAll(backupDir); err != nil {
 		return fmt.Errorf("removing stale backup %s: %w", backupDir, err)
 	}
@@ -205,6 +223,89 @@ func restoreForeignEntries(backupDir, destPath string) error {
 	}
 
 	return nil
+}
+
+// firstNestedDotEntry returns the path, relative to backupDir, of the first
+// dot-prefixed entry in the tree, or "" when there is none. Its caller has
+// already rejected top-level dot entries (no dot name is in
+// archiveManagedTopLevel), so what this reports in practice is an entry nested
+// inside a managed directory.
+func firstNestedDotEntry(backupDir string) (string, error) {
+	var found string
+	err := filepath.WalkDir(backupDir, func(srcPath string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if srcPath == backupDir || !isDotName(d.Name()) {
+			return nil
+		}
+		rel, err := filepath.Rel(backupDir, srcPath)
+		if err != nil {
+			return fmt.Errorf("resolving %s: %w", srcPath, err)
+		}
+		found = filepath.ToSlash(rel)
+
+		return filepath.SkipAll
+	})
+	if err != nil {
+		return "", fmt.Errorf("inspecting stale backup %s: %w", backupDir, err)
+	}
+
+	return found, nil
+}
+
+// preserveSkippedDotEntries carries dot-prefixed entries nested *inside* the
+// managed entity directories from the backup into the freshly written archive.
+//
+// restoreForeignEntries covers the top level, where a dot-prefixed name is by
+// definition not in archiveManagedTopLevel. It does not reach persons/.drafts/
+// or media/.cache/: "persons" and "media" are managed, so the whole subtree —
+// dot directory included — is dropped when the backup is removed. Since the
+// loader skips those entries (see isDotName) the serializer never re-emits
+// them, which made the swap a silent delete with exit 0 and no .bak left
+// behind.
+//
+// Entries are moved, not copied: backupDir and destPath share a parent, so
+// each rename is atomic and the data exists under a predictable name at every
+// intermediate state. An entry whose destination already exists is left in the
+// backup rather than overwritten — the fresh write wins, and the backup is
+// then retained by the caller's error path for the user to inspect.
+func preserveSkippedDotEntries(backupDir, destPath string) error {
+	return filepath.WalkDir(backupDir, func(srcPath string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if srcPath == backupDir || !isDotName(d.Name()) {
+			return nil
+		}
+
+		rel, err := filepath.Rel(backupDir, srcPath)
+		if err != nil {
+			return fmt.Errorf("resolving %s: %w", srcPath, err)
+		}
+		dst := filepath.Join(destPath, rel)
+
+		if _, err := os.Lstat(dst); err == nil {
+			if d.IsDir() {
+				return fs.SkipDir
+			}
+
+			return nil
+		}
+		if err := os.MkdirAll(filepath.Dir(dst), dirPermissions); err != nil {
+			return fmt.Errorf("creating %s: %w", filepath.Dir(dst), err)
+		}
+		if err := robustRename(srcPath, dst); err != nil {
+			return fmt.Errorf("restoring %s: %w", rel, err)
+		}
+		if d.IsDir() {
+			// The subtree moved with the directory; do not descend into a
+			// path that no longer exists.
+			return fs.SkipDir
+		}
+
+		return nil
+	})
 }
 
 // preserveMediaBinaries carries media/files/ from the backup into the freshly
@@ -257,6 +358,17 @@ func LoadArchiveWithOptions(rootPath string, schemaValidate bool) (*glxlib.GLXFi
 		return nil, nil, err
 	}
 
+	return loadArchiveFromFiles(rootPath, files, schemaValidate)
+}
+
+// loadArchiveFromFiles builds an archive from an already-collected file map
+// (relative path -> contents, as returned by collectGLXFilesFromDir). It is
+// the half of LoadArchiveWithOptions that does no I/O of its own, split out so
+// a caller that needs to know how many files the archive contains can read it
+// off the map instead of walking the tree a second time with its own copy of
+// the "what is archive content" rules — two walks that had already drifted
+// apart on a symlinked archive root.
+func loadArchiveFromFiles(rootPath string, files map[string][]byte, schemaValidate bool) (*glxlib.GLXFile, []string, error) {
 	if schemaValidate {
 		var allErrors []string
 		for relPath, data := range files {

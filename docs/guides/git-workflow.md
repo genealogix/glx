@@ -221,7 +221,7 @@ jobs:
           # published release is a beta, and betas are flagged as GitHub
           # prereleases, which /releases/latest excludes.
           mkdir -p .bin
-          base="https://github.com/genealogix/glx/releases/download/v0.0.0-beta.11"
+          base="https://github.com/genealogix/glx/releases/download/v0.0.0-beta.12"
           curl -fsSL -o glx_Linux_x86_64.tar.gz "$base/glx_Linux_x86_64.tar.gz"
           curl -fsSL -o checksums.txt "$base/checksums.txt"
           grep ' glx_Linux_x86_64.tar.gz$' checksums.txt | sha256sum -c -
