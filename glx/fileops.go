@@ -60,6 +60,11 @@ func isGLXFile(filename string) bool {
 	return filepath.Ext(filename) == FileExtGLX
 }
 
+// isDotDir reports whether a directory name starts with ".".
+func isDotDir(name string) bool {
+	return strings.HasPrefix(name, ".")
+}
+
 // isGEDZIPPath reports whether the given file path has the .gdz extension.
 // Match is case-insensitive because user-supplied filenames vary by platform.
 func isGEDZIPPath(p string) bool {
