@@ -44,6 +44,18 @@ const maxSleep = 500 * time.Millisecond //nolint:mnd // cap per-retry sleep
 //
 // Modeled after Go's cmd/internal/robustio (used by cmd/go, gopls, golangci-lint).
 func robustRename(oldpath, newpath string) error {
+	return retryRename(func() error { return os.Rename(oldpath, newpath) })
+}
+
+// robustRenameIn is robustRename scoped to root: both paths are resolved
+// inside it, so no symlinked path component can redirect the rename outside.
+func robustRenameIn(root *os.Root, oldname, newname string) error {
+	return retryRename(func() error { return root.Rename(oldname, newname) })
+}
+
+// retryRename runs rename, retrying transient Windows lock failures with the
+// backoff described on robustRename.
+func retryRename(rename func() error) error {
 	var (
 		lastErr   error
 		start     time.Time
@@ -51,7 +63,7 @@ func robustRename(oldpath, newpath string) error {
 	)
 
 	for {
-		err := os.Rename(oldpath, newpath)
+		err := rename()
 		if err == nil || !isEphemeralError(err) {
 			return err
 		}

@@ -9,7 +9,7 @@ The go-glx package must NEVER perform filesystem I/O:
 - NO `os.ReadFile`, `os.WriteFile`, `os.Open`, `os.Create`
 - NO `os.MkdirAll`, `os.Stat`, `os.ReadDir`
 - NO `filepath.Join` with file operations
-- YES to `io.Reader`, `io.Writer`, `[]byte` parameters
+- YES to `io.Reader`, `io.Writer`, `io/fs.FS` (`fs.FS`), `[]byte` parameters
 
 ```go
 // WRONG — library doing I/O

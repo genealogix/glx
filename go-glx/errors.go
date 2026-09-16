@@ -82,3 +82,13 @@ func (e *StructuredValidationError) Unwrap() error {
 // ErrEntityAlreadyExists is returned by RenameEntity when the target ID is
 // already defined by an entity in the archive.
 var ErrEntityAlreadyExists = errors.New("entity already exists in archive")
+
+// GEDZIP import errors
+var (
+	ErrGEDZIPNilBundle            = errors.New("bundle filesystem is nil")
+	ErrGEDZIPMissingGedcom        = errors.New("gedzip archive is missing a GEDCOM file")
+	ErrGEDZIPMultipleGedcom       = errors.New("gedzip archive contains multiple GEDCOM files")
+	ErrGEDZIPInvalidEntry         = errors.New("gedzip archive contains invalid entry name")
+	ErrGEDZIPDuplicateEntry       = errors.New("gedzip archive contains duplicate entry")
+	ErrGEDZIPUnsupportedAlgorithm = errors.New("gedzip archive uses unsupported compression algorithm")
+)

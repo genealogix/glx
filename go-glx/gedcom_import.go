@@ -77,6 +77,10 @@ type MediaFileSource struct {
 	// normalized to forward slashes ('/'). Only set when SourceType is MediaSourceFile.
 	RelativePath string
 
+	// MemberPath is the resolved path of the media file within a GEDZIP bundle,
+	// normalized to forward slashes. Only set when importing from a GEDZIP bundle.
+	MemberPath string
+
 	// BlobData contains the raw BLOB text from GEDCOM 5.5.1.
 	// Only set when SourceType is MediaSourceBlob.
 	BlobData string
