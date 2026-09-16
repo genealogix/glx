@@ -25,6 +25,7 @@ import (
 	"slices"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 )
 
 const (
@@ -207,7 +208,16 @@ func collectGenericFS(bundle fs.FS) ([]string, map[string]struct{}, map[string]s
 		}
 		walkSeen[key] = struct{}{}
 
-		if d.Type().IsRegular() {
+		// DirEntry.Type carries only the type bits, and an FS implementation
+		// that leaves them zero would make a symlink or device node look like a
+		// regular file — enough to have it inventoried as gedcom.ged and then
+		// followed by bundle.Open (outside the root, for an os.DirFS). Stat the
+		// entry instead of trusting the type bits.
+		info, infoErr := d.Info()
+		if infoErr != nil {
+			return infoErr
+		}
+		if info.Mode().IsRegular() {
 			regularFiles = append(regularFiles, p)
 			regularFilesSet[p] = struct{}{}
 			caseMap[foldKey(p)] = p
@@ -230,6 +240,12 @@ func validateEntryName(name string) error {
 	}
 	if strings.ContainsRune(name, 0) {
 		return fmt.Errorf("%w: NUL byte in entry name %q", ErrGEDZIPInvalidEntry, name)
+	}
+	// fs.ValidPath requires UTF-8, so a non-UTF-8 name can never be opened
+	// through the bundle. Classify it here rather than letting discovery pick
+	// it and fail later with a generic open error.
+	if !utf8.ValidString(name) {
+		return fmt.Errorf("%w: entry name is not valid UTF-8: %q", ErrGEDZIPInvalidEntry, name)
 	}
 	if strings.Contains(name, `\`) {
 		return fmt.Errorf("%w: backslash in entry name %q", ErrGEDZIPInvalidEntry, name)
@@ -299,6 +315,14 @@ func discoverRootGEDCOM(regularFiles []string, regularFilesSet map[string]struct
 func resolveBundleMediaFiles(gedcomPath string, result *ImportResult, filesSet map[string]struct{}, caseMap map[string]string) {
 	gedDir := path.Dir(gedcomPath)
 
+	// A GEDCOM 7.0 FILE payload is a URI reference, so percent-escapes are
+	// meaningful and must be decoded to find the member. A 5.5.1 payload is a
+	// plain path where '%' is literal: decoding there would bind a *different*
+	// member (a ref to "photo%20x.jpg" silently resolving to "photo x.jpg")
+	// instead of correctly reporting the reference unresolved. Same version
+	// distinction as originalFilenameFor.
+	allowPercentDecode := result.Version == GEDCOMVersion70
+
 	for i := range result.MediaFiles {
 		mf := &result.MediaFiles[i]
 		if mf.SourceType != MediaSourceFile {
@@ -318,7 +342,7 @@ func resolveBundleMediaFiles(gedcomPath string, result *ImportResult, filesSet m
 			continue
 		}
 
-		resolved, ok := resolveMember(gedDir, relPath, filesSet, caseMap)
+		resolved, ok := resolveMember(gedDir, relPath, filesSet, caseMap, allowPercentDecode)
 		if ok {
 			mf.MemberPath = resolved
 		} else {
@@ -352,7 +376,11 @@ func isContained(gedDir, target string) bool {
 // 2. GEDCOM 7.0 percent-decoding exact match (decoding ONLY relPath, preserving gedDir)
 // 3. Case-insensitive match on target
 // 4. Case-insensitive percent-decoded match
-func resolveMember(gedDir, relPath string, filesSet map[string]struct{}, caseMap map[string]string) (string, bool) {
+//
+// The percent-decoding candidates (2 and 4) are attempted only when
+// allowPercentDecode is set, i.e. for GEDCOM 7.0, whose FILE payloads are URI
+// references.
+func resolveMember(gedDir, relPath string, filesSet map[string]struct{}, caseMap map[string]string, allowPercentDecode bool) (string, bool) {
 	// Candidate 1: exact target
 	target := joinBundlePath(gedDir, relPath)
 	if isContained(gedDir, target) {
@@ -364,7 +392,7 @@ func resolveMember(gedDir, relPath string, filesSet map[string]struct{}, caseMap
 	// Candidate 2: percent-decoded relative reference (decode ONLY relPath, preserving gedDir)
 	decodedRel, err := url.PathUnescape(relPath)
 	var decodedTarget string
-	hasDecoded := err == nil && decodedRel != relPath && !hasDotDotSegment(decodedRel) && !strings.HasPrefix(decodedRel, "/")
+	hasDecoded := allowPercentDecode && err == nil && decodedRel != relPath && !hasDotDotSegment(decodedRel) && !strings.HasPrefix(decodedRel, "/")
 	if hasDecoded {
 		decodedTarget = joinBundlePath(gedDir, decodedRel)
 		if isContained(gedDir, decodedTarget) {

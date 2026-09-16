@@ -418,3 +418,70 @@ func TestImportGEDZIP_OfficialMaximal70(t *testing.T) {
 	require.NotNil(t, glxFile.ImportMetadata)
 	require.Equal(t, "7.0", glxFile.ImportMetadata.GEDCOMVersion)
 }
+
+func TestImportGEDZIP_RejectsInvalidEntry_NonUTF8Name(t *testing.T) {
+	// fs.ValidPath requires UTF-8, so this member could never be opened through
+	// the bundle. It must be classified as an invalid entry during inventory
+	// rather than selected by discovery and failed later with a generic open
+	// error.
+	zr := buildMemZip(t, map[string][]byte{
+		"gedcom.ged":   []byte(minimalGEDCOM7ForGEDZIP),
+		"tree\xff.ged": []byte(minimalGEDCOM7ForGEDZIP),
+	})
+
+	_, _, err := ImportGEDZIP(zr, nil)
+	require.ErrorIs(t, err, ErrGEDZIPInvalidEntry)
+}
+
+const gedcom551WithPercentMedia = "0 HEAD\n" +
+	"1 GEDC\n" +
+	"2 VERS 5.5.1\n" +
+	"1 CHAR UTF-8\n" +
+	"0 @I1@ INDI\n" +
+	"1 NAME John /Doe/\n" +
+	"1 OBJE @M1@\n" +
+	"0 @M1@ OBJE\n" +
+	"1 FILE media/photo%20x.jpg\n" +
+	"1 FORM jpeg\n" +
+	"0 TRLR\n"
+
+func TestImportGEDZIP_PercentDecodingIsGEDCOM7Only(t *testing.T) {
+	// In GEDCOM 5.5.1 a FILE payload is a plain path where '%' is literal.
+	// Decoding it would bind "media/photo x.jpg" — a different member — so the
+	// reference must instead be reported unresolved.
+	zr := buildMemZip(t, map[string][]byte{
+		"gedcom.ged":        []byte(gedcom551WithPercentMedia),
+		"media/photo x.jpg": []byte("jpeg-content"),
+	})
+
+	_, result, err := ImportGEDZIP(zr, nil)
+	require.NoError(t, err)
+	require.Equal(t, GEDCOMVersion551, result.Version)
+	require.Len(t, result.MediaFiles, 1)
+	require.Empty(t, result.MediaFiles[0].MemberPath, "5.5.1 percent-escapes must not be decoded when resolving members")
+
+	foundUnresolved := false
+	for _, w := range result.Statistics.Warnings {
+		if strings.Contains(w.Message, "unresolved media file reference") {
+			foundUnresolved = true
+
+			break
+		}
+	}
+	require.True(t, foundUnresolved, "expected an unresolved media warning")
+}
+
+func TestImportGEDZIP_PercentDecodingAppliesToGEDCOM7(t *testing.T) {
+	// Positive control for the version gate above: the same shape in 7.0, where
+	// FILE is a URI reference, must resolve through percent-decoding.
+	zr := buildMemZip(t, map[string][]byte{
+		"gedcom.ged":                []byte(gedcom7WithEncodedMedia),
+		"media/CharlotteBrontë.jpg": []byte("jpeg-content"),
+	})
+
+	_, result, err := ImportGEDZIP(zr, nil)
+	require.NoError(t, err)
+	require.Equal(t, GEDCOMVersion70, result.Version)
+	require.Len(t, result.MediaFiles, 1)
+	require.Equal(t, "media/CharlotteBrontë.jpg", result.MediaFiles[0].MemberPath)
+}

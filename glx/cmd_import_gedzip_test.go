@@ -701,3 +701,64 @@ func TestImportGEDZIP_OfficialMaximal70(t *testing.T) {
 	mp3Path := filepath.Join(mediaFilesDir, "original.mp3")
 	require.FileExists(t, mp3Path, "original.mp3 should be extracted from maximal70.gdz")
 }
+
+func TestCopyFileExclusive_RefusesToFollowDestinationSymlink(t *testing.T) {
+	// commitStagedMedia falls back to a copy when the rename fails. If
+	// media/files/<name> is an existing symlink pointing outside the archive,
+	// a plain os.Create would follow it and overwrite the target; O_EXCL must
+	// refuse instead.
+	tmpDir := t.TempDir()
+
+	outside := filepath.Join(tmpDir, "outside.txt")
+	originalContent := []byte("must not be overwritten")
+	require.NoError(t, os.WriteFile(outside, originalContent, filePermissions))
+
+	src := filepath.Join(tmpDir, "staged.jpg")
+	require.NoError(t, os.WriteFile(src, []byte("staged bytes"), filePermissions))
+
+	dst := filepath.Join(tmpDir, "photo.jpg")
+	require.NoError(t, os.Symlink(outside, dst))
+
+	err := copyFileExclusive(src, dst)
+	require.Error(t, err, "copy through an existing symlink must be refused")
+
+	content, readErr := os.ReadFile(outside)
+	require.NoError(t, readErr)
+	require.Equal(t, originalContent, content, "symlink target must not be written through")
+}
+
+func TestCommitStagedMedia_UnlinksSymlinkBeforeCopyFallback(t *testing.T) {
+	// End-to-end for the fallback path: even with a hostile symlink already at
+	// the destination, the committed media file must be a regular file holding
+	// the staged bytes, and the symlink's target must be untouched.
+	tmpDir := t.TempDir()
+
+	outside := filepath.Join(tmpDir, "outside.txt")
+	originalContent := []byte("must not be overwritten")
+	require.NoError(t, os.WriteFile(outside, originalContent, filePermissions))
+
+	stageDir := filepath.Join(tmpDir, "stage")
+	stagedFiles := filepath.Join(stageDir, glxlib.MediaFilesDir)
+	require.NoError(t, os.MkdirAll(stagedFiles, dirPermissions))
+	require.NoError(t, os.WriteFile(filepath.Join(stagedFiles, "photo.jpg"), []byte("staged bytes"), filePermissions))
+
+	targetDir := filepath.Join(tmpDir, "archive")
+	targetFiles := filepath.Join(targetDir, glxlib.MediaFilesDir)
+	require.NoError(t, os.MkdirAll(targetFiles, dirPermissions))
+	require.NoError(t, os.Symlink(outside, filepath.Join(targetFiles, "photo.jpg")))
+
+	require.NoError(t, commitStagedMedia(stageDir, targetDir))
+
+	committed := filepath.Join(targetFiles, "photo.jpg")
+	info, err := os.Lstat(committed)
+	require.NoError(t, err)
+	require.Zero(t, info.Mode()&os.ModeSymlink, "committed media must be a regular file, not a symlink")
+
+	got, err := os.ReadFile(committed)
+	require.NoError(t, err)
+	require.Equal(t, []byte("staged bytes"), got)
+
+	content, err := os.ReadFile(outside)
+	require.NoError(t, err)
+	require.Equal(t, originalContent, content, "symlink target must not be written through")
+}

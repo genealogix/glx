@@ -182,7 +182,7 @@ func importGEDZIPToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, 
 		streams.Println("")
 	}
 
-	if err := os.Rename(tempPath, outputPath); err != nil {
+	if err := robustRename(tempPath, outputPath); err != nil {
 		return fmt.Errorf("writing archive to %s: %w", outputPath, err)
 	}
 
@@ -215,12 +215,18 @@ func importGEDZIPToMultiFile(glx *glxlib.GLXFile, outputPath string, validate, v
 		return fmt.Errorf("failed to copy media files: %w", err)
 	}
 
-	if err := writeMultiFileArchive(outputPath, glx, validate); err != nil {
-		return formatValidationError(err, showFirstErrors)
-	}
-
+	// Media is committed before the archive is written, matching the
+	// single-file path: a media failure then leaves an existing target archive
+	// untouched instead of replacing it and only afterwards discovering that
+	// the media URIs it now references cannot be satisfied. writeFilesToDir
+	// only creates and overwrites the entity files it manages, so media/files/
+	// survives the archive write.
 	if err := commitStagedMedia(stageDir, outputPath); err != nil {
 		return fmt.Errorf("failed to commit media files: %w", err)
+	}
+
+	if err := writeMultiFileArchive(outputPath, glx, validate); err != nil {
+		return formatValidationError(err, showFirstErrors)
 	}
 
 	if verbose || copyCount > 0 || blobCount > 0 {
@@ -317,11 +323,53 @@ func commitStagedMedia(stageDir, targetDir string) error {
 	for _, entry := range entries {
 		src := filepath.Join(stagedFilesDir, entry.Name())
 		dst := filepath.Join(targetFilesDir, entry.Name())
-		if err := os.Rename(src, dst); err != nil {
-			if copyErr := copyFile(src, dst); copyErr != nil {
-				return fmt.Errorf("committing media file %s: %w", entry.Name(), copyErr)
-			}
+		if err := robustRename(src, dst); err == nil {
+			continue
 		}
+
+		// Rename failed (a cross-device staging directory, or a Windows lock
+		// robustRename could not outwait). Unlink any existing destination
+		// first: os.Remove removes a symlink itself rather than following it,
+		// so a pre-existing media/files/<name> symlink cannot redirect the
+		// staged bytes onto a target outside the archive.
+		if err := os.Remove(dst); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("committing media file %s: %w", entry.Name(), err)
+		}
+		if err := copyFileExclusive(src, dst); err != nil {
+			return fmt.Errorf("committing media file %s: %w", entry.Name(), err)
+		}
+	}
+
+	return nil
+}
+
+// copyFileExclusive copies src to dst, refusing to write through anything
+// already at dst. O_EXCL makes the create fail rather than follow a symlink,
+// which closes the window between the caller's unlink and this open.
+func copyFileExclusive(src, dst string) error {
+	in, err := os.Open(filepath.Clean(src))
+	if err != nil {
+		return err
+	}
+	defer func() { _ = in.Close() }()
+
+	out, err := os.OpenFile(filepath.Clean(dst), os.O_WRONLY|os.O_CREATE|os.O_EXCL, filePermissions)
+	if err != nil {
+		return err
+	}
+
+	_, copyErr := io.Copy(out, in)
+	closeErr := out.Close()
+
+	if copyErr != nil {
+		_ = os.Remove(dst)
+
+		return copyErr
+	}
+	if closeErr != nil {
+		_ = os.Remove(dst)
+
+		return closeErr
 	}
 
 	return nil
