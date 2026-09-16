@@ -22,6 +22,7 @@ import (
 	"io/fs"
 	"net/url"
 	"path"
+	"reflect"
 	"slices"
 	"strings"
 	"unicode"
@@ -48,7 +49,7 @@ const (
 // (url.PathUnescape) and case-insensitive matching. Unresolved media references emit
 // warnings on ImportResult rather than failing the import.
 func ImportGEDZIP(bundle fs.FS, logW io.Writer) (*GLXFile, *ImportResult, error) {
-	if bundle == nil {
+	if isNilFS(bundle) {
 		return nil, nil, ErrGEDZIPNilBundle
 	}
 
@@ -95,6 +96,25 @@ func ImportGEDZIP(bundle fs.FS, logW io.Writer) (*GLXFile, *ImportResult, error)
 	return glxFile, result, nil
 }
 
+// isNilFS reports whether bundle is unusable because it holds no value: either
+// a plain nil interface, or a typed nil such as `var zr *zip.Reader` passed as
+// an fs.FS. A typed nil is non-nil at the interface level, so the plain `== nil`
+// check lets it through and the first field access or method call panics —
+// `(*zip.Reader)(nil)` reaching zr.File in inventoryAndValidateBundle, for
+// instance. ImportGEDZIP documents ErrGEDZIPNilBundle for a nil bundle; that
+// contract should hold however the nil arrives.
+func isNilFS(bundle fs.FS) bool {
+	if bundle == nil {
+		return true
+	}
+	switch v := reflect.ValueOf(bundle); v.Kind() {
+	case reflect.Pointer, reflect.Map, reflect.Slice, reflect.Chan, reflect.Func, reflect.UnsafePointer, reflect.Interface:
+		return v.IsNil()
+	default:
+		return false
+	}
+}
+
 type fsUnwrapper interface {
 	Unwrap() fs.FS
 }
@@ -112,7 +132,7 @@ func unwrapFS(f fs.FS) fs.FS {
 			return f
 		}
 		next := u.Unwrap()
-		if next == nil {
+		if isNilFS(next) {
 			return f
 		}
 		f = next

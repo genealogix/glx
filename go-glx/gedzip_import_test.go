@@ -495,6 +495,46 @@ func TestImportGEDZIP_NilBundle(t *testing.T) {
 	require.ErrorIs(t, err, ErrGEDZIPNilBundle)
 }
 
+// nilReceiverFS is a pointer type implementing fs.FS, used to build a typed nil
+// that is not one of the zip reader types.
+type nilReceiverFS struct{ fs.FS }
+
+func TestImportGEDZIP_TypedNilBundle(t *testing.T) {
+	// A typed nil is non-nil at the interface level, so a plain `bundle == nil`
+	// check lets it reach the inventory step and panic on the first field
+	// access or method call. Each of these shapes must return the documented
+	// error instead.
+	var (
+		zr    *zip.Reader
+		zrc   *zip.ReadCloser
+		other *nilReceiverFS
+	)
+
+	for name, bundle := range map[string]fs.FS{
+		"zip.Reader":     zr,
+		"zip.ReadCloser": zrc,
+		"generic fs.FS":  other,
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, _, err := ImportGEDZIP(bundle, nil)
+			require.ErrorIs(t, err, ErrGEDZIPNilBundle)
+		})
+	}
+}
+
+// typedNilUnwrappingFS is a wrapper whose Unwrap returns a typed nil rather
+// than a plain one — unwrapFS must keep the wrapper rather than descend into a
+// value that cannot be used. Distinct from nilUnwrappingFS below, which returns
+// an untyped nil and is caught by a plain == nil check.
+type typedNilUnwrappingFS struct{ fs.FS }
+
+func (typedNilUnwrappingFS) Unwrap() fs.FS { return (*zip.Reader)(nil) }
+
+func TestUnwrapFS_KeepsWrapperWhenUnwrapReturnsTypedNil(t *testing.T) {
+	wrapper := typedNilUnwrappingFS{}
+	require.Equal(t, fs.FS(wrapper), unwrapFS(wrapper))
+}
+
 // selfUnwrappingFS is a wrapper whose Unwrap returns itself, the shape that
 // would spin unwrapFS forever without its depth cap.
 type selfUnwrappingFS struct{ fs.FS }
