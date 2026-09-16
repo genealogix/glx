@@ -91,6 +91,8 @@ func copyMediaFiles(streams *IOStreams, archiveDir string, mediaFiles []glxlib.M
 // refused at open time (see openWithin) rather than followed.
 func copyMediaFile(gedcomDir, relativePath, destPath string) error {
 	// Normalize backslashes to forward slashes for cross-platform compatibility
+	// (belt-and-braces: MediaFileSource.RelativePath is already slash-normalized
+	// at import, but direct callers may supply raw Windows path separators).
 	normalized := strings.ReplaceAll(relativePath, "\\", "/")
 
 	// Prevent path traversal attacks from GEDCOM FILE references
