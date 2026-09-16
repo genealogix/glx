@@ -21,6 +21,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 
 	glxlib "github.com/genealogix/glx/go-glx"
@@ -198,12 +199,14 @@ func importGEDZIPToMultiFile(glx *glxlib.GLXFile, outputPath string, validate, v
 		_, _ = fmt.Fprintf(out, "Writing multi-file archive: %s\n", outputPath)
 	}
 
-	parentDir := filepath.Dir(outputPath)
-	if err := os.MkdirAll(parentDir, dirPermissions); err != nil {
+	// Stage inside the archive directory itself: commitStagedMedia resolves
+	// every path through an os.Root scoped to the archive, which only reaches
+	// paths beneath it. Same filesystem too, so the commit is always a rename.
+	if err := os.MkdirAll(outputPath, dirPermissions); err != nil {
 		return fmt.Errorf("creating directory for %s: %w", outputPath, err)
 	}
 
-	stageDir, err := os.MkdirTemp(parentDir, ".glx-stage-*")
+	stageDir, err := os.MkdirTemp(outputPath, ".glx-stage-*")
 	if err != nil {
 		return fmt.Errorf("creating staging directory: %w", err)
 	}
@@ -304,72 +307,49 @@ func stageMediaFilesFromFS(streams *IOStreams, stageDir string, mediaFiles []glx
 	return copyCount, blobCount, warnCount, nil
 }
 
+// commitStagedMedia moves the media staged under stageDir into targetDir's
+// media/files/ directory.
+//
+// stageDir must live inside targetDir. Every path is then resolved through an
+// os.Root scoped to targetDir, so no symlinked component can redirect a write
+// outside the archive — not the leaf media/files/<name>, and not a "media" or
+// "media/files" directory that a bare os.MkdirAll would happily follow. Each
+// file lands by rename, which replaces the destination atomically without
+// following a symlink there and leaves any existing file intact if the commit
+// fails partway.
 func commitStagedMedia(stageDir, targetDir string) error {
 	stagedFilesDir := filepath.Join(stageDir, glxlib.MediaFilesDir)
-	if _, err := os.Stat(stagedFilesDir); os.IsNotExist(err) {
-		return nil
-	}
-
-	targetFilesDir := filepath.Join(targetDir, glxlib.MediaFilesDir)
-	if err := os.MkdirAll(targetFilesDir, dirPermissions); err != nil {
-		return fmt.Errorf("creating media/files directory: %w", err)
-	}
-
 	entries, err := os.ReadDir(stagedFilesDir)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+
 		return fmt.Errorf("reading staged media directory: %w", err)
 	}
 
+	stageRel, ok := relWithin(stageDir, targetDir)
+	if !ok {
+		return fmt.Errorf("%w: staging directory %s is not inside %s", ErrPathEscapesDir, stageDir, targetDir)
+	}
+
+	root, err := os.OpenRoot(targetDir)
+	if err != nil {
+		return fmt.Errorf("opening archive directory: %w", err)
+	}
+	defer func() { _ = root.Close() }()
+
+	if err := root.MkdirAll(glxlib.MediaFilesDir, dirPermissions); err != nil {
+		return fmt.Errorf("creating media/files directory: %w", err)
+	}
+
+	stagedRel := path.Join(filepath.ToSlash(stageRel), glxlib.MediaFilesDir)
 	for _, entry := range entries {
-		src := filepath.Join(stagedFilesDir, entry.Name())
-		dst := filepath.Join(targetFilesDir, entry.Name())
-		if err := robustRename(src, dst); err == nil {
-			continue
-		}
-
-		// Rename failed (a cross-device staging directory, or a Windows lock
-		// robustRename could not outwait). Unlink any existing destination
-		// first: os.Remove removes a symlink itself rather than following it,
-		// so a pre-existing media/files/<name> symlink cannot redirect the
-		// staged bytes onto a target outside the archive.
-		if err := os.Remove(dst); err != nil && !os.IsNotExist(err) {
+		src := path.Join(stagedRel, entry.Name())
+		dst := path.Join(glxlib.MediaFilesDir, entry.Name())
+		if err := robustRenameIn(root, src, dst); err != nil {
 			return fmt.Errorf("committing media file %s: %w", entry.Name(), err)
 		}
-		if err := copyFileExclusive(src, dst); err != nil {
-			return fmt.Errorf("committing media file %s: %w", entry.Name(), err)
-		}
-	}
-
-	return nil
-}
-
-// copyFileExclusive copies src to dst, refusing to write through anything
-// already at dst. O_EXCL makes the create fail rather than follow a symlink,
-// which closes the window between the caller's unlink and this open.
-func copyFileExclusive(src, dst string) error {
-	in, err := os.Open(filepath.Clean(src))
-	if err != nil {
-		return err
-	}
-	defer func() { _ = in.Close() }()
-
-	out, err := os.OpenFile(filepath.Clean(dst), os.O_WRONLY|os.O_CREATE|os.O_EXCL, filePermissions)
-	if err != nil {
-		return err
-	}
-
-	_, copyErr := io.Copy(out, in)
-	closeErr := out.Close()
-
-	if copyErr != nil {
-		_ = os.Remove(dst)
-
-		return copyErr
-	}
-	if closeErr != nil {
-		_ = os.Remove(dst)
-
-		return closeErr
 	}
 
 	return nil

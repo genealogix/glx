@@ -702,47 +702,35 @@ func TestImportGEDZIP_OfficialMaximal70(t *testing.T) {
 	require.FileExists(t, mp3Path, "original.mp3 should be extracted from maximal70.gdz")
 }
 
-func TestCopyFileExclusive_RefusesToFollowDestinationSymlink(t *testing.T) {
-	// commitStagedMedia falls back to a copy when the rename fails. If
-	// media/files/<name> is an existing symlink pointing outside the archive,
-	// a plain os.Create would follow it and overwrite the target; O_EXCL must
-	// refuse instead.
-	tmpDir := t.TempDir()
+// stageMediaInside creates a staging directory inside targetDir holding the
+// given media/files entries, mirroring how the import path stages before
+// committing.
+func stageMediaInside(t *testing.T, targetDir string, files map[string]string) string {
+	t.Helper()
+	require.NoError(t, os.MkdirAll(targetDir, dirPermissions))
+	stageDir := filepath.Join(targetDir, ".glx-stage-test")
 
-	outside := filepath.Join(tmpDir, "outside.txt")
-	originalContent := []byte("must not be overwritten")
-	require.NoError(t, os.WriteFile(outside, originalContent, filePermissions))
-
-	src := filepath.Join(tmpDir, "staged.jpg")
-	require.NoError(t, os.WriteFile(src, []byte("staged bytes"), filePermissions))
-
-	dst := filepath.Join(tmpDir, "photo.jpg")
-	require.NoError(t, os.Symlink(outside, dst))
-
-	err := copyFileExclusive(src, dst)
-	require.Error(t, err, "copy through an existing symlink must be refused")
-
-	content, readErr := os.ReadFile(outside)
-	require.NoError(t, readErr)
-	require.Equal(t, originalContent, content, "symlink target must not be written through")
-}
-
-func TestCommitStagedMedia_UnlinksSymlinkBeforeCopyFallback(t *testing.T) {
-	// End-to-end for the fallback path: even with a hostile symlink already at
-	// the destination, the committed media file must be a regular file holding
-	// the staged bytes, and the symlink's target must be untouched.
-	tmpDir := t.TempDir()
-
-	outside := filepath.Join(tmpDir, "outside.txt")
-	originalContent := []byte("must not be overwritten")
-	require.NoError(t, os.WriteFile(outside, originalContent, filePermissions))
-
-	stageDir := filepath.Join(tmpDir, "stage")
 	stagedFiles := filepath.Join(stageDir, glxlib.MediaFilesDir)
 	require.NoError(t, os.MkdirAll(stagedFiles, dirPermissions))
-	require.NoError(t, os.WriteFile(filepath.Join(stagedFiles, "photo.jpg"), []byte("staged bytes"), filePermissions))
+	for name, content := range files {
+		require.NoError(t, os.WriteFile(filepath.Join(stagedFiles, name), []byte(content), filePermissions))
+	}
+
+	return stageDir
+}
+
+func TestCommitStagedMedia_ReplacesLeafSymlinkWithoutFollowingIt(t *testing.T) {
+	// media/files/photo.jpg is an existing symlink pointing outside the
+	// archive. The commit must replace the link itself, not write through it.
+	tmpDir := t.TempDir()
+
+	outside := filepath.Join(tmpDir, "outside.txt")
+	originalContent := []byte("must not be overwritten")
+	require.NoError(t, os.WriteFile(outside, originalContent, filePermissions))
 
 	targetDir := filepath.Join(tmpDir, "archive")
+	stageDir := stageMediaInside(t, targetDir, map[string]string{"photo.jpg": "staged bytes"})
+
 	targetFiles := filepath.Join(targetDir, glxlib.MediaFilesDir)
 	require.NoError(t, os.MkdirAll(targetFiles, dirPermissions))
 	require.NoError(t, os.Symlink(outside, filepath.Join(targetFiles, "photo.jpg")))
@@ -761,6 +749,74 @@ func TestCommitStagedMedia_UnlinksSymlinkBeforeCopyFallback(t *testing.T) {
 	content, err := os.ReadFile(outside)
 	require.NoError(t, err)
 	require.Equal(t, originalContent, content, "symlink target must not be written through")
+}
+
+func TestCommitStagedMedia_RefusesSymlinkedMediaDirectory(t *testing.T) {
+	// The dangerous case a leaf-only guard misses: "media" itself is a symlink
+	// out of the archive, so a bare os.MkdirAll would create media/files/
+	// inside the link target and every commit would land there.
+	tmpDir := t.TempDir()
+
+	outside := filepath.Join(tmpDir, "outside")
+	require.NoError(t, os.MkdirAll(outside, dirPermissions))
+
+	targetDir := filepath.Join(tmpDir, "archive")
+	stageDir := stageMediaInside(t, targetDir, map[string]string{"photo.jpg": "staged bytes"})
+	require.NoError(t, os.Symlink(outside, filepath.Join(targetDir, "media")))
+
+	err := commitStagedMedia(stageDir, targetDir)
+	require.Error(t, err, "a symlinked media/ directory must not be traversed")
+
+	entries, readErr := os.ReadDir(outside)
+	require.NoError(t, readErr)
+	require.Empty(t, entries, "nothing may be written through the symlinked directory")
+}
+
+func TestCommitStagedMedia_RejectsStagingOutsideTarget(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	targetDir := filepath.Join(tmpDir, "archive")
+	require.NoError(t, os.MkdirAll(targetDir, dirPermissions))
+
+	stageDir := filepath.Join(tmpDir, "stage")
+	stagedFiles := filepath.Join(stageDir, glxlib.MediaFilesDir)
+	require.NoError(t, os.MkdirAll(stagedFiles, dirPermissions))
+	require.NoError(t, os.WriteFile(filepath.Join(stagedFiles, "photo.jpg"), []byte("x"), filePermissions))
+
+	err := commitStagedMedia(stageDir, targetDir)
+	require.ErrorIs(t, err, ErrPathEscapesDir)
+}
+
+func TestCommitStagedMedia_PreservesExistingFileWhenCommitFails(t *testing.T) {
+	// A commit that fails partway must leave already-present media intact
+	// rather than destroying a file it cannot replace. "blocked.jpg" sorts
+	// before "photo.jpg", so the failure happens first.
+	tmpDir := t.TempDir()
+	targetDir := filepath.Join(tmpDir, "archive")
+
+	stageDir := stageMediaInside(t, targetDir, map[string]string{
+		"blocked.jpg": "new blocked",
+		"photo.jpg":   "new photo",
+	})
+
+	targetFiles := filepath.Join(targetDir, glxlib.MediaFilesDir)
+	require.NoError(t, os.MkdirAll(targetFiles, dirPermissions))
+
+	// A non-empty directory cannot be replaced by a rename.
+	blocking := filepath.Join(targetFiles, "blocked.jpg")
+	require.NoError(t, os.MkdirAll(blocking, dirPermissions))
+	require.NoError(t, os.WriteFile(filepath.Join(blocking, "occupant"), []byte("x"), filePermissions))
+
+	existing := filepath.Join(targetFiles, "photo.jpg")
+	require.NoError(t, os.WriteFile(existing, []byte("old photo"), filePermissions))
+
+	err := commitStagedMedia(stageDir, targetDir)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "committing media file blocked.jpg")
+
+	got, readErr := os.ReadFile(existing)
+	require.NoError(t, readErr)
+	require.Equal(t, []byte("old photo"), got, "pre-existing media must survive a failed commit")
 }
 
 // stagingStreams returns IOStreams whose Out is captured, for asserting on the
@@ -887,48 +943,6 @@ func TestCommitStagedMedia_NoStagedDirectoryIsNoOp(t *testing.T) {
 
 	require.NoError(t, commitStagedMedia(stageDir, targetDir))
 	require.NoDirExists(t, filepath.Join(targetDir, glxlib.MediaFilesDir))
-}
-
-func TestCommitStagedMedia_FailsWhenDestinationIsNonEmptyDirectory(t *testing.T) {
-	// A directory sitting where a media file belongs defeats both the rename
-	// and the unlink, so the commit must report the failure rather than
-	// silently dropping the file.
-	tmpDir := t.TempDir()
-
-	stageDir := filepath.Join(tmpDir, "stage")
-	stagedFiles := filepath.Join(stageDir, glxlib.MediaFilesDir)
-	require.NoError(t, os.MkdirAll(stagedFiles, dirPermissions))
-	require.NoError(t, os.WriteFile(filepath.Join(stagedFiles, "photo.jpg"), []byte("staged"), filePermissions))
-
-	targetDir := filepath.Join(tmpDir, "archive")
-	blocking := filepath.Join(targetDir, glxlib.MediaFilesDir, "photo.jpg")
-	require.NoError(t, os.MkdirAll(blocking, dirPermissions))
-	require.NoError(t, os.WriteFile(filepath.Join(blocking, "occupant"), []byte("x"), filePermissions))
-
-	err := commitStagedMedia(stageDir, targetDir)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "committing media file photo.jpg")
-}
-
-func TestCopyFileExclusive_CopiesToFreshDestination(t *testing.T) {
-	tmpDir := t.TempDir()
-	src := filepath.Join(tmpDir, "src.bin")
-	payload := []byte("staged bytes")
-	require.NoError(t, os.WriteFile(src, payload, filePermissions))
-
-	dst := filepath.Join(tmpDir, "dst.bin")
-	require.NoError(t, copyFileExclusive(src, dst))
-
-	got, err := os.ReadFile(dst)
-	require.NoError(t, err)
-	require.Equal(t, payload, got)
-}
-
-func TestCopyFileExclusive_ReportsMissingSource(t *testing.T) {
-	tmpDir := t.TempDir()
-	err := copyFileExclusive(filepath.Join(tmpDir, "absent.bin"), filepath.Join(tmpDir, "dst.bin"))
-	require.Error(t, err)
-	require.True(t, os.IsNotExist(err))
 }
 
 func TestImportGEDZIP_VerboseSingleFileWithMedia(t *testing.T) {
