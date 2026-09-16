@@ -73,8 +73,8 @@ type MediaFileSource struct {
 	// SourceType indicates where the file data comes from.
 	SourceType MediaSourceType
 
-	// RelativePath is the path from the GEDCOM file's directory to the source file.
-	// Only set when SourceType is MediaSourceFile.
+	// RelativePath is the path from the GEDCOM file's directory to the source file,
+	// normalized to forward slashes ('/'). Only set when SourceType is MediaSourceFile.
 	RelativePath string
 
 	// BlobData contains the raw BLOB text from GEDCOM 5.5.1.
