@@ -17,8 +17,12 @@ package glx
 import (
 	"archive/zip"
 	"bytes"
+	"io"
+	"io/fs"
+	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"testing/fstest"
 
@@ -485,3 +489,151 @@ func TestImportGEDZIP_PercentDecodingAppliesToGEDCOM7(t *testing.T) {
 	require.Len(t, result.MediaFiles, 1)
 	require.Equal(t, "media/CharlotteBrontë.jpg", result.MediaFiles[0].MemberPath)
 }
+
+func TestImportGEDZIP_NilBundle(t *testing.T) {
+	_, _, err := ImportGEDZIP(nil, nil)
+	require.ErrorIs(t, err, ErrGEDZIPNilBundle)
+}
+
+// selfUnwrappingFS is a wrapper whose Unwrap returns itself, the shape that
+// would spin unwrapFS forever without its depth cap.
+type selfUnwrappingFS struct{ fs.FS }
+
+func (s selfUnwrappingFS) Unwrap() fs.FS { return s }
+
+func TestUnwrapFS_TerminatesOnSelfReferentialWrapper(t *testing.T) {
+	inner := fstest.MapFS{"gedcom.ged": &fstest.MapFile{Data: []byte(minimalGEDCOM7ForGEDZIP)}}
+	got := unwrapFS(selfUnwrappingFS{FS: inner})
+	require.NotNil(t, got, "unwrapFS must return rather than loop")
+}
+
+// nilUnwrappingFS models a wrapper that reports no inner filesystem.
+type nilUnwrappingFS struct{ fs.FS }
+
+func (nilUnwrappingFS) Unwrap() fs.FS { return nil }
+
+func TestUnwrapFS_StopsAtNilInnerFS(t *testing.T) {
+	inner := fstest.MapFS{"gedcom.ged": &fstest.MapFile{Data: []byte(minimalGEDCOM7ForGEDZIP)}}
+	wrapper := nilUnwrappingFS{FS: inner}
+	require.Equal(t, fs.FS(wrapper), unwrapFS(wrapper))
+}
+
+// plainFS hides its *zip.Reader behind a struct with no Unwrap, forcing
+// ImportGEDZIP down the generic fs.WalkDir inventory path.
+type plainFS struct{ fs.FS }
+
+func TestImportGEDZIP_GenericFSInventory(t *testing.T) {
+	zr := buildMemZip(t, map[string][]byte{
+		"gedcom.ged":      []byte(gedcom7WithMediaForGEDZIP),
+		"media/photo.jpg": []byte("jpeg-content"),
+	})
+
+	glxFile, result, err := ImportGEDZIP(plainFS{FS: zr}, nil)
+	require.NoError(t, err)
+	require.NotNil(t, glxFile)
+	require.Len(t, result.MediaFiles, 1)
+	require.Equal(t, "media/photo.jpg", result.MediaFiles[0].MemberPath)
+}
+
+func TestImportGEDZIP_GenericFSRejectsInvalidEntry(t *testing.T) {
+	fsys := plainFS{FS: fstest.MapFS{
+		"gedcom.ged": &fstest.MapFile{Data: []byte(minimalGEDCOM7ForGEDZIP)},
+		"C:evil.txt": &fstest.MapFile{Data: []byte("payload")},
+	}}
+
+	_, _, err := ImportGEDZIP(fsys, nil)
+	require.ErrorIs(t, err, ErrGEDZIPInvalidEntry)
+}
+
+func TestImportGEDZIP_GenericFSSkipsNonRegularEntries(t *testing.T) {
+	// A symlink named gedcom.ged must not be inventoried as the GEDCOM file,
+	// whichever inventory path runs.
+	fsys := plainFS{FS: fstest.MapFS{
+		"gedcom.ged": &fstest.MapFile{Data: []byte("/etc/passwd"), Mode: fs.ModeSymlink | 0o777},
+		"notes.txt":  &fstest.MapFile{Data: []byte("notes")},
+	}}
+
+	_, _, err := ImportGEDZIP(fsys, nil)
+	require.ErrorIs(t, err, ErrGEDZIPMissingGedcom)
+}
+
+func TestImportGEDZIP_UnsupportedCompressionOnGedcom(t *testing.T) {
+	zipPath := filepath.Join(t.TempDir(), "unsupported.gdz")
+	writeUnsupportedMethodZip(t, zipPath, gedzipGedcomEntry)
+
+	zr, err := zip.OpenReader(zipPath)
+	require.NoError(t, err)
+	defer func() { _ = zr.Close() }()
+
+	_, _, err = ImportGEDZIP(zr, nil)
+	require.ErrorIs(t, err, ErrGEDZIPUnsupportedAlgorithm)
+}
+
+func TestImportGEDZIP_MediaResolution_CaseInsensitivePercentDecoded(t *testing.T) {
+	// Candidate 4: the member differs from the reference both in percent
+	// encoding and in case.
+	zr := buildMemZip(t, map[string][]byte{
+		"gedcom.ged":                []byte(gedcom7WithEncodedMedia),
+		"MEDIA/CHARLOTTEBRONTË.JPG": []byte("jpeg-content"),
+	})
+
+	_, result, err := ImportGEDZIP(zr, nil)
+	require.NoError(t, err)
+	require.Len(t, result.MediaFiles, 1)
+	require.Equal(t, "MEDIA/CHARLOTTEBRONTË.JPG", result.MediaFiles[0].MemberPath)
+}
+
+func TestImportGEDZIP_BlobMediaNeedsNoBundleMember(t *testing.T) {
+	// A 5.5.1 BLOB carries its bytes inline, so the resolver must leave it
+	// alone rather than warning that no member matched.
+	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n" +
+		"0 @M1@ OBJE\n1 TITL Flower\n1 FORM PICT\n1 BLOB\n2 CONT .HM.......k.1..F\n" +
+		"0 TRLR\n"
+
+	zr := buildMemZip(t, map[string][]byte{"gedcom.ged": []byte(gedcom)})
+
+	_, result, err := ImportGEDZIP(zr, nil)
+	require.NoError(t, err)
+	require.Len(t, result.MediaFiles, 1)
+	require.Equal(t, MediaSourceBlob, result.MediaFiles[0].SourceType)
+	require.Empty(t, result.MediaFiles[0].MemberPath)
+
+	for _, w := range result.Statistics.Warnings {
+		require.NotContains(t, w.Message, "unresolved media file reference")
+	}
+}
+
+// unsupportedZipMethod is a compression method id with a passthrough
+// compressor but no registered decompressor, so an archive built with it parses
+// but fails entry decompression with zip.ErrAlgorithm. 0 is Store and 8 is
+// Deflate; this id is well outside what archive/zip ships.
+const unsupportedZipMethod uint16 = 0xABCD
+
+var registerUnsupportedZipCompressorOnce sync.Once
+
+// writeUnsupportedMethodZip writes a single-entry archive whose entry cannot be
+// decompressed. archive/zip exposes no Unregister API, so the compressor
+// registration is idempotent and confined to a method id nothing else uses.
+func writeUnsupportedMethodZip(t *testing.T, zipPath, entryName string) {
+	t.Helper()
+	registerUnsupportedZipCompressorOnce.Do(func() {
+		zip.RegisterCompressor(unsupportedZipMethod, func(w io.Writer) (io.WriteCloser, error) {
+			return passthroughWriteCloser{Writer: w}, nil
+		})
+	})
+
+	f, err := os.Create(filepath.Clean(zipPath))
+	require.NoError(t, err)
+
+	zw := zip.NewWriter(f)
+	w, err := zw.CreateHeader(&zip.FileHeader{Name: entryName, Method: unsupportedZipMethod})
+	require.NoError(t, err)
+	_, err = w.Write([]byte(minimalGEDCOM7ForGEDZIP))
+	require.NoError(t, err)
+	require.NoError(t, zw.Close())
+	require.NoError(t, f.Close())
+}
+
+type passthroughWriteCloser struct{ io.Writer }
+
+func (passthroughWriteCloser) Close() error { return nil }

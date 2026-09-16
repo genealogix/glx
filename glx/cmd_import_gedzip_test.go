@@ -762,3 +762,203 @@ func TestCommitStagedMedia_UnlinksSymlinkBeforeCopyFallback(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, originalContent, content, "symlink target must not be written through")
 }
+
+// stagingStreams returns IOStreams whose Out is captured, for asserting on the
+// warnings stageMediaFilesFromFS emits.
+func stagingStreams(buf *bytes.Buffer) *IOStreams {
+	return &IOStreams{Out: buf, MachineOut: io.Discard, ErrOut: buf}
+}
+
+func TestStageMediaFilesFromFS_WarnsOnUnresolvedReference(t *testing.T) {
+	// A FILE ref the library could not bind to a bundle member arrives with an
+	// empty MemberPath. That must warn rather than abort the import, and must
+	// not produce a file.
+	gdz := buildGEDZIP(t, map[string][]byte{"gedcom.ged": []byte(minimalGEDCOM7)})
+	zr, err := zip.OpenReader(gdz)
+	require.NoError(t, err)
+	defer func() { _ = zr.Close() }()
+
+	var out bytes.Buffer
+	stageDir := t.TempDir()
+	copyCount, blobCount, warnCount, err := stageMediaFilesFromFS(stagingStreams(&out), stageDir, []glxlib.MediaFileSource{{
+		MediaID:        "M1",
+		SourceType:     glxlib.MediaSourceFile,
+		RelativePath:   "media/missing.jpg",
+		TargetFilename: "missing.jpg",
+	}}, zr)
+
+	require.NoError(t, err)
+	require.Zero(t, copyCount)
+	require.Zero(t, blobCount)
+	require.Equal(t, 1, warnCount)
+	require.Contains(t, out.String(), "unresolved or invalid reference")
+	require.NoFileExists(t, filepath.Join(stageDir, glxlib.MediaFilesDir, "missing.jpg"))
+}
+
+func TestStageMediaFilesFromFS_WarnsOnSymlinkMember(t *testing.T) {
+	// A media member that is a symlink is refused (never followed), but the
+	// import continues — with a warning, so the dangling media URI is visible.
+	gdz := buildGEDZIPOrdered(t, []gedzipTestEntry{
+		{Name: "gedcom.ged", Body: []byte(minimalGEDCOM7)},
+		{Name: "media/photo.jpg", Body: []byte("/etc/passwd"), Mode: os.ModeSymlink | 0o777},
+	})
+	zr, err := zip.OpenReader(gdz)
+	require.NoError(t, err)
+	defer func() { _ = zr.Close() }()
+
+	var out bytes.Buffer
+	stageDir := t.TempDir()
+	copyCount, _, warnCount, err := stageMediaFilesFromFS(stagingStreams(&out), stageDir, []glxlib.MediaFileSource{{
+		MediaID:        "M1",
+		SourceType:     glxlib.MediaSourceFile,
+		RelativePath:   "media/photo.jpg",
+		MemberPath:     "media/photo.jpg",
+		TargetFilename: "photo.jpg",
+	}}, zr)
+
+	require.NoError(t, err)
+	require.Zero(t, copyCount)
+	require.Equal(t, 1, warnCount)
+	require.Contains(t, out.String(), "could not copy media file")
+	require.NoFileExists(t, filepath.Join(stageDir, glxlib.MediaFilesDir, "photo.jpg"))
+}
+
+func TestStageMediaFilesFromFS_WritesBlobAndWarnsOnBadBlob(t *testing.T) {
+	// GEDCOM 5.5.1 BLOB members are decoded and written locally — they never
+	// touch the bundle — so a GEDZIP carrying a 5.5.1 GEDCOM still gets its
+	// inline media. A malformed BLOB warns instead of aborting.
+	gdz := buildGEDZIP(t, map[string][]byte{"gedcom.ged": []byte(minimalGEDCOM7)})
+	zr, err := zip.OpenReader(gdz)
+	require.NoError(t, err)
+	defer func() { _ = zr.Close() }()
+
+	var out bytes.Buffer
+	stageDir := t.TempDir()
+	copyCount, blobCount, warnCount, err := stageMediaFilesFromFS(stagingStreams(&out), stageDir, []glxlib.MediaFileSource{
+		{MediaID: "M1", SourceType: glxlib.MediaSourceBlob, BlobData: ".HM.......k.1..F", TargetFilename: "blob-M1.bin"},
+		{MediaID: "M2", SourceType: glxlib.MediaSourceBlob, BlobData: "!!!not-a-blob!!!", TargetFilename: "blob-M2.bin"},
+	}, zr)
+
+	require.NoError(t, err)
+	require.Zero(t, copyCount)
+	require.Equal(t, 1, blobCount)
+	require.Equal(t, 1, warnCount)
+	require.Contains(t, out.String(), "could not decode BLOB")
+	require.FileExists(t, filepath.Join(stageDir, glxlib.MediaFilesDir, "blob-M1.bin"))
+	require.NoFileExists(t, filepath.Join(stageDir, glxlib.MediaFilesDir, "blob-M2.bin"))
+}
+
+func TestCopyMemberFile_ReportsMissingMember(t *testing.T) {
+	gdz := buildGEDZIP(t, map[string][]byte{"gedcom.ged": []byte(minimalGEDCOM7)})
+	zr, err := zip.OpenReader(gdz)
+	require.NoError(t, err)
+	defer func() { _ = zr.Close() }()
+
+	err = copyMemberFile(zr, "media/absent.jpg", filepath.Join(t.TempDir(), "absent.jpg"))
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "opening zip entry")
+}
+
+func TestCopyMemberFile_MapsUnsupportedCompression(t *testing.T) {
+	registerUnsupportedZipCompressor(t)
+
+	zipPath := filepath.Join(t.TempDir(), "unsupported.gdz")
+	f, err := os.Create(filepath.Clean(zipPath))
+	require.NoError(t, err)
+	zw := zip.NewWriter(f)
+	w, err := zw.CreateHeader(&zip.FileHeader{Name: "media/photo.jpg", Method: unsupportedZipMethod})
+	require.NoError(t, err)
+	_, err = w.Write([]byte("payload"))
+	require.NoError(t, err)
+	require.NoError(t, zw.Close())
+	require.NoError(t, f.Close())
+
+	zr, err := zip.OpenReader(zipPath)
+	require.NoError(t, err)
+	defer func() { _ = zr.Close() }()
+
+	err = copyMemberFile(zr, "media/photo.jpg", filepath.Join(t.TempDir(), "photo.jpg"))
+	require.ErrorIs(t, err, ErrGEDZIPUnsupportedAlgorithm)
+}
+
+func TestCommitStagedMedia_NoStagedDirectoryIsNoOp(t *testing.T) {
+	stageDir := t.TempDir()
+	targetDir := filepath.Join(t.TempDir(), "archive")
+
+	require.NoError(t, commitStagedMedia(stageDir, targetDir))
+	require.NoDirExists(t, filepath.Join(targetDir, glxlib.MediaFilesDir))
+}
+
+func TestCommitStagedMedia_FailsWhenDestinationIsNonEmptyDirectory(t *testing.T) {
+	// A directory sitting where a media file belongs defeats both the rename
+	// and the unlink, so the commit must report the failure rather than
+	// silently dropping the file.
+	tmpDir := t.TempDir()
+
+	stageDir := filepath.Join(tmpDir, "stage")
+	stagedFiles := filepath.Join(stageDir, glxlib.MediaFilesDir)
+	require.NoError(t, os.MkdirAll(stagedFiles, dirPermissions))
+	require.NoError(t, os.WriteFile(filepath.Join(stagedFiles, "photo.jpg"), []byte("staged"), filePermissions))
+
+	targetDir := filepath.Join(tmpDir, "archive")
+	blocking := filepath.Join(targetDir, glxlib.MediaFilesDir, "photo.jpg")
+	require.NoError(t, os.MkdirAll(blocking, dirPermissions))
+	require.NoError(t, os.WriteFile(filepath.Join(blocking, "occupant"), []byte("x"), filePermissions))
+
+	err := commitStagedMedia(stageDir, targetDir)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "committing media file photo.jpg")
+}
+
+func TestCopyFileExclusive_CopiesToFreshDestination(t *testing.T) {
+	tmpDir := t.TempDir()
+	src := filepath.Join(tmpDir, "src.bin")
+	payload := []byte("staged bytes")
+	require.NoError(t, os.WriteFile(src, payload, filePermissions))
+
+	dst := filepath.Join(tmpDir, "dst.bin")
+	require.NoError(t, copyFileExclusive(src, dst))
+
+	got, err := os.ReadFile(dst)
+	require.NoError(t, err)
+	require.Equal(t, payload, got)
+}
+
+func TestCopyFileExclusive_ReportsMissingSource(t *testing.T) {
+	tmpDir := t.TempDir()
+	err := copyFileExclusive(filepath.Join(tmpDir, "absent.bin"), filepath.Join(tmpDir, "dst.bin"))
+	require.Error(t, err)
+	require.True(t, os.IsNotExist(err))
+}
+
+func TestImportGEDZIP_VerboseSingleFileWithMedia(t *testing.T) {
+	gedcom := "0 HEAD\n" +
+		"1 GEDC\n" +
+		"2 VERS 7.0\n" +
+		"0 @I1@ INDI\n" +
+		"1 NAME John /Doe/\n" +
+		"1 OBJE @M1@\n" +
+		"0 @M1@ OBJE\n" +
+		"1 FILE media/photo.jpg\n" +
+		"1 FORM image/jpeg\n" +
+		"0 TRLR\n"
+
+	gdz := buildGEDZIP(t, map[string][]byte{
+		"gedcom.ged":      []byte(gedcom),
+		"media/photo.jpg": []byte("jpeg-content"),
+	})
+
+	outPath := filepath.Join(t.TempDir(), "archive.glx")
+	var out bytes.Buffer
+	err := importGEDCOM(gdz, outPath, FormatSingle, true, true, defaultShowFirstErrors, &out)
+	require.NoError(t, err)
+
+	require.Contains(t, out.String(), "Extracting GEDZIP archive")
+	require.Contains(t, out.String(), "Writing single-file archive")
+	require.FileExists(t, outPath)
+
+	// Media lands in a sibling media/files/ directory for single-file output.
+	copied, err := os.ReadFile(filepath.Join(filepath.Dir(outPath), glxlib.MediaFilesDir, "photo.jpg"))
+	require.NoError(t, err)
+	require.Equal(t, []byte("jpeg-content"), copied)
+}
