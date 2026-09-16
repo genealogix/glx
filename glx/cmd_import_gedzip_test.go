@@ -224,11 +224,41 @@ func TestImportGEDZIP_StampsOriginalFilename(t *testing.T) {
 
 func TestImportGEDZIP_MissingGedcomEntry(t *testing.T) {
 	gdz := buildGEDZIP(t, map[string][]byte{
-		"other.ged": []byte(minimalGEDCOM7),
+		"readme.txt": []byte("no gedcom file here"),
 	})
 
 	err := importGEDCOM(gdz, filepath.Join(t.TempDir(), "archive"), FormatMulti, true, false, defaultShowFirstErrors)
 	require.ErrorIs(t, err, ErrGEDZIPMissingGedcom)
+}
+
+func TestImportGEDZIP_FallbackNonStandardGedcom(t *testing.T) {
+	gdz := buildGEDZIP(t, map[string][]byte{
+		"family_tree.ged": []byte(minimalGEDCOM7),
+	})
+	var out bytes.Buffer
+	err := importGEDCOM(gdz, filepath.Join(t.TempDir(), "archive"), FormatMulti, true, false, defaultShowFirstErrors, &out)
+	require.NoError(t, err)
+	require.Contains(t, out.String(), "using non-standard GEDCOM entry")
+}
+
+func TestImportGEDZIP_FallbackSingleWrapperDir(t *testing.T) {
+	gdz := buildGEDZIP(t, map[string][]byte{
+		"wrapper/gedcom.ged": []byte(minimalGEDCOM7),
+	})
+	var out bytes.Buffer
+	err := importGEDCOM(gdz, filepath.Join(t.TempDir(), "archive"), FormatMulti, true, false, defaultShowFirstErrors, &out)
+	require.NoError(t, err)
+	require.Contains(t, out.String(), "using non-standard GEDCOM entry")
+}
+
+func TestImportGEDZIP_MultipleGedcomEntries(t *testing.T) {
+	gdz := buildGEDZIP(t, map[string][]byte{
+		"tree1.ged": []byte(minimalGEDCOM7),
+		"tree2.ged": []byte(minimalGEDCOM7),
+	})
+
+	err := importGEDCOM(gdz, filepath.Join(t.TempDir(), "archive"), FormatMulti, true, false, defaultShowFirstErrors)
+	require.ErrorIs(t, err, ErrGEDZIPMultipleGedcom)
 }
 
 func TestImportGEDZIP_RejectsZipSlip(t *testing.T) {
@@ -520,32 +550,35 @@ func TestEntrySizeLimitReader(t *testing.T) {
 }
 
 func TestImportGEDZIP_MkdirAllFailsWhenFileOccupiesDirectoryPath(t *testing.T) {
-	// Write "foo" as a regular file, then "foo/bar.txt". When extracting the
-	// second entry, MkdirAll("foo/") fails because "foo" is already a regular
-	// file — exercising the directory-creation error branch.
-	gdz := buildGEDZIPOrdered(t, []gedzipTestEntry{
-		{Name: "gedcom.ged", Body: []byte(minimalGEDCOM7)},
-		{Name: "foo", Body: []byte("regular-file-content")},
-		{Name: "foo/bar.txt", Body: []byte("nested-content")},
-	})
+	// When destPath's parent directory is occupied by a regular file, MkdirAll
+	// fails — exercising the directory-creation error branch.
+	tempDir := t.TempDir()
+	filePath := filepath.Join(tempDir, "file-not-dir")
+	require.NoError(t, os.WriteFile(filePath, []byte("content"), filePermissions))
 
-	err := importGEDCOM(gdz, filepath.Join(t.TempDir(), "archive"), FormatMulti, true, false, defaultShowFirstErrors)
+	gdz := buildGEDZIP(t, map[string][]byte{"test.txt": []byte("data")})
+	zr, err := zip.OpenReader(gdz)
+	require.NoError(t, err)
+	defer func() { _ = zr.Close() }()
+
+	destPath := filepath.Join(filePath, "sub", "test.txt")
+	err = writeZipEntry(zr.File[0], destPath)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "creating directory")
 }
 
 func TestImportGEDZIP_OpenFileFailsWhenDirectoryOccupiesFilePath(t *testing.T) {
-	// Write "foo/bar.txt" first (which creates "foo" as a directory), then
-	// write "foo" as a regular file. The second entry's OpenFile fails with
-	// EISDIR — exercising the destination-open error branch in writeZipEntry
-	// and the error-propagation branch in extractGEDZIP.
-	gdz := buildGEDZIPOrdered(t, []gedzipTestEntry{
-		{Name: "gedcom.ged", Body: []byte(minimalGEDCOM7)},
-		{Name: "foo/bar.txt", Body: []byte("nested-content")},
-		{Name: "foo", Body: []byte("conflicts-with-dir")},
-	})
+	// When destPath is occupied by an existing directory, OpenFile fails with
+	// EISDIR — exercising the destination-open error branch in writeZipEntry.
+	dirPath := filepath.Join(t.TempDir(), "existing-dir")
+	require.NoError(t, os.MkdirAll(dirPath, dirPermissions))
 
-	err := importGEDCOM(gdz, filepath.Join(t.TempDir(), "archive"), FormatMulti, true, false, defaultShowFirstErrors)
+	gdz := buildGEDZIP(t, map[string][]byte{"test.txt": []byte("data")})
+	zr, err := zip.OpenReader(gdz)
+	require.NoError(t, err)
+	defer func() { _ = zr.Close() }()
+
+	err = writeZipEntry(zr.File[0], dirPath)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "creating destination file")
 }

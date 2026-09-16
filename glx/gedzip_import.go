@@ -19,15 +19,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
-	"path"
 	"path/filepath"
-	"strings"
-)
 
-// gedzipGedcomEntry is the canonical name of the GEDCOM file inside a GEDZIP
-// archive, as defined by the GEDZIP specification.
-const gedzipGedcomEntry = "gedcom.ged"
+	glxlib "github.com/genealogix/glx/go-glx"
+)
 
 // maxGEDZIPEntries is a security limit on per-archive entry count to mitigate
 // inode/syscall exhaustion DoS from archives containing huge numbers of tiny
@@ -45,12 +42,14 @@ var maxGEDZIPEntries = 100_000
 // a multi-hundred-MiB fixture.
 var maxGEDZIPEntryBytes int64 = 512 << 20
 
-// importGEDZIP extracts a .gdz archive into a temporary directory and delegates
-// to the existing GEDCOM import pipeline. The temp directory is removed when
-// the function returns, regardless of outcome.
+// importGEDZIP opens a .gdz archive and delegates to glxlib.ImportGEDZIP via
+// Go's fs.FS abstraction without extracting the entire archive to a temporary
+// directory.
 func importGEDZIP(gedzipPath, outputPath, format string, validate, verbose bool, showFirstErrors int, out ...io.Writer) error {
+	output := resolveOutputWriter(out...)
+
 	if verbose {
-		_, _ = fmt.Fprintf(resolveOutputWriter(out...), "Extracting GEDZIP archive: %s\n", gedzipPath)
+		_, _ = fmt.Fprintf(output, "Extracting GEDZIP archive: %s\n", gedzipPath)
 	}
 
 	zr, err := zip.OpenReader(filepath.Clean(gedzipPath))
@@ -59,15 +58,8 @@ func importGEDZIP(gedzipPath, outputPath, format string, validate, verbose bool,
 		case os.IsNotExist(err):
 			return fmt.Errorf("%w: %s: %w", ErrGEDCOMFileNotFound, gedzipPath, err)
 		case errors.Is(err, zip.ErrInsecurePath):
-			// ErrInsecurePath flags an entry name that fails the zip
-			// Reader's local-path check (e.g. zip-slip); the archive
-			// itself parses fine, the failure mode is a bad entry.
 			return fmt.Errorf("%w: %s: %w", ErrGEDZIPInvalidEntry, gedzipPath, err)
 		case errors.Is(err, zip.ErrFormat), errors.Is(err, zip.ErrChecksum):
-			// zip.ErrAlgorithm is intentionally absent here: archive/zip
-			// surfaces it from (*File).Open during entry decompression, not
-			// from OpenReader. writeZipEntry maps it to
-			// ErrGEDZIPUnsupportedAlgorithm at that point.
 			return fmt.Errorf("%w: %s: %w", ErrGEDZIPNotValidArchive, gedzipPath, err)
 		default:
 			return fmt.Errorf("opening gedzip archive %s: %w", gedzipPath, err)
@@ -79,131 +71,212 @@ func importGEDZIP(gedzipPath, outputPath, format string, validate, verbose bool,
 		return fmt.Errorf("%w: %d entries (limit %d)", ErrGEDZIPTooManyEntries, len(zr.File), maxGEDZIPEntries)
 	}
 
-	if !hasGedcomEntry(zr.File) {
-		return fmt.Errorf("%w: %s", ErrGEDZIPMissingGedcom, gedzipPath)
-	}
-
-	tempDir, err := os.MkdirTemp("", "glx-gedzip-*")
+	glx, result, err := glxlib.ImportGEDZIP(zr, nil)
 	if err != nil {
-		return fmt.Errorf("creating temp directory for GEDZIP extraction: %w", err)
-	}
-	defer func() { _ = os.RemoveAll(tempDir) }()
-
-	if err := extractGEDZIP(zr.File, tempDir); err != nil {
 		return err
 	}
 
-	return importGEDCOM(filepath.Join(tempDir, gedzipGedcomEntry), outputPath, format, validate, verbose, showFirstErrors, out...)
-}
-
-// hasGedcomEntry reports whether the archive contains a gedcom.ged entry that
-// will actually be extracted as a regular file. A directory or symlink entry
-// named gedcom.ged passes the name check but is skipped by extractGEDZIP,
-// which would leave the temp directory without the file and surface a
-// confusing ErrGEDCOMFileNotFound pointing at the tempdir path.
-func hasGedcomEntry(files []*zip.File) bool {
-	for _, f := range files {
-		if f.Name != gedzipGedcomEntry {
-			continue
+	// Surface any non-standard GEDCOM entry or other import warnings
+	if result != nil {
+		for _, w := range result.Statistics.Warnings {
+			if w.Tag == "GEDZIP" {
+				_, _ = fmt.Fprintf(output, "Warning: %s\n", w.Message)
+			}
 		}
-		if f.FileInfo().IsDir() {
-			continue
-		}
-		if f.Mode()&os.ModeSymlink != 0 {
-			continue
-		}
-
-		return true
 	}
 
-	return false
+	if format == FormatSingle {
+		return importGEDZIPToSingleFile(glx, outputPath, validate, verbose, showFirstErrors, result.MediaFiles, zr, output)
+	}
+
+	return importGEDZIPToMultiFile(glx, outputPath, validate, verbose, showFirstErrors, result.MediaFiles, zr, output)
 }
 
-// extractGEDZIP writes each file entry into destDir, skipping directory and
-// symlink entries (the latter to prevent zip-symlink-slip attacks where a
-// symlink target could redirect a later entry's write outside destDir).
-// Duplicate entries — defined as two entries whose cleaned, ASCII-lowercased
-// destination paths collide — are rejected. This catches both case-only
-// variants ("gedcom.ged" vs "Gedcom.GED") that overwrite on Windows NTFS and
-// the default macOS APFS configuration, AND dot-segment variants
-// ("gedcom.ged" vs "media/../gedcom.ged") that path.Clean folds to the same
-// destination. Without this, an attacker could hijack gedcom.ged after
-// hasGedcomEntry has already approved the archive.
-func extractGEDZIP(files []*zip.File, destDir string) error {
-	seen := make(map[string]struct{}, len(files))
-	for _, f := range files {
-		dest, err := safeExtractPath(destDir, f.Name)
-		if err != nil {
-			return err
-		}
+// importGEDZIPToSingleFile writes the imported GLX data to a single file and copies media
+func importGEDZIPToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, verbose bool, showFirstErrors int, mediaFiles []glxlib.MediaFileSource, bundle fs.FS, out io.Writer) error {
+	if verbose {
+		_, _ = fmt.Fprintf(out, "Writing single-file archive: %s\n", outputPath)
+	}
 
-		// safeExtractPath already canonicalizes the archive path (including
-		// cleaning dot segments), so dot-segment aliases resolve to the same
-		// destination path in `dest`. Lowercasing here additionally collapses
-		// case-only variants on case-insensitive filesystems.
-		key := strings.ToLower(dest)
-		if _, dup := seen[key]; dup {
-			return fmt.Errorf("%w: %q", ErrGEDZIPDuplicateEntry, f.Name)
-		}
-		seen[key] = struct{}{}
+	outputPath = ensureGLXExtension(outputPath)
 
-		if f.FileInfo().IsDir() {
-			continue
-		}
+	if err := writeSingleFileArchive(outputPath, glx, validate); err != nil {
+		return formatValidationError(err, showFirstErrors)
+	}
 
-		if f.Mode()&os.ModeSymlink != 0 {
-			continue
-		}
+	archiveDir := filepath.Dir(outputPath)
+	if err := copyMediaFilesFromFS(SystemIOStreams(), archiveDir, mediaFiles, bundle, verbose); err != nil {
+		return fmt.Errorf("failed to copy media files: %w", err)
+	}
 
-		if err := os.MkdirAll(filepath.Dir(dest), dirPermissions); err != nil {
-			return fmt.Errorf("creating directory for %q: %w", f.Name, err)
-		}
+	printSuccessSingleFile("imported", outputPath)
+	printArchiveStatistics(glx)
 
-		if err := writeZipEntry(f, dest); err != nil {
-			return err
+	return nil
+}
+
+// importGEDZIPToMultiFile writes the imported GLX data to a multi-file directory and copies media
+func importGEDZIPToMultiFile(glx *glxlib.GLXFile, outputPath string, validate, verbose bool, showFirstErrors int, mediaFiles []glxlib.MediaFileSource, bundle fs.FS, out io.Writer) error {
+	if verbose {
+		_, _ = fmt.Fprintf(out, "Writing multi-file archive: %s\n", outputPath)
+	}
+
+	if err := writeMultiFileArchive(outputPath, glx, validate); err != nil {
+		return formatValidationError(err, showFirstErrors)
+	}
+
+	if err := copyMediaFilesFromFS(SystemIOStreams(), outputPath, mediaFiles, bundle, verbose); err != nil {
+		return fmt.Errorf("failed to copy media files: %w", err)
+	}
+
+	printSuccessMultiFile("imported", outputPath)
+	printArchiveStatistics(glx)
+
+	return nil
+}
+
+// copyMediaFilesFromFS copies media files from an fs.FS bundle into the archive's media/files/ directory.
+func copyMediaFilesFromFS(streams *IOStreams, archiveDir string, mediaFiles []glxlib.MediaFileSource, bundle fs.FS, verbose bool) error {
+	if len(mediaFiles) == 0 {
+		return nil
+	}
+
+	filesDir := filepath.Join(archiveDir, glxlib.MediaFilesDir)
+	if err := os.MkdirAll(filesDir, dirPermissions); err != nil {
+		return fmt.Errorf("failed to create media/files directory: %w", err)
+	}
+
+	var copyCount, blobCount, warnCount int
+
+	for _, mf := range mediaFiles {
+		destPath := filepath.Join(filesDir, mf.TargetFilename)
+
+		switch mf.SourceType {
+		case glxlib.MediaSourceFile:
+			if mf.MemberPath == "" {
+				streams.Printf("Warning: could not copy media file %s: unresolved or invalid reference\n", mf.RelativePath)
+				warnCount++
+
+				continue
+			}
+
+			if err := copyMemberFile(bundle, mf.MemberPath, destPath); err != nil {
+				return err
+			}
+			copyCount++
+
+		case glxlib.MediaSourceBlob:
+			decoded, err := glxlib.DecodeGEDCOMBlob(mf.BlobData)
+			if err != nil {
+				streams.Printf("Warning: could not decode BLOB for %s: %v\n", mf.MediaID, err)
+				warnCount++
+
+				continue
+			}
+			if err := os.WriteFile(destPath, decoded, filePermissions); err != nil {
+				streams.Printf("Warning: could not write BLOB file %s: %v\n", destPath, err)
+				warnCount++
+
+				continue
+			}
+			blobCount++
 		}
+	}
+
+	if verbose || copyCount > 0 || blobCount > 0 {
+		streams.Printf("  Media files: %d copied, %d blobs written", copyCount, blobCount)
+		if warnCount > 0 {
+			streams.Printf(", %d warnings", warnCount)
+		}
+		streams.Println("")
 	}
 
 	return nil
 }
 
-// safeExtractPath rejects ZIP entry names that could escape destDir during
-// extraction. The layered checks guard distinct attack surfaces: empty
-// entry names, embedded NUL bytes, backslashes (illegal per APPNOTE 4.4.17.1
-// and a frequent zip-slip vector on Windows), forward-slash absolute prefixes
-// (which path.IsAbs catches as the spec-mandated form), and Windows volume
-// prefixes (e.g. "C:\\"). After path.Clean and platform-specific path joining,
-// the final isPathWithin check is the authoritative containment validation —
-// it catches any residual escape the per-prefix checks miss.
-func safeExtractPath(destDir, entryName string) (string, error) {
-	if entryName == "" {
-		return "", fmt.Errorf("%w: empty entry name", ErrGEDZIPInvalidEntry)
+var errGEDZIPSymlinkEntry = errors.New("skipping symlink entry")
+
+func copyMemberFile(bundle fs.FS, memberPath, destPath string) error {
+	src, err := bundle.Open(memberPath)
+	if err != nil {
+		if errors.Is(err, zip.ErrAlgorithm) {
+			return fmt.Errorf("%w: %q: %w", ErrGEDZIPUnsupportedAlgorithm, memberPath, err)
+		}
+
+		return fmt.Errorf("opening zip entry %q: %w", memberPath, err)
+	}
+	defer func() { _ = src.Close() }()
+
+	var zipFiles []*zip.File
+	if zr, ok := bundle.(*zip.Reader); ok {
+		zipFiles = zr.File
+	} else if zrc, ok := bundle.(*zip.ReadCloser); ok {
+		zipFiles = zrc.File
+	}
+	for _, f := range zipFiles {
+		if f.Name == memberPath {
+			if f.Mode()&os.ModeSymlink != 0 {
+				return fmt.Errorf("%w: %q", errGEDZIPSymlinkEntry, memberPath)
+			}
+
+			break
+		}
 	}
 
-	// ZIP entries use forward slashes per APPNOTE 4.4.17.1; backslashes and
-	// embedded NULs are not legal and cause platform-specific anomalies.
-	if strings.ContainsRune(entryName, 0) {
-		return "", fmt.Errorf("%w: NUL byte in entry name %q", ErrGEDZIPInvalidEntry, entryName)
-	}
-	if strings.Contains(entryName, `\`) {
-		return "", fmt.Errorf("%w: backslash in entry name %q", ErrGEDZIPInvalidEntry, entryName)
+	if err := os.MkdirAll(filepath.Dir(destPath), dirPermissions); err != nil {
+		return fmt.Errorf("creating directory for %q: %w", memberPath, err)
 	}
 
-	if path.IsAbs(entryName) {
-		return "", fmt.Errorf("%w: absolute path %q", ErrGEDZIPInvalidEntry, entryName)
+	return writeStreamEntry(src, memberPath, destPath)
+}
+
+// writeZipEntry copies one ZIP entry to destPath, rejecting any entry whose
+// decompressed size exceeds maxGEDZIPEntryBytes. On a copy or close failure, or
+// when that size limit is exceeded, the partially written destination is
+// removed so the next caller cannot observe a truncated or oversized file.
+func writeZipEntry(f *zip.File, destPath string) error {
+	src, err := f.Open()
+	if err != nil {
+		if errors.Is(err, zip.ErrAlgorithm) {
+			return fmt.Errorf("%w: %q: %w", ErrGEDZIPUnsupportedAlgorithm, f.Name, err)
+		}
+
+		return fmt.Errorf("opening zip entry %q: %w", f.Name, err)
 	}
-	if filepath.VolumeName(filepath.FromSlash(entryName)) != "" {
-		return "", fmt.Errorf("%w: volume-prefixed path %q", ErrGEDZIPInvalidEntry, entryName)
+	defer func() { _ = src.Close() }()
+
+	if err := os.MkdirAll(filepath.Dir(destPath), dirPermissions); err != nil {
+		return fmt.Errorf("creating directory for %q: %w", f.Name, err)
 	}
 
-	cleaned := path.Clean(entryName)
+	return writeStreamEntry(src, f.Name, destPath)
+}
 
-	dest := filepath.Join(destDir, filepath.FromSlash(cleaned))
-	if !isPathWithin(dest, destDir) {
-		return "", fmt.Errorf("%w: %q escapes destination", ErrGEDZIPInvalidEntry, entryName)
+func writeStreamEntry(src io.Reader, name, destPath string) error {
+	dst, err := os.OpenFile(filepath.Clean(destPath), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, filePermissions)
+	if err != nil {
+		return fmt.Errorf("creating destination file for %q: %w", name, err)
 	}
 
-	return dest, nil
+	limitedSrc := &entrySizeLimitReader{r: src, remaining: maxGEDZIPEntryBytes + 1}
+	_, copyErr := io.Copy(dst, limitedSrc)
+	closeErr := dst.Close()
+
+	if copyErr != nil {
+		_ = os.Remove(destPath)
+		if errors.Is(copyErr, ErrGEDZIPEntryTooLarge) {
+			return fmt.Errorf("extracting zip entry %q: %w (limit %d bytes)", name, ErrGEDZIPEntryTooLarge, maxGEDZIPEntryBytes)
+		}
+
+		return fmt.Errorf("extracting zip entry %q: %w", name, copyErr)
+	}
+	if closeErr != nil {
+		_ = os.Remove(destPath)
+
+		return fmt.Errorf("closing destination file for %q: %w", name, closeErr)
+	}
+
+	return nil
 }
 
 // entrySizeLimitReader wraps an io.Reader and returns ErrGEDZIPEntryTooLarge
@@ -234,49 +307,4 @@ func (l *entrySizeLimitReader) Read(p []byte) (int, error) {
 	}
 
 	return n, err
-}
-
-// writeZipEntry copies one ZIP entry to destPath, rejecting any entry whose
-// decompressed size exceeds maxGEDZIPEntryBytes. On a copy or close failure, or
-// when that size limit is exceeded, the partially written destination is
-// removed so the next caller cannot observe a truncated or oversized file.
-func writeZipEntry(f *zip.File, destPath string) error {
-	src, err := f.Open()
-	if err != nil {
-		if errors.Is(err, zip.ErrAlgorithm) {
-			// The archive parses fine but uses a compression method
-			// archive/zip has no decompressor for; this is a "structurally
-			// valid but unsupported" failure, not a corrupt-archive case.
-			return fmt.Errorf("%w: %q: %w", ErrGEDZIPUnsupportedAlgorithm, f.Name, err)
-		}
-
-		return fmt.Errorf("opening zip entry %q: %w", f.Name, err)
-	}
-	defer func() { _ = src.Close() }()
-
-	dst, err := os.OpenFile(filepath.Clean(destPath), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, filePermissions)
-	if err != nil {
-		return fmt.Errorf("creating destination file for %q: %w", f.Name, err)
-	}
-
-	limitedSrc := &entrySizeLimitReader{r: src, remaining: maxGEDZIPEntryBytes + 1}
-	_, copyErr := io.Copy(dst, limitedSrc)
-	closeErr := dst.Close()
-
-	if copyErr != nil {
-		_ = os.Remove(destPath)
-
-		if errors.Is(copyErr, ErrGEDZIPEntryTooLarge) {
-			return fmt.Errorf("extracting zip entry %q: %w (limit %d bytes)", f.Name, ErrGEDZIPEntryTooLarge, maxGEDZIPEntryBytes)
-		}
-
-		return fmt.Errorf("extracting zip entry %q: %w", f.Name, copyErr)
-	}
-	if closeErr != nil {
-		_ = os.Remove(destPath)
-
-		return fmt.Errorf("closing destination file for %q: %w", f.Name, closeErr)
-	}
-
-	return nil
 }
