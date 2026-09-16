@@ -86,7 +86,7 @@ func TestImportGEDZIP_RootGedcomStandard(t *testing.T) {
 
 	// No fallback warning should be emitted
 	for _, w := range result.Statistics.Warnings {
-		require.NotEqual(t, "GEDZIP", w.Tag, "unexpected fallback warning: %s", w.Message)
+		require.NotEqual(t, WarningTagGEDZIP, w.Tag, "unexpected fallback warning: %s", w.Message)
 	}
 }
 
@@ -105,7 +105,7 @@ func TestImportGEDZIP_FallbackRootGedcomCaseInsensitive(t *testing.T) {
 	// Fallback warning must be present
 	foundFallback := false
 	for _, w := range result.Statistics.Warnings {
-		if w.Tag == "GEDZIP" && strings.Contains(w.Message, "using non-standard GEDCOM entry") {
+		if w.Tag == WarningTagGEDZIP && strings.Contains(w.Message, "using non-standard GEDCOM entry") {
 			foundFallback = true
 
 			break
@@ -139,7 +139,7 @@ func TestImportGEDZIP_FallbackSingleWrapperDirectory(t *testing.T) {
 
 	foundFallback := false
 	for _, w := range result.Statistics.Warnings {
-		if w.Tag == "GEDZIP" && strings.Contains(w.Message, "archive/tree.ged") {
+		if w.Tag == WarningTagGEDZIP && strings.Contains(w.Message, "archive/tree.ged") {
 			foundFallback = true
 
 			break
@@ -323,14 +323,58 @@ func TestImportGEDZIP_RejectsDuplicateEntry_CaseFolded(t *testing.T) {
 	require.ErrorIs(t, err, ErrGEDZIPDuplicateEntry)
 }
 
-func TestImportGEDZIP_RejectsDuplicateEntry_DotSegment(t *testing.T) {
+func TestImportGEDZIP_RejectsDuplicateEntry_UnicodeCaseFolded(t *testing.T) {
+	// "Σ.jpg" (uppercase Greek sigma) and "ς.jpg" (lowercase Greek final sigma)
+	// fold to the same Unicode rune under SimpleFold.
+	zr := buildMemZip(t, map[string][]byte{
+		"gedcom.ged": []byte(minimalGEDCOM7ForGEDZIP),
+		"Σ.jpg":      []byte("image1"),
+		"ς.jpg":      []byte("image2"),
+	})
+
+	_, _, err := ImportGEDZIP(zr, nil)
+	require.ErrorIs(t, err, ErrGEDZIPDuplicateEntry)
+}
+
+func TestImportGEDZIP_RejectsInvalidEntry_DotSegment(t *testing.T) {
 	zr := buildMemZip(t, map[string][]byte{
 		"gedcom.ged":          []byte(minimalGEDCOM7ForGEDZIP),
 		"media/../gedcom.ged": []byte(minimalGEDCOM7ForGEDZIP),
 	})
 
 	_, _, err := ImportGEDZIP(zr, nil)
-	require.ErrorIs(t, err, ErrGEDZIPDuplicateEntry)
+	require.ErrorIs(t, err, ErrGEDZIPInvalidEntry)
+}
+
+func TestImportGEDZIP_RejectsInvalidEntry_NonCanonicalPrefix(t *testing.T) {
+	zr := buildMemZip(t, map[string][]byte{
+		"./tree.ged": []byte(minimalGEDCOM7ForGEDZIP),
+	})
+
+	_, _, err := ImportGEDZIP(zr, nil)
+	require.ErrorIs(t, err, ErrGEDZIPInvalidEntry)
+}
+
+func TestImportGEDZIP_MediaResolution_WrapperWithPercent(t *testing.T) {
+	gedcom := "0 HEAD\n" +
+		"1 GEDC\n" +
+		"2 VERS 7.0\n" +
+		"0 @M1@ OBJE\n" +
+		"1 FILE photo%20.jpg\n" +
+		"1 FORM image/jpeg\n" +
+		"0 TRLR\n"
+
+	// Wrapper directory literally named "wrap%20dir", containing "photo .jpg"
+	fsys := fstest.MapFS{
+		"wrap%20dir/tree.ged":   &fstest.MapFile{Data: []byte(gedcom)},
+		"wrap%20dir/photo .jpg": &fstest.MapFile{Data: []byte("photo-bytes")},
+	}
+
+	glxFile, result, err := ImportGEDZIP(fsys, nil)
+	require.NoError(t, err)
+	require.NotNil(t, glxFile)
+	require.Len(t, result.MediaFiles, 1)
+	require.Equal(t, "wrap%20dir/photo .jpg", result.MediaFiles[0].MemberPath)
 }
 
 func TestImportGEDZIP_ZipReaderFS(t *testing.T) {

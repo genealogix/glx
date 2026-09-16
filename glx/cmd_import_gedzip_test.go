@@ -376,19 +376,63 @@ func TestImportGEDZIP_RejectsCaseFoldedDuplicateGedcom(t *testing.T) {
 	require.ErrorIs(t, err, ErrGEDZIPDuplicateEntry)
 }
 
-func TestImportGEDZIP_RejectsDotSegmentDuplicateGedcom(t *testing.T) {
-	// gedcom.ged and media/../gedcom.ged are two distinct ZIP entry names
-	// that path.Clean folds to the same destination. Without the
-	// destination-keyed dedup, the second write would silently overwrite
-	// the first, hijacking the GEDCOM after hasGedcomEntry already approved
-	// the archive on the original (uncleaned) name.
+func TestImportGEDZIP_RejectsDotSegmentInvalidGedcom(t *testing.T) {
+	// gedcom.ged and media/../gedcom.ged are two distinct ZIP entry names.
+	// media/../gedcom.ged violates fs.ValidPath and contains a non-canonical
+	// dot segment, so it must be rejected as an invalid entry.
 	gdz := buildGEDZIP(t, map[string][]byte{
 		"gedcom.ged":          []byte(minimalGEDCOM7),
 		"media/../gedcom.ged": []byte(minimalGEDCOM7),
 	})
 
 	err := importGEDCOM(gdz, filepath.Join(t.TempDir(), "archive"), FormatMulti, true, false, defaultShowFirstErrors)
-	require.ErrorIs(t, err, ErrGEDZIPDuplicateEntry)
+	require.ErrorIs(t, err, ErrGEDZIPInvalidEntry)
+}
+
+func TestImportGEDZIP_RejectsOversizedGedcomEntry(t *testing.T) {
+	orig := maxGEDZIPEntryBytes
+	maxGEDZIPEntryBytes = 32
+	t.Cleanup(func() { maxGEDZIPEntryBytes = orig })
+
+	gdz := buildGEDZIP(t, map[string][]byte{
+		"gedcom.ged": []byte(minimalGEDCOM7), // > 32 bytes
+	})
+
+	err := importGEDCOM(gdz, filepath.Join(t.TempDir(), "archive"), FormatMulti, true, false, defaultShowFirstErrors)
+	require.ErrorIs(t, err, ErrGEDZIPEntryTooLarge)
+}
+
+func TestImportGEDZIP_FailedMediaDoesNotOverwriteExistingArchive(t *testing.T) {
+	orig := maxGEDZIPEntryBytes
+	maxGEDZIPEntryBytes = 64
+	t.Cleanup(func() { maxGEDZIPEntryBytes = orig })
+
+	tmpDir := t.TempDir()
+	outPath := filepath.Join(tmpDir, "target.glx")
+	originalContent := []byte("original valid glx content")
+	require.NoError(t, os.WriteFile(outPath, originalContent, filePermissions))
+
+	gedcom := "0 HEAD\n" +
+		"1 GEDC\n" +
+		"2 VERS 7.0\n" +
+		"0 @M1@ OBJE\n" +
+		"1 FILE huge.jpg\n" +
+		"1 FORM image/jpeg\n" +
+		"0 TRLR\n"
+
+	gdz := buildGEDZIP(t, map[string][]byte{
+		"gedcom.ged": []byte(gedcom),
+		"huge.jpg":   bytes.Repeat([]byte("A"), 128), // exceeds maxGEDZIPEntryBytes (64)
+	})
+
+	err := importGEDCOM(gdz, outPath, FormatSingle, true, false, defaultShowFirstErrors)
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrGEDZIPEntryTooLarge)
+
+	// Verify target.glx was NOT overwritten
+	content, readErr := os.ReadFile(outPath)
+	require.NoError(t, readErr)
+	require.Equal(t, originalContent, content, "existing archive must not be modified if media copy fails")
 }
 
 func TestImportGEDZIP_VerboseEmitsExtractionMessage(t *testing.T) {

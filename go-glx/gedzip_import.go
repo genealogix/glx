@@ -25,9 +25,12 @@ import (
 	"slices"
 	"strings"
 	"testing/fstest"
+	"unicode"
 )
 
 const (
+	// WarningTagGEDZIP is the tag used for GEDZIP-specific import warnings.
+	WarningTagGEDZIP  = "GEDZIP"
 	gedzipGedcomEntry = "gedcom.ged"
 )
 
@@ -81,7 +84,7 @@ func ImportGEDZIP(bundle fs.FS, logW io.Writer) (*GLXFile, *ImportResult, error)
 	if usedFallback {
 		result.Statistics.Warnings = append(result.Statistics.Warnings, ImportWarning{
 			Line:    0,
-			Tag:     "GEDZIP",
+			Tag:     WarningTagGEDZIP,
 			Message: fmt.Sprintf("using non-standard GEDCOM entry %q", gedcomPath),
 		})
 	}
@@ -92,21 +95,54 @@ func ImportGEDZIP(bundle fs.FS, logW io.Writer) (*GLXFile, *ImportResult, error)
 	return glxFile, result, nil
 }
 
+type fsUnwrapper interface {
+	Unwrap() fs.FS
+}
+
+func unwrapFS(f fs.FS) fs.FS {
+	for {
+		if u, ok := f.(fsUnwrapper); ok {
+			f = u.Unwrap()
+		} else {
+			return f
+		}
+	}
+}
+
 // inventoryAndValidateBundle collects regular files in the bundle while checking
 // entry names for security violations (NUL, backslash, absolute path, volume prefix,
-// directory traversal) and case-folded / dot-segment duplicate collisions.
+// directory traversal) and Unicode case-folded duplicate collisions.
 func inventoryAndValidateBundle(bundle fs.FS) ([]string, map[string]struct{}, map[string]string, error) {
-	if zr, ok := bundle.(*zip.Reader); ok {
+	underlying := unwrapFS(bundle)
+	if zr, ok := underlying.(*zip.Reader); ok {
 		return collectZipFiles(zr.File)
 	}
-	if zrc, ok := bundle.(*zip.ReadCloser); ok {
+	if zrc, ok := underlying.(*zip.ReadCloser); ok {
 		return collectZipFiles(zrc.File)
 	}
-	if mfs, ok := bundle.(fstest.MapFS); ok {
+	if mfs, ok := underlying.(fstest.MapFS); ok {
 		return collectMapFS(mfs)
 	}
 
 	return collectGenericFS(bundle)
+}
+
+// foldRune returns the canonical minimum rune in r's Unicode SimpleFold cycle.
+func foldRune(r rune) rune {
+	minR := r
+	for curr := unicode.SimpleFold(r); curr != r; curr = unicode.SimpleFold(curr) {
+		if curr < minR {
+			minR = curr
+		}
+	}
+
+	return minR
+}
+
+// foldKey returns a canonical Unicode case-folded string suitable for collision detection
+// and case-insensitive lookup.
+func foldKey(s string) string {
+	return strings.Map(foldRune, s)
 }
 
 func collectZipFiles(files []*zip.File) ([]string, map[string]struct{}, map[string]string, error) {
@@ -119,7 +155,7 @@ func collectZipFiles(files []*zip.File) ([]string, map[string]struct{}, map[stri
 		if err := validateEntryName(f.Name); err != nil {
 			return nil, nil, nil, err
 		}
-		key := strings.ToLower(path.Clean(f.Name))
+		key := foldKey(path.Clean(f.Name))
 		if _, dup := seen[key]; dup {
 			return nil, nil, nil, fmt.Errorf("%w: %q", ErrGEDZIPDuplicateEntry, f.Name)
 		}
@@ -128,7 +164,7 @@ func collectZipFiles(files []*zip.File) ([]string, map[string]struct{}, map[stri
 		if f.Mode().IsRegular() && !f.FileInfo().IsDir() {
 			regularFiles = append(regularFiles, f.Name)
 			regularFilesSet[f.Name] = struct{}{}
-			caseMap[strings.ToLower(f.Name)] = f.Name
+			caseMap[foldKey(f.Name)] = f.Name
 		}
 	}
 
@@ -145,7 +181,7 @@ func collectMapFS(mfs fstest.MapFS) ([]string, map[string]struct{}, map[string]s
 		if err := validateEntryName(name); err != nil {
 			return nil, nil, nil, err
 		}
-		key := strings.ToLower(path.Clean(name))
+		key := foldKey(path.Clean(name))
 		if _, dup := seen[key]; dup {
 			return nil, nil, nil, fmt.Errorf("%w: %q", ErrGEDZIPDuplicateEntry, name)
 		}
@@ -154,7 +190,7 @@ func collectMapFS(mfs fstest.MapFS) ([]string, map[string]struct{}, map[string]s
 		if file.Mode.IsRegular() {
 			regularFiles = append(regularFiles, name)
 			regularFilesSet[name] = struct{}{}
-			caseMap[strings.ToLower(name)] = name
+			caseMap[foldKey(name)] = name
 		}
 	}
 
@@ -183,7 +219,7 @@ func collectGenericFS(bundle fs.FS) ([]string, map[string]struct{}, map[string]s
 			return err
 		}
 
-		key := strings.ToLower(path.Clean(p))
+		key := foldKey(path.Clean(p))
 		if _, dup := walkSeen[key]; dup {
 			return fmt.Errorf("%w: %q", ErrGEDZIPDuplicateEntry, p)
 		}
@@ -192,7 +228,7 @@ func collectGenericFS(bundle fs.FS) ([]string, map[string]struct{}, map[string]s
 		if d.Type().IsRegular() {
 			regularFiles = append(regularFiles, p)
 			regularFilesSet[p] = struct{}{}
-			caseMap[strings.ToLower(p)] = p
+			caseMap[foldKey(p)] = p
 		}
 
 		return nil
@@ -205,7 +241,7 @@ func collectGenericFS(bundle fs.FS) ([]string, map[string]struct{}, map[string]s
 }
 
 // validateEntryName validates an entry name against directory traversal,
-// absolute paths, Windows volume prefixes, backslashes, and NUL bytes.
+// absolute paths, Windows volume prefixes, backslashes, NUL bytes, and non-canonical dot segments.
 func validateEntryName(name string) error {
 	if name == "" {
 		return fmt.Errorf("%w: empty entry name", ErrGEDZIPInvalidEntry)
@@ -223,8 +259,11 @@ func validateEntryName(name string) error {
 		return fmt.Errorf("%w: volume-prefixed path %q", ErrGEDZIPInvalidEntry, name)
 	}
 	cleaned := path.Clean(name)
-	if cleaned == ".." || strings.HasPrefix(cleaned, "../") {
+	if cleaned == "." || cleaned == ".." || strings.HasPrefix(cleaned, "../") {
 		return fmt.Errorf("%w: %q escapes destination", ErrGEDZIPInvalidEntry, name)
+	}
+	if cleaned != strings.TrimSuffix(name, "/") {
+		return fmt.Errorf("%w: %q is not a canonical path", ErrGEDZIPInvalidEntry, name)
 	}
 
 	return nil
@@ -298,37 +337,7 @@ func resolveBundleMediaFiles(gedcomPath string, result *ImportResult, filesSet m
 			continue
 		}
 
-		var target string
-		if gedDir == "." || gedDir == "" {
-			target = path.Clean(relPath)
-		} else {
-			target = path.Clean(gedDir + "/" + relPath)
-		}
-
-		// Ensure target does not escape gedDir
-		if gedDir != "." && gedDir != "" {
-			if !strings.HasPrefix(target, gedDir+"/") && target != gedDir {
-				result.Statistics.Warnings = append(result.Statistics.Warnings, ImportWarning{
-					Line:    0,
-					Tag:     GedcomTagObje,
-					Message: "media file reference rejected (escapes bundle directory): " + mf.RelativePath,
-				})
-
-				continue
-			}
-		} else {
-			if target == ".." || strings.HasPrefix(target, "../") {
-				result.Statistics.Warnings = append(result.Statistics.Warnings, ImportWarning{
-					Line:    0,
-					Tag:     GedcomTagObje,
-					Message: "media file reference rejected (escapes bundle root): " + mf.RelativePath,
-				})
-
-				continue
-			}
-		}
-
-		resolved, ok := resolveMember(target, filesSet, caseMap)
+		resolved, ok := resolveMember(gedDir, relPath, filesSet, caseMap)
 		if ok {
 			mf.MemberPath = resolved
 		} else {
@@ -341,33 +350,59 @@ func resolveBundleMediaFiles(gedcomPath string, result *ImportResult, filesSet m
 	}
 }
 
-// resolveMember attempts to find a member file in the bundle using:
-// 1. Exact match
-// 2. GEDCOM 7.0 percent-decoding exact match
-// 3. Case-insensitive match
-// 4. Case-insensitive percent-decoded match
-func resolveMember(target string, filesSet map[string]struct{}, caseMap map[string]string) (string, bool) {
-	// 1. Exact match
-	if _, ok := filesSet[target]; ok {
-		return target, true
+func joinBundlePath(dir, file string) string {
+	if dir == "." || dir == "" {
+		return path.Clean(file)
 	}
 
-	// 2. GEDCOM 7.0 percent-decoding exact match
-	decoded, err := url.PathUnescape(target)
-	if err == nil && decoded != target && !hasDotDotSegment(decoded) && !strings.HasPrefix(decoded, "/") {
-		if _, ok := filesSet[decoded]; ok {
-			return decoded, true
+	return path.Clean(dir + "/" + file)
+}
+
+func isContained(gedDir, target string) bool {
+	if gedDir == "." || gedDir == "" {
+		return target != ".." && !strings.HasPrefix(target, "../")
+	}
+
+	return strings.HasPrefix(target, gedDir+"/") || target == gedDir
+}
+
+// resolveMember attempts to find a member file in the bundle using:
+// 1. Exact match
+// 2. GEDCOM 7.0 percent-decoding exact match (decoding ONLY relPath, preserving gedDir)
+// 3. Case-insensitive match on target
+// 4. Case-insensitive percent-decoded match
+func resolveMember(gedDir, relPath string, filesSet map[string]struct{}, caseMap map[string]string) (string, bool) {
+	// Candidate 1: exact target
+	target := joinBundlePath(gedDir, relPath)
+	if isContained(gedDir, target) {
+		if _, ok := filesSet[target]; ok {
+			return target, true
 		}
 	}
 
-	// 3. Case-insensitive match on target
-	if actual, ok := caseMap[strings.ToLower(target)]; ok {
-		return actual, true
+	// Candidate 2: percent-decoded relative reference (decode ONLY relPath, preserving gedDir)
+	decodedRel, err := url.PathUnescape(relPath)
+	var decodedTarget string
+	hasDecoded := err == nil && decodedRel != relPath && !hasDotDotSegment(decodedRel) && !strings.HasPrefix(decodedRel, "/")
+	if hasDecoded {
+		decodedTarget = joinBundlePath(gedDir, decodedRel)
+		if isContained(gedDir, decodedTarget) {
+			if _, ok := filesSet[decodedTarget]; ok {
+				return decodedTarget, true
+			}
+		}
 	}
 
-	// 4. Case-insensitive match on percent-decoded target
-	if err == nil && decoded != target && !hasDotDotSegment(decoded) && !strings.HasPrefix(decoded, "/") {
-		if actual, ok := caseMap[strings.ToLower(decoded)]; ok {
+	// Candidate 3: case-insensitive match on target
+	if isContained(gedDir, target) {
+		if actual, ok := caseMap[foldKey(target)]; ok {
+			return actual, true
+		}
+	}
+
+	// Candidate 4: case-insensitive match on percent-decoded target
+	if hasDecoded && isContained(gedDir, decodedTarget) {
+		if actual, ok := caseMap[foldKey(decodedTarget)]; ok {
 			return actual, true
 		}
 	}

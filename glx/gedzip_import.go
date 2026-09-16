@@ -71,15 +71,20 @@ func importGEDZIP(gedzipPath, outputPath, format string, validate, verbose bool,
 		return fmt.Errorf("%w: %d entries (limit %d)", ErrGEDZIPTooManyEntries, len(zr.File), maxGEDZIPEntries)
 	}
 
-	glx, result, err := glxlib.ImportGEDZIP(zr, nil)
+	limitedBundle := &sizeLimitedFS{fs: zr}
+	glx, result, err := glxlib.ImportGEDZIP(limitedBundle, nil)
 	if err != nil {
+		if errors.Is(err, ErrGEDZIPEntryTooLarge) {
+			return fmt.Errorf("extracting zip entry %q: %w (limit %d bytes)", "gedcom.ged", ErrGEDZIPEntryTooLarge, maxGEDZIPEntryBytes)
+		}
+
 		return err
 	}
 
 	// Surface any non-standard GEDCOM entry or other import warnings
 	if result != nil {
 		for _, w := range result.Statistics.Warnings {
-			if w.Tag == "GEDZIP" {
+			if w.Tag == glxlib.WarningTagGEDZIP {
 				_, _ = fmt.Fprintf(output, "Warning: %s\n", w.Message)
 			}
 		}
@@ -92,6 +97,36 @@ func importGEDZIP(gedzipPath, outputPath, format string, validate, verbose bool,
 	return importGEDZIPToMultiFile(glx, outputPath, validate, verbose, showFirstErrors, result.MediaFiles, zr, output)
 }
 
+// sizeLimitedFS wraps an fs.FS to enforce maxGEDZIPEntryBytes on any opened file.
+type sizeLimitedFS struct {
+	fs fs.FS
+}
+
+func (s *sizeLimitedFS) Unwrap() fs.FS {
+	return s.fs
+}
+
+func (s *sizeLimitedFS) Open(name string) (fs.File, error) {
+	f, err := s.fs.Open(name)
+	if err != nil {
+		return nil, err
+	}
+
+	return &sizeLimitedFile{
+		File: f,
+		r:    &entrySizeLimitReader{r: f, remaining: maxGEDZIPEntryBytes + 1},
+	}, nil
+}
+
+type sizeLimitedFile struct {
+	fs.File
+	r io.Reader
+}
+
+func (s *sizeLimitedFile) Read(p []byte) (int, error) {
+	return s.r.Read(p)
+}
+
 // importGEDZIPToSingleFile writes the imported GLX data to a single file and copies media
 func importGEDZIPToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, verbose bool, showFirstErrors int, mediaFiles []glxlib.MediaFileSource, bundle fs.FS, out io.Writer) error {
 	if verbose {
@@ -99,14 +134,46 @@ func importGEDZIPToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, 
 	}
 
 	outputPath = ensureGLXExtension(outputPath)
+	archiveDir := filepath.Dir(outputPath)
 
-	if err := writeSingleFileArchive(outputPath, glx, validate); err != nil {
+	stageDir, err := os.MkdirTemp(archiveDir, ".glx-stage-*")
+	if err != nil {
+		return fmt.Errorf("creating staging directory: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(stageDir) }()
+
+	streams := SystemIOStreams()
+	copyCount, blobCount, warnCount, err := stageMediaFilesFromFS(streams, stageDir, mediaFiles, bundle)
+	if err != nil {
+		return fmt.Errorf("failed to copy media files: %w", err)
+	}
+
+	tempFile, err := os.CreateTemp(archiveDir, ".glx-single-*.tmp")
+	if err != nil {
+		return fmt.Errorf("creating temporary archive: %w", err)
+	}
+	tempPath := tempFile.Name()
+	_ = tempFile.Close()
+	defer func() { _ = os.Remove(tempPath) }()
+
+	if err := writeSingleFileArchive(tempPath, glx, validate); err != nil {
 		return formatValidationError(err, showFirstErrors)
 	}
 
-	archiveDir := filepath.Dir(outputPath)
-	if err := copyMediaFilesFromFS(SystemIOStreams(), archiveDir, mediaFiles, bundle, verbose); err != nil {
-		return fmt.Errorf("failed to copy media files: %w", err)
+	if err := commitStagedMedia(stageDir, archiveDir); err != nil {
+		return fmt.Errorf("failed to commit media files: %w", err)
+	}
+
+	if verbose || copyCount > 0 || blobCount > 0 {
+		streams.Printf("  Media files: %d copied, %d blobs written", copyCount, blobCount)
+		if warnCount > 0 {
+			streams.Printf(", %d warnings", warnCount)
+		}
+		streams.Println("")
+	}
+
+	if err := os.Rename(tempPath, outputPath); err != nil {
+		return fmt.Errorf("writing archive to %s: %w", outputPath, err)
 	}
 
 	printSuccessSingleFile("imported", outputPath)
@@ -121,12 +188,37 @@ func importGEDZIPToMultiFile(glx *glxlib.GLXFile, outputPath string, validate, v
 		_, _ = fmt.Fprintf(out, "Writing multi-file archive: %s\n", outputPath)
 	}
 
+	parentDir := filepath.Dir(outputPath)
+	if err := os.MkdirAll(parentDir, dirPermissions); err != nil {
+		return fmt.Errorf("creating directory for %s: %w", outputPath, err)
+	}
+
+	stageDir, err := os.MkdirTemp(parentDir, ".glx-stage-*")
+	if err != nil {
+		return fmt.Errorf("creating staging directory: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(stageDir) }()
+
+	streams := SystemIOStreams()
+	copyCount, blobCount, warnCount, err := stageMediaFilesFromFS(streams, stageDir, mediaFiles, bundle)
+	if err != nil {
+		return fmt.Errorf("failed to copy media files: %w", err)
+	}
+
 	if err := writeMultiFileArchive(outputPath, glx, validate); err != nil {
 		return formatValidationError(err, showFirstErrors)
 	}
 
-	if err := copyMediaFilesFromFS(SystemIOStreams(), outputPath, mediaFiles, bundle, verbose); err != nil {
-		return fmt.Errorf("failed to copy media files: %w", err)
+	if err := commitStagedMedia(stageDir, outputPath); err != nil {
+		return fmt.Errorf("failed to commit media files: %w", err)
+	}
+
+	if verbose || copyCount > 0 || blobCount > 0 {
+		streams.Printf("  Media files: %d copied, %d blobs written", copyCount, blobCount)
+		if warnCount > 0 {
+			streams.Printf(", %d warnings", warnCount)
+		}
+		streams.Println("")
 	}
 
 	printSuccessMultiFile("imported", outputPath)
@@ -135,15 +227,15 @@ func importGEDZIPToMultiFile(glx *glxlib.GLXFile, outputPath string, validate, v
 	return nil
 }
 
-// copyMediaFilesFromFS copies media files from an fs.FS bundle into the archive's media/files/ directory.
-func copyMediaFilesFromFS(streams *IOStreams, archiveDir string, mediaFiles []glxlib.MediaFileSource, bundle fs.FS, verbose bool) error {
+// stageMediaFilesFromFS copies media files into a temporary staging directory.
+func stageMediaFilesFromFS(streams *IOStreams, stageDir string, mediaFiles []glxlib.MediaFileSource, bundle fs.FS) (int, int, int, error) {
 	if len(mediaFiles) == 0 {
-		return nil
+		return 0, 0, 0, nil
 	}
 
-	filesDir := filepath.Join(archiveDir, glxlib.MediaFilesDir)
+	filesDir := filepath.Join(stageDir, glxlib.MediaFilesDir)
 	if err := os.MkdirAll(filesDir, dirPermissions); err != nil {
-		return fmt.Errorf("failed to create media/files directory: %w", err)
+		return 0, 0, 0, fmt.Errorf("failed to create staging media/files directory: %w", err)
 	}
 
 	var copyCount, blobCount, warnCount int
@@ -161,7 +253,11 @@ func copyMediaFilesFromFS(streams *IOStreams, archiveDir string, mediaFiles []gl
 			}
 
 			if err := copyMemberFile(bundle, mf.MemberPath, destPath); err != nil {
-				return err
+				if errors.Is(err, errGEDZIPSymlinkEntry) {
+					continue
+				}
+
+				return 0, 0, 0, err
 			}
 			copyCount++
 
@@ -183,12 +279,33 @@ func copyMediaFilesFromFS(streams *IOStreams, archiveDir string, mediaFiles []gl
 		}
 	}
 
-	if verbose || copyCount > 0 || blobCount > 0 {
-		streams.Printf("  Media files: %d copied, %d blobs written", copyCount, blobCount)
-		if warnCount > 0 {
-			streams.Printf(", %d warnings", warnCount)
+	return copyCount, blobCount, warnCount, nil
+}
+
+func commitStagedMedia(stageDir, targetDir string) error {
+	stagedFilesDir := filepath.Join(stageDir, glxlib.MediaFilesDir)
+	if _, err := os.Stat(stagedFilesDir); os.IsNotExist(err) {
+		return nil
+	}
+
+	targetFilesDir := filepath.Join(targetDir, glxlib.MediaFilesDir)
+	if err := os.MkdirAll(targetFilesDir, dirPermissions); err != nil {
+		return fmt.Errorf("creating media/files directory: %w", err)
+	}
+
+	entries, err := os.ReadDir(stagedFilesDir)
+	if err != nil {
+		return fmt.Errorf("reading staged media directory: %w", err)
+	}
+
+	for _, entry := range entries {
+		src := filepath.Join(stagedFilesDir, entry.Name())
+		dst := filepath.Join(targetFilesDir, entry.Name())
+		if err := os.Rename(src, dst); err != nil {
+			if copyErr := copyFile(src, dst); copyErr != nil {
+				return fmt.Errorf("committing media file %s: %w", entry.Name(), copyErr)
+			}
 		}
-		streams.Println("")
 	}
 
 	return nil
@@ -207,20 +324,12 @@ func copyMemberFile(bundle fs.FS, memberPath, destPath string) error {
 	}
 	defer func() { _ = src.Close() }()
 
-	var zipFiles []*zip.File
-	if zr, ok := bundle.(*zip.Reader); ok {
-		zipFiles = zr.File
-	} else if zrc, ok := bundle.(*zip.ReadCloser); ok {
-		zipFiles = zrc.File
+	info, err := src.Stat()
+	if err != nil {
+		return fmt.Errorf("stat zip entry %q: %w", memberPath, err)
 	}
-	for _, f := range zipFiles {
-		if f.Name == memberPath {
-			if f.Mode()&os.ModeSymlink != 0 {
-				return fmt.Errorf("%w: %q", errGEDZIPSymlinkEntry, memberPath)
-			}
-
-			break
-		}
+	if info.Mode()&os.ModeSymlink != 0 || info.IsDir() {
+		return fmt.Errorf("%w: %q", errGEDZIPSymlinkEntry, memberPath)
 	}
 
 	if err := os.MkdirAll(filepath.Dir(destPath), dirPermissions); err != nil {
