@@ -1314,6 +1314,8 @@ func TestClassifyFileRef(t *testing.T) {
 		{"media/photo.jpg", true},
 		{"Photos/img001.jpg", true},
 		{"media/CharlotteBront%C3%AB.jpg", true},
+		{`photos\alpha.jpg`, true},
+		{`sub\dir\photo.jpg`, true},
 
 		// URLs — should NOT be copied
 		{"http://example.com/photo.jpg", false},
@@ -1326,6 +1328,11 @@ func TestClassifyFileRef(t *testing.T) {
 		{"/home/user/photo.jpg", false},
 		{"C:\\Users\\photo.jpg", false},
 		{"D:/Documents/photo.jpg", false},
+
+		// UNC paths — should NOT be copied
+		{`\\server\share\photo.jpg`, false},
+		{`\\server\share`, false},
+		{`\\?\C:\photo.jpg`, false},
 
 		// Empty
 		{"", false},
@@ -1461,6 +1468,64 @@ func TestMediaImport_URLsNotTracked(t *testing.T) {
 
 	if len(result.MediaFiles) != 0 {
 		t.Errorf("Expected 0 media file sources for URLs, got %d", len(result.MediaFiles))
+	}
+}
+
+func TestMediaImport_RelativePathNormalized(t *testing.T) {
+	// Relative FILE paths with backslashes should normalize to forward slashes
+	// in MediaFileSource.RelativePath (#1139).
+	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n" +
+		"0 @M1@ OBJE\n1 FILE photos\\sub\\portrait.jpg\n1 FORM jpeg\n1 TITL Portrait\n" +
+		"0 @M2@ OBJE\n1 FILE scans/census.png\n1 FORM png\n1 TITL Census\n" +
+		"0 TRLR\n"
+
+	reader := strings.NewReader(gedcom)
+	_, result, err := ImportGEDCOM(reader, nil)
+	if err != nil {
+		t.Fatalf("Import failed: %v", err)
+	}
+
+	if len(result.MediaFiles) != 2 {
+		t.Fatalf("Expected 2 media file sources, got %d", len(result.MediaFiles))
+	}
+
+	mf1 := result.MediaFiles[0]
+	if mf1.RelativePath != "photos/sub/portrait.jpg" {
+		t.Errorf("Expected RelativePath 'photos/sub/portrait.jpg', got %q", mf1.RelativePath)
+	}
+	if mf1.TargetFilename != "portrait.jpg" {
+		t.Errorf("Expected TargetFilename 'portrait.jpg', got %q", mf1.TargetFilename)
+	}
+
+	mf2 := result.MediaFiles[1]
+	if mf2.RelativePath != "scans/census.png" {
+		t.Errorf("Expected RelativePath 'scans/census.png', got %q", mf2.RelativePath)
+	}
+}
+
+func TestMediaImport_UNCFileRefNotTracked(t *testing.T) {
+	// UNC paths should NOT produce MediaFileSource entries, and should be
+	// left in media.URI untouched (#1139).
+	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n" +
+		"0 @M1@ OBJE\n1 FILE \\\\server\\share\\photos\\portrait.jpg\n1 FORM jpeg\n1 TITL Portrait\n" +
+		"0 TRLR\n"
+
+	reader := strings.NewReader(gedcom)
+	glx, result, err := ImportGEDCOM(reader, nil)
+	if err != nil {
+		t.Fatalf("Import failed: %v", err)
+	}
+
+	if len(result.MediaFiles) != 0 {
+		t.Errorf("Expected 0 media file sources for UNC path, got %d", len(result.MediaFiles))
+	}
+
+	media := findMediaByURI(t, glx, `\\server\share\photos\portrait.jpg`)
+	if media == nil {
+		t.Fatal("Expected media entity with UNC URI")
+	}
+	if _, exists := media.Properties[MediaPropertyOriginalFilename]; exists {
+		t.Errorf("UNC path media should not have %s stamped", MediaPropertyOriginalFilename)
 	}
 }
 
