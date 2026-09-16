@@ -17,6 +17,7 @@ package glx
 import (
 	"archive/zip"
 	"bytes"
+	"path/filepath"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -343,4 +344,33 @@ func TestImportGEDZIP_ZipReaderFS(t *testing.T) {
 	require.NotNil(t, glxFile)
 	require.Len(t, result.MediaFiles, 1)
 	require.Equal(t, "media/photo.jpg", result.MediaFiles[0].MemberPath)
+}
+
+func TestImportGEDZIP_OfficialMinimal70(t *testing.T) {
+	gdzPath := filepath.Join("..", "glx", "testdata", "gedcom", "7.0", "minimal-valid", "minimal70.gdz")
+	zr, err := zip.OpenReader(gdzPath)
+	require.NoError(t, err)
+	defer func() { _ = zr.Close() }()
+
+	glxFile, result, err := ImportGEDZIP(zr, nil)
+	require.NoError(t, err)
+	require.NotNil(t, glxFile)
+	require.NotNil(t, result)
+	require.NotNil(t, glxFile.ImportMetadata)
+	require.Equal(t, "7.0", glxFile.ImportMetadata.GEDCOMVersion)
+}
+
+func TestImportGEDZIP_OfficialMaximal70(t *testing.T) {
+	gdzPath := filepath.Join("..", "glx", "testdata", "gedcom", "7.0", "comprehensive-spec", "maximal70.gdz")
+	zr, err := zip.OpenReader(gdzPath)
+	require.NoError(t, err)
+	defer func() { _ = zr.Close() }()
+
+	glxFile, result, err := ImportGEDZIP(zr, nil)
+	require.NoError(t, err)
+	require.NotNil(t, glxFile)
+	require.NotNil(t, result)
+	require.Len(t, glxFile.Persons, 4)
+	require.NotNil(t, glxFile.ImportMetadata)
+	require.Equal(t, "7.0", glxFile.ImportMetadata.GEDCOMVersion)
 }

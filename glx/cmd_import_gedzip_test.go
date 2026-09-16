@@ -618,3 +618,42 @@ func TestImportGEDZIP_RejectsGedcomEntryAsSymlink(t *testing.T) {
 	err := importGEDCOM(gdz, filepath.Join(t.TempDir(), "archive"), FormatMulti, true, false, defaultShowFirstErrors)
 	require.ErrorIs(t, err, ErrGEDZIPMissingGedcom)
 }
+
+func TestImportGEDZIP_OfficialMinimal70(t *testing.T) {
+	tmpDir := t.TempDir()
+	outputPath := filepath.Join(tmpDir, "minimal.glx")
+
+	err := importGEDCOM("testdata/gedcom/7.0/minimal-valid/minimal70.gdz", outputPath, FormatSingle, true, false, defaultShowFirstErrors)
+	require.NoError(t, err)
+
+	data, err := os.ReadFile(outputPath)
+	require.NoError(t, err)
+
+	var glxFile glxlib.GLXFile
+	err = yaml.Unmarshal(data, &glxFile)
+	require.NoError(t, err)
+	require.NotNil(t, glxFile.ImportMetadata)
+	require.Equal(t, "7.0", glxFile.ImportMetadata.GEDCOMVersion)
+}
+
+func TestImportGEDZIP_OfficialMaximal70(t *testing.T) {
+	tmpDir := t.TempDir()
+	outDir := filepath.Join(tmpDir, "maximal-archive")
+
+	err := importGEDCOM("testdata/gedcom/7.0/comprehensive-spec/maximal70.gdz", outDir, FormatMulti, true, false, defaultShowFirstErrors)
+	require.NoError(t, err)
+
+	// Verify imported persons
+	personDir := filepath.Join(outDir, "persons")
+	entries, err := os.ReadDir(personDir)
+	require.NoError(t, err)
+	require.NotEmpty(t, entries, "should have imported person files")
+
+	// Verify media directory and copied media files
+	mediaFilesDir := filepath.Join(outDir, "media", "files")
+	require.DirExists(t, mediaFilesDir)
+
+	// Check original.mp3 was extracted
+	mp3Path := filepath.Join(mediaFilesDir, "original.mp3")
+	require.FileExists(t, mp3Path, "original.mp3 should be extracted from maximal70.gdz")
+}
