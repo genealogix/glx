@@ -522,6 +522,16 @@ func TestImportGEDZIP_TypedNilBundle(t *testing.T) {
 	}
 }
 
+func TestImportGEDZIP_NilMapFSIsAnEmptyBundleNotANilOne(t *testing.T) {
+	// A nil map is a usable fs.FS: `var m fstest.MapFS` is an empty filesystem,
+	// and walking it must reach GEDCOM discovery rather than being turned away
+	// by the typed-nil guard, which only covers pointer kinds.
+	var m fstest.MapFS
+	_, _, err := ImportGEDZIP(m, nil)
+	require.ErrorIs(t, err, ErrGEDZIPMissingGedcom)
+	require.NotErrorIs(t, err, ErrGEDZIPNilBundle)
+}
+
 // typedNilUnwrappingFS is a wrapper whose Unwrap returns a typed nil rather
 // than a plain one — unwrapFS must keep the wrapper rather than descend into a
 // value that cannot be used. Distinct from nilUnwrappingFS below, which returns

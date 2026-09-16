@@ -103,12 +103,18 @@ func ImportGEDZIP(bundle fs.FS, logW io.Writer) (*GLXFile, *ImportResult, error)
 // `(*zip.Reader)(nil)` reaching zr.File in inventoryAndValidateBundle, for
 // instance. ImportGEDZIP documents ErrGEDZIPNilBundle for a nil bundle; that
 // contract should hold however the nil arrives.
+//
+// Only pointer kinds count. A nil map or slice is a perfectly usable
+// filesystem — `var m fstest.MapFS` is an empty one, and walking it should
+// reach ErrGEDZIPMissingGedcom rather than being rejected as no bundle at all.
+// A nil pointer cannot represent an empty filesystem: there is no receiver for
+// its methods to read.
 func isNilFS(bundle fs.FS) bool {
 	if bundle == nil {
 		return true
 	}
 	switch v := reflect.ValueOf(bundle); v.Kind() {
-	case reflect.Pointer, reflect.Map, reflect.Slice, reflect.Chan, reflect.Func, reflect.UnsafePointer, reflect.Interface:
+	case reflect.Pointer, reflect.UnsafePointer:
 		return v.IsNil()
 	default:
 		return false
