@@ -199,6 +199,16 @@ func importGEDZIPToMultiFile(glx *glxlib.GLXFile, outputPath string, validate, v
 		_, _ = fmt.Fprintf(out, "Writing multi-file archive: %s\n", outputPath)
 	}
 
+	// Serialize and validate up front, before anything touches the filesystem.
+	// Media has to commit before the entity files are written (see below), so
+	// the failure mode to rule out is a validation or serialization error
+	// surfacing after media is already in place: get it out of the way while
+	// the import is still side-effect free.
+	files, err := serializeMultiFileArchive(glx, validate)
+	if err != nil {
+		return formatValidationError(err, showFirstErrors)
+	}
+
 	// Stage inside the archive directory itself: commitStagedMedia resolves
 	// every path through an os.Root scoped to the archive, which only reaches
 	// paths beneath it. Same filesystem too, so the commit is always a rename.
@@ -206,9 +216,9 @@ func importGEDZIPToMultiFile(glx *glxlib.GLXFile, outputPath string, validate, v
 		return fmt.Errorf("creating directory for %s: %w", outputPath, err)
 	}
 
-	stageDir, err := os.MkdirTemp(outputPath, ".glx-stage-*")
-	if err != nil {
-		return fmt.Errorf("creating staging directory: %w", err)
+	stageDir, mkdirErr := os.MkdirTemp(outputPath, ".glx-stage-*")
+	if mkdirErr != nil {
+		return fmt.Errorf("creating staging directory: %w", mkdirErr)
 	}
 	defer func() { _ = os.RemoveAll(stageDir) }()
 
@@ -228,8 +238,8 @@ func importGEDZIPToMultiFile(glx *glxlib.GLXFile, outputPath string, validate, v
 		return fmt.Errorf("failed to commit media files: %w", err)
 	}
 
-	if err := writeMultiFileArchive(outputPath, glx, validate); err != nil {
-		return formatValidationError(err, showFirstErrors)
+	if err := writeFilesToDir(outputPath, files); err != nil {
+		return err
 	}
 
 	if verbose || copyCount > 0 || blobCount > 0 {

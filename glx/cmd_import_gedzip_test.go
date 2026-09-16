@@ -904,6 +904,35 @@ func TestStageMediaFilesFromFS_WritesBlobAndWarnsOnBadBlob(t *testing.T) {
 	require.NoFileExists(t, filepath.Join(stageDir, glxlib.MediaFilesDir, "blob-M2.bin"))
 }
 
+func TestImportGEDZIPToMultiFile_SerializationFailureLeavesMediaUncommitted(t *testing.T) {
+	// Media has to commit before the entity files are written, so serialization
+	// and validation run first: a GLXFile that cannot be serialized must fail
+	// before any media lands in the output directory. Two person IDs differing
+	// only by case collide at serialize time (see glx/CLAUDE.md).
+	gdz := buildGEDZIP(t, map[string][]byte{
+		"gedcom.ged":  []byte(minimalGEDCOM7),
+		"photo-1.jpg": []byte("jpeg-bytes"),
+	})
+	zr, err := zip.OpenReader(gdz)
+	require.NoError(t, err)
+	defer func() { _ = zr.Close() }()
+
+	glx := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"Person-A": {Properties: map[string]any{"name": "Person A"}},
+			"person-a": {Properties: map[string]any{"name": "Person a"}},
+		},
+	}
+
+	outputPath := filepath.Join(t.TempDir(), "archive")
+	err = importGEDZIPToMultiFile(glx, outputPath, false, false, 0, []glxlib.MediaFileSource{
+		{MediaID: "M1", SourceType: glxlib.MediaSourceFile, MemberPath: "photo-1.jpg", TargetFilename: "photo-1.jpg"},
+	}, zr, io.Discard)
+
+	require.Error(t, err)
+	require.NoDirExists(t, filepath.Join(outputPath, glxlib.MediaFilesDir))
+}
+
 func TestCopyMemberFile_ReportsMissingMember(t *testing.T) {
 	gdz := buildGEDZIP(t, map[string][]byte{"gedcom.ged": []byte(minimalGEDCOM7)})
 	zr, err := zip.OpenReader(gdz)
