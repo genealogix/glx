@@ -496,7 +496,7 @@ func TestImportGEDZIP_RejectsArchiveExceedingEntryLimit(t *testing.T) {
 	require.ErrorIs(t, err, ErrGEDZIPTooManyEntries)
 }
 
-func TestWriteZipEntry_RejectsEntryExceedingDecompressedLimit(t *testing.T) {
+func TestCopyMemberFile_RejectsEntryExceedingDecompressedLimit(t *testing.T) {
 	// Lower the cap so this writes ~1 KiB instead of 512 MiB; the limit is a
 	// var precisely so this regression stays cheap and CI-stable.
 	orig := maxGEDZIPEntryBytes
@@ -521,14 +521,14 @@ func TestWriteZipEntry_RejectsEntryExceedingDecompressedLimit(t *testing.T) {
 	require.Len(t, zr.File, 1)
 
 	destPath := filepath.Join(t.TempDir(), "huge.bin")
-	err = writeZipEntry(zr.File[0], destPath)
+	err = copyMemberFile(zr, "media/huge.bin", destPath)
 	require.ErrorIs(t, err, ErrGEDZIPEntryTooLarge)
 
 	_, statErr := os.Stat(destPath)
 	require.True(t, os.IsNotExist(statErr), "oversized extracted file should be removed")
 }
 
-func TestWriteZipEntry_AcceptsEntryAtExactLimit(t *testing.T) {
+func TestCopyMemberFile_AcceptsEntryAtExactLimit(t *testing.T) {
 	// An entry whose decompressed size equals exactly maxGEDZIPEntryBytes
 	// must be accepted (not treated as oversized).
 	orig := maxGEDZIPEntryBytes
@@ -553,7 +553,7 @@ func TestWriteZipEntry_AcceptsEntryAtExactLimit(t *testing.T) {
 	require.Len(t, zr.File, 1)
 
 	destPath := filepath.Join(t.TempDir(), "exact.bin")
-	err = writeZipEntry(zr.File[0], destPath)
+	err = copyMemberFile(zr, "media/exact.bin", destPath)
 	require.NoError(t, err, "entry at exactly the size limit should be accepted")
 
 	info, statErr := os.Stat(destPath)
@@ -606,14 +606,14 @@ func TestImportGEDZIP_MkdirAllFailsWhenFileOccupiesDirectoryPath(t *testing.T) {
 	defer func() { _ = zr.Close() }()
 
 	destPath := filepath.Join(filePath, "sub", "test.txt")
-	err = writeZipEntry(zr.File[0], destPath)
+	err = copyMemberFile(zr, "test.txt", destPath)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "creating directory")
 }
 
 func TestImportGEDZIP_OpenFileFailsWhenDirectoryOccupiesFilePath(t *testing.T) {
 	// When destPath is occupied by an existing directory, OpenFile fails with
-	// EISDIR — exercising the destination-open error branch in writeZipEntry.
+	// EISDIR — exercising the destination-open error branch in writeStreamEntry.
 	dirPath := filepath.Join(t.TempDir(), "existing-dir")
 	require.NoError(t, os.MkdirAll(dirPath, dirPermissions))
 
@@ -622,7 +622,7 @@ func TestImportGEDZIP_OpenFileFailsWhenDirectoryOccupiesFilePath(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { _ = zr.Close() }()
 
-	err = writeZipEntry(zr.File[0], dirPath)
+	err = copyMemberFile(zr, "test.txt", dirPath)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "creating destination file")
 }

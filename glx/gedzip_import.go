@@ -71,22 +71,20 @@ func importGEDZIP(gedzipPath, outputPath, format string, validate, verbose bool,
 		return fmt.Errorf("%w: %d entries (limit %d)", ErrGEDZIPTooManyEntries, len(zr.File), maxGEDZIPEntries)
 	}
 
-	limitedBundle := &sizeLimitedFS{fs: zr}
+	limitedBundle := &sizeLimitedFS{inner: zr}
 	glx, result, err := glxlib.ImportGEDZIP(limitedBundle, nil)
 	if err != nil {
-		if errors.Is(err, ErrGEDZIPEntryTooLarge) {
-			return fmt.Errorf("extracting zip entry %q: %w (limit %d bytes)", "gedcom.ged", ErrGEDZIPEntryTooLarge, maxGEDZIPEntryBytes)
-		}
-
+		// sizeLimitedFile already names the offending entry and the limit, so
+		// the error is returned as-is rather than re-wrapped against a guessed
+		// entry name (the GEDCOM need not be "gedcom.ged" — see the fallback
+		// discovery in glxlib.ImportGEDZIP).
 		return err
 	}
 
 	// Surface any non-standard GEDCOM entry or other import warnings
-	if result != nil {
-		for _, w := range result.Statistics.Warnings {
-			if w.Tag == glxlib.WarningTagGEDZIP {
-				_, _ = fmt.Fprintf(output, "Warning: %s\n", w.Message)
-			}
+	for _, w := range result.Statistics.Warnings {
+		if w.Tag == glxlib.WarningTagGEDZIP {
+			_, _ = fmt.Fprintf(output, "Warning: %s\n", w.Message)
 		}
 	}
 
@@ -99,32 +97,42 @@ func importGEDZIP(gedzipPath, outputPath, format string, validate, verbose bool,
 
 // sizeLimitedFS wraps an fs.FS to enforce maxGEDZIPEntryBytes on any opened file.
 type sizeLimitedFS struct {
-	fs fs.FS
+	inner fs.FS
 }
 
 func (s *sizeLimitedFS) Unwrap() fs.FS {
-	return s.fs
+	return s.inner
 }
 
 func (s *sizeLimitedFS) Open(name string) (fs.File, error) {
-	f, err := s.fs.Open(name)
+	f, err := s.inner.Open(name)
 	if err != nil {
 		return nil, err
 	}
 
 	return &sizeLimitedFile{
 		File: f,
+		name: name,
 		r:    &entrySizeLimitReader{r: f, remaining: maxGEDZIPEntryBytes + 1},
 	}, nil
 }
 
 type sizeLimitedFile struct {
 	fs.File
-	r io.Reader
+	name string
+	r    io.Reader
 }
 
+// Read enforces the per-entry decompressed size limit. The limit error is
+// annotated here, where the entry name is known, so callers upstack do not have
+// to guess which entry blew the budget.
 func (s *sizeLimitedFile) Read(p []byte) (int, error) {
-	return s.r.Read(p)
+	n, err := s.r.Read(p)
+	if errors.Is(err, ErrGEDZIPEntryTooLarge) {
+		return n, fmt.Errorf("extracting zip entry %q: %w (limit %d bytes)", s.name, ErrGEDZIPEntryTooLarge, maxGEDZIPEntryBytes)
+	}
+
+	return n, err
 }
 
 // importGEDZIPToSingleFile writes the imported GLX data to a single file and copies media
@@ -160,6 +168,8 @@ func importGEDZIPToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, 
 		return formatValidationError(err, showFirstErrors)
 	}
 
+	// Media is committed before the archive is published so that any media
+	// failure leaves an existing target archive untouched.
 	if err := commitStagedMedia(stageDir, archiveDir); err != nil {
 		return fmt.Errorf("failed to commit media files: %w", err)
 	}
@@ -253,7 +263,13 @@ func stageMediaFilesFromFS(streams *IOStreams, stageDir string, mediaFiles []glx
 			}
 
 			if err := copyMemberFile(bundle, mf.MemberPath, destPath); err != nil {
-				if errors.Is(err, errGEDZIPSymlinkEntry) {
+				if errors.Is(err, errGEDZIPNonRegularEntry) {
+					// Not fatal, but the archive's media URI now points at a
+					// file that was never written — say so rather than leaving
+					// the user with a silently dangling reference.
+					streams.Printf("Warning: could not copy media file %s: %v\n", mf.RelativePath, err)
+					warnCount++
+
 					continue
 				}
 
@@ -311,7 +327,10 @@ func commitStagedMedia(stageDir, targetDir string) error {
 	return nil
 }
 
-var errGEDZIPSymlinkEntry = errors.New("skipping symlink entry")
+// errGEDZIPNonRegularEntry marks a bundle member that is a symlink or a
+// directory rather than a regular file. Symlinks are refused (not followed) to
+// prevent a zip-symlink-slip redirecting the copy outside the archive.
+var errGEDZIPNonRegularEntry = errors.New("bundle entry is not a regular file")
 
 func copyMemberFile(bundle fs.FS, memberPath, destPath string) error {
 	src, err := bundle.Open(memberPath)
@@ -329,7 +348,7 @@ func copyMemberFile(bundle fs.FS, memberPath, destPath string) error {
 		return fmt.Errorf("stat zip entry %q: %w", memberPath, err)
 	}
 	if info.Mode()&os.ModeSymlink != 0 || info.IsDir() {
-		return fmt.Errorf("%w: %q", errGEDZIPSymlinkEntry, memberPath)
+		return fmt.Errorf("%w: %q", errGEDZIPNonRegularEntry, memberPath)
 	}
 
 	if err := os.MkdirAll(filepath.Dir(destPath), dirPermissions); err != nil {
@@ -339,28 +358,11 @@ func copyMemberFile(bundle fs.FS, memberPath, destPath string) error {
 	return writeStreamEntry(src, memberPath, destPath)
 }
 
-// writeZipEntry copies one ZIP entry to destPath, rejecting any entry whose
-// decompressed size exceeds maxGEDZIPEntryBytes. On a copy or close failure, or
-// when that size limit is exceeded, the partially written destination is
-// removed so the next caller cannot observe a truncated or oversized file.
-func writeZipEntry(f *zip.File, destPath string) error {
-	src, err := f.Open()
-	if err != nil {
-		if errors.Is(err, zip.ErrAlgorithm) {
-			return fmt.Errorf("%w: %q: %w", ErrGEDZIPUnsupportedAlgorithm, f.Name, err)
-		}
-
-		return fmt.Errorf("opening zip entry %q: %w", f.Name, err)
-	}
-	defer func() { _ = src.Close() }()
-
-	if err := os.MkdirAll(filepath.Dir(destPath), dirPermissions); err != nil {
-		return fmt.Errorf("creating directory for %q: %w", f.Name, err)
-	}
-
-	return writeStreamEntry(src, f.Name, destPath)
-}
-
+// writeStreamEntry copies one bundle member to destPath, rejecting any member
+// whose decompressed size exceeds maxGEDZIPEntryBytes. On a copy or close
+// failure, or when that size limit is exceeded, the partially written
+// destination is removed so the next caller cannot observe a truncated or
+// oversized file.
 func writeStreamEntry(src io.Reader, name, destPath string) error {
 	dst, err := os.OpenFile(filepath.Clean(destPath), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, filePermissions)
 	if err != nil {

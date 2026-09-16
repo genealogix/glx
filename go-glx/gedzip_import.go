@@ -24,7 +24,6 @@ import (
 	"path"
 	"slices"
 	"strings"
-	"testing/fstest"
 	"unicode"
 )
 
@@ -99,14 +98,26 @@ type fsUnwrapper interface {
 	Unwrap() fs.FS
 }
 
+// maxFSUnwrapDepth bounds unwrapFS so a wrapper whose Unwrap returns itself (or
+// a cycle of wrappers) cannot spin forever. Real wrapper chains are one or two
+// deep; the interfaces involved are not guaranteed comparable, so a depth cap is
+// the only cycle guard that cannot itself panic on `==`.
+const maxFSUnwrapDepth = 16
+
 func unwrapFS(f fs.FS) fs.FS {
-	for {
-		if u, ok := f.(fsUnwrapper); ok {
-			f = u.Unwrap()
-		} else {
+	for range maxFSUnwrapDepth {
+		u, ok := f.(fsUnwrapper)
+		if !ok {
 			return f
 		}
+		next := u.Unwrap()
+		if next == nil {
+			return f
+		}
+		f = next
 	}
+
+	return f
 }
 
 // inventoryAndValidateBundle collects regular files in the bundle while checking
@@ -119,9 +130,6 @@ func inventoryAndValidateBundle(bundle fs.FS) ([]string, map[string]struct{}, ma
 	}
 	if zrc, ok := underlying.(*zip.ReadCloser); ok {
 		return collectZipFiles(zrc.File)
-	}
-	if mfs, ok := underlying.(fstest.MapFS); ok {
-		return collectMapFS(mfs)
 	}
 
 	return collectGenericFS(bundle)
@@ -165,32 +173,6 @@ func collectZipFiles(files []*zip.File) ([]string, map[string]struct{}, map[stri
 			regularFiles = append(regularFiles, f.Name)
 			regularFilesSet[f.Name] = struct{}{}
 			caseMap[foldKey(f.Name)] = f.Name
-		}
-	}
-
-	return regularFiles, regularFilesSet, caseMap, nil
-}
-
-func collectMapFS(mfs fstest.MapFS) ([]string, map[string]struct{}, map[string]string, error) {
-	var regularFiles []string
-	regularFilesSet := make(map[string]struct{})
-	caseMap := make(map[string]string)
-	seen := make(map[string]struct{}, len(mfs))
-
-	for name, file := range mfs {
-		if err := validateEntryName(name); err != nil {
-			return nil, nil, nil, err
-		}
-		key := foldKey(path.Clean(name))
-		if _, dup := seen[key]; dup {
-			return nil, nil, nil, fmt.Errorf("%w: %q", ErrGEDZIPDuplicateEntry, name)
-		}
-		seen[key] = struct{}{}
-
-		if file.Mode.IsRegular() {
-			regularFiles = append(regularFiles, name)
-			regularFilesSet[name] = struct{}{}
-			caseMap[foldKey(name)] = name
 		}
 	}
 
@@ -294,10 +276,9 @@ func discoverRootGEDCOM(regularFiles []string, regularFilesSet map[string]struct
 			continue
 		}
 
-		dir := path.Dir(p)
-		// Depth 0: dir == "."
-		// Depth 1 (single wrapper directory): !strings.Contains(dir, "/")
-		if dir == "." || !strings.Contains(dir, "/") {
+		// path.Dir returns "." at depth 0 and a single segment (no "/") inside a
+		// single wrapper directory; anything deeper is not a candidate.
+		if !strings.Contains(path.Dir(p), "/") {
 			candidates = append(candidates, p)
 		}
 	}
