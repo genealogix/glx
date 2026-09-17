@@ -102,7 +102,7 @@ func TestResolveSymlinkPlaceholder_ResolvesTargetContent(t *testing.T) {
 	targetPath := filepath.Join(dir, "target.glx")
 	require.NoError(t, os.WriteFile(targetPath, []byte("resolved"), 0o644))
 
-	got := resolveSymlinkPlaceholder(openTestRoot(t, dir), "link.glx", []byte("./target.glx"))
+	got, _ := resolveSymlinkPlaceholder(openTestRoot(t, dir), "link.glx", []byte("./target.glx"))
 
 	assert.Equal(t, []byte("resolved"), got)
 }
@@ -113,7 +113,7 @@ func TestResolveSymlinkPlaceholder_ResolvesNestedRelativeTarget(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "shared"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "shared", "p.glx"), []byte("shared"), 0o644))
 
-	got := resolveSymlinkPlaceholder(openTestRoot(t, dir), "persons/link.glx", []byte("../shared/p.glx"))
+	got, _ := resolveSymlinkPlaceholder(openTestRoot(t, dir), "persons/link.glx", []byte("../shared/p.glx"))
 
 	assert.Equal(t, []byte("shared"), got)
 }
@@ -125,7 +125,7 @@ func TestResolveSymlinkPlaceholder_RejectsTargetOutsideRoot(t *testing.T) {
 	require.NoError(t, os.MkdirAll(dir, 0o755))
 
 	content := "../secret.glx"
-	got := resolveSymlinkPlaceholder(openTestRoot(t, dir), "link.glx", []byte(content))
+	got, _ := resolveSymlinkPlaceholder(openTestRoot(t, dir), "link.glx", []byte(content))
 
 	assert.Equal(t, []byte(content), got, "placeholder escaping the archive root must not be followed")
 }
@@ -134,7 +134,7 @@ func TestResolveSymlinkPlaceholder_RejectsLongPlaceholderContent(t *testing.T) {
 	dir := t.TempDir()
 	longContent := "a/" + strings.Repeat("b", maxSymlinkPlaceholderLength)
 
-	got := resolveSymlinkPlaceholder(openTestRoot(t, dir), "link.glx", []byte(longContent))
+	got, _ := resolveSymlinkPlaceholder(openTestRoot(t, dir), "link.glx", []byte(longContent))
 
 	assert.Equal(t, []byte(longContent), got)
 }
@@ -143,7 +143,7 @@ func TestResolveSymlinkPlaceholder_RejectsInvalidCharacters(t *testing.T) {
 	dir := t.TempDir()
 	content := "nested/\nfile.glx"
 
-	got := resolveSymlinkPlaceholder(openTestRoot(t, dir), "link.glx", []byte(content))
+	got, _ := resolveSymlinkPlaceholder(openTestRoot(t, dir), "link.glx", []byte(content))
 
 	assert.Equal(t, []byte(content), got)
 }
@@ -227,4 +227,18 @@ func TestCollectGLXFilesFromDir_FollowsSymlinkInsideArchive(t *testing.T) {
 
 	assert.Equal(t, []byte("persons: {}"), files[filepath.Join("persons", "link.glx")])
 	assert.Equal(t, []byte("persons: {}"), files[filepath.Join("shared", "p.glx")])
+}
+
+// A placeholder whose target lies under a dot-prefixed directory must be
+// reported as excluded so the walk skips the entry, not handed back as raw
+// placeholder text that the caller would then parse as a GLX file.
+func TestResolveSymlinkPlaceholder_ExcludesDotDirectoryTarget(t *testing.T) {
+	dir := t.TempDir()
+	writeSkipTestFile(t, filepath.Join(dir, ".worktrees", "copy", "persons", "p.glx"), "persons: {}")
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "persons"), 0o755))
+
+	got, excluded := resolveSymlinkPlaceholder(openTestRoot(t, dir), "persons/alias.glx", []byte("../.worktrees/copy/persons/p.glx"))
+
+	assert.True(t, excluded, "target under a dot-prefixed directory must be excluded")
+	assert.Nil(t, got)
 }

@@ -189,38 +189,45 @@ func collectGLXFilesFromDir(rootDir string) (map[string][]byte, error) {
 // placeholder's slash-separated path relative to root; the target is read
 // through the same root, so a placeholder whose target escapes the archive
 // directory is left unresolved instead of being followed.
-func resolveSymlinkPlaceholder(root *os.Root, relPath string, data []byte) []byte {
+//
+// The second result is true when the placeholder points into a dot-prefixed
+// directory. That is the Windows equivalent of the symlink case walkGLXFiles
+// rejects: the walk has already declared that subtree not to be archive
+// content, so the caller must skip the entry entirely rather than parse the
+// placeholder text (or the target) as a GLX file.
+func resolveSymlinkPlaceholder(root *os.Root, relPath string, data []byte) ([]byte, bool) {
 	content := strings.TrimSpace(string(data))
 	// Symlink placeholders are short, single-line, and look like relative paths
 	if len(content) > maxSymlinkPlaceholderLength || strings.ContainsAny(content, symlinkPlaceholderInvalidChars) {
-		return data
+		return data, false
 	}
 	if !strings.Contains(content, "/") && !strings.Contains(content, "\\") {
-		return data
+		return data, false
 	}
 	// Git symlink targets are always relative; reject absolute paths
 	// to prevent reading arbitrary files.
 	if filepath.IsAbs(filepath.FromSlash(content)) || filepath.VolumeName(filepath.FromSlash(content)) != "" {
-		return data
+		return data, false
 	}
 
 	// Resolve the target path relative to the placeholder's directory, inside
 	// the archive root. os.Root rejects any target that climbs out of root.
 	target := path.Join(path.Dir(relPath), filepath.ToSlash(content))
-	// A placeholder pointing into a dot-prefixed directory is the Windows
-	// equivalent of the symlink case walkGLXFiles rejects: the walk has
-	// already declared that subtree not to be archive content, so reading it
-	// back here would reintroduce the duplicate entities. Leave the
-	// placeholder unresolved.
+	// A target that climbs out of the archive root is not a dot-directory
+	// exclusion (its leading ".." would otherwise read as one); leave it
+	// unresolved and let os.Root refuse the read below.
+	if target == ".." || strings.HasPrefix(target, "../") {
+		return data, false
+	}
 	if pathHasDotComponent(target) {
-		return data
+		return nil, true
 	}
 	targetData, err := root.ReadFile(target)
 	if err != nil {
-		return data // Not a valid symlink placeholder; return original content
+		return data, false // Not a valid symlink placeholder; return original content
 	}
 
-	return targetData
+	return targetData, false
 }
 
 // writeFilesToDir writes a map of files (relative path -> content) to a directory

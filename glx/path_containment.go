@@ -160,8 +160,14 @@ func walkGLXFiles(rootDir string, visit func(relPath string, data []byte, err er
 		data, readErr := root.ReadFile(entryPath)
 		if readErr == nil && runtime.GOOS == goosWindows {
 			// On Windows, Git stores symlinks as text files containing the
-			// target path. Detect these and read the actual target file.
-			data = resolveSymlinkPlaceholder(root, entryPath, data)
+			// target path. Detect these and read the actual target file. A
+			// placeholder pointing into a dot-prefixed directory is skipped
+			// outright, matching the real-symlink case above.
+			var excluded bool
+			data, excluded = resolveSymlinkPlaceholder(root, entryPath, data)
+			if excluded {
+				return nil
+			}
 		}
 
 		return visit(filepath.FromSlash(entryPath), data, readErr)
