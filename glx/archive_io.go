@@ -178,13 +178,13 @@ func removeStaleBackup(backupDir string) error {
 	// exist" (e.g., permissions, transient I/O) is also refused — we cannot
 	// confirm the backup is empty, so the safe move is to leave it for the
 	// user to inspect.
-	if mediaFilesDir, ok := mediaFilesDirIn(backupDir); ok {
+	for _, mediaFilesDir := range mediaFilesDirsIn(backupDir) {
 		mediaEntries, err := os.ReadDir(mediaFilesDir)
 		if err != nil {
 			return fmt.Errorf("inspecting %s: %w", mediaFilesDir, err)
 		}
 		if len(mediaEntries) > 0 {
-			return fmt.Errorf("%w: %s contains %q", ErrStaleBackupForeignFile, backupDir, glxlib.MediaFilesDir)
+			return fmt.Errorf("%w: %s contains %q", ErrStaleBackupForeignFile, backupDir, mediaFilesDir)
 		}
 	}
 	// A dot-prefixed entry nested inside a managed directory (persons/.drafts/)
@@ -282,15 +282,20 @@ func firstSkippedEntry(backupDir string) (string, error) {
 // then retained by the caller's error path for the user to inspect.
 func preserveSkippedDotEntries(backupDir, destPath string) error {
 	// Everything the loader skips (loaderSkips) is never re-emitted by the
-	// serializer, so it has to be carried across the swap.
-	return filepath.WalkDir(backupDir, func(srcPath string, d fs.DirEntry, walkErr error) error {
+	// serializer, so it has to be carried across the swap. Classification is
+	// a separate first pass over the intact backup: a symlink chain is judged
+	// through its intermediate hops, so moving entries while later ones are
+	// still being classified would leave `z.glx -> a.glx -> ../.drafts/x`
+	// unrecognized once a.glx had gone. Skipped directories are recorded
+	// without descending; they move as a unit.
+	var toMove []string
+	err := filepath.WalkDir(backupDir, func(srcPath string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
 		if srcPath == backupDir {
 			return nil
 		}
-
 		rel, err := filepath.Rel(backupDir, srcPath)
 		if err != nil {
 			return fmt.Errorf("resolving %s: %w", srcPath, err)
@@ -298,22 +303,32 @@ func preserveSkippedDotEntries(backupDir, destPath string) error {
 		if !loaderSkips(backupDir, rel, d) {
 			return nil
 		}
+		toMove = append(toMove, rel)
+		if d.IsDir() {
+			return fs.SkipDir
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range toMove {
+		src := filepath.Join(backupDir, rel)
 		dst := filepath.Join(destPath, rel)
-
 		if _, err := os.Lstat(dst); err == nil {
-			// A top-level dot entry (.git, .gitignore) has already been carried
-			// over by restoreForeignEntries; nothing to do. Anything nested
-			// cannot legitimately exist in the fresh output — the serializer
-			// never writes skipped shapes — so a match means the writer
-			// produced a file at the same path as, say, a skipped symlink.
-			// Moving on would let the backup, and the entry with it, be
+			// A foreign top-level entry has already been carried over by
+			// restoreForeignEntries; nothing to do. A managed top-level name
+			// (metadata.glx as a skipped symlink) was deliberately not, and
+			// nothing nested can legitimately exist in the fresh output — the
+			// serializer never writes skipped shapes — so in both of those
+			// cases a match means the writer produced a file at the same
+			// path. Moving on would let the backup, and the entry with it, be
 			// removed; refuse instead so the user can resolve the clash.
-			if !strings.ContainsRune(rel, filepath.Separator) {
-				if d.IsDir() {
-					return fs.SkipDir
-				}
-
-				return nil
+			topLevel := !strings.ContainsRune(rel, filepath.Separator)
+			if topLevel && !archiveManagedTopLevel[strings.ToLower(rel)] {
+				continue
 			}
 
 			return fmt.Errorf("%w: %s", ErrPreservedEntryCollision, filepath.ToSlash(rel))
@@ -321,17 +336,12 @@ func preserveSkippedDotEntries(backupDir, destPath string) error {
 		if err := os.MkdirAll(filepath.Dir(dst), dirPermissions); err != nil {
 			return fmt.Errorf("creating %s: %w", filepath.Dir(dst), err)
 		}
-		if err := robustRename(srcPath, dst); err != nil {
+		if err := robustRename(src, dst); err != nil {
 			return fmt.Errorf("restoring %s: %w", rel, err)
 		}
-		if d.IsDir() {
-			// The subtree moved with the directory; do not descend into a
-			// path that no longer exists.
-			return fs.SkipDir
-		}
+	}
 
-		return nil
-	})
+	return nil
 }
 
 // loaderSkips reports whether the archive loader would skip the entry at rel
@@ -350,13 +360,19 @@ func preserveSkippedDotEntries(backupDir, destPath string) error {
 // currently exists: by the time the swap inspects the backup, top-level dot
 // directories have already been moved to the destination.
 func loaderSkips(root, rel string, d fs.DirEntry) bool {
+	return loaderSkipsOn(runtime.GOOS, root, rel, d)
+}
+
+// loaderSkipsOn is loaderSkips with the platform made explicit so the Windows
+// placeholder branch can be exercised by tests on any host.
+func loaderSkipsOn(goos, root, rel string, d fs.DirEntry) bool {
 	if isDotName(d.Name()) {
 		return true
 	}
 	if d.Type()&fs.ModeSymlink != 0 {
 		return symlinkChainPointsIntoDotDir(root, filepath.ToSlash(rel))
 	}
-	if runtime.GOOS == goosWindows && d.Type().IsRegular() && isGLXFile(d.Name()) {
+	if goos == goosWindows && d.Type().IsRegular() && isGLXFile(d.Name()) {
 		data, err := os.ReadFile(filepath.Join(root, rel)) // #nosec G304 -- path enumerated from the archive backup
 		if err != nil {
 			return false
@@ -400,43 +416,47 @@ func symlinkChainPointsIntoDotDir(root, rel string) bool {
 	return pathHasDotComponent(cur)
 }
 
-// mediaFilesDirIn locates dir's media/files/ subtree, matching each path
-// component case-insensitively so an archive laid out as MEDIA/files/ or
-// media/FILES/ keeps its binaries across a safe write. It returns false when
-// no such subtree exists.
-func mediaFilesDirIn(dir string) (string, bool) {
-	cur := dir
+// mediaFilesDirsIn returns every media/files/ subtree under dir, matching each
+// path component case-insensitively so an archive laid out as MEDIA/files/ or
+// media/FILES/ keeps its binaries across a safe write. On a case-sensitive
+// filesystem more than one can exist at once (media/files/ beside
+// MEDIA/files/); callers treat that as ambiguous rather than pick one and
+// delete the other with the backup. An empty result means there is none.
+func mediaFilesDirsIn(dir string) []string {
+	dirs := []string{dir}
 	for part := range strings.SplitSeq(filepath.ToSlash(glxlib.MediaFilesDir), "/") {
-		name, ok := childCaseInsensitive(cur, part)
-		if !ok {
-			return "", false
+		var next []string
+		for _, d := range dirs {
+			for _, name := range childrenCaseInsensitive(d, part) {
+				next = append(next, filepath.Join(d, name))
+			}
 		}
-		cur = filepath.Join(cur, name)
+		dirs = next
 	}
 
-	return cur, true
+	return dirs
 }
 
-// childCaseInsensitive returns the on-disk name of dir's child that matches
-// name, preferring an exact match and otherwise the first case-insensitive
-// one. Managed directories are recognized case-insensitively, so the media
-// binaries of an archive laid out as MEDIA/files/ have to be found the same
-// way.
-func childCaseInsensitive(dir, name string) (string, bool) {
-	if _, err := os.Lstat(filepath.Join(dir, name)); err == nil {
-		return name, true
-	}
+// childrenCaseInsensitive returns the on-disk names of dir's children that
+// match name case-insensitively, the exact match first when present. Managed
+// directories are recognized case-insensitively, so their contents have to be
+// found the same way.
+func childrenCaseInsensitive(dir, name string) []string {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return "", false
+		return nil
 	}
+	var names []string
 	for _, e := range entries {
-		if strings.EqualFold(e.Name(), name) {
-			return e.Name(), true
+		switch {
+		case e.Name() == name:
+			names = append([]string{name}, names...)
+		case strings.EqualFold(e.Name(), name):
+			names = append(names, e.Name())
 		}
 	}
 
-	return "", false
+	return names
 }
 
 // preserveMediaBinaries carries media/files/ from the backup into the freshly
@@ -446,10 +466,17 @@ func childCaseInsensitive(dir, name string) (string, bool) {
 // from the backup is the only way for the user's media files to survive the
 // safe-write swap. See genealogix/glx#593.
 func preserveMediaBinaries(backupDir, destPath string) error {
-	srcDir, ok := mediaFilesDirIn(backupDir)
-	if !ok {
+	srcDirs := mediaFilesDirsIn(backupDir)
+	if len(srcDirs) == 0 {
 		return nil
 	}
+	if len(srcDirs) > 1 {
+		// Two case variants cannot both become the canonical media/files/;
+		// refuse (the backup is retained) rather than keep one and delete the
+		// other.
+		return fmt.Errorf("%w: %s and %s", ErrAmbiguousMediaFilesDirs, srcDirs[0], srcDirs[1])
+	}
+	srcDir := srcDirs[0]
 	info, err := os.Stat(srcDir)
 	if err != nil {
 		if os.IsNotExist(err) {

@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -411,6 +412,16 @@ var errNoCommonArchiveRoot = errors.New("paths do not share an archive root")
 // Paths whose only shared ancestor is the filesystem root (or that sit on
 // different volumes) have no archive in common and are rejected.
 func commonArchiveRoot(paths []string) (string, error) {
+	// Windows paths compare case-insensitively (C:\Archive and c:\archive are
+	// one directory); elsewhere the filesystem decides and byte equality is
+	// the safe default.
+	same := func(a, b string) bool {
+		if runtime.GOOS == goosWindows {
+			return strings.EqualFold(a, b)
+		}
+
+		return a == b
+	}
 	var common []string
 	var volume string
 	for i, p := range paths {
@@ -429,11 +440,11 @@ func commonArchiveRoot(paths []string) (string, error) {
 
 			continue
 		}
-		if vol != volume {
+		if !same(vol, volume) {
 			return "", fmt.Errorf("%w: %s and %s", errNoCommonArchiveRoot, paths[0], p)
 		}
 		n := 0
-		for n < len(common) && n < len(parts) && common[n] == parts[n] {
+		for n < len(common) && n < len(parts) && same(common[n], parts[n]) {
 			n++
 		}
 		common = common[:n]
@@ -441,8 +452,25 @@ func commonArchiveRoot(paths []string) (string, error) {
 	if len(common) == 0 || (len(common) == 1 && common[0] == "") {
 		return "", fmt.Errorf("%w: %s", errNoCommonArchiveRoot, strings.Join(paths, ", "))
 	}
+	root := volume + string(filepath.Separator) + filepath.Join(common...)
 
-	return volume + string(filepath.Separator) + filepath.Join(common...), nil
+	// A selection confined to one entity directory (events/a.glx events/b.glx)
+	// has that directory as its common ancestor, but the archive — and its
+	// vocabularies/ — is the parent. Climb out of managed directories so the
+	// file keys and the vocabulary lookup are rooted at the archive.
+	for {
+		base := filepath.Base(root)
+		if base == "metadata.glx" || !archiveManagedTopLevel[strings.ToLower(base)] {
+			break
+		}
+		parent := filepath.Dir(root)
+		if parent == root {
+			break
+		}
+		root = parent
+	}
+
+	return root, nil
 }
 
 // withArchiveVocabularies appends <absRoot>/vocabularies to paths when that
@@ -506,6 +534,11 @@ func collectGLXFilesFromPaths(root string, paths []string) (map[string][]byte, e
 			return nil, fmt.Errorf("failed to read %s: %w", p, err)
 		}
 		if !info.IsDir() {
+			// Only .glx files are archive content; a README.md named
+			// alongside them is ignored, as it would be by a directory walk.
+			if !isGLXFile(abs) {
+				continue
+			}
 			// A file named explicitly on the command line is read as given;
 			// containment applies to files discovered by the directory walks.
 			data, err := os.ReadFile(abs) // #nosec G304 -- path is a user-supplied argument to glx validate

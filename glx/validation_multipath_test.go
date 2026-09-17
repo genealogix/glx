@@ -197,3 +197,46 @@ func TestWithArchiveVocabularies(t *testing.T) {
 	assert.Equal(t, []string{root}, withArchiveVocabularies(root, []string{root}), "not duplicated when a parent is named")
 	assert.Equal(t, []string{persons}, withArchiveVocabularies(filepath.Join(root, "persons"), []string{persons}), "untouched when the root has no vocabularies/")
 }
+
+// Files named from inside one entity directory still belong to the archive
+// above it: keys and the vocabulary lookup must be rooted there.
+func TestValidatePaths_SameDirectoryFilesUseArchiveRoot(t *testing.T) {
+	root := t.TempDir()
+	writeSkipTestFile(t, filepath.Join(root, "vocabularies", "event-types.glx"),
+		"event_types:\n  land_grant:\n    label: Land Grant\n")
+	writeSkipTestFile(t, filepath.Join(root, "persons", "person-1.glx"),
+		"persons:\n  person-1:\n    properties:\n      primary_name: Alice\n")
+	for _, name := range []string{"a", "b"} {
+		writeSkipTestFile(t, filepath.Join(root, "events", name+".glx"),
+			"events:\n  event-"+name+":\n    type: land_grant\n    participants:\n      - person: person-1\n")
+	}
+
+	got, err := commonArchiveRoot([]string{filepath.Join(root, "events", "a.glx"), filepath.Join(root, "events", "b.glx")})
+	require.NoError(t, err)
+	resolvedRoot, _ := filepath.EvalSymlinks(root)
+	resolvedGot, _ := filepath.EvalSymlinks(got)
+	assert.Equal(t, resolvedRoot, resolvedGot, "the archive root is the parent of the entity directory")
+
+	streams, out, _ := newTestStreams()
+	require.NoError(t, validatePaths(streams, []string{
+		filepath.Join(root, "events", "a.glx"),
+		filepath.Join(root, "events", "b.glx"),
+		filepath.Join(root, "persons", "person-1.glx"),
+	}))
+	assert.Contains(t, out.String(), "Validated 4 files.", "two events, the person, and the auto-included vocabulary")
+}
+
+func TestValidatePaths_IgnoresNonGLXFileArguments(t *testing.T) {
+	root := writeMultiPathArchive(t)
+	writeSkipTestFile(t, filepath.Join(root, "README.md"), "# notes\n")
+	streams, out, _ := newTestStreams()
+
+	require.NoError(t, validatePaths(streams, []string{
+		filepath.Join(root, "persons"),
+		filepath.Join(root, "sources"),
+		filepath.Join(root, "citations"),
+		filepath.Join(root, "assertions"),
+		filepath.Join(root, "README.md"),
+	}))
+	assert.Contains(t, out.String(), "Validated 4 files.")
+}

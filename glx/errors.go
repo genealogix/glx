@@ -45,6 +45,7 @@ var (
 	ErrInputNotFound              = errors.New("input path not found")
 	ErrStaleBackupForeignFile     = errors.New("stale backup contains non-archive file from a previous failed run; move or inspect it before retrying")
 	ErrPreservedEntryCollision    = errors.New("an entry the loader skips collides with a file the archive writer produced; the backup is retained")
+	ErrAmbiguousMediaFilesDirs    = errors.New("archive holds more than one media/files directory differing only by case; merge them before writing")
 	ErrInvalidARK                 = errors.New("not a valid FamilySearch ARK")
 	ErrEmptyARK                   = errors.New("empty ARK")
 	ErrLinkSourceRequired         = errors.New("exactly one of --source or --create-source is required")

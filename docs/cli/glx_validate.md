@@ -23,12 +23,14 @@ Validation behavior:
 - Single file: Validates file structure only, skips cross-reference checks
 - Directory: Validates all .glx files with full cross-reference validation
 - No arguments: Validates current directory with full cross-reference validation
-- Several paths (directories, files, or a mix): Loaded together as one archive
-  rooted at their deepest common directory, so cross-references between them
-  resolve and duplicate IDs across them are caught. The archive's vocabularies/
-  under that root is included automatically. References to entities outside
-  the named paths are errors: the selection is validated as the archive it
-  would be on its own.
+- Several paths (directories, .glx files, or a mix): Loaded together as one
+  archive rooted at the enclosing archive directory — their deepest common
+  directory, or its parent when that is itself an entity directory such as
+  events/ — so cross-references between them resolve and duplicate IDs across
+  them are caught. The archive's vocabularies/ under that root is included
+  automatically; files that are not .glx are ignored. References to entities
+  outside the named paths are errors: the selection is validated as the
+  archive it would be on its own.
 
 Dot-prefixed directories and files (.git, .glx, .worktrees, ._name.glx) are not
 archive content and are skipped, including symlinks that point into them. An

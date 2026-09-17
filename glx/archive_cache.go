@@ -23,6 +23,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -217,12 +218,7 @@ func cachePath(root string) string { return filepath.Join(root, cacheDirName, ca
 // empty string — a fingerprint that matches forever, leaving the cache "fresh"
 // no matter how the archive changes.
 func computeFSFingerprint(root string) (string, error) {
-	type fileMeta struct {
-		rel  string
-		size int64
-		mod  int64
-	}
-	var metas []fileMeta
+	var metas []fsFileMeta
 
 	resolvedRoot, err := filepath.EvalSymlinks(root)
 	if err != nil {
@@ -248,35 +244,9 @@ func computeFSFingerprint(root string) (string, error) {
 		if err != nil {
 			return err
 		}
-		key := filepath.ToSlash(rel)
-		if d.Type()&fs.ModeSymlink != 0 {
-			// Same exclusion the loader applies: a link whose target lies under
-			// a dot-prefixed directory is not archive content, so edits to that
-			// target must not invalidate the cache.
-			if symlinkTargetIsExcluded(root, key) {
-				return nil
-			}
-			// The link text is part of the identity: retargeting a link to a
-			// file with identical size and mtime, or a target appearing or
-			// disappearing, changes what the loader reads and must change the
-			// fingerprint.
-			if target, err := os.Readlink(path); err == nil {
-				key += " -> " + filepath.ToSlash(target)
-			}
+		if meta, ok := fingerprintEntry(root, path, filepath.ToSlash(rel), d); ok {
+			metas = append(metas, meta)
 		}
-		// Stat the path rather than using d.Info(): for a symlinked .glx file
-		// d.Info() describes the link itself, whose size and mtime do not change
-		// when the target is edited, while the loader reads the target. A
-		// dangling link is recorded with a size of -1 so the walk completes and
-		// the dangling state itself is fingerprinted; the loader reports the
-		// file on its own.
-		info, err := os.Stat(path)
-		if err != nil {
-			metas = append(metas, fileMeta{rel: key, size: -1, mod: 0})
-
-			return nil //nolint:nilerr // a dangling link is fingerprinted as such, not treated as a walk failure
-		}
-		metas = append(metas, fileMeta{rel: key, size: info.Size(), mod: info.ModTime().UnixNano()})
 
 		return nil
 	})
@@ -631,4 +601,73 @@ func LoadArchiveCached(path string) (*glxlib.GLXFile, []string, error) {
 	}
 
 	return archive, duplicates, nil
+}
+
+// fsFileMeta is one fingerprinted file: its key (the archive-relative path,
+// plus the link text for a symlink) and the size and mtime the loader would
+// see. A dangling symlink is recorded with size -1.
+type fsFileMeta struct {
+	rel  string
+	size int64
+	mod  int64
+}
+
+// fingerprintEntry decides whether the .glx entry at path (key is its
+// slash-separated path relative to root) belongs in the fingerprint and, if
+// so, returns its metadata. It applies the loader's exclusions so the
+// fingerprint covers exactly what the loader reads: a symlink whose target
+// lies under a dot-prefixed directory, and on Windows a Git placeholder whose
+// text does, are left out. For a symlink the link text becomes part of the
+// key, so retargeting a link to a file with identical size and mtime, or a
+// target appearing or disappearing, changes the fingerprint.
+func fingerprintEntry(root, path, key string, d fs.DirEntry) (fsFileMeta, bool) {
+	if d.Type()&fs.ModeSymlink != 0 {
+		if symlinkTargetIsExcluded(root, key) {
+			return fsFileMeta{}, false
+		}
+		if target, err := os.Readlink(path); err == nil {
+			key += " -> " + filepath.ToSlash(target)
+		}
+	} else if placeholderExcluded(path, key, d) {
+		return fsFileMeta{}, false
+	}
+	// Stat the path rather than using d.Info(): for a symlinked .glx file
+	// d.Info() describes the link itself, whose size and mtime do not change
+	// when the target is edited, while the loader reads the target. A dangling
+	// link is fingerprinted as such (size -1) rather than failing the walk; the
+	// loader reports the file on its own.
+	info, err := os.Stat(path)
+	if err != nil {
+		return fsFileMeta{rel: key, size: -1, mod: 0}, true
+	}
+
+	return fsFileMeta{rel: key, size: info.Size(), mod: info.ModTime().UnixNano()}, true
+}
+
+// placeholderExcluded reports whether, on Windows, the regular file at path is
+// a Git symlink placeholder whose text points under a dot-prefixed directory —
+// an entry the loader skips (resolveSymlinkPlaceholder) and the fingerprint
+// must skip too. Placeholders are tiny, so only files that small are read; the
+// walk stays stat-only for real content and on other platforms.
+func placeholderExcluded(path, key string, d fs.DirEntry) bool {
+	return placeholderExcludedOn(runtime.GOOS, path, key, d)
+}
+
+// placeholderExcludedOn is placeholderExcluded with the platform made explicit
+// so the Windows branch can be exercised by tests on any host.
+func placeholderExcludedOn(goos, path, key string, d fs.DirEntry) bool {
+	if goos != goosWindows || !d.Type().IsRegular() {
+		return false
+	}
+	info, err := d.Info()
+	if err != nil || info.Size() > maxSymlinkPlaceholderLength {
+		return false
+	}
+	data, err := os.ReadFile(path) // #nosec G304 -- path enumerated by the archive walk
+	if err != nil {
+		return false
+	}
+	target, ok := placeholderTarget(key, data)
+
+	return ok && pathHasDotComponent(target)
 }

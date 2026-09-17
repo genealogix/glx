@@ -15,6 +15,7 @@
 package main
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -493,8 +494,9 @@ func TestSafeWrite_PreservesMediaBinariesFromCaseVariantDirectory(t *testing.T) 
 	require.NoError(t, err)
 	require.NoError(t, safeWriteMultiFileArchive(archiveDir, loaded))
 
-	found, ok := mediaFilesDirIn(archiveDir)
-	require.True(t, ok, "media/files must exist after the write")
+	dirs := mediaFilesDirsIn(archiveDir)
+	require.Len(t, dirs, 1, "exactly one media/files must exist after the write")
+	found := dirs[0]
 	assert.FileExists(t, filepath.Join(found, "portrait.jpg"))
 	assert.NoDirExists(t, archiveDir+".bak")
 }
@@ -526,4 +528,122 @@ func TestCollectGLXFiles_SymlinkOutsideRootIsAnError(t *testing.T) {
 
 	require.Error(t, err, "a link escaping the archive root must be refused, not read")
 	assert.Contains(t, err.Error(), "escape.glx")
+}
+
+// Classification must finish before anything moves: z.glx reaches the dot
+// directory only through a.glx, and a.glx sorts first.
+func TestSafeWrite_PreservesSymlinkChainWhoseHopSortsFirst(t *testing.T) {
+	if runtime.GOOS == goosWindows {
+		t.Skip("symlink creation requires elevation on Windows")
+	}
+	archiveDir := filepath.Join(t.TempDir(), "archive")
+	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
+	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	writeSkipTestFile(t, filepath.Join(archiveDir, ".drafts", "person.glx"), "persons: {}\n")
+	a := filepath.Join(archiveDir, "persons", "a.glx")
+	z := filepath.Join(archiveDir, "persons", "z.glx")
+	require.NoError(t, os.Symlink(filepath.Join("..", ".drafts", "person.glx"), a))
+	require.NoError(t, os.Symlink("a.glx", z))
+
+	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+
+	for _, link := range []string{a, z} {
+		_, err := os.Lstat(link)
+		require.NoError(t, err, "%s must survive the safe write", filepath.Base(link))
+	}
+	assert.NoDirExists(t, archiveDir+".bak")
+}
+
+// A managed top-level name (metadata.glx) that is a skipped symlink is not
+// carried over by restoreForeignEntries, so a fresh metadata.glx from the
+// writer is a genuine collision and must keep the backup.
+func TestSafeWrite_ManagedTopLevelCollisionRetainsBackup(t *testing.T) {
+	if runtime.GOOS == goosWindows {
+		t.Skip("symlink creation requires elevation on Windows")
+	}
+	archiveDir := filepath.Join(t.TempDir(), "archive")
+	writeSkipTestFile(t, filepath.Join(archiveDir, "persons", "person-1.glx"),
+		"metadata:\n  source_system: test\npersons:\n  person-1:\n    properties:\n      primary_name: Alice\n")
+	writeSkipTestFile(t, filepath.Join(archiveDir, ".drafts", "metadata.glx"), "metadata: {}\n")
+	require.NoError(t, os.Symlink(filepath.Join(".drafts", "metadata.glx"), filepath.Join(archiveDir, "metadata.glx")))
+
+	loaded, _, err := LoadArchive(archiveDir)
+	require.NoError(t, err)
+	if loaded.ImportMetadata == nil {
+		t.Skip("metadata is not loaded from an entity file in this build; collision cannot be staged")
+	}
+	err = safeWriteMultiFileArchive(archiveDir, loaded)
+
+	require.ErrorIs(t, err, ErrPreservedEntryCollision)
+	_, lerr := os.Lstat(filepath.Join(archiveDir+".bak", "metadata.glx"))
+	assert.NoError(t, lerr, "the backup with the skipped link must be retained")
+}
+
+// fsCaseSensitive reports whether dir lives on a case-sensitive filesystem.
+func fsCaseSensitive(t *testing.T, dir string) bool {
+	t.Helper()
+	probe := filepath.Join(dir, "CaseProbe")
+	require.NoError(t, os.WriteFile(probe, []byte("x"), 0o644))
+	_, err := os.Stat(filepath.Join(dir, "caseprobe"))
+
+	return err != nil
+}
+
+func TestSafeWrite_RefusesAmbiguousCaseVariantMediaDirectories(t *testing.T) {
+	base := t.TempDir()
+	if !fsCaseSensitive(t, base) {
+		t.Skip("needs a case-sensitive filesystem to hold media/ and MEDIA/ side by side")
+	}
+	archiveDir := filepath.Join(base, "archive")
+	writeSkipTestFile(t, filepath.Join(archiveDir, "persons", "person-1.glx"),
+		"persons:\n  person-1:\n    properties:\n      primary_name: Alice\n")
+	writeSkipTestFile(t, filepath.Join(archiveDir, "media", "files", "a.jpg"), "a")
+	writeSkipTestFile(t, filepath.Join(archiveDir, "MEDIA", "files", "b.jpg"), "b")
+
+	loaded, _, err := LoadArchive(archiveDir)
+	require.NoError(t, err)
+	err = safeWriteMultiFileArchive(archiveDir, loaded)
+
+	require.ErrorIs(t, err, ErrAmbiguousMediaFilesDirs)
+	assert.FileExists(t, filepath.Join(archiveDir+".bak", "MEDIA", "files", "b.jpg"), "neither tree may be deleted")
+}
+
+// dirEntryFor returns the fs.DirEntry for name inside dir, as a walk would
+// present it.
+func dirEntryFor(t *testing.T, dir, name string) fs.DirEntry {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
+	require.NoError(t, err)
+	for _, e := range entries {
+		if e.Name() == name {
+			return e
+		}
+	}
+	t.Fatalf("%s not found in %s", name, dir)
+
+	return nil
+}
+
+// The Windows placeholder branches cannot run for real on this host, so they
+// are exercised with the platform made explicit.
+func TestWindowsPlaceholderBranches(t *testing.T) {
+	root := t.TempDir()
+	writeSkipTestFile(t, filepath.Join(root, ".drafts", "p.glx"), "persons: {}\n")
+	writeSkipTestFile(t, filepath.Join(root, "persons", "alias.glx"), "../.drafts/p.glx\n")
+	writeSkipTestFile(t, filepath.Join(root, "persons", "real.glx"), "persons:\n  person-1: {}\n")
+	personsDir := filepath.Join(root, "persons")
+	alias := dirEntryFor(t, personsDir, "alias.glx")
+	content := dirEntryFor(t, personsDir, "real.glx")
+
+	t.Run("loaderSkips recognizes a placeholder into a dot directory", func(t *testing.T) {
+		assert.True(t, loaderSkipsOn(goosWindows, root, filepath.Join("persons", "alias.glx"), alias))
+		assert.False(t, loaderSkipsOn(goosWindows, root, filepath.Join("persons", "real.glx"), content), "ordinary content is not a placeholder")
+		assert.False(t, loaderSkipsOn("linux", root, filepath.Join("persons", "alias.glx"), alias), "placeholders are a Windows representation only")
+	})
+
+	t.Run("fingerprint excludes a placeholder into a dot directory", func(t *testing.T) {
+		assert.True(t, placeholderExcludedOn(goosWindows, filepath.Join(personsDir, "alias.glx"), "persons/alias.glx", alias))
+		assert.False(t, placeholderExcludedOn(goosWindows, filepath.Join(personsDir, "real.glx"), "persons/real.glx", content))
+		assert.False(t, placeholderExcludedOn("linux", filepath.Join(personsDir, "alias.glx"), "persons/alias.glx", alias))
+	})
 }
