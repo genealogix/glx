@@ -23,9 +23,24 @@ Validation behavior:
 - Single file: Validates file structure only, skips cross-reference checks
 - Directory: Validates all .glx files with full cross-reference validation
 - No arguments: Validates current directory with full cross-reference validation
+- Several paths (directories, .glx files, or a mix): Loaded together as one
+  archive rooted at the enclosing archive directory — their deepest common
+  directory, or its parent when that is itself an entity directory such as
+  events/ — so cross-references between them resolve and duplicate IDs across
+  them are caught. The archive's vocabularies/ under that root is included
+  automatically; files that are not .glx are ignored. References to entities
+  outside the named paths are errors: the selection is validated as the
+  archive it would be on its own.
+
+Dot-prefixed directories and files (.git, .glx, .worktrees, ._name.glx) are not
+archive content and are skipped when a directory is walked, including symlinks
+that point into them. A dot-prefixed .glx file named explicitly on the command
+line is validated. An
+archive whose own root directory is dot-named is still validated normally.
 
 Use --report to generate a confidence summary showing assertion coverage
-and highlighting unsupported claims.
+and highlighting unsupported claims. The archive is validated first, so
+--report fails on an archive that plain validate rejects.
 
 ```
 glx validate [paths...] [flags]

@@ -25,7 +25,7 @@ Every GENEALOGIX file uses the same universal structure:
 ### Basic Example
 
 ```yaml
-# Any .glx or .yaml file
+# Any .glx file
 persons:
   person-abc12345:
     properties:
@@ -112,7 +112,7 @@ GENEALOGIX validation operates at two levels:
 Each `.glx` file must:
 
 - Be valid YAML with proper structure
-- Have at least one top-level entity type key (persons, events, relationships, etc.)
+- Use only recognized top-level keys: entity type plurals (persons, events, relationships, etc.), vocabulary collections (event_types, person_properties, etc.), and `metadata`. Unknown top-level keys are rejected by schema validation; a file with no keys at all is accepted
 - Pass JSON schema validation for structural correctness
 - Contain properly formatted entity IDs (alphanumeric with hyphens, 1-64 characters)
 
@@ -135,6 +135,7 @@ Across all files in an archive, the validator checks:
   - Death year before birth year
   - Parent born after child (in parent-child relationships)
   - Marriage event before a participant's birth year
+  - Relationship `end_event` dated before its `start_event`
 
 > **Note:** Temporal checks are warnings rather than errors because dates in genealogical records are often estimates (e.g., `ABT 1850`). A flagged inconsistency may indicate a data entry error or simply imprecise dating.
 
@@ -410,11 +411,43 @@ See [Core Concepts](2-core-concepts.md#archive-owned-vocabularies) for details o
 ## Important Notes
 
 - **Folder names are conventions**, not requirements
-- **Parser must scan ALL** `.glx` and `.yaml` files in the archive
+- **Parser must scan ALL** `.glx` files in the archive, except the entries excluded by [Dot-Prefixed Entries](#dot-prefixed-entries)
 - **Duplicate entity IDs** across files is an error
-- **Entity type keys are required** at the top level of every file
+- **Only recognized top-level keys are allowed** in a file — entity type plurals, vocabulary collections, and `metadata`; anything else fails schema validation
 - **Cross-references are validated** at archive level
 - **Vocabularies define valid types** - entities must reference types from vocabulary files
+
+### Dot-Prefixed Entries
+
+Directories and files whose name begins with `.` are not archive content. A
+conforming parser:
+
+- MUST NOT descend into a dot-prefixed directory
+- MUST NOT load a dot-prefixed file, whatever its extension
+- MUST NOT follow a symbolic link whose target resolves inside a dot-prefixed
+  directory, even when the link itself sits at a normal path
+
+An archive is normally a Git repository, and the tooling around a repository
+keeps whole copies of the archive in dot-prefixed directories: `.git` objects
+and worktrees, the `.glx` cache directory, editor and sync-client scratch
+directories. A parser that reads those copies sees a duplicate ID for every
+entity in the archive and rejects a repository that is in fact valid.
+Dot-prefixed files are the same problem one level down: `._person.glx`
+AppleDouble sidecars and `.#person.glx` editor lock links are not GLX documents
+and fail the load of the archive that contains them.
+
+The exclusion applies to entries **found within** an archive, never to the
+archive root itself. A directory whose own name begins with `.` is a valid
+archive root, and a parser pointed at one scans it normally.
+
+Two consequences for archive authors and tools:
+
+- An entity that is meant to be part of the archive MUST live at a path with no
+  dot-prefixed component. Moving entity files under a dot-prefixed directory
+  removes them from the archive and leaves any reference to them dangling.
+- A writer that rewrites an archive MUST preserve the dot-prefixed entries it
+  finds. Because a parser never reads them, a writer that re-emits only what it
+  read would silently destroy them.
 
 ## Git Workflow Integration
 

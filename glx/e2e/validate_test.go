@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// A git worktree checked out under .claude/worktrees/ is a full copy of the
+// A git worktree checked out under a dot-prefixed directory is a full copy of the
 // archive inside the archive (#1212). Every entity would collide with itself
 // if the walk entered it.
 func TestValidate_IgnoresArchiveCopyUnderDotDirectory(t *testing.T) {
@@ -30,8 +30,13 @@ func TestValidate_IgnoresArchiveCopyUnderDotDirectory(t *testing.T) {
 
 	clean := runGLX(t, archive, "validate", ".")
 	require.Equal(t, 0, clean.exitCode, clean.stdout+clean.stderr)
+	// Without this the comparison below is vacuous: if the walk found nothing
+	// in either run, both print the same "No GLX files found" line and the
+	// equality assertion passes while validate is doing nothing at all.
+	require.NotContains(t, clean.stdout, "Validated 0 files.")
+	require.Contains(t, clean.stdout, "Validated ")
 
-	copyTreeFollowingSymlinks(t, filepath.Join(examplesDir(t), "basic-family"), filepath.Join(archive, ".claude", "worktrees", "copy"))
+	copyTreeFollowingSymlinks(t, filepath.Join(examplesDir(t), "basic-family"), filepath.Join(archive, ".worktrees", "copy"))
 
 	res := runGLX(t, archive, "validate", ".")
 

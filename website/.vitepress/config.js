@@ -26,10 +26,11 @@ const rewrites = {
   'SECURITY-POSTURE.md': 'development/security-posture.md',
 
   // GLX CLI documentation — per-command pages auto-generated under docs/cli/
-  // by `make docs-cli`; the index page is hand-written. Specific rule for
-  // index.md maps it to /cli (matches the historical URL); wildcard handles
-  // per-command pages at /cli/glx_init etc.
-  'docs/cli/index.md': 'cli.md',
+  // by `make docs-cli`. The CLI README (overview + install) is the /cli landing
+  // page; the hand-written command index lives at /cli/commands; the wildcard
+  // handles per-command pages at /cli/glx_init etc.
+  'glx/README.md': 'cli.md',
+  'docs/cli/index.md': 'cli/commands.md',
   'docs/cli/:page*': 'cli/:page*',
 
   'docs/examples/basic-family/README.md': 'examples/basic-family/index.md',
@@ -320,7 +321,7 @@ export default defineConfig({
           text: 'CLI Tool',
           items: [
             { text: 'Overview', link: '/cli' },
-            { text: 'glx (root)', link: '/cli/glx' }
+            { text: 'Commands', link: '/cli/commands' }
           ]
         },
         {
@@ -331,6 +332,7 @@ export default defineConfig({
             { text: 'glx split', link: '/cli/glx_split' },
             { text: 'glx join', link: '/cli/glx_join' },
             { text: 'glx merge', link: '/cli/glx_merge' },
+            { text: 'glx merge-persons', link: '/cli/glx_merge-persons' },
             { text: 'glx migrate', link: '/cli/glx_migrate' },
             { text: 'glx rename', link: '/cli/glx_rename' },
             { text: 'glx cache', link: '/cli/glx_cache' },
@@ -395,6 +397,7 @@ export default defineConfig({
             { text: 'glx duplicates', link: '/cli/glx_duplicates' },
             { text: 'glx coverage', link: '/cli/glx_coverage' },
             { text: 'glx proof', link: '/cli/glx_proof' },
+            { text: 'glx evidence', link: '/cli/glx_evidence' },
             { text: 'glx diff', link: '/cli/glx_diff' }
           ]
         },
