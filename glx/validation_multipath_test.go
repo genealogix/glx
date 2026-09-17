@@ -22,6 +22,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 // writeMultiPathArchive lays out an archive whose entities cross-reference
@@ -239,4 +241,46 @@ func TestValidatePaths_IgnoresNonGLXFileArguments(t *testing.T) {
 		filepath.Join(root, "README.md"),
 	}))
 	assert.Contains(t, out.String(), "Validated 4 files.")
+}
+
+// The climb out of an entity directory is exactly one level: an archive whose
+// own root is named events/ must not be climbed past.
+func TestCommonArchiveRoot_ClimbsOneLevelOnly(t *testing.T) {
+	data := t.TempDir()
+	archive := filepath.Join(data, "events")
+	writeSkipTestFile(t, filepath.Join(archive, "events", "a.glx"), "events: {}\n")
+	writeSkipTestFile(t, filepath.Join(archive, "events", "b.glx"), "events: {}\n")
+
+	got, err := commonArchiveRoot([]string{filepath.Join(archive, "events", "a.glx"), filepath.Join(archive, "events", "b.glx")})
+	require.NoError(t, err)
+	resolvedArchive, _ := filepath.EvalSymlinks(archive)
+	resolvedGot, _ := filepath.EvalSymlinks(got)
+	assert.Equal(t, resolvedArchive, resolvedGot)
+}
+
+// The full archive walk never descends into a directory symlink, so the
+// automatic vocabularies/ inclusion must not follow one either.
+func TestWithArchiveVocabularies_IgnoresSymlinkedVocabularies(t *testing.T) {
+	if runtime.GOOS == goosWindows {
+		t.Skip("symlink creation requires elevation on Windows")
+	}
+	root := t.TempDir()
+	persons := filepath.Join(root, "persons")
+	require.NoError(t, os.MkdirAll(persons, 0o755))
+	writeSkipTestFile(t, filepath.Join(root, ".drafts", "vocabularies", "event-types.glx"), "event_types: {}\n")
+	require.NoError(t, os.Symlink(filepath.Join(".drafts", "vocabularies"), filepath.Join(root, "vocabularies")))
+
+	assert.Equal(t, []string{persons}, withArchiveVocabularies(root, []string{persons}))
+}
+
+func TestValidateMediaFileExistence_NormalizesNavigationSegments(t *testing.T) {
+	root := t.TempDir()
+	writeSkipTestFile(t, filepath.Join(root, "media", "files", "photo.jpg"), "jpeg")
+	archive := &glxlib.GLXFile{
+		Media: map[string]*glxlib.Media{
+			"media-1": {URI: "media/files/../files/photo.jpg"},
+		},
+	}
+
+	assert.Empty(t, validateMediaFileExistence(archive, root), "a URI that normalizes inside the archive is not a dot-prefixed path")
 }

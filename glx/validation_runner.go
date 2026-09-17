@@ -456,18 +456,15 @@ func commonArchiveRoot(paths []string) (string, error) {
 
 	// A selection confined to one entity directory (events/a.glx events/b.glx)
 	// has that directory as its common ancestor, but the archive — and its
-	// vocabularies/ — is the parent. Climb out of managed directories so the
-	// file keys and the vocabulary lookup are rooted at the archive.
-	for {
-		base := filepath.Base(root)
-		if base == archiveMetadataFile || !archiveManagedTopLevel[strings.ToLower(base)] {
-			break
+	// vocabularies/ — is the parent. Climb out of a managed directory so the
+	// file keys and the vocabulary lookup are rooted at the archive. Exactly
+	// one level: entity directories do not nest, and an archive whose own root
+	// happens to be named events/ must not be climbed past.
+	base := filepath.Base(root)
+	if base != archiveMetadataFile && archiveManagedTopLevel[strings.ToLower(base)] {
+		if parent := filepath.Dir(root); parent != root {
+			root = parent
 		}
-		parent := filepath.Dir(root)
-		if parent == root {
-			break
-		}
-		root = parent
 	}
 
 	return root, nil
@@ -478,7 +475,10 @@ func commonArchiveRoot(paths []string) (string, error) {
 // a parent of it). It returns paths unchanged otherwise.
 func withArchiveVocabularies(absRoot string, paths []string) []string {
 	vocabDir := filepath.Join(absRoot, glxlib.ArchiveDirVocabularies)
-	info, err := os.Stat(vocabDir)
+	// Lstat, not Stat: the archive walk never descends into a directory
+	// symlink, so `vocabularies -> .drafts/vocabularies` (or a link out of the
+	// archive) is not something the full load would read either.
+	info, err := os.Lstat(vocabDir)
 	if err != nil || !info.IsDir() {
 		return paths
 	}
@@ -666,7 +666,9 @@ func validateMediaFileExistence(archive *glxlib.GLXFile, archiveRoot string) []s
 		// A URI with a dot-prefixed component points outside archive content
 		// (see isDotName), so the file it names is not carried by the archive
 		// even when it happens to exist on this machine right now.
-		if pathHasDotComponent(media.URI) {
+		// Clean first: `media/files/../files/photo.jpg` normalizes to a plain
+		// archive path, and its `..` must not read as a dot-prefixed component.
+		if pathHasDotComponent(filepath.Clean(media.URI)) {
 			warnings = append(warnings, fmt.Sprintf(
 				"media[%s]: referenced file is under a dot-prefixed path and is not archive content: %s",
 				mediaID, media.URI))

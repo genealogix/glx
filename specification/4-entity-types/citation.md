@@ -178,7 +178,7 @@ Assertions reference citations by ID regardless of where the citation file lives
 | `properties.text_from_source` | SOUR.TEXT, SOUR.DATA.TEXT | Transcribed text |
 | `properties.source_date` | SOUR.DATA.DATE | Date when source recorded the information |
 | `properties.external_ids` | SOUR.EXID | External identifiers (GEDCOM 7.0 EXID within source citation context) |
-| `notes` | SOUR.QUAY | Quality indicator (0-3) is not mapped to `confidence`; import preserves it as a `GEDCOM QUAY: n` note on the citation |
+| `notes` | SOUR.QUAY (import only) | Quality indicator (0-3) is not mapped to `confidence`; import preserves it as a `GEDCOM QUAY: n` note on the citation. Export writes notes as `SOUR.NOTE` and never reconstructs a QUAY record |
 
 ## Validation Rules
 

@@ -494,7 +494,8 @@ func TestSafeWrite_PreservesMediaBinariesFromCaseVariantDirectory(t *testing.T) 
 	require.NoError(t, err)
 	require.NoError(t, safeWriteMultiFileArchive(archiveDir, loaded))
 
-	dirs := mediaFilesDirsIn(archiveDir)
+	dirs, derr := mediaFilesDirsIn(archiveDir)
+	require.NoError(t, derr)
 	require.Len(t, dirs, 1, "exactly one media/files must exist after the write")
 	found := dirs[0]
 	assert.FileExists(t, filepath.Join(found, "portrait.jpg"))
@@ -693,4 +694,69 @@ func TestSafeWrite_PreservesAbsoluteSymlinkIntoDotDirectory(t *testing.T) {
 	_, err := os.Lstat(alias)
 	require.NoError(t, err, "the absolute link into the dot directory must survive")
 	assert.NoDirExists(t, archiveDir+".bak")
+}
+
+// Case folding applies to real managed directories only. A regular file that
+// happens to be named PERSONS, or a symlink named Persons, is foreign data
+// the loader never read and must be preserved, not treated as replaceable.
+func TestSafeWrite_ForeignEntriesNamedLikeManagedDirsArePreserved(t *testing.T) {
+	base := t.TempDir()
+	if !fsCaseSensitive(t, base) {
+		t.Skip("needs a case-sensitive filesystem to hold persons/ and a PERSONS file side by side")
+	}
+	archiveDir := filepath.Join(base, "archive")
+	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
+	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	writeSkipTestFile(t, filepath.Join(archiveDir, "PERSONS"), "not an archive directory\n")
+	require.NoError(t, os.Symlink("persons", filepath.Join(archiveDir, "Events")))
+
+	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+
+	assert.FileExists(t, filepath.Join(archiveDir, "PERSONS"))
+	_, err := os.Lstat(filepath.Join(archiveDir, "Events"))
+	assert.NoError(t, err, "a symlink named like a managed directory is foreign and must survive")
+}
+
+// A case-variant media directory that is a symlink must not be followed: the
+// rename would otherwise move data from outside the archive.
+func TestSafeWrite_DoesNotFollowSymlinkedMediaDirectory(t *testing.T) {
+	if runtime.GOOS == goosWindows {
+		t.Skip("symlink creation requires elevation on Windows")
+	}
+	base := t.TempDir()
+	external := filepath.Join(base, "assets", "files", "portrait.jpg")
+	writeSkipTestFile(t, external, "jpeg bytes")
+	archiveDir := filepath.Join(base, "archive")
+	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
+	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	require.NoError(t, os.Symlink(filepath.Join("..", "assets"), filepath.Join(archiveDir, "MEDIA")))
+
+	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+
+	assert.FileExists(t, external, "data behind the symlink must stay where it was")
+	_, err := os.Lstat(filepath.Join(archiveDir, "MEDIA"))
+	assert.NoError(t, err, "the symlink itself is foreign and is preserved")
+}
+
+// An unreadable media directory in a stale backup is an inspection failure,
+// not evidence that the backup is empty; cleanup must fail closed.
+func TestSafeWrite_UnreadableMediaInStaleBackupIsRefused(t *testing.T) {
+	if runtime.GOOS == goosWindows || os.Geteuid() == 0 {
+		t.Skip("relies on permission bits being enforced")
+	}
+	archiveDir := filepath.Join(t.TempDir(), "archive")
+	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
+	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	stale := archiveDir + ".bak"
+	writeSkipTestFile(t, filepath.Join(stale, "media", "files", "portrait.jpg"), "jpeg bytes")
+	mediaDir := filepath.Join(stale, "media")
+	require.NoError(t, os.Chmod(mediaDir, 0o000))
+	t.Cleanup(func() { _ = os.Chmod(mediaDir, 0o755) })
+
+	err := safeWriteMultiFileArchive(archiveDir, preserveTestArchive())
+
+	require.Error(t, err)
+	require.NotErrorIs(t, err, ErrStaleBackupForeignFile, "an inspection failure is reported as such")
+	require.NoError(t, os.Chmod(mediaDir, 0o755))
+	assert.FileExists(t, filepath.Join(stale, "media", "files", "portrait.jpg"), "the backup must be left intact")
 }

@@ -47,6 +47,21 @@ var archiveManagedTopLevel = func() map[string]bool {
 	return m
 }()
 
+// isManagedTopLevel reports whether a top-level archive entry is one the
+// serializer owns and may replace: a real directory whose name matches a
+// managed directory case-insensitively (PERSONS/ counts, so it is replaced by
+// persons/ rather than duplicated — #1246), or the metadata file by its exact
+// name. Anything else — a regular file that happens to be named PERSONS, a
+// symlink named Persons, a directory named Metadata.glx — is foreign data the
+// loader never read and the swap must preserve, not delete.
+func isManagedTopLevel(entry fs.DirEntry) bool {
+	if entry.Type().IsDir() {
+		return archiveManagedTopLevel[strings.ToLower(entry.Name())] && strings.ToLower(entry.Name()) != archiveMetadataFile
+	}
+
+	return entry.Type().IsRegular() && entry.Name() == archiveMetadataFile
+}
+
 // safeWriteMultiFileArchive writes a multi-file archive to a temporary directory
 // first, then swaps it into place. This prevents archive destruction if the write
 // fails partway through (e.g., power loss, disk full, signal).
@@ -171,7 +186,7 @@ func removeStaleBackup(backupDir string) error {
 		return fmt.Errorf("inspecting stale backup %s: %w", backupDir, err)
 	}
 	for _, entry := range entries {
-		if !archiveManagedTopLevel[strings.ToLower(entry.Name())] {
+		if !isManagedTopLevel(entry) {
 			return fmt.Errorf("%w: %s contains %q", ErrStaleBackupForeignFile, backupDir, entry.Name())
 		}
 	}
@@ -182,7 +197,11 @@ func removeStaleBackup(backupDir string) error {
 	// exist" (e.g., permissions, transient I/O) is also refused — we cannot
 	// confirm the backup is empty, so the safe move is to leave it for the
 	// user to inspect.
-	for _, mediaFilesDir := range mediaFilesDirsIn(backupDir) {
+	mediaFilesDirs, err := mediaFilesDirsIn(backupDir)
+	if err != nil {
+		return fmt.Errorf("inspecting stale backup %s: %w", backupDir, err)
+	}
+	for _, mediaFilesDir := range mediaFilesDirs {
 		mediaEntries, err := os.ReadDir(mediaFilesDir)
 		if err != nil {
 			return fmt.Errorf("inspecting %s: %w", mediaFilesDir, err)
@@ -222,11 +241,20 @@ func restoreForeignEntries(backupDir, destPath string) error {
 	}
 	for _, entry := range entries {
 		name := entry.Name()
-		if archiveManagedTopLevel[strings.ToLower(name)] {
+		if isManagedTopLevel(entry) {
 			continue
 		}
 		src := filepath.Join(backupDir, name)
 		dst := filepath.Join(destPath, name)
+		// The fresh output holds only managed names, so a foreign entry that
+		// already exists there means the writer produced a file with the same
+		// name (metadata.glx from loaded metadata beside a metadata.glx symlink
+		// the loader skipped, or persons/ beside a PERSONS file on a
+		// case-insensitive filesystem). Renaming over it would silently replace
+		// the writer's output; refuse and keep the backup instead.
+		if _, err := os.Lstat(dst); err == nil {
+			return fmt.Errorf("%w: %s", ErrPreservedEntryCollision, name)
+		}
 		if err := robustRename(src, dst); err != nil {
 			return fmt.Errorf("restoring %s: %w", name, err)
 		}
@@ -354,7 +382,7 @@ func preserveSkippedDotEntries(backupDir, destPath string) error {
 //
 //   - a dot-prefixed name (isDotName);
 //   - a symlink whose chain ends under a dot-prefixed directory
-//     (symlinkChainPointsIntoDotDir, the lexical twin of
+//     (lexicalResolveInArchive, the lexical twin of
 //     symlinkTargetIsExcluded);
 //   - on Windows, a Git symlink placeholder file whose text points under a
 //     dot-prefixed directory (placeholderTarget, as resolveSymlinkPlaceholder).
@@ -393,7 +421,7 @@ func loaderSkipsOn(goos, root, archiveRoot, rel string, d fs.DirEntry) bool {
 	return false
 }
 
-// maxSymlinkHops bounds the chain walk in symlinkChainPointsIntoDotDir so a
+// maxSymlinkHops bounds the chain walk in lexicalResolveInArchive so a
 // link cycle cannot spin forever; the OS limit for real resolution is similar.
 const maxSymlinkHops = 40
 
@@ -475,32 +503,48 @@ func relWithinEither(abs string, roots ...string) (string, bool) {
 // filesystem more than one can exist at once (media/files/ beside
 // MEDIA/files/); callers treat that as ambiguous rather than pick one and
 // delete the other with the backup. An empty result means there is none.
-func mediaFilesDirsIn(dir string) []string {
+//
+// Only real directories are matched at each level. A symlink such as
+// `MEDIA -> ../assets` is not archive content, and renaming a path that runs
+// through it would move data from outside the archive. A directory that cannot
+// be listed is reported as an error rather than treated as absent, so callers
+// that decide whether a backup is safe to delete fail closed.
+func mediaFilesDirsIn(dir string) ([]string, error) {
 	dirs := []string{dir}
 	for part := range strings.SplitSeq(filepath.ToSlash(glxlib.MediaFilesDir), "/") {
 		var next []string
 		for _, d := range dirs {
-			for _, name := range childrenCaseInsensitive(d, part) {
+			names, err := childDirsCaseInsensitive(d, part)
+			if err != nil {
+				return nil, err
+			}
+			for _, name := range names {
 				next = append(next, filepath.Join(d, name))
 			}
 		}
 		dirs = next
 	}
 
-	return dirs
+	return dirs, nil
 }
 
-// childrenCaseInsensitive returns the on-disk names of dir's children that
-// match name case-insensitively, the exact match first when present. Managed
-// directories are recognized case-insensitively, so their contents have to be
-// found the same way.
-func childrenCaseInsensitive(dir, name string) []string {
+// childDirsCaseInsensitive returns the names of dir's real subdirectories that
+// match name case-insensitively, the exact match first when present. A missing
+// dir yields no names; any other listing failure is returned.
+func childDirsCaseInsensitive(dir, name string) ([]string, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return nil
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+
+		return nil, fmt.Errorf("listing %s: %w", dir, err)
 	}
 	var names []string
 	for _, e := range entries {
+		if !e.Type().IsDir() {
+			continue
+		}
 		switch {
 		case e.Name() == name:
 			names = append([]string{name}, names...)
@@ -509,7 +553,7 @@ func childrenCaseInsensitive(dir, name string) []string {
 		}
 	}
 
-	return names
+	return names, nil
 }
 
 // preserveMediaBinaries carries media/files/ from the backup into the freshly
@@ -519,7 +563,10 @@ func childrenCaseInsensitive(dir, name string) []string {
 // from the backup is the only way for the user's media files to survive the
 // safe-write swap. See genealogix/glx#593.
 func preserveMediaBinaries(backupDir, destPath string) error {
-	srcDirs := mediaFilesDirsIn(backupDir)
+	srcDirs, err := mediaFilesDirsIn(backupDir)
+	if err != nil {
+		return err
+	}
 	if len(srcDirs) == 0 {
 		return nil
 	}
