@@ -244,9 +244,17 @@ func computeFSFingerprint(root string) (string, error) {
 		if isDotName(d.Name()) || !isGLXFile(d.Name()) {
 			return nil
 		}
-		info, err := d.Info()
+		// Stat the path rather than using d.Info(): for a symlinked .glx file
+		// d.Info() describes the link itself, whose size and mtime do not change
+		// when the target is edited, while the loader reads the target. Fall back
+		// to the link's own metadata for a dangling link so the walk still
+		// completes; the loader reports that file on its own.
+		info, err := os.Stat(path)
 		if err != nil {
-			return err
+			info, err = d.Info()
+			if err != nil {
+				return err
+			}
 		}
 		rel, err := filepath.Rel(root, path)
 		if err != nil {

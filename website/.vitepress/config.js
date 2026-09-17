@@ -332,6 +332,7 @@ export default defineConfig({
             { text: 'glx split', link: '/cli/glx_split' },
             { text: 'glx join', link: '/cli/glx_join' },
             { text: 'glx merge', link: '/cli/glx_merge' },
+            { text: 'glx merge-persons', link: '/cli/glx_merge-persons' },
             { text: 'glx migrate', link: '/cli/glx_migrate' },
             { text: 'glx rename', link: '/cli/glx_rename' },
             { text: 'glx cache', link: '/cli/glx_cache' },
@@ -396,6 +397,7 @@ export default defineConfig({
             { text: 'glx duplicates', link: '/cli/glx_duplicates' },
             { text: 'glx coverage', link: '/cli/glx_coverage' },
             { text: 'glx proof', link: '/cli/glx_proof' },
+            { text: 'glx evidence', link: '/cli/glx_evidence' },
             { text: 'glx diff', link: '/cli/glx_diff' }
           ]
         },

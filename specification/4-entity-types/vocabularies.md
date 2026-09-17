@@ -10,7 +10,7 @@ layout: doc
 
 ## Overview
 
-GENEALOGIX uses **archive-owned vocabularies** to define controlled lists of types, roles, and classifications used throughout the archive. Vocabulary files are ordinary `.glx` files that can live anywhere in the archive — the parser scans all `.glx` and `.yaml` files regardless of directory. By convention, the CLI places them in a `vocabularies/` directory (via `glx init` and `glx import`), but this is not a requirement.
+GENEALOGIX uses **archive-owned vocabularies** to define controlled lists of types, roles, and classifications used throughout the archive. Vocabulary files are ordinary `.glx` files that can live anywhere in the archive — the parser scans all `.glx` files regardless of directory. By convention, the CLI places them in a `vocabularies/` directory (via `glx init` and `glx import`), but this is not a requirement.
 
 ## Benefits of Vocabularies
 
@@ -977,7 +977,7 @@ Event properties are generally less common than person properties, since most ev
 - `cause` - Cause of the event, e.g., cause of death (GEDCOM: CAUS)
 - `event_subtype` - Further classification of the event type (GEDCOM: TYPE)
 - `marriage_type` - Free-text `MARR TYPE` value preserved on import (civil, religious, common law, …)
-- `name_as_recorded` - Per-participant name as written in the source (structured, with name fields)
+- `name_as_recorded` - **Participant-level only**: set under `event.participants[].properties`, not `event.properties`. The participant's name as written in the source (structured, with name fields)
 - `description` - Event description
 
 **Note:** Event timing and location are handled by the `date` and `place` fields directly on the event, not as properties. The `notes` field is a standard entity field available on all entity types, not a property.
@@ -998,7 +998,7 @@ Standard properties include:
 - `description` - Relationship description
 - `number_of_children` - Recorded number of children of a couple (GEDCOM `FAM.NCHI`)
 - `legal_status` - Legal form of a coerced-labor relationship (validated against `legal_statuses`)
-- `name_as_recorded` - Per-participant name as written in the source (structured, with name fields)
+- `name_as_recorded` - **Participant-level only**: set under `relationship.participants[].properties`, not `relationship.properties`. The participant's name as written in the source (structured, with name fields)
 
 ### Place Properties Vocabulary
 
@@ -1516,6 +1516,8 @@ The validator:
 
 Structural entity fields are valid `property` targets without a vocabulary entry: `date`, `place`, and `title` on event subjects; `name`, `type`, and `parent` on place subjects; `type`, `start_event`, and `end_event` on relationship subjects. `property: date` on an event is the most common assertion in the specification's examples.
 
+> **Implementation status:** steps 2–5 above describe the intended behavior. The current `glx validate` does not yet look an assertion's `property` up in the property vocabulary, so an unknown property name is accepted silently; participant `properties` on assertions are checked. Tracked in [#1224](https://github.com/genealogix/glx/issues/1224).
+
 ---
 
 ## Vocabulary Validation
@@ -1757,7 +1759,7 @@ All vocabulary schemas are located in `specification/schema/v1/vocabularies/` an
 - Required top-level key (e.g., `event_types`, `relationship_types`)
 - Required fields for each entry (typically `label`)
 - Optional fields (e.g., `description`, `gedcom`)
-- Vocabulary keys themselves are not pattern-constrained by the schemas; by convention they are lowercase with underscores (`parent_child`, `vital_record`), matching the standard vocabularies
+- Vocabulary keys: the per-vocabulary schemas listed above accept any map key, but the archive-root schema (`glx-file.schema.json`) constrains keys in every vocabulary collection to `^[a-zA-Z0-9_-]+$` — letters, digits, underscores, and hyphens, with no length cap. By convention keys are lowercase with underscores (`parent_child`, `vital_record`), matching the standard vocabularies
 
 Vocabulary files are validated by the `glx validate` command using these schemas.
 

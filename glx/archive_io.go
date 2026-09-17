@@ -119,6 +119,21 @@ func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
 		return fmt.Errorf("preserving non-archive files: %w", err)
 	}
 
+	// The serializer writes Media entity YAML under media/ but never touches
+	// media/files/, so the fresh tmpDir has no binaries. Move the dest's
+	// pre-existing media/files/ across the swap; without this every safe-write
+	// would silently destroy media binaries — see genealogix/glx#593.
+	//
+	// This must run before preserveSkippedDotEntries: that walk would otherwise
+	// recreate media/files/ in destPath to hold a dot entry such as
+	// media/files/.keep, and the whole-directory rename below would then fail
+	// because its target already exists. Moving media/files/ first carries any
+	// dot entries inside it along with the binaries.
+	if err := preserveMediaBinaries(backupDir, destPath); err != nil {
+		// Leave backupDir in place so the user can recover. Do not mark success.
+		return fmt.Errorf("preserving media binaries: %w", err)
+	}
+
 	// Entries the loader skips are never re-emitted by the serializer, so the
 	// fresh tmpDir cannot contain them. Carry them across the swap for the
 	// same reason foreign top-level entries are carried across: otherwise the
@@ -126,15 +141,6 @@ func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
 	if err := preserveSkippedDotEntries(backupDir, destPath); err != nil {
 		// Leave backupDir in place so the user can recover. Do not mark success.
 		return fmt.Errorf("preserving skipped entries: %w", err)
-	}
-
-	// The serializer writes Media entity YAML under media/ but never touches
-	// media/files/, so the fresh tmpDir has no binaries. Move the dest's
-	// pre-existing media/files/ across the swap; without this every safe-write
-	// would silently destroy media binaries — see genealogix/glx#593.
-	if err := preserveMediaBinaries(backupDir, destPath); err != nil {
-		// Leave backupDir in place so the user can recover. Do not mark success.
-		return fmt.Errorf("preserving media binaries: %w", err)
 	}
 
 	// Clean up backup (now contains only managed entries that have been

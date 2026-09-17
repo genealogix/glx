@@ -75,7 +75,7 @@ glx --version
 ### Using Go Install
 
 ```bash
-# Pin the release tag: GLX releases are prereleases, which @latest skips
+# Pin the release tag for a reproducible install; bump it when a new release ships
 go install github.com/genealogix/glx/glx@v0.0.0-beta.12
 ```
 
@@ -166,7 +166,6 @@ glx query sources
 # Validate specific files or directories
 glx validate persons/
 glx validate archive.glx
-glx validate persons/ events/
 ```
 
 ## Features

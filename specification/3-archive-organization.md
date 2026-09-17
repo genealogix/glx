@@ -25,7 +25,7 @@ Every GENEALOGIX file uses the same universal structure:
 ### Basic Example
 
 ```yaml
-# Any .glx or .yaml file
+# Any .glx file
 persons:
   person-abc12345:
     properties:
@@ -112,7 +112,7 @@ GENEALOGIX validation operates at two levels:
 Each `.glx` file must:
 
 - Be valid YAML with proper structure
-- Have at least one recognized top-level key: an entity type plural (persons, events, relationships, etc.), a vocabulary collection (event_types, person_properties, etc.), or `metadata`
+- Use only recognized top-level keys: entity type plurals (persons, events, relationships, etc.), vocabulary collections (event_types, person_properties, etc.), and `metadata`. Unknown top-level keys are rejected by schema validation; a file with no keys at all is accepted
 - Pass JSON schema validation for structural correctness
 - Contain properly formatted entity IDs (alphanumeric with hyphens, 1-64 characters)
 
@@ -411,9 +411,9 @@ See [Core Concepts](2-core-concepts.md#archive-owned-vocabularies) for details o
 ## Important Notes
 
 - **Folder names are conventions**, not requirements
-- **Parser must scan ALL** `.glx` and `.yaml` files in the archive, except the entries excluded by [Dot-Prefixed Entries](#dot-prefixed-entries)
+- **Parser must scan ALL** `.glx` files in the archive, except the entries excluded by [Dot-Prefixed Entries](#dot-prefixed-entries)
 - **Duplicate entity IDs** across files is an error
-- **At least one recognized top-level key is required** in every file — an entity type plural, a vocabulary collection, or `metadata`
+- **Only recognized top-level keys are allowed** in a file — entity type plurals, vocabulary collections, and `metadata`; anything else fails schema validation
 - **Cross-references are validated** at archive level
 - **Vocabularies define valid types** - entities must reference types from vocabulary files
 

@@ -63,7 +63,7 @@ Relationship properties capture additional details that don't fit into the stand
 | `description` | string | Detailed description of the relationship |
 | `number_of_children` | integer | Recorded number of children of a couple (from GEDCOM `FAM.NCHI`); may differ from the count of individually-linked children |
 | `legal_status` | `vocabulary_type: legal_statuses` | Legal form of a coerced-labor relationship (`chattel`, `indentured`, `debt_bondage`, `apprenticeship`); see [Enslavement Relationship](#enslavement-relationship) |
-| `name_as_recorded` | string (with fields) | Per-participant name as written in the source, when it differs from the person's recorded name |
+| `name_as_recorded` | string (with fields) | **Participant-level only** — set under `participants[].properties`, never at the relationship's top-level `properties`. The participant's name as written in the source, when it differs from the person's recorded name; see [Per-Participant Properties](#per-participant-properties) |
 
 `started_on` / `ended_on` record a date directly on the relationship; `start_event` / `end_event` point at Event entities that carry their own dates. Use the event references when the boundary is a documented event (a wedding, a sale, a court order) and the date properties when only a date is known. When both are present, the property is not required to match the event's date; tooling reads the event.
 
