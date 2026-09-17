@@ -760,3 +760,73 @@ func TestSafeWrite_UnreadableMediaInStaleBackupIsRefused(t *testing.T) {
 	require.NoError(t, os.Chmod(mediaDir, 0o755))
 	assert.FileExists(t, filepath.Join(stale, "media", "files", "portrait.jpg"), "the backup must be left intact")
 }
+
+// A skipped link's chain can pass through a top-level foreign entry that
+// restoreForeignEntries carries across before the nested entries are looked
+// at. Classification has to happen on the intact backup, or the nested link
+// resolves no further than the missing hop and is deleted with the backup.
+func TestSafeWrite_PreservesLinkThroughTopLevelForeignLink(t *testing.T) {
+	if runtime.GOOS == goosWindows {
+		t.Skip("symlink creation requires elevation on Windows")
+	}
+	archiveDir := filepath.Join(t.TempDir(), "archive")
+	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
+	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	writeSkipTestFile(t, filepath.Join(archiveDir, ".drafts", "x.glx"), "persons: {}\n")
+	alias := filepath.Join(archiveDir, "alias.glx")
+	require.NoError(t, os.Symlink(filepath.Join(".drafts", "x.glx"), alias))
+	z := filepath.Join(archiveDir, "persons", "z.glx")
+	require.NoError(t, os.Symlink(filepath.Join("..", "alias.glx"), z))
+
+	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+
+	for _, link := range []string{alias, z} {
+		info, err := os.Lstat(link)
+		require.NoError(t, err, "%s must survive the safe write", link)
+		assert.NotZero(t, info.Mode()&os.ModeSymlink)
+	}
+	assert.NoDirExists(t, archiveDir+".bak")
+}
+
+// The loader reads a .glx file at the archive top level, but the multi-file
+// writer has no place for it: preserving it as foreign duplicates its entities
+// beside the freshly written entity directories, and dropping it deletes a
+// hand-made file. Until #1247 settles which the user wants, the write is
+// refused before anything is moved — in any letter case, since the loader's
+// extension test is case-insensitive.
+func TestSafeWrite_RefusesTopLevelGLXFile(t *testing.T) {
+	for _, name := range []string{"family.glx", "FAMILY.GLX", "metadata.GLX"} {
+		t.Run(name, func(t *testing.T) {
+			archiveDir := filepath.Join(t.TempDir(), "archive")
+			writeSkipTestFile(t, filepath.Join(archiveDir, name),
+				"persons:\n  person-1:\n    properties:\n      primary_name: Alice\n")
+
+			loaded, _, err := LoadArchive(archiveDir)
+			require.NoError(t, err)
+			require.Len(t, loaded.Persons, 1, "the loader reads the top-level file")
+
+			err = safeWriteMultiFileArchive(archiveDir, loaded)
+
+			require.ErrorIs(t, err, ErrTopLevelGLXFile)
+			assert.FileExists(t, filepath.Join(archiveDir, name), "the archive is left untouched")
+			assert.NoDirExists(t, filepath.Join(archiveDir, "persons"))
+			assert.NoDirExists(t, archiveDir+".bak")
+		})
+	}
+}
+
+// metadata.glx is the one top-level file the writer owns, so an archive that
+// has one is written normally.
+func TestSafeWrite_AllowsTopLevelMetadataFile(t *testing.T) {
+	archiveDir := filepath.Join(t.TempDir(), "archive")
+	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
+	archive := preserveTestArchive()
+	archive.ImportMetadata = &glxlib.Metadata{SourceSystem: "test"}
+	require.NoError(t, safeWriteMultiFileArchive(archiveDir, archive))
+	require.FileExists(t, filepath.Join(archiveDir, archiveMetadataFile))
+
+	require.NoError(t, safeWriteMultiFileArchive(archiveDir, archive))
+
+	assert.FileExists(t, filepath.Join(archiveDir, archiveMetadataFile))
+	assert.NoDirExists(t, archiveDir+".bak")
+}

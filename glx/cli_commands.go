@@ -420,7 +420,9 @@ Validation behavior:
   archive it would be on its own.
 
 Dot-prefixed directories and files (.git, .glx, .worktrees, ._name.glx) are not
-archive content and are skipped, including symlinks that point into them. An
+archive content and are skipped when a directory is walked, including symlinks
+that point into them. A dot-prefixed .glx file named explicitly on the command
+line is validated. An
 archive whose own root directory is dot-named is still validated normally.
 
 Use --report to generate a confidence summary showing assertion coverage
