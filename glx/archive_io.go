@@ -250,7 +250,7 @@ func firstSkippedEntry(backupDir string) (string, error) {
 		if err != nil {
 			return fmt.Errorf("resolving %s: %w", srcPath, err)
 		}
-		if !loaderSkips(backupDir, rel, d) {
+		if !loaderSkips(backupDir, strings.TrimSuffix(backupDir, ".bak"), rel, d) {
 			return nil
 		}
 		found = filepath.ToSlash(rel)
@@ -300,7 +300,7 @@ func preserveSkippedDotEntries(backupDir, destPath string) error {
 		if err != nil {
 			return fmt.Errorf("resolving %s: %w", srcPath, err)
 		}
-		if !loaderSkips(backupDir, rel, d) {
+		if !loaderSkips(backupDir, destPath, rel, d) {
 			return nil
 		}
 		toMove = append(toMove, rel)
@@ -359,18 +359,22 @@ func preserveSkippedDotEntries(backupDir, destPath string) error {
 // resolving targets, so they give the same answer whether or not the target
 // currently exists: by the time the swap inspects the backup, top-level dot
 // directories have already been moved to the destination.
-func loaderSkips(root, rel string, d fs.DirEntry) bool {
-	return loaderSkipsOn(runtime.GOOS, root, rel, d)
+func loaderSkips(root, archiveRoot, rel string, d fs.DirEntry) bool {
+	return loaderSkipsOn(runtime.GOOS, root, archiveRoot, rel, d)
 }
 
 // loaderSkipsOn is loaderSkips with the platform made explicit so the Windows
-// placeholder branch can be exercised by tests on any host.
-func loaderSkipsOn(goos, root, rel string, d fs.DirEntry) bool {
+// placeholder branch can be exercised by tests on any host. root is the tree
+// being inspected (the backup); archiveRoot is the archive's own path, which
+// absolute symlink targets refer to.
+func loaderSkipsOn(goos, root, archiveRoot, rel string, d fs.DirEntry) bool {
 	if isDotName(d.Name()) {
 		return true
 	}
 	if d.Type()&fs.ModeSymlink != 0 {
-		return symlinkChainPointsIntoDotDir(root, filepath.ToSlash(rel))
+		resolved, ok := lexicalResolveInArchive(root, archiveRoot, filepath.ToSlash(rel))
+
+		return ok && pathHasDotComponent(resolved)
 	}
 	if goos == goosWindows && d.Type().IsRegular() && isGLXFile(d.Name()) {
 		data, err := os.ReadFile(filepath.Join(root, rel)) // #nosec G304 -- path enumerated from the archive backup
@@ -389,31 +393,76 @@ func loaderSkipsOn(goos, root, rel string, d fs.DirEntry) bool {
 // link cycle cannot spin forever; the OS limit for real resolution is similar.
 const maxSymlinkHops = 40
 
-// symlinkChainPointsIntoDotDir follows the symlink at rel (slash separated,
-// relative to root) hop by hop using the link text only, and reports whether
-// the final path lies under a dot-prefixed directory inside root. A missing
-// intermediate path ends the walk and the path reached so far is judged, so a
-// link into a dot directory that has already been moved away is still
-// recognized. Absolute targets and chains that climb out of root are not
-// archive content in either direction and report false.
-func symlinkChainPointsIntoDotDir(root, rel string) bool {
-	cur := rel
-	for range maxSymlinkHops {
+// lexicalResolveInArchive expands every symlink on the path rel (slash
+// separated, relative to root) component by component, using link text only,
+// and returns the fully expanded archive-relative path. It is the
+// existence-tolerant twin of the loader's EvalSymlinks: a component that no
+// longer exists ends expansion and the remaining components are appended as
+// written, so a link into a dot directory that has already been moved away is
+// still recognized. Intermediate symlinked directories are expanded too, which
+// plain Lstat on the whole path would silently follow. An absolute target is
+// accepted when it lies under archiveRoot or root and is folded back into an
+// archive-relative path, as the loader accepts an absolute target that resolves
+// inside the archive. A target that climbs out, or a cycle, returns false.
+func lexicalResolveInArchive(root, archiveRoot, rel string) (string, bool) {
+	pending := strings.Split(path.Clean(rel), "/")
+	var done []string
+	hops := 0
+	for len(pending) > 0 {
+		done = append(done, pending[0])
+		pending = pending[1:]
+		cur := path.Join(done...)
+		if cur == ".." || strings.HasPrefix(cur, "../") {
+			return "", false
+		}
 		info, err := os.Lstat(filepath.Join(root, filepath.FromSlash(cur)))
-		if err != nil || info.Mode()&os.ModeSymlink == 0 {
-			break
+		if err != nil {
+			return path.Clean(path.Join(append(done, pending...)...)), true
+		}
+		if info.Mode()&os.ModeSymlink == 0 {
+			continue
+		}
+		hops++
+		if hops > maxSymlinkHops {
+			return "", false
 		}
 		target, err := os.Readlink(filepath.Join(root, filepath.FromSlash(cur)))
-		if err != nil || filepath.IsAbs(target) {
-			return false
+		if err != nil {
+			return "", false
 		}
-		cur = path.Clean(path.Join(path.Dir(cur), filepath.ToSlash(target)))
-		if cur == ".." || strings.HasPrefix(cur, "../") {
-			return false
+		var next string
+		if filepath.IsAbs(target) {
+			inside, ok := relWithinEither(target, archiveRoot, root)
+			if !ok {
+				return "", false
+			}
+			next = inside
+		} else {
+			next = path.Clean(path.Join(path.Join(done[:len(done)-1]...), filepath.ToSlash(target)))
+		}
+		if next == ".." || strings.HasPrefix(next, "../") {
+			return "", false
+		}
+		pending = append(strings.Split(next, "/"), pending...)
+		done = nil
+	}
+
+	return path.Clean(path.Join(done...)), true
+}
+
+// relWithinEither returns abs relative (slash separated) to the first of the
+// given roots that contains it, or false when neither does.
+func relWithinEither(abs string, roots ...string) (string, bool) {
+	for _, r := range roots {
+		if r == "" {
+			continue
+		}
+		if rel, ok := relWithin(abs, r); ok {
+			return filepath.ToSlash(rel), true
 		}
 	}
 
-	return pathHasDotComponent(cur)
+	return "", false
 }
 
 // mediaFilesDirsIn returns every media/files/ subtree under dir, matching each

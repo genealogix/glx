@@ -636,9 +636,9 @@ func TestWindowsPlaceholderBranches(t *testing.T) {
 	content := dirEntryFor(t, personsDir, "real.glx")
 
 	t.Run("loaderSkips recognizes a placeholder into a dot directory", func(t *testing.T) {
-		assert.True(t, loaderSkipsOn(goosWindows, root, filepath.Join("persons", "alias.glx"), alias))
-		assert.False(t, loaderSkipsOn(goosWindows, root, filepath.Join("persons", "real.glx"), content), "ordinary content is not a placeholder")
-		assert.False(t, loaderSkipsOn("linux", root, filepath.Join("persons", "alias.glx"), alias), "placeholders are a Windows representation only")
+		assert.True(t, loaderSkipsOn(goosWindows, root, root, filepath.Join("persons", "alias.glx"), alias))
+		assert.False(t, loaderSkipsOn(goosWindows, root, root, filepath.Join("persons", "real.glx"), content), "ordinary content is not a placeholder")
+		assert.False(t, loaderSkipsOn("linux", root, root, filepath.Join("persons", "alias.glx"), alias), "placeholders are a Windows representation only")
 	})
 
 	t.Run("fingerprint excludes a placeholder into a dot directory", func(t *testing.T) {
@@ -646,4 +646,51 @@ func TestWindowsPlaceholderBranches(t *testing.T) {
 		assert.False(t, placeholderExcludedOn(goosWindows, filepath.Join(personsDir, "real.glx"), "persons/real.glx", content))
 		assert.False(t, placeholderExcludedOn("linux", filepath.Join(personsDir, "alias.glx"), "persons/alias.glx", alias))
 	})
+}
+
+// A symlinked intermediate directory hides the dot path from a plain Lstat of
+// the whole target; the loader's full resolution sees it, so the swap must
+// too.
+func TestSafeWrite_PreservesLinkThroughSymlinkedDirectory(t *testing.T) {
+	if runtime.GOOS == goosWindows {
+		t.Skip("symlink creation requires elevation on Windows")
+	}
+	archiveDir := filepath.Join(t.TempDir(), "archive")
+	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
+	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	writeSkipTestFile(t, filepath.Join(archiveDir, ".worktrees", "copy", "p.glx"), "persons: {}\n")
+	shared := filepath.Join(archiveDir, "persons", "shared")
+	alias := filepath.Join(archiveDir, "persons", "alias.glx")
+	require.NoError(t, os.Symlink(filepath.Join("..", ".worktrees", "copy"), shared))
+	require.NoError(t, os.Symlink(filepath.Join("shared", "p.glx"), alias))
+
+	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+
+	for _, link := range []string{shared, alias} {
+		_, err := os.Lstat(link)
+		require.NoError(t, err, "%s must survive the safe write", filepath.Base(link))
+	}
+	assert.NoDirExists(t, archiveDir+".bak")
+}
+
+// The loader accepts an absolute target that resolves inside the archive; a
+// link written that way into a dot directory is skipped on read and must be
+// carried across the swap like a relative one.
+func TestSafeWrite_PreservesAbsoluteSymlinkIntoDotDirectory(t *testing.T) {
+	if runtime.GOOS == goosWindows {
+		t.Skip("symlink creation requires elevation on Windows")
+	}
+	archiveDir := filepath.Join(t.TempDir(), "archive")
+	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
+	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	target := filepath.Join(archiveDir, ".worktrees", "copy", "p.glx")
+	writeSkipTestFile(t, target, "persons: {}\n")
+	alias := filepath.Join(archiveDir, "persons", "alias.glx")
+	require.NoError(t, os.Symlink(target, alias))
+
+	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+
+	_, err := os.Lstat(alias)
+	require.NoError(t, err, "the absolute link into the dot directory must survive")
+	assert.NoDirExists(t, archiveDir+".bak")
 }
