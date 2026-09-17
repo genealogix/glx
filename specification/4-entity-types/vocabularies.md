@@ -1210,7 +1210,7 @@ media:
 
 #### Multi-Value with Temporal Properties
 
-A property can be both `multi_value: true` and `temporal: true`. In this case, each temporal entry contains an array:
+A property can be both `multi_value: true` and `temporal: true`. The value is then a single list of dated entries with one scalar `value` each — one entry per value, and entries may share a date. Do not nest an array inside an entry's `value`; the validator checks each entry's `value` against the declared `value_type` and warns on a list:
 
 ```yaml
 person_properties:
@@ -1227,13 +1227,13 @@ persons:
   person-john:
     properties:
       nicknames:
-        - value:
-            - "Johnny"
-            - "Jack"
+        - value: "Johnny"
           date: "FROM 1950 TO 1970"
-        - value:
-            - "Big John"
-            - "J.D."
+        - value: "Jack"
+          date: "FROM 1950 TO 1970"
+        - value: "Big John"
+          date: "FROM 1970"
+        - value: "J.D."
           date: "FROM 1970"
 ```
 
@@ -1328,7 +1328,7 @@ When a property has `fields` defined, the property value can be either:
            surname: "Smith"
    ```
 
-   Entries in a temporal list may omit `date` (an *undated list*, for values known without dates), and dated and undated entries may be mixed. For properties that are also `multi_value: true`, each entry's `value` is an array. These are the same shapes described under [Core Concepts - Temporal Properties](../2-core-concepts.md#temporal-properties) and [Structured Properties](../2-core-concepts.md#structured-properties).
+   Entries in a temporal list may omit `date` (an *undated list*, for values known without dates), and dated and undated entries may be mixed. For properties that are also `multi_value: true`, list one entry per value; each entry's `value` stays a scalar (see [Multi-Value with Temporal Properties](#multi-value-with-temporal-properties)). These are the same shapes described under [Core Concepts - Temporal Properties](../2-core-concepts.md#temporal-properties) and [Structured Properties](../2-core-concepts.md#structured-properties).
 
 #### When to Use Fields
 

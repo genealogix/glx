@@ -510,7 +510,7 @@ This is common when a source (like an obituary, biographical sketch, or family l
 
 Each list entry includes:
 
-- `value` - The property value, conforming to the property's `value_type` or `reference_type` (an array when the property is `multi_value: true`)
+- `value` - The property value, conforming to the property's `value_type` or `reference_type`. It is always a scalar: a property that is also `multi_value: true` lists one entry per value rather than nesting an array in `value`
 - `date` - Optional date string specifying when the value applied
 - `fields` - Optional structured breakdown, when the property defines `fields` (see [Structured Properties](#structured-properties))
 

@@ -20,6 +20,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -342,4 +343,68 @@ func TestSafeWrite_UppercaseManagedDirectoryIsReplacedNotDuplicated(t *testing.T
 	require.NoError(t, err)
 	assert.Empty(t, duplicates)
 	assert.Len(t, reloaded.Persons, 1)
+}
+
+// The fingerprint must cover exactly what the loader reads: edits behind a
+// symlink the loader excludes must not invalidate the cache, while retargeting
+// a link or a target appearing or disappearing must.
+func TestComputeFSFingerprint_SymlinkIdentity(t *testing.T) {
+	if runtime.GOOS == goosWindows {
+		t.Skip("symlink creation requires elevation on Windows")
+	}
+
+	t.Run("edits behind an excluded symlink do not change it", func(t *testing.T) {
+		root := t.TempDir()
+		writeSkipTestFile(t, filepath.Join(root, "persons", "a.glx"), "persons: {}\n")
+		excludedTarget := filepath.Join(root, ".worktrees", "copy", "persons", "b.glx")
+		writeSkipTestFile(t, excludedTarget, "persons: {}\n")
+		require.NoError(t, os.Symlink(filepath.Join("..", ".worktrees", "copy", "persons", "b.glx"), filepath.Join(root, "persons", "b.glx")))
+
+		before, err := computeFSFingerprint(root)
+		require.NoError(t, err)
+		require.NoError(t, os.WriteFile(excludedTarget, []byte("persons: {}\n# edited copy\n"), 0o644))
+		after, err := computeFSFingerprint(root)
+		require.NoError(t, err)
+
+		assert.Equal(t, before, after)
+	})
+
+	t.Run("retargeting a link changes it even when the targets match", func(t *testing.T) {
+		root := t.TempDir()
+		one := filepath.Join(root, "data", "one.txt")
+		two := filepath.Join(root, "data", "two.txt")
+		writeSkipTestFile(t, one, "persons: {}\n")
+		writeSkipTestFile(t, two, "persons: {}\n")
+		require.NoError(t, os.Chtimes(two, time.Unix(1_700_000_000, 0), time.Unix(1_700_000_000, 0)))
+		require.NoError(t, os.Chtimes(one, time.Unix(1_700_000_000, 0), time.Unix(1_700_000_000, 0)))
+		link := filepath.Join(root, "persons", "current.glx")
+		require.NoError(t, os.MkdirAll(filepath.Dir(link), 0o755))
+		require.NoError(t, os.Symlink(filepath.Join("..", "data", "one.txt"), link))
+
+		before, err := computeFSFingerprint(root)
+		require.NoError(t, err)
+		require.NoError(t, os.Remove(link))
+		require.NoError(t, os.Symlink(filepath.Join("..", "data", "two.txt"), link))
+		after, err := computeFSFingerprint(root)
+		require.NoError(t, err)
+
+		assert.NotEqual(t, before, after)
+	})
+
+	t.Run("a target disappearing changes it", func(t *testing.T) {
+		root := t.TempDir()
+		target := filepath.Join(root, "data", "current.txt")
+		writeSkipTestFile(t, target, "persons: {}\n")
+		link := filepath.Join(root, "persons", "current.glx")
+		require.NoError(t, os.MkdirAll(filepath.Dir(link), 0o755))
+		require.NoError(t, os.Symlink(filepath.Join("..", "data", "current.txt"), link))
+
+		before, err := computeFSFingerprint(root)
+		require.NoError(t, err)
+		require.NoError(t, os.Remove(target))
+		after, err := computeFSFingerprint(root)
+		require.NoError(t, err)
+
+		assert.NotEqual(t, before, after)
+	})
 }

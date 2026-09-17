@@ -244,23 +244,39 @@ func computeFSFingerprint(root string) (string, error) {
 		if isDotName(d.Name()) || !isGLXFile(d.Name()) {
 			return nil
 		}
-		// Stat the path rather than using d.Info(): for a symlinked .glx file
-		// d.Info() describes the link itself, whose size and mtime do not change
-		// when the target is edited, while the loader reads the target. Fall back
-		// to the link's own metadata for a dangling link so the walk still
-		// completes; the loader reports that file on its own.
-		info, err := os.Stat(path)
-		if err != nil {
-			info, err = d.Info()
-			if err != nil {
-				return err
-			}
-		}
 		rel, err := filepath.Rel(root, path)
 		if err != nil {
 			return err
 		}
-		metas = append(metas, fileMeta{rel: filepath.ToSlash(rel), size: info.Size(), mod: info.ModTime().UnixNano()})
+		key := filepath.ToSlash(rel)
+		if d.Type()&fs.ModeSymlink != 0 {
+			// Same exclusion the loader applies: a link whose target lies under
+			// a dot-prefixed directory is not archive content, so edits to that
+			// target must not invalidate the cache.
+			if symlinkTargetIsExcluded(root, key) {
+				return nil
+			}
+			// The link text is part of the identity: retargeting a link to a
+			// file with identical size and mtime, or a target appearing or
+			// disappearing, changes what the loader reads and must change the
+			// fingerprint.
+			if target, err := os.Readlink(path); err == nil {
+				key += " -> " + filepath.ToSlash(target)
+			}
+		}
+		// Stat the path rather than using d.Info(): for a symlinked .glx file
+		// d.Info() describes the link itself, whose size and mtime do not change
+		// when the target is edited, while the loader reads the target. A
+		// dangling link is recorded with a size of -1 so the walk completes and
+		// the dangling state itself is fingerprinted; the loader reports the
+		// file on its own.
+		info, err := os.Stat(path)
+		if err != nil {
+			metas = append(metas, fileMeta{rel: key, size: -1, mod: 0})
+
+			return nil //nolint:nilerr // a dangling link is fingerprinted as such, not treated as a walk failure
+		}
+		metas = append(metas, fileMeta{rel: key, size: info.Size(), mod: info.ModTime().UnixNano()})
 
 		return nil
 	})
