@@ -196,27 +196,8 @@ func collectGLXFilesFromDir(rootDir string) (map[string][]byte, error) {
 // content, so the caller must skip the entry entirely rather than parse the
 // placeholder text (or the target) as a GLX file.
 func resolveSymlinkPlaceholder(root *os.Root, relPath string, data []byte) ([]byte, bool) {
-	content := strings.TrimSpace(string(data))
-	// Symlink placeholders are short, single-line, and look like relative paths
-	if len(content) > maxSymlinkPlaceholderLength || strings.ContainsAny(content, symlinkPlaceholderInvalidChars) {
-		return data, false
-	}
-	if !strings.Contains(content, "/") && !strings.Contains(content, "\\") {
-		return data, false
-	}
-	// Git symlink targets are always relative; reject absolute paths
-	// to prevent reading arbitrary files.
-	if filepath.IsAbs(filepath.FromSlash(content)) || filepath.VolumeName(filepath.FromSlash(content)) != "" {
-		return data, false
-	}
-
-	// Resolve the target path relative to the placeholder's directory, inside
-	// the archive root. os.Root rejects any target that climbs out of root.
-	target := path.Join(path.Dir(relPath), filepath.ToSlash(content))
-	// A target that climbs out of the archive root is not a dot-directory
-	// exclusion (its leading ".." would otherwise read as one); leave it
-	// unresolved and let os.Root refuse the read below.
-	if target == ".." || strings.HasPrefix(target, "../") {
+	target, ok := placeholderTarget(relPath, data)
+	if !ok {
 		return data, false
 	}
 	if pathHasDotComponent(target) {
@@ -228,6 +209,31 @@ func resolveSymlinkPlaceholder(root *os.Root, relPath string, data []byte) ([]by
 	}
 
 	return targetData, false
+}
+
+// placeholderTarget reports whether data looks like a Git symlink placeholder
+// (a short, single-line relative path) and, if so, returns the slash-separated
+// archive-relative path it points at, resolved against the placeholder's own
+// directory. Absolute targets and targets that climb out of the archive root
+// are not placeholders the archive can act on and return false; a leading ".."
+// would otherwise read as a dot-directory component.
+func placeholderTarget(relPath string, data []byte) (string, bool) {
+	content := strings.TrimSpace(string(data))
+	if len(content) > maxSymlinkPlaceholderLength || strings.ContainsAny(content, symlinkPlaceholderInvalidChars) {
+		return "", false
+	}
+	if !strings.Contains(content, "/") && !strings.Contains(content, "\\") {
+		return "", false
+	}
+	if filepath.IsAbs(filepath.FromSlash(content)) || filepath.VolumeName(filepath.FromSlash(content)) != "" {
+		return "", false
+	}
+	target := path.Join(path.Dir(filepath.ToSlash(relPath)), filepath.ToSlash(content))
+	if target == ".." || strings.HasPrefix(target, "../") {
+		return "", false
+	}
+
+	return target, true
 }
 
 // writeFilesToDir writes a map of files (relative path -> content) to a directory

@@ -15,6 +15,7 @@
 package main
 
 import (
+	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -131,4 +132,68 @@ func TestValidatePaths_SubsetIncludesArchiveVocabularies(t *testing.T) {
 		require.NoError(t, validatePaths(streams, []string{persons, relationships}))
 		assert.Contains(t, out.String(), "Validated 3 files.")
 	})
+}
+
+func TestValidatePaths_FileArgumentsFormOneArchive(t *testing.T) {
+	root := writeMultiPathArchive(t)
+	files := []string{
+		filepath.Join(root, "persons", "person-1.glx"),
+		filepath.Join(root, "sources", "source-1.glx"),
+		filepath.Join(root, "citations", "citation-1.glx"),
+		filepath.Join(root, "assertions", "assertion-1.glx"),
+	}
+
+	t.Run("cross-references between named files resolve", func(t *testing.T) {
+		streams, out, _ := newTestStreams()
+		require.NoError(t, validatePaths(streams, files))
+		assert.Contains(t, out.String(), "Validated 4 files.")
+	})
+
+	t.Run("a broken reference between named files is reported", func(t *testing.T) {
+		streams, _, errOut := newTestStreams()
+		err := validatePaths(streams, []string{files[0], files[3]})
+		require.Error(t, err)
+		assert.Contains(t, errOut.String(), "citation-1")
+	})
+
+	t.Run("duplicate IDs across named files are reported", func(t *testing.T) {
+		dup := filepath.Join(root, "persons", "person-1-again.glx")
+		writeSkipTestFile(t, dup, "persons:\n  person-1:\n    properties:\n      primary_name: Alice again\n")
+		streams, _, _ := newTestStreams()
+		err := validatePaths(streams, []string{files[0], dup})
+		assert.Error(t, err, "the same ID in two named files must be a duplicate")
+	})
+}
+
+func TestValidatePaths_MultiPathErrors(t *testing.T) {
+	root := writeMultiPathArchive(t)
+
+	t.Run("a missing path fails structurally", func(t *testing.T) {
+		streams, _, errOut := newTestStreams()
+		err := validatePaths(streams, []string{filepath.Join(root, "persons"), filepath.Join(root, "nope.glx")})
+		require.ErrorIs(t, err, ErrStructuralValidationFailed)
+		assert.Contains(t, errOut.String(), "nope.glx")
+	})
+
+	if runtime.GOOS != goosWindows {
+		t.Run("paths with only the filesystem root in common are rejected", func(t *testing.T) {
+			streams, _, errOut := newTestStreams()
+			err := validatePaths(streams, []string{filepath.Join(root, "persons"), "/"})
+			require.ErrorIs(t, err, ErrStructuralValidationFailed)
+			assert.Contains(t, errOut.String(), "do not share an archive root")
+		})
+	}
+}
+
+func TestWithArchiveVocabularies(t *testing.T) {
+	root := t.TempDir()
+	vocab := filepath.Join(root, "vocabularies")
+	persons := filepath.Join(root, "persons")
+	require.NoError(t, os.MkdirAll(vocab, 0o755))
+	require.NoError(t, os.MkdirAll(persons, 0o755))
+
+	assert.Equal(t, []string{persons, vocab}, withArchiveVocabularies(root, []string{persons}), "added when absent")
+	assert.Equal(t, []string{persons, vocab}, withArchiveVocabularies(root, []string{persons, vocab}), "not duplicated when named")
+	assert.Equal(t, []string{root}, withArchiveVocabularies(root, []string{root}), "not duplicated when a parent is named")
+	assert.Equal(t, []string{persons}, withArchiveVocabularies(filepath.Join(root, "persons"), []string{persons}), "untouched when the root has no vocabularies/")
 }

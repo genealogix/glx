@@ -197,11 +197,12 @@ func validatePaths(streams *IOStreams, args []string) error {
 				shouldValidateCrossRefs = true
 			}
 		}
-	} else if anyDirectory(paths) {
-		// Several paths that include at least one directory are validated as
-		// one archive: every argument is loaded, keyed relative to their
-		// deepest common ancestor, so cross-references between `persons/` and
-		// `events/` resolve and duplicate IDs across them are caught.
+	} else {
+		// Several paths — directories, files, or a mix — are validated as one
+		// archive: every argument is loaded, keyed relative to their deepest
+		// common ancestor, so cross-references between `persons/` and
+		// `events/` (or between two named files) resolve and duplicate IDs
+		// across them are caught.
 		root, err := commonArchiveRoot(paths)
 		if err != nil {
 			streams.Errorf("Error loading archive: %v\n", err)
@@ -402,17 +403,6 @@ func validateAndReport(streams *IOStreams, args []string) error {
 // directory below the filesystem root, so there is no archive they can be
 // loaded into together.
 var errNoCommonArchiveRoot = errors.New("paths do not share an archive root")
-
-// anyDirectory reports whether at least one of paths is an existing directory.
-func anyDirectory(paths []string) bool {
-	for _, p := range paths {
-		if info, err := os.Stat(p); err == nil && info.IsDir() {
-			return true
-		}
-	}
-
-	return false
-}
 
 // commonArchiveRoot returns the deepest directory that contains every path
 // (a file argument counts through its parent directory). Run from an archive
