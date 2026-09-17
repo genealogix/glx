@@ -155,3 +155,137 @@ func TestValidateAndReport(t *testing.T) {
 		assert.Error(t, err, "an archive that fails validation must not produce a report")
 	})
 }
+
+// Top-level dot entries (.gitignore, .git/) are carried across the swap by the
+// non-archive-file preservation that runs first, so the dot-entry walk finds
+// them already present in the destination and must leave them alone.
+func TestSafeWrite_ToleratesDotEntriesAlreadyCarriedAtTopLevel(t *testing.T) {
+	archiveDir := filepath.Join(t.TempDir(), "archive")
+	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
+	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	writeSkipTestFile(t, filepath.Join(archiveDir, ".gitignore"), "*.bak\n")
+	writeSkipTestFile(t, filepath.Join(archiveDir, ".git", "HEAD"), "ref: refs/heads/main\n")
+
+	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+
+	assert.FileExists(t, filepath.Join(archiveDir, ".gitignore"))
+	assert.FileExists(t, filepath.Join(archiveDir, ".git", "HEAD"))
+}
+
+// A leftover backup from a failed run that still holds a nested dot entry is
+// unrecovered data; the next safe write must refuse rather than delete it.
+func TestSafeWrite_RefusesStaleBackupWithNestedDotEntry(t *testing.T) {
+	archiveDir := filepath.Join(t.TempDir(), "archive")
+	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
+	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	stale := archiveDir + ".bak"
+	writeSkipTestFile(t, filepath.Join(stale, "persons", "person-1.glx"), "persons: {}\n")
+	writeSkipTestFile(t, filepath.Join(stale, "persons", ".drafts", "draft.glx"), "persons: {}\n")
+
+	err := safeWriteMultiFileArchive(archiveDir, preserveTestArchive())
+
+	require.ErrorIs(t, err, ErrStaleBackupForeignFile)
+	assert.FileExists(t, filepath.Join(stale, "persons", ".drafts", "draft.glx"), "the stale backup must be left for the user to inspect")
+}
+
+func TestCollectGLXFiles_DanglingSymlinkIsAnError(t *testing.T) {
+	if runtime.GOOS == goosWindows {
+		t.Skip("symlink creation requires elevation on Windows")
+	}
+	dir := t.TempDir()
+	writeSkipTestFile(t, filepath.Join(dir, "persons", "a.glx"), "persons: {}\n")
+	require.NoError(t, os.Symlink("missing-target.glx", filepath.Join(dir, "persons", "dangling.glx")))
+
+	_, err := collectGLXFilesFromDir(dir)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "dangling.glx")
+}
+
+func TestValidatePaths_UnreadableEntryIsStructuralFailure(t *testing.T) {
+	if runtime.GOOS == goosWindows {
+		t.Skip("symlink creation requires elevation on Windows")
+	}
+	dir := t.TempDir()
+	writeSkipTestFile(t, filepath.Join(dir, "persons", "a.glx"), "persons: {}\n")
+	require.NoError(t, os.Symlink("missing-target.glx", filepath.Join(dir, "persons", "dangling.glx")))
+	streams, _, _ := newTestStreams()
+
+	err := validatePaths(streams, []string{dir})
+
+	assert.ErrorIs(t, err, ErrStructuralValidationFailed)
+}
+
+func TestValidateAndReport_ValidArchiveProducesReport(t *testing.T) {
+	dir := t.TempDir()
+	writeSkipTestFile(t, filepath.Join(dir, "persons", "person-1.glx"), "persons:\n  person-1:\n    properties:\n      primary_name: Alice\n")
+	streams, _, _ := newTestStreams()
+
+	assert.NoError(t, validateAndReport(streams, []string{dir}))
+}
+
+func TestValidateSingleFileSemantics_IgnoresNonGLXFiles(t *testing.T) {
+	dir := t.TempDir()
+	writeSkipTestFile(t, filepath.Join(dir, "persons", "good.glx"), "persons: {}\n")
+	writeSkipTestFile(t, filepath.Join(dir, "persons", "notes.txt"), "not: [yaml\n")
+
+	errs, _ := validateSingleFileSemantics([]string{dir})
+
+	assert.Empty(t, errs)
+}
+
+func TestComputeFSFingerprint_DanglingSymlinkFallsBack(t *testing.T) {
+	if runtime.GOOS == goosWindows {
+		t.Skip("symlink creation requires elevation on Windows")
+	}
+	root := t.TempDir()
+	writeSkipTestFile(t, filepath.Join(root, "persons", "a.glx"), "persons: {}\n")
+	require.NoError(t, os.Symlink("missing-target.glx", filepath.Join(root, "persons", "dangling.glx")))
+
+	_, err := computeFSFingerprint(root)
+
+	assert.NoError(t, err, "a dangling link falls back to the entry's own metadata instead of failing the walk")
+}
+
+// Walk errors inside the backup tree must surface as errors rather than be
+// swallowed: an unreadable directory means the preservation walks cannot
+// prove what they would be deleting.
+func TestSafeWrite_UnreadableBackupDirectoryIsAnError(t *testing.T) {
+	if runtime.GOOS == goosWindows || os.Geteuid() == 0 {
+		t.Skip("relies on permission bits being enforced")
+	}
+	unreadable := func(t *testing.T, dir string) {
+		t.Helper()
+		require.NoError(t, os.Chmod(dir, 0o000))
+		t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+	}
+
+	t.Run("stale backup", func(t *testing.T) {
+		archiveDir := filepath.Join(t.TempDir(), "archive")
+		require.NoError(t, os.MkdirAll(archiveDir, 0o755))
+		require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+		stale := archiveDir + ".bak"
+		writeSkipTestFile(t, filepath.Join(stale, "persons", "person-1.glx"), "persons: {}\n")
+		unreadable(t, filepath.Join(stale, "persons"))
+
+		err := safeWriteMultiFileArchive(archiveDir, preserveTestArchive())
+
+		require.Error(t, err)
+		assert.NotErrorIs(t, err, ErrStaleBackupForeignFile, "an inspection failure is not the same as a foreign file")
+	})
+
+	t.Run("dot-entry walk", func(t *testing.T) {
+		archiveDir := filepath.Join(t.TempDir(), "archive")
+		require.NoError(t, os.MkdirAll(archiveDir, 0o755))
+		require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+		locked := filepath.Join(archiveDir, "persons", "locked")
+		writeSkipTestFile(t, filepath.Join(locked, "note.txt"), "x")
+		unreadable(t, locked)
+		t.Cleanup(func() { _ = os.Chmod(filepath.Join(archiveDir+".bak", "persons", "locked"), 0o755) })
+
+		err := safeWriteMultiFileArchive(archiveDir, preserveTestArchive())
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "preserving")
+	})
+}
