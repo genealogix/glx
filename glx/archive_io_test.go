@@ -953,7 +953,7 @@ func TestSafeWriteMultiFileArchive(t *testing.T) {
 	})
 
 	t.Run("preserves non-archive files and directories", func(t *testing.T) {
-		// Archives typically live inside a git repo alongside README.md, CLAUDE.md,
+		// Archives typically live inside a git repo alongside README.md,
 		// dotfiles, and top-level metadata. The safe-write swap must preserve
 		// everything it doesn't manage. See #692.
 		tmpDir := t.TempDir()
@@ -970,13 +970,12 @@ func TestSafeWriteMultiFileArchive(t *testing.T) {
 		// Seed with foreign files the archive must preserve
 		foreignFiles := map[string][]byte{
 			"README.md":                   []byte("# Archive\n\nUser notes.\n"),
-			"CLAUDE.md":                   []byte("# Claude guide\n"),
-			".gitignore":                  []byte("*.log\n"),
-			".git/HEAD":                   []byte("ref: refs/heads/main\n"),
-			".git/config":                 []byte("[core]\n\trepositoryformatversion = 0\n"),
-			".git/refs/heads/main":        []byte("abc123\n"),
-			".claude/settings.local.json": []byte(`{"env":{}}`),
-			"notes/research.md":           []byte("Research notes.\n"),
+			".gitignore":           []byte("*.log\n"),
+			".git/HEAD":            []byte("ref: refs/heads/main\n"),
+			".git/config":          []byte("[core]\n\trepositoryformatversion = 0\n"),
+			".git/refs/heads/main": []byte("abc123\n"),
+			".vscode/settings.json": []byte(`{}`),
+			"notes/research.md":     []byte("Research notes.\n"),
 		}
 		for relPath, content := range foreignFiles {
 			absPath := filepath.Join(archiveDir, relPath)

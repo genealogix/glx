@@ -68,7 +68,7 @@ Each finding object requires:
 | `field_presence` | major | Field documented but not in spec, or in spec but undocumented with `additionalProperties: false` context |
 | `cli_example` | major | Documented CLI command/flag does not exist in code; or example no longer runs |
 | `vocabulary` | major | Referenced vocabulary type does not exist in `specification/5-standard-vocabularies/` |
-| `cross_reference` | minor | Stale internal link; link uses `.md` extension in URL form |
+| `cross_reference` | minor | Stale internal link; link written as a website route (`/quickstart`) or extensionless path instead of a relative `.md` path |
 | `validator_unavailable` | info | `./bin/glx` could not be found; build with `make build-cli` or `go build -o bin/glx ./glx` |
 | `pedagogical` | info | Minor wording mismatch where technical accuracy is preserved |
 
@@ -187,8 +187,8 @@ Use category `vocabulary`.
 
 ## Step 6 — Internal links
 
-- Verify internal cross-doc links resolve to actual files
-- Internal links must use the URL form with no `.md` extension, per the project's documentation URL convention
+- Verify internal cross-doc links resolve to actual files (`make check-links` does this deterministically for file targets; it strips `#fragments`, so verify heading anchors by hand)
+- Internal links must be relative repository paths ending in `.md` (e.g. `../specification/2-core-concepts.md`), per root `CLAUDE.md` and PR #1214. Website routes (`/quickstart`) and extensionless targets 404 on GitHub; the website's markdown plugin rewrites `.md` links to routes at build time. A link *without* `.md` is the drift, not one with it.
 
 Use category `cross_reference`.
 
@@ -264,7 +264,7 @@ Then emit the machine-readable block (the eval harness greps for the info-string
 - Examples in prose with invalid YAML syntax
 - References to deprecated or renamed fields (e.g., `state` vs `state_province` — the latter is the current field name)
 - Wrong vocabulary type names
-- Internal links using `.md` extension in URL form (should be omitted per the project's URL convention)
+- Internal links written as website routes or without the `.md` extension (should be relative `.md` paths per root `CLAUDE.md` / #1214)
 
 ## Notes
 
