@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -165,7 +166,7 @@ func removeStaleBackup(backupDir string) error {
 		return fmt.Errorf("inspecting stale backup %s: %w", backupDir, err)
 	}
 	for _, entry := range entries {
-		if !archiveManagedTopLevel[entry.Name()] {
+		if !archiveManagedTopLevel[strings.ToLower(entry.Name())] {
 			return fmt.Errorf("%w: %s contains %q", ErrStaleBackupForeignFile, backupDir, entry.Name())
 		}
 	}
@@ -218,7 +219,7 @@ func restoreForeignEntries(backupDir, destPath string) error {
 	}
 	for _, entry := range entries {
 		name := entry.Name()
-		if archiveManagedTopLevel[name] {
+		if archiveManagedTopLevel[strings.ToLower(name)] {
 			continue
 		}
 		src := filepath.Join(backupDir, name)
@@ -277,17 +278,31 @@ func firstNestedDotEntry(backupDir string) (string, error) {
 // backup rather than overwritten — the fresh write wins, and the backup is
 // then retained by the caller's error path for the user to inspect.
 func preserveSkippedDotEntries(backupDir, destPath string) error {
+	// The loader excludes two shapes: dot-prefixed names, and symlinks at a
+	// visible path whose target lies under a dot-prefixed directory
+	// (symlinkTargetIsExcluded). Both are skipped on read and never
+	// re-emitted, so both have to be carried across the swap. The symlink
+	// half is decided from the link text alone (symlinkPointsIntoDotDir):
+	// by the time this walk runs, top-level dot directories have already
+	// been moved out of the backup by restoreForeignEntries, so resolving
+	// the link inside the backup would fail for exactly the links that
+	// matter.
 	return filepath.WalkDir(backupDir, func(srcPath string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
-		if srcPath == backupDir || !isDotName(d.Name()) {
+		if srcPath == backupDir {
 			return nil
 		}
 
 		rel, err := filepath.Rel(backupDir, srcPath)
 		if err != nil {
 			return fmt.Errorf("resolving %s: %w", srcPath, err)
+		}
+		excluded := isDotName(d.Name()) ||
+			(d.Type()&fs.ModeSymlink != 0 && symlinkPointsIntoDotDir(srcPath, rel))
+		if !excluded {
+			return nil
 		}
 		dst := filepath.Join(destPath, rel)
 
@@ -312,6 +327,26 @@ func preserveSkippedDotEntries(backupDir, destPath string) error {
 
 		return nil
 	})
+}
+
+// symlinkPointsIntoDotDir reports whether the symlink at srcPath (whose path
+// relative to the archive root is rel) has a relative target that lies under a
+// dot-prefixed directory inside the archive. It works from the link text
+// rather than resolving the target, so it gives the same answer whether or
+// not the target currently exists at that location. Absolute targets and
+// targets that climb out of the archive are not archive content either way
+// and are left to the loader's own handling.
+func symlinkPointsIntoDotDir(srcPath, rel string) bool {
+	target, err := os.Readlink(srcPath)
+	if err != nil || filepath.IsAbs(target) {
+		return false
+	}
+	joined := path.Clean(path.Join(path.Dir(filepath.ToSlash(rel)), filepath.ToSlash(target)))
+	if joined == ".." || strings.HasPrefix(joined, "../") {
+		return false
+	}
+
+	return pathHasDotComponent(joined)
 }
 
 // preserveMediaBinaries carries media/files/ from the backup into the freshly

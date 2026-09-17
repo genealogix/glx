@@ -166,6 +166,7 @@ glx query sources
 # Validate specific files or directories
 glx validate persons/
 glx validate archive.glx
+glx validate persons/ events/   # several directories are validated as one archive
 ```
 
 ## Features

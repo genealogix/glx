@@ -18,6 +18,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -288,4 +289,57 @@ func TestSafeWrite_UnreadableBackupDirectoryIsAnError(t *testing.T) {
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "preserving")
 	})
+}
+
+// A visible symlink whose target resolves under a dot-prefixed directory is
+// skipped by the loader (symlinkTargetIsExcluded) and never re-emitted, so
+// the swap must carry it across like a dot-named entry.
+func TestSafeWrite_PreservesSymlinkIntoDotDirectory(t *testing.T) {
+	if runtime.GOOS == goosWindows {
+		t.Skip("symlink creation requires elevation on Windows")
+	}
+	archiveDir := filepath.Join(t.TempDir(), "archive")
+	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
+	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	writeSkipTestFile(t, filepath.Join(archiveDir, ".worktrees", "copy", "persons", "alias.glx"), "persons: {}\n")
+	link := filepath.Join(archiveDir, "persons", "alias.glx")
+	require.NoError(t, os.Symlink(filepath.Join("..", ".worktrees", "copy", "persons", "alias.glx"), link))
+
+	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+
+	info, err := os.Lstat(link)
+	require.NoError(t, err, "the excluded symlink must survive the safe write")
+	assert.NotZero(t, info.Mode()&os.ModeSymlink)
+	assert.NoDirExists(t, archiveDir+".bak")
+}
+
+// The loader matches the .glx extension case-insensitively and never filtered
+// directory names, so PERSONS/person-1.glx loads. The managed-directory check
+// on safe write has to agree, or PERSONS/ is preserved as foreign next to a
+// freshly written persons/ and every entity comes back twice.
+func TestSafeWrite_UppercaseManagedDirectoryIsReplacedNotDuplicated(t *testing.T) {
+	archiveDir := filepath.Join(t.TempDir(), "archive")
+	writeSkipTestFile(t, filepath.Join(archiveDir, "PERSONS", "person-1.glx"),
+		"persons:\n  person-1:\n    properties:\n      primary_name: Alice\n")
+
+	loaded, _, err := LoadArchive(archiveDir)
+	require.NoError(t, err)
+	require.Len(t, loaded.Persons, 1)
+
+	require.NoError(t, safeWriteMultiFileArchive(archiveDir, loaded))
+
+	entries, err := os.ReadDir(archiveDir)
+	require.NoError(t, err)
+	var personDirs []string
+	for _, e := range entries {
+		if strings.EqualFold(e.Name(), "persons") {
+			personDirs = append(personDirs, e.Name())
+		}
+	}
+	assert.Len(t, personDirs, 1, "exactly one persons directory after the write, got %v", personDirs)
+
+	reloaded, duplicates, err := LoadArchive(archiveDir)
+	require.NoError(t, err)
+	assert.Empty(t, duplicates)
+	assert.Len(t, reloaded.Persons, 1)
 }

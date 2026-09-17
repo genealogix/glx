@@ -197,15 +197,19 @@ func validatePaths(streams *IOStreams, args []string) error {
 				shouldValidateCrossRefs = true
 			}
 		}
-	} else {
-		if info, err := os.Stat(paths[0]); err == nil {
-			if info.IsDir() {
-				archiveRoot = paths[0]
-			} else {
-				archiveRoot = filepath.Dir(paths[0])
-			}
-			shouldValidateCrossRefs = true
+	} else if anyDirectory(paths) {
+		// Several paths that include at least one directory are validated as
+		// one archive: every argument is loaded, keyed relative to their
+		// deepest common ancestor, so cross-references between `persons/` and
+		// `events/` resolve and duplicate IDs across them are caught.
+		root, err := commonArchiveRoot(paths)
+		if err != nil {
+			streams.Errorf("Error loading archive: %v\n", err)
+
+			return ErrStructuralValidationFailed
 		}
+		archiveRoot = root
+		shouldValidateCrossRefs = true
 	}
 
 	// Single file: structural validation + semantic checks (no cross-references)
@@ -253,7 +257,7 @@ func validatePaths(streams *IOStreams, args []string) error {
 	// then deserializes into Go structs — avoiding the previous double file-read.
 	// Collect once and take the file count off the map: the archive's file set
 	// is whatever the loader read, by definition.
-	files, err := collectGLXFilesFromDir(archiveRoot)
+	files, err := collectGLXFilesFromPaths(archiveRoot, paths)
 	if err != nil {
 		formatted := formatValidationError(err, defaultShowFirstErrors)
 		streams.Errorf("Error loading archive: %v\n", formatted)
@@ -394,6 +398,148 @@ func validateAndReport(streams *IOStreams, args []string) error {
 	return confidenceReport(path)
 }
 
+// errNoCommonArchiveRoot is returned when several validate arguments share no
+// directory below the filesystem root, so there is no archive they can be
+// loaded into together.
+var errNoCommonArchiveRoot = errors.New("paths do not share an archive root")
+
+// anyDirectory reports whether at least one of paths is an existing directory.
+func anyDirectory(paths []string) bool {
+	for _, p := range paths {
+		if info, err := os.Stat(p); err == nil && info.IsDir() {
+			return true
+		}
+	}
+
+	return false
+}
+
+// commonArchiveRoot returns the deepest directory that contains every path
+// (a file argument counts through its parent directory). Run from an archive
+// root, `glx validate persons/ events/` resolves to that root, so media URIs
+// and cross-references behave exactly as they do for `glx validate .`.
+// Paths whose only shared ancestor is the filesystem root (or that sit on
+// different volumes) have no archive in common and are rejected.
+func commonArchiveRoot(paths []string) (string, error) {
+	var common []string
+	var volume string
+	for i, p := range paths {
+		abs, err := filepath.Abs(p)
+		if err != nil {
+			return "", fmt.Errorf("resolving %s: %w", p, err)
+		}
+		if info, err := os.Stat(abs); err == nil && !info.IsDir() {
+			abs = filepath.Dir(abs)
+		}
+		vol := filepath.VolumeName(abs)
+		parts := strings.Split(strings.TrimPrefix(abs[len(vol):], string(filepath.Separator)), string(filepath.Separator))
+		if i == 0 {
+			volume = vol
+			common = parts
+
+			continue
+		}
+		if vol != volume {
+			return "", fmt.Errorf("%w: %s and %s", errNoCommonArchiveRoot, paths[0], p)
+		}
+		n := 0
+		for n < len(common) && n < len(parts) && common[n] == parts[n] {
+			n++
+		}
+		common = common[:n]
+	}
+	if len(common) == 0 || (len(common) == 1 && common[0] == "") {
+		return "", fmt.Errorf("%w: %s", errNoCommonArchiveRoot, strings.Join(paths, ", "))
+	}
+
+	return volume + string(filepath.Separator) + filepath.Join(common...), nil
+}
+
+// withArchiveVocabularies appends <absRoot>/vocabularies to paths when that
+// directory exists and no argument already covers it (named directly, or as
+// a parent of it). It returns paths unchanged otherwise.
+func withArchiveVocabularies(absRoot string, paths []string) []string {
+	vocabDir := filepath.Join(absRoot, glxlib.ArchiveDirVocabularies)
+	info, err := os.Stat(vocabDir)
+	if err != nil || !info.IsDir() {
+		return paths
+	}
+	for _, p := range paths {
+		abs, err := filepath.Abs(p)
+		if err != nil {
+			continue
+		}
+		rel, err := filepath.Rel(abs, vocabDir)
+		if err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			return paths
+		}
+	}
+
+	return append(append([]string{}, paths...), vocabDir)
+}
+
+// collectGLXFilesFromPaths gathers the .glx files under every path into one
+// map keyed relative to root, the shape loadArchiveFromFiles expects. A single
+// directory argument is the ordinary whole-archive walk. With several
+// arguments each directory is walked with the loader's own rules (dot entries
+// and excluded symlinks skipped) and each file argument is read as given;
+// keys stay relative to the shared root so duplicate-ID detection and error
+// messages name paths the user recognizes.
+func collectGLXFilesFromPaths(root string, paths []string) (map[string][]byte, error) {
+	if len(paths) == 1 {
+		return collectGLXFilesFromDir(root)
+	}
+
+	absRoot, err := filepath.Abs(root)
+	if err != nil {
+		return nil, fmt.Errorf("resolving %s: %w", root, err)
+	}
+	// The archive's vocabulary definitions are needed to validate any subset
+	// of it: without them every event, relationship, and place type reads as
+	// undefined. Include the conventional vocabularies/ directory under the
+	// shared root when it exists and was not named explicitly. Cross-references
+	// to entities outside the selected paths are still reported as errors —
+	// the selection is validated as the archive it would be on its own.
+	paths = withArchiveVocabularies(absRoot, paths)
+	files := make(map[string][]byte)
+	for _, p := range paths {
+		abs, err := filepath.Abs(p)
+		if err != nil {
+			return nil, fmt.Errorf("resolving %s: %w", p, err)
+		}
+		rel, err := filepath.Rel(absRoot, abs)
+		if err != nil {
+			return nil, fmt.Errorf("resolving %s against %s: %w", p, root, err)
+		}
+		info, err := os.Stat(abs)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read %s: %w", p, err)
+		}
+		if !info.IsDir() {
+			data, err := os.ReadFile(abs)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read %s: %w", p, err)
+			}
+			files[rel] = data
+
+			continue
+		}
+		err = walkGLXFiles(abs, func(relPath string, data []byte, readErr error) error {
+			if readErr != nil {
+				return fmt.Errorf("failed to read %s: %w", filepath.Join(p, relPath), readErr)
+			}
+			files[filepath.Join(rel, relPath)] = data
+
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return files, nil
+}
+
 // validateSingleFileSemantics runs semantic validation (deprecated properties,
 // date formats, property types) on single files. Cross-reference errors are
 // filtered out since we don't have the full archive context.
@@ -483,7 +629,6 @@ func isSingleFileIssue(msg string) bool {
 
 	return true
 }
-
 
 // validateMediaFileExistence checks that media entities with local relative URIs
 // point to files that actually exist on disk. Returns warnings for missing files.
