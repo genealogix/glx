@@ -124,6 +124,17 @@ func readFileWithin(baseDir, path string) ([]byte, error) {
 // visible path whose target resolves inside a dot directory is skipped too,
 // because following it would read back the very entities the skip excludes.
 func walkGLXFiles(rootDir string, visit func(relPath string, data []byte, err error) error) error {
+	return walkGLXFilesUnder(rootDir, ".", visit)
+}
+
+// walkGLXFilesUnder is walkGLXFiles restricted to the subtree at start (slash
+// separated, relative to rootDir; "." is the whole archive). Containment and
+// the dot-target check stay relative to rootDir, so a subset walk such as
+// `glx validate persons/ events/` applies exactly the membership rules the
+// whole-archive walk does: a link from persons/ into ../.drafts/ is skipped
+// rather than reported as an escape, and a start that is itself a link out of
+// the archive is refused. Paths passed to visit are relative to rootDir.
+func walkGLXFilesUnder(rootDir, start string, visit func(relPath string, data []byte, err error) error) error {
 	root, err := os.OpenRoot(rootDir)
 	if err != nil {
 		return err
@@ -139,12 +150,12 @@ func walkGLXFiles(rootDir string, visit func(relPath string, data []byte, err er
 		resolvedRoot = rootDir
 	}
 
-	return fs.WalkDir(root.FS(), ".", func(entryPath string, d fs.DirEntry, walkErr error) error {
+	return fs.WalkDir(root.FS(), start, func(entryPath string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
 		if d.IsDir() {
-			if entryPath != "." && isDotName(d.Name()) {
+			if entryPath != start && isDotName(d.Name()) {
 				return fs.SkipDir
 			}
 

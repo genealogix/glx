@@ -248,6 +248,7 @@ func TestValidatePaths_IgnoresNonGLXFileArguments(t *testing.T) {
 func TestCommonArchiveRoot_ClimbsOneLevelOnly(t *testing.T) {
 	data := t.TempDir()
 	archive := filepath.Join(data, "events")
+	writeSkipTestFile(t, filepath.Join(archive, "vocabularies", "event-types.glx"), "event_types: {}\n")
 	writeSkipTestFile(t, filepath.Join(archive, "events", "a.glx"), "events: {}\n")
 	writeSkipTestFile(t, filepath.Join(archive, "events", "b.glx"), "events: {}\n")
 
@@ -315,4 +316,61 @@ func TestValidatePaths_ExplicitFileArgumentsRespectContainment(t *testing.T) {
 		require.NoError(t, validatePaths(streams, []string{person, excluded}), "the duplicate behind the link must not be loaded")
 		assert.Contains(t, out.String(), "Validated 1 files.")
 	})
+}
+
+// An archive whose own directory is named like an entity directory has no
+// managed siblings, so the root stays put instead of climbing to its parent.
+func TestCommonArchiveRoot_DoesNotClimbOutOfArchiveNamedLikeEntityDir(t *testing.T) {
+	data := t.TempDir()
+	archive := filepath.Join(data, "events")
+	writeSkipTestFile(t, filepath.Join(archive, "a.glx"), "events: {}\n")
+	writeSkipTestFile(t, filepath.Join(archive, "b.glx"), "events: {}\n")
+	writeSkipTestFile(t, filepath.Join(archive, "vocabularies", "event-types.glx"), "event_types: {}\n")
+
+	got, err := commonArchiveRoot([]string{filepath.Join(archive, "a.glx"), filepath.Join(archive, "b.glx")})
+	require.NoError(t, err)
+	resolvedArchive, _ := filepath.EvalSymlinks(archive)
+	resolvedGot, _ := filepath.EvalSymlinks(got)
+	assert.Equal(t, resolvedArchive, resolvedGot)
+}
+
+// A subset walk applies the archive's membership rules relative to the
+// archive root: a link from a selected directory into a dot directory at the
+// root is skipped, exactly as `glx validate .` skips it, not reported as an
+// escape from the selected directory.
+func TestValidatePaths_SubsetSkipsLinkIntoArchiveDotDirectory(t *testing.T) {
+	if runtime.GOOS == goosWindows {
+		t.Skip("symlink creation requires elevation on Windows")
+	}
+	root := writeMultiPathArchive(t)
+	writeSkipTestFile(t, filepath.Join(root, ".drafts", "person.glx"), "persons:\n  person-1: {}\n")
+	require.NoError(t, os.Symlink(filepath.Join("..", ".drafts", "person.glx"), filepath.Join(root, "persons", "alias.glx")))
+
+	streams, out, _ := newTestStreams()
+	err := validatePaths(streams, []string{
+		filepath.Join(root, "persons"),
+		filepath.Join(root, "sources"),
+		filepath.Join(root, "citations"),
+		filepath.Join(root, "assertions"),
+	})
+
+	require.NoError(t, err)
+	assert.Contains(t, out.String(), "Validated 4 files.")
+}
+
+// A directory argument that is a link out of the archive is refused rather
+// than walked as if it were archive content.
+func TestValidatePaths_RejectsDirectoryArgumentLinkedOutOfArchive(t *testing.T) {
+	if runtime.GOOS == goosWindows {
+		t.Skip("symlink creation requires elevation on Windows")
+	}
+	root := writeMultiPathArchive(t)
+	outside := t.TempDir()
+	writeSkipTestFile(t, filepath.Join(outside, "events", "e.glx"), "events: {}\n")
+	require.NoError(t, os.Symlink(filepath.Join(outside, "events"), filepath.Join(root, "events")))
+
+	streams, _, _ := newTestStreams()
+	err := validatePaths(streams, []string{filepath.Join(root, "persons"), filepath.Join(root, "events")})
+
+	require.Error(t, err)
 }

@@ -458,16 +458,39 @@ func commonArchiveRoot(paths []string) (string, error) {
 	// has that directory as its common ancestor, but the archive — and its
 	// vocabularies/ — is the parent. Climb out of a managed directory so the
 	// file keys and the vocabulary lookup are rooted at the archive. Exactly
-	// one level: entity directories do not nest, and an archive whose own root
-	// happens to be named events/ must not be climbed past.
+	// one level, and only when the parent looks like an archive root: entity
+	// directories do not nest, and an archive whose own directory happens to
+	// be named events/ has no vocabularies/ or persons/ beside it.
 	base := filepath.Base(root)
 	if base != archiveMetadataFile && archiveManagedTopLevel[strings.ToLower(base)] {
-		if parent := filepath.Dir(root); parent != root {
+		if parent := filepath.Dir(root); parent != root && hasManagedSibling(parent, base) {
 			root = parent
 		}
 	}
 
 	return root, nil
+}
+
+// hasManagedSibling reports whether dir holds a managed archive entry
+// (vocabularies/, metadata.glx, an entity directory) other than except. It
+// tells an entity directory inside an archive apart from an archive that is
+// itself named like one: the parent of the former holds its siblings, the
+// parent of the latter holds none.
+func hasManagedSibling(dir, except string) bool {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return false
+	}
+	for _, e := range entries {
+		if strings.EqualFold(e.Name(), except) {
+			continue
+		}
+		if isManagedTopLevel(e) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // withArchiveVocabularies appends <absRoot>/vocabularies to paths when that
@@ -499,10 +522,12 @@ func withArchiveVocabularies(absRoot string, paths []string) []string {
 // collectGLXFilesFromPaths gathers the .glx files under every path into one
 // map keyed relative to root, the shape loadArchiveFromFiles expects. A single
 // directory argument is the ordinary whole-archive walk. With several
-// arguments each directory is walked with the loader's own rules (dot entries
-// and excluded symlinks skipped) and each file argument is read as given;
-// keys stay relative to the shared root so duplicate-ID detection and error
-// messages name paths the user recognizes.
+// arguments each directory is walked as a subtree of the shared root, so the
+// loader's rules (dot entries and excluded symlinks skipped, no reads outside
+// the archive) apply relative to the archive rather than to the subdirectory,
+// and each file argument is read through the same root; keys stay relative to
+// it so duplicate-ID detection and error messages name paths the user
+// recognizes.
 func collectGLXFilesFromPaths(root string, paths []string) (map[string][]byte, error) {
 	if len(paths) == 1 {
 		return collectGLXFilesFromDir(root)
@@ -555,16 +580,16 @@ func collectGLXFilesFromPaths(root string, paths []string) (map[string][]byte, e
 
 			continue
 		}
-		err = walkGLXFiles(abs, func(relPath string, data []byte, readErr error) error {
+		err = walkGLXFilesUnder(absRoot, filepath.ToSlash(rel), func(relPath string, data []byte, readErr error) error {
 			if readErr != nil {
-				return fmt.Errorf("failed to read %s: %w", filepath.Join(p, relPath), readErr)
+				return fmt.Errorf("failed to read %s: %w", filepath.Join(root, relPath), readErr)
 			}
-			files[filepath.Join(rel, relPath)] = data
+			files[relPath] = data
 
 			return nil
 		})
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to read %s: %w", p, err)
 		}
 	}
 
@@ -589,6 +614,15 @@ func readExplicitGLXFile(archive *os.Root, resolvedRoot, abs, rel string) ([]byt
 	data, err := archive.ReadFile(rel)
 	if err != nil {
 		return nil, false, err
+	}
+	if runtime.GOOS == goosWindows {
+		// A Git symlink placeholder is resolved, or excluded, exactly as the
+		// directory walk does it.
+		var excluded bool
+		data, excluded = resolveSymlinkPlaceholder(archive, filepath.ToSlash(rel), data)
+		if excluded {
+			return nil, false, nil
+		}
 	}
 
 	return data, true, nil

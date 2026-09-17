@@ -830,3 +830,48 @@ func TestSafeWrite_AllowsTopLevelMetadataFile(t *testing.T) {
 	assert.FileExists(t, filepath.Join(archiveDir, archiveMetadataFile))
 	assert.NoDirExists(t, archiveDir+".bak")
 }
+
+// A dot-prefixed .glx at the top level (an AppleDouble sidecar, a draft) is
+// skipped by the loader and carried across as foreign; it must not trip the
+// top-level .glx refusal.
+func TestSafeWrite_AllowsTopLevelDotGLXFile(t *testing.T) {
+	archiveDir := filepath.Join(t.TempDir(), "archive")
+	writeSkipTestFile(t, filepath.Join(archiveDir, "persons", "person-1.glx"),
+		"persons:\n  person-1:\n    properties:\n      primary_name: Alice\n")
+	writeSkipTestFile(t, filepath.Join(archiveDir, "._family.glx"), "\x00\x05\x16\x07 not yaml")
+
+	loaded, _, err := LoadArchive(archiveDir)
+	require.NoError(t, err)
+	require.NoError(t, safeWriteMultiFileArchive(archiveDir, loaded))
+
+	assert.FileExists(t, filepath.Join(archiveDir, "._family.glx"))
+	assert.NoDirExists(t, archiveDir+".bak")
+}
+
+// media/files may itself be a symlink to storage elsewhere. Renaming a link
+// moves the link, not its target, so it is carried across like a real
+// directory; only a linked *intermediate* directory (media -> ../assets) is
+// left alone.
+func TestSafeWrite_PreservesMediaFilesSymlink(t *testing.T) {
+	if runtime.GOOS == goosWindows {
+		t.Skip("symlink creation requires elevation on Windows")
+	}
+	archiveDir := filepath.Join(t.TempDir(), "archive")
+	writeSkipTestFile(t, filepath.Join(archiveDir, "persons", "person-1.glx"),
+		"persons:\n  person-1:\n    properties:\n      primary_name: Alice\n")
+	storage := t.TempDir()
+	writeSkipTestFile(t, filepath.Join(storage, "portrait.jpg"), "jpeg bytes")
+	require.NoError(t, os.MkdirAll(filepath.Join(archiveDir, "media"), 0o755))
+	link := filepath.Join(archiveDir, "media", "files")
+	require.NoError(t, os.Symlink(storage, link))
+
+	loaded, _, err := LoadArchive(archiveDir)
+	require.NoError(t, err)
+	require.NoError(t, safeWriteMultiFileArchive(archiveDir, loaded))
+
+	info, err := os.Lstat(link)
+	require.NoError(t, err, "the media/files link must survive the safe write")
+	assert.NotZero(t, info.Mode()&os.ModeSymlink)
+	assert.FileExists(t, filepath.Join(storage, "portrait.jpg"))
+	assert.NoDirExists(t, archiveDir+".bak")
+}

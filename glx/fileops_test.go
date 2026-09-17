@@ -242,3 +242,8 @@ func TestResolveSymlinkPlaceholder_ExcludesDotDirectoryTarget(t *testing.T) {
 	assert.True(t, excluded, "target under a dot-prefixed directory must be excluded")
 	assert.Nil(t, got)
 }
+
+func TestEnsureGLXExtension_CaseInsensitive(t *testing.T) {
+	assert.Equal(t, "ARCHIVE.GLX", ensureGLXExtension("ARCHIVE.GLX"))
+	assert.Equal(t, "archive.glx", ensureGLXExtension("archive"))
+}

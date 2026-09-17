@@ -319,7 +319,9 @@ func firstSkippedEntry(backupDir string) (string, error) {
 // foreign duplicates every entity in it on the next load, and dropping it
 // deletes a file the user laid out by hand. Neither is acceptable without the
 // user's say-so — see genealogix/glx#1247 — so the write is refused before
-// anything is touched. A missing destination is a fresh archive and passes.
+// anything is touched. A missing destination is a fresh archive and passes,
+// and so does a dot-prefixed file (._family.glx, .draft.glx): the loader skips
+// those, and restoreForeignEntries carries them across untouched.
 func refuseTopLevelGLXFiles(destPath string) error {
 	entries, err := os.ReadDir(destPath)
 	if err != nil {
@@ -330,7 +332,7 @@ func refuseTopLevelGLXFiles(destPath string) error {
 		return fmt.Errorf("inspecting %s: %w", destPath, err)
 	}
 	for _, entry := range entries {
-		if entry.Type().IsRegular() && isGLXFile(entry.Name()) && entry.Name() != archiveMetadataFile {
+		if entry.Type().IsRegular() && isGLXFile(entry.Name()) && !isDotName(entry.Name()) && entry.Name() != archiveMetadataFile {
 			return fmt.Errorf("%w: %s", ErrTopLevelGLXFile, entry.Name())
 		}
 	}
@@ -454,6 +456,12 @@ func loaderSkipsOn(goos, root, archiveRoot, rel string, d fs.DirEntry) bool {
 		return ok && pathHasDotComponent(resolved)
 	}
 	if goos == goosWindows && d.Type().IsRegular() && isGLXFile(d.Name()) {
+		// A placeholder is at most maxSymlinkPlaceholderLength bytes; do not
+		// read whole entity files to find that out.
+		info, err := d.Info()
+		if err != nil || info.Size() > maxSymlinkPlaceholderLength {
+			return false
+		}
 		data, err := os.ReadFile(filepath.Join(root, rel)) // #nosec G304 -- path enumerated from the archive backup
 		if err != nil {
 			return false
@@ -555,11 +563,12 @@ func relWithinEither(abs string, roots ...string) (string, bool) {
 // be listed is reported as an error rather than treated as absent, so callers
 // that decide whether a backup is safe to delete fail closed.
 func mediaFilesDirsIn(dir string) ([]string, error) {
+	parts := strings.Split(filepath.ToSlash(glxlib.MediaFilesDir), "/")
 	dirs := []string{dir}
-	for part := range strings.SplitSeq(filepath.ToSlash(glxlib.MediaFilesDir), "/") {
+	for i, part := range parts {
 		var next []string
 		for _, d := range dirs {
-			names, err := childDirsCaseInsensitive(d, part)
+			names, err := childDirsCaseInsensitive(d, part, i == len(parts)-1)
 			if err != nil {
 				return nil, err
 			}
@@ -574,9 +583,13 @@ func mediaFilesDirsIn(dir string) ([]string, error) {
 }
 
 // childDirsCaseInsensitive returns the names of dir's real subdirectories that
-// match name case-insensitively, the exact match first when present. A missing
+// match name case-insensitively, the exact match first when present. With
+// allowLink set, a symlink of that name is matched as well: the final
+// media/files component may be a link to storage elsewhere, and renaming a
+// link moves the link itself, not its target, so preserving it is safe where
+// renaming *through* a linked intermediate directory would not be. A missing
 // dir yields no names; any other listing failure is returned.
-func childDirsCaseInsensitive(dir, name string) ([]string, error) {
+func childDirsCaseInsensitive(dir, name string, allowLink bool) ([]string, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -587,7 +600,8 @@ func childDirsCaseInsensitive(dir, name string) ([]string, error) {
 	}
 	var names []string
 	for _, e := range entries {
-		if !e.Type().IsDir() {
+		isLink := e.Type()&fs.ModeSymlink != 0
+		if !e.Type().IsDir() && (!allowLink || !isLink) {
 			continue
 		}
 		switch {
@@ -622,7 +636,8 @@ func preserveMediaBinaries(backupDir, destPath string) error {
 		return fmt.Errorf("%w: %s and %s", ErrAmbiguousMediaFilesDirs, srcDirs[0], srcDirs[1])
 	}
 	srcDir := srcDirs[0]
-	info, err := os.Stat(srcDir)
+	// Lstat: a media/files symlink is moved as a link, whatever it points at.
+	info, err := os.Lstat(srcDir)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil
@@ -630,7 +645,7 @@ func preserveMediaBinaries(backupDir, destPath string) error {
 
 		return fmt.Errorf("inspecting backup media/files: %w", err)
 	}
-	if !info.IsDir() {
+	if !info.IsDir() && info.Mode()&os.ModeSymlink == 0 {
 		return nil
 	}
 

@@ -46,9 +46,10 @@ const (
 	filePermissions = 0o644
 )
 
-// ensureGLXExtension adds .glx extension if not present
+// ensureGLXExtension adds the .glx extension if not present, in any letter
+// case, so ARCHIVE.GLX is not turned into ARCHIVE.GLX.glx.
 func ensureGLXExtension(path string) string {
-	if !strings.HasSuffix(path, FileExtGLX) {
+	if !isGLXFile(path) {
 		return path + FileExtGLX
 	}
 
