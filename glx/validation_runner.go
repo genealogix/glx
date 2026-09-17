@@ -516,7 +516,9 @@ func collectGLXFilesFromPaths(root string, paths []string) (map[string][]byte, e
 			return nil, fmt.Errorf("failed to read %s: %w", p, err)
 		}
 		if !info.IsDir() {
-			data, err := os.ReadFile(abs)
+			// A file named explicitly on the command line is read as given;
+			// containment applies to files discovered by the directory walks.
+			data, err := os.ReadFile(abs) // #nosec G304 -- path is a user-supplied argument to glx validate
 			if err != nil {
 				return nil, fmt.Errorf("failed to read %s: %w", p, err)
 			}
