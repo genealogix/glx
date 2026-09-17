@@ -31,9 +31,13 @@ import (
 // (user docs, .git, dotfiles, etc.) and must be preserved across a safe-write swap.
 // See genealogix/glx#692. Derived from glxlib.AllEntityTypes so new entity types
 // are picked up automatically.
+// archiveMetadataFile is the top-level file the multi-file serializer writes the
+// archive's metadata block to.
+const archiveMetadataFile = "metadata.glx"
+
 var archiveManagedTopLevel = func() map[string]bool {
 	m := map[string]bool{
-		"metadata.glx":                true,
+		archiveMetadataFile:           true,
 		glxlib.ArchiveDirVocabularies: true,
 	}
 	for _, entityType := range glxlib.AllEntityTypes {
@@ -743,7 +747,7 @@ func writePartialArchive(dirPath string, partial *glxlib.GLXFile) (int, error) {
 		if strings.HasPrefix(relPath, "vocabularies/") {
 			continue
 		}
-		if relPath == "metadata.glx" {
+		if relPath == archiveMetadataFile {
 			continue
 		}
 		entityFiles[relPath] = data

@@ -460,7 +460,7 @@ func commonArchiveRoot(paths []string) (string, error) {
 	// file keys and the vocabulary lookup are rooted at the archive.
 	for {
 		base := filepath.Base(root)
-		if base == "metadata.glx" || !archiveManagedTopLevel[strings.ToLower(base)] {
+		if base == archiveMetadataFile || !archiveManagedTopLevel[strings.ToLower(base)] {
 			break
 		}
 		parent := filepath.Dir(root)
