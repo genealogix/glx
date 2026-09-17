@@ -284,3 +284,35 @@ func TestValidateMediaFileExistence_NormalizesNavigationSegments(t *testing.T) {
 
 	assert.Empty(t, validateMediaFileExistence(archive, root), "a URI that normalizes inside the archive is not a dot-prefixed path")
 }
+
+// Explicitly named files follow the archive-membership rules too: a link out
+// of the archive is refused, and a link into a dot-prefixed directory is not
+// archive content.
+func TestValidatePaths_ExplicitFileArgumentsRespectContainment(t *testing.T) {
+	if runtime.GOOS == goosWindows {
+		t.Skip("symlink creation requires elevation on Windows")
+	}
+	outside := t.TempDir()
+	writeSkipTestFile(t, filepath.Join(outside, "secret.glx"), "persons: {}\n")
+	root := writeMultiPathArchive(t)
+	escape := filepath.Join(root, "persons", "escape.glx")
+	require.NoError(t, os.Symlink(filepath.Join(outside, "secret.glx"), escape))
+	writeSkipTestFile(t, filepath.Join(root, ".worktrees", "copy", "persons", "dup.glx"),
+		"persons:\n  person-1:\n    properties:\n      primary_name: Duplicate\n")
+	excluded := filepath.Join(root, "persons", "alias.glx")
+	require.NoError(t, os.Symlink(filepath.Join("..", ".worktrees", "copy", "persons", "dup.glx"), excluded))
+	person := filepath.Join(root, "persons", "person-1.glx")
+
+	t.Run("a named link out of the archive is refused", func(t *testing.T) {
+		streams, _, errOut := newTestStreams()
+		err := validatePaths(streams, []string{person, escape})
+		require.ErrorIs(t, err, ErrStructuralValidationFailed)
+		assert.Contains(t, errOut.String(), "escape.glx")
+	})
+
+	t.Run("a named link into a dot directory is not archive content", func(t *testing.T) {
+		streams, out, _ := newTestStreams()
+		require.NoError(t, validatePaths(streams, []string{person, excluded}), "the duplicate behind the link must not be loaded")
+		assert.Contains(t, out.String(), "Validated 1 files.")
+	})
+}

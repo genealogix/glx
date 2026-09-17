@@ -519,6 +519,17 @@ func collectGLXFilesFromPaths(root string, paths []string) (map[string][]byte, e
 	// to entities outside the selected paths are still reported as errors —
 	// the selection is validated as the archive it would be on its own.
 	paths = withArchiveVocabularies(absRoot, paths)
+	// Explicitly named files are read through the same containment the
+	// directory walks use, so a symlink out of the archive is refused.
+	archive, err := os.OpenRoot(absRoot)
+	if err != nil {
+		return nil, fmt.Errorf("opening archive root %s: %w", root, err)
+	}
+	defer func() { _ = archive.Close() }()
+	resolvedRoot, err := filepath.EvalSymlinks(absRoot)
+	if err != nil {
+		resolvedRoot = absRoot
+	}
 	files := make(map[string][]byte)
 	for _, p := range paths {
 		abs, err := filepath.Abs(p)
@@ -534,18 +545,13 @@ func collectGLXFilesFromPaths(root string, paths []string) (map[string][]byte, e
 			return nil, fmt.Errorf("failed to read %s: %w", p, err)
 		}
 		if !info.IsDir() {
-			// Only .glx files are archive content; a README.md named
-			// alongside them is ignored, as it would be by a directory walk.
-			if !isGLXFile(abs) {
-				continue
-			}
-			// A file named explicitly on the command line is read as given;
-			// containment applies to files discovered by the directory walks.
-			data, err := os.ReadFile(abs) // #nosec G304 -- path is a user-supplied argument to glx validate
+			data, ok, err := readExplicitGLXFile(archive, resolvedRoot, abs, rel)
 			if err != nil {
 				return nil, fmt.Errorf("failed to read %s: %w", p, err)
 			}
-			files[rel] = data
+			if ok {
+				files[rel] = data
+			}
 
 			continue
 		}
@@ -563,6 +569,29 @@ func collectGLXFilesFromPaths(root string, paths []string) (map[string][]byte, e
 	}
 
 	return files, nil
+}
+
+// readExplicitGLXFile reads a file named explicitly among several validate
+// arguments, applying the same archive-membership rules as the directory
+// walk. It returns ok=false, without error, for a file that is not archive
+// content: one without the .glx extension (a README.md named alongside), or a
+// symlink whose target lies under a dot-prefixed directory. The read goes
+// through the archive's os.Root so a link out of the archive is refused rather
+// than followed.
+func readExplicitGLXFile(archive *os.Root, resolvedRoot, abs, rel string) ([]byte, bool, error) {
+	if !isGLXFile(abs) {
+		return nil, false, nil
+	}
+	if lst, err := os.Lstat(abs); err == nil && lst.Mode()&os.ModeSymlink != 0 &&
+		symlinkTargetIsExcluded(resolvedRoot, filepath.ToSlash(rel)) {
+		return nil, false, nil
+	}
+	data, err := archive.ReadFile(rel)
+	if err != nil {
+		return nil, false, err
+	}
+
+	return data, true, nil
 }
 
 // validateSingleFileSemantics runs semantic validation (deprecated properties,
