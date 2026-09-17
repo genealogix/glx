@@ -2,10 +2,13 @@
 
 ## Internal Links
 
-Omit `.md` file extension for VitePress compatibility:
+Use relative repository paths that end in `.md`; the website's markdown plugin rewrites them, and GitHub resolves them as-is (#1214):
 
-- Good: `[Person Entity](4-entity-types/person)`
-- Bad: `[Person Entity](4-entity-types/person.md)`
+- Good: `[Person Entity](4-entity-types/person.md)`
+- Bad: `[Person Entity](4-entity-types/person)` (404s on GitHub)
+- Bad: `[Person Entity](/specification/4-entity-types/person)` (website route; 404s on GitHub)
+
+Heading anchors (`file.md#section`) are not checked by CI (`scripts/check-links.sh` strips fragments), so verify them by hand when you add one.
 
 ## Vocabulary Files
 

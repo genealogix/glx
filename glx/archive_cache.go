@@ -23,6 +23,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -72,7 +73,16 @@ const (
 	//      the GLXVersion gate is no help for locally built "dev" binaries,
 	//      so v1 caches are rebuilt. Duplicate warnings are also stored
 	//      terminal-sanitized from v2 on.
-	cacheFormatVersion uint32 = 2
+	//   3: dot-prefixed directories and files are no longer archive content
+	//      (#1212). A v2 cache holds the entities the old loader read out of
+	//      dot-prefixed worktree copies, along with the duplicate-ID warnings
+	//      they produced, and computeFSFingerprint is unchanged for the files
+	//      both loaders agree on — so the fingerprint of a v2 cache still
+	//      matches and nothing else would force a rebuild. Locally built
+	//      binaries all report GLXVersion "dev", so that gate is no help
+	//      either. Without this bump a stale v2 cache is served as fresh and
+	//      replays exactly the duplicates this release removes.
+	cacheFormatVersion uint32 = 3
 )
 
 // cacheMagic is a fixed prefix written before the gob stream so a foreign or
@@ -195,39 +205,48 @@ func cachePath(root string) string { return filepath.Join(root, cacheDirName, ca
 // computeFSFingerprint walks every .glx entity file under root and returns a
 // SHA-256 hash of the sorted (relative-path, size, mtime) tuples. It performs
 // stat calls only — no file reads — so it stays cheap even on large archives.
-// The .glx (cache) and .git directories are skipped: neither holds entity
-// files, and skipping them keeps the fingerprint independent of cache writes.
+//
+// The walk skips exactly what the loader skips: dot-prefixed directories and
+// files (see isDotName), which covers the .glx cache directory and .git. The
+// two sets must match. When the fingerprint covered more than the loader did,
+// an edit inside a dot-prefixed worktree copy invalidated a cache whose contents
+// could not have changed, and an unreadable dot directory made the cache
+// permanently un-buildable while the loader succeeded.
+//
+// root is resolved with EvalSymlinks first. filepath.WalkDir lstats its root,
+// so a symlinked archive path would otherwise walk zero files and hash the
+// empty string — a fingerprint that matches forever, leaving the cache "fresh"
+// no matter how the archive changes.
 func computeFSFingerprint(root string) (string, error) {
-	type fileMeta struct {
-		rel  string
-		size int64
-		mod  int64
+	var metas []fsFileMeta
+
+	resolvedRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return "", fmt.Errorf("resolving archive root: %w", err)
 	}
-	var metas []fileMeta
+	root = resolvedRoot
 
 	walkErr := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if d.IsDir() {
-			if path != root && (d.Name() == cacheDirName || d.Name() == ".git") {
+			if path != root && isDotName(d.Name()) {
 				return filepath.SkipDir
 			}
 
 			return nil
 		}
-		if !isGLXFile(d.Name()) {
+		if isDotName(d.Name()) || !isGLXFile(d.Name()) {
 			return nil
-		}
-		info, err := d.Info()
-		if err != nil {
-			return err
 		}
 		rel, err := filepath.Rel(root, path)
 		if err != nil {
 			return err
 		}
-		metas = append(metas, fileMeta{rel: filepath.ToSlash(rel), size: info.Size(), mod: info.ModTime().UnixNano()})
+		if meta, ok := fingerprintEntry(root, path, filepath.ToSlash(rel), d); ok {
+			metas = append(metas, meta)
+		}
 
 		return nil
 	})
@@ -582,4 +601,73 @@ func LoadArchiveCached(path string) (*glxlib.GLXFile, []string, error) {
 	}
 
 	return archive, duplicates, nil
+}
+
+// fsFileMeta is one fingerprinted file: its key (the archive-relative path,
+// plus the link text for a symlink) and the size and mtime the loader would
+// see. A dangling symlink is recorded with size -1.
+type fsFileMeta struct {
+	rel  string
+	size int64
+	mod  int64
+}
+
+// fingerprintEntry decides whether the .glx entry at path (key is its
+// slash-separated path relative to root) belongs in the fingerprint and, if
+// so, returns its metadata. It applies the loader's exclusions so the
+// fingerprint covers exactly what the loader reads: a symlink whose target
+// lies under a dot-prefixed directory, and on Windows a Git placeholder whose
+// text does, are left out. For a symlink the link text becomes part of the
+// key, so retargeting a link to a file with identical size and mtime, or a
+// target appearing or disappearing, changes the fingerprint.
+func fingerprintEntry(root, path, key string, d fs.DirEntry) (fsFileMeta, bool) {
+	if d.Type()&fs.ModeSymlink != 0 {
+		if symlinkTargetIsExcluded(root, key) {
+			return fsFileMeta{}, false
+		}
+		if target, err := os.Readlink(path); err == nil {
+			key += " -> " + filepath.ToSlash(target)
+		}
+	} else if placeholderExcluded(path, key, d) {
+		return fsFileMeta{}, false
+	}
+	// Stat the path rather than using d.Info(): for a symlinked .glx file
+	// d.Info() describes the link itself, whose size and mtime do not change
+	// when the target is edited, while the loader reads the target. A dangling
+	// link is fingerprinted as such (size -1) rather than failing the walk; the
+	// loader reports the file on its own.
+	info, err := os.Stat(path)
+	if err != nil {
+		return fsFileMeta{rel: key, size: -1, mod: 0}, true
+	}
+
+	return fsFileMeta{rel: key, size: info.Size(), mod: info.ModTime().UnixNano()}, true
+}
+
+// placeholderExcluded reports whether, on Windows, the regular file at path is
+// a Git symlink placeholder whose text points under a dot-prefixed directory —
+// an entry the loader skips (resolveSymlinkPlaceholder) and the fingerprint
+// must skip too. Placeholders are tiny, so only files that small are read; the
+// walk stays stat-only for real content and on other platforms.
+func placeholderExcluded(path, key string, d fs.DirEntry) bool {
+	return placeholderExcludedOn(runtime.GOOS, path, key, d)
+}
+
+// placeholderExcludedOn is placeholderExcluded with the platform made explicit
+// so the Windows branch can be exercised by tests on any host.
+func placeholderExcludedOn(goos, path, key string, d fs.DirEntry) bool {
+	if goos != goosWindows || !d.Type().IsRegular() {
+		return false
+	}
+	info, err := d.Info()
+	if err != nil || info.Size() > maxSymlinkPlaceholderLength {
+		return false
+	}
+	data, err := os.ReadFile(path) // #nosec G304 -- path enumerated by the archive walk
+	if err != nil {
+		return false
+	}
+	target, ok := placeholderTarget(key, data)
+
+	return ok && pathHasDotComponent(target)
 }

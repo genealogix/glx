@@ -96,6 +96,11 @@ func runGLX(t *testing.T, workDir string, args ...string) result {
 
 	cmd := exec.CommandContext(t.Context(), glxBinary, args...) //nolint:gosec // args come from the test, not user input
 	cmd.Dir = workDir
+	// Pin the cache mode. Without this the subprocess inherits whatever
+	// GLX_CACHE the developer or CI runner happens to export, so the same test
+	// exercises the cached loader on one machine and the uncached one on
+	// another. Tests that want the cache set it explicitly.
+	cmd.Env = envWithout(os.Environ(), "GLX_CACHE")
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -116,6 +121,20 @@ func runGLX(t *testing.T, workDir string, args ...string) result {
 		strings.Join(args, " "), workDir, res.exitCode, res.stdout, res.stderr)
 
 	return res
+}
+
+// envWithout returns env with every assignment to the named variable removed.
+func envWithout(env []string, name string) []string {
+	prefix := name + "="
+	out := make([]string, 0, len(env))
+	for _, kv := range env {
+		if strings.HasPrefix(kv, prefix) {
+			continue
+		}
+		out = append(out, kv)
+	}
+
+	return out
 }
 
 // examplesDir is the repository's docs/examples directory, resolved from

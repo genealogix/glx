@@ -4,7 +4,7 @@ The official command-line tool for working with [GENEALOGIX (GLX)](../../README.
 
 The per-command pages linked below are auto-generated from the live Cobra command tree by `make docs-cli`. To change a command's documentation, edit its `Use`/`Short`/`Long`/`Example` strings in [`glx/cli_commands.go`](https://github.com/genealogix/glx/blob/main/glx/cli_commands.go) (or its `*_runner.go` file) and re-run the target. CI fails on any drift between the source command tree and the committed pages.
 
-For installation instructions, see [`glx/README.md`](https://github.com/genealogix/glx/blob/main/glx/README.md). For a guided walkthrough, see the [Hands-On CLI Guide](../guides/hands-on-cli-guide.md).
+For installation instructions, see [`glx/README.md`](../../glx/README.md). For a guided walkthrough, see the [Hands-On CLI Guide](../guides/hands-on-cli-guide.md).
 
 ## Commands
 
@@ -15,13 +15,16 @@ For installation instructions, see [`glx/README.md`](https://github.com/genealog
 - [`glx split`](glx_split.md) — convert a single-file archive to multi-file
 - [`glx join`](glx_join.md) — convert a multi-file archive to single-file
 - [`glx merge`](glx_merge.md) — combine two archives with duplicate detection
+- [`glx merge-persons`](glx_merge-persons.md) — merge two person records into one
 - [`glx migrate`](glx_migrate.md) — migrate an archive to the current format
 - [`glx rename`](glx_rename.md) — rename an entity by ID
+- [`glx cache`](glx_cache.md) — build, inspect, or clear the binary archive cache
 
 ### Import & Export
 
 - [`glx import`](glx_import.md) — import a GEDCOM file
 - [`glx export`](glx_export.md) — export to GEDCOM or Schema.org-aligned JSON-LD
+- [`glx publish`](glx_publish.md) — generate a self-contained static HTML site from an archive
 
 ### Exploration
 
@@ -40,6 +43,8 @@ For installation instructions, see [`glx/README.md`](https://github.com/genealog
 
 - [`glx census`](glx_census.md) — census tooling (see subcommands)
 - [`glx census add`](glx_census_add.md) — generate entities from a census template
+- [`glx add`](glx_add.md) — create person, place, event, source, citation, relationship, or assertion entities from flags
+- [`glx link`](glx_link.md) — create a FamilySearch citation (and source/repository scaffolding) from an ARK URL
 
 ### Analysis
 
@@ -50,6 +55,9 @@ For installation instructions, see [`glx/README.md`](https://github.com/genealog
 - [`glx duplicates`](glx_duplicates.md) — detect duplicate entities
 - [`glx coverage`](glx_coverage.md) — research coverage report
 - [`glx diff`](glx_diff.md) — diff two archives
+- [`glx evidence`](glx_evidence.md) — lay out every assertion for one person+property side-by-side
+- [`glx proof`](glx_proof.md) — compile a Genealogical Proof Standard summary for a research question
+- [`glx migrations`](glx_migrations.md) — trace a person's geographic movement over time
 
 ### Shell completion
 

@@ -94,14 +94,13 @@ Person
   ├── participates in Events (birth, marriage, immigration, etc.)
   ├── has many Properties
   ├── has many Assertions (about properties)
-  ├── links to media (via Media entity)
+  ├── depicted in Media (via media `properties.subjects`)
   └── participates in Relationships
 
 Relationship
   ├── connects multiple Persons
   ├── has start/end Events
-  ├── has Assertions (about relationship properties)
-  └── links to media
+  └── has Assertions (about relationship properties)
 
 Event
   ├── occurs at a Place
@@ -115,9 +114,8 @@ Place
   └── referenced by Events and Assertions
 
 Assertion
-  ├── references Person, Event, Relationship, or other subject
-  ├── supported by Citations
-  └── may reference Places
+  ├── references Person, Event, Relationship, or Place (typed `subject`)
+  └── supported by Citations, Sources, and/or Media (at least one)
 
 Source
   ├── held in Repository

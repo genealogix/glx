@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -198,14 +199,19 @@ func validatePaths(streams *IOStreams, args []string) error {
 			}
 		}
 	} else {
-		if info, err := os.Stat(paths[0]); err == nil {
-			if info.IsDir() {
-				archiveRoot = paths[0]
-			} else {
-				archiveRoot = filepath.Dir(paths[0])
-			}
-			shouldValidateCrossRefs = true
+		// Several paths — directories, files, or a mix — are validated as one
+		// archive: every argument is loaded, keyed relative to their deepest
+		// common ancestor, so cross-references between `persons/` and
+		// `events/` (or between two named files) resolve and duplicate IDs
+		// across them are caught.
+		root, err := commonArchiveRoot(paths)
+		if err != nil {
+			streams.Errorf("Error loading archive: %v\n", err)
+
+			return ErrStructuralValidationFailed
 		}
+		archiveRoot = root
+		shouldValidateCrossRefs = true
 	}
 
 	// Single file: structural validation + semantic checks (no cross-references)
@@ -251,9 +257,18 @@ func validatePaths(streams *IOStreams, args []string) error {
 	// Directory: single-pass load with schema validation + cross-reference checks.
 	// LoadArchiveWithOptions(true) reads each file once, runs JSON schema validation,
 	// then deserializes into Go structs — avoiding the previous double file-read.
-	fileCount := countGLXFiles(archiveRoot)
+	// Collect once and take the file count off the map: the archive's file set
+	// is whatever the loader read, by definition.
+	files, err := collectGLXFilesFromPaths(archiveRoot, paths)
+	if err != nil {
+		formatted := formatValidationError(err, defaultShowFirstErrors)
+		streams.Errorf("Error loading archive: %v\n", formatted)
 
-	archive, duplicates, err := LoadArchiveWithOptions(archiveRoot, true)
+		return ErrStructuralValidationFailed
+	}
+	fileCount := len(files)
+
+	archive, duplicates, err := loadArchiveFromFiles(archiveRoot, files, true)
 	if err != nil {
 		formatted := formatValidationError(err, defaultShowFirstErrors)
 		streams.Errorf("Error loading archive: %v\n", formatted)
@@ -361,6 +376,258 @@ func validateSingleFilePaths(paths []string) (int, []string) {
 	return fileCount, allErrors
 }
 
+// validateAndReport runs the full validation pass and then prints the
+// confidence report for the same path.
+//
+// The --report flag used to replace validation rather than follow it, so
+// `glx validate . --report` exited 0 on archives that plain `glx validate`
+// rejects: duplicate entity IDs, missing required properties, broken
+// references. A CI step written with --report was permanently green. The
+// report is a summary of a valid archive, so validation has to gate it.
+func validateAndReport(streams *IOStreams, args []string) error {
+	if len(args) > 1 {
+		return errReportTooManyArgs
+	}
+	path := "."
+	if len(args) == 1 {
+		path = args[0]
+	}
+
+	if err := validatePaths(streams, args); err != nil {
+		return err
+	}
+
+	return confidenceReport(path)
+}
+
+// errNoCommonArchiveRoot is returned when several validate arguments share no
+// directory below the filesystem root, so there is no archive they can be
+// loaded into together.
+var errNoCommonArchiveRoot = errors.New("paths do not share an archive root")
+
+// commonArchiveRoot returns the deepest directory that contains every path
+// (a file argument counts through its parent directory). Run from an archive
+// root, `glx validate persons/ events/` resolves to that root, so media URIs
+// and cross-references behave exactly as they do for `glx validate .`.
+// Paths whose only shared ancestor is the filesystem root (or that sit on
+// different volumes) have no archive in common and are rejected.
+func commonArchiveRoot(paths []string) (string, error) {
+	// Windows paths compare case-insensitively (C:\Archive and c:\archive are
+	// one directory); elsewhere the filesystem decides and byte equality is
+	// the safe default.
+	same := func(a, b string) bool {
+		if runtime.GOOS == goosWindows {
+			return strings.EqualFold(a, b)
+		}
+
+		return a == b
+	}
+	var common []string
+	var volume string
+	for i, p := range paths {
+		abs, err := filepath.Abs(p)
+		if err != nil {
+			return "", fmt.Errorf("resolving %s: %w", p, err)
+		}
+		if info, err := os.Stat(abs); err == nil && !info.IsDir() {
+			abs = filepath.Dir(abs)
+		}
+		vol := filepath.VolumeName(abs)
+		parts := strings.Split(strings.TrimPrefix(abs[len(vol):], string(filepath.Separator)), string(filepath.Separator))
+		if i == 0 {
+			volume = vol
+			common = parts
+
+			continue
+		}
+		if !same(vol, volume) {
+			return "", fmt.Errorf("%w: %s and %s", errNoCommonArchiveRoot, paths[0], p)
+		}
+		n := 0
+		for n < len(common) && n < len(parts) && same(common[n], parts[n]) {
+			n++
+		}
+		common = common[:n]
+	}
+	if len(common) == 0 || (len(common) == 1 && common[0] == "") {
+		return "", fmt.Errorf("%w: %s", errNoCommonArchiveRoot, strings.Join(paths, ", "))
+	}
+	root := volume + string(filepath.Separator) + filepath.Join(common...)
+
+	// A selection confined to one entity directory (events/a.glx events/b.glx)
+	// has that directory as its common ancestor, but the archive — and its
+	// vocabularies/ — is the parent. Climb out of a managed directory so the
+	// file keys and the vocabulary lookup are rooted at the archive. Exactly
+	// one level, and only when the parent looks like an archive root: entity
+	// directories do not nest, and an archive whose own directory happens to
+	// be named events/ has no vocabularies/ or persons/ beside it.
+	base := filepath.Base(root)
+	if base != archiveMetadataFile && archiveManagedTopLevel[strings.ToLower(base)] {
+		if parent := filepath.Dir(root); parent != root && hasManagedSibling(parent, base) {
+			root = parent
+		}
+	}
+
+	return root, nil
+}
+
+// hasManagedSibling reports whether dir holds a managed archive entry
+// (vocabularies/, metadata.glx, an entity directory) other than except. It
+// tells an entity directory inside an archive apart from an archive that is
+// itself named like one: the parent of the former holds its siblings, the
+// parent of the latter holds none.
+func hasManagedSibling(dir, except string) bool {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return false
+	}
+	for _, e := range entries {
+		if strings.EqualFold(e.Name(), except) {
+			continue
+		}
+		if isManagedTopLevel(e) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// withArchiveVocabularies appends <absRoot>/vocabularies to paths when that
+// directory exists and no argument already covers it (named directly, or as
+// a parent of it). It returns paths unchanged otherwise.
+func withArchiveVocabularies(absRoot string, paths []string) []string {
+	vocabDir := filepath.Join(absRoot, glxlib.ArchiveDirVocabularies)
+	// Lstat, not Stat: the archive walk never descends into a directory
+	// symlink, so `vocabularies -> .drafts/vocabularies` (or a link out of the
+	// archive) is not something the full load would read either.
+	info, err := os.Lstat(vocabDir)
+	if err != nil || !info.IsDir() {
+		return paths
+	}
+	for _, p := range paths {
+		abs, err := filepath.Abs(p)
+		if err != nil {
+			continue
+		}
+		rel, err := filepath.Rel(abs, vocabDir)
+		if err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			return paths
+		}
+	}
+
+	return append(append([]string{}, paths...), vocabDir)
+}
+
+// collectGLXFilesFromPaths gathers the .glx files under every path into one
+// map keyed relative to root, the shape loadArchiveFromFiles expects. A single
+// directory argument is the ordinary whole-archive walk. With several
+// arguments each directory is walked as a subtree of the shared root, so the
+// loader's rules (dot entries and excluded symlinks skipped, no reads outside
+// the archive) apply relative to the archive rather than to the subdirectory,
+// and each file argument is read through the same root; keys stay relative to
+// it so duplicate-ID detection and error messages name paths the user
+// recognizes.
+func collectGLXFilesFromPaths(root string, paths []string) (map[string][]byte, error) {
+	if len(paths) == 1 {
+		return collectGLXFilesFromDir(root)
+	}
+
+	absRoot, err := filepath.Abs(root)
+	if err != nil {
+		return nil, fmt.Errorf("resolving %s: %w", root, err)
+	}
+	// The archive's vocabulary definitions are needed to validate any subset
+	// of it: without them every event, relationship, and place type reads as
+	// undefined. Include the conventional vocabularies/ directory under the
+	// shared root when it exists and was not named explicitly. Cross-references
+	// to entities outside the selected paths are still reported as errors —
+	// the selection is validated as the archive it would be on its own.
+	paths = withArchiveVocabularies(absRoot, paths)
+	// Explicitly named files are read through the same containment the
+	// directory walks use, so a symlink out of the archive is refused.
+	archive, err := os.OpenRoot(absRoot)
+	if err != nil {
+		return nil, fmt.Errorf("opening archive root %s: %w", root, err)
+	}
+	defer func() { _ = archive.Close() }()
+	resolvedRoot, err := filepath.EvalSymlinks(absRoot)
+	if err != nil {
+		resolvedRoot = absRoot
+	}
+	files := make(map[string][]byte)
+	for _, p := range paths {
+		abs, err := filepath.Abs(p)
+		if err != nil {
+			return nil, fmt.Errorf("resolving %s: %w", p, err)
+		}
+		rel, err := filepath.Rel(absRoot, abs)
+		if err != nil {
+			return nil, fmt.Errorf("resolving %s against %s: %w", p, root, err)
+		}
+		info, err := os.Stat(abs)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read %s: %w", p, err)
+		}
+		if !info.IsDir() {
+			data, ok, err := readExplicitGLXFile(archive, resolvedRoot, abs, rel)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read %s: %w", p, err)
+			}
+			if ok {
+				files[rel] = data
+			}
+
+			continue
+		}
+		err = walkGLXFilesUnder(absRoot, filepath.ToSlash(rel), func(relPath string, data []byte, readErr error) error {
+			if readErr != nil {
+				return fmt.Errorf("failed to read %s: %w", filepath.Join(root, relPath), readErr)
+			}
+			files[relPath] = data
+
+			return nil
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to read %s: %w", p, err)
+		}
+	}
+
+	return files, nil
+}
+
+// readExplicitGLXFile reads a file named explicitly among several validate
+// arguments, applying the same archive-membership rules as the directory
+// walk. It returns ok=false, without error, for a file that is not archive
+// content: one without the .glx extension (a README.md named alongside), or a
+// symlink whose target lies under a dot-prefixed directory. The read goes
+// through the archive's os.Root so a link out of the archive is refused rather
+// than followed.
+func readExplicitGLXFile(archive *os.Root, resolvedRoot, abs, rel string) ([]byte, bool, error) {
+	if !isGLXFile(abs) {
+		return nil, false, nil
+	}
+	if lst, err := os.Lstat(abs); err == nil && lst.Mode()&os.ModeSymlink != 0 &&
+		symlinkTargetIsExcluded(resolvedRoot, filepath.ToSlash(rel)) {
+		return nil, false, nil
+	}
+	data, err := archive.ReadFile(rel)
+	if err != nil {
+		return nil, false, err
+	}
+	if runtime.GOOS == goosWindows {
+		// A Git symlink placeholder is resolved, or excluded, exactly as the
+		// directory walk does it.
+		var excluded bool
+		data, excluded = resolveSymlinkPlaceholder(archive, filepath.ToSlash(rel), data)
+		if excluded {
+			return nil, false, nil
+		}
+	}
+
+	return data, true, nil
+}
+
 // validateSingleFileSemantics runs semantic validation (deprecated properties,
 // date formats, property types) on single files. Cross-reference errors are
 // filtered out since we don't have the full archive context.
@@ -374,7 +641,24 @@ func validateSingleFileSemantics(paths []string) ([]string, []string) {
 			if walkErr != nil {
 				return walkErr
 			}
-			if d.IsDir() || !isGLXFile(d.Name()) {
+			// Skip the same entries the archive loader skips. Without this,
+			// the two passes of a single validate invocation disagree about
+			// which files are the archive: one reports an unparseable file
+			// under a dot directory as an error the other never saw, and every
+			// warning from a worktree copy is emitted twice.
+			if d.IsDir() {
+				if filePath != path && isDotName(d.Name()) {
+					return filepath.SkipDir
+				}
+
+				return nil
+			}
+			// A dot-prefixed file named explicitly on the command line is
+			// still validated; only ones discovered by the walk are skipped.
+			if filePath != path && isDotName(d.Name()) {
+				return nil
+			}
+			if !isGLXFile(d.Name()) {
 				return nil
 			}
 
@@ -434,36 +718,24 @@ func isSingleFileIssue(msg string) bool {
 	return true
 }
 
-// countGLXFiles counts .glx files in a directory without reading them.
-func countGLXFiles(root string) int {
-	var count int
-	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			if path != root && isDotDir(d.Name()) {
-				return filepath.SkipDir
-			}
-
-			return nil
-		}
-		if isGLXFile(d.Name()) {
-			count++
-		}
-
-		return nil
-	})
-
-	return count
-}
-
 // validateMediaFileExistence checks that media entities with local relative URIs
 // point to files that actually exist on disk. Returns warnings for missing files.
 func validateMediaFileExistence(archive *glxlib.GLXFile, archiveRoot string) []string {
 	var warnings []string
 	for mediaID, media := range archive.Media {
 		if !isLocalMediaURI(media.URI) {
+			continue
+		}
+		// A URI with a dot-prefixed component points outside archive content
+		// (see isDotName), so the file it names is not carried by the archive
+		// even when it happens to exist on this machine right now.
+		// Clean first: `media/files/../files/photo.jpg` normalizes to a plain
+		// archive path, and its `..` must not read as a dot-prefixed component.
+		if pathHasDotComponent(filepath.Clean(media.URI)) {
+			warnings = append(warnings, fmt.Sprintf(
+				"media[%s]: referenced file is under a dot-prefixed path and is not archive content: %s",
+				mediaID, media.URI))
+
 			continue
 		}
 		filePath := filepath.Join(archiveRoot, media.URI)

@@ -196,7 +196,7 @@ func TestWalkGLXFiles_ReportsReadErrorPerFile(t *testing.T) {
 func TestWalkGLXFiles_SkipsDotDirectories(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "ok.glx"), []byte("ok"), 0o644))
-	for _, hidden := range []string{".git", ".glx", filepath.Join(".claude", "worktrees", "copy", "persons")} {
+	for _, hidden := range []string{".git", ".glx", filepath.Join(".worktrees", "copy", "persons")} {
 		require.NoError(t, os.MkdirAll(filepath.Join(dir, hidden), 0o755))
 		require.NoError(t, os.WriteFile(filepath.Join(dir, hidden, "ok.glx"), []byte("dup"), 0o644))
 	}

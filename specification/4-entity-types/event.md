@@ -70,7 +70,7 @@ Domain-specific events can be added via vocabularies:
 | `properties` | object | Vocabulary-defined properties |
 | `notes` | string \| string[] | Free-form notes |
 
-**GEDCOM import note:** Titles are auto-generated from the event type and participant names (for example, "Birth of Robert Webb"). The date is not included because it is already represented by the `date` field. Archives imported before this change may still contain auto-generated titles ending in a parenthetical value derived from date parsing (for example, "Birth of John Smith (1850)"); that value is not guaranteed to be a correct year and may be a day-of-month for non-ISO dates.
+**GEDCOM import note:** Titles are auto-generated from the event type and participant names (for example, "Birth of Robert Webb"). The date is not included because it is already represented by the `date` field. Archives imported before this change may still contain auto-generated titles ending in a parenthetical value derived from date parsing (for example, "Birth of John Smith (1850)"); that value is not guaranteed to be a correct year and may be a day-of-month for non-ISO dates. Run `glx migrate --strip-event-title-year` to remove the stale suffix from such archives.
 
 ### Participant Object Fields
 
@@ -253,8 +253,8 @@ Events require at least one participant. GLX is a genealogy format, and every ev
 - At least one participant is required
 - Place, if referenced, must exist in the archive
 - All person references must point to existing Person entities
-- Date formats must follow genealogical date conventions
-- Participant roles should be from the [participant roles vocabulary](vocabularies.md#participant-roles-vocabulary) (unknown roles generate warnings)
+- Date formats must follow the [date format standard](../2-core-concepts.md#date-format-standard) (invalid formats generate warnings)
+- Participant roles must be from the [participant roles vocabulary](vocabularies.md#participant-roles-vocabulary); an unknown role is an error, like any other structural type field (see [Vocabulary Validation](vocabularies.md#validation-errors-hard-failures))
 
 ## Confidence and Provenance
 

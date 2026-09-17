@@ -93,7 +93,9 @@ func TestRunValidate_MultiplePaths(t *testing.T) {
 	t.Chdir("../docs/examples/basic-family")
 	streams, _, _ := TestIOStreams()
 
-	err := validatePaths(streams, []string{"persons", "relationships"})
+	// Every entity directory is named; vocabularies/ under the shared root is
+	// included automatically, so the selection is a complete archive.
+	err := validatePaths(streams, []string{"persons", "relationships", "events", "places", "sources", "citations", "repositories", "assertions"})
 	require.NoError(t, err, "should successfully validate multiple valid paths")
 }
 
