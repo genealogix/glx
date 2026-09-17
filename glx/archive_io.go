@@ -482,13 +482,27 @@ func writeSingleFileArchiveWithMode(path string, glx *glxlib.GLXFile, validate b
 	return nil
 }
 
-// writeMultiFileArchive serializes and writes a multi-file GLX archive
-func writeMultiFileArchive(dirPath string, glx *glxlib.GLXFile, validate bool) error {
+// serializeMultiFileArchive serializes (and, when validate is set, validates) a
+// multi-file GLX archive, returning the files to write without touching the
+// filesystem. Split out from writeMultiFileArchive so callers with other side
+// effects to commit can fail on serialization or validation *before* any of
+// them happen — see the GEDZIP import path, which stages media first.
+func serializeMultiFileArchive(glx *glxlib.GLXFile, validate bool) (map[string][]byte, error) {
 	serializer := createSerializer(validate, true, "  ")
 
 	files, err := serializer.SerializeMultiFileToMap(glx)
 	if err != nil {
-		return fmt.Errorf("failed to serialize multi-file archive: %w", err)
+		return nil, fmt.Errorf("failed to serialize multi-file archive: %w", err)
+	}
+
+	return files, nil
+}
+
+// writeMultiFileArchive serializes and writes a multi-file GLX archive
+func writeMultiFileArchive(dirPath string, glx *glxlib.GLXFile, validate bool) error {
+	files, err := serializeMultiFileArchive(glx, validate)
+	if err != nil {
+		return err
 	}
 
 	if err := writeFilesToDir(dirPath, files); err != nil {

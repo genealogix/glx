@@ -16,6 +16,8 @@ package main
 
 import (
 	"errors"
+
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 // Command validation errors
@@ -48,13 +50,15 @@ var (
 	ErrLinkSourceConflict         = errors.New("--source and --create-source are mutually exclusive")
 	ErrLinkSourceNotFound         = errors.New("--source not found in archive")
 	ErrLinkSourceIDExhausted      = errors.New("could not derive a unique source ID within the attempt limit")
-	ErrGEDZIPMissingGedcom        = errors.New("gedzip archive is missing gedcom.ged at root")
-	ErrGEDZIPInvalidEntry         = errors.New("gedzip archive contains an invalid entry path")
+	ErrGEDZIPNilBundle            = glxlib.ErrGEDZIPNilBundle
+	ErrGEDZIPMissingGedcom        = glxlib.ErrGEDZIPMissingGedcom
+	ErrGEDZIPMultipleGedcom       = glxlib.ErrGEDZIPMultipleGedcom
+	ErrGEDZIPInvalidEntry         = glxlib.ErrGEDZIPInvalidEntry
 	ErrGEDZIPNotValidArchive      = errors.New("file is not a valid zip archive")
-	ErrGEDZIPDuplicateEntry       = errors.New("gedzip archive contains entries that resolve to the same destination path")
+	ErrGEDZIPDuplicateEntry       = glxlib.ErrGEDZIPDuplicateEntry
 	ErrGEDZIPTooManyEntries       = errors.New("gedzip archive entry count exceeds the per-archive limit")
 	ErrGEDZIPEntryTooLarge        = errors.New("gedzip archive entry exceeds the per-entry decompressed size limit")
-	ErrGEDZIPUnsupportedAlgorithm = errors.New("gedzip archive uses an unsupported compression algorithm")
+	ErrGEDZIPUnsupportedAlgorithm = glxlib.ErrGEDZIPUnsupportedAlgorithm
 
 	// `glx add` errors
 	ErrAddEntityExists                     = errors.New("entity ID already exists (use --force to overwrite)")

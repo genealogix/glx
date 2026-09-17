@@ -224,11 +224,41 @@ func TestImportGEDZIP_StampsOriginalFilename(t *testing.T) {
 
 func TestImportGEDZIP_MissingGedcomEntry(t *testing.T) {
 	gdz := buildGEDZIP(t, map[string][]byte{
-		"other.ged": []byte(minimalGEDCOM7),
+		"readme.txt": []byte("no gedcom file here"),
 	})
 
 	err := importGEDCOM(gdz, filepath.Join(t.TempDir(), "archive"), FormatMulti, true, false, defaultShowFirstErrors)
 	require.ErrorIs(t, err, ErrGEDZIPMissingGedcom)
+}
+
+func TestImportGEDZIP_FallbackNonStandardGedcom(t *testing.T) {
+	gdz := buildGEDZIP(t, map[string][]byte{
+		"family_tree.ged": []byte(minimalGEDCOM7),
+	})
+	var out bytes.Buffer
+	err := importGEDCOM(gdz, filepath.Join(t.TempDir(), "archive"), FormatMulti, true, false, defaultShowFirstErrors, &out)
+	require.NoError(t, err)
+	require.Contains(t, out.String(), "using non-standard GEDCOM entry")
+}
+
+func TestImportGEDZIP_FallbackSingleWrapperDir(t *testing.T) {
+	gdz := buildGEDZIP(t, map[string][]byte{
+		"wrapper/gedcom.ged": []byte(minimalGEDCOM7),
+	})
+	var out bytes.Buffer
+	err := importGEDCOM(gdz, filepath.Join(t.TempDir(), "archive"), FormatMulti, true, false, defaultShowFirstErrors, &out)
+	require.NoError(t, err)
+	require.Contains(t, out.String(), "using non-standard GEDCOM entry")
+}
+
+func TestImportGEDZIP_MultipleGedcomEntries(t *testing.T) {
+	gdz := buildGEDZIP(t, map[string][]byte{
+		"tree1.ged": []byte(minimalGEDCOM7),
+		"tree2.ged": []byte(minimalGEDCOM7),
+	})
+
+	err := importGEDCOM(gdz, filepath.Join(t.TempDir(), "archive"), FormatMulti, true, false, defaultShowFirstErrors)
+	require.ErrorIs(t, err, ErrGEDZIPMultipleGedcom)
 }
 
 func TestImportGEDZIP_RejectsZipSlip(t *testing.T) {
@@ -346,19 +376,63 @@ func TestImportGEDZIP_RejectsCaseFoldedDuplicateGedcom(t *testing.T) {
 	require.ErrorIs(t, err, ErrGEDZIPDuplicateEntry)
 }
 
-func TestImportGEDZIP_RejectsDotSegmentDuplicateGedcom(t *testing.T) {
-	// gedcom.ged and media/../gedcom.ged are two distinct ZIP entry names
-	// that path.Clean folds to the same destination. Without the
-	// destination-keyed dedup, the second write would silently overwrite
-	// the first, hijacking the GEDCOM after hasGedcomEntry already approved
-	// the archive on the original (uncleaned) name.
+func TestImportGEDZIP_RejectsDotSegmentInvalidGedcom(t *testing.T) {
+	// gedcom.ged and media/../gedcom.ged are two distinct ZIP entry names.
+	// media/../gedcom.ged violates fs.ValidPath and contains a non-canonical
+	// dot segment, so it must be rejected as an invalid entry.
 	gdz := buildGEDZIP(t, map[string][]byte{
 		"gedcom.ged":          []byte(minimalGEDCOM7),
 		"media/../gedcom.ged": []byte(minimalGEDCOM7),
 	})
 
 	err := importGEDCOM(gdz, filepath.Join(t.TempDir(), "archive"), FormatMulti, true, false, defaultShowFirstErrors)
-	require.ErrorIs(t, err, ErrGEDZIPDuplicateEntry)
+	require.ErrorIs(t, err, ErrGEDZIPInvalidEntry)
+}
+
+func TestImportGEDZIP_RejectsOversizedGedcomEntry(t *testing.T) {
+	orig := maxGEDZIPEntryBytes
+	maxGEDZIPEntryBytes = 32
+	t.Cleanup(func() { maxGEDZIPEntryBytes = orig })
+
+	gdz := buildGEDZIP(t, map[string][]byte{
+		"gedcom.ged": []byte(minimalGEDCOM7), // > 32 bytes
+	})
+
+	err := importGEDCOM(gdz, filepath.Join(t.TempDir(), "archive"), FormatMulti, true, false, defaultShowFirstErrors)
+	require.ErrorIs(t, err, ErrGEDZIPEntryTooLarge)
+}
+
+func TestImportGEDZIP_FailedMediaDoesNotOverwriteExistingArchive(t *testing.T) {
+	orig := maxGEDZIPEntryBytes
+	maxGEDZIPEntryBytes = 64
+	t.Cleanup(func() { maxGEDZIPEntryBytes = orig })
+
+	tmpDir := t.TempDir()
+	outPath := filepath.Join(tmpDir, "target.glx")
+	originalContent := []byte("original valid glx content")
+	require.NoError(t, os.WriteFile(outPath, originalContent, filePermissions))
+
+	gedcom := "0 HEAD\n" +
+		"1 GEDC\n" +
+		"2 VERS 7.0\n" +
+		"0 @M1@ OBJE\n" +
+		"1 FILE huge.jpg\n" +
+		"1 FORM image/jpeg\n" +
+		"0 TRLR\n"
+
+	gdz := buildGEDZIP(t, map[string][]byte{
+		"gedcom.ged": []byte(gedcom),
+		"huge.jpg":   bytes.Repeat([]byte("A"), 128), // exceeds maxGEDZIPEntryBytes (64)
+	})
+
+	err := importGEDCOM(gdz, outPath, FormatSingle, true, false, defaultShowFirstErrors)
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrGEDZIPEntryTooLarge)
+
+	// Verify target.glx was NOT overwritten
+	content, readErr := os.ReadFile(outPath)
+	require.NoError(t, readErr)
+	require.Equal(t, originalContent, content, "existing archive must not be modified if media copy fails")
 }
 
 func TestImportGEDZIP_VerboseEmitsExtractionMessage(t *testing.T) {
@@ -422,7 +496,7 @@ func TestImportGEDZIP_RejectsArchiveExceedingEntryLimit(t *testing.T) {
 	require.ErrorIs(t, err, ErrGEDZIPTooManyEntries)
 }
 
-func TestWriteZipEntry_RejectsEntryExceedingDecompressedLimit(t *testing.T) {
+func TestCopyMemberFile_RejectsEntryExceedingDecompressedLimit(t *testing.T) {
 	// Lower the cap so this writes ~1 KiB instead of 512 MiB; the limit is a
 	// var precisely so this regression stays cheap and CI-stable.
 	orig := maxGEDZIPEntryBytes
@@ -447,14 +521,14 @@ func TestWriteZipEntry_RejectsEntryExceedingDecompressedLimit(t *testing.T) {
 	require.Len(t, zr.File, 1)
 
 	destPath := filepath.Join(t.TempDir(), "huge.bin")
-	err = writeZipEntry(zr.File[0], destPath)
+	err = copyMemberFile(zr, "media/huge.bin", destPath)
 	require.ErrorIs(t, err, ErrGEDZIPEntryTooLarge)
 
 	_, statErr := os.Stat(destPath)
 	require.True(t, os.IsNotExist(statErr), "oversized extracted file should be removed")
 }
 
-func TestWriteZipEntry_AcceptsEntryAtExactLimit(t *testing.T) {
+func TestCopyMemberFile_AcceptsEntryAtExactLimit(t *testing.T) {
 	// An entry whose decompressed size equals exactly maxGEDZIPEntryBytes
 	// must be accepted (not treated as oversized).
 	orig := maxGEDZIPEntryBytes
@@ -479,7 +553,7 @@ func TestWriteZipEntry_AcceptsEntryAtExactLimit(t *testing.T) {
 	require.Len(t, zr.File, 1)
 
 	destPath := filepath.Join(t.TempDir(), "exact.bin")
-	err = writeZipEntry(zr.File[0], destPath)
+	err = copyMemberFile(zr, "media/exact.bin", destPath)
 	require.NoError(t, err, "entry at exactly the size limit should be accepted")
 
 	info, statErr := os.Stat(destPath)
@@ -520,32 +594,35 @@ func TestEntrySizeLimitReader(t *testing.T) {
 }
 
 func TestImportGEDZIP_MkdirAllFailsWhenFileOccupiesDirectoryPath(t *testing.T) {
-	// Write "foo" as a regular file, then "foo/bar.txt". When extracting the
-	// second entry, MkdirAll("foo/") fails because "foo" is already a regular
-	// file — exercising the directory-creation error branch.
-	gdz := buildGEDZIPOrdered(t, []gedzipTestEntry{
-		{Name: "gedcom.ged", Body: []byte(minimalGEDCOM7)},
-		{Name: "foo", Body: []byte("regular-file-content")},
-		{Name: "foo/bar.txt", Body: []byte("nested-content")},
-	})
+	// When destPath's parent directory is occupied by a regular file, MkdirAll
+	// fails — exercising the directory-creation error branch.
+	tempDir := t.TempDir()
+	filePath := filepath.Join(tempDir, "file-not-dir")
+	require.NoError(t, os.WriteFile(filePath, []byte("content"), filePermissions))
 
-	err := importGEDCOM(gdz, filepath.Join(t.TempDir(), "archive"), FormatMulti, true, false, defaultShowFirstErrors)
+	gdz := buildGEDZIP(t, map[string][]byte{"test.txt": []byte("data")})
+	zr, err := zip.OpenReader(gdz)
+	require.NoError(t, err)
+	defer func() { _ = zr.Close() }()
+
+	destPath := filepath.Join(filePath, "sub", "test.txt")
+	err = copyMemberFile(zr, "test.txt", destPath)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "creating directory")
 }
 
 func TestImportGEDZIP_OpenFileFailsWhenDirectoryOccupiesFilePath(t *testing.T) {
-	// Write "foo/bar.txt" first (which creates "foo" as a directory), then
-	// write "foo" as a regular file. The second entry's OpenFile fails with
-	// EISDIR — exercising the destination-open error branch in writeZipEntry
-	// and the error-propagation branch in extractGEDZIP.
-	gdz := buildGEDZIPOrdered(t, []gedzipTestEntry{
-		{Name: "gedcom.ged", Body: []byte(minimalGEDCOM7)},
-		{Name: "foo/bar.txt", Body: []byte("nested-content")},
-		{Name: "foo", Body: []byte("conflicts-with-dir")},
-	})
+	// When destPath is occupied by an existing directory, OpenFile fails with
+	// EISDIR — exercising the destination-open error branch in writeStreamEntry.
+	dirPath := filepath.Join(t.TempDir(), "existing-dir")
+	require.NoError(t, os.MkdirAll(dirPath, dirPermissions))
 
-	err := importGEDCOM(gdz, filepath.Join(t.TempDir(), "archive"), FormatMulti, true, false, defaultShowFirstErrors)
+	gdz := buildGEDZIP(t, map[string][]byte{"test.txt": []byte("data")})
+	zr, err := zip.OpenReader(gdz)
+	require.NoError(t, err)
+	defer func() { _ = zr.Close() }()
+
+	err = copyMemberFile(zr, "test.txt", dirPath)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "creating destination file")
 }
@@ -584,4 +661,347 @@ func TestImportGEDZIP_RejectsGedcomEntryAsSymlink(t *testing.T) {
 
 	err := importGEDCOM(gdz, filepath.Join(t.TempDir(), "archive"), FormatMulti, true, false, defaultShowFirstErrors)
 	require.ErrorIs(t, err, ErrGEDZIPMissingGedcom)
+}
+
+func TestImportGEDZIP_OfficialMinimal70(t *testing.T) {
+	tmpDir := t.TempDir()
+	outputPath := filepath.Join(tmpDir, "minimal.glx")
+
+	err := importGEDCOM("testdata/gedcom/7.0/minimal-valid/minimal70.gdz", outputPath, FormatSingle, true, false, defaultShowFirstErrors)
+	require.NoError(t, err)
+
+	data, err := os.ReadFile(outputPath)
+	require.NoError(t, err)
+
+	var glxFile glxlib.GLXFile
+	err = yaml.Unmarshal(data, &glxFile)
+	require.NoError(t, err)
+	require.NotNil(t, glxFile.ImportMetadata)
+	require.Equal(t, "7.0", glxFile.ImportMetadata.GEDCOMVersion)
+}
+
+func TestImportGEDZIP_OfficialMaximal70(t *testing.T) {
+	tmpDir := t.TempDir()
+	outDir := filepath.Join(tmpDir, "maximal-archive")
+
+	err := importGEDCOM("testdata/gedcom/7.0/comprehensive-spec/maximal70.gdz", outDir, FormatMulti, true, false, defaultShowFirstErrors)
+	require.NoError(t, err)
+
+	// Verify imported persons
+	personDir := filepath.Join(outDir, "persons")
+	entries, err := os.ReadDir(personDir)
+	require.NoError(t, err)
+	require.NotEmpty(t, entries, "should have imported person files")
+
+	// Verify media directory and copied media files
+	mediaFilesDir := filepath.Join(outDir, "media", "files")
+	require.DirExists(t, mediaFilesDir)
+
+	// Check original.mp3 was extracted
+	mp3Path := filepath.Join(mediaFilesDir, "original.mp3")
+	require.FileExists(t, mp3Path, "original.mp3 should be extracted from maximal70.gdz")
+}
+
+// stageMediaInside creates a staging directory inside targetDir holding the
+// given media/files entries, mirroring how the import path stages before
+// committing.
+func stageMediaInside(t *testing.T, targetDir string, files map[string]string) string {
+	t.Helper()
+	require.NoError(t, os.MkdirAll(targetDir, dirPermissions))
+	stageDir := filepath.Join(targetDir, ".glx-stage-test")
+
+	stagedFiles := filepath.Join(stageDir, glxlib.MediaFilesDir)
+	require.NoError(t, os.MkdirAll(stagedFiles, dirPermissions))
+	for name, content := range files {
+		require.NoError(t, os.WriteFile(filepath.Join(stagedFiles, name), []byte(content), filePermissions))
+	}
+
+	return stageDir
+}
+
+func TestCommitStagedMedia_ReplacesLeafSymlinkWithoutFollowingIt(t *testing.T) {
+	// media/files/photo.jpg is an existing symlink pointing outside the
+	// archive. The commit must replace the link itself, not write through it.
+	tmpDir := t.TempDir()
+
+	outside := filepath.Join(tmpDir, "outside.txt")
+	originalContent := []byte("must not be overwritten")
+	require.NoError(t, os.WriteFile(outside, originalContent, filePermissions))
+
+	targetDir := filepath.Join(tmpDir, "archive")
+	stageDir := stageMediaInside(t, targetDir, map[string]string{"photo.jpg": "staged bytes"})
+
+	targetFiles := filepath.Join(targetDir, glxlib.MediaFilesDir)
+	require.NoError(t, os.MkdirAll(targetFiles, dirPermissions))
+	require.NoError(t, os.Symlink(outside, filepath.Join(targetFiles, "photo.jpg")))
+
+	require.NoError(t, commitStagedMedia(stageDir, targetDir))
+
+	committed := filepath.Join(targetFiles, "photo.jpg")
+	info, err := os.Lstat(committed)
+	require.NoError(t, err)
+	require.Zero(t, info.Mode()&os.ModeSymlink, "committed media must be a regular file, not a symlink")
+
+	got, err := os.ReadFile(committed)
+	require.NoError(t, err)
+	require.Equal(t, []byte("staged bytes"), got)
+
+	content, err := os.ReadFile(outside)
+	require.NoError(t, err)
+	require.Equal(t, originalContent, content, "symlink target must not be written through")
+}
+
+func TestCommitStagedMedia_RefusesSymlinkedMediaDirectory(t *testing.T) {
+	// The dangerous case a leaf-only guard misses: "media" itself is a symlink
+	// out of the archive, so a bare os.MkdirAll would create media/files/
+	// inside the link target and every commit would land there.
+	tmpDir := t.TempDir()
+
+	outside := filepath.Join(tmpDir, "outside")
+	require.NoError(t, os.MkdirAll(outside, dirPermissions))
+
+	targetDir := filepath.Join(tmpDir, "archive")
+	stageDir := stageMediaInside(t, targetDir, map[string]string{"photo.jpg": "staged bytes"})
+	require.NoError(t, os.Symlink(outside, filepath.Join(targetDir, "media")))
+
+	err := commitStagedMedia(stageDir, targetDir)
+	require.Error(t, err, "a symlinked media/ directory must not be traversed")
+
+	entries, readErr := os.ReadDir(outside)
+	require.NoError(t, readErr)
+	require.Empty(t, entries, "nothing may be written through the symlinked directory")
+}
+
+func TestCommitStagedMedia_RejectsStagingOutsideTarget(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	targetDir := filepath.Join(tmpDir, "archive")
+	require.NoError(t, os.MkdirAll(targetDir, dirPermissions))
+
+	stageDir := filepath.Join(tmpDir, "stage")
+	stagedFiles := filepath.Join(stageDir, glxlib.MediaFilesDir)
+	require.NoError(t, os.MkdirAll(stagedFiles, dirPermissions))
+	require.NoError(t, os.WriteFile(filepath.Join(stagedFiles, "photo.jpg"), []byte("x"), filePermissions))
+
+	err := commitStagedMedia(stageDir, targetDir)
+	require.ErrorIs(t, err, ErrPathEscapesDir)
+}
+
+func TestCommitStagedMedia_PreservesExistingFileWhenCommitFails(t *testing.T) {
+	// A commit that fails partway must leave already-present media intact
+	// rather than destroying a file it cannot replace. "blocked.jpg" sorts
+	// before "photo.jpg", so the failure happens first.
+	tmpDir := t.TempDir()
+	targetDir := filepath.Join(tmpDir, "archive")
+
+	stageDir := stageMediaInside(t, targetDir, map[string]string{
+		"blocked.jpg": "new blocked",
+		"photo.jpg":   "new photo",
+	})
+
+	targetFiles := filepath.Join(targetDir, glxlib.MediaFilesDir)
+	require.NoError(t, os.MkdirAll(targetFiles, dirPermissions))
+
+	// A non-empty directory cannot be replaced by a rename.
+	blocking := filepath.Join(targetFiles, "blocked.jpg")
+	require.NoError(t, os.MkdirAll(blocking, dirPermissions))
+	require.NoError(t, os.WriteFile(filepath.Join(blocking, "occupant"), []byte("x"), filePermissions))
+
+	existing := filepath.Join(targetFiles, "photo.jpg")
+	require.NoError(t, os.WriteFile(existing, []byte("old photo"), filePermissions))
+
+	err := commitStagedMedia(stageDir, targetDir)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "committing media file blocked.jpg")
+
+	got, readErr := os.ReadFile(existing)
+	require.NoError(t, readErr)
+	require.Equal(t, []byte("old photo"), got, "pre-existing media must survive a failed commit")
+}
+
+// stagingStreams returns IOStreams whose Out is captured, for asserting on the
+// warnings stageMediaFilesFromFS emits.
+func stagingStreams(buf *bytes.Buffer) *IOStreams {
+	return &IOStreams{Out: buf, MachineOut: io.Discard, ErrOut: buf}
+}
+
+func TestStageMediaFilesFromFS_WarnsOnUnresolvedReference(t *testing.T) {
+	// A FILE ref the library could not bind to a bundle member arrives with an
+	// empty MemberPath. That must warn rather than abort the import, and must
+	// not produce a file.
+	gdz := buildGEDZIP(t, map[string][]byte{"gedcom.ged": []byte(minimalGEDCOM7)})
+	zr, err := zip.OpenReader(gdz)
+	require.NoError(t, err)
+	defer func() { _ = zr.Close() }()
+
+	var out bytes.Buffer
+	stageDir := t.TempDir()
+	copyCount, blobCount, warnCount, err := stageMediaFilesFromFS(stagingStreams(&out), stageDir, []glxlib.MediaFileSource{{
+		MediaID:        "M1",
+		SourceType:     glxlib.MediaSourceFile,
+		RelativePath:   "media/missing.jpg",
+		TargetFilename: "missing.jpg",
+	}}, zr)
+
+	require.NoError(t, err)
+	require.Zero(t, copyCount)
+	require.Zero(t, blobCount)
+	require.Equal(t, 1, warnCount)
+	require.Contains(t, out.String(), "unresolved or invalid reference")
+	require.NoFileExists(t, filepath.Join(stageDir, glxlib.MediaFilesDir, "missing.jpg"))
+}
+
+func TestStageMediaFilesFromFS_WarnsOnSymlinkMember(t *testing.T) {
+	// A media member that is a symlink is refused (never followed), but the
+	// import continues — with a warning, so the dangling media URI is visible.
+	gdz := buildGEDZIPOrdered(t, []gedzipTestEntry{
+		{Name: "gedcom.ged", Body: []byte(minimalGEDCOM7)},
+		{Name: "media/photo.jpg", Body: []byte("/etc/passwd"), Mode: os.ModeSymlink | 0o777},
+	})
+	zr, err := zip.OpenReader(gdz)
+	require.NoError(t, err)
+	defer func() { _ = zr.Close() }()
+
+	var out bytes.Buffer
+	stageDir := t.TempDir()
+	copyCount, _, warnCount, err := stageMediaFilesFromFS(stagingStreams(&out), stageDir, []glxlib.MediaFileSource{{
+		MediaID:        "M1",
+		SourceType:     glxlib.MediaSourceFile,
+		RelativePath:   "media/photo.jpg",
+		MemberPath:     "media/photo.jpg",
+		TargetFilename: "photo.jpg",
+	}}, zr)
+
+	require.NoError(t, err)
+	require.Zero(t, copyCount)
+	require.Equal(t, 1, warnCount)
+	require.Contains(t, out.String(), "could not copy media file")
+	require.NoFileExists(t, filepath.Join(stageDir, glxlib.MediaFilesDir, "photo.jpg"))
+}
+
+func TestStageMediaFilesFromFS_WritesBlobAndWarnsOnBadBlob(t *testing.T) {
+	// GEDCOM 5.5.1 BLOB members are decoded and written locally — they never
+	// touch the bundle — so a GEDZIP carrying a 5.5.1 GEDCOM still gets its
+	// inline media. A malformed BLOB warns instead of aborting.
+	gdz := buildGEDZIP(t, map[string][]byte{"gedcom.ged": []byte(minimalGEDCOM7)})
+	zr, err := zip.OpenReader(gdz)
+	require.NoError(t, err)
+	defer func() { _ = zr.Close() }()
+
+	var out bytes.Buffer
+	stageDir := t.TempDir()
+	copyCount, blobCount, warnCount, err := stageMediaFilesFromFS(stagingStreams(&out), stageDir, []glxlib.MediaFileSource{
+		{MediaID: "M1", SourceType: glxlib.MediaSourceBlob, BlobData: ".HM.......k.1..F", TargetFilename: "blob-M1.bin"},
+		{MediaID: "M2", SourceType: glxlib.MediaSourceBlob, BlobData: "!!!not-a-blob!!!", TargetFilename: "blob-M2.bin"},
+	}, zr)
+
+	require.NoError(t, err)
+	require.Zero(t, copyCount)
+	require.Equal(t, 1, blobCount)
+	require.Equal(t, 1, warnCount)
+	require.Contains(t, out.String(), "could not decode BLOB")
+	require.FileExists(t, filepath.Join(stageDir, glxlib.MediaFilesDir, "blob-M1.bin"))
+	require.NoFileExists(t, filepath.Join(stageDir, glxlib.MediaFilesDir, "blob-M2.bin"))
+}
+
+func TestImportGEDZIPToMultiFile_SerializationFailureLeavesMediaUncommitted(t *testing.T) {
+	// Media has to commit before the entity files are written, so serialization
+	// and validation run first: a GLXFile that cannot be serialized must fail
+	// before any media lands in the output directory. Two person IDs differing
+	// only by case collide at serialize time (see glx/CLAUDE.md).
+	gdz := buildGEDZIP(t, map[string][]byte{
+		"gedcom.ged":  []byte(minimalGEDCOM7),
+		"photo-1.jpg": []byte("jpeg-bytes"),
+	})
+	zr, err := zip.OpenReader(gdz)
+	require.NoError(t, err)
+	defer func() { _ = zr.Close() }()
+
+	glx := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"Person-A": {Properties: map[string]any{"name": "Person A"}},
+			"person-a": {Properties: map[string]any{"name": "Person a"}},
+		},
+	}
+
+	outputPath := filepath.Join(t.TempDir(), "archive")
+	err = importGEDZIPToMultiFile(glx, outputPath, false, false, 0, []glxlib.MediaFileSource{
+		{MediaID: "M1", SourceType: glxlib.MediaSourceFile, MemberPath: "photo-1.jpg", TargetFilename: "photo-1.jpg"},
+	}, zr, io.Discard)
+
+	require.Error(t, err)
+	require.NoDirExists(t, filepath.Join(outputPath, glxlib.MediaFilesDir))
+}
+
+func TestCopyMemberFile_ReportsMissingMember(t *testing.T) {
+	gdz := buildGEDZIP(t, map[string][]byte{"gedcom.ged": []byte(minimalGEDCOM7)})
+	zr, err := zip.OpenReader(gdz)
+	require.NoError(t, err)
+	defer func() { _ = zr.Close() }()
+
+	err = copyMemberFile(zr, "media/absent.jpg", filepath.Join(t.TempDir(), "absent.jpg"))
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "opening zip entry")
+}
+
+func TestCopyMemberFile_MapsUnsupportedCompression(t *testing.T) {
+	registerUnsupportedZipCompressor(t)
+
+	zipPath := filepath.Join(t.TempDir(), "unsupported.gdz")
+	f, err := os.Create(filepath.Clean(zipPath))
+	require.NoError(t, err)
+	zw := zip.NewWriter(f)
+	w, err := zw.CreateHeader(&zip.FileHeader{Name: "media/photo.jpg", Method: unsupportedZipMethod})
+	require.NoError(t, err)
+	_, err = w.Write([]byte("payload"))
+	require.NoError(t, err)
+	require.NoError(t, zw.Close())
+	require.NoError(t, f.Close())
+
+	zr, err := zip.OpenReader(zipPath)
+	require.NoError(t, err)
+	defer func() { _ = zr.Close() }()
+
+	err = copyMemberFile(zr, "media/photo.jpg", filepath.Join(t.TempDir(), "photo.jpg"))
+	require.ErrorIs(t, err, ErrGEDZIPUnsupportedAlgorithm)
+}
+
+func TestCommitStagedMedia_NoStagedDirectoryIsNoOp(t *testing.T) {
+	stageDir := t.TempDir()
+	targetDir := filepath.Join(t.TempDir(), "archive")
+
+	require.NoError(t, commitStagedMedia(stageDir, targetDir))
+	require.NoDirExists(t, filepath.Join(targetDir, glxlib.MediaFilesDir))
+}
+
+func TestImportGEDZIP_VerboseSingleFileWithMedia(t *testing.T) {
+	gedcom := "0 HEAD\n" +
+		"1 GEDC\n" +
+		"2 VERS 7.0\n" +
+		"0 @I1@ INDI\n" +
+		"1 NAME John /Doe/\n" +
+		"1 OBJE @M1@\n" +
+		"0 @M1@ OBJE\n" +
+		"1 FILE media/photo.jpg\n" +
+		"1 FORM image/jpeg\n" +
+		"0 TRLR\n"
+
+	gdz := buildGEDZIP(t, map[string][]byte{
+		"gedcom.ged":      []byte(gedcom),
+		"media/photo.jpg": []byte("jpeg-content"),
+	})
+
+	outPath := filepath.Join(t.TempDir(), "archive.glx")
+	var out bytes.Buffer
+	err := importGEDCOM(gdz, outPath, FormatSingle, true, true, defaultShowFirstErrors, &out)
+	require.NoError(t, err)
+
+	require.Contains(t, out.String(), "Extracting GEDZIP archive")
+	require.Contains(t, out.String(), "Writing single-file archive")
+	require.FileExists(t, outPath)
+
+	// Media lands in a sibling media/files/ directory for single-file output.
+	copied, err := os.ReadFile(filepath.Join(filepath.Dir(outPath), glxlib.MediaFilesDir, "photo.jpg"))
+	require.NoError(t, err)
+	require.Equal(t, []byte("jpeg-content"), copied)
 }
