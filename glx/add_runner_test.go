@@ -788,6 +788,67 @@ func TestAdd_DryRunWritesNothing(t *testing.T) {
 	}
 }
 
+// TestAdd_ProgressLineUsesSingularWithSeparator pins the shape of the "Adding"
+// line printed by finalizeAdd. The plural EntityType value is the YAML key and
+// directory name, not an English noun, and running it straight into the ID read
+// as a list ("Adding assertions assertion-death-1807-date"). See issue #1276.
+func TestAdd_ProgressLineUsesSingularWithSeparator(t *testing.T) {
+	cases := []struct {
+		name string
+		add  func(*IOStreams, string) error
+		want string
+	}{
+		{
+			name: "person",
+			add: func(io *IOStreams, dir string) error {
+				return addPerson(io, &addPersonOptions{
+					addCommonOptions: addCommonOptions{ArchivePath: dir},
+					Given:            "Michael David",
+					Surname:          "Hollnagel",
+				})
+			},
+			want: "Adding person: person-michael-david-hollnagel\n",
+		},
+		{
+			name: "place",
+			add: func(io *IOStreams, dir string) error {
+				return addPlace(io, &addPlaceOptions{
+					addCommonOptions: addCommonOptions{ArchivePath: dir},
+					Name:             "Liepen",
+					Type:             "locality",
+				})
+			},
+			want: "Adding place: place-liepen\n",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := initArchiveDir(t)
+			io, out, _ := TestIOStreams()
+
+			if err := tc.add(io, dir); err != nil {
+				t.Fatalf("add %s: %v", tc.name, err)
+			}
+
+			if !strings.Contains(out.String(), tc.want) {
+				t.Errorf("progress line: got %q, want it to contain %q", out.String(), tc.want)
+			}
+		})
+	}
+}
+
+// TestAdd_EveryEntityTypeHasADisplayableSingular guards the label source used by
+// finalizeAdd: an EntityType with no Singular() entry would print
+// "Adding : person-x". See issue #1276.
+func TestAdd_EveryEntityTypeHasADisplayableSingular(t *testing.T) {
+	for _, et := range glxlib.AllEntityTypes {
+		if et.Singular() == "" {
+			t.Errorf("EntityType %s has no Singular(); finalizeAdd would print an empty label", et)
+		}
+	}
+}
+
 func TestAdd_QuietSuppressesDiagnosticsButKeepsIDEcho(t *testing.T) {
 	dir := initArchiveDir(t)
 
