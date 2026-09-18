@@ -12,6 +12,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [Unreleased]
 
+### Changed
+
+- **Toolchain bump to Go 1.27 and golangci-lint v2.13.2, with `nolintlint` unused-directive enforcement** — `go.mod` and `ci-tools/go.mod` now declare `go 1.27.0` / `toolchain go1.27.1`, the devcontainer image moves to `go:1.27`, and `.golangci-lint-version` pins `v2.13.2`. The 35 `//nolint` directives that no longer suppressed anything (mostly `//nolint:mnd` on numbers already in `ignored-numbers`, plus stale `errcheck`/`nilerr`/`goconst`/`revive`/`gocyclo` directives) were removed, and `nolintlint`'s `allow-unused` is set to `false` so redundant suppressions are caught from now on. Contributors need Go 1.27+, and so do downstream projects importing `github.com/genealogix/glx/go-glx`. (#902)
+
 ## [0.0.0-beta.12] - 2026-09-16
 
 ### Added

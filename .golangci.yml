@@ -235,9 +235,7 @@ linters:
     nolintlint:
       require-explanation: true
       require-specific: true
-      # allow-unused deferred: the unused-directive check surfaces 15 pre-existing
-      # redundant //nolint:mnd directives, cleaned up separately in #902.
-      allow-unused: true
+      allow-unused: false
 
   exclusions:
     generated: lax
