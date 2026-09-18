@@ -4,8 +4,9 @@ This is the core GLX library (`package glx`). It is a **pure library** — all I
 
 ## Critical Rule: No Filesystem I/O
 
-Source of truth: [ADR-0006](../docs/decisions/0006-go-glx-library-pure.md) — read it
-for the full prohibited/allowed lists, the worked example, and the rationale.
+Source of truth: [ADR-0006](../docs/decisions/0006-go-glx-library-pure.md)
+(`../docs/decisions/0006-go-glx-library-pure.md`) — read it for the full
+prohibited/allowed lists, the worked example, and the rationale.
 
 Summary: the go-glx package must NEVER perform filesystem I/O. No `os.*` file or
 directory calls, no path building combined with file operations. Take and return

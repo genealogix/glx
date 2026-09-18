@@ -29,26 +29,30 @@ The `go-glx` package MUST NOT perform filesystem I/O. This ADR is the canonical
 statement of that rule; everything else in the repository that mentions it —
 agent guides included — only summarizes and points back here.
 
-Prohibited in `go-glx/` non-test code:
+Prohibited in `go-glx/` production code:
 
 - `os.ReadFile`, `os.WriteFile`, `os.Open`, `os.Create`
 - `os.MkdirAll`, `os.Stat`, `os.ReadDir`
 - `filepath.Join` (or any other path construction) combined with file operations
-- any other direct filesystem access, including directory walking
+- walking the real filesystem — `filepath.WalkDir`, `filepath.Walk`, `os.ReadDir`
+  recursion
+- any other direct access to the operating system's filesystem
 
 Allowed instead:
 
 - `io.Reader`, `io.Writer`, and `[]byte` parameters and return values
 - `io/fs.FS` (`fs.FS`) when a function genuinely needs a tree of files, so the
   caller chooses the backing store — a real directory, an embedded filesystem,
-  or an in-memory one
+  or an in-memory one. Walking a caller-supplied `fs.FS` with `fs.WalkDir` is
+  fine: the library never decides what the tree is backed by. `ImportGEDZIP`
+  in `go-glx/gedzip_import.go` works this way.
 - `go:embed` for data the library itself owns, such as the standard vocabularies
 
 Concretely:
 
 ```go
 // Wrong — library doing I/O
-func SerializeSingleFile(glx *GLXFile, outputPath string) error {
+func (s *DefaultSerializer) SerializeSingleFile(glx *GLXFile, outputPath string) error {
     yamlBytes, err := yaml.Marshal(glx)
     if err != nil {
         return err
@@ -56,13 +60,18 @@ func SerializeSingleFile(glx *GLXFile, outputPath string) error {
     return os.WriteFile(outputPath, yamlBytes, 0o644)
 }
 
-// Correct — library returns bytes, CLI does I/O
-func SerializeToBytes(glx *GLXFile) ([]byte, error) {
+// Correct — library returns bytes, CLI does I/O.
+// This is the real signature; see go-glx/serializer.go.
+func (s *DefaultSerializer) SerializeSingleFileBytes(glx *GLXFile) ([]byte, error) {
     return yaml.Marshal(glx)
 }
 ```
 
-Everything on the prohibited list lives in the `glx/` CLI package or in test helpers outside `go-glx/`.
+Everything on the prohibited list lives in the `glx/` CLI package. The one carve-out
+is unexported test helpers that exist purely to feed fixtures to the library's own
+tests — `go-glx/gedcom_test_helpers.go` opens files for that reason. They are not part
+of the library's API and no production path reaches them; nothing exported may rely on
+them.
 
 ## Consequences
 
