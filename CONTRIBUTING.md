@@ -185,6 +185,47 @@ docs: Update quickstart guide
 
 Every commit must also carry a `Signed-off-by` trailer — see [Developer Certificate of Origin (DCO)](#developer-certificate-of-origin-dco) for how to add one and what you're attesting to.
 
+### Changelog Conflicts
+
+`CHANGELOG.md` is marked `merge=union` in `.gitattributes`. When your branch and
+`main` both add entries, a local `git merge main` (or `git rebase main`) keeps
+both sides instead of leaving conflict markers. `union` is a git built-in, so it
+works in every clone with no `git config` step — unlike the optional `merge=glx`
+driver for `.glx` files described in [docs/merge-driver.md](docs/merge-driver.md).
+
+Review the merged result anyway — union keeps every line from both sides
+without understanding the file:
+
+- **Across a release boundary it can misfile your entry.** If `main` promoted
+  `## [Unreleased]` to a released version heading while your branch added an
+  entry under it, union keeps both and your entry ends up *inside* the released
+  section, which must never be edited. After merging `main` following a
+  release, check that your entries sit under `## [Unreleased]`; the reliable
+  fix is to restore the file from the freshly fetched upstream ref —
+  `git checkout upstream/main -- CHANGELOG.md` on a fork, `origin/main` on a
+  direct clone — and then re-add your branch's entries. Don't restore from a
+  local `main` branch unless you have just updated it; a stale one would
+  discard the release you are merging in.
+- Entry order and duplicated headings may still need a tidy-up when both sides
+  restructured the same region.
+
+GitHub's "Update branch" button — and the auto-update bot that keeps PR branches
+current — merge server-side, and the GitHub merge API does not honor
+`.gitattributes` merge drivers. If GitHub reports a conflict in `CHANGELOG.md`
+only, resolve it by merging `main` locally and pushing:
+
+```bash
+# Fork workflow: the canonical repo is `upstream`, your PR branch lives on `origin`.
+git fetch upstream
+git merge upstream/main   # union resolves CHANGELOG.md
+git push origin HEAD
+
+# Org members pushing branches directly: the canonical repo is `origin`.
+git fetch origin
+git merge origin/main
+git push
+```
+
 ## Testing
 
 Prefer using the Makefile to run tests for consistency. `go test` directly is fine for targeted runs.
