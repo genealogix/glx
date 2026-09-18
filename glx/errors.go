@@ -22,6 +22,8 @@ import (
 
 // Command validation errors
 var (
+	ErrMissingArguments           = errors.New("missing required argument(s)")
+	ErrTooManyArguments           = errors.New("too many arguments")
 	ErrMediaFileNotFound          = errors.New("file not found")
 	ErrValidationWithErrors       = errors.New("validation failed with errors")
 	ErrInvalidFormat              = errors.New("invalid format (must be 'single' or 'multi')")
