@@ -36,6 +36,52 @@ jobs:
           # flip can't change our security posture silently (#930).
           vulnerability-check: true
           license-check: true
+          # The action filters the dependency diff by scope BEFORE either
+          # check sees it, and the default is `runtime` only. Both npm
+          # manifests here (`website/`, `specification/`) are 100%
+          # devDependencies, so with the default the license policy below
+          # would never evaluate a single npm package. `development` is
+          # therefore required for the policy to mean anything (#340). The
+          # side effect on `vulnerability-check` is intentional and not new
+          # coverage: `npm-audit.yml` already runs `npm audit
+          # --audit-level=moderate` over both trees without `--omit=dev`.
+          fail-on-scopes: runtime, development
+          # License policy (#340). The `deny-licenses` input is deprecated
+          # (actions/dependency-review-action#938), so this is an allow-list:
+          # anything not named here fails the check and forces an explicit
+          # decision in review.
+          #
+          # This list is a deliberate SUPERSET of the Go allowlist kept in
+          # sync between `.github/workflows/license-compliance.yml`
+          # (`go-licenses check --allowed_licenses=...`) and the `license-check`
+          # target in `Makefile`. It has to be a superset because Dependency
+          # Review sees three surfaces those two never do: the npm trees in
+          # `website/` and `specification/`, the GitHub Actions graph, and the
+          # second Go module `ci-tools/go.mod` (`go-licenses check ./...` runs
+          # in the root module only). When you add a license to the Go
+          # allowlist, add it here too; the reverse is not required.
+          #
+          # Go allowlist, verbatim: Apache-2.0, MIT, BSD-2-Clause,
+          # BSD-3-Clause, ISC, MPL-2.0. MPL-2.0 is file-level copyleft and
+          # also appears in the npm tree (lightningcss, via vitepress).
+          #
+          # npm-only additions, each with the package that needs it:
+          #   CC0-1.0       — @iconify-json/simple-icons (website)
+          #   BlueOak-1.0.0 — minimatch >=10 (website)
+          #   Python-2.0    — argparse@2 (specification, via js-yaml)
+          # Nothing in the repo uses 0BSD or Unlicense today; they are
+          # pre-approved deliberately because both are public-domain-
+          # equivalent and impose no obligation a review decision could
+          # weigh. Every license that does carry obligations still has to be
+          # added here explicitly.
+          #   0BSD, Unlicense
+          allow-licenses: >-
+            Apache-2.0, MIT, BSD-2-Clause, BSD-3-Clause, ISC, MPL-2.0,
+            CC0-1.0, BlueOak-1.0.0, Python-2.0, 0BSD, Unlicense
+          # Note: a dependency whose license the action cannot resolve at all
+          # is reported but does NOT fail the check (upstream behaviour), so
+          # the allow-list gates known licenses, not unknown ones — e.g.
+          # `fsfe/reuse-action` has no license detected by the API.
           show-openssf-scorecard: true
           # Default warn level is 3; many maintained projects score 5-7,
           # so 5 surfaces barely-maintained deps without noise from

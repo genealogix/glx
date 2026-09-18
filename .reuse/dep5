@@ -25,7 +25,7 @@ Files: go.mod go.sum
 Copyright: 2025 Oracynth, Inc.
 License: Apache-2.0
 
-Files: Makefile .goreleaser.yml renovate.json .gitattributes .gitignore .npmrc
+Files: Makefile .goreleaser.yml .gitattributes .gitignore .npmrc
 Copyright: 2025 Oracynth, Inc.
 License: Apache-2.0
 
