@@ -224,9 +224,13 @@ func (glx *GLXFile) checkBoundarySource(
 		return
 	}
 
-	propYear := ExtractFirstYear(propertyDateString(propValue))
 	eventYear := resolveEventYear(glx, eventID)
-	if propYear == 0 || eventYear == 0 {
+	if eventYear == 0 {
+		return
+	}
+
+	propYear := boundaryPropertyYear(propValue, eventYear)
+	if propYear == 0 {
 		return
 	}
 
@@ -253,34 +257,59 @@ func (glx *GLXFile) checkBoundarySource(
 	})
 }
 
-// propertyDateString extracts a date string from a property value that may be
-// a plain string, a structured {value, ...} object, or a temporal list of
-// {value, date} objects (or plain strings). The first usable
-// value wins; an empty string is returned when no value can be extracted.
-func propertyDateString(propValue any) string {
+// boundaryPropertyYear picks the year a boundary date property records, given
+// the year the boundary's event records. Entries with no parseable year are
+// ignored; among the rest, a year that differs from the event's wins over one
+// that matches, so a temporal list that mixes agreeing and conflicting entries
+// is reported as a conflict rather than as a plain duplicate. Returns 0 when
+// no entry yields a year.
+func boundaryPropertyYear(propValue any, eventYear int) int {
+	found := 0
+	for _, dateStr := range propertyDateStrings(propValue) {
+		year := ExtractFirstYear(dateStr)
+		if year == 0 {
+			continue
+		}
+		if year != eventYear {
+			return year
+		}
+		found = year
+	}
+
+	return found
+}
+
+// propertyDateStrings collects the date strings a property value carries. The
+// value may be a plain string, a structured {value, ...} object, or a temporal
+// list of {value, date} objects (or plain strings); a shape that carries no
+// string value yields nothing.
+func propertyDateStrings(propValue any) []string {
 	switch v := propValue.(type) {
 	case string:
-		return v
+		return []string{v}
 	case map[string]any:
 		if value, isString := v["value"].(string); isString {
-			return value
+			return []string{value}
 		}
 	case []any:
+		values := make([]string, 0, len(v))
 		for _, item := range v {
 			switch entry := item.(type) {
 			case string:
 				if entry != "" {
-					return entry
+					values = append(values, entry)
 				}
 			case map[string]any:
 				if value, isString := entry["value"].(string); isString && value != "" {
-					return value
+					values = append(values, value)
 				}
 			}
 		}
+
+		return values
 	}
 
-	return ""
+	return nil
 }
 
 // resolveEventYear resolves an event reference to the year of its date, or 0

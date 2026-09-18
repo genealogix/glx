@@ -829,6 +829,67 @@ func TestValidateRelationshipBoundarySources_TemporalListValue(t *testing.T) {
 	}
 }
 
+func TestValidateRelationshipBoundarySources_StructuredValue(t *testing.T) {
+	glx := relationshipBoundaryFixture(map[string]any{"value": "1875-06-01"}, nil)
+	result := &ValidationResult{}
+	glx.validateRelationshipBoundarySources(result)
+
+	if len(result.Warnings) != 1 {
+		t.Fatalf("Expected 1 warning for structured property value, got %d: %v", len(result.Warnings), result.Warnings)
+	}
+	if !strings.Contains(result.Warnings[0].Message, "both record the same boundary") {
+		t.Errorf("Unexpected message: %s", result.Warnings[0].Message)
+	}
+}
+
+func TestValidateRelationshipBoundarySources_StructuredValueDisagrees(t *testing.T) {
+	glx := relationshipBoundaryFixture(map[string]any{"value": "1880-06-01"}, nil)
+	result := &ValidationResult{}
+	glx.validateRelationshipBoundarySources(result)
+
+	if len(result.Warnings) != 1 {
+		t.Fatalf("Expected 1 warning, got %d: %v", len(result.Warnings), result.Warnings)
+	}
+	if !strings.Contains(result.Warnings[0].Message, "(1875) and properties.started_on (1880) record different years") {
+		t.Errorf("Unexpected message: %s", result.Warnings[0].Message)
+	}
+}
+
+func TestValidateRelationshipBoundarySources_ListSkipsUnparseableEntries(t *testing.T) {
+	// An undated/unparseable entry must not suppress a later parseable one.
+	glx := relationshipBoundaryFixture([]any{
+		map[string]any{"value": "sometime around then"},
+		map[string]any{"value": "1875-06-01", "date": "1875-06-01"},
+	}, nil)
+	result := &ValidationResult{}
+	glx.validateRelationshipBoundarySources(result)
+
+	if len(result.Warnings) != 1 {
+		t.Fatalf("Expected 1 warning, got %d: %v", len(result.Warnings), result.Warnings)
+	}
+	if !strings.Contains(result.Warnings[0].Message, "both record the same boundary") {
+		t.Errorf("Unexpected message: %s", result.Warnings[0].Message)
+	}
+}
+
+func TestValidateRelationshipBoundarySources_ListReportsConflictingEntry(t *testing.T) {
+	// A later entry that disagrees with the event wins over an earlier one
+	// that matches, so the conflict is reported rather than hidden.
+	glx := relationshipBoundaryFixture([]any{
+		map[string]any{"value": "1875-06-01", "date": "1875-06-01"},
+		map[string]any{"value": "1880-06-01", "date": "1880-06-01"},
+	}, nil)
+	result := &ValidationResult{}
+	glx.validateRelationshipBoundarySources(result)
+
+	if len(result.Warnings) != 1 {
+		t.Fatalf("Expected 1 warning, got %d: %v", len(result.Warnings), result.Warnings)
+	}
+	if !strings.Contains(result.Warnings[0].Message, "(1875) and properties.started_on (1880) record different years") {
+		t.Errorf("Unexpected message: %s", result.Warnings[0].Message)
+	}
+}
+
 func TestValidateRelationshipBoundarySources_NoWarningWhenOnlyProperty(t *testing.T) {
 	glx := relationshipBoundaryFixture("1875-06-01", "1890")
 	glx.Relationships["rel-1"].StartEvent = ""
