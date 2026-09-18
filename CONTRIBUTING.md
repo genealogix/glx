@@ -201,8 +201,11 @@ without understanding the file:
   entry under it, union keeps both and your entry ends up *inside* the released
   section, which must never be edited. After merging `main` following a
   release, check that your entries sit under `## [Unreleased]`; the reliable
-  fix is `git checkout main -- CHANGELOG.md` and then re-add your branch's
-  entries.
+  fix is to restore the file from the freshly fetched upstream ref —
+  `git checkout upstream/main -- CHANGELOG.md` on a fork, `origin/main` on a
+  direct clone — and then re-add your branch's entries. Don't restore from a
+  local `main` branch unless you have just updated it; a stale one would
+  discard the release you are merging in.
 - Entry order and duplicated headings may still need a tidy-up when both sides
   restructured the same region.
 
@@ -212,8 +215,14 @@ current — merge server-side, and the GitHub merge API does not honor
 only, resolve it by merging `main` locally and pushing:
 
 ```bash
+# Fork workflow: the canonical repo is `upstream`, your PR branch lives on `origin`.
+git fetch upstream
+git merge upstream/main   # union resolves CHANGELOG.md
+git push origin HEAD
+
+# Org members pushing branches directly: the canonical repo is `origin`.
 git fetch origin
-git merge origin/main   # union resolves CHANGELOG.md
+git merge origin/main
 git push
 ```
 
