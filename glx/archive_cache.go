@@ -506,7 +506,7 @@ func loadCache(root string) (*glxlib.GLXFile, *CacheHeader, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	defer f.Close() //nolint:errcheck // read-only handle
+	defer f.Close()
 
 	var archive glxlib.GLXFile
 	if err := dec.Decode(&archive); err != nil {
@@ -548,7 +548,7 @@ func tryLoadFreshCache(root string) (*glxlib.GLXFile, []string, bool) {
 	if err != nil {
 		return nil, nil, false
 	}
-	defer f.Close() //nolint:errcheck // read-only handle
+	defer f.Close()
 
 	if !cacheIsFresh(root, header) {
 		return nil, nil, false
