@@ -281,15 +281,16 @@ func boundaryPropertyYear(propValue any, eventYear int) int {
 
 // propertyDateStrings collects the date strings a property value carries. The
 // value may be a plain string, a structured {value, ...} object, or a temporal
-// list of {value, date} objects (or plain strings); a shape that carries no
-// string value yields nothing.
+// list of {value, date} objects (or plain strings); when a structured entry
+// carries both date and value, date wins as the authoritative parseable source.
+// A shape that carries no string value yields nothing.
 func propertyDateStrings(propValue any) []string {
 	switch v := propValue.(type) {
 	case string:
 		return []string{v}
 	case map[string]any:
-		if value, isString := v["value"].(string); isString {
-			return []string{value}
+		if dateStr := propertyDateString(v); dateStr != "" {
+			return []string{dateStr}
 		}
 	case []any:
 		values := make([]string, 0, len(v))
@@ -300,8 +301,8 @@ func propertyDateStrings(propValue any) []string {
 					values = append(values, entry)
 				}
 			case map[string]any:
-				if value, isString := entry["value"].(string); isString && value != "" {
-					values = append(values, value)
+				if dateStr := propertyDateString(entry); dateStr != "" {
+					values = append(values, dateStr)
 				}
 			}
 		}
@@ -310,6 +311,17 @@ func propertyDateStrings(propValue any) []string {
 	}
 
 	return nil
+}
+
+func propertyDateString(value map[string]any) string {
+	if dateStr, isString := value["date"].(string); isString && dateStr != "" {
+		return dateStr
+	}
+	if dateStr, isString := value["value"].(string); isString && dateStr != "" {
+		return dateStr
+	}
+
+	return ""
 }
 
 // resolveEventYear resolves an event reference to the year of its date, or 0
