@@ -60,6 +60,7 @@ type renderContext struct {
 	Persons    []*personPage
 	Sources    []sourceRow
 	Places     []placeRow
+	PlaceMap   *placeMap
 	Person     *personPage
 }
 
@@ -198,6 +199,7 @@ func renderPlacesPage(model *siteModel, base *renderContext, outputDir string) e
 	ctx.Active = navPlaces
 	ctx.PageTitle = pageTitlePlaces
 	ctx.Places = model.Places
+	ctx.PlaceMap = model.PlaceMap
 
 	return writeRendered(tmpl, filepath.Join(outputDir, "places", "index.html"), &ctx)
 }
