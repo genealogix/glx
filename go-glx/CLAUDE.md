@@ -8,10 +8,15 @@ Source of truth: [ADR-0006](../docs/decisions/0006-go-glx-library-pure.md)
 (`../docs/decisions/0006-go-glx-library-pure.md`) — read it for the full
 prohibited/allowed lists, the worked example, and the rationale.
 
-Summary: the go-glx package must NEVER perform filesystem I/O. No `os.*` file or
-directory calls, no path building combined with file operations. Take and return
-`io.Reader`, `io.Writer`, `io/fs.FS` (`fs.FS`), or `[]byte`; use `go:embed` for
-data the library owns. All filesystem work belongs to the `glx/` CLI package.
+Summary: production code in go-glx must NEVER touch the filesystem directly. No
+`os.*` file or directory calls, no `filepath.Walk`, no path building combined with
+file operations. Take and return `io.Reader`, `io.Writer`, `io/fs.FS` (`fs.FS`), or
+`[]byte`; use `go:embed` for data the library owns. Direct filesystem work belongs
+to the `glx/` CLI package.
+
+Two carve-outs the ADR spells out, so don't "fix" them: walking a caller-supplied
+`fs.FS` with `fs.WalkDir` is fine (the caller picks the backing store — see
+`ImportGEDZIP`), and unexported test-only helpers may open fixture files.
 
 ## Key Files
 

@@ -26,8 +26,9 @@ Without an explicit rule, library functions would naturally reach for `os.ReadFi
 ## Decision
 
 The `go-glx` package MUST NOT perform filesystem I/O. This ADR is the canonical
-statement of that rule; everything else in the repository that mentions it —
-agent guides included — only summarizes and points back here.
+statement of that rule. Anything else in the repository that states it — agent
+guides included — may only summarize it and must point back here; none of it is
+authoritative on its own.
 
 Prohibited in `go-glx/` production code:
 
