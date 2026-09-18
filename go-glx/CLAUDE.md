@@ -4,27 +4,19 @@ This is the core GLX library (`package glx`). It is a **pure library** — all I
 
 ## Critical Rule: No Filesystem I/O
 
-The go-glx package must NEVER perform filesystem I/O:
+Source of truth: [ADR-0006](../docs/decisions/0006-go-glx-library-pure.md)
+(`../docs/decisions/0006-go-glx-library-pure.md`) — read it for the full
+prohibited/allowed lists, the worked example, and the rationale.
 
-- NO `os.ReadFile`, `os.WriteFile`, `os.Open`, `os.Create`
-- NO `os.MkdirAll`, `os.Stat`, `os.ReadDir`
-- NO `filepath.Join` with file operations
-- YES to `io.Reader`, `io.Writer`, `io/fs.FS` (`fs.FS`), `[]byte` parameters
+Summary: production code in go-glx must NEVER touch the filesystem directly. No
+`os.*` file or directory calls, no `filepath.Walk`, no path building combined with
+file operations. Take and return `io.Reader`, `io.Writer`, `io/fs.FS` (`fs.FS`), or
+`[]byte`; use `go:embed` for data the library owns. Direct filesystem work belongs
+to the `glx/` CLI package.
 
-```go
-// WRONG — library doing I/O
-func SerializeSingleFile(glx *GLXFile, outputPath string) error {
-    yamlBytes, _ := yaml.Marshal(glx)
-    return os.WriteFile(outputPath, yamlBytes, 0o644)
-}
-
-// CORRECT — library returns bytes, CLI does I/O
-func SerializeToBytes(glx *GLXFile) ([]byte, error) {
-    return yaml.Marshal(glx)
-}
-```
-
-Rationale: testability without filesystem, usable in non-CLI contexts (web servers, embedded), clean separation of concerns.
+Two carve-outs the ADR spells out, so don't "fix" them: walking a caller-supplied
+`fs.FS` with `fs.WalkDir` is fine (the caller picks the backing store — see
+`ImportGEDZIP`), and unexported test-only helpers may open fixture files.
 
 ## Key Files
 
