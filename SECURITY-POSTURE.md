@@ -6,7 +6,7 @@ layout: doc
 
 # Security Posture
 
-> As of **2026-06-09**, GLX self-attests to the [OpenSSF OSPS Baseline](https://baseline.openssf.org/) version **2026.02.19** at **Level 2 (operationally mature)**, with most **Level 3 (mature)** controls also met. The single remaining gap is listed below and tracked as an open issue.
+> As of **2026-09-17**, GLX self-attests to the [OpenSSF OSPS Baseline](https://baseline.openssf.org/) version **2026.02.19** at **Level 3 (mature)**: every control tracked below is met, and no gap remains open.
 
 This document is the public-facing companion to [SECURITY.md](https://github.com/genealogix/glx/blob/main/SECURITY.md). SECURITY.md tells you how to *report* a vulnerability; this file tells you how the project handles supply-chain and process risk so adopters can make informed decisions about depending on GLX.
 
@@ -60,7 +60,7 @@ Status legend: ✓ met · ◐ partial · ☐ not yet met
 | Control | Status | Evidence |
 |---|---|---|
 | Release artifact signing | ✓ | [`.goreleaser.yml`](https://github.com/genealogix/glx/blob/main/.goreleaser.yml) signs `checksums.txt` with cosign keyless (Sigstore / OIDC), publishing `checksums.txt.sigstore.json`. Signing the checksum manifest transitively covers every release artifact via SHA-256. See [Release signing verification details](#release-signing-verification-details). ([#387](https://github.com/genealogix/glx/issues/387)) |
-| SBOM with compiled releases | ☐ | Tracked in [#269](https://github.com/genealogix/glx/issues/269) — GoReleaser v2 native SBOM via `sboms:` config |
+| SBOM with compiled releases | ✓ | [`.goreleaser.yml`](https://github.com/genealogix/glx/blob/main/.goreleaser.yml) emits one SPDX-JSON SBOM per release archive via the GoReleaser v2 `sboms:` stanza (syft, installed in [`release.yml`](https://github.com/genealogix/glx/blob/main/.github/workflows/release.yml) by a SHA-pinned `anchore/sbom-action/download-syft`). GoReleaser lists each SBOM in `checksums.txt` alongside the archives, so the SBOMs are covered by both the cosign keyless signature and the SLSA provenance attestation over that manifest. See [SBOM verification details](#sbom-verification-details). ([#269](https://github.com/genealogix/glx/issues/269)) |
 | Build provenance / SLSA attestations | ✓ | [`release.yml`](https://github.com/genealogix/glx/blob/main/.github/workflows/release.yml) runs `actions/attest` (SHA-pinned with a trailing version comment) after GoReleaser with `subject-checksums: ./dist/checksums.txt`, producing a keyless-signed SLSA provenance attestation that covers every release artifact via SHA-256. See [Build-provenance verification details](#build-provenance-verification-details). ([#256](https://github.com/genealogix/glx/issues/256)) |
 | OSPS-DO-04.01 — support scope/duration per release | ✓ | GLX is pre-1.0: security fixes target the **latest 0.x.x release** (the most recent tag) only, per the [Supported Versions table in SECURITY.md](https://github.com/genealogix/glx/blob/main/SECURITY.md#supported-versions). No fixed support duration is promised for any individual release; a release stops receiving security fixes when the next release supersedes it ([#1060](https://github.com/genealogix/glx/issues/1060)) |
 | OSPS-DO-05.01 — end of security updates stated | ✓ | Security fixes target the latest 0.x.x release only; an older release stops receiving security updates the moment the next release ships. Stated in [SECURITY.md](https://github.com/genealogix/glx/blob/main/SECURITY.md#supported-versions) ([#1060](https://github.com/genealogix/glx/issues/1060)) |
@@ -81,13 +81,27 @@ Verification command (run against any downloaded release archive):
 
 This checks the artifact's SHA-256 against the SLSA provenance attestation GitHub stores for this repository, confirming the binary was produced by `release.yml` running in GitHub Actions. The attestation is signed keyless via the workflow's OIDC token (`id-token: write`) and stored with the `attestations: write` permission. It is complementary to the cosign signature above: cosign proves the integrity of the `checksums.txt` manifest, while the attestation proves the build provenance of each artifact per SLSA.
 
+#### SBOM verification details
+
+Every release publishes one SPDX-JSON SBOM per archive, named after the archive it describes — for example `glx_Linux_x86_64.tar.gz.sbom.json` accompanies `glx_Linux_x86_64.tar.gz`. Because the SBOMs are listed in `checksums.txt`, verifying one is the same two-step flow as verifying an archive: check the manifest's signature, then check the file against the manifest.
+
+```bash
+# 1. Verify the checksum manifest's cosign signature (see the command above).
+# 2. Check the downloaded SBOM against the verified manifest:
+sha256sum --ignore-missing -c checksums.txt
+```
+
+Inspect the contents with any SPDX-aware tool, for example:
+
+`syft convert glx_Linux_x86_64.tar.gz.sbom.json -o table`
+
+No separate `.sigstore.json` is published per SBOM: like the archives, the SBOMs inherit their integrity guarantee from the signed and attested `checksums.txt` manifest.
+
 ## Outstanding gaps
 
-All Level 1 and Level 2 controls are met. One Level 3 control remains before full Level 3 self-attestation:
+None. Every Level 1, Level 2, and Level 3 control tracked above is met as of 2026-09-17, when SBOM emission ([#269](https://github.com/genealogix/glx/issues/269)) closed the last gap.
 
-- [#269](https://github.com/genealogix/glx/issues/269) — SBOM emission alongside compiled releases (Level 3)
-
-This document is updated when that issue (#269) closes.
+This document is updated whenever a new gap opens — for example when a new OSPS Baseline version adds controls (see [Maintenance](#maintenance)).
 
 ## EU Cyber Resilience Act note
 
@@ -101,6 +115,6 @@ If you need an explicit statement for procurement or audit purposes that does no
 
 ## Maintenance
 
-- **Review cadence**: this document is reviewed at every minor release, when the remaining tracked gap (#269) closes, and when a new OSPS Baseline version is published.
+- **Review cadence**: this document is reviewed at every minor release, whenever a tracked gap closes, and when a new OSPS Baseline version is published.
 - **Pinned Baseline version**: 2026.02.19. Re-review on each new Baseline release to incorporate added or changed controls.
-- **Last reviewed**: 2026-06-09.
+- **Last reviewed**: 2026-09-17.

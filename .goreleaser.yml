@@ -37,6 +37,29 @@ archives:
       - NOTICE
       - README.md
       - CHANGELOG.md
+sboms:
+  # One SPDX-JSON SBOM per release archive, named `<archive>.sbom.json` by the
+  # default document template. syft is NOT preinstalled on ubuntu-latest —
+  # release.yml installs it with anchore/sbom-action/download-syft before the
+  # GoReleaser step, and `make release-snapshot` needs it on PATH locally too.
+  #
+  # The SBOM pipe runs before the checksum pipe and SBOMs are a release-
+  # uploadable artifact type, so every `.sbom.json` is listed in checksums.txt
+  # automatically — which is what puts them under the existing cosign keyless
+  # signature and the SLSA attestation, both of which take that manifest as
+  # their subject. Do NOT also add them via `checksum.extra_files`: that
+  # double-lists each SBOM in the signed manifest (verified on v2.18.2).
+  #
+  # args are pinned explicitly rather than inherited, to drop the `--enrich all`
+  # in GoReleaser's default: enrichment pulls package metadata from online
+  # sources, which would make the SBOM non-reproducible from the tagged source
+  # and let a third-party service feed content into an artifact this repo signs
+  # inside the privileged (id-token: write) release job. (#269)
+  - artifacts: archive
+    args:
+      - "$artifact"
+      - "--output"
+      - "spdx-json=$document"
 checksum:
   name_template: 'checksums.txt'
 release:
