@@ -22,8 +22,9 @@ nothing in it may contradict that section.
 |---|---|
 | Third-party action (`github/*` counts as third-party) | Full commit SHA + trailing version comment |
 | First-party `actions/*` | Floating major tag (`@v7`, …) — deliberate, #1022 |
-| `actions/attest` or any signing/attestation step | Full commit SHA |
+| `actions/attest` (the one first-party exception) | Full commit SHA |
 | `ossf/scorecard-action` (#779) | Full commit SHA (publishes no floating major) |
+| `mszostok/codeowners-validator` | Full commit SHA (publishes no floating major) |
 | `sigstore/cosign-installer` (#938) | Exact patch tag `@v4.1.2` (publishes no floating major) |
 
 Practical consequences:
