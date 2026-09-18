@@ -185,6 +185,29 @@ docs: Update quickstart guide
 
 Every commit must also carry a `Signed-off-by` trailer — see [Developer Certificate of Origin (DCO)](#developer-certificate-of-origin-dco) for how to add one and what you're attesting to.
 
+### Changelog Conflicts
+
+`CHANGELOG.md` is marked `merge=union` in `.gitattributes`. When your branch and
+`main` both add entries, a local `git merge main` (or `git rebase main`) keeps
+both sides instead of leaving conflict markers. `union` is a git built-in, so it
+works in every clone with no `git config` step — unlike the optional `merge=glx`
+driver for `.glx` files described in [docs/merge-driver.md](docs/merge-driver.md).
+
+Review the merged result anyway: union keeps every line from both sides, so if
+both branches added the same `### Added` subsection you get the heading twice,
+and entry order may need a tidy-up.
+
+GitHub's "Update branch" button — and the auto-update bot that keeps PR branches
+current — merge server-side, and the GitHub merge API does not honor
+`.gitattributes` merge drivers. If GitHub reports a conflict in `CHANGELOG.md`
+only, resolve it by merging `main` locally and pushing:
+
+```bash
+git fetch origin
+git merge origin/main   # union resolves CHANGELOG.md
+git push
+```
+
 ## Testing
 
 Prefer using the Makefile to run tests for consistency. `go test` directly is fine for targeted runs.

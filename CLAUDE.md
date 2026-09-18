@@ -112,7 +112,9 @@ Person, Event, Relationship, Place, Source, Citation, Repository, Media, Asserti
 
 ## Known Merge Conflicts
 
-- `glx/cli_commands.go` and `CHANGELOG.md` conflict frequently — keep both commands when merging
+- `glx/cli_commands.go` conflicts frequently — keep both commands when merging
+- `CHANGELOG.md` is marked `merge=union` in `.gitattributes`, so local `git merge`/`git rebase` auto-resolve its conflicts by keeping both sides. `union` is a git built-in — no `git config` step (unlike the `merge=glx` driver, see `docs/merge-driver.md`). Still read the result: union can duplicate a heading when both sides added the same `###` subsection, and it can interleave lines in an unintended order
+- GitHub's "Update branch" button and the auto-update bot use the server-side merges API, which ignores `.gitattributes` merge drivers. A CHANGELOG-only conflict reported on GitHub is resolved by merging `main` locally and pushing
 - For worktrees: use `/tmp/glx-<name>`, build with `go build -o bin/glx ./glx`
 
 Last Updated: 2026-03-31

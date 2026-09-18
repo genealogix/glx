@@ -12,6 +12,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [Unreleased]
 
+### Removed
+
+- **Retired the `auto-resolve-conflicts.yml` workflow in favor of git's native `union` merge driver** — The workflow re-merged conflicting PR branches on a runner and then stripped conflict markers from `CHANGELOG.md` with `sed` plus an `awk` header-dedup pass; seven follow-up PRs (#82, #194, #341, #592, #601, #602, #657) were needed to keep that hand-rolled resolution correct. `.gitattributes` now maps `CHANGELOG.md merge=union`, so git itself keeps both sides during the merge — no markers to strip, no second workflow, and no `workflow_run` chaining. `union` is a git built-in, so unlike the `merge=glx` driver for `.glx` files it needs no per-clone `git config`; it applies in every clone. It applies to local merges and rebases only: GitHub's server-side merges API (the "Update branch" button and `auto-update-branches.yml`) does not honor `.gitattributes` merge drivers, so a CHANGELOG-only conflict reported on GitHub is resolved by merging `main` locally and pushing. `CONTRIBUTING.md` and the root `CLAUDE.md` document both halves. `auto-update-branches.yml` is unchanged. Closes #888
+
 ## [0.0.0-beta.12] - 2026-09-16
 
 ### Added
