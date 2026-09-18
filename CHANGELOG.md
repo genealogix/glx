@@ -12,6 +12,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [Unreleased]
 
+### Changed
+
+- **Spec↔schema field-parity drift check is now blocking in CI** — the `spec-schema-parity` job in `.github/workflows/drift-checks.yml` runs `scripts/drift-checks/spec-schema-drift.mjs` with `DRIFT_STRICT=1`, so a PR whose `specification/schema/v1/*.schema.json` properties disagree with the `### Required Fields` / `### Optional Fields` tables in `specification/4-entity-types/*.md` now fails the job instead of only warning. The script also now reports a spec page with no readable schema, and an empty run that compared nothing, as drift. It still defaults to warn-only when run bare locally. Closes #309
+
 ## [0.0.0-beta.12] - 2026-09-16
 
 ### Added

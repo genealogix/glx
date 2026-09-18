@@ -17,10 +17,10 @@ Deterministic extraction of `(field name, yaml tag, line)` from `go-glx/types.go
 - **Consumer:** `tools/driftcheck` (#673) calls it to attach `go-glx/types.go:NN` to each finding, so `make check-code-drift` — and the `check-code-drift` skill that defers to it — now emit `file:line` (satisfying #676 item 11).
 - **Done:** returns every `map[string]*X` collection of `GLXFile` (yaml key → Go type) and each struct's serialized fields, skipping untagged / `yaml:"-"` fields. Table-tested; line attachment verified end-to-end against injected drift.
 
-### 3. Spec ↔ schema parity (#309) — Node, **warn-first**
+### 3. Spec ↔ schema parity (#309) — Node, **hard-fail in CI**
 Parses the top-level field tables (under `### Required Fields` / `### Optional Fields`) in `specification/4-entity-types/*.md` and compares them against `specification/schema/v1/*.schema.json` on **both** axes: **field presence** (documented but missing from the schema — dangerous under `additionalProperties: false` — and in-schema-but-undocumented) and **required/optional** (a field under "Required Fields" must be in the schema's `required[]`; one under "Optional Fields" must not be).
 - **Where:** `scripts/drift-checks/spec-schema-drift.mjs` (no npm deps — pure parsing). The `parseSpecFields`/`compareEntity` core is exported and I/O-free; `spec-schema-drift.test.mjs` fixtures pin the parser (section scoping, the map-key non-field row, combined-row tokens) and all four drift classes.
-- **Policy:** **warn** (exit 0); `DRIFT_STRICT=1` makes it blocking. Reports 0 findings on the current tree. **#309 stays open** until the parser is proven and this flips to blocking — the unit tests above are the "prove it" step toward that flip.
+- **Policy:** **hard-fail in CI** — the workflow sets `DRIFT_STRICT=1`, so any field mismatch (plus a spec page with no readable schema, or a run that found no pairs at all) fails the job (#309). The script itself still defaults to warn-only (reports and exits 0), so a bare local `node scripts/drift-checks/spec-schema-drift.mjs` gives a report without failing; prefix `DRIFT_STRICT=1` locally to reproduce the CI gate. Reports 0 findings on the current tree. Like `schema-compat`, this job's context is not yet in the Main Protection ruleset's `required_status_checks`, so it goes red on a PR without mechanically blocking the merge button.
 
 ### 4. Schema ↔ schema backward-compat (#311) — Node, **hard-fail**
 On a PR that edits a `specification/schema/v1/*.schema.json`, diffs it against the base branch and fails on backward-incompatible changes (removed property under `additionalProperties:false`, tightened pattern, new `required`).
@@ -35,7 +35,7 @@ Extends `specification/validate-schemas.mjs` to validate every vocabulary `.glx`
 ## CI wiring
 
 `.github/workflows/drift-checks.yml`, path-filtered to `specification/**`, `scripts/drift-checks/**`, and the workflow file itself:
-- **`spec-schema-parity`** (#309, warn) — runs `scripts/drift-checks/spec-schema-drift.mjs`.
+- **`spec-schema-parity`** (#309, hard-fail) — runs `scripts/drift-checks/spec-schema-drift.mjs` with `DRIFT_STRICT=1`.
 - **`schema-compat`** (#311, hard-fail) — `fetch-depth: 0` + `npm ci` (specification), then runs `specification/schema-compat.mjs`.
 
 The Step 4 vocabulary validation (#839) rides the existing `make check-schemas` rather than this workflow.
@@ -43,6 +43,6 @@ The Step 4 vocabulary validation (#839) rides the existing `make check-schemas` 
 The two Node scripts' unit tests (`*.test.mjs`) run via `make test-scripts` (`node --test`, no test framework) — wired into `make check` and the `validate-schemas` job of `validate-spec.yml`, where the specification deps are already installed.
 
 ## Closes
-#910, #795, #311, #839.
+#910, #795, #311, #839, #309.
 
-`#309` is intentionally **not** closed: its acceptance criterion is failing CI on drift, but the spec↔schema parity check ships **warn-only**. It stays open to track the flip to blocking (`DRIFT_STRICT=1`) once the parser is proven — see the warn-first note under *Spec ↔ schema parity* above.
+`#309` shipped warn-only in PR #1018 and closed once the `spec-schema-parity` job flipped to `DRIFT_STRICT=1`, satisfying its "fails CI if structural drift is detected" criterion — see the policy note under *Spec ↔ schema parity* above, including the ruleset caveat.

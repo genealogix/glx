@@ -7,11 +7,11 @@
 // additionalProperties is false — the validator then rejects data the spec
 // says is valid.
 //
-// WARN-FIRST: this is deterministic but the markdown-table parser can have
-// edge cases, so it reports and exits 0 by default. Set DRIFT_STRICT=1 to make
-// it exit non-zero on any mismatch. #309 stays OPEN until the parser is proven
-// and this flips to blocking; the parser is unit-tested in
-// spec-schema-drift.test.mjs, which is the "prove it" step toward that flip.
+// POLICY: CI runs this with DRIFT_STRICT=1, so a mismatch blocks the merge
+// (.github/workflows/drift-checks.yml, job spec-schema-parity — #309). The
+// default stays warn-only — run bare for a local report that exits 0 — so an
+// exploratory run never fails a script that shells out to it. The parser is
+// pinned by fixtures in spec-schema-drift.test.mjs (`make test-scripts`).
 //
 // The parsing/comparison core (parseSpecFields, compareEntity) is exported and
 // has no I/O, so it is exercised directly by fixtures in the test file; main()
@@ -28,6 +28,13 @@ const SCHEMA_DIR = join(ROOT, "specification/schema/v1");
 // Field names that appear in the spec field tables but are structural notes,
 // not entity properties (e.g. the map-key row).
 const NON_FIELD_ROWS = new Set(["entity id (map key)"]);
+
+// Spec pages under 4-entity-types/ that legitimately have no
+// <stem>.schema.json. Anything else missing a schema is drift, not an
+// exemption: since the check became blocking (#309) a skipped entity would be
+// a silent hole — every documented field unvalidated, which is exactly the
+// `additionalProperties:false` hazard this script exists to catch.
+const SPEC_PAGES_WITHOUT_SCHEMA = new Set(["vocabularies"]);
 
 // Parse the TOP-LEVEL field tables and return the set of backtick-wrapped
 // field names. Across the entity specs the top-level entity fields always sit
@@ -134,7 +141,14 @@ function main() {
     try {
       schema = JSON.parse(readFileSync(schemaPath, "utf8"));
     } catch {
-      console.warn(`⚠️  ${stem}: spec file has no matching schema (${stem}.schema.json) — skipped`);
+      if (SPEC_PAGES_WITHOUT_SCHEMA.has(stem)) {
+        console.warn(`⚠️  ${stem}: no schema expected for this page — skipped`);
+      } else {
+        console.error(
+          `✗ ${stem}: spec page has no readable schema (${stem}.schema.json) — its documented fields are unchecked`,
+        );
+        mismatches++;
+      }
       continue;
     }
     checked++;
@@ -168,6 +182,16 @@ function main() {
       console.error(`✗ ${stem}: field \`${f}\` is under "Optional Fields" in the spec but the schema marks it required`);
       mismatches++;
     }
+  }
+
+  // A blocking gate that compared nothing looks identical to a passing one, so
+  // treat an empty run (specs moved into subdirectories, directory renamed)
+  // as drift rather than success.
+  if (checked === 0) {
+    console.error(
+      `✗ no entity spec/schema pairs found under specification/4-entity-types — the check verified nothing`,
+    );
+    mismatches++;
   }
 
   console.log(
