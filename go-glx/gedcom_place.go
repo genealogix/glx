@@ -245,7 +245,7 @@ func inferPlaceType(name string, level int) string {
 	case 2:
 		// Third level - likely state/province
 		return PlaceTypeState
-	case 3: //nolint:mnd // fourth hierarchy level = country
+	case 3:
 		// Fourth level - likely country
 		return PlaceTypeCountry
 	default:
