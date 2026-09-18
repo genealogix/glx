@@ -29,7 +29,7 @@ Files: Makefile .goreleaser.yml .gitattributes .gitignore .npmrc
 Copyright: 2025 Oracynth, Inc.
 License: Apache-2.0
 
-Files: .golangci.yml .golangci-lint-version .gosec-version .markdownlint-cli2.jsonc codecov.yml lefthook.yml
+Files: .golangci.yml .golangci-lint-version .gosec-version .markdownlint-cli2.jsonc codecov.yml lefthook.yml osv-scanner.toml
 Copyright: 2025 Oracynth, Inc.
 License: Apache-2.0
 
