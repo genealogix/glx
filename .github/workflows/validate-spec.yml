@@ -38,9 +38,82 @@ env:
 # name: changes the displayed context, which would leave the ruleset waiting
 # on checks that never report and deadlock merges. Rename those only in
 # lockstep with a ruleset update.
+#
+# Path scoping (#1034): docs-only PRs shouldn't pay for the full Go suite, so
+# the `changes` job below computes one boolean from the diff and the Go-only
+# jobs carry a job-level `if:` on it. This MUST stay a job-level `if:` and not
+# a trigger-level `paths:` filter — a job skipped by `if:` still reports its
+# context to branch protection as success, whereas a run filtered out at the
+# trigger never reports at all, leaving the required `test-conformance` context
+# stuck on "Expected" and deadlocking the merge.
+#
+# What is deliberately NOT gated:
+#   - build-cli / validate-example / validate-examples — the aggregator exits 1
+#     unless build-cli's result is exactly `success`, so skipping the build
+#     would fail a required context.
+#   - validate-schemas, check-memory-drift — docs and memory-file changes are
+#     exactly what they check.
+# Pushes to main always run everything (the filter output defaults to true for
+# any non-pull_request event).
+#
+# The gate fails OPEN: the `if:` is written as
+# `!cancelled() && (needs.changes.result != 'success' || ...outputs.go == 'true')`
+# so that a broken or unavailable `changes` job runs the Go jobs anyway. With a
+# bare `outputs.go == 'true'` the expression would be false whenever `changes`
+# errored, silently skipping — and therefore greening — a required context.
 jobs:
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      # Defaults to 'true' off pull_request (push to main, manual re-runs), so
+      # the full suite still runs on the branch that produces releases.
+      go: ${{ github.event_name != 'pull_request' || steps.filter.outputs.go == 'true' }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # `token: ''` forces the git-diff detection mode (PR head vs. its base
+      # branch). The action's default is `${{ github.token }}`, which makes it
+      # call GET /pulls/{n}/files instead and therefore need
+      # `pull-requests: read` — a scope this job deliberately does not grant.
+      #
+      # The `go` filter must cover every input to the Go jobs, including
+      # non-.go files embedded into the binary (vocabularies, publish/serve
+      # templates, defaults) and the drift-check inputs. When in doubt, add the
+      # path: a false positive costs one redundant test run, a false negative
+      # merges an untested change with a green required check.
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        if: github.event_name == 'pull_request'
+        with:
+          token: ''
+          filters: |
+            go:
+              - '**/*.go'
+              - 'go.mod'
+              - 'go.sum'
+              - 'ci-tools/**'
+              - '**/testdata/**'
+              - 'docs/examples/**'
+              - 'specification/schema/**'
+              - 'specification/5-standard-vocabularies/**'
+              - 'glx/defaults/**'
+              - 'glx/publish/**'
+              - 'glx/web/**'
+              - '.claude/drift-allowlist.yaml'
+              - 'Makefile'
+              - '.github/workflows/validate-spec.yml'
+              - '.golangci*'
+
   validate-mod:
     name: Go modules tidy
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.go == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -65,6 +138,8 @@ jobs:
 
   check-code-drift:
     name: Schema vs Go-code drift
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.go == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -246,6 +321,10 @@ jobs:
 
   test-conformance:
     # No name: — job key is a required status-check context (see note above).
+    # Skipped (not filtered out) on docs-only PRs, so the required context still
+    # reports — see the path-scoping note above (#1034).
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.go == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
