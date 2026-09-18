@@ -102,6 +102,7 @@ jobs:
               - 'docs/examples/**'
               - 'specification/schema/**'
               - 'specification/5-standard-vocabularies/**'
+              - 'specification/jsonld/**'
               - 'glx/defaults/**'
               - 'glx/publish/**'
               - 'glx/web/**'
