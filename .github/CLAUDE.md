@@ -9,35 +9,41 @@ them and point at them, and public docs must never link to a `CLAUDE.md`.
 When a convention changes, change the project file first; update the summary
 here afterwards.
 
-## GitHub Actions pinning: SHA-pin third-party, floats only for first-party
+## GitHub Actions pinning: SHA-pin everything, no exceptions
 
-<!-- Last reviewed: 2026-09-17 (#1022) -->
+<!-- Last reviewed: 2026-09-18 (#1022, reversed) -->
 
 **Source of truth: the "Action pinning" section of `../SECURITY-POSTURE.md`.**
 Read it before changing any `uses:` line, and record any change to the
 convention there — not here. This is a summary for applying the rule, and
 nothing in it may contradict that section.
 
-| What you're editing | Pin form |
-|---|---|
-| Third-party action (`github/*` counts as third-party) | Full commit SHA + trailing version comment |
-| First-party `actions/*` | Floating major tag (`@v7`, …) — deliberate, #1022 |
-| `actions/attest` (the one first-party exception) | Full commit SHA |
-| `ossf/scorecard-action` (#779) | Full commit SHA (publishes no floating major) |
-| `mszostok/codeowners-validator` | Full commit SHA (publishes no floating major) |
-| `sigstore/cosign-installer` (#938) | Exact patch tag `@v4.1.2` (publishes no floating major) |
+Every `uses:` reference — third-party, `github/*`, and first-party `actions/*`
+alike — is a full commit SHA with a trailing version comment:
+
+```yaml
+uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+```
+
+The rule is namespace-blind. There is no first-party carve-out: the floating
+`actions/*` majors were removed in #1022 (reversing that issue's original
+"accept the floats" close), because a major tag is a mutable ref no matter who
+publishes it.
 
 Practical consequences:
 
-- Never "tidy" a SHA pin down to a bare tag, and never "correct" a tier-3 pin
-  to `@vN` — the latter fails with `Unable to resolve action <owner>/<repo>@vN`.
-- Never SHA-pin a first-party `actions/*` piecemeal. The float is deliberate
-  and Dependabot keeps it fresh weekly; re-opening it is a change to
-  `../SECURITY-POSTURE.md`, not a drive-by edit here.
-- Before editing any `uses:` line, check what the action actually publishes:
+- Never "tidy" a SHA pin down to a bare tag. Any bare `@vN` in a workflow diff
+  is a defect, whatever the namespace.
+- Three actions publish no floating major at all — `ossf/scorecard-action`
+  (#779), `mszostok/codeowners-validator`, `sigstore/cosign-installer` (#938).
+  Their `uses:` lines carry a trailing "do not tidy to @vN" note; "correcting"
+  them fails with `Unable to resolve action <owner>/<repo>@vN`.
+- Dependabot sustains the pins: it bumps the SHA and rewrites the `# vX.Y.Z`
+  comment together, weekly, via the `github-actions` ecosystem entry.
+- To find the SHA for a tag (this dereferences annotated tags correctly):
 
   ```bash
-  gh api repos/<owner>/<repo>/tags --jq '.[].name' | head
+  gh api repos/<owner>/<repo>/commits/<tag> --jq .sha
   ```
 
 ## Release pipeline: never move a published tag — cut a new patch tag
