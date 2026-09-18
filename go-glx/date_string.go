@@ -68,7 +68,7 @@ func (ds DateString) Parse() (glxdate.Date, error) {
 // range ("TO 1950"), whose end year is the only one present. A BCE year is
 // negative.
 func (ds DateString) Year() int {
-	d, _ := glxdate.Parse(string(ds)) //nolint:errcheck // best-effort year is defined even for non-canonical dates
+	d, _ := glxdate.Parse(string(ds))
 
 	return d.Year()
 }

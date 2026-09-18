@@ -1,53 +1,44 @@
 # .github/ — Claude Guide
 
+## This file is never the source of truth
+
+Policies, conventions, and decisions live in project files —
+`../SECURITY-POSTURE.md`, `../CONTRIBUTING.md`, `../docs/`,
+`../specification/`, `../docs/decisions/`. A `CLAUDE.md` may only summarize
+them and point at them, and public docs must never link to a `CLAUDE.md`.
+When a convention changes, change the project file first; update the summary
+here afterwards.
+
 ## GitHub Actions pinning: SHA-pin third-party, floats only for first-party
 
-<!-- Last reviewed: 2026-08-23 (#1046) -->
+<!-- Last reviewed: 2026-09-17 (#1022) -->
 
-**The repo's actual convention (since the #963/#968 SHA-pin sweep):**
+**Source of truth: the "Action pinning" section of `../SECURITY-POSTURE.md`.**
+Read it before changing any `uses:` line, and record any change to the
+convention there — not here. This is a summary for applying the rule, and
+nothing in it may contradict that section.
 
-1. **Third-party actions (the default rule): full-commit-SHA pin plus a
-   trailing `# vX.Y.Z` comment.** This is the OpenSSF Scorecard
-   "pin dependencies" form and the default every third-party `uses:` in the
-   repo follows today, apart from the exceptions in rule 3, e.g.
+| What you're editing | Pin form |
+|---|---|
+| Third-party action (`github/*` counts as third-party) | Full commit SHA + trailing version comment |
+| First-party `actions/*` | Floating major tag (`@v7`, …) — deliberate, #1022 |
+| `actions/attest` (the one first-party exception) | Full commit SHA |
+| `ossf/scorecard-action` (#779) | Full commit SHA (publishes no floating major) |
+| `mszostok/codeowners-validator` | Full commit SHA (publishes no floating major) |
+| `sigstore/cosign-installer` (#938) | Exact patch tag `@v4.1.2` (publishes no floating major) |
 
-   ```yaml
-   uses: golangci/golangci-lint-action@82606bf257cbaff209d206a39f5134f0cfbfd2ee # v9.2.1
-   ```
+Practical consequences:
 
-   Do NOT "tidy" a SHA pin down to a bare tag — tags are force-repointable
-   upstream (the tj-actions/changed-files incident, CVE-2025-30066). Dependabot
-   understands the SHA + comment form and bumps both together.
+- Never "tidy" a SHA pin down to a bare tag, and never "correct" a tier-3 pin
+  to `@vN` — the latter fails with `Unable to resolve action <owner>/<repo>@vN`.
+- Never SHA-pin a first-party `actions/*` piecemeal. The float is deliberate
+  and Dependabot keeps it fresh weekly; re-opening it is a change to
+  `../SECURITY-POSTURE.md`, not a drive-by edit here.
+- Before editing any `uses:` line, check what the action actually publishes:
 
-2. **First-party `actions/*` (checkout, setup-go, setup-node, setup-python,
-   upload/download-artifact, cache): floating major tags are the current
-   documented choice**, pending the decision in #1022. Don't SHA-pin these
-   piecemeal — with one standing exception: `actions/attest` in `release.yml`
-   is SHA-pinned already, because it runs inside the privileged release job
-   (id-token: write) where a repointed tag would sit upstream of signing.
-
-3. **Exceptions without a floating major** (they only publish `vX.Y.Z`):
-   pin the exact patch tag as the floor, SHA preferred. Each one carries a
-   comment so nobody "tidies" it back to `@vN`, which fails with
-   `Unable to resolve action <owner>/<repo>@vN`:
-
-   | Action | Pin form | Issue |
-   |---|---|---|
-   | `sigstore/cosign-installer` | `@v4.1.2` exact tag (no floating `@v4`) | #938 |
-   | `ossf/scorecard-action` | full SHA + `# vX.Y.Z` comment (no floating `@v2`) | #779 |
-
-**Verify before you push.** Before editing any `uses:` line, check what tags
-the action actually publishes:
-
-```bash
-gh api repos/<owner>/<repo>/tags --jq '.[].name' | head
-```
-
-Caveat: a SHA pin is necessary, not sufficient — it does not pin the action's
-transitive `uses:` references, and a pinned action can still fetch a
-re-registrable domain at runtime. See `SECURITY-POSTURE.md` for the posture
-this supports, and the root `CLAUDE.md` / `go-glx/CLAUDE.md` for sibling
-guides.
+  ```bash
+  gh api repos/<owner>/<repo>/tags --jq '.[].name' | head
+  ```
 
 ## Release pipeline: never move a published tag — cut a new patch tag
 

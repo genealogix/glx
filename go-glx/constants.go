@@ -131,6 +131,8 @@ const (
 // Standard Relationship Property Names - commonly used properties on Relationship entities
 const (
 	RelationshipPropertyNumberOfChildren = "number_of_children" // Known child count; maps to GEDCOM FAM.NCHI
+	RelationshipPropertyStartedOn        = "started_on"         // Date the relationship began; use start_event when the boundary is a documented event
+	RelationshipPropertyEndedOn          = "ended_on"           // Date the relationship ended; use end_event when the boundary is a documented event
 )
 
 // Standard Media Property Names - commonly used properties on Media entities
@@ -562,9 +564,7 @@ var AllEntityTypes = []EntityType{
 // they participate in entity IDs (e.g., `research-log-john-smith`), which are
 // constrained to `[a-zA-Z0-9-]{1,64}`. This map IS the source of truth — the
 // values are inherently string literals tied to the entity-type vocabulary,
-// so goconst's "extract a constant" suggestion is misplaced here.
-//
-//nolint:goconst // the literal values are the source of truth for singular names
+// not constants to be extracted.
 var entityTypeSingular = map[EntityType]string{
 	EntityTypePersons:       "person",
 	EntityTypeRelationships: "relationship",
