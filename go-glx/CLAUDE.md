@@ -4,6 +4,10 @@ This is the core GLX library (`package glx`). It is a **pure library** — all I
 
 ## Critical Rule: No Filesystem I/O
 
+**Source of truth: [`../docs/decisions/0006-go-glx-library-pure.md`](../docs/decisions/0006-go-glx-library-pure.md).**
+That ADR states the rule and why it exists; what follows is a summary for
+applying it, and nothing here may contradict it.
+
 The go-glx package must NEVER perform filesystem I/O:
 
 - NO `os.ReadFile`, `os.WriteFile`, `os.Open`, `os.Create`
@@ -24,7 +28,8 @@ func SerializeToBytes(glx *GLXFile) ([]byte, error) {
 }
 ```
 
-Rationale: testability without filesystem, usable in non-CLI contexts (web servers, embedded), clean separation of concerns.
+Rationale (in full in the ADR): testability without filesystem, usable in
+non-CLI contexts (web servers, embedded), clean separation of concerns.
 
 ## Key Files
 

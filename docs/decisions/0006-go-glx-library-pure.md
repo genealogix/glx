@@ -25,9 +25,18 @@ Without an explicit rule, library functions would naturally reach for `os.ReadFi
 
 ## Decision
 
-The `go-glx` package MUST NOT perform filesystem I/O. From [`go-glx/CLAUDE.md`](https://github.com/genealogix/glx/blob/main/go-glx/CLAUDE.md):
+The `go-glx` package MUST NOT perform filesystem I/O. This ADR is the source of truth for that rule.
 
-> The go-glx package must NEVER perform filesystem I/O: NO `os.ReadFile`, `os.WriteFile`, `os.Open`, `os.Create`. [...] YES to `io.Reader`, `io.Writer`, `[]byte` parameters.
+Not permitted in non-test code under `go-glx/`:
+
+- `os.ReadFile`, `os.WriteFile`, `os.Open`, `os.Create`
+- `os.MkdirAll`, `os.Stat`, `os.ReadDir`
+- `filepath.Join` used to build a path for a file operation
+
+Use instead:
+
+- `io.Reader`, `io.Writer`, `io/fs.FS`, and `[]byte` parameters
+- `go:embed` where the library itself needs fixture data
 
 Concretely:
 
