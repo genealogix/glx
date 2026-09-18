@@ -35,11 +35,20 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
-      # Warn-first: reports field drift but does not block. #309 stays open to
-      # track the flip to blocking — set DRIFT_STRICT=1 here once the table parser
-      # is proven (the spec-schema-drift.test.mjs fixtures are that proof in
-      # progress). The flip is intentionally a separate, reviewable change.
+      # Hard-fail: spec↔schema field parity is enforced (#309). The table parser
+      # rode warn-only through the beta.12 cycle with zero false positives and
+      # is pinned by the spec-schema-drift.test.mjs fixtures, so any
+      # documented-but-unschema'd (or undocumented) field now turns this job
+      # red instead of passing with a warning. Caveat: like schema-compat below,
+      # this job's context is not yet in the Main Protection ruleset's
+      # required_status_checks, so a red run shows on the PR but does not by
+      # itself hold the merge button.
+      # Escape hatch for local runs: the script defaults to warn-only, so plain
+      # `node scripts/drift-checks/spec-schema-drift.mjs` reports findings and
+      # exits 0; only DRIFT_STRICT=1 (set here) makes it fail.
       - run: node scripts/drift-checks/spec-schema-drift.mjs
+        env:
+          DRIFT_STRICT: "1"
 
   schema-compat:
     name: schema ↔ schema backward-compat (#311)
