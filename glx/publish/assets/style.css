@@ -128,6 +128,14 @@ h3 { font-size: 1.05rem; margin: 1rem 0 0.4rem; }
 .note { white-space: pre-line; }
 .backlink { margin-top: 2rem; }
 
+/* Visual timeline strip */
+.strip { margin: 0 0 1rem; }
+.strip-svg { display: block; width: 100%; height: auto; font-family: system-ui, sans-serif; }
+.strip-bar { fill: var(--badge-bg); stroke: var(--border); stroke-width: 1; }
+.strip-axis line { stroke: var(--muted); stroke-opacity: 0.55; stroke-width: 1; }
+.strip-axis text { fill: var(--muted); font-size: 12px; }
+.strip-dots circle { fill: var(--accent); fill-opacity: 0.85; stroke: var(--surface); stroke-width: 1.5; }
+
 /* Family charts (pedigree / descendancy) */
 .chart-panel { margin: 0.75rem 0; }
 .chart-panel > summary { cursor: pointer; font-weight: 700; font-family: system-ui, sans-serif; font-size: 0.9rem; color: var(--muted); }
