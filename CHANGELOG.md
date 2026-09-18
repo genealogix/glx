@@ -12,6 +12,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [Unreleased]
 
+### Removed
+
+- **`renovate.json` — Renovate retired, Dependabot is the sole dependency updater** — The repository ran two update bots on paper but only one in practice: `renovate.json` carried a top-level `"enabled": false`, so Renovate opened no PRs while Dependabot handled every bump. The config file is deleted and `.reuse/dep5` no longer lists it. Note that this also removes the repository's only scheduled lockfile-maintenance mechanism (Renovate's `lockFileMaintenance` block, itself disabled by the top-level switch, so nothing changes in practice) — Dependabot refreshes `go.sum` and the npm lockfiles as a side effect of the bumps it opens, and `make mod-tidy` / `make tidy-check` cover the rest; #810 tracks the gap. `SECURITY.md` is corrected in the same change: it described Dependabot as running "daily", where `.github/dependabot.yml` actually schedules weekly staggered runs (Go Monday, npm Tuesday, GitHub Actions Wednesday) with release cooldowns that security updates bypass. (#257)
+
 ## [0.0.0-beta.12] - 2026-09-16
 
 ### Added
