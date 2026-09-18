@@ -36,7 +36,7 @@ Not permitted in non-test code under `go-glx/`:
 Use instead:
 
 - `io.Reader`, `io.Writer`, `io/fs.FS`, and `[]byte` parameters
-- `go:embed` where the library itself needs fixture data
+- `go:embed` for any data the library itself must carry — the standard vocabularies ship this way in production (`specification/5-standard-vocabularies/embed.go`), and test fixtures follow the same route
 
 Concretely:
 
