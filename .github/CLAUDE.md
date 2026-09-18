@@ -24,10 +24,14 @@
    This is a settled decision (#1022), not a backlog item — don't SHA-pin
    these piecemeal, and don't re-open it without a new threat argument.
 
-   Rationale: first-party `actions/*` are published by GitHub and run on
-   GitHub-hosted runners, so they sit inside the same trust boundary as the
-   runner itself — a compromise there is not meaningfully bounded by a SHA
-   pin. Against that, Dependabot raises security *alerts* only for actions
+   Rationale: first-party `actions/*` are published by GitHub, under the
+   same organization that operates the runners the workflows execute on, so
+   the publisher is already trusted end-to-end. This does NOT make the
+   residual risk zero — an `actions/*` tag is still a mutable ref, and a
+   re-pointed one would execute with the workflow's permissions, which is
+   exactly the class a SHA pin closes. The judgment is that the likelihood
+   of that against GitHub's own org is low enough to trade for the
+   following. Dependabot raises security *alerts* only for actions
    referenced by semantic-version tag, never for SHA-pinned ones
    (<https://docs.github.com/en/actions/reference/security/secure-use>), so
    pinning would trade away alerting for immutability we mostly already
@@ -38,9 +42,14 @@
    Pinned-Dependencies score; see `../SECURITY-POSTURE.md`.
 
    One standing exception: `actions/attest` in `release.yml` is SHA-pinned,
-   because it runs inside the privileged release job (`id-token: write`)
-   where a repointed tag would sit upstream of signing. Any future
-   privileged job gets the same treatment.
+   because a repointed tag there would sit directly upstream of artifact
+   signing. The exception is scoped to **signing and attestation steps**,
+   not to every job holding an elevated token: `scorecard.yml` also has
+   `id-token: write`, and `auto-update-branches.yml` /
+   `auto-resolve-conflicts.yml` mint app tokens, yet all three still float
+   their `actions/*` — deliberately, since nothing there produces an
+   artifact consumers verify. Widening the exception means pinning every
+   `uses:` in those jobs too; don't half-apply it.
 
    **`github/*` is NOT first-party for this rule.** `github/codeql-action`
    and anything else under the `github` org are treated as third-party and
