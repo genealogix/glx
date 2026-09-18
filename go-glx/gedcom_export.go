@@ -70,6 +70,9 @@ func ExportGEDCOM(glx *GLXFile, version GEDCOMVersion, logWriter io.Writer) ([]b
 	// Build assertion lookup index (person ID + property -> assertions)
 	buildPersonPropertyAssertionsIndex(expCtx)
 
+	// Build assertion lookup index (event ID + property -> assertions)
+	buildEventPropertyAssertionsIndex(expCtx)
+
 	// Reconstruct families from relationships (before building records)
 	reconstructFamilies(expCtx)
 
@@ -185,6 +188,10 @@ type ExportContext struct {
 	// PersonPropertyAssertions maps personID -> property -> assertions
 	// Used to export SOUR on NAME, OCCU, RESI, etc. from assertion evidence
 	PersonPropertyAssertions map[string]map[string][]*Assertion
+
+	// EventPropertyAssertions maps eventID -> property -> assertions
+	// Used to export SOUR on BIRT, DEAT, MARR, etc. from assertion evidence
+	EventPropertyAssertions map[string]map[string][]*Assertion
 
 	Stats ExportStatistics
 }
