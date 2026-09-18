@@ -61,7 +61,7 @@ What to expect when you pick one up:
 
 ### Prerequisites
 
-- **Go 1.26+** ([install](https://golang.org/doc/install)) — the project uses Go 1.26 in go.mod
+- **Go 1.27+** ([install](https://golang.org/doc/install)) — the project uses Go 1.27 in go.mod
 - **Git** ([install](https://git-scm.com/downloads))
 - **Node.js** — for website builds (`npm install` in `website/`) and schema validation (`npm ci --prefix specification`)
 

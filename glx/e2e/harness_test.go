@@ -61,7 +61,7 @@ func buildAndRun(m *testing.M) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("creating temp dir for binary: %w", err)
 	}
-	defer os.RemoveAll(dir) //nolint:errcheck // best-effort cleanup
+	defer os.RemoveAll(dir)
 
 	bin := filepath.Join(dir, "glx")
 	if runtime.GOOS == "windows" {
