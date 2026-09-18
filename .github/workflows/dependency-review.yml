@@ -75,9 +75,24 @@ jobs:
           # weigh. Every license that does carry obligations still has to be
           # added here explicitly.
           #   0BSD, Unlicense
+          #
+          # LicenseRef-scancode-google-patent-license-golang is the Go
+          # PATENTS file, which ships alongside the BSD-3-Clause LICENSE in
+          # every golang.org/x module. Newer x/* releases resolve as the
+          # compound expression `BSD-3-Clause AND
+          # LicenseRef-scancode-google-patent-license-golang`, which fails
+          # against BSD-3-Clause alone. It is allowed because it is an
+          # *additional* grant: Google licenses its patents reading on Go for
+          # use in implementations of Go, terminating only if the user sues
+          # over Go patents. It adds a right on top of BSD-3-Clause and
+          # imposes no obligation on GLX or on downstream consumers, so
+          # there is nothing for a review decision to weigh. The underlying
+          # copyright license is BSD-3-Clause, already allowed above.
+          #   LicenseRef-scancode-google-patent-license-golang
           allow-licenses: >-
             Apache-2.0, MIT, BSD-2-Clause, BSD-3-Clause, ISC, MPL-2.0,
-            CC0-1.0, BlueOak-1.0.0, Python-2.0, 0BSD, Unlicense
+            CC0-1.0, BlueOak-1.0.0, Python-2.0, 0BSD, Unlicense,
+            LicenseRef-scancode-google-patent-license-golang
           # Note: a dependency whose license the action cannot resolve at all
           # is reported but does NOT fail the check (upstream behaviour), so
           # the allow-list gates known licenses, not unknown ones — e.g.
