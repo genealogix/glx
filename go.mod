@@ -1,8 +1,8 @@
 module github.com/genealogix/glx
 
-go 1.26.0
+go 1.27.0
 
-toolchain go1.26.1
+toolchain go1.27.1
 
 require (
 	github.com/brianvoe/gofakeit/v7 v7.17.0
