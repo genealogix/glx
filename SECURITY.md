@@ -113,7 +113,7 @@ If you're evaluating whether to report: please do. The project benefits from sec
 
 ### Dependency Management
 
-- **Dependabot** — the sole automated dependency updater, covering Go, npm, and GitHub Actions. Version updates run weekly on a staggered schedule (Go on Monday, npm on Tuesday, GitHub Actions on Wednesday) with a cooldown that holds a new release back until it has aged — 3 days for a patch, 7 for a minor, 14 for a major. Security updates bypass the cooldown, so known-CVE fixes can land the same day. See [`.github/dependabot.yml`](https://github.com/genealogix/glx/blob/main/.github/dependabot.yml)
+- **Dependabot** — the sole automated dependency updater, covering Go, npm, and GitHub Actions. Version updates run weekly on a staggered schedule (Go on Monday, npm on Tuesday, GitHub Actions on Wednesday) with a cooldown that holds a new release back until it has aged: for Go and npm, 3 days for a patch, 7 for a minor and 14 for a major (7 days for anything the semver tiers don't classify); for GitHub Actions, a flat 7 days, since Dependabot rejects the per-tier keys for that ecosystem. Security updates bypass the cooldown, so known-CVE fixes can land the same day. See [`.github/dependabot.yml`](https://github.com/genealogix/glx/blob/main/.github/dependabot.yml)
 - **Dependency review** — blocks PRs that introduce dependencies with moderate+ vulnerabilities
 
 ### Code Scanning
