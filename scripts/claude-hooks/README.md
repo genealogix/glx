@@ -3,6 +3,29 @@
 In-repo scripts invoked by the `hooks` block of [`.claude/settings.json`](../../.claude/settings.json).
 Keeping them here (rather than inlined in the JSON) makes the non-trivial logic reviewable and testable.
 
+## Permission posture
+
+`.claude/settings.json` carries a blanket `"Bash"` allow rule, so a Claude Code session
+runs shell commands without a per-command approval prompt. The narrower
+`Bash(<prefix>:*)` entries beside it are kept on purpose: they record the
+previously-curated safe set, so deleting the one blanket entry restores that posture in
+a single edit.
+
+Three things still constrain a session under the blanket rule:
+
+- **The `PreToolUse` hooks in this directory.** A hook `permissionDecision` of `ask` or
+  `deny` takes precedence over a matching allow rule, so the `gh api` gate below still
+  prompts on writes and still hard-blocks ref tampering. The blanket rule makes that
+  gate *more* load-bearing, not less — it is now the only thing between a session and a
+  destructive `gh api` call, so the "pure restrictor" property documented below carries
+  the weight the allow-list used to share.
+- **Server-side branch protection.** The Main Protection ruleset on `main` requires a
+  pull request and blocks force-push and deletion, so no locally-run command can rewrite
+  the default branch — see [SECURITY-POSTURE.md](../../SECURITY-POSTURE.md).
+- **The agent conventions the repository already states** — never commit to `main`
+  directly, never force-push, never skip hooks unless explicitly told to. Those are
+  instructions to the agent, not enforcement.
+
 ## `gh-api-gate.py` — `gh api` mutation gate (genealogix/glx#912)
 
 ### Why
