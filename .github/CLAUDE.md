@@ -2,7 +2,7 @@
 
 ## GitHub Actions pinning: SHA-pin third-party, floats only for first-party
 
-<!-- Last reviewed: 2026-08-23 (#1046) -->
+<!-- Last reviewed: 2026-09-17 (#1022) -->
 
 **The repo's actual convention (since the #963/#968 SHA-pin sweep):**
 
@@ -20,11 +20,31 @@
    understands the SHA + comment form and bumps both together.
 
 2. **First-party `actions/*` (checkout, setup-go, setup-node, setup-python,
-   upload/download-artifact, cache): floating major tags are the current
-   documented choice**, pending the decision in #1022. Don't SHA-pin these
-   piecemeal — with one standing exception: `actions/attest` in `release.yml`
-   is SHA-pinned already, because it runs inside the privileged release job
-   (id-token: write) where a repointed tag would sit upstream of signing.
+   upload/download-artifact, cache): floating major tags, deliberately.**
+   This is a settled decision (#1022), not a backlog item — don't SHA-pin
+   these piecemeal, and don't re-open it without a new threat argument.
+
+   Rationale: first-party `actions/*` are published by GitHub and run on
+   GitHub-hosted runners, so they sit inside the same trust boundary as the
+   runner itself — a compromise there is not meaningfully bounded by a SHA
+   pin. Against that, Dependabot raises security *alerts* only for actions
+   referenced by semantic-version tag, never for SHA-pinned ones
+   (<https://docs.github.com/en/actions/reference/security/secure-use>), so
+   pinning would trade away alerting for immutability we mostly already
+   have. And keeping SHAs honest across ~70 `uses:` sites is real
+   maintenance cost for little threat reduction. The float is kept fresh by
+   the weekly `github-actions` ecosystem entry in `.github/dependabot.yml`.
+   The accepted consequence is a ceiling on the OpenSSF Scorecard
+   Pinned-Dependencies score; see `../SECURITY-POSTURE.md`.
+
+   One standing exception: `actions/attest` in `release.yml` is SHA-pinned,
+   because it runs inside the privileged release job (`id-token: write`)
+   where a repointed tag would sit upstream of signing. Any future
+   privileged job gets the same treatment.
+
+   **`github/*` is NOT first-party for this rule.** `github/codeql-action`
+   and anything else under the `github` org are treated as third-party and
+   stay SHA-pinned under rule 1. Only the `actions` org floats.
 
 3. **Exceptions without a floating major** (they only publish `vX.Y.Z`):
    pin the exact patch tag as the floor, SHA preferred. Each one carries a
