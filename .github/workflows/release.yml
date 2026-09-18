@@ -48,12 +48,12 @@ jobs:
       attestations: write   # store the build-provenance attestation (issue #256)
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
       - name: Set up Go
-        uses: actions/setup-go@v7
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
           # cache-poisoning guard (#1051): this privileged job holds id-token: write
@@ -68,7 +68,7 @@ jobs:
         run: go mod download
 
       - name: Install cosign
-        uses: sigstore/cosign-installer@v4.1.2   # pin: action only publishes vX.Y.Z tags, no floating v4 (#938; same no-floating-major pitfall as ossf/scorecard-action, #779)
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2 -- only vX.Y.Z tags published, no floating v4; do not "tidy" to @v4 (#938)
         with:
           cosign-release: 'v3.0.6'   # pin: --bundle output format is part of our release verification contract
 
