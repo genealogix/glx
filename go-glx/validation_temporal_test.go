@@ -812,7 +812,7 @@ func TestValidateRelationshipBoundarySources_DisagreeingYears(t *testing.T) {
 		t.Fatalf("Expected 1 warning, got %d: %v", len(result.Warnings), result.Warnings)
 	}
 	if !strings.Contains(result.Warnings[0].Message,
-		"start_event event-start (1875) and properties.started_on (1880) disagree") {
+		"start_event event-start (1875) and properties.started_on (1880) record different years") {
 		t.Errorf("Unexpected message: %s", result.Warnings[0].Message)
 	}
 }

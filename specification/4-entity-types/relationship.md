@@ -65,7 +65,7 @@ Relationship properties capture additional details that don't fit into the stand
 | `legal_status` | `vocabulary_type: legal_statuses` | Legal form of a coerced-labor relationship (`chattel`, `indentured`, `debt_bondage`, `apprenticeship`); see [Enslavement Relationship](#enslavement-relationship) |
 | `name_as_recorded` | string (with fields) | **Participant-level only** — set under `participants[].properties`, never at the relationship's top-level `properties`. The participant's name as written in the source, when it differs from the person's recorded name; see [Per-Participant Properties](#per-participant-properties) |
 
-`started_on` / `ended_on` record a date directly on the relationship; `start_event` / `end_event` point at Event entities that carry their own dates. Record each boundary **one way only**.
+`started_on` / `ended_on` record a date directly on the relationship; `start_event` / `end_event` point at Event entities that carry their own dates. Record each boundary **one way** wherever the chosen form carries the date.
 
 **When to use each:**
 
@@ -73,7 +73,7 @@ Relationship properties capture additional details that don't fit into the stand
 
 - **`started_on` / `ended_on`** (date only): Only a date is known and there is no event worth modelling — for example an informal partnership recorded as "from 1875 to 1890" with no ceremony or document behind it.
 
-Setting both for the same boundary is redundant: tooling reads the event, and the two copies can drift apart. A relationship that has both `start_event` and `started_on` (or both `end_event` and `ended_on`) generates a warning; see [Validation Rules](#validation-rules).
+Setting both for the same boundary is normally redundant: tooling reads the event, and the two copies can drift apart. A relationship that has both `start_event` and `started_on` (or both `end_event` and `ended_on`) generates a warning; see [Validation Rules](#validation-rules). The exception is an event with no usable date of its own — a documented marriage whose date is unknown or unparseable. There the date property still carries information the event does not, so it may be kept and no warning is raised; prefer moving the date onto the event once it is known.
 
 Example:
 

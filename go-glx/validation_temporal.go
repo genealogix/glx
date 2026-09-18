@@ -232,13 +232,15 @@ func (glx *GLXFile) checkBoundarySource(
 
 	field := "properties." + propName
 
-	message := fmt.Sprintf(
-		"%s[%s]: %s %s and %s both record the same boundary; the event is authoritative — remove %s",
-		EntityTypeRelationships, relID, eventField, eventID, field, field,
-	)
-	if propYear != eventYear {
+	var message string
+	if propYear == eventYear {
 		message = fmt.Sprintf(
-			"%s[%s]: %s %s (%d) and %s (%d) disagree; the event is authoritative — reconcile the dates or remove %s",
+			"%s[%s]: %s %s and %s both record the same boundary; the event is authoritative — if the property is the more precise date, move it onto the event, then remove %s",
+			EntityTypeRelationships, relID, eventField, eventID, field, field,
+		)
+	} else {
+		message = fmt.Sprintf(
+			"%s[%s]: %s %s (%d) and %s (%d) record different years; the event is authoritative — reconcile the dates, then remove %s",
 			EntityTypeRelationships, relID, eventField, eventID, eventYear, field, propYear, field,
 		)
 	}
