@@ -802,9 +802,9 @@ func TestAdd_ProgressLineUsesSingularWithSeparator(t *testing.T) {
 			name: "person",
 			add: func(io *IOStreams, dir string) error {
 				return addPerson(io, &addPersonOptions{
-					addCommonOptions: addCommonOptions{ArchivePath: dir},
-					Given:            "Michael David",
-					Surname:          "Hollnagel",
+					ArchivePath: dir,
+					Given:       "Michael David",
+					Surname:     "Hollnagel",
 				})
 			},
 			want: "Adding person: person-michael-david-hollnagel\n",
@@ -813,9 +813,9 @@ func TestAdd_ProgressLineUsesSingularWithSeparator(t *testing.T) {
 			name: "place",
 			add: func(io *IOStreams, dir string) error {
 				return addPlace(io, &addPlaceOptions{
-					addCommonOptions: addCommonOptions{ArchivePath: dir},
-					Name:             "Liepen",
-					Type:             "locality",
+					ArchivePath: dir,
+					Name:        "Liepen",
+					Type:        "locality",
 				})
 			},
 			want: "Adding place: place-liepen\n",
