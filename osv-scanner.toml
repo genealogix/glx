@@ -1,0 +1,29 @@
+# osv-scanner configuration for the GLX root Go module.
+#
+# Entries here suppress an OSV advisory for this repository only. Every entry
+# must state why the advisory does not apply, and must be removed as soon as the
+# reasoning stops holding. This file is not a general allowlist: advisories that
+# do apply are fixed by upgrading the dependency, not ignored here.
+#
+# Consumed by `osv-scanner` and, transitively, by the OpenSSF Scorecard
+# `Vulnerabilities` check (.github/workflows/scorecard.yml), which runs
+# osv-scanner over the repository.
+
+[[IgnoredVulns]]
+id = "GO-2026-5932"
+reason = """
+Advisory scope is golang.org/x/crypto/openpgp (and its subpackages), which GLX
+does not import. The advisory has no fixed version -- it marks those packages as
+unmaintained rather than patching a defect -- so upgrading cannot clear it.
+
+golang.org/x/crypto is an indirect dependency reached only through
+github.com/go-git/go-git/v5, which uses golang.org/x/crypto/hkdf; go-git's
+OpenPGP support is provided by github.com/ProtonMail/go-crypto/openpgp, the
+maintained replacement. Verified with:
+
+    go list -deps ./... | grep golang.org/x/crypto/openpgp   # no matches
+
+Re-verify with that command before renewing this entry; drop the entry if
+golang.org/x/crypto/openpgp ever enters the build graph, and fix the import
+instead.
+"""
