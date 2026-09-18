@@ -1013,3 +1013,40 @@ func TestValidateRelationshipBoundarySources_WiredIntoValidate(t *testing.T) {
 		t.Error("Validate() should warn when a relationship records a boundary as both an event and a date property")
 	}
 }
+
+func TestValidateRelationshipBoundarySources_DateFieldWiredIntoValidate(t *testing.T) {
+	testCases := []struct {
+		name      string
+		startedOn any
+	}{
+		{
+			name:      "structured",
+			startedOn: map[string]any{"value": "married in June 1875", "date": "1875-06-01"},
+		},
+		{
+			name: "temporal list",
+			startedOn: []any{
+				map[string]any{"value": "married in June 1875", "date": "1875-06-01"},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			glx := relationshipBoundaryFixture(tc.startedOn, nil)
+			result := glx.Validate()
+
+			hasBoundaryWarning := false
+			for _, w := range result.Warnings {
+				if strings.Contains(w.Message, "both record the same boundary") {
+					hasBoundaryWarning = true
+
+					break
+				}
+			}
+			if !hasBoundaryWarning {
+				t.Fatalf("Validate() should warn when %s boundary data uses the date field", tc.name)
+			}
+		})
+	}
+}
