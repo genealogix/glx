@@ -38,6 +38,7 @@
   {{if .Timeline}}
   <section>
     <h2>Timeline</h2>
+    {{with .TimelineStrip}}{{template "timeline-strip" .}}{{end}}
     <ol class="timeline">
       {{range .Timeline}}
       <li{{if .Undated}} class="undated"{{end}}><span class="t-date">{{.Date}}</span> <span class="t-label">{{.Label}}</span>{{if .Detail}} <span class="t-detail">{{.Detail}}</span>{{end}}</li>
@@ -126,4 +127,22 @@
 <rect x="{{.X}}" y="{{.Y}}" width="{{.W}}" height="{{.H}}" rx="6"></rect>
 <text class="chart-name" x="{{.TextX}}" y="{{.NameY}}">{{.Name}}</text>
 {{if .Dates}}<text class="chart-dates" x="{{.TextX}}" y="{{.DatesY}}">{{.Dates}}</text>{{end}}
+{{end}}
+
+{{define "timeline-strip"}}
+<figure class="strip">
+  <svg class="strip-svg" width="{{.Width}}" height="{{.Height}}" viewBox="0 0 {{.Width}} {{.Height}}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="{{.Label}}">
+    <title>{{.Label}}</title>
+    <rect class="strip-bar" x="{{.BarX}}" y="{{.BarY}}" width="{{.BarW}}" height="{{.BarH}}" rx="5"></rect>
+    <g class="strip-axis">
+      {{range .Ticks}}
+      <line x1="{{.X}}" y1="{{.Y1}}" x2="{{.X}}" y2="{{.Y2}}"></line>
+      <text x="{{.X}}" y="{{.TextY}}" text-anchor="middle">{{.Label}}</text>
+      {{end}}
+    </g>
+    <g class="strip-dots">
+      {{range .Dots}}<circle cx="{{.X}}" cy="{{.Y}}" r="{{.R}}"><title>{{.Title}}</title></circle>{{end}}
+    </g>
+  </svg>
+</figure>
 {{end}}
