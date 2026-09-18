@@ -11,9 +11,12 @@
 *.json text
 *.glx text diff=yaml merge=glx
 
-# Changelog entries are append-only under [Unreleased] — take both sides on
-# conflict. `union` is a git built-in, so no per-clone `git config` is needed.
-CHANGELOG.md merge=union
+# Changelog entries are append-only under [Unreleased] between releases — take
+# both sides on conflict. `union` is a git built-in, so no per-clone `git
+# config` is needed. Anchored to the root file: sub-package changelogs would
+# need their own reasoning. See CONTRIBUTING.md "Changelog Conflicts" for the
+# release-boundary caveat.
+/CHANGELOG.md merge=union
 
 # Shell scripts
 *.sh text eol=lf

@@ -193,9 +193,18 @@ both sides instead of leaving conflict markers. `union` is a git built-in, so it
 works in every clone with no `git config` step — unlike the optional `merge=glx`
 driver for `.glx` files described in [docs/merge-driver.md](docs/merge-driver.md).
 
-Review the merged result anyway: union keeps every line from both sides, so if
-both branches added the same `### Added` subsection you get the heading twice,
-and entry order may need a tidy-up.
+Review the merged result anyway — union keeps every line from both sides
+without understanding the file:
+
+- **Across a release boundary it can misfile your entry.** If `main` promoted
+  `## [Unreleased]` to a released version heading while your branch added an
+  entry under it, union keeps both and your entry ends up *inside* the released
+  section, which must never be edited. After merging `main` following a
+  release, check that your entries sit under `## [Unreleased]`; the reliable
+  fix is `git checkout main -- CHANGELOG.md` and then re-add your branch's
+  entries.
+- Entry order and duplicated headings may still need a tidy-up when both sides
+  restructured the same region.
 
 GitHub's "Update branch" button — and the auto-update bot that keeps PR branches
 current — merge server-side, and the GitHub merge API does not honor
