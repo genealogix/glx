@@ -119,7 +119,8 @@ func buildEventPropertyAssertionsIndex(expCtx *ExportContext) {
 			expCtx.EventPropertyAssertions[eventID] = make(map[string][]*Assertion)
 		}
 		expCtx.EventPropertyAssertions[eventID][assertion.Property] = append(
-			expCtx.EventPropertyAssertions[eventID][assertion.Property], assertion)
+			expCtx.EventPropertyAssertions[eventID][assertion.Property], assertion,
+		)
 	}
 }
 

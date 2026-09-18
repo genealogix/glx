@@ -69,7 +69,7 @@ func eventBlock(t *testing.T, ged, xref, tag string) string {
 		inRec   bool
 		inEvent bool
 	)
-	for _, line := range strings.Split(ged, "\n") {
+	for line := range strings.SplitSeq(ged, "\n") {
 		switch {
 		case strings.HasPrefix(line, "0 "):
 			if inEvent {
