@@ -282,7 +282,7 @@ func (r *mediaResolver) copyMedia(srcPath, uri string) (string, error) {
 	// refuses symlinks that escape baseDir); either failure is "missing".
 	src, err := openWithin(r.baseDir, srcPath)
 	if err != nil {
-		return "", nil //nolint:nilerr // missing media is non-fatal
+		return "", nil
 	}
 	defer func() { _ = src.Close() }()
 
