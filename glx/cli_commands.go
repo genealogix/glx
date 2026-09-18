@@ -1807,7 +1807,7 @@ the driver to fall back to git's text merge — standard <<<<<<< markers
 land in <ours>, and a diagnostic summary listing both sides' values
 (with assertion confidence and citations when applicable) is written to
 stderr.`,
-	Args: cobra.RangeArgs(3, 4), //nolint:mnd // git merge-driver signature is %O %A %B [%P]
+	Args: cobra.RangeArgs(3, 4), // git merge-driver signature is %O %A %B [%P]
 	RunE: runMergeDriverCmd,
 }
 
@@ -1817,7 +1817,7 @@ func runMergeDriverCmd(_ *cobra.Command, args []string) error {
 		OursPath:   args[1],
 		TheirsPath: args[2],
 	}
-	if len(args) >= 4 { //nolint:mnd // %P is git's 4th positional arg
+	if len(args) >= 4 { // %P is git's 4th positional arg
 		in.OrigPath = args[3]
 	} else {
 		in.OrigPath = in.OursPath

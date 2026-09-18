@@ -88,10 +88,10 @@ lint-codeowners: ## Verify every file is matched by a .github/CODEOWNERS rule
 	fi; \
 	echo "CODEOWNERS coverage OK"
 
-fix: ## Run Go 1.26 modernizers on codebase
+fix: ## Run Go 1.27 modernizers on codebase
 	go fix ./...
 
-fix-diff: ## Preview Go 1.26 modernizer changes without applying
+fix-diff: ## Preview Go 1.27 modernizer changes without applying
 	go fix -diff ./...
 
 ## Testing

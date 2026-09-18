@@ -432,7 +432,7 @@ func finalizeAdd(io *IOStreams, opts *addCommonOptions, ctx *addContext, entityT
 	io.Printf("Adding %s %s\n", entityType, entityID)
 	if opts.DryRun {
 		io.Println("(dry run — no files written)")
-		fmt.Fprintln(io.MachineOut, entityID) //nolint:errcheck // CLI output
+		fmt.Fprintln(io.MachineOut, entityID)
 
 		return nil
 	}
@@ -441,7 +441,7 @@ func finalizeAdd(io *IOStreams, opts *addCommonOptions, ctx *addContext, entityT
 		return err
 	}
 
-	fmt.Fprintln(io.MachineOut, entityID) //nolint:errcheck // CLI output
+	fmt.Fprintln(io.MachineOut, entityID)
 
 	return nil
 }
