@@ -12,6 +12,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [Unreleased]
 
+### Changed
+
+- **ADR-0006 now states the `go-glx` no-filesystem-I/O rule directly** — The ADR previously stated its own decision by quoting and linking `go-glx/CLAUDE.md`, making an agent guide the authority for a published architectural rule. The ADR is now self-contained, and in the process gained the parts of the rule its quote had elided: the full prohibition list (`os.MkdirAll`, `os.Stat`, `os.ReadDir`, and `filepath.Join` used to build a path for a file operation) and the complete allowed set (`io/fs.FS` alongside `io.Reader`, `io.Writer`, `[]byte`, plus `go:embed` for data the library itself needs). `go-glx/CLAUDE.md` now points at the ADR as the source of truth. (PR #1259)
+
 ## [0.0.0-beta.12] - 2026-09-16
 
 ### Added
