@@ -58,13 +58,34 @@ Status legend: ✓ met · ◐ partial · ☐ not yet met
 
 #### Action pinning
 
-Third-party GitHub Actions used by this repository are pinned to a full commit SHA with a trailing version comment, which is the form the OpenSSF Scorecard *Pinned-Dependencies* check expects. Actions published under the `github` organization (for example `github/codeql-action`) are treated as third-party for this purpose and are SHA-pinned like any other — including `ossf/scorecard-action`, which publishes no floating major tag but is still SHA-pinned. One action publishes no floating major tag and is pinned to an exact patch tag rather than a SHA (`sigstore/cosign-installer@v4.1.2`); that is a weaker form, since a tag remains a mutable ref, and it is used only because no floating major exists to track.
+This section is the project's canonical statement of how GitHub Actions references are pinned. The convention has three tiers.
 
-Actions published under the `actions` organization — `checkout`, `setup-go`, `setup-node`, `upload-artifact`, `download-artifact`, `cache`, and friends — deliberately use floating major tags (`@v7`, `@v8`, and so on, whatever the action's current major is). These actions are published by GitHub, the same organization that operates the hosted runners the workflows execute on, so the publisher is trusted end-to-end. The residual risk is real and accepted rather than dismissed: a major tag is a mutable ref, and a re-pointed one would run with the workflow's permissions — the threat a SHA pin closes. It is accepted because the likelihood against GitHub's own organization is judged low, and because pinning would suppress Dependabot vulnerability *alerts*, which GitHub raises only for actions referenced by semantic-version tag and [never for SHA-pinned references](https://docs.github.com/en/actions/reference/security/secure-use). The references are kept current by the weekly `github-actions` Dependabot ecosystem entry in [`.github/dependabot.yml`](https://github.com/genealogix/glx/blob/main/.github/dependabot.yml).
+**Tier 1 — third-party actions: full commit SHA plus a trailing version comment.** This is the default rule and the form the OpenSSF Scorecard *Pinned-Dependencies* check expects:
 
-The exception is signing and attestation: `actions/attest` in [`release.yml`](https://github.com/genealogix/glx/blob/main/.github/workflows/release.yml) is SHA-pinned, because a re-pointed tag there would sit directly upstream of the provenance attestation that downstream consumers verify. The exception is scoped to those steps, not to every job holding an elevated token — `scorecard.yml` also holds `id-token: write`, and the branch-maintenance workflows mint GitHub App tokens, and their `actions/*` references still float.
+```yaml
+uses: golangci/golangci-lint-action@82606bf257cbaff209d206a39f5134f0cfbfd2ee # v9.2.1
+```
 
-The accepted consequence is that the project's OpenSSF Scorecard *Pinned-Dependencies* score has a ceiling below 10, and no Scorecard allowlist config is maintained to mask it — the published score reflects the actual configuration. This is a deliberate, reviewed trade-off; the full convention — the three pinning tiers, the privileged-job exception, and the actions that publish no floating major tag — is documented for contributors in [`.github/CLAUDE.md`](https://github.com/genealogix/glx/blob/main/.github/CLAUDE.md).
+A SHA pin is never "tidied" back down to a bare tag: upstream tags are force-repointable, which is how the `tj-actions/changed-files` compromise (CVE-2025-30066) reached its consumers. Dependabot understands the SHA-plus-comment form and bumps both together, so pinning does not freeze the action. **Actions published under the `github` organization are third-party for this rule** — `github/codeql-action` and anything else under that org are SHA-pinned like any other third-party action. Only the `actions` organization is treated as first-party.
+
+**Tier 2 — first-party `actions/*`: floating major tags, deliberately.** `checkout`, `setup-go`, `setup-node`, `setup-python`, `upload-artifact`, `download-artifact`, `cache` and their siblings are referenced by floating major tag (`@v7`, `@v8`, and so on — whichever major is current). These are published by GitHub, the same organization that operates the hosted runners the workflows execute on, so the publisher is trusted end-to-end.
+
+The residual risk is real and accepted rather than dismissed: a major tag is a mutable ref, and a re-pointed one would run with the workflow's permissions — precisely the threat a SHA pin closes. It is accepted for three reasons. The likelihood of a tag-repointing compromise originating inside GitHub's own organization is judged low. Pinning would suppress Dependabot vulnerability *alerts*, which GitHub raises only for actions referenced by semantic-version tag and [never for SHA-pinned references](https://docs.github.com/en/actions/reference/security/secure-use), so the project would trade an alerting channel for immutability it largely already has. And keeping SHAs current across roughly seventy `uses:` references is a standing maintenance cost for little threat reduction. The floating references are kept fresh by the weekly `github-actions` Dependabot ecosystem entry in [`.github/dependabot.yml`](https://github.com/genealogix/glx/blob/main/.github/dependabot.yml).
+
+The exception is **signing and attestation**: `actions/attest` in [`release.yml`](https://github.com/genealogix/glx/blob/main/.github/workflows/release.yml) is SHA-pinned, because a re-pointed tag there would sit directly upstream of the provenance attestation that downstream consumers verify. The exception is scoped to those steps, not to every job holding an elevated token — [`scorecard.yml`](https://github.com/genealogix/glx/blob/main/.github/workflows/scorecard.yml) also holds `id-token: write`, and the branch-maintenance workflows mint GitHub App tokens, yet their `actions/*` references still float, because nothing in those jobs produces an artifact a consumer verifies.
+
+**Tier 3 — actions that publish no floating major tag.** Two dependencies publish only `vX.Y.Z` tags, so there is no major to track:
+
+| Action | Pin form | Tracked in |
+|---|---|---|
+| [`ossf/scorecard-action`](https://github.com/ossf/scorecard-action) | Full commit SHA plus version comment | [#779](https://github.com/genealogix/glx/issues/779) |
+| [`sigstore/cosign-installer`](https://github.com/sigstore/cosign-installer) | Exact patch tag (`@v4.1.2`) | [#938](https://github.com/genealogix/glx/issues/938) |
+
+The exact-patch-tag form is the weaker of the two — a patch tag is still a mutable ref — and is used only where a SHA pin has not been adopted. Neither may be "corrected" to a floating `@vN`, which fails outright with `Unable to resolve action`.
+
+**Accepted consequence.** Because the first-party references float, the project's OpenSSF Scorecard *Pinned-Dependencies* score has a ceiling below 10. No Scorecard allowlist configuration is maintained to mask it: the published score reflects the repository's actual configuration.
+
+**Known limit of this control.** A SHA pin is necessary but not sufficient. It does not pin the pinned action's own transitive `uses:` references, and a pinned action can still resolve a re-registrable domain at runtime. Pinning is one layer, not a complete supply-chain boundary.
 
 ### Level 3 — Mature
 

@@ -1,82 +1,43 @@
 # .github/ — Claude Guide
 
+## This file is never the source of truth
+
+Policies, conventions, and decisions live in project files —
+`../SECURITY-POSTURE.md`, `../CONTRIBUTING.md`, `../docs/`,
+`../specification/`, `../docs/decisions/`. A `CLAUDE.md` may only summarize
+them and point at them, and public docs must never link to a `CLAUDE.md`.
+When a convention changes, change the project file first; update the summary
+here afterwards.
+
 ## GitHub Actions pinning: SHA-pin third-party, floats only for first-party
 
 <!-- Last reviewed: 2026-09-17 (#1022) -->
 
-**The repo's actual convention (since the #963/#968 SHA-pin sweep):**
+**Source of truth: the "Action pinning" section of `../SECURITY-POSTURE.md`.**
+Read it before changing any `uses:` line, and record any change to the
+convention there — not here. This is a summary for applying the rule, and
+nothing in it may contradict that section.
 
-1. **Third-party actions (the default rule): full-commit-SHA pin plus a
-   trailing `# vX.Y.Z` comment.** This is the OpenSSF Scorecard
-   "pin dependencies" form and the default every third-party `uses:` in the
-   repo follows today, apart from the exceptions in rule 3, e.g.
+| What you're editing | Pin form |
+|---|---|
+| Third-party action (`github/*` counts as third-party) | Full commit SHA + trailing version comment |
+| First-party `actions/*` | Floating major tag (`@v7`, …) — deliberate, #1022 |
+| `actions/attest` or any signing/attestation step | Full commit SHA |
+| `ossf/scorecard-action` (#779) | Full commit SHA (publishes no floating major) |
+| `sigstore/cosign-installer` (#938) | Exact patch tag `@v4.1.2` (publishes no floating major) |
 
-   ```yaml
-   uses: golangci/golangci-lint-action@82606bf257cbaff209d206a39f5134f0cfbfd2ee # v9.2.1
-   ```
+Practical consequences:
 
-   Do NOT "tidy" a SHA pin down to a bare tag — tags are force-repointable
-   upstream (the tj-actions/changed-files incident, CVE-2025-30066). Dependabot
-   understands the SHA + comment form and bumps both together.
+- Never "tidy" a SHA pin down to a bare tag, and never "correct" a tier-3 pin
+  to `@vN` — the latter fails with `Unable to resolve action <owner>/<repo>@vN`.
+- Never SHA-pin a first-party `actions/*` piecemeal. The float is deliberate
+  and Dependabot keeps it fresh weekly; re-opening it is a change to
+  `../SECURITY-POSTURE.md`, not a drive-by edit here.
+- Before editing any `uses:` line, check what the action actually publishes:
 
-2. **First-party `actions/*` (checkout, setup-go, setup-node, setup-python,
-   upload/download-artifact, cache): floating major tags, deliberately.**
-   This is a settled decision (#1022), not a backlog item — don't SHA-pin
-   these piecemeal, and don't re-open it without a new threat argument.
-
-   Rationale: first-party `actions/*` are published by GitHub, under the
-   same organization that operates the runners the workflows execute on, so
-   the publisher is already trusted end-to-end. This does NOT make the
-   residual risk zero — an `actions/*` tag is still a mutable ref, and a
-   re-pointed one would execute with the workflow's permissions, which is
-   exactly the class a SHA pin closes. The judgment is that the likelihood
-   of that against GitHub's own org is low enough to trade for the
-   following. Dependabot raises security *alerts* only for actions
-   referenced by semantic-version tag, never for SHA-pinned ones
-   (<https://docs.github.com/en/actions/reference/security/secure-use>), so
-   pinning would trade away alerting for immutability we mostly already
-   have. And keeping SHAs honest across ~70 `uses:` sites is real
-   maintenance cost for little threat reduction. The float is kept fresh by
-   the weekly `github-actions` ecosystem entry in `.github/dependabot.yml`.
-   The accepted consequence is a ceiling on the OpenSSF Scorecard
-   Pinned-Dependencies score; see `../SECURITY-POSTURE.md`.
-
-   One standing exception: `actions/attest` in `release.yml` is SHA-pinned,
-   because a repointed tag there would sit directly upstream of artifact
-   signing. The exception is scoped to **signing and attestation steps**,
-   not to every job holding an elevated token: `scorecard.yml` also has
-   `id-token: write`, and `auto-update-branches.yml` /
-   `auto-resolve-conflicts.yml` mint app tokens, yet all three still float
-   their `actions/*` — deliberately, since nothing there produces an
-   artifact consumers verify. Widening the exception means pinning every
-   `uses:` in those jobs too; don't half-apply it.
-
-   **`github/*` is NOT first-party for this rule.** `github/codeql-action`
-   and anything else under the `github` org are treated as third-party and
-   stay SHA-pinned under rule 1. Only the `actions` org floats.
-
-3. **Exceptions without a floating major** (they only publish `vX.Y.Z`):
-   pin the exact patch tag as the floor, SHA preferred. Each one carries a
-   comment so nobody "tidies" it back to `@vN`, which fails with
-   `Unable to resolve action <owner>/<repo>@vN`:
-
-   | Action | Pin form | Issue |
-   |---|---|---|
-   | `sigstore/cosign-installer` | `@v4.1.2` exact tag (no floating `@v4`) | #938 |
-   | `ossf/scorecard-action` | full SHA + `# vX.Y.Z` comment (no floating `@v2`) | #779 |
-
-**Verify before you push.** Before editing any `uses:` line, check what tags
-the action actually publishes:
-
-```bash
-gh api repos/<owner>/<repo>/tags --jq '.[].name' | head
-```
-
-Caveat: a SHA pin is necessary, not sufficient — it does not pin the action's
-transitive `uses:` references, and a pinned action can still fetch a
-re-registrable domain at runtime. See `SECURITY-POSTURE.md` for the posture
-this supports, and the root `CLAUDE.md` / `go-glx/CLAUDE.md` for sibling
-guides.
+  ```bash
+  gh api repos/<owner>/<repo>/tags --jq '.[].name' | head
+  ```
 
 ## Release pipeline: never move a published tag — cut a new patch tag
 
