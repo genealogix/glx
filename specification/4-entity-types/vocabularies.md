@@ -1000,6 +1000,8 @@ Standard properties include:
 - `legal_status` - Legal form of a coerced-labor relationship (validated against `legal_statuses`)
 - `name_as_recorded` - **Participant-level only**: set under `relationship.participants[].properties`, not `relationship.properties`. The participant's name as written in the source (structured, with name fields)
 
+Use `started_on` / `ended_on` only when the boundary is not modelled as an event; setting one alongside the matching `start_event` / `end_event` generates a warning (see [Relationship - Properties](relationship.md#properties)).
+
 ### Place Properties Vocabulary
 
 **Default file**: `vocabularies/place-properties.glx`
