@@ -721,3 +721,206 @@ func TestValidateTemporalConsistency_WiredIntoValidate(t *testing.T) {
 		t.Error("Validate() should produce temporal consistency warnings")
 	}
 }
+
+// relationshipBoundaryFixture builds an archive with a marriage relationship
+// whose start event is dated 1875 and end event 1890, plus the given
+// started_on/ended_on date properties. A nil value leaves that property unset.
+func relationshipBoundaryFixture(startedOn, endedOn any) *GLXFile {
+	properties := map[string]any{}
+	if startedOn != nil {
+		properties[RelationshipPropertyStartedOn] = startedOn
+	}
+	if endedOn != nil {
+		properties[RelationshipPropertyEndedOn] = endedOn
+	}
+
+	return &GLXFile{
+		Persons: map[string]*Person{
+			"person-1": {Properties: map[string]any{}},
+			"person-2": {Properties: map[string]any{}},
+		},
+		Events: map[string]*Event{
+			"event-start": {
+				Type: EventTypeMarriage, Date: "1875-06-01",
+				Participants: []Participant{{Person: "person-1", Role: "spouse"}},
+			},
+			"event-end": {
+				Type: EventTypeDivorce, Date: "1890-06-01",
+				Participants: []Participant{{Person: "person-1", Role: "spouse"}},
+			},
+		},
+		Relationships: map[string]*Relationship{
+			"rel-1": {
+				Type: RelationshipTypeMarriage,
+				Participants: []Participant{
+					{Person: "person-1", Role: "spouse"},
+					{Person: "person-2", Role: "spouse"},
+				},
+				StartEvent: "event-start",
+				EndEvent:   "event-end",
+				Properties: properties,
+			},
+		},
+	}
+}
+
+func TestValidateRelationshipBoundarySources_WarnsOnStart(t *testing.T) {
+	glx := relationshipBoundaryFixture("1875-06-01", nil)
+	result := &ValidationResult{}
+	glx.validateRelationshipBoundarySources(result)
+
+	if len(result.Warnings) != 1 {
+		t.Fatalf("Expected 1 warning, got %d: %v", len(result.Warnings), result.Warnings)
+	}
+	warning := result.Warnings[0]
+	if !strings.Contains(warning.Message, "start_event event-start and properties.started_on both record the same boundary") {
+		t.Errorf("Unexpected message: %s", warning.Message)
+	}
+	if warning.SourceType != EntityTypeRelationships {
+		t.Errorf("Warning should have source type 'relationships', got: %s", warning.SourceType)
+	}
+	if warning.SourceID != "rel-1" {
+		t.Errorf("Warning should have source ID 'rel-1', got: %s", warning.SourceID)
+	}
+	if warning.Field != "properties.started_on" {
+		t.Errorf("Warning field should be 'properties.started_on', got: %s", warning.Field)
+	}
+}
+
+func TestValidateRelationshipBoundarySources_WarnsOnEnd(t *testing.T) {
+	glx := relationshipBoundaryFixture(nil, "1890")
+	result := &ValidationResult{}
+	glx.validateRelationshipBoundarySources(result)
+
+	if len(result.Warnings) != 1 {
+		t.Fatalf("Expected 1 warning, got %d: %v", len(result.Warnings), result.Warnings)
+	}
+	if result.Warnings[0].Field != "properties.ended_on" {
+		t.Errorf("Warning field should be 'properties.ended_on', got: %s", result.Warnings[0].Field)
+	}
+	if !strings.Contains(result.Warnings[0].Message, "end_event event-end and properties.ended_on both record the same boundary") {
+		t.Errorf("Unexpected message: %s", result.Warnings[0].Message)
+	}
+}
+
+func TestValidateRelationshipBoundarySources_DisagreeingYears(t *testing.T) {
+	glx := relationshipBoundaryFixture("1880-06-01", nil)
+	result := &ValidationResult{}
+	glx.validateRelationshipBoundarySources(result)
+
+	if len(result.Warnings) != 1 {
+		t.Fatalf("Expected 1 warning, got %d: %v", len(result.Warnings), result.Warnings)
+	}
+	if !strings.Contains(result.Warnings[0].Message,
+		"start_event event-start (1875) and properties.started_on (1880) disagree") {
+		t.Errorf("Unexpected message: %s", result.Warnings[0].Message)
+	}
+}
+
+func TestValidateRelationshipBoundarySources_TemporalListValue(t *testing.T) {
+	glx := relationshipBoundaryFixture([]any{
+		map[string]any{"value": "1875-06-01", "date": "1875-06-01"},
+	}, nil)
+	result := &ValidationResult{}
+	glx.validateRelationshipBoundarySources(result)
+
+	if len(result.Warnings) != 1 {
+		t.Fatalf("Expected 1 warning for list-form property, got %d: %v", len(result.Warnings), result.Warnings)
+	}
+}
+
+func TestValidateRelationshipBoundarySources_NoWarningWhenOnlyProperty(t *testing.T) {
+	glx := relationshipBoundaryFixture("1875-06-01", "1890")
+	glx.Relationships["rel-1"].StartEvent = ""
+	glx.Relationships["rel-1"].EndEvent = ""
+	result := &ValidationResult{}
+	glx.validateRelationshipBoundarySources(result)
+
+	if len(result.Warnings) != 0 {
+		t.Errorf("Expected 0 warnings when only properties are set, got %d: %v", len(result.Warnings), result.Warnings)
+	}
+}
+
+func TestValidateRelationshipBoundarySources_NoWarningWhenOnlyEvents(t *testing.T) {
+	glx := relationshipBoundaryFixture(nil, nil)
+	result := &ValidationResult{}
+	glx.validateRelationshipBoundarySources(result)
+
+	if len(result.Warnings) != 0 {
+		t.Errorf("Expected 0 warnings when only events are set, got %d: %v", len(result.Warnings), result.Warnings)
+	}
+}
+
+func TestValidateRelationshipBoundarySources_SkipsDanglingEventReference(t *testing.T) {
+	// Broken event references are reported by reference validation, not here.
+	glx := relationshipBoundaryFixture("1875-06-01", nil)
+	glx.Relationships["rel-1"].StartEvent = "event-missing"
+	result := &ValidationResult{}
+	glx.validateRelationshipBoundarySources(result)
+
+	if len(result.Warnings) != 0 {
+		t.Errorf("Expected 0 warnings for dangling event reference, got %d: %v", len(result.Warnings), result.Warnings)
+	}
+}
+
+func TestValidateRelationshipBoundarySources_SkipsUnparseablePropertyDate(t *testing.T) {
+	glx := relationshipBoundaryFixture("sometime around then", nil)
+	result := &ValidationResult{}
+	glx.validateRelationshipBoundarySources(result)
+
+	if len(result.Warnings) != 0 {
+		t.Errorf("Expected 0 warnings for unparseable property date, got %d: %v", len(result.Warnings), result.Warnings)
+	}
+}
+
+func TestValidateRelationshipBoundarySources_SkipsUnparseableEventDate(t *testing.T) {
+	glx := relationshipBoundaryFixture("1875-06-01", nil)
+	glx.Events["event-start"].Date = "sometime around then"
+	result := &ValidationResult{}
+	glx.validateRelationshipBoundarySources(result)
+
+	if len(result.Warnings) != 0 {
+		t.Errorf("Expected 0 warnings for unparseable event date, got %d: %v", len(result.Warnings), result.Warnings)
+	}
+}
+
+func TestValidateRelationshipBoundarySources_NonStringPropertyValue(t *testing.T) {
+	glx := relationshipBoundaryFixture(1875, nil)
+	result := &ValidationResult{}
+	glx.validateRelationshipBoundarySources(result)
+
+	if len(result.Warnings) != 0 {
+		t.Errorf("Expected 0 warnings for non-string property value, got %d: %v", len(result.Warnings), result.Warnings)
+	}
+}
+
+func TestValidateRelationshipBoundarySources_NilRelationship(t *testing.T) {
+	glx := &GLXFile{
+		Relationships: map[string]*Relationship{
+			"rel-1": nil,
+		},
+	}
+	result := &ValidationResult{}
+	glx.validateRelationshipBoundarySources(result)
+
+	if len(result.Warnings) != 0 {
+		t.Errorf("Expected 0 warnings for nil relationship, got %d", len(result.Warnings))
+	}
+}
+
+func TestValidateRelationshipBoundarySources_WiredIntoValidate(t *testing.T) {
+	glx := relationshipBoundaryFixture("1875-06-01", nil)
+	result := glx.Validate()
+
+	hasBoundaryWarning := false
+	for _, w := range result.Warnings {
+		if strings.Contains(w.Message, "both record the same boundary") {
+			hasBoundaryWarning = true
+
+			break
+		}
+	}
+	if !hasBoundaryWarning {
+		t.Error("Validate() should warn when a relationship records a boundary as both an event and a date property")
+	}
+}

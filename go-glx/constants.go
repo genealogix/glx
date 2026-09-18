@@ -131,6 +131,8 @@ const (
 // Standard Relationship Property Names - commonly used properties on Relationship entities
 const (
 	RelationshipPropertyNumberOfChildren = "number_of_children" // Known child count; maps to GEDCOM FAM.NCHI
+	RelationshipPropertyStartedOn        = "started_on"         // Date the relationship began; use start_event when the boundary is a documented event
+	RelationshipPropertyEndedOn          = "ended_on"           // Date the relationship ended; use end_event when the boundary is a documented event
 )
 
 // Standard Media Property Names - commonly used properties on Media entities

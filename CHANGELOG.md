@@ -12,6 +12,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [Unreleased]
 
+### Added
+
+- **Temporal validation: a relationship boundary recorded twice now warns** — `validateTemporalConsistency()` gains a fifth check: a relationship that records the same boundary both as an event reference and as a date property — `start_event` alongside `properties.started_on`, or `end_event` alongside `properties.ended_on` — now produces a warning, since tooling reads the event and the two copies can drift apart. When both years parse and disagree, the message names both (`start_event event-marriage-1875 (1875) and properties.started_on (1880) disagree`). Reported as a warning (not an error) so archives mid-migration still validate; boundaries whose event reference is unresolvable (already an error from reference validation) or whose dates have no parseable year are skipped. The property values are read in every shape the property vocabulary allows (plain string, structured `{value, …}` object, temporal list). `specification/4-entity-types/relationship.md` now spells out when to use each form under a "When to use each" section — the previous text said the property need not match the event — with the rule added to its Validation Rules list, the canonical warnings list in `specification/3-archive-organization.md`, and pointers from the relationship-properties vocabulary docs. The `started_on`/`ended_on` properties are unchanged and remain supported. (#546)
+
 ## [0.0.0-beta.12] - 2026-09-16
 
 ### Added

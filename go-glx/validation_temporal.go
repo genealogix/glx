@@ -26,6 +26,7 @@ func (glx *GLXFile) validateTemporalConsistency(result *ValidationResult) {
 	glx.validateParentChildAges(result)
 	glx.validateMarriageBeforeBirth(result)
 	glx.validateRelationshipEventOrder(result)
+	glx.validateRelationshipBoundarySources(result)
 }
 
 // extractEventYear finds a person's event of the given type and returns the
@@ -187,6 +188,97 @@ func (glx *GLXFile) validateRelationshipEventOrder(result *ValidationResult) {
 			})
 		}
 	}
+}
+
+// validateRelationshipBoundarySources checks that a relationship records each
+// of its boundaries once: either as an event reference (`start_event` /
+// `end_event`) or as a date property (`started_on` / `ended_on`), not both.
+// Setting both is redundant because tooling reads the event, and the two can
+// drift apart. Boundaries where the event reference is unresolvable or where
+// either date has no parseable year are skipped — a dangling reference is
+// already reported as an error by reference validation.
+func (glx *GLXFile) validateRelationshipBoundarySources(result *ValidationResult) {
+	for relID, rel := range glx.Relationships {
+		if rel == nil {
+			continue
+		}
+
+		glx.checkBoundarySource(relID, rel.StartEvent, RelationshipPropertyStartedOn, "start_event", rel, result)
+		glx.checkBoundarySource(relID, rel.EndEvent, RelationshipPropertyEndedOn, "end_event", rel, result)
+	}
+}
+
+// checkBoundarySource warns when one relationship boundary is recorded both as
+// an event reference and as a date property.
+func (glx *GLXFile) checkBoundarySource(
+	relID, eventID, propName, eventField string,
+	rel *Relationship,
+	result *ValidationResult,
+) {
+	if eventID == "" {
+		return
+	}
+
+	propValue, ok := rel.Properties[propName]
+	if !ok {
+		return
+	}
+
+	propYear := ExtractFirstYear(propertyDateString(propValue))
+	eventYear := resolveEventYear(glx, eventID)
+	if propYear == 0 || eventYear == 0 {
+		return
+	}
+
+	field := "properties." + propName
+
+	message := fmt.Sprintf(
+		"%s[%s]: %s %s and %s both record the same boundary; the event is authoritative — remove %s",
+		EntityTypeRelationships, relID, eventField, eventID, field, field,
+	)
+	if propYear != eventYear {
+		message = fmt.Sprintf(
+			"%s[%s]: %s %s (%d) and %s (%d) disagree; the event is authoritative — reconcile the dates or remove %s",
+			EntityTypeRelationships, relID, eventField, eventID, eventYear, field, propYear, field,
+		)
+	}
+
+	result.Warnings = append(result.Warnings, ValidationWarning{
+		SourceType: EntityTypeRelationships,
+		SourceID:   relID,
+		Field:      field,
+		Message:    message,
+	})
+}
+
+// propertyDateString extracts a date string from a property value that may be
+// a plain string, a structured {value, ...} object, or a temporal list of
+// {value, date} objects (or plain strings). The first usable
+// value wins; an empty string is returned when no value can be extracted.
+func propertyDateString(propValue any) string {
+	switch v := propValue.(type) {
+	case string:
+		return v
+	case map[string]any:
+		if value, isString := v["value"].(string); isString {
+			return value
+		}
+	case []any:
+		for _, item := range v {
+			switch entry := item.(type) {
+			case string:
+				if entry != "" {
+					return entry
+				}
+			case map[string]any:
+				if value, isString := entry["value"].(string); isString && value != "" {
+					return value
+				}
+			}
+		}
+	}
+
+	return ""
 }
 
 // resolveEventYear resolves an event reference to the year of its date, or 0
