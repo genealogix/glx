@@ -72,6 +72,20 @@ jobs:
         with:
           cosign-release: 'v3.0.6'   # pin: --bundle output format is part of our release verification contract
 
+      # GoReleaser's `sboms:` stanza shells out to syft, which is not preinstalled
+      # on ubuntu-latest. Without this step the release fails at the SBOM pipe
+      # ("syft: executable file not found in $PATH") after the archives are built
+      # but before signing, so it must stay ahead of the GoReleaser step. (#269)
+      #
+      # Accepted risk, recorded in SECURITY-POSTURE.md under "Action pinning":
+      # the SHA pin below does NOT make this step hermetic. At that SHA the
+      # action downloads https://raw.githubusercontent.com/anchore/syft/<ver>/
+      # install.sh - a mutable git tag ref - and runs it with `sh`, inside this
+      # job's id-token: write context and upstream of signing and attestation.
+      # Do not read the pin as closing that path.
+      - name: Install syft
+        uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:

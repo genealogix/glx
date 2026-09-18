@@ -76,7 +76,7 @@ The easiest way to get started is with the included [Dev Container](https://cont
 # GitHub Codespaces: Click "Code" → "Codespaces" → "Create codespace on main"
 ```
 
-The container includes Go, Node.js, golangci-lint, and lefthook (pre-commit hooks installed automatically at create time). `goreleaser` is **not** installed in the container — it's only needed for `make release-snapshot` (maintainer/release work) and should be [installed manually](https://goreleaser.com/install/) on demand.
+The container includes Go, Node.js, golangci-lint, and lefthook (pre-commit hooks installed automatically at create time). `goreleaser` and `syft` are **not** installed in the container — they're only needed for `make release-snapshot` (maintainer/release work) and should be installed manually on demand ([goreleaser](https://goreleaser.com/install/), [syft](https://github.com/anchore/syft#installation)).
 
 ### Manual Setup
 
@@ -498,9 +498,13 @@ To report a vulnerability, see our [Security Policy](https://github.com/genealog
 Releases use [GoReleaser](https://goreleaser.com/install/) (automated in CI on tag push):
 
 ```bash
-# Test release build locally (requires goreleaser CLI)
+# Test release build locally (requires the goreleaser and syft CLIs)
 make release-snapshot
 ```
+
+`syft` is required because `.goreleaser.yml` generates an SPDX-JSON SBOM for each release archive; without it on `PATH` the snapshot build fails at the SBOM step. Install it from <https://github.com/anchore/syft#installation> (in CI, `release.yml` installs it via `anchore/sbom-action/download-syft`).
+
+`cosign` is *not* required: the target passes `--skip=sign`. `--snapshot` on its own implies only `--skip=announce,publish,validate`, so the `signs:` stanza would otherwise still run and either fail with `cosign: executable file not found` or block on an interactive keyless OIDC prompt. Release signing is exercised by `release.yml` on a real tag push, not by the snapshot target.
 
 ## Questions?
 
