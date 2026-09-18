@@ -87,8 +87,11 @@ Every release publishes one SPDX-JSON SBOM per archive, named after the archive 
 
 ```bash
 # 1. Verify the checksum manifest's cosign signature (see the command above).
-# 2. Check the downloaded SBOM against the verified manifest:
-sha256sum --ignore-missing -c checksums.txt
+# 2. Check the downloaded SBOM against the verified manifest. Select its line
+#    rather than running the whole manifest: a bare `-c checksums.txt` fails on
+#    every artifact you did not download, and `--ignore-missing` would let the
+#    command succeed even if the SBOM itself was never fetched.
+grep ' glx_Linux_x86_64.tar.gz.sbom.json$' checksums.txt | sha256sum -c -
 ```
 
 Inspect the contents with any SPDX-aware tool, for example:
