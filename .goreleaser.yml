@@ -52,9 +52,20 @@ sboms:
   #
   # args are pinned explicitly rather than inherited, to drop the `--enrich all`
   # in GoReleaser's default: enrichment pulls package metadata from online
-  # sources, which would make the SBOM non-reproducible from the tagged source
-  # and let a third-party service feed content into an artifact this repo signs
-  # inside the privileged (id-token: write) release job. (#269)
+  # sources at build time, which would let a third-party service feed content
+  # into an artifact this repo signs inside the privileged (id-token: write)
+  # release job, and would make the SBOM's contents depend on what those
+  # services happened to return rather than on the tagged source alone. (#269)
+  #
+  # Dropping enrichment does NOT make the SBOM byte-reproducible, and no syft
+  # flag here can: syft's SPDX output embeds a random `documentNamespace` UUID
+  # and a `created` wall-clock timestamp, so two builds of the same tag emit
+  # different SBOM bytes and therefore different `.sbom.json` lines in
+  # checksums.txt. The archives themselves still reproduce byte-for-byte
+  # (#1049) - a rebuild-and-compare audit has to compare the archive lines,
+  # not the whole manifest. That limit is stated under "SBOM verification
+  # details" in SECURITY-POSTURE.md; do not re-describe this stanza as making
+  # the SBOM reproducible.
   - artifacts: archive
     args:
       - "$artifact"

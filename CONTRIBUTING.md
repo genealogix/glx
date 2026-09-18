@@ -504,6 +504,8 @@ make release-snapshot
 
 `syft` is required because `.goreleaser.yml` generates an SPDX-JSON SBOM for each release archive; without it on `PATH` the snapshot build fails at the SBOM step. Install it from <https://github.com/anchore/syft#installation> (in CI, `release.yml` installs it via `anchore/sbom-action/download-syft`).
 
+`cosign` is *not* required: the target passes `--skip=sign`. `--snapshot` on its own implies only `--skip=announce,publish,validate`, so the `signs:` stanza would otherwise still run and either fail with `cosign: executable file not found` or block on an interactive keyless OIDC prompt. Release signing is exercised by `release.yml` on a real tag push, not by the snapshot target.
+
 ## Questions?
 
 - **Technical questions**: [GitHub Discussions](https://github.com/genealogix/glx/discussions)
