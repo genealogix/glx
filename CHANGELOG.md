@@ -12,6 +12,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [Unreleased]
 
+### Changed
+
+- **Dependency Review now enforces a license policy** — `dependency-review.yml` had `license-check: true` but no policy list, so no license was ever rejected. It now sets an explicit `allow-licenses` list (`Apache-2.0`, `MIT`, `BSD-2-Clause`, `BSD-3-Clause`, `ISC`, `MPL-2.0`, `CC0-1.0`, `BlueOak-1.0.0`, `Python-2.0`, `0BSD`, `Unlicense`), so a PR introducing a dependency under any other *resolved* license fails the check and forces an explicit decision in review (a dependency whose license the action cannot resolve is reported but, per upstream behaviour, does not fail). `allow-licenses` is used rather than the deprecated `deny-licenses` input. The same change sets `fail-on-scopes: runtime, development`, without which the policy would skip npm entirely — the action filters by scope before checking, defaults to `runtime`, and both npm manifests here are 100% devDependencies; the matching widening of `vulnerability-check` adds no coverage `npm-audit.yml` did not already have. The list is a deliberate superset of the Go allowlist shared by `license-compliance.yml` and `make license-check`, because Dependency Review also sees the `website/` and `specification/` npm trees, the GitHub Actions graph, and `ci-tools/go.mod` — `CC0-1.0`, `BlueOak-1.0.0`, and `Python-2.0` are each present in those npm trees today. (#340)
+
 ## [0.0.0-beta.12] - 2026-09-16
 
 ### Added
