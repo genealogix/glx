@@ -25,9 +25,24 @@ Without an explicit rule, library functions would naturally reach for `os.ReadFi
 
 ## Decision
 
-The `go-glx` package MUST NOT perform filesystem I/O. From [`go-glx/CLAUDE.md`](https://github.com/genealogix/glx/blob/main/go-glx/CLAUDE.md):
+The `go-glx` package MUST NOT perform filesystem I/O. This ADR is the canonical
+statement of that rule; everything else in the repository that mentions it —
+agent guides included — only summarizes and points back here.
 
-> The go-glx package must NEVER perform filesystem I/O: NO `os.ReadFile`, `os.WriteFile`, `os.Open`, `os.Create`. [...] YES to `io.Reader`, `io.Writer`, `[]byte` parameters.
+Prohibited in `go-glx/` non-test code:
+
+- `os.ReadFile`, `os.WriteFile`, `os.Open`, `os.Create`
+- `os.MkdirAll`, `os.Stat`, `os.ReadDir`
+- `filepath.Join` (or any other path construction) combined with file operations
+- any other direct filesystem access, including directory walking
+
+Allowed instead:
+
+- `io.Reader`, `io.Writer`, and `[]byte` parameters and return values
+- `io/fs.FS` (`fs.FS`) when a function genuinely needs a tree of files, so the
+  caller chooses the backing store — a real directory, an embedded filesystem,
+  or an in-memory one
+- `go:embed` for data the library itself owns, such as the standard vocabularies
 
 Concretely:
 
@@ -47,7 +62,7 @@ func SerializeToBytes(glx *GLXFile) ([]byte, error) {
 }
 ```
 
-All `os.*` calls, `filepath.Join` with file operations, and directory walking live in the `glx/` package or in test helpers outside `go-glx/`.
+Everything on the prohibited list lives in the `glx/` CLI package or in test helpers outside `go-glx/`.
 
 ## Consequences
 
