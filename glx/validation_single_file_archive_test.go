@@ -200,3 +200,92 @@ func TestIsSelfContainedArchiveFile_UnreadableOrUnparsable(t *testing.T) {
 	assert.False(t, isSelfContainedArchiveFile(broken),
 		"an unparsable file is reported by the structural pass, not routed by shape")
 }
+
+// A self-contained archive that fails schema validation is reported as a
+// structural failure, with the file named — it is not waved through because the
+// file was routed as a whole archive.
+func TestValidatePaths_SingleFileArchive_ReportsStructuralErrors(t *testing.T) {
+	// A place with no name: valid YAML, whole-archive shape, invalid schema.
+	broken := `event_types:
+  birth:
+    label: "Birth"
+persons:
+  person-robert:
+    properties:
+      name: "Robert Thompson"
+places:
+  place-springfield:
+    type: city
+`
+	path := writeArchiveFile(t, broken)
+	streams, _, errOut := TestIOStreams()
+
+	err := validatePaths(streams, []string{path})
+
+	require.ErrorIs(t, err, ErrStructuralValidationFailed)
+	assert.Contains(t, errOut.String(), "Found 1 structural errors")
+	assert.Contains(t, errOut.String(), path)
+}
+
+// Media URIs in a single-file archive resolve against the directory holding the
+// file, and a missing file is a warning rather than an error — the same verdict
+// the directory pass gives.
+func TestValidatePaths_SingleFileArchive_WarnsOnMissingMediaFile(t *testing.T) {
+	archive := `media_types:
+  photograph:
+    label: "Photograph"
+persons:
+  person-robert:
+    properties:
+      name: "Robert Thompson"
+media:
+  media-portrait:
+    title: "Portrait of Robert Thompson"
+    type: photograph
+    uri: "media/files/portrait.jpg"
+`
+	path := writeArchiveFile(t, archive)
+	streams, out, errOut := TestIOStreams()
+
+	err := validatePaths(streams, []string{path})
+
+	require.NoError(t, err, errOut.String())
+	assert.Contains(t, errOut.String(), "referenced file does not exist: media/files/portrait.jpg")
+	assert.Contains(t, out.String(), "✅ Archive is valid.")
+}
+
+// Semantic warnings from the archive's own validation reach the output too — a
+// single-file archive is not held to a narrower set of checks than a directory.
+func TestValidatePaths_SingleFileArchive_ReportsSemanticWarnings(t *testing.T) {
+	archive := `event_types:
+  birth:
+    label: "Birth"
+  death:
+    label: "Death"
+persons:
+  person-robert:
+    properties:
+      name: "Robert Thompson"
+events:
+  event-birth-robert:
+    type: birth
+    date: "1850-04-12"
+    participants:
+      - person: person-robert
+        role: subject
+  event-death-robert:
+    type: death
+    date: "1840-01-09"
+    participants:
+      - person: person-robert
+        role: subject
+`
+	path := writeArchiveFile(t, archive)
+	streams, out, errOut := TestIOStreams()
+
+	err := validatePaths(streams, []string{path})
+
+	require.NoError(t, err, errOut.String())
+	assert.Contains(t, errOut.String(), "death year (1840) is before birth year (1850)")
+	assert.Contains(t, out.String(), "✅ Archive is valid.")
+}
