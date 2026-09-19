@@ -404,6 +404,33 @@ func TestFindSpouses_EventOnlyOrderingAndSoleParticipant(t *testing.T) {
 	assert.Equal(t, "person-b", spouses[1].PersonID, "1880 marriage should come second")
 }
 
+// A marriage event may name a participant that has no person entity in the
+// archive — a dangling reference. The spouse is still listed, under its ID.
+func TestFindSpouses_EventOnlyUnknownPerson(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-b": {Properties: map[string]any{"name": "Bernd Test", "sex": "male"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{},
+		Events: map[string]*glxlib.Event{
+			"event-m": {
+				Type: "marriage",
+				Date: "1800-01-01",
+				Participants: []glxlib.Participant{
+					{Person: "person-missing", Role: "bride"},
+					{Person: "person-b", Role: "groom"},
+				},
+			},
+		},
+		Places: map[string]*glxlib.Place{},
+	}
+
+	spouses := findSpouses("person-b", archive)
+	require.Len(t, spouses, 1)
+	assert.Equal(t, "person-missing", spouses[0].PersonID)
+	assert.Equal(t, "person-missing", spouses[0].PersonName, "an unresolvable participant falls back to its ID")
+}
+
 // Events that record intent or paperwork rather than a union are not marriages.
 func TestFindSpouses_NonUnionMarriageEventsIgnored(t *testing.T) {
 	archive := &glxlib.GLXFile{
