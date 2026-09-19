@@ -88,8 +88,7 @@ func (e *silentExitError) Error() string {
 // every runner's returned error funnels through.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		var silent *silentExitError
-		if errors.As(err, &silent) {
+		if silent, ok := errors.AsType[*silentExitError](err); ok {
 			os.Exit(silent.code)
 		}
 		fmt.Fprintln(os.Stderr, sanitizeForTerminal(err.Error()))
@@ -338,6 +337,7 @@ func runExport(_ *cobra.Command, args []string) error {
 var (
 	initSingleFile bool
 	createTestData int
+	initNoGit      bool
 )
 
 var initCmd = &cobra.Command{
@@ -352,7 +352,12 @@ By default, creates a multi-file archive with separate directories for each
 entity type (persons/, events/, places/, etc.) along with standard vocabulary
 files and supporting documentation.
 
-Use --single-file to create a single archive.glx file instead.`,
+Use --single-file to create a single archive.glx file instead.
+
+The new archive directory is made a Git repository (no files staged, no commit
+made) so the generated .gitignore takes effect and the archive is ready for
+version control. An archive created inside an existing repository is left to
+that repository. Use --no-git to skip this entirely.`,
 	Example: `  # Initialize in a new directory
   glx init my-family-archive
 
@@ -360,7 +365,10 @@ Use --single-file to create a single archive.glx file instead.`,
   glx init my-family-archive --single-file
 
   # Initialize with test data in a new directory
-  glx init my-family-archive --create-test-data 10`,
+  glx init my-family-archive --create-test-data 10
+
+  # Initialize without making the directory a Git repository
+  glx init my-family-archive --no-git`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runInitCmd,
 }
@@ -368,6 +376,7 @@ Use --single-file to create a single archive.glx file instead.`,
 func init() {
 	initCmd.Flags().BoolVarP(&initSingleFile, "single-file", "s", false, "create a single-file archive instead of multi-file")
 	initCmd.Flags().IntVarP(&createTestData, "create-test-data", "t", 0, "number of persons to generate test data for")
+	initCmd.Flags().BoolVar(&initNoGit, "no-git", false, "skip initializing a Git repository in the archive directory")
 }
 
 func runInitCmd(_ *cobra.Command, args []string) error {
@@ -378,7 +387,11 @@ func runInitCmd(_ *cobra.Command, args []string) error {
 		targetDir = "."
 	}
 
-	return runInit(targetDir, initSingleFile, createTestData)
+	return runInit(targetDir, initOptions{
+		singleFile:  initSingleFile,
+		numTestData: createTestData,
+		noGit:       initNoGit,
+	})
 }
 
 // ============================================================================
