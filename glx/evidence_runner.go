@@ -16,6 +16,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -48,11 +49,21 @@ type EvidenceGroup struct {
 	Items          []EvidenceItem `json:"items"`
 }
 
-// EvidenceReport is the full evidence breakdown for one person+property,
+// EvidenceReport is the full evidence breakdown for one subject+property,
 // ranked so the most-supported value comes first.
 type EvidenceReport struct {
-	Person       string          `json:"person"`
-	PersonName   string          `json:"person_name"`
+	// Subject is the entity ID the evidence is about; SubjectType is its
+	// singular entity type ("person", "event", "place", "relationship") and
+	// SubjectName its display label.
+	Subject     string `json:"subject"`
+	SubjectType string `json:"subject_type"`
+	SubjectName string `json:"subject_name"`
+	// Person and PersonName repeat Subject and SubjectName for person subjects,
+	// keeping `--format json` consumers written before event/place/relationship
+	// subjects were accepted working unchanged. They are empty for every other
+	// subject type; new consumers should read Subject/SubjectName.
+	Person       string          `json:"person,omitempty"`
+	PersonName   string          `json:"person_name,omitempty"`
 	Property     string          `json:"property"`
 	TotalReports int             `json:"total_reports"`
 	Groups       []EvidenceGroup `json:"groups"`
@@ -62,20 +73,20 @@ type EvidenceReport struct {
 	BestEvidence string `json:"best_evidence,omitempty"`
 }
 
-// showEvidence loads an archive, resolves the person, and prints the grouped
+// showEvidence loads an archive, resolves the subject, and prints the grouped
 // evidence for the requested property in text or JSON form.
-func showEvidence(io *IOStreams, archivePath, personQuery, property, format string) error {
+func showEvidence(io *IOStreams, archivePath, subjectQuery, property, format string) error {
 	archive, err := loadArchiveForEvidence(io, archivePath)
 	if err != nil {
 		return err
 	}
 
-	personID, _, err := findPersonByQuery(archive, personQuery)
+	subject, err := findEvidenceSubject(archive, subjectQuery)
 	if err != nil {
 		return err
 	}
 
-	report := collectEvidence(archive, personID, property)
+	report := collectEvidence(archive, subject, property)
 
 	switch format {
 	case "", "text":
@@ -128,6 +139,96 @@ func loadArchiveForEvidence(io *IOStreams, path string) (*glxlib.GLXFile, error)
 	return archive, nil
 }
 
+// findEvidenceSubject resolves the subject argument of `glx evidence` to any
+// assertable subject, matching what `glx add assertion` already accepts via
+// --subject-person/--subject-event/--subject-place/--subject-relationship. In
+// an evidence-first archive the two properties most likely to have conflicting
+// answers — date and place — are asserted on the event, not on the person, so
+// a person-only lookup cannot be pointed at an archive's contested facts.
+//
+// Exact entity IDs are tried first, across all four subject types, and only
+// then the person name search. An exact ID is the more specific match, so
+// checking it first can never shadow a name the caller meant; doing it the
+// other way round would let a substring name match swallow an ID that names a
+// different entity outright. Entity IDs are unique archive-wide, but a
+// hand-edited archive can break that, so a query matching entities of more
+// than one type is reported rather than silently resolved by map order.
+func findEvidenceSubject(archive *glxlib.GLXFile, query string) (glxlib.EntityRef, error) {
+	var matches []glxlib.EntityRef
+
+	if p, ok := archive.Persons[query]; ok && p != nil {
+		matches = append(matches, glxlib.EntityRef{Person: query})
+	}
+	if ev, ok := archive.Events[query]; ok && ev != nil {
+		matches = append(matches, glxlib.EntityRef{Event: query})
+	}
+	if pl, ok := archive.Places[query]; ok && pl != nil {
+		matches = append(matches, glxlib.EntityRef{Place: query})
+	}
+	if rel, ok := archive.Relationships[query]; ok && rel != nil {
+		matches = append(matches, glxlib.EntityRef{Relationship: query})
+	}
+
+	switch len(matches) {
+	case 1:
+		return matches[0], nil
+	case 0:
+		// Fall through to the person name search below.
+	default:
+		var lines []string
+		for _, m := range matches {
+			lines = append(lines, fmt.Sprintf("  %s (%s)", m.ID(), m.Type().Singular()))
+		}
+
+		return glxlib.EntityRef{}, fmt.Errorf("%w — %q names:\n%s\nRepair the archive so entity IDs are unique",
+			ErrEvidenceSubjectAmbiguous, query, strings.Join(lines, "\n"))
+	}
+
+	// No exact ID: fall back to the person name search, which also produces the
+	// multi-person disambiguation listing. Its ID lookup is a no-op here.
+	personID, _, err := findPersonByQuery(archive, query)
+	if err == nil {
+		return glxlib.EntityRef{Person: personID}, nil
+	}
+	if !errors.Is(err, ErrNoPersonMatch) {
+		// An ambiguous name: keep findPersonByQuery's listing of the candidates.
+		return glxlib.EntityRef{}, err
+	}
+
+	return glxlib.EntityRef{}, fmt.Errorf(
+		"%w %q (evidence takes a person ID or name, or the exact ID of an event, place, or relationship)",
+		ErrEvidenceNoSubject, query,
+	)
+}
+
+// subjectLabel returns the display label for an evidence subject: a person's
+// name, an event's title (or a title generated from its type), a place's name,
+// or a relationship's type. It falls back to the entity ID whenever the entity
+// is missing or carries no label of its own.
+func subjectLabel(archive *glxlib.GLXFile, subject glxlib.EntityRef) string {
+	switch subject.Type() {
+	case glxlib.EntityTypePersons:
+		return personName(archive, subject.Person)
+	case glxlib.EntityTypeEvents:
+		if ev, ok := archive.Events[subject.Event]; ok && ev != nil {
+			if ev.Title != "" {
+				return ev.Title
+			}
+			if title := glxlib.GenerateEventTitle(ev.Type, nil); title != "" {
+				return title
+			}
+		}
+	case glxlib.EntityTypePlaces:
+		return resolvePlaceName(subject.Place, archive)
+	case glxlib.EntityTypeRelationships:
+		if rel, ok := archive.Relationships[subject.Relationship]; ok && rel != nil && rel.Type != "" {
+			return rel.Type
+		}
+	}
+
+	return subject.ID()
+}
+
 // noteConfidence raises the group's best confidence to c when c outranks the
 // current best (lower confidenceRank means stronger).
 func (g *EvidenceGroup) noteConfidence(c string) {
@@ -136,18 +237,23 @@ func (g *EvidenceGroup) noteConfidence(c string) {
 	}
 }
 
-// collectEvidence gathers every assertion for the given person+property,
+// collectEvidence gathers every assertion for the given subject+property,
 // groups the supporting reports by asserted value, and ranks the values by
 // report count and confidence. Output is deterministic.
-func collectEvidence(archive *glxlib.GLXFile, personID, property string) EvidenceReport {
-	assertions, canonicalProperty := matchingAssertions(archive, personID, property)
+func collectEvidence(archive *glxlib.GLXFile, subject glxlib.EntityRef, property string) EvidenceReport {
+	assertions, canonicalProperty := matchingAssertions(archive, subject, property)
 	report := EvidenceReport{
-		Person:     personID,
-		PersonName: personName(archive, personID),
+		Subject:     subject.ID(),
+		SubjectType: subject.Type().Singular(),
+		SubjectName: subjectLabel(archive, subject),
 		// canonicalProperty is the property key as stored in the matched
 		// assertions (e.g. "residence" for a "RESIDENCE" query), so JSON and text
 		// output reflect the data rather than the query's casing.
 		Property: canonicalProperty,
+	}
+	if subject.Person != "" {
+		report.Person = report.Subject
+		report.PersonName = report.SubjectName
 	}
 
 	groups := make(map[string]*EvidenceGroup)
@@ -163,7 +269,7 @@ func collectEvidence(archive *glxlib.GLXFile, personID, property string) Evidenc
 		// casing can differ, and placeRefProperties / PersonProperties lookups are
 		// case-sensitive, so resolving by the query would miss place/person/event
 		// references.
-		value := resolveAssertionValue(a.Value, a.Property, archive)
+		value := resolveAssertionValue(a.Value, a.Property, subject, archive)
 		if value == "" {
 			value = unspecifiedValue
 		}
@@ -211,7 +317,7 @@ func collectEvidence(archive *glxlib.GLXFile, personID, property string) Evidenc
 	return report
 }
 
-// matchingAssertions returns the assertions whose subject is personID and whose
+// matchingAssertions returns the assertions whose subject is subject and whose
 // property matches, plus the canonical property key actually stored on those
 // assertions. Exact matches win; only when none exist does it fall back to
 // case-insensitive matches, so "born_at" never silently picks up "Born_At" when
@@ -219,12 +325,15 @@ func collectEvidence(archive *glxlib.GLXFile, personID, property string) Evidenc
 // (e.g. "residence" for a "RESIDENCE" query) is returned so callers report the
 // property as stored rather than as typed; with no matches the query is echoed
 // back. Iteration order is deterministic.
-func matchingAssertions(archive *glxlib.GLXFile, personID, property string) (matched []*glxlib.Assertion, canonical string) {
+func matchingAssertions(archive *glxlib.GLXFile, subject glxlib.EntityRef, property string) (matched []*glxlib.Assertion, canonical string) {
 	var exact, insensitive []*glxlib.Assertion
 
 	for _, id := range sortedKeys(archive.Assertions) {
 		a := archive.Assertions[id]
-		if a == nil || a.Subject.Person != personID {
+		// Compare by type and ID rather than by struct equality: an assertion
+		// whose subject somehow carries more than one field still matches on the
+		// one its Type() reports, instead of matching nothing at all.
+		if a == nil || a.Subject.Type() != subject.Type() || a.Subject.ID() != subject.ID() {
 			continue
 		}
 
@@ -317,10 +426,13 @@ func sourceLabel(sourceID string, archive *glxlib.GLXFile) string {
 // Place-reference properties and any property whose definition declares a
 // persons/places/events reference resolve to the referenced entity's name;
 // everything else (free text, vocabulary values) passes through unchanged.
+// The property definition is looked up in the vocabulary belonging to the
+// subject's own entity type, so an event property is never resolved against
+// the person vocabulary (or the other way round).
 //
 // Assertion.Value is always a scalar string, so — unlike person properties —
 // there is no temporal-shape map to unwrap here.
-func resolveAssertionValue(value, property string, archive *glxlib.GLXFile) string {
+func resolveAssertionValue(value, property string, subject glxlib.EntityRef, archive *glxlib.GLXFile) string {
 	if value == "" {
 		return value
 	}
@@ -330,7 +442,14 @@ func resolveAssertionValue(value, property string, archive *glxlib.GLXFile) stri
 		return resolvePlaceName(value, archive)
 	}
 
-	if def, ok := archive.PersonProperties[property]; ok && def != nil {
+	// `place` on an event subject is the event's own structural place field
+	// (Event.PlaceID), not a vocabulary property, so no definition declares it
+	// a reference. `glx migrate` maps it the same way.
+	if subject.Event != "" && property == eventFieldPlace {
+		return resolvePlaceName(value, archive)
+	}
+
+	if def, ok := subjectPropertyDefinitions(archive, subject)[property]; ok && def != nil {
 		// PropertyDefinition.ReferenceType is an untyped string from YAML;
 		// bridge to EntityType via .String() to match the convention used by
 		// isPlaceReferenceProperty in summary_runner.go.
@@ -347,6 +466,25 @@ func resolveAssertionValue(value, property string, archive *glxlib.GLXFile) stri
 	}
 
 	return value
+}
+
+// subjectPropertyDefinitions returns the vocabulary property definitions that
+// apply to a subject's entity type. A nil map is a safe read in Go, so an
+// unknown type (or a vocabulary that was never loaded) simply resolves nothing
+// and values are shown verbatim.
+func subjectPropertyDefinitions(archive *glxlib.GLXFile, subject glxlib.EntityRef) map[string]*glxlib.PropertyDefinition {
+	switch subject.Type() {
+	case glxlib.EntityTypePersons:
+		return archive.PersonProperties
+	case glxlib.EntityTypeEvents:
+		return archive.EventProperties
+	case glxlib.EntityTypePlaces:
+		return archive.PlaceProperties
+	case glxlib.EntityTypeRelationships:
+		return archive.RelationshipProperties
+	default:
+		return nil
+	}
 }
 
 // sortEvidenceItems orders reports within a group deterministically:
@@ -402,12 +540,12 @@ func bestEvidence(groups []EvidenceGroup) string {
 // printEvidenceText renders the human-readable report.
 func printEvidenceText(io *IOStreams, r *EvidenceReport) {
 	if len(r.Groups) == 0 {
-		io.Printf("No assertions found for %s of %s (%s).\n", r.Property, r.PersonName, r.Person)
+		io.Printf("No assertions found for %s of %s (%s).\n", r.Property, r.SubjectName, r.Subject)
 
 		return
 	}
 
-	io.Printf("Evidence for %s of %s (%s):\n", r.Property, r.PersonName, r.Person)
+	io.Printf("Evidence for %s of %s (%s):\n", r.Property, r.SubjectName, r.Subject)
 	io.Printf("%d %s across %d %s\n\n",
 		r.TotalReports, pluralize(r.TotalReports, "report", "reports"),
 		len(r.Groups), pluralize(len(r.Groups), "value", "values"))

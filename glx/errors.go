@@ -65,6 +65,12 @@ var (
 	ErrGEDZIPEntryTooLarge        = errors.New("gedzip archive entry exceeds the per-entry decompressed size limit")
 	ErrGEDZIPUnsupportedAlgorithm = glxlib.ErrGEDZIPUnsupportedAlgorithm
 
+	// Person lookup errors, shared by the commands that take a person argument.
+	// ErrNoPersonMatch is wrapped with the unresolved query so callers that
+	// accept more than a person (e.g. `glx evidence`) can recognize the
+	// no-match case and report their own wider vocabulary instead.
+	ErrNoPersonMatch = errors.New("no person found matching")
+
 	// `glx add` errors
 	ErrAddEntityExists                     = errors.New("entity ID already exists (use --force to overwrite)")
 	ErrAddInvalidID                        = errors.New("entity ID is not a safe filename")
@@ -89,6 +95,14 @@ var (
 
 	// `glx evidence` errors
 	ErrEvidenceUnknownFormat = errors.New("unknown output format (must be 'text' or 'json')")
+	// ErrEvidenceNoSubject is wrapped with the unresolved query. It replaces the
+	// old person-only "no person found matching" for `glx evidence`, which read
+	// as "that person does not exist" rather than "this command takes a person"
+	// and is now simply wrong: events, places, and relationships resolve too.
+	ErrEvidenceNoSubject = errors.New("no person, event, place, or relationship found matching")
+	// ErrEvidenceSubjectAmbiguous reports a query that is the entity ID of more
+	// than one subject type, which only a hand-edited archive can produce.
+	ErrEvidenceSubjectAmbiguous = errors.New("ID belongs to more than one entity")
 
 	// `glx migrations` errors
 	ErrMigrationsUnknownFormat     = errors.New("unknown output format (must be 'text' or 'json')")
