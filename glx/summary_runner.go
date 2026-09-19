@@ -66,6 +66,19 @@ var marriageRelTypes = map[string]bool{
 	glxlib.RelationshipTypePartner:           true,
 }
 
+// marriageEventTypes maps event types that record a spousal union. It is the
+// event-side counterpart of marriageRelTypes: a marriage recorded only as an
+// event still makes its participants spouses. Events that record intent or
+// paperwork rather than a union (engagement, marriage_banns, marriage_license,
+// marriage_contract, marriage_settlement) are deliberately excluded.
+var marriageEventTypes = map[string]bool{
+	glxlib.EventTypeMarriage: true,
+	// Not in the standard event-type vocabulary, but archives that extend it
+	// record these unions as events; the names match their relationship types.
+	glxlib.RelationshipTypeCivilUnion:        true,
+	glxlib.RelationshipTypeCommonLawMarriage: true,
+}
+
 // summarySkippedEventTypes are event types excluded from the life events section.
 var summarySkippedEventTypes = map[string]bool{
 	"birth": true, "christening": true, "baptism": true,
@@ -575,9 +588,13 @@ func printLifeHistorySection(personID string, person *glxlib.Person, archive *gl
 // Relationship finders
 // ============================================================================
 
-// findSpouses finds spouse/partner relationships for a person.
+// findSpouses finds spouse/partner relationships for a person, from both
+// relationship entities and marriage events. A marriage that exists only as an
+// event (the shape `glx add event --type marriage` produces) yields spouses
+// too; spouses already found via a relationship are not repeated.
 func findSpouses(personID string, archive *glxlib.GLXFile) []spouseInfo {
 	var spouses []spouseInfo
+	seen := map[string]bool{}
 
 	ids := sortedKeys(archive.Relationships)
 	for _, relID := range ids {
@@ -591,9 +608,10 @@ func findSpouses(personID string, archive *glxlib.GLXFile) []spouseInfo {
 		}
 
 		for _, p := range rel.Participants {
-			if p.Person == personID {
+			if p.Person == personID || p.Person == "" || seen[p.Person] {
 				continue
 			}
+			seen[p.Person] = true
 
 			info := spouseInfo{
 				PersonID: p.Person,
@@ -623,6 +641,8 @@ func findSpouses(personID string, archive *glxlib.GLXFile) []spouseInfo {
 		}
 	}
 
+	spouses = append(spouses, findEventOnlySpouses(personID, seen, archive)...)
+
 	// Sort spouses chronologically by full date (not just year).
 	// Uses dateSortKey which handles ISO dates, prefixed dates, and
 	// sorts undated ("\xff") after all dated entries.
@@ -632,6 +652,49 @@ func findSpouses(personID string, archive *glxlib.GLXFile) []spouseInfo {
 
 		return ki < kj
 	})
+
+	return spouses
+}
+
+// findEventOnlySpouses derives spouses from marriage events the person takes
+// part in, skipping any person in seen (already found via a relationship).
+// Every spouse it returns is marked in seen, so an event modeled twice does
+// not produce the same spouse twice.
+func findEventOnlySpouses(personID string, seen map[string]bool, archive *glxlib.GLXFile) []spouseInfo {
+	var spouses []spouseInfo
+
+	for _, evID := range sortedKeys(archive.Events) {
+		ev := archive.Events[evID]
+		if ev == nil || !marriageEventTypes[strings.ToLower(ev.Type)] {
+			continue
+		}
+
+		if !hasParticipant(personID, ev.Participants) {
+			continue
+		}
+
+		for _, p := range ev.Participants {
+			if p.Person == personID || p.Person == "" || seen[p.Person] {
+				continue
+			}
+			seen[p.Person] = true
+
+			info := spouseInfo{
+				PersonID:      p.Person,
+				RelType:       ev.Type,
+				MarriageDate:  string(ev.Date),
+				MarriagePlace: resolvePlaceName(ev.PlaceID, archive),
+			}
+
+			if sp, ok := archive.Persons[p.Person]; ok && sp != nil {
+				info.PersonName = extractPersonName(sp)
+			} else {
+				info.PersonName = p.Person
+			}
+
+			spouses = append(spouses, info)
+		}
+	}
 
 	return spouses
 }
