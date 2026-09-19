@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 )
 
 // PlaceHierarchy represents a parsed place hierarchy
@@ -212,25 +213,92 @@ func createOrGetPlace(name, parentID string, level int, latitude, longitude *flo
 	return placeID
 }
 
+// placeTypeKeywords maps a GLX place type to the place-name keywords that
+// imply it, in the order they are tried. Order matters: the more specific
+// institution keywords come first, so that "Lancaster County Asylum" is an
+// asylum rather than a county, "Devon County Lunatic Hospital" an asylum
+// rather than a hospital, and "Union Poor Farm" a poorhouse rather than a
+// farm.
+//
+// Some standard place types are deliberately absent because their keyword
+// is more often part of a settlement name than a description of one:
+// "fort" (Fort Worth, Fort Wayne), "port" (Port Arthur, Portsmouth) and
+// "hamlet" (Hamlet, North Carolina) would mistype far more places than
+// they would type correctly. Those types remain available to set by hand.
+var placeTypeKeywords = []struct {
+	placeType string
+	keywords  []string
+}{
+	{PlaceTypeCemetery, []string{"cemetery", "graveyard", "burial ground", "churchyard"}},
+	{PlaceTypeAsylum, []string{"asylum", "lunatic hospital", "lunatic asylum"}},
+	{PlaceTypeWorkhouse, []string{"workhouse", "work house"}},
+	{PlaceTypePoorhouse, []string{"poorhouse", "poor house", "almshouse", "alms house", "poor farm"}},
+	{PlaceTypeHospital, []string{"hospital", "infirmary"}},
+	{PlaceTypeChurch, []string{"church", "cathedral", "chapel", "kirche"}},
+	{PlaceTypePrison, []string{"prison", "penitentiary", "gaol", "jail"}},
+	{PlaceTypeSchool, []string{"school", "schoolhouse"}},
+	{PlaceTypeMilitaryBase, []string{"military base", "army base", "naval base", "naval station", "air force base", "air base", "barracks"}},
+	{PlaceTypePlantation, []string{"plantation"}},
+	{PlaceTypeReservation, []string{"reservation"}},
+	{PlaceTypeEstate, []string{"estate"}},
+	{PlaceTypeFarm, []string{"farm"}},
+	{PlaceTypeVillage, []string{"village", "dorf"}},
+	{PlaceTypeCounty, []string{"county"}},
+	{PlaceTypeState, []string{"province", "state"}},
+}
+
+// isPlaceNameWordByte reports whether b can be part of a place-name word.
+// Bytes outside ASCII (utf8.RuneSelf and above) are treated as word bytes so
+// that a keyword never matches inside a word whose neighboring letter is
+// multi-byte, such as "dorf" inside "Düsseldorf".
+func isPlaceNameWordByte(b byte) bool {
+	switch {
+	case b >= 'a' && b <= 'z',
+		b >= 'A' && b <= 'Z',
+		b >= '0' && b <= '9',
+		b == '_',
+		b >= utf8.RuneSelf:
+		return true
+	default:
+		return false
+	}
+}
+
+// containsPlaceKeyword reports whether nameLower contains keyword as a whole
+// word. Substring matching is not good enough here: "farm" would match
+// "Farmington", and "state" would match "Estate".
+func containsPlaceKeyword(nameLower, keyword string) bool {
+	for offset := 0; offset <= len(nameLower)-len(keyword); {
+		idx := strings.Index(nameLower[offset:], keyword)
+		if idx < 0 {
+			return false
+		}
+
+		start := offset + idx
+		end := start + len(keyword)
+		beforeOK := start == 0 || !isPlaceNameWordByte(nameLower[start-1])
+		afterOK := end == len(nameLower) || !isPlaceNameWordByte(nameLower[end])
+		if beforeOK && afterOK {
+			return true
+		}
+
+		offset = start + 1
+	}
+
+	return false
+}
+
 // inferPlaceType infers the place type from name and position in hierarchy
 func inferPlaceType(name string, level int) string {
 	nameLower := strings.ToLower(name)
 
 	// Check for keywords
-	if strings.Contains(nameLower, "cemetery") || strings.Contains(nameLower, "graveyard") {
-		return PlaceTypeCemetery
-	}
-	if strings.Contains(nameLower, "church") || strings.Contains(nameLower, "cathedral") {
-		return PlaceTypeChurch
-	}
-	if strings.Contains(nameLower, "hospital") {
-		return PlaceTypeHospital
-	}
-	if strings.Contains(nameLower, "county") {
-		return PlaceTypeCounty
-	}
-	if strings.Contains(nameLower, "province") || strings.Contains(nameLower, "state") {
-		return PlaceTypeState
+	for _, entry := range placeTypeKeywords {
+		for _, keyword := range entry.keywords {
+			if containsPlaceKeyword(nameLower, keyword) {
+				return entry.placeType
+			}
+		}
 	}
 
 	// Infer from position in hierarchy
