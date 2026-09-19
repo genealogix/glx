@@ -479,6 +479,29 @@ Assisted-by: Claude <noreply@anthropic.com>
 
 `Co-authored-by` trailers added automatically by AI coding tools are also acceptable.
 
+### Tool Attribution and Private Links
+
+Never put a link to an AI tool's private session, chat, or project thread in a
+commit message, PR title or body, review comment, code comment, or any other
+pushed artifact. URLs such as `https://claude.ai/code/session_...` and
+`https://claude.ai/code/project/...` resolve only for the operator who ran the
+tool, so they are dead ends for every reader and they disclose where the work
+happened. The `Claude-Session:` trailer is the same rule.
+
+Tool-generated attribution blocks do not belong in a PR body either, link or
+no link: no "Requested by *name*" credit line, no machine-readable marker
+comment, no "Generated with *tool*" footer. Git records who authored the
+commits and the PR records who opened it, so the block adds nothing a reader
+cannot already see.
+
+Both rules hold even when the tool's own boilerplate supplies the line — strip
+it before pushing.
+
+This is about attribution a tool adds for itself. The trailers this project
+asks for are unaffected: `Signed-off-by` is required on every commit by the
+[DCO](#developer-certificate-of-origin-dco), and `Assisted-by:` above is how to
+disclose AI assistance. Both stay, and neither needs a link.
+
 ### Enforcement
 
 Maintainers will close low-quality or bot-generated contributions without detailed explanation. Repeated violations will result in the account being blocked from the org.
