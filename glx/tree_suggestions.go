@@ -137,8 +137,30 @@ func suggestParentCensusRecords(personID string, person *glxlib.Person, archive 
 
 	var suggestions []ancestorSuggestion
 
-	// Key census years for finding parents
-	for _, year := range usCensusYears {
+	// Key census years for finding parents, on the schedules of the countries
+	// this person's places name (#186)
+	for _, schedule := range censusSchedulesForPerson(archive, personID) {
+		suggestions = append(suggestions,
+			scheduleParentCensusSuggestions(schedule, personID, name, placeName, birthYear, existingCensus)...)
+	}
+
+	return suggestions
+}
+
+// scheduleParentCensusSuggestions returns the census years on one schedule
+// that are most worth searching to identify a person's parents: the year that
+// first recorded parents' birthplaces, the years the person was still a child
+// and so enumerated in the parents' household, and the year that first named
+// every individual.
+func scheduleParentCensusSuggestions(
+	schedule *censusSchedule,
+	personID, name, placeName string,
+	birthYear int,
+	existingCensus map[int]bool,
+) []ancestorSuggestion {
+	var suggestions []ancestorSuggestion
+
+	for _, year := range schedule.years {
 		if year < birthYear || year > birthYear+maxLifespan {
 			continue
 		}
@@ -147,21 +169,22 @@ func suggestParentCensusRecords(personID string, person *glxlib.Person, archive 
 		}
 
 		age := year - birthYear
+		note := schedule.notes[year]
 
 		// Focus on censuses most useful for parent research
 		var priority string
 		var reason string
 
 		switch {
-		case year == 1880:
+		case note.highPriority:
 			priority = "high"
-			reason = "first census to list parents' birthplaces"
-		case age < 18:
+			reason = note.note
+		case age < minorAgeUnder:
 			priority = "high"
 			reason = "likely in parents' household"
-		case year == 1850 && age >= 18 && age <= 25:
+		case note.minorNote != "" && age >= minorAgeUnder && age <= censusPrimeAgeMax:
 			priority = "medium"
-			reason = "first census to list individual names; may show in parents' household"
+			reason = note.note + "; may show in parents' household"
 		default:
 			continue // only suggest high-value censuses for ancestor research
 		}
@@ -176,8 +199,8 @@ func suggestParentCensusRecords(personID string, person *glxlib.Person, archive 
 			Category: "census",
 			Priority: priority,
 			Year:     year,
-			Message: fmt.Sprintf("%s — search %d census (age ~%d%s) — %s",
-				name, year, age, location, reason),
+			Message: fmt.Sprintf("%s — search %s (age ~%d%s) — %s",
+				name, schedule.suggestionLabel(year), age, location, reason),
 		})
 	}
 

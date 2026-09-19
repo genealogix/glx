@@ -1445,6 +1445,7 @@ func runDuplicates(_ *cobra.Command, args []string) error {
 var (
 	coverageArchive string
 	coverageJSON    bool
+	coverageCountry string
 )
 
 var coverageCmd = &cobra.Command{
@@ -1457,7 +1458,8 @@ showing which census records, vital records, and other documents have been found
 versus which are still missing.
 
 Record categories:
-  - Census: US federal census records the person should appear in
+  - Census: national and state census records the person should appear in,
+    on the schedules of the countries their places name
   - Vital: Birth, death, and marriage records
   - Other: Probate, land, military, and church records
 
@@ -1474,7 +1476,10 @@ The person argument can be an exact entity ID or a name substring.`,
   glx coverage "Jane Miller" --json
 
   # Specify archive path
-  glx coverage "Jane Miller" --archive my-archive`,
+  glx coverage "Jane Miller" --archive my-archive
+
+  # Assume UK censuses where the archive names no country
+  glx coverage "Jane Miller" --country "United Kingdom"`,
 	Args: cobra.ExactArgs(1),
 	RunE: runCoverage,
 }
@@ -1482,10 +1487,11 @@ The person argument can be an exact entity ID or a name substring.`,
 func init() {
 	coverageCmd.Flags().StringVarP(&coverageArchive, "archive", "a", ".", "Archive path (directory or single file)")
 	coverageCmd.Flags().BoolVar(&coverageJSON, "json", false, "Output as JSON")
+	coverageCmd.Flags().StringVar(&coverageCountry, "country", "", censusCountryFlagUsage)
 }
 
 func runCoverage(_ *cobra.Command, args []string) error {
-	return showCoverage(coverageArchive, args[0], coverageJSON)
+	return showCoverage(coverageArchive, args[0], coverageCountry, coverageJSON)
 }
 
 // ============================================================================
@@ -1497,6 +1503,7 @@ var (
 	analyzeCheck   string
 	analyzeFormat  string
 	analyzePerson  string
+	analyzeCountry string
 )
 
 var analyzeCmd = &cobra.Command{
@@ -1527,7 +1534,10 @@ Use --format json for machine-readable output.`,
   glx analyze --format json
 
   # Analyze a specific archive
-  glx analyze --archive my-archive`,
+  glx analyze --archive my-archive
+
+  # Assume UK censuses where the archive names no country
+  glx analyze --country "United Kingdom"`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runAnalyze,
 }
@@ -1537,6 +1547,7 @@ func init() {
 	analyzeCmd.Flags().StringVarP(&analyzeCheck, "check", "c", "", "Run a single analysis category (gaps, evidence, consistency, suggestions)")
 	analyzeCmd.Flags().StringVarP(&analyzeFormat, "format", "f", "", "Output format (json for machine-readable)")
 	analyzeCmd.Flags().StringVarP(&analyzePerson, "person", "p", "", "Filter results to a specific person (ID or name)")
+	analyzeCmd.Flags().StringVar(&analyzeCountry, "country", "", censusCountryFlagUsage)
 }
 
 func runAnalyze(_ *cobra.Command, args []string) error {
@@ -1545,7 +1556,7 @@ func runAnalyze(_ *cobra.Command, args []string) error {
 		person = args[0]
 	}
 
-	return showAnalysis(analyzeArchive, person, analyzeCheck, analyzeFormat)
+	return showAnalysis(analyzeArchive, person, analyzeCheck, analyzeFormat, analyzeCountry)
 }
 
 // ============================================================================
