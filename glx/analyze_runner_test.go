@@ -1217,9 +1217,9 @@ func TestAnalyzeSuggestions_MissingCensus(t *testing.T) {
 	}
 
 	issues := analyzeSuggestions(archive)
-	found := findIssueByMessage(issues, "person-a", "1850 census")
+	found := findIssueByMessage(issues, "person-a", "1850 US census")
 	if found == nil {
-		t.Fatal("expected suggestion to search 1850 census")
+		t.Fatal("expected suggestion to search 1850 US census")
 	}
 	if found.Category != "suggestion" {
 		t.Errorf("got category=%s, want suggestion", found.Category)
@@ -1239,10 +1239,10 @@ func TestAnalyzeSuggestions_BEFDeathExcludesYear(t *testing.T) {
 	}
 
 	issues := analyzeSuggestions(archive)
-	if found := findIssueByMessage(issues, "person-a", "1860 census"); found == nil {
+	if found := findIssueByMessage(issues, "person-a", "1860 US census"); found == nil {
 		t.Error("expected suggestion for 1860 census (before BEF year)")
 	}
-	if found := findIssueByMessage(issues, "person-a", "1870 census"); found != nil {
+	if found := findIssueByMessage(issues, "person-a", "1870 US census"); found != nil {
 		t.Error("should NOT suggest 1870 census (died BEF 1870)")
 	}
 }
@@ -1293,7 +1293,7 @@ func TestAnalyzeSuggestions_HasCensus(t *testing.T) {
 	}
 
 	issues := analyzeSuggestions(archive)
-	found := findIssueByMessage(issues, "person-a", "1850 census")
+	found := findIssueByMessage(issues, "person-a", "1850 US census")
 	if found != nil {
 		t.Error("should not suggest 1850 census when one already exists")
 	}
@@ -1331,11 +1331,11 @@ func TestAnalyzeSuggestions_CitationCoversCensus(t *testing.T) {
 	}
 
 	issues := analyzeSuggestions(archive)
-	if found := findIssueByMessage(issues, "person-a", "1880 census"); found != nil {
+	if found := findIssueByMessage(issues, "person-a", "1880 US census"); found != nil {
 		t.Error("should NOT suggest 1880 census when covered by citation/source")
 	}
 	// But 1870 (not covered) should still be suggested
-	if found := findIssueByMessage(issues, "person-a", "1870 census"); found == nil {
+	if found := findIssueByMessage(issues, "person-a", "1870 US census"); found == nil {
 		t.Error("expected suggestion for 1870 census (not covered)")
 	}
 }
@@ -1370,7 +1370,7 @@ func TestAnalyzeSuggestions_CitationCoversViaTitleFallback(t *testing.T) {
 	}
 
 	issues := analyzeSuggestions(archive)
-	if found := findIssueByMessage(issues, "person-a", "1880 census"); found != nil {
+	if found := findIssueByMessage(issues, "person-a", "1880 US census"); found != nil {
 		t.Error("should NOT suggest 1880 census when title mentions the year")
 	}
 }
@@ -1403,7 +1403,7 @@ func TestAnalyzeSuggestions_DirectSourceCoversCensus(t *testing.T) {
 	}
 
 	issues := analyzeSuggestions(archive)
-	if found := findIssueByMessage(issues, "person-a", "1860 census"); found != nil {
+	if found := findIssueByMessage(issues, "person-a", "1860 US census"); found != nil {
 		t.Error("should NOT suggest 1860 census when covered by direct source")
 	}
 }
@@ -1442,13 +1442,13 @@ func TestAnalyzeSuggestions_MaxLifespanCap(t *testing.T) {
 	issues := analyzeSuggestions(archive)
 
 	// Should suggest 1840-1930 (birth+100=1932, so 1930 is last valid)
-	if found := findIssueByMessage(issues, "person-a", "1930 census"); found == nil {
+	if found := findIssueByMessage(issues, "person-a", "1930 US census"); found == nil {
 		t.Error("expected suggestion for 1930 census")
 	}
-	if found := findIssueByMessage(issues, "person-a", "1940 census"); found != nil {
+	if found := findIssueByMessage(issues, "person-a", "1940 US census"); found != nil {
 		t.Error("should NOT suggest 1940 census (beyond max lifespan)")
 	}
-	if found := findIssueByMessage(issues, "person-a", "1950 census"); found != nil {
+	if found := findIssueByMessage(issues, "person-a", "1950 US census"); found != nil {
 		t.Error("should NOT suggest 1950 census (beyond max lifespan)")
 	}
 }
@@ -1472,10 +1472,10 @@ func TestAnalyzeSuggestions_BurialInfersDeath(t *testing.T) {
 	issues := analyzeSuggestions(archive)
 
 	// Should suggest 1840-1860 but NOT 1870+
-	if found := findIssueByMessage(issues, "person-a", "1860 census"); found == nil {
+	if found := findIssueByMessage(issues, "person-a", "1860 US census"); found == nil {
 		t.Error("expected suggestion for 1860 census (before burial)")
 	}
-	if found := findIssueByMessage(issues, "person-a", "1870 census"); found != nil {
+	if found := findIssueByMessage(issues, "person-a", "1870 US census"); found != nil {
 		t.Error("should NOT suggest 1870 census (after burial/inferred death)")
 	}
 }
@@ -1493,7 +1493,7 @@ func TestAnalyzeSuggestions_1890Note(t *testing.T) {
 	}
 
 	issues := analyzeSuggestions(archive)
-	found := findIssueByMessage(issues, "person-a", "1890 census")
+	found := findIssueByMessage(issues, "person-a", "1890 US census")
 	if found == nil {
 		t.Fatal("expected 1890 census suggestion")
 	}
@@ -1526,7 +1526,7 @@ func TestAnalyzeSuggestions_ConsolidateParentAndMinorChild(t *testing.T) {
 
 	issues := analyzeSuggestions(archive)
 
-	parent1830 := findIssueByMessage(issues, "person-parent", "1830 census")
+	parent1830 := findIssueByMessage(issues, "person-parent", "1830 US census")
 	require.NotNil(t, parent1830, "expected parent to have a 1830 census suggestion")
 	if !containsSubstring(parent1830.Message, "would also cover") {
 		t.Errorf("expected parent 1830 message to contain consolidation note; got %q", parent1830.Message)
@@ -1535,7 +1535,7 @@ func TestAnalyzeSuggestions_ConsolidateParentAndMinorChild(t *testing.T) {
 		t.Errorf("expected parent 1830 message to mention child age ~5; got %q", parent1830.Message)
 	}
 
-	if child1830 := findIssueByMessage(issues, "person-child", "1830 census"); child1830 != nil {
+	if child1830 := findIssueByMessage(issues, "person-child", "1830 US census"); child1830 != nil {
 		t.Errorf("child 1830 suggestion should be suppressed; got %q", child1830.Message)
 	}
 }
@@ -1562,12 +1562,12 @@ func TestAnalyzeSuggestions_ConsolidateAdultChildNotIncluded(t *testing.T) {
 
 	issues := analyzeSuggestions(archive)
 
-	parent1850 := findIssueByMessage(issues, "person-parent", "1850 census")
+	parent1850 := findIssueByMessage(issues, "person-parent", "1850 US census")
 	require.NotNil(t, parent1850, "expected parent 1850 census suggestion")
 	if containsSubstring(parent1850.Message, "would also cover") {
 		t.Errorf("parent 1850 should NOT consolidate child (age 22); got %q", parent1850.Message)
 	}
-	if child1850 := findIssueByMessage(issues, "person-child", "1850 census"); child1850 == nil {
+	if child1850 := findIssueByMessage(issues, "person-child", "1850 US census"); child1850 == nil {
 		t.Error("expected adult child to keep independent 1850 census suggestion")
 	}
 }
@@ -1600,10 +1600,10 @@ func TestAnalyzeSuggestions_ConsolidateChildIndependentWhenParentHasCensus(t *te
 
 	issues := analyzeSuggestions(archive)
 
-	if parent1850 := findIssueByMessage(issues, "person-parent", "1850 census"); parent1850 != nil {
+	if parent1850 := findIssueByMessage(issues, "person-parent", "1850 US census"); parent1850 != nil {
 		t.Errorf("parent should NOT have 1850 suggestion when census event exists; got %q", parent1850.Message)
 	}
-	if child1850 := findIssueByMessage(issues, "person-child", "1850 census"); child1850 == nil {
+	if child1850 := findIssueByMessage(issues, "person-child", "1850 US census"); child1850 == nil {
 		t.Error("child should keep independent 1850 census suggestion when parent already has the census")
 	}
 }
@@ -1635,7 +1635,7 @@ func TestAnalyzeSuggestions_ConsolidateMultipleMinorChildrenSorted(t *testing.T)
 
 	issues := analyzeSuggestions(archive)
 
-	parent1830 := findIssueByMessage(issues, "person-parent", "1830 census")
+	parent1830 := findIssueByMessage(issues, "person-parent", "1830 US census")
 	require.NotNil(t, parent1830, "expected parent 1830 census suggestion")
 	want := "would also cover: Alpha Green (~5), Beta Green (~4), Gamma Green (~3)"
 	if !containsSubstring(parent1830.Message, want) {
@@ -1643,7 +1643,7 @@ func TestAnalyzeSuggestions_ConsolidateMultipleMinorChildrenSorted(t *testing.T)
 	}
 
 	for _, childID := range []string{"person-child-alpha", "person-child-beta", "person-child-gamma"} {
-		if found := findIssueByMessage(issues, childID, "1830 census"); found != nil {
+		if found := findIssueByMessage(issues, childID, "1830 US census"); found != nil {
 			t.Errorf("child %s 1830 suggestion should be suppressed; got %q", childID, found.Message)
 		}
 	}
@@ -1671,12 +1671,12 @@ func TestAnalyzeSuggestions_ConsolidateChildBirthYearUnknown(t *testing.T) {
 
 	issues := analyzeSuggestions(archive)
 
-	parent1830 := findIssueByMessage(issues, "person-parent", "1830 census")
+	parent1830 := findIssueByMessage(issues, "person-parent", "1830 US census")
 	require.NotNil(t, parent1830, "expected parent 1830 census suggestion")
 	if containsSubstring(parent1830.Message, "would also cover") {
 		t.Errorf("parent 1830 should have no consolidation note when child birth year unknown; got %q", parent1830.Message)
 	}
-	if found := findIssueByMessage(issues, "person-child", "1830 census"); found != nil {
+	if found := findIssueByMessage(issues, "person-child", "1830 US census"); found != nil {
 		t.Errorf("child without birth year should produce no census suggestion; got %q", found.Message)
 	}
 }
@@ -1704,19 +1704,19 @@ func TestAnalyzeSuggestions_ConsolidateBothParentsMissingSameYear(t *testing.T) 
 
 	issues := analyzeSuggestions(archive)
 
-	father1830 := findIssueByMessage(issues, "person-father", "1830 census")
+	father1830 := findIssueByMessage(issues, "person-father", "1830 US census")
 	require.NotNil(t, father1830, "expected father 1830 census suggestion")
 	if !containsSubstring(father1830.Message, "Child Green (~5)") {
 		t.Errorf("father 1830 message should mention child; got %q", father1830.Message)
 	}
 
-	mother1830 := findIssueByMessage(issues, "person-mother", "1830 census")
+	mother1830 := findIssueByMessage(issues, "person-mother", "1830 US census")
 	require.NotNil(t, mother1830, "expected mother 1830 census suggestion")
 	if !containsSubstring(mother1830.Message, "Child Green (~5)") {
 		t.Errorf("mother 1830 message should mention child; got %q", mother1830.Message)
 	}
 
-	if found := findIssueByMessage(issues, "person-child", "1830 census"); found != nil {
+	if found := findIssueByMessage(issues, "person-child", "1830 US census"); found != nil {
 		t.Errorf("child 1830 should be suppressed when either parent consolidates; got %q", found.Message)
 	}
 }
@@ -1751,12 +1751,12 @@ func TestAnalyzeSuggestions_ConsolidateStepParentNotYetMarried(t *testing.T) {
 
 	issues := analyzeSuggestions(archive)
 
-	step1830 := findIssueByMessage(issues, "person-stepfather", "1830 census")
+	step1830 := findIssueByMessage(issues, "person-stepfather", "1830 US census")
 	require.NotNil(t, step1830, "expected stepfather 1830 census suggestion")
 	if containsSubstring(step1830.Message, "would also cover") {
 		t.Errorf("stepfather 1830 must not consolidate child before step relationship started; got %q", step1830.Message)
 	}
-	if child1830 := findIssueByMessage(issues, "person-child", "1830 census"); child1830 == nil {
+	if child1830 := findIssueByMessage(issues, "person-child", "1830 US census"); child1830 == nil {
 		t.Error("child 1830 should be emitted independently when step-parent relationship had not yet started")
 	}
 }
@@ -1790,12 +1790,12 @@ func TestAnalyzeSuggestions_ConsolidateRelationshipEnded(t *testing.T) {
 
 	issues := analyzeSuggestions(archive)
 
-	foster1850 := findIssueByMessage(issues, "person-foster", "1850 census")
+	foster1850 := findIssueByMessage(issues, "person-foster", "1850 US census")
 	require.NotNil(t, foster1850, "expected foster 1850 census suggestion")
 	if containsSubstring(foster1850.Message, "would also cover") {
 		t.Errorf("foster 1850 must not consolidate child after relationship ended; got %q", foster1850.Message)
 	}
-	if child1850 := findIssueByMessage(issues, "person-child", "1850 census"); child1850 == nil {
+	if child1850 := findIssueByMessage(issues, "person-child", "1850 US census"); child1850 == nil {
 		t.Error("child 1850 should be emitted independently after foster relationship ended")
 	}
 }
@@ -1829,12 +1829,12 @@ func TestAnalyzeSuggestions_ConsolidateBoundsViaStartedOnProperty(t *testing.T) 
 
 	issues := analyzeSuggestions(archive)
 
-	adopt1830 := findIssueByMessage(issues, "person-adoptive", "1830 census")
+	adopt1830 := findIssueByMessage(issues, "person-adoptive", "1830 US census")
 	require.NotNil(t, adopt1830, "expected adoptive parent 1830 census suggestion")
 	if containsSubstring(adopt1830.Message, "would also cover") {
 		t.Errorf("adoptive parent 1830 must not consolidate child before adoption (started_on 1860); got %q", adopt1830.Message)
 	}
-	if child1830 := findIssueByMessage(issues, "person-child", "1830 census"); child1830 == nil {
+	if child1830 := findIssueByMessage(issues, "person-child", "1830 US census"); child1830 == nil {
 		t.Error("child 1830 should be emitted independently before adoptive relationship started")
 	}
 }
@@ -1868,12 +1868,12 @@ func TestAnalyzeSuggestions_ConsolidateBoundsViaEndedOnProperty(t *testing.T) {
 
 	issues := analyzeSuggestions(archive)
 
-	foster1850 := findIssueByMessage(issues, "person-foster", "1850 census")
+	foster1850 := findIssueByMessage(issues, "person-foster", "1850 US census")
 	require.NotNil(t, foster1850, "expected foster 1850 census suggestion")
 	if containsSubstring(foster1850.Message, "would also cover") {
 		t.Errorf("foster 1850 must not consolidate child after ended_on=1840; got %q", foster1850.Message)
 	}
-	if child1850 := findIssueByMessage(issues, "person-child", "1850 census"); child1850 == nil {
+	if child1850 := findIssueByMessage(issues, "person-child", "1850 US census"); child1850 == nil {
 		t.Error("child 1850 should be emitted independently after ended_on relationship boundary")
 	}
 }
@@ -1909,12 +1909,12 @@ func TestAnalyzeSuggestions_ConsolidateBoundsAFTOnStart(t *testing.T) {
 
 	issues := analyzeSuggestions(archive)
 
-	step1850 := findIssueByMessage(issues, "person-step", "1850 census")
+	step1850 := findIssueByMessage(issues, "person-step", "1850 US census")
 	require.NotNil(t, step1850, "expected step parent 1850 census suggestion")
 	if containsSubstring(step1850.Message, "would also cover") {
 		t.Errorf("step parent 1850 must not consolidate child whose relationship starts AFT 1850; got %q", step1850.Message)
 	}
-	if child1850 := findIssueByMessage(issues, "person-child", "1850 census"); child1850 == nil {
+	if child1850 := findIssueByMessage(issues, "person-child", "1850 US census"); child1850 == nil {
 		t.Error("child 1850 should be emitted independently when step relationship starts AFT 1850")
 	}
 }
@@ -1950,12 +1950,12 @@ func TestAnalyzeSuggestions_ConsolidateBoundsBEFOnEnd(t *testing.T) {
 
 	issues := analyzeSuggestions(archive)
 
-	foster1850 := findIssueByMessage(issues, "person-foster", "1850 census")
+	foster1850 := findIssueByMessage(issues, "person-foster", "1850 US census")
 	require.NotNil(t, foster1850, "expected foster 1850 census suggestion")
 	if containsSubstring(foster1850.Message, "would also cover") {
 		t.Errorf("foster 1850 must not consolidate child whose relationship ended BEF 1850; got %q", foster1850.Message)
 	}
-	if child1850 := findIssueByMessage(issues, "person-child", "1850 census"); child1850 == nil {
+	if child1850 := findIssueByMessage(issues, "person-child", "1850 US census"); child1850 == nil {
 		t.Error("child 1850 should be emitted independently when foster relationship ended BEF 1850")
 	}
 }
@@ -1989,12 +1989,12 @@ func TestAnalyzeSuggestions_ConsolidateBoundsAFTOnStartedOnProperty(t *testing.T
 
 	issues := analyzeSuggestions(archive)
 
-	step1850 := findIssueByMessage(issues, "person-step", "1850 census")
+	step1850 := findIssueByMessage(issues, "person-step", "1850 US census")
 	require.NotNil(t, step1850, "expected step parent 1850 census suggestion")
 	if containsSubstring(step1850.Message, "would also cover") {
 		t.Errorf("step parent 1850 must not consolidate when started_on=AFT 1850; got %q", step1850.Message)
 	}
-	if child1850 := findIssueByMessage(issues, "person-child", "1850 census"); child1850 == nil {
+	if child1850 := findIssueByMessage(issues, "person-child", "1850 US census"); child1850 == nil {
 		t.Error("child 1850 should be emitted independently when started_on AFT 1850")
 	}
 }
@@ -2033,16 +2033,16 @@ func TestAnalyzeSuggestions_ConsolidateBoundsAFTOnEnd(t *testing.T) {
 
 	issues := analyzeSuggestions(archive)
 
-	foster1850 := findIssueByMessage(issues, "person-foster", "1850 census")
+	foster1850 := findIssueByMessage(issues, "person-foster", "1850 US census")
 	require.NotNil(t, foster1850, "expected foster 1850 census suggestion")
 	if containsSubstring(foster1850.Message, "would also cover") {
 		t.Errorf("foster 1850 must not consolidate when EndEvent=AFT 1840 (post-boundary year unconfirmed); got %q", foster1850.Message)
 	}
-	if child1850 := findIssueByMessage(issues, "person-child", "1850 census"); child1850 == nil {
+	if child1850 := findIssueByMessage(issues, "person-child", "1850 US census"); child1850 == nil {
 		t.Error("child 1850 should be emitted independently when foster relationship ended AFT 1840")
 	}
 
-	foster1840 := findIssueByMessage(issues, "person-foster", "1840 census")
+	foster1840 := findIssueByMessage(issues, "person-foster", "1840 US census")
 	require.NotNil(t, foster1840, "expected foster 1840 census suggestion")
 	if !containsSubstring(foster1840.Message, "would also cover") {
 		t.Errorf("foster 1840 should consolidate child (named year of AFT is still active); got %q", foster1840.Message)
@@ -2086,17 +2086,17 @@ func TestAnalyzeSuggestions_ConsolidateBoundsAFTWithCalendarPrefix(t *testing.T)
 	// calendar-prefix stripping the qualifier matcher would miss "JULIAN
 	// AFT 1850" entirely and treat 1850 as inside the active window,
 	// falsely consolidating the child.
-	step1850 := findIssueByMessage(issues, "person-step", "1850 census")
+	step1850 := findIssueByMessage(issues, "person-step", "1850 US census")
 	require.NotNil(t, step1850, "expected step parent 1850 census suggestion")
 	if containsSubstring(step1850.Message, "would also cover") {
 		t.Errorf("step parent 1850 must not consolidate when JULIAN AFT 1850 start; got %q", step1850.Message)
 	}
-	if child1850 := findIssueByMessage(issues, "person-child", "1850 census"); child1850 == nil {
+	if child1850 := findIssueByMessage(issues, "person-child", "1850 US census"); child1850 == nil {
 		t.Error("child 1850 should be emitted independently when relationship starts JULIAN AFT 1850")
 	}
 
 	// 1860 census: relationship active (any year > 1850 is in the window).
-	step1860 := findIssueByMessage(issues, "person-step", "1860 census")
+	step1860 := findIssueByMessage(issues, "person-step", "1860 US census")
 	require.NotNil(t, step1860, "expected step parent 1860 census suggestion")
 	if !containsSubstring(step1860.Message, "would also cover") {
 		t.Errorf("step parent 1860 should consolidate child after JULIAN AFT 1850 start; got %q", step1860.Message)
@@ -2132,12 +2132,12 @@ func TestAnalyzeSuggestions_ConsolidateBoundsBEFOnEndedOnProperty(t *testing.T) 
 
 	issues := analyzeSuggestions(archive)
 
-	foster1850 := findIssueByMessage(issues, "person-foster", "1850 census")
+	foster1850 := findIssueByMessage(issues, "person-foster", "1850 US census")
 	require.NotNil(t, foster1850, "expected foster 1850 census suggestion")
 	if containsSubstring(foster1850.Message, "would also cover") {
 		t.Errorf("foster 1850 must not consolidate when ended_on=BEF 1850; got %q", foster1850.Message)
 	}
-	if child1850 := findIssueByMessage(issues, "person-child", "1850 census"); child1850 == nil {
+	if child1850 := findIssueByMessage(issues, "person-child", "1850 US census"); child1850 == nil {
 		t.Error("child 1850 should be emitted independently when ended_on BEF 1850")
 	}
 }
