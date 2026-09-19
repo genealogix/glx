@@ -5,17 +5,22 @@ Keeping them here (rather than inlined in the JSON) makes the non-trivial logic 
 
 ## Permission posture
 
-`.claude/settings.json` carries a blanket `"Bash"` allow rule, so a Claude Code session
-runs shell commands without a per-command approval prompt. The narrower
-`Bash(<prefix>:*)` entries beside it are kept on purpose: they record the
-previously-curated safe set, so deleting the one blanket entry restores that posture in
+`.claude/settings.json` carries blanket `"Bash"` and `"Edit"` allow rules, so a Claude
+Code session runs shell commands and writes files without a per-command approval prompt.
+Shell commands and file writes prompt independently of each other, which is why both
+rules are present. `"Edit"` is the rule the permission check consults for every
+file-writing tool — `Write` and `NotebookEdit` match it too, and `Write(path)` /
+`NotebookEdit(path)` rules are never consulted.
+
+The narrower `Bash(<prefix>:*)` entries beside them are kept on purpose: they record the
+previously-curated safe set, so deleting the two blanket entries restores that posture in
 a single edit.
 
-Three things still constrain a session under the blanket rule:
+Three things still constrain a session under the blanket rules:
 
 - **The `PreToolUse` hooks in this directory.** A hook `permissionDecision` of `ask` or
   `deny` takes precedence over a matching allow rule, so the `gh api` gate below still
-  prompts on writes and still hard-blocks ref tampering. The blanket rule makes that
+  prompts on writes and still hard-blocks ref tampering. The blanket rules make that
   gate *more* load-bearing, not less — it is now the only thing between a session and a
   destructive `gh api` call, so the "pure restrictor" property documented below carries
   the weight the allow-list used to share.
