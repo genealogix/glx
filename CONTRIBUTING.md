@@ -479,6 +479,8 @@ Assisted-by: Claude <noreply@anthropic.com>
 
 `Co-authored-by` trailers added automatically by AI coding tools are also acceptable.
 
+Do **not** push links to an AI tool's private session. No `https://claude.ai/code/session_...` URL, no `https://claude.ai/code/project/...` project or thread URL, and no `Claude-Session:` trailer belongs in a commit message, a pull request body, or a comment on an issue or PR. Those links resolve only for the operator who ran the tool, so to everyone else reading this repository they are dead weight, and they expose that operator's workspace. This holds even when the tool's own boilerplate supplies one — strip it. The `Assisted-by:` trailer above is the disclosure this project asks for, and it needs no URL.
+
 ### Enforcement
 
 Maintainers will close low-quality or bot-generated contributions without detailed explanation. Repeated violations will result in the account being blocked from the org.
