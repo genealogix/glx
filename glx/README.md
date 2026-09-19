@@ -175,7 +175,7 @@ glx validate persons/ events/   # several directories are validated as one archi
 - 📥 **GEDCOM Import** - Import GEDCOM 5.5.1 and 7.0 files (and GEDZIP `.gdz` archives with bundled media) to GLX format
 - 📤 **GEDCOM Export** - Export GLX archives back to GEDCOM 5.5.1 or 7.0 format
 - 🌐 **JSON-LD Export** - Export GLX archives as Schema.org-aligned JSON-LD for linked-data interop
-- 🌐 **Publish** - Generate a self-contained static HTML site (person profiles, timelines, pedigree/descendancy charts, family links, source/place indexes, client-side search) for sharing with non-technical family
+- 🌐 **Publish** - Generate a self-contained static HTML site (person profiles, timelines, pedigree/descendancy charts, family links, source/place indexes with a map of located places, client-side search) for sharing with non-technical family
 - 🔍 **Validate Files** - Structural and referential integrity validation
 - 🔄 **Split/Join** - Convert between single-file and multi-file formats
 - 🔀 **Merge** - Combine two GLX archives with duplicate detection and dry-run support

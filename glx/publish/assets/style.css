@@ -162,6 +162,18 @@ a.chart-node:focus-visible rect { stroke: var(--accent); stroke-width: 2; }
 .media-note { color: var(--muted); font-size: 0.85rem; font-style: italic; }
 .media-file { display: inline-block; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 4px; }
 
+/* Place map */
+.placemap { margin: 0 0 1.5rem; }
+.placemap-svg { display: block; width: 100%; height: auto; font-family: system-ui, sans-serif; }
+.placemap-frame { fill: var(--surface); stroke: var(--border); stroke-width: 1; }
+.placemap-grid line { stroke: var(--border); stroke-width: 1; stroke-dasharray: 3 3; }
+.placemap-grid text { fill: var(--muted); font-size: 11px; }
+.placemap-markers circle { fill: var(--accent); fill-opacity: 0.75; stroke: var(--surface); stroke-width: 1.5; }
+.placemap-markers text { fill: var(--text); font-size: 12px; }
+.placemap-markers a:hover circle { fill-opacity: 1; }
+.placemap-markers a:hover text, .placemap-markers a:focus-visible text { fill: var(--link); text-decoration: underline; }
+.placemap figcaption { color: var(--muted); font-size: 0.8rem; font-family: system-ui, sans-serif; margin-top: 0.4rem; }
+
 /* Index tables */
 .index-table { width: 100%; border-collapse: collapse; }
 .index-table th, .index-table td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); vertical-align: top; }
