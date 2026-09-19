@@ -125,9 +125,10 @@ func TestAdd_PersonBadVocabRejected(t *testing.T) {
 func TestAdd_BadVocabErrorNamesValidValues(t *testing.T) {
 	dir := initArchiveDir(t)
 	io, _, _ := TestIOStreams()
+	common := addCommonOptions{ArchivePath: dir}
 
 	if err := addPerson(io, &addPersonOptions{
-		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		addCommonOptions: common,
 		Given:            "Jane",
 		Surname:          "Doe",
 	}); err != nil {
@@ -136,10 +137,10 @@ func TestAdd_BadVocabErrorNamesValidValues(t *testing.T) {
 
 	// Short vocabulary: every key is listed.
 	err := addAssertion(io, &addAssertionOptions{
-		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		addCommonOptions: common,
 		SubjectPerson:    "person-jane-doe",
 		Property:         "occupation",
-		Value:            "Labourer",
+		Value:            "Laborer",
 		Confidence:       "0",
 	})
 	if !errors.Is(err, ErrAddVocabKeyUnknown) {
@@ -153,7 +154,7 @@ func TestAdd_BadVocabErrorNamesValidValues(t *testing.T) {
 
 	// Long vocabulary: the list is truncated but still points at the file.
 	err = addEvent(io, &addEventOptions{
-		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		addCommonOptions: common,
 		Type:             "bogus",
 	})
 	if !errors.Is(err, ErrAddVocabKeyUnknown) {
