@@ -21,13 +21,22 @@ import (
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
+// childCensusParentBirthplaceYear is the first US federal census to record
+// each person's parents' birthplaces, which is what makes a child's census
+// useful for identifying a brickwall parent's own parents.
+const childCensusParentBirthplaceYear = 1880
+
 // suggestChildCensusRecords recommends searching a brickwall person's children's
 // 1880+ census records. When a person has no known parents, their children's
 // post-1880 federal censuses list parents' birthplaces, which can help identify
 // the brickwall person's own parents.
+//
+// The reasoning is specific to the US federal schedule, so the suggestion is
+// only made for children whose places put them in the United States (#186).
 func suggestChildCensusRecords(archive *glxlib.GLXFile) []AnalysisIssue {
 	childHasParents := buildChildHasParentsIndex(archive)
 	parentToChildren := buildParentToChildrenIndex(archive)
+	personPlaces := buildPersonPlaceIndex(archive)
 
 	// Precompute census year index once
 	personCensusYears := make(map[string]map[int]bool)
@@ -92,9 +101,14 @@ func suggestChildCensusRecords(archive *glxlib.GLXFile) []AnalysisIssue {
 
 			existing := personCensusYears[childID]
 
+			schedule := scheduleForCountry(censusSchedulesForPlaces(personPlaces[childID], archive), countryUnitedStates)
+			if schedule == nil {
+				continue
+			}
+
 			// Suggest 1880+ censuses for children (lists parents' birthplaces)
-			for _, year := range usFederalCensusYears {
-				if year < 1880 || year < childBirthYear {
+			for _, year := range schedule.years {
+				if year < childCensusParentBirthplaceYear || year < childBirthYear {
 					continue
 				}
 				if year > upperBound {
