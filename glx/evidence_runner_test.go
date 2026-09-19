@@ -17,6 +17,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -71,7 +72,7 @@ func birthplaceAssertion(value, confidence string, citations ...string) *glxlib.
 }
 
 func TestCollectEvidence_GroupsRankAndCount(t *testing.T) {
-	report := collectEvidence(brickwallArchive(), "person-jane-webb", "born_at")
+	report := collectEvidence(brickwallArchive(), glxlib.EntityRef{Person: "person-jane-webb"}, "born_at")
 
 	if report.PersonName != "Jane Miller" {
 		t.Errorf("PersonName = %q, want Jane Miller", report.PersonName)
@@ -105,7 +106,7 @@ func TestCollectEvidence_GroupsRankAndCount(t *testing.T) {
 }
 
 func TestCollectEvidence_ItemsResolveSourceTitleAndSort(t *testing.T) {
-	report := collectEvidence(brickwallArchive(), "person-jane-webb", "born_at")
+	report := collectEvidence(brickwallArchive(), glxlib.EntityRef{Person: "person-jane-webb"}, "born_at")
 
 	va := report.Groups[0]
 	if va.Value != "VIRGINIA" {
@@ -135,7 +136,7 @@ func TestCollectEvidence_ConfidenceBreaksReportTie(t *testing.T) {
 		},
 	}
 
-	report := collectEvidence(archive, "p", "prop")
+	report := collectEvidence(archive, glxlib.EntityRef{Person: "p"}, "prop")
 
 	// Both values have 2 reports; BETA's higher confidence wins and sorts first.
 	if report.Groups[0].Value != "BETA" {
@@ -155,7 +156,7 @@ func TestCollectEvidence_InconclusiveTie(t *testing.T) {
 		},
 	}
 
-	report := collectEvidence(archive, "p", "prop")
+	report := collectEvidence(archive, glxlib.EntityRef{Person: "p"}, "prop")
 
 	if report.BestEvidence != "" {
 		t.Errorf("BestEvidence = %q, want \"\" (tie on reports and confidence)", report.BestEvidence)
@@ -176,7 +177,7 @@ func TestCollectEvidence_DedupsSameCitationForSameValue(t *testing.T) {
 		},
 	}
 
-	report := collectEvidence(archive, "p", "prop")
+	report := collectEvidence(archive, glxlib.EntityRef{Person: "p"}, "prop")
 
 	if report.TotalReports != 1 {
 		t.Errorf("TotalReports = %d, want 1 (same citation counted once)", report.TotalReports)
@@ -221,7 +222,7 @@ func TestCollectEvidence_ValueResolution(t *testing.T) {
 		"occupation": "Farmer",
 	}
 	for property, wantValue := range cases {
-		report := collectEvidence(archive, "p", property)
+		report := collectEvidence(archive, glxlib.EntityRef{Person: "p"}, property)
 		if len(report.Groups) != 1 {
 			t.Errorf("%s: len(Groups) = %d, want 1", property, len(report.Groups))
 
@@ -245,7 +246,7 @@ func TestCollectEvidence_DirectSourceAndBareAssertion(t *testing.T) {
 		},
 	}
 
-	report := collectEvidence(archive, "p", "prop")
+	report := collectEvidence(archive, glxlib.EntityRef{Person: "p"}, "prop")
 	byValue := map[string]EvidenceGroup{}
 	for _, g := range report.Groups {
 		byValue[g.Value] = g
@@ -271,7 +272,7 @@ func TestCollectEvidence_ExactPropertyMatchWins(t *testing.T) {
 		},
 	}
 
-	report := collectEvidence(archive, "p", "born_at")
+	report := collectEvidence(archive, glxlib.EntityRef{Person: "p"}, "born_at")
 	if len(report.Groups) != 1 || report.Groups[0].Value != "EXACT" {
 		t.Errorf("Groups = %+v, want only the exact-match value EXACT", report.Groups)
 	}
@@ -286,7 +287,7 @@ func TestCollectEvidence_CaseInsensitiveFallback(t *testing.T) {
 	}
 
 	// No exact "born_at" exists, so the case-insensitive match is used.
-	report := collectEvidence(archive, "p", "born_at")
+	report := collectEvidence(archive, glxlib.EntityRef{Person: "p"}, "born_at")
 	if len(report.Groups) != 1 || report.Groups[0].Value != "FUZZY" {
 		t.Errorf("Groups = %+v, want case-insensitive fallback to FUZZY", report.Groups)
 	}
@@ -309,7 +310,7 @@ func TestCollectEvidence_CaseInsensitiveResolvesReferences(t *testing.T) {
 		},
 	}
 
-	report := collectEvidence(archive, "p", "RESIDENCE")
+	report := collectEvidence(archive, glxlib.EntityRef{Person: "p"}, "RESIDENCE")
 	if len(report.Groups) != 1 || report.Groups[0].Value != "Richmond, Virginia" {
 		t.Errorf("Groups = %+v, want value resolved to place name despite query casing", report.Groups)
 	}
@@ -327,7 +328,7 @@ func TestCollectEvidence_NoMatchingAssertions(t *testing.T) {
 		},
 	}
 
-	report := collectEvidence(archive, "p", "born_at")
+	report := collectEvidence(archive, glxlib.EntityRef{Person: "p"}, "born_at")
 	if report.TotalReports != 0 || len(report.Groups) != 0 {
 		t.Errorf("empty result expected, got TotalReports=%d Groups=%d", report.TotalReports, len(report.Groups))
 	}
@@ -341,7 +342,7 @@ func TestCollectEvidence_NoMatchingAssertions(t *testing.T) {
 }
 
 func TestPrintEvidenceText_Output(t *testing.T) {
-	report := collectEvidence(brickwallArchive(), "person-jane-webb", "born_at")
+	report := collectEvidence(brickwallArchive(), glxlib.EntityRef{Person: "person-jane-webb"}, "born_at")
 	streams, out, _ := TestIOStreams()
 
 	printEvidenceText(streams, &report)
@@ -363,7 +364,7 @@ func TestPrintEvidenceText_Output(t *testing.T) {
 
 func TestPrintEvidenceText_EmptyAndTie(t *testing.T) {
 	streams, out, _ := TestIOStreams()
-	printEvidenceText(streams, &EvidenceReport{Person: "p", PersonName: "Pat", Property: "born_at"})
+	printEvidenceText(streams, &EvidenceReport{Subject: "p", SubjectName: "Pat", SubjectType: "person", Property: "born_at"})
 	if !strings.Contains(out.String(), "No assertions found for born_at of Pat (p).") {
 		t.Errorf("empty output = %q", out.String())
 	}
@@ -383,7 +384,7 @@ func TestPrintEvidenceText_EmptyAndTie(t *testing.T) {
 }
 
 func TestPrintEvidenceJSON_RoundTrip(t *testing.T) {
-	report := collectEvidence(brickwallArchive(), "person-jane-webb", "born_at")
+	report := collectEvidence(brickwallArchive(), glxlib.EntityRef{Person: "person-jane-webb"}, "born_at")
 	streams, out, _ := TestIOStreams()
 
 	if err := printEvidenceJSON(streams, &report); err != nil {
@@ -403,7 +404,7 @@ func TestPrintEvidenceJSON_RoundTrip(t *testing.T) {
 }
 
 func TestPrintEvidenceJSON_GoesToMachineOut(t *testing.T) {
-	report := collectEvidence(brickwallArchive(), "person-jane-webb", "born_at")
+	report := collectEvidence(brickwallArchive(), glxlib.EntityRef{Person: "person-jane-webb"}, "born_at")
 	// Separate Out and MachineOut so we can prove JSON is on the machine stream
 	// (which survives --quiet), not the diagnostic stream (which does not).
 	var out, machine bytes.Buffer
@@ -571,6 +572,330 @@ func TestCitationSourceLabel_FallsBackToCitationID(t *testing.T) {
 		got := citationSourceLabel(citID, archive)
 		if got != want {
 			t.Errorf("citationSourceLabel(%q) = %q, want %q", citID, got, want)
+		}
+	}
+}
+
+// ============================================================================
+// Subject resolution (#1268): events, places, and relationships, not just
+// persons.
+// ============================================================================
+
+// parishArchive is the issue #1268 scenario: a single person whose contested
+// date and place live on their birth and death events, the canonical
+// evidence-first modeling, with nothing asserted on the person at all.
+func parishArchive() *glxlib.GLXFile {
+	return &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-hollnagel-michael-david": {
+				Properties: map[string]any{"name": map[string]any{"value": "Michael David Hollnagel"}},
+			},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-birth-est":   {Type: glxlib.EventTypeBirth},
+			"event-death-1807":  {Title: "Death of Michael David Hollnagel", Type: glxlib.EventTypeDeath},
+			"event-burial-1807": {Type: glxlib.EventTypeBurial},
+		},
+		Places: map[string]*glxlib.Place{
+			"place-liepen": {Name: "Liepen, Vorpommern"},
+			"place-anklam": {Name: "Anklam, Vorpommern"},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"relationship-marriage-hollnagel": {Type: glxlib.RelationshipTypeMarriage},
+		},
+		Sources: map[string]*glxlib.Source{
+			"src-death":  {Title: "Liepen Death Register 1807"},
+			"src-burial": {Title: "Liepen Burial Register 1807"},
+		},
+		Citations: map[string]*glxlib.Citation{
+			"cit-death-entry":  {SourceID: "src-death"},
+			"cit-burial-entry": {SourceID: "src-burial"},
+		},
+		Assertions: map[string]*glxlib.Assertion{
+			// The birth date is an inference from the death entry's decadal age
+			// band, reported differently by the two registers.
+			"a-birth-1": {
+				Subject: glxlib.EntityRef{Event: "event-birth-est"}, Property: "date",
+				Value: "ABT 1737", Confidence: "low", Citations: []string{"cit-death-entry"},
+			},
+			"a-birth-2": {
+				Subject: glxlib.EntityRef{Event: "event-birth-est"}, Property: "date",
+				Value: "ABT 1742", Confidence: "low", Citations: []string{"cit-burial-entry"},
+			},
+			// The death place is a place reference on an event subject.
+			"a-death-place": {
+				Subject: glxlib.EntityRef{Event: "event-death-1807"}, Property: "place",
+				Value: "place-liepen", Confidence: "high", Citations: []string{"cit-death-entry"},
+			},
+			"a-burial-place": {
+				Subject: glxlib.EntityRef{Event: "event-burial-1807"}, Property: "place",
+				Value: "place-anklam", Confidence: "medium", Citations: []string{"cit-burial-entry"},
+			},
+		},
+	}
+}
+
+func TestFindEvidenceSubject_ResolvesEverySubjectType(t *testing.T) {
+	archive := parishArchive()
+
+	cases := []struct {
+		query string
+		want  glxlib.EntityRef
+	}{
+		{"person-hollnagel-michael-david", glxlib.EntityRef{Person: "person-hollnagel-michael-david"}},
+		{"event-death-1807", glxlib.EntityRef{Event: "event-death-1807"}},
+		{"place-liepen", glxlib.EntityRef{Place: "place-liepen"}},
+		{"relationship-marriage-hollnagel", glxlib.EntityRef{Relationship: "relationship-marriage-hollnagel"}},
+		// Persons still resolve by name search when no exact ID matches.
+		{"Michael David", glxlib.EntityRef{Person: "person-hollnagel-michael-david"}},
+	}
+	for _, c := range cases {
+		got, err := findEvidenceSubject(archive, c.query)
+		if err != nil {
+			t.Errorf("findEvidenceSubject(%q): %v", c.query, err)
+
+			continue
+		}
+		if got != c.want {
+			t.Errorf("findEvidenceSubject(%q) = %+v, want %+v", c.query, got, c.want)
+		}
+	}
+}
+
+func TestFindEvidenceSubject_UnknownQueryNamesWhatItAccepts(t *testing.T) {
+	_, err := findEvidenceSubject(parishArchive(), "nothing-at-all")
+	if err == nil {
+		t.Fatal("expected an error for an unresolvable subject, got nil")
+	}
+	if !errors.Is(err, ErrEvidenceNoSubject) {
+		t.Errorf("error = %v, want it to wrap ErrEvidenceNoSubject", err)
+	}
+	// The old message ("no person found matching ...") read as "that person does
+	// not exist"; the new one has to say the command takes more than a person.
+	for _, want := range []string{"event", "place", "relationship"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error %q does not mention %q", err.Error(), want)
+		}
+	}
+}
+
+func TestFindEvidenceSubject_AmbiguousNameKeepsPersonListing(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-a": {Properties: map[string]any{"name": map[string]any{"value": "Jane Webb"}}},
+			"person-b": {Properties: map[string]any{"name": map[string]any{"value": "Jane Miller"}}},
+		},
+	}
+
+	_, err := findEvidenceSubject(archive, "Jane")
+	if err == nil {
+		t.Fatal("expected a disambiguation error, got nil")
+	}
+	if errors.Is(err, ErrEvidenceNoSubject) {
+		t.Errorf("ambiguous name reported as no-subject: %v", err)
+	}
+	for _, want := range []string{"person-a", "person-b"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("disambiguation listing %q missing %q", err.Error(), want)
+		}
+	}
+}
+
+func TestFindEvidenceSubject_IDSharedAcrossTypesIsReported(t *testing.T) {
+	// Entity IDs are unique archive-wide, but a hand-edited archive can break
+	// that; resolving by map order would silently pick one.
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{"shared-id": {}},
+		Events:  map[string]*glxlib.Event{"shared-id": {Type: glxlib.EventTypeBirth}},
+	}
+
+	_, err := findEvidenceSubject(archive, "shared-id")
+	if err == nil {
+		t.Fatal("expected an ambiguity error for an ID used by two entity types")
+	}
+	for _, want := range []string{"person", "event"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error %q does not name the %s candidate", err.Error(), want)
+		}
+	}
+}
+
+func TestSubjectLabel(t *testing.T) {
+	archive := parishArchive()
+
+	cases := []struct {
+		subject glxlib.EntityRef
+		want    string
+	}{
+		{glxlib.EntityRef{Person: "person-hollnagel-michael-david"}, "Michael David Hollnagel"},
+		{glxlib.EntityRef{Event: "event-death-1807"}, "Death of Michael David Hollnagel"},
+		// No title: fall back to a label generated from the event type.
+		{glxlib.EntityRef{Event: "event-birth-est"}, "Birth"},
+		{glxlib.EntityRef{Place: "place-liepen"}, "Liepen, Vorpommern"},
+		{glxlib.EntityRef{Relationship: "relationship-marriage-hollnagel"}, glxlib.RelationshipTypeMarriage},
+		// Missing entities fall back to the ID.
+		{glxlib.EntityRef{Event: "event-missing"}, "event-missing"},
+		{glxlib.EntityRef{Place: "place-missing"}, "place-missing"},
+		{glxlib.EntityRef{Relationship: "relationship-missing"}, "relationship-missing"},
+	}
+	for _, c := range cases {
+		if got := subjectLabel(archive, c.subject); got != c.want {
+			t.Errorf("subjectLabel(%+v) = %q, want %q", c.subject, got, c.want)
+		}
+	}
+}
+
+func TestCollectEvidence_EventSubject(t *testing.T) {
+	report := collectEvidence(parishArchive(), glxlib.EntityRef{Event: "event-birth-est"}, "date")
+
+	if report.Subject != "event-birth-est" || report.SubjectType != "event" {
+		t.Errorf("subject = %q/%q, want event-birth-est/event", report.Subject, report.SubjectType)
+	}
+	if report.SubjectName != "Birth" {
+		t.Errorf("SubjectName = %q, want Birth", report.SubjectName)
+	}
+	// Person/PersonName are the person-subject compatibility aliases only.
+	if report.Person != "" || report.PersonName != "" {
+		t.Errorf("Person/PersonName = %q/%q, want empty for an event subject", report.Person, report.PersonName)
+	}
+	if report.TotalReports != 2 || len(report.Groups) != 2 {
+		t.Fatalf("TotalReports=%d Groups=%d, want 2 and 2", report.TotalReports, len(report.Groups))
+	}
+	// Two equally-supported low-confidence readings: exactly the unresolved
+	// conflict the command exists to surface.
+	if report.BestEvidence != "" {
+		t.Errorf("BestEvidence = %q, want \"\" (tie between the two reckonings)", report.BestEvidence)
+	}
+}
+
+func TestCollectEvidence_SubjectsDoNotLeakAcrossTypes(t *testing.T) {
+	archive := parishArchive()
+
+	// Every assertion in the fixture is event-subject, so the person has none.
+	person := collectEvidence(archive, glxlib.EntityRef{Person: "person-hollnagel-michael-david"}, "date")
+	if person.TotalReports != 0 {
+		t.Errorf("person date reports = %d, want 0 (all date assertions are event-subject)", person.TotalReports)
+	}
+
+	// And one event's assertions never appear under another's.
+	death := collectEvidence(archive, glxlib.EntityRef{Event: "event-death-1807"}, "place")
+	if death.TotalReports != 1 || len(death.Groups) != 1 {
+		t.Fatalf("death place: TotalReports=%d Groups=%d, want 1 and 1", death.TotalReports, len(death.Groups))
+	}
+	if death.Groups[0].Value != "Liepen, Vorpommern" {
+		t.Errorf("death place = %q, want the burial event's place excluded and this one resolved",
+			death.Groups[0].Value)
+	}
+}
+
+func TestCollectEvidence_EventPlaceResolvesToPlaceName(t *testing.T) {
+	// `place` on an event subject is the event's structural place field: no
+	// vocabulary definition declares it a reference, so it needs its own rule.
+	report := collectEvidence(parishArchive(), glxlib.EntityRef{Event: "event-burial-1807"}, "place")
+	if len(report.Groups) != 1 || report.Groups[0].Value != "Anklam, Vorpommern" {
+		t.Errorf("Groups = %+v, want the place ID resolved to its name", report.Groups)
+	}
+}
+
+func TestResolveAssertionValue_UsesTheSubjectTypesVocabulary(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Places: map[string]*glxlib.Place{"place-liepen": {Name: "Liepen, Vorpommern"}},
+		// The same key means different things in the two vocabularies: a place
+		// reference for relationships, free text for persons.
+		PersonProperties: map[string]*glxlib.PropertyDefinition{
+			"settled": {Label: "Settled"},
+		},
+		RelationshipProperties: map[string]*glxlib.PropertyDefinition{
+			"settled": {Label: "Settled", ReferenceType: glxlib.EntityTypePlaces.String()},
+		},
+	}
+
+	rel := resolveAssertionValue("place-liepen", "settled", glxlib.EntityRef{Relationship: "r"}, archive)
+	if rel != "Liepen, Vorpommern" {
+		t.Errorf("relationship subject = %q, want the relationship vocabulary's place reference resolved", rel)
+	}
+
+	person := resolveAssertionValue("place-liepen", "settled", glxlib.EntityRef{Person: "p"}, archive)
+	if person != "place-liepen" {
+		t.Errorf("person subject = %q, want the raw value (person vocabulary declares no reference)", person)
+	}
+}
+
+func TestPrintEvidenceText_EventSubjectHeader(t *testing.T) {
+	report := collectEvidence(parishArchive(), glxlib.EntityRef{Event: "event-death-1807"}, "place")
+	streams, out, _ := TestIOStreams()
+
+	printEvidenceText(streams, &report)
+
+	want := "Evidence for place of Death of Michael David Hollnagel (event-death-1807):"
+	if !strings.Contains(out.String(), want) {
+		t.Errorf("text output missing %q\n--- got ---\n%s", want, out.String())
+	}
+}
+
+func TestEvidenceJSON_SubjectFieldsAndPersonAliases(t *testing.T) {
+	decode := func(t *testing.T, report EvidenceReport) map[string]any {
+		t.Helper()
+		streams, out, _ := TestIOStreams()
+		if err := printEvidenceJSON(streams, &report); err != nil {
+			t.Fatalf("printEvidenceJSON: %v", err)
+		}
+		var raw map[string]any
+		if err := json.Unmarshal(out.Bytes(), &raw); err != nil {
+			t.Fatalf("output is not valid JSON: %v", err)
+		}
+
+		return raw
+	}
+
+	t.Run("person subject keeps the pre-#1268 keys", func(t *testing.T) {
+		raw := decode(t, collectEvidence(brickwallArchive(), glxlib.EntityRef{Person: "person-jane-webb"}, "born_at"))
+		for key, want := range map[string]string{
+			"subject":      "person-jane-webb",
+			"subject_type": "person",
+			"subject_name": "Jane Miller",
+			"person":       "person-jane-webb",
+			"person_name":  "Jane Miller",
+		} {
+			if raw[key] != want {
+				t.Errorf("%s = %v, want %q", key, raw[key], want)
+			}
+		}
+	})
+
+	t.Run("event subject omits them", func(t *testing.T) {
+		raw := decode(t, collectEvidence(parishArchive(), glxlib.EntityRef{Event: "event-death-1807"}, "place"))
+		if raw["subject"] != "event-death-1807" || raw["subject_type"] != "event" {
+			t.Errorf("subject = %v/%v, want event-death-1807/event", raw["subject"], raw["subject_type"])
+		}
+		if _, ok := raw["person"]; ok {
+			t.Errorf("person key present for an event subject: %v", raw["person"])
+		}
+		if _, ok := raw["person_name"]; ok {
+			t.Errorf("person_name key present for an event subject: %v", raw["person_name"])
+		}
+	})
+}
+
+func TestShowEvidence_EventSubjectEndToEnd(t *testing.T) {
+	path := writeTempArchive(t, parishArchive())
+	streams, out, _ := TestIOStreams()
+
+	if err := showEvidence(streams, path, "event-birth-est", "date", "text"); err != nil {
+		t.Fatalf("showEvidence: %v", err)
+	}
+
+	got := out.String()
+	for _, want := range []string{
+		"Evidence for date of Birth (event-birth-est):",
+		"2 reports across 2 values",
+		"ABT 1737",
+		"ABT 1742",
+		"Liepen Death Register 1807",
+		"Best evidence: inconclusive",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("text output missing %q\n--- got ---\n%s", want, got)
 		}
 	}
 }

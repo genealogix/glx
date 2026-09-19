@@ -174,7 +174,7 @@ func findPersonByQuery(archive *glxlib.GLXFile, query string) (string, *glxlib.P
 
 	switch len(matches) {
 	case 0:
-		return "", nil, fmt.Errorf("no person found matching %q", query)
+		return "", nil, fmt.Errorf("%w %q", ErrNoPersonMatch, query)
 	case 1:
 		return matches[0], archive.Persons[matches[0]], nil
 	default:
