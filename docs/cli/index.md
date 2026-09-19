@@ -55,7 +55,7 @@ For installation instructions, see [`glx/README.md`](../../glx/README.md). For a
 - [`glx duplicates`](glx_duplicates.md) — detect duplicate entities
 - [`glx coverage`](glx_coverage.md) — research coverage report
 - [`glx diff`](glx_diff.md) — diff two archives
-- [`glx evidence`](glx_evidence.md) — lay out every assertion for one person+property side-by-side
+- [`glx evidence`](glx_evidence.md) — lay out every assertion for one subject+property side-by-side
 - [`glx proof`](glx_proof.md) — compile a Genealogical Proof Standard summary for a research question
 - [`glx migrations`](glx_migrations.md) — trace a person's geographic movement over time
 
