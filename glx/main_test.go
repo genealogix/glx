@@ -103,6 +103,25 @@ func TestRunInit_MultiFile(t *testing.T) {
 	require.NoError(t, err, "README.md should be created")
 }
 
+// runInitCmd is the cobra layer: with no directory argument it initializes the
+// process's current directory, which no runner-level test can observe.
+func TestRunInitCmd_NoArgumentUsesCurrentDirectory(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Chdir(tmpDir)
+
+	// The command's flags are package-level state shared with every other
+	// test in this package.
+	initSingleFile, createTestData, initNoGit = false, 0, true
+	t.Cleanup(func() { initSingleFile, createTestData, initNoGit = false, 0, false })
+
+	require.NoError(t, runInitCmd(nil, nil))
+
+	for _, name := range []string{"persons", "vocabularies", ".gitignore", "README.md"} {
+		_, err := os.Stat(filepath.Join(tmpDir, name))
+		require.NoError(t, err, "%s should be created in the current directory", name)
+	}
+}
+
 func TestRunInit_NonEmptyDirectory(t *testing.T) {
 	tmpDir := t.TempDir()
 

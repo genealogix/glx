@@ -151,3 +151,52 @@ func TestInitArchiveGitRepo_SkipsWhenAlreadyInsideRepository(t *testing.T) {
 	_, err = os.Stat(filepath.Join(nested, ".git"))
 	assert.True(t, os.IsNotExist(err), "a nested repository would hide the archive from the outer one")
 }
+
+// Every branch of gitInitLines is a line the user reads and acts on, so each
+// one is pinned: the archive is a repository, it is inside one already, or it
+// is not under version control and the output says what to run (#1273).
+func TestGitInitLines(t *testing.T) {
+	t.Run("a new repository names its branch and the first commit", func(t *testing.T) {
+		stubGitConfig(t, map[config.Scope]string{})
+
+		lines := gitInitLines(t.TempDir(), false)
+
+		require.Len(t, lines, 2)
+		assert.Equal(t, "Initialized empty Git repository on branch 'main'", lines[0])
+		assert.Contains(t, lines[1], "Nothing is committed yet")
+	})
+
+	t.Run("--no-git says the archive is not under version control", func(t *testing.T) {
+		dir := t.TempDir()
+
+		assert.Equal(t, []string{noRepoAdvice}, gitInitLines(dir, true))
+
+		_, err := os.Stat(filepath.Join(dir, ".git"))
+		assert.True(t, os.IsNotExist(err), "--no-git must not create a repository")
+	})
+
+	t.Run("an archive inside a repository reports the skip", func(t *testing.T) {
+		stubGitConfig(t, map[config.Scope]string{})
+		outer := t.TempDir()
+		_, err := git.PlainInit(outer, false)
+		require.NoError(t, err)
+		nested := filepath.Join(outer, "archive")
+		require.NoError(t, os.MkdirAll(nested, 0o755))
+
+		assert.Equal(t, []string{"Already inside a Git repository — skipped 'git init'"}, gitInitLines(nested, false))
+	})
+
+	t.Run("a failed git init warns and falls back to the advice", func(t *testing.T) {
+		stubGitConfig(t, map[config.Scope]string{})
+		// A path under a regular file can hold no repository, so PlainInit
+		// fails the way an unwritable archive directory would.
+		blocker := filepath.Join(t.TempDir(), "not-a-directory")
+		require.NoError(t, os.WriteFile(blocker, []byte("x"), 0o600))
+
+		var lines []string
+		stderr := captureStderr(t, func() { lines = gitInitLines(filepath.Join(blocker, "archive"), false) })
+
+		assert.Equal(t, []string{noRepoAdvice}, lines, "the archive is still usable, so init reports rather than fails")
+		assert.Contains(t, stderr, "Warning: could not initialize Git repository")
+	})
+}
