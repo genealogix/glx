@@ -159,7 +159,7 @@ func TestBuildCensusEntities_ExistingSource(t *testing.T) {
 	existing := &GLXFile{
 		Sources: map[string]*Source{
 			"source-1860-census": {
-				Title: "1860 U.S. Federal Census — Marion County, Florida",
+				Title: "1860 Census — Marion County, Florida",
 				Type:  SourceTypeCensus,
 			},
 		},
