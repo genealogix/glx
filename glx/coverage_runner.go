@@ -34,6 +34,14 @@ var usCensusYears = []int{
 // when no death date is known.
 const maxLifespan = 100
 
+// Coverage checklist categories, as they appear in the JSON output and as the
+// headings printCoverageText groups by.
+const (
+	categoryCensus = glxlib.EventTypeCensus
+	categoryVital  = "vital"
+	categoryOther  = "other"
+)
+
 // coverageRecord represents one expected record in the coverage checklist.
 type coverageRecord struct {
 	Category    string `json:"category"`
@@ -149,9 +157,11 @@ func buildCoverage(personID string, person *glxlib.Person, archive *glxlib.GLXFi
 	birthYear := glxlib.ExtractFirstYear(birthDate)
 	deathYear := deathYearUpperBound(deathDate)
 
-	// Build indexes: what sources/citations/events reference this person
+	// Build indexes: what sources/citations/events reference this person, and
+	// which events an assertion actually backs with a citation or source
 	personSources := collectPersonSources(personID, archive)
-	personEvents := collectPersonEvents(personID, archive)
+	evidencedEvents := eventsWithEvidence(archive)
+	personEvents := collectPersonEvents(personID, archive, evidencedEvents)
 
 	// Infer death year from burial event if death_date is not set
 	if deathYear == 0 {
@@ -168,7 +178,7 @@ func buildCoverage(personID string, person *glxlib.Person, archive *glxlib.GLXFi
 	records = append(records, buildStateCensusRecords(birthYear, deathYear, states, personSources, personEvents, archive)...)
 
 	// Vital records
-	records = append(records, buildVitalRecords(personID, archive, personSources, personEvents)...)
+	records = append(records, buildVitalRecords(personID, archive, personSources, personEvents, evidencedEvents)...)
 
 	// Other record types — probate is high priority when person has an explicit death
 	// date (not just inferred from burial) and known family
@@ -206,6 +216,7 @@ type personSourceInfo struct {
 	EventType string // if found via an event
 	PlaceID   string // place reference (events only)
 	Year      int
+	Evidenced bool // events only: an assertion about this event cites a source
 }
 
 // collectPersonSources gathers all sources and citations that reference a person
@@ -258,11 +269,15 @@ func collectPersonSources(personID string, archive *glxlib.GLXFile) []personSour
 	return sources
 }
 
-// collectPersonEvents gathers all events this person participates in.
-func collectPersonEvents(personID string, archive *glxlib.GLXFile) []personSourceInfo {
+// collectPersonEvents gathers all events this person participates in, marking
+// each with whether it carries supporting evidence per the evidenced index.
+func collectPersonEvents(personID string, archive *glxlib.GLXFile, evidenced map[string]bool) []personSourceInfo {
 	var events []personSourceInfo
 
-	for eventID, event := range archive.Events {
+	// Sorted so a person with more than one event of a type reports the same
+	// one on every run
+	for _, eventID := range sortedKeys(archive.Events) {
+		event := archive.Events[eventID]
 		if event == nil {
 			continue
 		}
@@ -274,6 +289,7 @@ func collectPersonEvents(personID string, archive *glxlib.GLXFile) []personSourc
 					Year:      glxlib.ExtractFirstYear(string(event.Date)),
 					Title:     event.Title,
 					PlaceID:   event.PlaceID,
+					Evidenced: evidenced[eventID],
 				})
 
 				break
@@ -282,6 +298,54 @@ func collectPersonEvents(personID string, archive *glxlib.GLXFile) []personSourc
 	}
 
 	return events
+}
+
+// eventsWithEvidence returns the set of event IDs backed by evidence: those
+// that are the subject of an assertion resolving at least one citation or
+// source.
+//
+// An event carries no citations or sources of its own — under the GLX evidence
+// model the event is a conclusion, and what supports it is the assertion
+// pointing at it. An event with no such assertion is therefore an unsupported
+// claim (an estimate reckoned from a relative's record, a placeholder, a
+// GEDCOM import), which coverage must not count as a record found.
+func eventsWithEvidence(archive *glxlib.GLXFile) map[string]bool {
+	evidenced := make(map[string]bool)
+
+	for _, assertion := range archive.Assertions {
+		if assertion == nil {
+			continue
+		}
+		eventID := assertion.Subject.Event
+		if eventID == "" || evidenced[eventID] {
+			continue
+		}
+		if assertionHasEvidence(assertion, archive) {
+			evidenced[eventID] = true
+		}
+	}
+
+	return evidenced
+}
+
+// assertionHasEvidence reports whether an assertion resolves at least one
+// citation or source. A dangling reference does not count: reference
+// validation already reports it as an error, and honoring it here would let a
+// typo stand in for a record.
+func assertionHasEvidence(assertion *glxlib.Assertion, archive *glxlib.GLXFile) bool {
+	for _, citID := range assertion.Citations {
+		if cit := archive.Citations[citID]; cit != nil {
+			return true
+		}
+	}
+
+	for _, srcID := range assertion.Sources {
+		if src := archive.Sources[srcID]; src != nil {
+			return true
+		}
+	}
+
+	return false
 }
 
 // buildCensusRecords generates expected census records based on birth/death years.
@@ -311,7 +375,7 @@ func buildCensusRecords(birthYear, deathYear int, sources, events []personSource
 		label := fmt.Sprintf("%d US Census (age ~%d)", year, age)
 
 		rec := coverageRecord{
-			Category: "census",
+			Category: categoryCensus,
 			Label:    label,
 		}
 
@@ -329,6 +393,10 @@ func buildCensusRecords(birthYear, deathYear int, sources, events []personSource
 
 		// Census-specific annotations (always added, even when found)
 		rec.Description = appendCensusAnnotation(rec.Description, year, age)
+
+		if !rec.Found {
+			rec.Description = appendDescription(rec.Description, unevidencedNote(findUnevidencedCensus(year, events)))
+		}
 
 		// Priority annotations for missing records
 		if !rec.Found {
@@ -352,7 +420,7 @@ func buildCensusRecords(birthYear, deathYear int, sources, events []personSource
 // findCensusMatch checks if a census for a given year exists in sources or events.
 func findCensusMatch(year int, sources, events []personSourceInfo) string {
 	for _, e := range events {
-		if e.EventType == glxlib.EventTypeCensus && e.Year == year {
+		if e.EventType == glxlib.EventTypeCensus && e.Year == year && e.Evidenced {
 			return e.Ref
 		}
 	}
@@ -369,39 +437,64 @@ func findCensusMatch(year int, sources, events []personSourceInfo) string {
 	return ""
 }
 
+// findUnevidencedCensus returns the ID of a census event for the given year
+// that nothing backs, or "" when the person has none.
+func findUnevidencedCensus(year int, events []personSourceInfo) string {
+	for _, e := range events {
+		if e.EventType == glxlib.EventTypeCensus && e.Year == year && !e.Evidenced {
+			return e.Ref
+		}
+	}
+
+	return ""
+}
+
 // buildVitalRecords generates expected vital records.
-func buildVitalRecords(personID string, archive *glxlib.GLXFile, sources, events []personSourceInfo) []coverageRecord {
+func buildVitalRecords(personID string, archive *glxlib.GLXFile, sources, events []personSourceInfo, evidenced map[string]bool) []coverageRecord {
 	var records []coverageRecord
 
-	// Birth record
-	birthFound := hasEventType(events, glxlib.EventTypeBirth) || hasSourceType(sources, glxlib.SourceTypeVitalRecord, "birth")
-	records = append(records, coverageRecord{
-		Category:  "vital",
-		Label:     "Birth record",
-		Found:     birthFound,
-		SourceRef: findEventRef(events, glxlib.EventTypeBirth),
-		Priority:  boolPriority(!birthFound, "high"),
-	})
-
-	// Death record
-	deathFound := hasEventType(events, glxlib.EventTypeDeath) || hasSourceType(sources, glxlib.SourceTypeVitalRecord, "death")
-	records = append(records, coverageRecord{
-		Category:  "vital",
-		Label:     "Death record",
-		Found:     deathFound,
-		SourceRef: findEventRef(events, glxlib.EventTypeDeath),
-		Priority:  boolPriority(!deathFound, "medium"),
-	})
+	records = append(records,
+		buildVitalRecord("Birth record", "high", glxlib.EventTypeBirth, "birth", sources, events),
+		buildVitalRecord("Death record", "medium", glxlib.EventTypeDeath, "death", sources, events),
+	)
 
 	// Marriage records — check relationships for spouse
-	marriageRecords := buildMarriageRecords(personID, archive, events)
+	marriageRecords := buildMarriageRecords(personID, archive, evidenced)
 	records = append(records, marriageRecords...)
 
 	return records
 }
 
-// buildMarriageRecords checks for marriage events linked to spouse relationships.
-func buildMarriageRecords(personID string, archive *glxlib.GLXFile, events []personSourceInfo) []coverageRecord {
+// buildVitalRecord builds one birth-or-death checklist entry. The record counts
+// as found on an event only when that event carries evidence; an event standing
+// on its own is a conclusion, and counting it would inflate the score for
+// exactly the people whose records are missing.
+func buildVitalRecord(label, missingPriority, eventType, titleKeyword string, sources, events []personSourceInfo) coverageRecord {
+	eventRef := findEvidencedEvent(events, eventType)
+	found := eventRef != "" || hasSourceType(sources, glxlib.SourceTypeVitalRecord, titleKeyword)
+
+	rec := coverageRecord{
+		Category: categoryVital,
+		Label:    label,
+		Found:    found,
+		Priority: boolPriority(!found, missingPriority),
+	}
+	if found {
+		rec.SourceRef = eventRef
+		if rec.SourceRef == "" {
+			rec.SourceRef = findSourceRef(sources, glxlib.SourceTypeVitalRecord)
+		}
+	} else {
+		rec.Description = unevidencedNote(findUnevidencedEvent(events, eventType))
+	}
+
+	return rec
+}
+
+// buildMarriageRecords checks for marriage events linked to spouse
+// relationships. As with birth and death, the marriage event has to carry
+// evidence before it counts as the marriage record.
+func buildMarriageRecords(personID string, archive *glxlib.GLXFile, evidenced map[string]bool) []coverageRecord {
 	var records []coverageRecord
 
 	// Find spouse relationships
@@ -413,74 +506,103 @@ func buildMarriageRecords(personID string, archive *glxlib.GLXFile, events []per
 			continue
 		}
 
-		var spouseID string
-		isParticipant := false
-		for _, p := range rel.Participants {
-			if p.Person == personID {
-				isParticipant = true
-			} else {
-				spouseID = p.Person
-			}
-		}
+		spouseID, isParticipant := spouseInRelationship(rel, personID)
 		if !isParticipant {
 			continue
 		}
 
-		spouseName := ""
-		if spouse, ok := archive.Persons[spouseID]; ok && spouse != nil {
-			spouseName = glxlib.PersonDisplayName(spouse)
-		}
-		if spouseName == "" {
-			spouseName = spouseID
-		}
-
-		label := "Marriage record — " + spouseName
-
-		// Check if there's a marriage event for this relationship
-		found := false
-		ref := ""
-		if rel.StartEvent != "" {
-			if ev, ok := archive.Events[rel.StartEvent]; ok && ev != nil && ev.Type == glxlib.EventTypeMarriage {
-				found = true
-				ref = rel.StartEvent
-			}
-		}
-		if !found {
-			// Fall back to checking for a marriage event that involves both this person and this spouse
-			for eventID, ev := range archive.Events {
-				if ev == nil || ev.Type != glxlib.EventTypeMarriage {
-					continue
-				}
-				hasPerson := false
-				hasSpouse := false
-				for _, ep := range ev.Participants {
-					if ep.Person == personID {
-						hasPerson = true
-					}
-					if ep.Person == spouseID {
-						hasSpouse = true
-					}
-				}
-				if hasPerson && hasSpouse {
-					found = true
-					ref = eventID
-
-					break
-				}
-			}
-		}
+		ref := findMarriageEventID(personID, spouseID, rel, archive)
+		found := ref != "" && evidenced[ref]
 
 		rec := coverageRecord{
-			Category:  "vital",
-			Label:     label,
-			Found:     found,
-			SourceRef: ref,
-			Priority:  boolPriority(!found, "medium"),
+			Category: categoryVital,
+			Label:    "Marriage record — " + spouseDisplayName(spouseID, archive),
+			Found:    found,
+			Priority: boolPriority(!found, "medium"),
+		}
+		if found {
+			rec.SourceRef = ref
+		} else {
+			rec.Description = unevidencedNote(ref)
 		}
 		records = append(records, rec)
 	}
 
 	return records
+}
+
+// spouseInRelationship returns the other participant in a couple relationship
+// and whether personID is a participant in it at all.
+func spouseInRelationship(rel *glxlib.Relationship, personID string) (string, bool) {
+	var spouseID string
+	isParticipant := false
+
+	for _, p := range rel.Participants {
+		if p.Person == personID {
+			isParticipant = true
+		} else {
+			spouseID = p.Person
+		}
+	}
+
+	return spouseID, isParticipant
+}
+
+// spouseDisplayName returns the spouse's display name, falling back to the ID
+// when the archive has no person for it or the person carries no name.
+func spouseDisplayName(spouseID string, archive *glxlib.GLXFile) string {
+	if spouse, ok := archive.Persons[spouseID]; ok && spouse != nil {
+		if name := glxlib.PersonDisplayName(spouse); name != "" {
+			return name
+		}
+	}
+
+	return spouseID
+}
+
+// findMarriageEventID returns the ID of the marriage event for a couple
+// relationship: the relationship's start_event when it is one, otherwise a
+// marriage event both spouses participate in. It returns "" when the archive
+// records neither. The fallback walks event IDs in sorted order so a couple
+// with more than one marriage event reports the same one on every run.
+//
+// It is distinct from findMarriageEvent in summary_runner.go, which answers a
+// different question — the date and place rather than which event it was.
+func findMarriageEventID(personID, spouseID string, rel *glxlib.Relationship, archive *glxlib.GLXFile) string {
+	if rel.StartEvent != "" {
+		if ev, ok := archive.Events[rel.StartEvent]; ok && ev != nil && ev.Type == glxlib.EventTypeMarriage {
+			return rel.StartEvent
+		}
+	}
+
+	for _, eventID := range sortedKeys(archive.Events) {
+		ev := archive.Events[eventID]
+		if ev == nil || ev.Type != glxlib.EventTypeMarriage {
+			continue
+		}
+		if eventHasParticipants(ev, personID, spouseID) {
+			return eventID
+		}
+	}
+
+	return ""
+}
+
+// eventHasParticipants reports whether both people participate in the event.
+func eventHasParticipants(event *glxlib.Event, personID, spouseID string) bool {
+	hasPerson := false
+	hasSpouse := false
+
+	for _, ep := range event.Participants {
+		if ep.Person == personID {
+			hasPerson = true
+		}
+		if ep.Person == spouseID {
+			hasSpouse = true
+		}
+	}
+
+	return hasPerson && hasSpouse
 }
 
 // buildOtherRecords generates records for probate, land, military, church.
@@ -490,24 +612,37 @@ func buildOtherRecords(sources, events []personSourceInfo, probateHighPriority b
 	var records []coverageRecord
 
 	// Probate/will
-	probateFound := hasEventType(events, glxlib.EventTypeProbate) || hasEventType(events, glxlib.EventTypeWill) ||
-		hasSourceType(sources, glxlib.SourceTypeProbate, "")
+	probateRef := firstNonEmpty(
+		findEvidencedEvent(events, glxlib.EventTypeProbate),
+		findEvidencedEvent(events, glxlib.EventTypeWill),
+	)
+	probateFound := probateRef != "" || hasSourceType(sources, glxlib.SourceTypeProbate, "")
 	rec := coverageRecord{
-		Category:  "other",
-		Label:     "Probate/will",
-		Found:     probateFound,
-		SourceRef: findEventRef(events, glxlib.EventTypeProbate),
+		Category: categoryOther,
+		Label:    "Probate/will",
+		Found:    probateFound,
 	}
-	if !probateFound && probateHighPriority {
-		rec.Priority = "high"
-		rec.Description = "often names heirs (children) and surviving spouse"
+	if probateFound {
+		rec.SourceRef = probateRef
+		if rec.SourceRef == "" {
+			rec.SourceRef = findSourceRef(sources, glxlib.SourceTypeProbate)
+		}
+	} else {
+		if probateHighPriority {
+			rec.Priority = "high"
+			rec.Description = "often names heirs (children) and surviving spouse"
+		}
+		rec.Description = appendDescription(rec.Description, unevidencedNote(firstNonEmpty(
+			findUnevidencedEvent(events, glxlib.EventTypeProbate),
+			findUnevidencedEvent(events, glxlib.EventTypeWill),
+		)))
 	}
 	records = append(records, rec)
 
 	// Land records
 	landFound := hasSourceType(sources, glxlib.SourceTypeLand, "")
 	records = append(records, coverageRecord{
-		Category:  "other",
+		Category:  categoryOther,
 		Label:     "Land records",
 		Found:     landFound,
 		SourceRef: findSourceRef(sources, glxlib.SourceTypeLand),
@@ -516,21 +651,35 @@ func buildOtherRecords(sources, events []personSourceInfo, probateHighPriority b
 	// Military records
 	militaryFound := hasSourceType(sources, glxlib.SourceTypeMilitary, "")
 	records = append(records, coverageRecord{
-		Category:  "other",
+		Category:  categoryOther,
 		Label:     "Military records",
 		Found:     militaryFound,
 		SourceRef: findSourceRef(sources, glxlib.SourceTypeMilitary),
 	})
 
 	// Church records
-	churchFound := hasSourceType(sources, glxlib.SourceTypeChurchRegister, "") ||
-		hasEventType(events, glxlib.EventTypeBaptism) || hasEventType(events, glxlib.EventTypeChristening)
-	records = append(records, coverageRecord{
-		Category:  "other",
-		Label:     "Church records",
-		Found:     churchFound,
-		SourceRef: findEventRef(events, glxlib.EventTypeBaptism),
-	})
+	churchRef := firstNonEmpty(
+		findEvidencedEvent(events, glxlib.EventTypeBaptism),
+		findEvidencedEvent(events, glxlib.EventTypeChristening),
+	)
+	churchFound := churchRef != "" || hasSourceType(sources, glxlib.SourceTypeChurchRegister, "")
+	churchRec := coverageRecord{
+		Category: categoryOther,
+		Label:    "Church records",
+		Found:    churchFound,
+	}
+	if churchFound {
+		churchRec.SourceRef = churchRef
+		if churchRec.SourceRef == "" {
+			churchRec.SourceRef = findSourceRef(sources, glxlib.SourceTypeChurchRegister)
+		}
+	} else {
+		churchRec.Description = unevidencedNote(firstNonEmpty(
+			findUnevidencedEvent(events, glxlib.EventTypeBaptism),
+			findUnevidencedEvent(events, glxlib.EventTypeChristening),
+		))
+	}
+	records = append(records, churchRec)
 
 	return records
 }
@@ -547,14 +696,39 @@ func coverageResolvePlaceName(placeRef string, archive *glxlib.GLXFile) string {
 	return placeRef
 }
 
-func hasEventType(events []personSourceInfo, eventType string) bool {
+// findEvidencedEvent returns the ID of the first event of the given type that
+// carries supporting evidence, or "" when the person has none.
+func findEvidencedEvent(events []personSourceInfo, eventType string) string {
+	return findEventRef(events, eventType, true)
+}
+
+// findUnevidencedEvent returns the ID of the first event of the given type
+// recorded without any supporting evidence, or "" when the person has none.
+// Coverage reports such an event so the conclusion is visible, but does not
+// count it as a record found.
+func findUnevidencedEvent(events []personSourceInfo, eventType string) string {
+	return findEventRef(events, eventType, false)
+}
+
+func findEventRef(events []personSourceInfo, eventType string, evidenced bool) string {
 	for _, e := range events {
-		if e.EventType == eventType {
-			return true
+		if e.EventType == eventType && e.Evidenced == evidenced {
+			return e.Ref
 		}
 	}
 
-	return false
+	return ""
+}
+
+// unevidencedNote describes an event that exists but that nothing backs, so a
+// reader can tell an absent record apart from one whose event is recorded as a
+// conclusion only.
+func unevidencedNote(ref string) string {
+	if ref == "" {
+		return ""
+	}
+
+	return ref + " is recorded, but no citation or source backs it"
 }
 
 func hasSourceType(sources []personSourceInfo, sourceType, titleKeyword string) bool {
@@ -569,10 +743,11 @@ func hasSourceType(sources []personSourceInfo, sourceType, titleKeyword string) 
 	return false
 }
 
-func findEventRef(events []personSourceInfo, eventType string) string {
-	for _, e := range events {
-		if e.EventType == eventType {
-			return e.Ref
+// firstNonEmpty returns the first non-empty value, or "" when there is none.
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if v != "" {
+			return v
 		}
 	}
 
@@ -633,9 +808,9 @@ func printCoverageText(result *coverageResult) {
 		key   string
 		label string
 	}{
-		{"census", "Census Records"},
-		{"vital", "Vital Records"},
-		{"other", "Other Records"},
+		{categoryCensus, "Census Records"},
+		{categoryVital, "Vital Records"},
+		{categoryOther, "Other Records"},
 	}
 
 	for _, cat := range categories {
@@ -704,6 +879,9 @@ func inferDeathYearFromEvents(events []personSourceInfo) int {
 
 // appendDescription appends text to an existing description, using "; " as separator.
 func appendDescription(existing, addition string) string {
+	if addition == "" {
+		return existing
+	}
 	if existing == "" {
 		return addition
 	}
