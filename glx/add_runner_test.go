@@ -119,6 +119,51 @@ func TestAdd_PersonBadVocabRejected(t *testing.T) {
 	}
 }
 
+// TestAdd_BadVocabErrorNamesValidValues covers the rejection message itself:
+// a caller who guessed wrong needs the accepted keys and the file that holds
+// them, not just the value that was refused.
+func TestAdd_BadVocabErrorNamesValidValues(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+
+	if err := addPerson(io, &addPersonOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Given:            "Jane",
+		Surname:          "Doe",
+	}); err != nil {
+		t.Fatalf("addPerson: %v", err)
+	}
+
+	// Short vocabulary: every key is listed.
+	err := addAssertion(io, &addAssertionOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		SubjectPerson:    "person-jane-doe",
+		Property:         "occupation",
+		Value:            "Labourer",
+		Confidence:       "0",
+	})
+	if !errors.Is(err, ErrAddVocabKeyUnknown) {
+		t.Fatalf("expected ErrAddVocabKeyUnknown, got %v", err)
+	}
+	for _, want := range []string{"high", "medium", "low", "vocabularies/confidence-levels.glx"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("confidence rejection %q does not mention %q", err, want)
+		}
+	}
+
+	// Long vocabulary: the list is truncated but still points at the file.
+	err = addEvent(io, &addEventOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Type:             "bogus",
+	})
+	if !errors.Is(err, ErrAddVocabKeyUnknown) {
+		t.Fatalf("expected ErrAddVocabKeyUnknown, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "more in vocabularies/event-types.glx") {
+		t.Errorf("event-type rejection %q does not defer to the vocabulary file", err)
+	}
+}
+
 // =============================================================================
 // add place
 // =============================================================================
