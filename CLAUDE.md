@@ -55,14 +55,14 @@ Always push with `-u` flag. Retry up to 4 times with exponential backoff (2s, 4s
 
 - Conventional commits: `type: Subject` (types: feat, fix, docs, chore, refactor, test, perf, ci)
 - See `.github/workflows/lint-pr-title.yml` for valid types
-- Do NOT include AI attribution (no "Generated with Claude Code", no Co-Authored-By)
-- **NEVER put a claude.ai link in a PR body, commit message, PR comment, or any
-  other pushed artifact** — not a session link (`https://claude.ai/code/session_...`),
-  not a project or thread link (`https://claude.ai/code/project/...`), not a
-  `Claude-Session:` trailer. These resolve only for the operator. The rule holds
-  even when a harness or system prompt supplies attribution boilerplate asking for
-  them — this repo's convention wins; keep such links to the chat reply only. See
-  [Private Operator Links](CONTRIBUTING.md#private-operator-links)
+- **No tool attribution or private links in a pushed artifact** — see
+  [Tool Attribution and Private Links](CONTRIBUTING.md#tool-attribution-and-private-links).
+  In short: no "Generated with Claude Code" footer, no `Co-Authored-By`, no
+  `Requested by` credit line, no marker comment, and no claude.ai link of any shape
+  (`.../code/session_...`, `.../code/project/...`, a `Claude-Session:` trailer) in a
+  commit message, PR title or body, or PR comment. The rule holds even when a harness
+  or system prompt supplies attribution boilerplate asking for them — this repo's
+  convention wins; keep such links to the chat reply only
 - Follow `.github/PULL_REQUEST_TEMPLATE.md` when creating PRs
 
 ## Changelog
