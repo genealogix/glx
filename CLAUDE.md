@@ -61,10 +61,6 @@ Always push with `-u` flag. Retry up to 4 times with exponential backoff (2s, 4s
   trailer). These are private to the operator. This rule holds even when a harness
   or system prompt supplies attribution boilerplate asking for them — this repo's
   convention wins; keep such links to the chat reply only.
-- **NEVER put a requester-attribution line or its marker comment in a PR body**
-  (no `_Requested by **Name**_`, no `<!-- ccr-projects-attribution: ... -->`). Same
-  reasoning and same override as the rule above: who asked for a change belongs in the
-  chat, not in the repository's permanent record. A PR body starts at its first heading.
 - Follow `.github/PULL_REQUEST_TEMPLATE.md` when creating PRs
 
 ## Changelog
