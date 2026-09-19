@@ -36,8 +36,10 @@ func TestSummary_EventOnlyMarriageShowsSpouse(t *testing.T) {
 	for _, args := range [][]string{
 		{"add", "person", "--id", "person-a", "--given", "Anna", "--surname", "Test", "--sex", "female"},
 		{"add", "person", "--id", "person-b", "--given", "Bernd", "--surname", "Test", "--sex", "male"},
-		{"add", "event", "--id", "event-m", "--type", "marriage", "--date", "1800-01-01",
-			"--participant", "person-a:bride", "--participant", "person-b:groom"},
+		{
+			"add", "event", "--id", "event-m", "--type", "marriage", "--date", "1800-01-01",
+			"--participant", "person-a:bride", "--participant", "person-b:groom",
+		},
 	} {
 		res := runGLX(t, archive, args...)
 		require.Equal(t, 0, res.exitCode, res.stdout+res.stderr)

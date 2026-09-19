@@ -658,7 +658,7 @@ func findSpouses(personID string, archive *glxlib.GLXFile) []spouseInfo {
 
 // findEventOnlySpouses derives spouses from marriage events the person takes
 // part in, skipping any person in seen (already found via a relationship).
-// Every spouse it returns is marked in seen, so an event modelled twice does
+// Every spouse it returns is marked in seen, so an event modeled twice does
 // not produce the same spouse twice.
 func findEventOnlySpouses(personID string, seen map[string]bool, archive *glxlib.GLXFile) []spouseInfo {
 	var spouses []spouseInfo
