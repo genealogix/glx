@@ -223,7 +223,7 @@ func removeStaleBackup(backupDir string) error {
 			return fmt.Errorf("inspecting %s: %w", mediaFilesDir, err)
 		}
 		if len(mediaEntries) > 0 {
-			return fmt.Errorf("%w: %s contains %q", ErrStaleBackupForeignFile, backupDir, mediaFilesDir)
+			return fmt.Errorf("%w: %s contains %q", ErrStaleBackupForeignFile, backupDir, relSlash(backupDir, mediaFilesDir))
 		}
 	}
 	// A dot-prefixed entry nested inside a managed directory (persons/.drafts/)
@@ -548,6 +548,21 @@ func relWithinEither(abs string, roots ...string) (string, bool) {
 	}
 
 	return "", false
+}
+
+// relSlash renders path as a slash-separated path relative to base, for an
+// error message that already names base. Naming the entry relative to the
+// directory it sits in keeps the message short, and slashes rather than the
+// platform separator keep it — and the tests that assert on it — identical on
+// every platform. A path that cannot be made relative to base is returned
+// whole, with its separators normalized.
+func relSlash(base, path string) string {
+	rel, err := filepath.Rel(base, path)
+	if err != nil {
+		return filepath.ToSlash(path)
+	}
+
+	return filepath.ToSlash(rel)
 }
 
 // mediaFilesDirsIn returns every media/files/ subtree under dir, matching each
