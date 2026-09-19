@@ -819,6 +819,45 @@ func TestResolveAssertionValue_UsesTheSubjectTypesVocabulary(t *testing.T) {
 	if person != "place-liepen" {
 		t.Errorf("person subject = %q, want the raw value (person vocabulary declares no reference)", person)
 	}
+
+	// A place subject reads place_properties: a place asserted to sit inside
+	// another place resolves that parent to its name.
+	archive.Places["place-anklam"] = &glxlib.Place{Name: "Anklam, Vorpommern"}
+	archive.PlaceProperties = map[string]*glxlib.PropertyDefinition{
+		"administered_from": {Label: "Administered From", ReferenceType: glxlib.EntityTypePlaces.String()},
+	}
+	place := resolveAssertionValue("place-anklam", "administered_from", glxlib.EntityRef{Place: "place-liepen"}, archive)
+	if place != "Anklam, Vorpommern" {
+		t.Errorf("place subject = %q, want the place vocabulary's reference resolved", place)
+	}
+
+	// A subject with no field set has no vocabulary, and must not panic or
+	// borrow another type's definitions.
+	none := resolveAssertionValue("place-liepen", "settled", glxlib.EntityRef{}, archive)
+	if none != "place-liepen" {
+		t.Errorf("empty subject = %q, want the raw value", none)
+	}
+}
+
+func TestResolveAssertionValue_EventReferenceResolvesToTitle(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Events: map[string]*glxlib.Event{
+			"event-marriage-1875": {Title: "Marriage of Michael and Anna", Type: glxlib.EventTypeMarriage},
+			"event-untitled":      {Type: glxlib.EventTypeMarriage},
+		},
+		PersonProperties: map[string]*glxlib.PropertyDefinition{
+			"witnessed": {Label: "Witnessed", ReferenceType: glxlib.EntityTypeEvents.String()},
+		},
+	}
+
+	subject := glxlib.EntityRef{Person: "p"}
+	if got := resolveAssertionValue("event-marriage-1875", "witnessed", subject, archive); got != "Marriage of Michael and Anna" {
+		t.Errorf("titled event = %q, want the event title", got)
+	}
+	// An untitled event has no better display form than its ID.
+	if got := resolveAssertionValue("event-untitled", "witnessed", subject, archive); got != "event-untitled" {
+		t.Errorf("untitled event = %q, want the raw ID", got)
+	}
 }
 
 func TestPrintEvidenceText_EventSubjectHeader(t *testing.T) {
