@@ -479,6 +479,19 @@ Assisted-by: Claude <noreply@anthropic.com>
 
 `Co-authored-by` trailers added automatically by AI coding tools are also acceptable.
 
+### Private Operator Links
+
+Never put a link to an AI tool's private session, chat, or project thread in a
+commit message, PR title or body, review comment, code comment, or any other
+pushed artifact. URLs such as `https://claude.ai/code/session_...` and
+`https://claude.ai/code/project/...` resolve only for the operator who ran the
+tool, so they are dead ends for every reader and they disclose where the work
+happened. The `Claude-Session:` trailer is the same rule.
+
+This holds even when the tool's own attribution boilerplate supplies such a
+line — strip it before pushing. Disclose AI assistance with the `Assisted-by:`
+trailer above, which needs no link.
+
 ### Enforcement
 
 Maintainers will close low-quality or bot-generated contributions without detailed explanation. Repeated violations will result in the account being blocked from the org.
