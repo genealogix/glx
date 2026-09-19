@@ -7,7 +7,7 @@ place_types:
     label: "Country"
     description: "Nation state or country"
     category: "administrative"
-  
+
   state:
     label: "State/Province"
     description: "State, province, or region"
@@ -25,12 +25,27 @@ place_types:
 
   town:
     label: "Town"
-    description: "Town, village, or small municipality"
+    description: "Town or small municipality, larger than a village"
+    category: "administrative"
+
+  village:
+    label: "Village"
+    description: "Rural settlement smaller than a town, often the unit a parish register is organized by (German Dorf, Polish wieś, Scandinavian by)"
+    category: "administrative"
+
+  hamlet:
+    label: "Hamlet"
+    description: "Small cluster of dwellings below village level, usually without its own church"
     category: "administrative"
 
   township:
     label: "Township"
     description: "Township or civil subdivision of a county (common in U.S. land survey and census records)"
+    category: "administrative"
+
+  reservation:
+    label: "Reservation"
+    description: "Land reserved for an Indigenous nation or tribe (common in Native American records)"
     category: "administrative"
 
   parish:
@@ -42,17 +57,17 @@ place_types:
     label: "Church"
     description: "Church building or religious structure"
     category: "religious"
-  
+
   district:
     label: "District"
     description: "Administrative district"
     category: "administrative"
-  
+
   region:
     label: "Region"
     description: "Geographic region"
     category: "geographic"
-  
+
   locality:
     label: "Locality"
     description: "General locality or inhabited area"
@@ -62,15 +77,35 @@ place_types:
     label: "Neighborhood"
     description: "Residential area or subdivision within a city or town"
     category: "geographic"
-  
+
   street:
     label: "Street"
     description: "Street or road"
     category: "geographic"
-  
+
   building:
     label: "Building"
     description: "Specific building or structure"
+    category: "geographic"
+
+  estate:
+    label: "Estate"
+    description: "Landed estate or manor (common in UK and European records)"
+    category: "geographic"
+
+  farm:
+    label: "Farm"
+    description: "Named farm or homestead (common in rural census records and land grants)"
+    category: "geographic"
+
+  plantation:
+    label: "Plantation"
+    description: "Agricultural plantation (common in US Southern, Caribbean, and colonial records)"
+    category: "geographic"
+
+  port:
+    label: "Port"
+    description: "Port or harbor, typically a point of departure or arrival in emigration records"
     category: "geographic"
 
   hospital:
@@ -83,3 +118,37 @@ place_types:
     description: "Cemetery or burial ground"
     category: "institution"
 
+  workhouse:
+    label: "Workhouse"
+    description: "Poor law union workhouse (common in UK Victorian records)"
+    category: "institution"
+
+  poorhouse:
+    label: "Poorhouse"
+    description: "Poorhouse, almshouse, or poor farm (common in US 19th century records)"
+    category: "institution"
+
+  asylum:
+    label: "Asylum"
+    description: "Asylum or other institution for the mentally ill"
+    category: "institution"
+
+  prison:
+    label: "Prison"
+    description: "Prison, gaol, or penal institution (including convict transportation records)"
+    category: "institution"
+
+  fort:
+    label: "Fort"
+    description: "Fort, fortification, or garrison, common in military and frontier settlement records"
+    category: "institution"
+
+  military_base:
+    label: "Military Base"
+    description: "Military installation such as an army post, naval station, or air force base"
+    category: "institution"
+
+  school:
+    label: "School"
+    description: "School, college, or other educational establishment"
+    category: "institution"
