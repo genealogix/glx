@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -116,6 +117,26 @@ func exitCodeForError(err error) int {
 		return exitBadInvocation
 	default:
 		return 1
+	}
+}
+
+// exactNamedArgs returns a cobra.PositionalArgs accepting exactly the named
+// positional arguments, naming the missing ones when the count is short.
+// cobra.ExactArgs reports only a count ("accepts 2 arg(s), received 0"), and
+// the Usage: line that does carry the names sits above the flag block in
+// --help, which is easy to scroll past (#1274).
+func exactNamedArgs(names ...string) cobra.PositionalArgs {
+	return func(cmd *cobra.Command, args []string) error {
+		switch {
+		case len(args) == len(names):
+			return nil
+		case len(args) > len(names):
+			return fmt.Errorf("%s: %w: accepts %d (%s), received %d", cmd.CommandPath(),
+				ErrTooManyArguments, len(names), strings.Join(names, " "), len(args))
+		default:
+			return fmt.Errorf("%s: %w: %s", cmd.CommandPath(),
+				ErrMissingArguments, strings.Join(names[len(args):], " "))
+		}
 	}
 }
 
@@ -243,14 +264,15 @@ var (
 )
 
 var exportCmd = &cobra.Command{
-	Use:   "export <glx-archive>",
+	Use:   "export [glx-archive]",
 	Short: "Export a GLX archive to GEDCOM or JSON-LD format",
 	Long: `Export a GLX archive to GEDCOM or JSON-LD format.
 
 Supports GEDCOM 5.5.1, GEDCOM 7.0, and JSON-LD output formats.
 
 The input can be either a single-file GLX archive (.glx) or a multi-file
-archive directory.
+archive directory. It is optional and defaults to the current directory, so
+"glx export -o out.ged" works from inside an archive.
 
 GEDCOM output (--format 551 or 70) includes:
 - All individuals (INDI records)
@@ -291,7 +313,10 @@ Redaction operates on the loaded archive before either exporter runs, so the
 same guarantees apply to GEDCOM and JSON-LD output. Event types and family
 structure are preserved (GEDCOM FAM / FAMS / FAMC still reconstruct; JSON-LD
 Relationship and Participation nodes still link) so the export stays valid.`,
-	Example: `  # Export to GEDCOM 5.5.1 (default)
+	Example: `  # Export the archive in the current directory to GEDCOM 5.5.1 (default)
+  glx export -o family.ged
+
+  # Export a named archive
   glx export family-archive -o family.ged
 
   # Export a single-file archive
@@ -308,7 +333,7 @@ Relationship and Participation nodes still link) so the export stays valid.`,
 
   # Export with verbose output
   glx export family-archive -o family.ged --verbose`,
-	Args: cobra.ExactArgs(1),
+	Args: cobra.MaximumNArgs(1),
 	RunE: runExport,
 }
 
@@ -322,11 +347,16 @@ func init() {
 }
 
 func runExport(_ *cobra.Command, args []string) error {
+	path := "."
+	if len(args) > 0 {
+		path = args[0]
+	}
+
 	switch exportFormat {
 	case ExportFormatJSONLD:
-		return exportToJSONLD(args[0], exportOutput, exportVerbose, exportPrivatizeLiving)
+		return exportToJSONLD(path, exportOutput, exportVerbose, exportPrivatizeLiving)
 	default:
-		return exportToGEDCOM(args[0], exportOutput, exportFormat, exportVerbose, exportPrivatizeLiving)
+		return exportToGEDCOM(path, exportOutput, exportFormat, exportVerbose, exportPrivatizeLiving)
 	}
 }
 
@@ -517,7 +547,7 @@ Each entity file uses standard GLX structure with the entity ID as the map key.`
 
   # Split without validation
   glx split family.glx family-archive --no-validate`,
-	Args: cobra.ExactArgs(2),
+	Args: exactNamedArgs("<input-file>", "<output-directory>"),
 	RunE: runSplit,
 }
 
@@ -566,7 +596,7 @@ Entity IDs are read from the map key in each file.`,
 
   # Join without validation
   glx join family-archive family.glx --no-validate`,
-	Args: cobra.ExactArgs(2),
+	Args: exactNamedArgs("<input-directory>", "<output-file>"),
 	RunE: runJoin,
 }
 
