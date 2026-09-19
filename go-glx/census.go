@@ -230,6 +230,9 @@ func resolveCensusPlace(census *CensusData, existing *GLXFile, result *CensusRes
 	return placeID, nil
 }
 
+// censusLabelWord is the bare word every generated census label ends with.
+const censusLabelWord = "Census"
+
 // censusTypeLabel renders the census type into the source-title label used
 // when a template gives no explicit title: "federal" becomes "Federal
 // Census", "state" becomes "State Census", and so on for any other word a
@@ -241,12 +244,12 @@ func resolveCensusPlace(census *CensusData, existing *GLXFile, result *CensusRes
 func censusTypeLabel(censusType string) string {
 	t := strings.TrimSpace(censusType)
 	if t == "" {
-		return "Census"
+		return censusLabelWord
 	}
 
 	runes := []rune(t)
 
-	return strings.ToUpper(string(runes[0])) + string(runes[1:]) + " Census"
+	return strings.ToUpper(string(runes[0])) + string(runes[1:]) + " " + censusLabelWord
 }
 
 // resolveCensusSource resolves an existing source or creates a new one.

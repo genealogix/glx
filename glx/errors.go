@@ -23,6 +23,7 @@ import (
 // Command validation errors
 var (
 	ErrMediaFileNotFound          = errors.New("file not found")
+	ErrUnknownCensusCountry       = errors.New("unknown census country")
 	ErrValidationWithErrors       = errors.New("validation failed with errors")
 	ErrInvalidFormat              = errors.New("invalid format (must be 'single' or 'multi')")
 	ErrGEDCOMFileNotFound         = errors.New("GEDCOM file not found")

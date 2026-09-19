@@ -180,7 +180,7 @@ const censusCountryNone = "none"
 // censusCountryFallback is the country assumed for a person no place in the
 // archive puts in one. It defaults to the United States because that is what
 // coverage and analyze assumed unconditionally before this was configurable,
-// and archives written against that behaviour should keep working; `--country`
+// and archives written against that behavior should keep working; `--country`
 // overrides it, and `--country none` turns the fallback off (#186).
 var censusCountryFallback = countryUnitedStates
 
@@ -198,8 +198,8 @@ func parseCensusCountry(value string) (string, error) {
 
 	country := canonicalCountry(trimmed)
 	if country == "" || censusSchedulesByCountry[country] == nil {
-		return "", fmt.Errorf("unknown census country %q (known: %s, or %q to disable)",
-			value, strings.Join(knownCensusCountries(), ", "), censusCountryNone)
+		return "", fmt.Errorf("%w %q (known: %s, or %q to disable)",
+			ErrUnknownCensusCountry, value, strings.Join(knownCensusCountries(), ", "), censusCountryNone)
 	}
 
 	return country, nil

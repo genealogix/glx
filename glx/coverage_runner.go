@@ -28,6 +28,10 @@ import (
 // when no death date is known.
 const maxLifespan = 100
 
+// coverageCategoryCensus is the record category for census rows in the
+// coverage checklist. It shares the literal value of EventTypeCensus.
+const coverageCategoryCensus = "census"
+
 // coverageRecord represents one expected record in the coverage checklist.
 type coverageRecord struct {
 	Category    string `json:"category"`
@@ -334,7 +338,7 @@ func buildCensusRecords(birthYear, deathYear int, schedules []*censusSchedule, s
 			note := schedule.notes[year]
 
 			rec := coverageRecord{
-				Category: "census",
+				Category: coverageCategoryCensus,
 				Label:    schedule.coverageLabel(year, age),
 			}
 
@@ -352,9 +356,9 @@ func buildCensusRecords(birthYear, deathYear int, schedules []*censusSchedule, s
 			if !rec.Found {
 				switch {
 				case note.highPriority:
-					rec.Priority = "high"
+					rec.Priority = severityHigh
 				case age >= censusPrimeAgeMin && age <= censusPrimeAgeMax:
-					rec.Priority = "high"
+					rec.Priority = severityHigh
 					// Avoid duplicating the parents-household note when the
 					// year's own minor annotation already said it
 					if note.minorNote == "" || age >= minorAgeUnder {
@@ -654,7 +658,7 @@ func printCoverageText(result *coverageResult) {
 		key   string
 		label string
 	}{
-		{"census", "Census Records"},
+		{coverageCategoryCensus, "Census Records"},
 		{"vital", "Vital Records"},
 		{"other", "Other Records"},
 	}

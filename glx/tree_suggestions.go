@@ -196,7 +196,7 @@ func scheduleParentCensusSuggestions(
 
 		suggestions = append(suggestions, ancestorSuggestion{
 			PersonID: personID,
-			Category: "census",
+			Category: coverageCategoryCensus,
 			Priority: priority,
 			Year:     year,
 			Message: fmt.Sprintf("%s — search %s (age ~%d%s) — %s",
