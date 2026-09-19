@@ -163,6 +163,14 @@ func TestAdd_BadVocabErrorNamesValidValues(t *testing.T) {
 	if !strings.Contains(err.Error(), "more in vocabularies/event-types.glx") {
 		t.Errorf("event-type rejection %q does not defer to the vocabulary file", err)
 	}
+
+	// A vocabulary with no entries names the file rather than an empty list.
+	// Not reachable through the CLI — loading an archive merges the standard
+	// defaults in — so the hint is exercised directly.
+	empty := vocabKeyHint(glxlib.VocabConfidenceLevels, map[string]*glxlib.VocabularyEntry{})
+	if want := "no values defined in vocabularies/confidence-levels.glx"; empty != want {
+		t.Errorf("empty-vocabulary hint = %q, want %q", empty, want)
+	}
 }
 
 // =============================================================================
