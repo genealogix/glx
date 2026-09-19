@@ -135,7 +135,7 @@ func buildStateCensusRecords(birthYear, deathYear int, states []string, sources,
 			label := fmt.Sprintf("%d %s State Census (age ~%d)", year, state, age)
 
 			rec := coverageRecord{
-				Category: "census",
+				Category: coverageCategoryCensus,
 				Label:    label,
 			}
 

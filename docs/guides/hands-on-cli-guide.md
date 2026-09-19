@@ -148,6 +148,34 @@ glx analyze --check consistency
 glx analyze --format json
 ```
 
+#### Which censuses get suggested
+
+Census suggestions are tied to the country a person's places name. `glx`
+walks each event's place up its `parent` chain to the first place with
+`type: country`, and suggests that country's census years — US federal
+censuses for someone in Illinois, UK censuses for someone in Bath. A person
+whose places span a move gets both countries' schedules.
+
+If the country has no schedule in `glx` (the table currently covers the
+United States, the United Kingdom, Canada and Ireland), no census is
+suggested for that person. Suggesting the 1790 US census to someone who
+never left Mecklenburg is worse than suggesting nothing.
+
+When nothing in the archive names a country for a person — place hierarchies
+that stop at a city, say — `glx` falls back to the US schedule, which is what
+it always assumed. Use `--country` to change that fallback, or switch it off:
+
+```bash
+# Assume UK censuses where the archive names no country
+glx analyze --country "United Kingdom"
+glx coverage "Jane Webb" --country "United Kingdom"
+
+# Suggest no censuses at all unless the archive says where the person was
+glx analyze --country none
+```
+
+The same rules govern the census rows in `glx coverage`.
+
 ### `glx proof` — Structured proof summary for a research question
 
 Where `glx analyze` scans the whole archive for problems, `glx proof` answers one
@@ -651,7 +679,12 @@ Census Import Summary
 (dry run — no files written)
 ```
 
-Notice it matched Rickard and Lyarra Stark to existing archive persons by name — no `person_id` needed. When you're satisfied, run without `--dry-run`:
+Notice it matched Rickard and Lyarra Stark to existing archive persons by name — no `person_id` needed.
+
+`census.source.title` is optional. Left out, the title is built from the year,
+the `census.type` and the location — `type: federal` gives "1860 Federal Census
+— Marion County, Florida", and no type at all gives "1860 Census — …". The
+country is never assumed: put it in `source.title` when you want it named. When you're satisfied, run without `--dry-run`:
 
 ```bash
 glx census add --from 1860-census-stark.yaml --archive .
