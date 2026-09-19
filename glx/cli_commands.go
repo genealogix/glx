@@ -432,12 +432,19 @@ Performs comprehensive validation including:
 - YAML syntax correctness
 - Required fields presence
 - Entity ID format validation
-- Cross-reference integrity (directories only)
+- Cross-reference integrity (directories and single-file archives)
 - Duplicate ID detection (directories only)
 - Vocabulary validation (if vocabularies/ exists)
 
 Validation behavior:
-- Single file: Validates file structure only, skips cross-reference checks
+- Single file holding a whole archive: full validation, cross-references
+  included. A file counts as a whole archive when it carries its own
+  vocabularies alongside its entities (what glx join writes) or declares every
+  entity collection (what glx init --single-file scaffolds)
+- Single file holding a fragment of a multi-file archive: structure and the
+  semantic checks that stand on their own; cross-reference and place-hierarchy
+  checks are skipped, because the entities those references name live in the
+  fragment's siblings, which are not being validated
 - Directory: Validates all .glx files with full cross-reference validation
 - No arguments: Validates current directory with full cross-reference validation
 - Several paths (directories, .glx files, or a mix): Loaded together as one
@@ -467,8 +474,11 @@ and highlighting unsupported claims. The archive is validated first, so
   # Validate multiple paths (with cross-reference checks)
   glx validate persons/ events/ places/
 
-  # Validate single file (structure only, no cross-reference checks)
+  # Validate a single-file archive (with cross-reference checks)
   glx validate archive.glx
+
+  # Validate one file of a multi-file archive (structure only)
+  glx validate events/event-births.glx
 
   # Generate confidence summary report
   glx validate --report
