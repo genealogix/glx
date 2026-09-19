@@ -1191,9 +1191,9 @@ var (
 )
 
 var evidenceCmd = &cobra.Command{
-	Use:   "evidence <person> <property>",
+	Use:   "evidence <subject> <property>",
 	Short: "Show all evidence for a property, grouped by value",
-	Long: `Display every assertion for one person+property side-by-side, grouped by
+	Long: `Display every assertion for one subject+property side-by-side, grouped by
 value, with the supporting citations and confidence for each.
 
 Where "glx analyze" emits a one-line conflict warning and "glx proof" summarizes
@@ -1203,13 +1203,25 @@ shows the supporting reports (citation and source), counts them, and reports the
 best confidence; the closing line highlights the best-supported value, or notes
 when the leading values tie.
 
-The person argument can be an exact entity ID (e.g., person-jane-webb) or a
-name to search for (e.g., "Jane Miller"). If the name matches multiple persons,
-all matches are listed for disambiguation. The property is matched exactly, with
-a case-insensitive fallback when no exact match exists. Place, person, and event
-reference values resolve to the referenced entity's name.`,
+The subject is any entity an assertion can be about — a person, event, place, or
+relationship — matching what "glx add assertion" accepts. That matters because
+the two properties most likely to have conflicting answers, date and place, are
+normally asserted on the event rather than on the person.
+
+A subject is resolved by exact entity ID first (e.g., event-death-1807), then,
+for persons only, by name search (e.g., "Jane Miller"); if the name matches
+multiple persons, all matches are listed for disambiguation. The property is
+matched exactly, with a case-insensitive fallback when no exact match exists.
+Place, person, and event reference values resolve to the referenced entity's
+name.`,
 	Example: `  # All recorded values for a birthplace property, by ID
   glx evidence person-jane-webb born_at
+
+  # The contested date of an event
+  glx evidence event-death-1807 date
+
+  # Every recorded name for a place
+  glx evidence place-liepen name
 
   # Look the person up by name
   glx evidence "Jane Miller" residence
