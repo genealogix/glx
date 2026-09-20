@@ -43,6 +43,9 @@ glx analyze [person] [flags]
 
   # Analyze a specific archive
   glx analyze --archive my-archive
+
+  # Assume UK censuses where the archive names no country
+  glx analyze --country "United Kingdom"
 ```
 
 ### Options
@@ -50,6 +53,7 @@ glx analyze [person] [flags]
 ```
   -a, --archive string   Archive path (directory or single file) (default ".")
   -c, --check string     Run a single analysis category (gaps, evidence, consistency, suggestions)
+      --country string   Country whose census schedule to assume for persons whose places name no country (default "United States"; "none" to suggest nothing)
   -f, --format string    Output format (json for machine-readable)
   -h, --help             help for analyze
   -p, --person string    Filter results to a specific person (ID or name)

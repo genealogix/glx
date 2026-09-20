@@ -37,7 +37,7 @@ type CensusTemplate struct {
 // CensusData holds the top-level census record data.
 type CensusData struct {
 	Year      int                `yaml:"year"`
-	Type      string             `yaml:"type,omitempty"` // federal, state
+	Type      string             `yaml:"type,omitempty"` // free text, e.g. federal, state, national, colonial
 	Date      string             `yaml:"date,omitempty"`
 	Location  CensusLocation     `yaml:"location"`
 	Source    CensusSourceRef    `yaml:"source"`
@@ -230,6 +230,28 @@ func resolveCensusPlace(census *CensusData, existing *GLXFile, result *CensusRes
 	return placeID, nil
 }
 
+// censusLabelWord is the bare word every generated census label ends with.
+const censusLabelWord = "Census"
+
+// censusTypeLabel renders the census type into the source-title label used
+// when a template gives no explicit title: "federal" becomes "Federal
+// Census", "state" becomes "State Census", and so on for any other word a
+// country's census goes by. A template with no type gets the unqualified
+// "Census" — every country enumerates its population, and naming one
+// country's arrangement in the default made the generated title wrong
+// everywhere else (#186). Users who want the country named still put it in
+// census.source.title.
+func censusTypeLabel(censusType string) string {
+	t := strings.TrimSpace(censusType)
+	if t == "" {
+		return censusLabelWord
+	}
+
+	runes := []rune(t)
+
+	return strings.ToUpper(string(runes[0])) + string(runes[1:]) + " " + censusLabelWord
+}
+
 // resolveCensusSource resolves an existing source or creates a new one.
 func resolveCensusSource(census *CensusData, existing *GLXFile, result *CensusResult) (string, error) {
 	src := census.Source
@@ -246,18 +268,7 @@ func resolveCensusSource(census *CensusData, existing *GLXFile, result *CensusRe
 
 	title := src.Title
 	if title == "" {
-		censusLabel := "U.S. Federal Census"
-		if census.Type != "" {
-			switch strings.ToLower(census.Type) {
-			case "state":
-				censusLabel = "State Census"
-			case "federal":
-				// default
-			default:
-				t := census.Type
-				censusLabel = strings.ToUpper(t[:1]) + t[1:] + " Census"
-			}
-		}
+		censusLabel := censusTypeLabel(census.Type)
 		locDisplay := strings.TrimSpace(census.Location.Place)
 		if locDisplay == "" {
 			locDisplay = census.Location.PlaceID

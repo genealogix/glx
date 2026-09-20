@@ -674,16 +674,30 @@ const (
 	PropSourceProperties       = "source_properties"
 )
 
-// Place Types - used by inferPlaceType function
+// Place Types - used by inferPlaceType function. These are keys from
+// specification/5-standard-vocabularies/place-types.glx; that file holds
+// more types than are listed here, because not every type can be inferred
+// from a GEDCOM place name.
 const (
-	PlaceTypeCemetery = "cemetery"
-	PlaceTypeChurch   = "church"
-	PlaceTypeHospital = "hospital"
-	PlaceTypeCounty   = "county"
-	PlaceTypeState    = "state"
-	PlaceTypeCity     = "city"
-	PlaceTypeCountry  = "country"
-	PlaceTypeLocality = "locality"
+	PlaceTypeCemetery     = "cemetery"
+	PlaceTypeChurch       = "church"
+	PlaceTypeHospital     = "hospital"
+	PlaceTypeCounty       = "county"
+	PlaceTypeState        = "state"
+	PlaceTypeCity         = "city"
+	PlaceTypeCountry      = "country"
+	PlaceTypeLocality     = "locality"
+	PlaceTypeVillage      = "village"
+	PlaceTypeEstate       = "estate"
+	PlaceTypeFarm         = "farm"
+	PlaceTypePlantation   = "plantation"
+	PlaceTypeReservation  = "reservation"
+	PlaceTypeWorkhouse    = "workhouse"
+	PlaceTypePoorhouse    = "poorhouse"
+	PlaceTypeAsylum       = "asylum"
+	PlaceTypePrison       = "prison"
+	PlaceTypeMilitaryBase = "military_base"
+	PlaceTypeSchool       = "school"
 )
 
 // Repository Types - used by inferRepositoryType and mapRepositoryType. The
