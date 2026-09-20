@@ -457,7 +457,10 @@ func finalizeAdd(io *IOStreams, opts *addCommonOptions, ctx *addContext, entityT
 		}
 	}
 
-	io.Printf("Adding %s %s\n", entityType, entityID)
+	// Print the singular form with a separator: entityType's own value is the
+	// plural YAML key / directory name ("persons"), which reads as a list when
+	// run straight into the ID. See issue #1276.
+	io.Printf("Adding %s: %s\n", entityType.Singular(), entityID)
 	if opts.DryRun {
 		io.Println("(dry run — no files written)")
 		fmt.Fprintln(io.MachineOut, entityID)
