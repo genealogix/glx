@@ -29,6 +29,10 @@ import (
 // maxAddIDCollisions bounds the -2, -3, ... suffix search for derived IDs.
 const maxAddIDCollisions = 1000
 
+// maxVocabKeysInError bounds how many accepted keys a vocabulary rejection
+// lists inline before it defers to the vocabulary file.
+const maxVocabKeysInError = 12
+
 // addCommonOptions holds the flags shared by every `glx add` subcommand.
 // Per-subcommand option structs embed it.
 type addCommonOptions struct {
@@ -155,10 +159,34 @@ func validateVocabKey(archive *glxlib.GLXFile, vocabName, value string) error {
 		return fmt.Errorf("%w: unknown vocabulary %q", ErrAddVocabKeyUnknown, vocabName)
 	}
 	if _, ok := vocab[value]; !ok {
-		return fmt.Errorf("%w: %s=%q", ErrAddVocabKeyUnknown, vocabName, value)
+		return fmt.Errorf("%w: %s=%q; %s", ErrAddVocabKeyUnknown, vocabName, value, vocabKeyHint(vocabName, vocab))
 	}
 
 	return nil
+}
+
+// vocabKeyHint renders the accepted keys of a vocabulary for a rejection
+// message. Long vocabularies (event types, source types) are truncated so the
+// rejected value stays readable, and the file that holds the full list is
+// always named so the caller can read or extend it.
+func vocabKeyHint(vocabName string, vocab map[string]*glxlib.VocabularyEntry) string {
+	file := "vocabularies/" + strings.ReplaceAll(vocabName, "_", "-") + ".glx"
+	if len(vocab) == 0 {
+		return "no values defined in " + file
+	}
+
+	keys := make([]string, 0, len(vocab))
+	for key := range vocab {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	if len(keys) > maxVocabKeysInError {
+		return fmt.Sprintf("valid values: %s and %d more in %s",
+			strings.Join(keys[:maxVocabKeysInError], ", "), len(keys)-maxVocabKeysInError, file)
+	}
+
+	return fmt.Sprintf("valid values: %s (see %s)", strings.Join(keys, ", "), file)
 }
 
 // pickVocab returns the requested vocabulary map by name.

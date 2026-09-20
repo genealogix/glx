@@ -230,9 +230,9 @@ place_types:
     category: "religious"
   
   # Additional place types
-  plantation:
-    label: "Plantation"
-    description: "Agricultural estate or plantation"
+  battlefield:
+    label: "Battlefield"
+    description: "Site of a battle or military engagement"
     category: "geographic"
 ```
 
@@ -246,7 +246,7 @@ place_types:
 
 ### Standard Place Types
 
-**Standard Place Types**: GENEALOGIX provides standardized place type codes including administrative divisions (country, state, county, city, town, township, district), geographic features (region, locality, neighborhood, street, building), religious divisions (parish, church), and institutions (hospital, cemetery).
+**Standard Place Types**: GENEALOGIX provides standardized place type codes including administrative divisions (country, state, county, city, town, village, hamlet, township, district, reservation), geographic features (region, locality, neighborhood, street, building, estate, farm, plantation, port), religious divisions (parish, church), and institutions (hospital, cemetery, workhouse, poorhouse, asylum, prison, fort, military_base, school).
 
 **Complete List**: See [Standard Vocabularies - Place Types](../5-standard-vocabularies/#place-types) for the complete default vocabulary file with all standard types.
 
@@ -259,9 +259,9 @@ place_types:
   # ... standard types ...
 
   # Additional types
-  plantation:
-    label: "Plantation"
-    description: "Agricultural estate or plantation"
+  battlefield:
+    label: "Battlefield"
+    description: "Site of a battle or military engagement"
     category: "geographic"
 
   mission:

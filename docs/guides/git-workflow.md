@@ -14,15 +14,16 @@ This is not a general Git tutorial — it assumes you know `clone`, `add`, `comm
 
 ## Setting Up an Archive Repository
 
-`glx init` creates the default multi-file archive layout, a `.gitignore` (which excludes the disposable `.glx/` cache directory), and a `README.md` — but it does not create the Git repository itself. (With `--single-file`, only `archive.glx` is written, so add the `.gitignore` yourself.) Do that immediately after:
+`glx init` creates the default multi-file archive layout, a `.gitignore` (which excludes the disposable `.glx/` cache directory), and a `README.md`, and makes the directory a Git repository. (With `--single-file`, only `archive.glx` is written, so add a `.gitignore` yourself.) The repository is scaffolding only — no files are staged and no commit is made — so the first commit is yours:
 
 ```bash
 glx init my-family-archive
 cd my-family-archive
-git init -b main
 git add .
 git commit -m "Initial archive structure"
 ```
+
+The repository starts on `main`, or on whatever your `init.defaultBranch` setting names. Two cases behave differently, both deliberately: an archive created inside an existing repository is left to that repository rather than nested inside it, and `--no-git` skips repository creation entirely (the command then says so, rather than leaving the `.gitignore` as the only hint).
 
 One setting is worth pinning before the first collaborator arrives:
 

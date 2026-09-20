@@ -193,9 +193,15 @@ func validatePaths(streams *IOStreams, args []string) error {
 
 	if len(paths) == 1 {
 		if info, err := os.Stat(paths[0]); err == nil {
-			if info.IsDir() {
+			switch {
+			case info.IsDir():
 				archiveRoot = paths[0]
 				shouldValidateCrossRefs = true
+			case isSelfContainedArchiveFile(paths[0]):
+				// A file that carries a whole archive — what `glx join`
+				// writes — has no siblings its references could resolve in,
+				// so there is nothing to defer to and everything to check.
+				return validateSelfContainedArchive(streams, paths[0])
 			}
 		}
 	} else {
@@ -230,7 +236,7 @@ func validatePaths(streams *IOStreams, args []string) error {
 		// on the single file, filtering out cross-reference issues.
 		semanticErrors, semanticWarnings := validateSingleFileSemantics(paths)
 
-		streams.Println("⚠️  Cross-reference validation skipped (single file specified).")
+		streams.Println("⚠️  Cross-reference validation skipped (single file specified, not a self-contained archive).")
 		streams.Printf("%d files validated.\n", fileCount)
 
 		if len(semanticWarnings) > 0 {
@@ -249,7 +255,12 @@ func validatePaths(streams *IOStreams, args []string) error {
 			return ErrValidationFailed
 		}
 
-		streams.Println("✅ File passed structural and semantic validation (cross-references skipped).")
+		// Name what was left out rather than claiming semantic validation
+		// wholesale: the checks that need the rest of the archive are filtered
+		// out of this path too (see isSingleFileIssue), so "passed structural
+		// and semantic validation" overstated what had been verified (#1270).
+		streams.Println("✅ File passed the checks that apply without the rest of the archive " +
+			"(cross-reference and place-hierarchy checks skipped).")
 
 		return nil
 	}
@@ -294,11 +305,172 @@ func validatePaths(streams *IOStreams, args []string) error {
 	// Check media file existence on disk
 	allWarnings = append(allWarnings, validateMediaFileExistence(archive, archiveRoot)...)
 
+	return reportArchiveValidation(streams, fileCount, allErrors, allWarnings)
+}
+
+// entityCollectionKeys returns the set of top-level GLXFile yaml keys that hold
+// entities. It is derived from glxlib.AllEntityTypes, whose values are the
+// canonical plural forms and double as the top-level YAML keys, so a new entity
+// type is picked up here with no parallel list to drift.
+func entityCollectionKeys() map[string]bool {
+	keys := make(map[string]bool, len(glxlib.AllEntityTypes))
+	for _, et := range glxlib.AllEntityTypes {
+		keys[et.String()] = true
+	}
+
+	return keys
+}
+
+// definitionKeysOnce memoizes the GLXFile reflection done by
+// definitionCollectionKeys.
+var (
+	definitionKeysOnce sync.Once
+	definitionKeys     map[string]bool
+)
+
+// definitionCollectionKeys returns the top-level GLXFile keys that carry
+// archive-level definitions: every vocabulary collection plus every
+// property-definition collection. In a multi-file archive these live under
+// vocabularies/, so an entity file never holds one; a file that does hold one
+// is carrying its own vocabulary rather than deferring to an archive's.
+func definitionCollectionKeys() map[string]bool {
+	definitionKeysOnce.Do(func() {
+		definitionKeys = map[string]bool{}
+		for key := range vocabularyCollectionKeys() {
+			definitionKeys[key] = true
+		}
+		want := reflect.TypeFor[map[string]*glxlib.PropertyDefinition]()
+		for _, f := range reflect.VisibleFields(reflect.TypeFor[glxlib.GLXFile]()) {
+			if f.Type != want {
+				continue
+			}
+			name, _, _ := strings.Cut(f.Tag.Get("yaml"), ",")
+			if name != "" && name != "-" {
+				definitionKeys[name] = true
+			}
+		}
+	})
+
+	return definitionKeys
+}
+
+// isSelfContainedArchive reports whether doc — the parsed top level of one .glx
+// file — is a whole archive rather than one fragment of a multi-file one.
+//
+// The distinction decides whether `glx validate <file>` can check
+// cross-references. A fragment's references legitimately resolve in its
+// siblings, so they cannot be judged from the file alone; a self-contained
+// archive has no siblings to defer to, and skipping the check there lets a
+// dangling reference pass green (issue #1270).
+//
+// Two shapes count as self-contained, and the CLI writes both of them:
+//
+//   - every entity collection is declared — what `glx init --single-file`
+//     scaffolds, empty maps and all; and
+//   - at least one entity collection together with at least one vocabulary or
+//     property-definition collection — what `glx join` writes, since it merges
+//     the standard vocabularies into the file it produces.
+//
+// Anything else is treated as a fragment and keeps the cross-reference skip.
+func isSelfContainedArchive(doc map[string]any) bool {
+	entities := entityCollectionKeys()
+	definitions := definitionCollectionKeys()
+
+	var entityCount, definitionCount int
+	for key := range doc {
+		switch {
+		case entities[key]:
+			entityCount++
+		case definitions[key]:
+			definitionCount++
+		}
+	}
+
+	if entityCount == len(entities) {
+		return true
+	}
+
+	return entityCount > 0 && definitionCount > 0
+}
+
+// isSelfContainedArchiveFile reports whether path names a .glx file holding a
+// whole archive. A file that cannot be read or parsed is not one: those are
+// reported, with the file name, by the structural pass that follows.
+func isSelfContainedArchiveFile(path string) bool {
+	if !isGLXFile(path) {
+		return false
+	}
+	data, err := os.ReadFile(filepath.Clean(path)) // #nosec G304 -- user-supplied path to validate
+	if err != nil {
+		return false
+	}
+	doc, err := ParseYAMLFile(data)
+	if err != nil {
+		return false
+	}
+
+	return isSelfContainedArchive(doc)
+}
+
+// validateSelfContainedArchive runs the full validation pass — structural,
+// semantic and cross-reference — on a single file that carries a whole archive.
+// It is the file-shaped counterpart of the directory pass in validatePaths:
+// same checks, same reporting, one file instead of a tree.
+func validateSelfContainedArchive(streams *IOStreams, path string) error {
+	fileCount, structErrors := validateSingleFilePaths([]string{path})
+	if len(structErrors) > 0 {
+		streams.Errorf("Found %d structural errors in %d files:\n", len(structErrors), fileCount)
+		for _, err := range structErrors {
+			streams.Errorf("- %s\n", err)
+		}
+
+		return ErrStructuralValidationFailed
+	}
+
+	archive, err := readSingleFileArchive(path, false)
+	if err != nil {
+		streams.Errorf("Error loading archive: %v\n", formatValidationError(err, defaultShowFirstErrors))
+
+		return ErrStructuralValidationFailed
+	}
+
+	// Vocabularies the file does not define itself fall back to the standard
+	// ones, exactly as the directory load does, so property reference checks
+	// see the same vocabulary in both forms of the archive.
+	if err := mergeStandardVocabularies(archive); err != nil {
+		streams.Errorf("Error loading archive: failed to load standard vocabularies: %v\n", err)
+
+		return ErrStructuralValidationFailed
+	}
+	archive.InvalidateCache()
+
+	var allErrors, allWarnings []string
+	result := archive.Validate()
+	for _, warn := range result.Warnings {
+		allWarnings = append(allWarnings, warn.Message)
+	}
+	for _, ve := range result.Errors {
+		allErrors = append(allErrors, ve.Message)
+	}
+
+	// Relative media URIs in a single-file archive resolve against the
+	// directory holding the file, which is that archive's root.
+	allWarnings = append(allWarnings, validateMediaFileExistence(archive, filepath.Dir(path))...)
+
+	return reportArchiveValidation(streams, fileCount, allErrors, allWarnings)
+}
+
+// reportArchiveValidation prints the outcome of a whole-archive validation pass
+// — the file count, then warnings, then errors — and returns the error the
+// command exits with. Shared by the directory pass and the single-file-archive
+// pass so the two report an archive the same way.
+func reportArchiveValidation(streams *IOStreams, fileCount int, allErrors, allWarnings []string) error {
 	if fileCount == 0 {
 		streams.Println("No GLX files found. Validated 0 files.")
 	} else {
 		streams.Printf("Validated %d files.\n", fileCount)
 	}
+
 	if len(allWarnings) > 0 {
 		streams.Errorf("Found %d warnings:\n", len(allWarnings))
 		for _, warn := range allWarnings {
