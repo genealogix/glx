@@ -24,8 +24,19 @@ import (
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
+// initOptions carries the flags of `glx init` so the runner keeps one
+// parameter per concept rather than a growing list of bare booleans.
+type initOptions struct {
+	// singleFile creates one archive.glx instead of the multi-file layout.
+	singleFile bool
+	// numTestData is the number of generated persons to scaffold (0 for none).
+	numTestData int
+	// noGit skips making the new archive directory a Git repository.
+	noGit bool
+}
+
 // runInit initializes a new GLX archive in the specified directory
-func runInit(targetDir string, singleFile bool, numTestData int) error {
+func runInit(targetDir string, opts initOptions) error {
 	// If target is '.', check if it's empty. Otherwise, check if it exists and is not empty.
 	info, err := os.Stat(targetDir)
 	if err != nil {
@@ -48,6 +59,13 @@ func runInit(targetDir string, singleFile bool, numTestData int) error {
 		return fmt.Errorf("failed to create directory %s: %w", targetDir, err)
 	}
 
+	// Resolve the archive root before the chdir below, so the Git repository
+	// is created at an unambiguous path even when targetDir is relative.
+	absTarget, err := filepath.Abs(targetDir)
+	if err != nil {
+		return fmt.Errorf("could not resolve target directory '%s': %w", targetDir, err)
+	}
+
 	// Change into the target directory to perform initialization
 	originalDir, err := os.Getwd()
 	if err != nil {
@@ -58,15 +76,31 @@ func runInit(targetDir string, singleFile bool, numTestData int) error {
 	}
 	defer func() { _ = os.Chdir(originalDir) }()
 
-	if singleFile {
-		return createSingleFileArchive(targetDir)
+	if opts.singleFile {
+		if err := createSingleFileArchive(); err != nil {
+			return err
+		}
+	} else if err := createMultiFileArchive(opts.numTestData); err != nil {
+		return err
 	}
 
-	return createMultiFileArchive(targetDir, numTestData)
+	// The archive exists on disk before the repository is created, so a failed
+	// `git init` never leaves a stray .git beside a half-written archive. Its
+	// outcome is reported as part of the closing summary, where the user reads
+	// what init produced.
+	gitLines := gitInitLines(absTarget, opts.noGit)
+	if opts.singleFile {
+		printSingleFileSummary(targetDir, gitLines)
+	} else {
+		printMultiFileSummary(targetDir, gitLines)
+	}
+
+	return nil
 }
 
-// createSingleFileArchive creates a single-file GLX archive template
-func createSingleFileArchive(targetDir string) error {
+// createSingleFileArchive creates a single-file GLX archive template in the
+// current directory (runInit has already changed into the archive directory).
+func createSingleFileArchive() error {
 	template := `# GENEALOGIX Family Archive
 # Single-file format
 
@@ -86,14 +120,22 @@ studies: {}
 		return fmt.Errorf("failed to create archive.glx: %w", err)
 	}
 
-	fmt.Printf("Initialized single-file GENEALOGIX archive: archive.glx in %s\n", targetDir)
-	fmt.Printf("Add entities under the appropriate type keys (persons, sources, etc.) in %s\n", targetDir)
-
 	return nil
 }
 
+// printSingleFileSummary reports what a single-file init produced, including
+// the Git lines describing whether the archive is under version control.
+func printSingleFileSummary(targetDir string, gitLines []string) {
+	fmt.Printf("Initialized single-file GENEALOGIX archive: archive.glx in %s\n", targetDir)
+	for _, line := range gitLines {
+		fmt.Println(line)
+	}
+	fmt.Printf("Add entities under the appropriate type keys (persons, sources, etc.) in %s\n", targetDir)
+}
+
 // createMultiFileArchive creates a multi-file GLX archive directory structure
-func createMultiFileArchive(targetDir string, numTestData int) error {
+// in the current directory (runInit has already changed into it).
+func createMultiFileArchive(numTestData int) error {
 	// Create directory structure for a GENEALOGIX repository — every entity-type
 	// directory plus vocabularies/, derived from glxlib.AllEntityTypes so new
 	// entity types are scaffolded automatically.
@@ -134,6 +176,13 @@ func createMultiFileArchive(targetDir string, numTestData int) error {
 		fmt.Println("Test data generated successfully.")
 	}
 
+	return nil
+}
+
+// printMultiFileSummary reports what a multi-file init produced. The Git lines
+// follow the .gitignore line deliberately: .gitignore only means something
+// once the directory is a repository, so the two are read together (#1273).
+func printMultiFileSummary(targetDir string, gitLines []string) {
 	if targetDir == "." {
 		targetDir = "the current directory"
 	}
@@ -144,10 +193,11 @@ func createMultiFileArchive(targetDir string, numTestData int) error {
 	fmt.Println("  Media: media/")
 	fmt.Println("  Research: research_logs/, studies/")
 	fmt.Println("Created .gitignore and README.md")
+	for _, line := range gitLines {
+		fmt.Println(line)
+	}
 	fmt.Println("")
 	fmt.Println("Each .glx file should have entity type keys at the top level.")
-
-	return nil
 }
 
 // writeTestData writes test data to entity files.
