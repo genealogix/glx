@@ -273,16 +273,45 @@ func computeFSFingerprint(root string) (string, error) {
 }
 
 // gitOpTimeout bounds each go-git lookup so a pathological or very large
-// enclosing repository can never stall a glx command. go-git exposes no
-// context-aware API in v5, so the work runs in a goroutine and the caller
-// abandons it after the deadline, treating the result as "git unavailable" —
-// the safe direction, since the git data is only informational and staleness is
-// decided by the filesystem fingerprint. The abandoned goroutine finishes on
-// its own and sends to a buffered (capacity-1) channel, so it never blocks or
-// leaks, and the result is passed through the channel rather than a shared
-// variable, so there is no data race with a late-finishing goroutine. It is a
-// var (not a const) only so tests can shrink it to exercise the timeout path.
+// enclosing repository can never stall a glx command. Exceeding it is treated
+// as "git unavailable" — the safe direction, since the git data is only
+// informational and staleness is decided by the filesystem fingerprint. It is a
+// var (not a const) only so tests can shrink it to exercise the timeout path;
+// see boundedGitOp for how that deadline is applied.
 var gitOpTimeout = 5 * time.Second
+
+// boundedGitOp runs op and returns its result, or the zero value and false when
+// op has not finished within gitOpTimeout. go-git exposes no context-aware API
+// in v5, so the work cannot be cancelled: op runs in a goroutine and the caller
+// abandons it after the deadline. The abandoned goroutine finishes on its own
+// and sends to a buffered (capacity-1) channel, so it never blocks or leaks,
+// and the result travels through that channel rather than a shared variable, so
+// there is no data race with a late-finishing goroutine.
+//
+// A non-positive gitOpTimeout means the deadline has already passed, so op is
+// abandoned before it starts. No production call site configures one; tests use
+// it to reach the give-up path deterministically. Racing a very small timeout
+// against real I/O does not work for that: whether the timer or the lookup wins
+// depends on the platform's timer granularity, and on Windows — where the
+// runtime timer is far coarser than on Linux — the lookup regularly won and the
+// test failed (#1272).
+func boundedGitOp[T any](op func() T) (T, bool) {
+	var zero T
+
+	if gitOpTimeout <= 0 {
+		return zero, false
+	}
+
+	ch := make(chan T, 1)
+	go func() { ch <- op() }()
+
+	select {
+	case v := <-ch:
+		return v, true
+	case <-time.After(gitOpTimeout):
+		return zero, false
+	}
+}
 
 // openArchiveRepo opens the git repository that contains root using the pure-Go
 // go-git library (no `git` binary on PATH required). DetectDotGit walks parent
@@ -307,29 +336,23 @@ func openArchiveRepo(root string) (*git.Repository, bool) {
 // the lookup exceeds gitOpTimeout. The result is recorded in the cache header
 // for `glx cache status`; it does not affect staleness detection.
 func gitHeadSHA(root string) string {
-	ch := make(chan string, 1)
-	go func() {
-		repo, ok := openArchiveRepo(root)
-		if !ok {
-			ch <- ""
-
-			return
+	sha, ok := boundedGitOp(func() string {
+		repo, repoOK := openArchiveRepo(root)
+		if !repoOK {
+			return ""
 		}
 		head, err := repo.Head()
 		if err != nil {
-			ch <- ""
-
-			return
+			return ""
 		}
-		ch <- head.Hash().String()
-	}()
 
-	select {
-	case sha := <-ch:
-		return sha
-	case <-time.After(gitOpTimeout):
+		return head.Hash().String()
+	})
+	if !ok {
 		return ""
 	}
+
+	return sha
 }
 
 // gitWorkingTreeClean reports whether the work tree has no changes, for the
@@ -344,37 +367,31 @@ func gitHeadSHA(root string) string {
 // why this result is never trusted for freshness: cacheIsFresh relies solely on
 // the filesystem fingerprint.
 func gitWorkingTreeClean(root string) (clean, ok bool) {
-	type result struct{ clean, ok bool }
+	// gitStatus carries both return values back through boundedGitOp's single
+	// result channel.
+	type gitStatus struct{ clean, ok bool }
 
-	ch := make(chan result, 1)
-	go func() {
+	status, done := boundedGitOp(func() gitStatus {
 		repo, repoOK := openArchiveRepo(root)
 		if !repoOK {
-			ch <- result{}
-
-			return
+			return gitStatus{}
 		}
 		wt, err := repo.Worktree()
 		if err != nil {
-			ch <- result{}
-
-			return
+			return gitStatus{}
 		}
-		status, err := wt.Status()
+		st, err := wt.Status()
 		if err != nil {
-			ch <- result{}
-
-			return
+			return gitStatus{}
 		}
-		ch <- result{status.IsClean(), true}
-	}()
 
-	select {
-	case r := <-ch:
-		return r.clean, r.ok
-	case <-time.After(gitOpTimeout):
+		return gitStatus{clean: st.IsClean(), ok: true}
+	})
+	if !done {
 		return false, false
 	}
+
+	return status.clean, status.ok
 }
 
 // writeCache builds the cache header and gob-encodes the header plus archive to
