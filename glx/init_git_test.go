@@ -100,10 +100,16 @@ func TestDefaultInitBranch(t *testing.T) {
 // testing nothing but itself.
 func TestDefaultInitBranch_ReadsRealGitconfig(t *testing.T) {
 	home := t.TempDir()
-	// XDG_CONFIG_HOME is consulted before $HOME/.gitconfig; point it at an
-	// empty directory so the file written below is the one that is found.
+	// XDG_CONFIG_HOME is consulted before the home-directory gitconfig; point
+	// it at an empty directory so the file written below is the one that is
+	// found.
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, "xdg"))
+	// go-git locates the home-directory gitconfig with os.UserHomeDir, which
+	// reads HOME on Unix but USERPROFILE on Windows. Setting only HOME left the
+	// stub unreachable there, so the lookup fell through to the "main" fallback
+	// and the test failed on Windows only (#1272).
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	require.NoError(t, os.WriteFile(
 		filepath.Join(home, ".gitconfig"),
 		[]byte("[init]\n\tdefaultBranch = heritage\n"),
