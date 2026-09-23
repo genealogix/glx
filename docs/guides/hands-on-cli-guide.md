@@ -162,17 +162,18 @@ suggested for that person. Suggesting the 1790 US census to someone who
 never left Mecklenburg is worse than suggesting nothing.
 
 When nothing in the archive names a country for a person — place hierarchies
-that stop at a city, say — `glx` falls back to the US schedule, which is what
-it always assumed. Use `--country` to change that fallback, or switch it off:
+that stop at a city, say — no census is suggested either. `glx` does not guess
+a country from silence. Give it one with `--country` when you know where the
+archive is rooted:
 
 ```bash
 # Assume UK censuses where the archive names no country
 glx analyze --country "United Kingdom"
 glx coverage "Jane Webb" --country "United Kingdom"
-
-# Suggest no censuses at all unless the archive says where the person was
-glx analyze --country none
 ```
+
+Adding a `type: country` place to the hierarchy is the durable fix, since it
+also tells everyone else reading the archive where these people lived.
 
 The same rules govern the census rows in `glx coverage`.
 
