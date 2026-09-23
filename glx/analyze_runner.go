@@ -66,7 +66,11 @@ func loadArchiveForAnalyze(path string) (*glxlib.GLXFile, error) {
 }
 
 // showAnalysis runs the analysis engine and prints results.
-func showAnalysis(archivePath, personFilter, checkFilter, format string) error {
+func showAnalysis(archivePath, personFilter, checkFilter, format, country string) error {
+	if err := applyCensusCountry(country); err != nil {
+		return err
+	}
+
 	archive, err := loadArchiveForAnalyze(archivePath)
 	if err != nil {
 		return fmt.Errorf("failed to load archive: %w", err)

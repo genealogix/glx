@@ -89,8 +89,7 @@ func (e *silentExitError) Error() string {
 // every runner's returned error funnels through.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		var silent *silentExitError
-		if errors.As(err, &silent) {
+		if silent, ok := errors.AsType[*silentExitError](err); ok {
 			os.Exit(silent.code)
 		}
 		fmt.Fprintln(os.Stderr, sanitizeForTerminal(err.Error()))
@@ -368,6 +367,7 @@ func runExport(_ *cobra.Command, args []string) error {
 var (
 	initSingleFile bool
 	createTestData int
+	initNoGit      bool
 )
 
 var initCmd = &cobra.Command{
@@ -382,7 +382,12 @@ By default, creates a multi-file archive with separate directories for each
 entity type (persons/, events/, places/, etc.) along with standard vocabulary
 files and supporting documentation.
 
-Use --single-file to create a single archive.glx file instead.`,
+Use --single-file to create a single archive.glx file instead.
+
+The new archive directory is made a Git repository (no files staged, no commit
+made) so the generated .gitignore takes effect and the archive is ready for
+version control. An archive created inside an existing repository is left to
+that repository. Use --no-git to skip this entirely.`,
 	Example: `  # Initialize in a new directory
   glx init my-family-archive
 
@@ -390,7 +395,10 @@ Use --single-file to create a single archive.glx file instead.`,
   glx init my-family-archive --single-file
 
   # Initialize with test data in a new directory
-  glx init my-family-archive --create-test-data 10`,
+  glx init my-family-archive --create-test-data 10
+
+  # Initialize without making the directory a Git repository
+  glx init my-family-archive --no-git`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runInitCmd,
 }
@@ -398,6 +406,7 @@ Use --single-file to create a single archive.glx file instead.`,
 func init() {
 	initCmd.Flags().BoolVarP(&initSingleFile, "single-file", "s", false, "create a single-file archive instead of multi-file")
 	initCmd.Flags().IntVarP(&createTestData, "create-test-data", "t", 0, "number of persons to generate test data for")
+	initCmd.Flags().BoolVar(&initNoGit, "no-git", false, "skip initializing a Git repository in the archive directory")
 }
 
 func runInitCmd(_ *cobra.Command, args []string) error {
@@ -408,7 +417,11 @@ func runInitCmd(_ *cobra.Command, args []string) error {
 		targetDir = "."
 	}
 
-	return runInit(targetDir, initSingleFile, createTestData)
+	return runInit(targetDir, initOptions{
+		singleFile:  initSingleFile,
+		numTestData: createTestData,
+		noGit:       initNoGit,
+	})
 }
 
 // ============================================================================
@@ -432,12 +445,19 @@ Performs comprehensive validation including:
 - YAML syntax correctness
 - Required fields presence
 - Entity ID format validation
-- Cross-reference integrity (directories only)
+- Cross-reference integrity (directories and single-file archives)
 - Duplicate ID detection (directories only)
 - Vocabulary validation (if vocabularies/ exists)
 
 Validation behavior:
-- Single file: Validates file structure only, skips cross-reference checks
+- Single file holding a whole archive: full validation, cross-references
+  included. A file counts as a whole archive when it carries its own
+  vocabularies alongside its entities (what glx join writes) or declares every
+  entity collection (what glx init --single-file scaffolds)
+- Single file holding a fragment of a multi-file archive: structure and the
+  semantic checks that stand on their own; cross-reference and place-hierarchy
+  checks are skipped, because the entities those references name live in the
+  fragment's siblings, which are not being validated
 - Directory: Validates all .glx files with full cross-reference validation
 - No arguments: Validates current directory with full cross-reference validation
 - Several paths (directories, .glx files, or a mix): Loaded together as one
@@ -467,8 +487,11 @@ and highlighting unsupported claims. The archive is validated first, so
   # Validate multiple paths (with cross-reference checks)
   glx validate persons/ events/ places/
 
-  # Validate single file (structure only, no cross-reference checks)
+  # Validate a single-file archive (with cross-reference checks)
   glx validate archive.glx
+
+  # Validate one file of a multi-file archive (structure only)
+  glx validate events/event-births.glx
 
   # Generate confidence summary report
   glx validate --report
@@ -968,8 +991,9 @@ var publishCmd = &cobra.Command{
 with family who won't install tools or read YAML.
 
 The site includes a person profile page for everyone in the archive (with
-vital facts, a life timeline, linked family members, supporting sources, and
-a media gallery), plus source and place indexes and a client-side search.
+vital facts, a life timeline, pedigree and descendancy charts, linked family
+members, supporting sources, and a media gallery), plus source and place
+indexes and a client-side search.
 The output is a plain directory of HTML/CSS/JS with no server, database, or
 build tooling required — open index.html directly with file:// or host it
 anywhere (GitHub Pages, S3, Netlify).
@@ -1190,9 +1214,9 @@ var (
 )
 
 var evidenceCmd = &cobra.Command{
-	Use:   "evidence <person> <property>",
+	Use:   "evidence <subject> <property>",
 	Short: "Show all evidence for a property, grouped by value",
-	Long: `Display every assertion for one person+property side-by-side, grouped by
+	Long: `Display every assertion for one subject+property side-by-side, grouped by
 value, with the supporting citations and confidence for each.
 
 Where "glx analyze" emits a one-line conflict warning and "glx proof" summarizes
@@ -1202,13 +1226,25 @@ shows the supporting reports (citation and source), counts them, and reports the
 best confidence; the closing line highlights the best-supported value, or notes
 when the leading values tie.
 
-The person argument can be an exact entity ID (e.g., person-jane-webb) or a
-name to search for (e.g., "Jane Miller"). If the name matches multiple persons,
-all matches are listed for disambiguation. The property is matched exactly, with
-a case-insensitive fallback when no exact match exists. Place, person, and event
-reference values resolve to the referenced entity's name.`,
+The subject is any entity an assertion can be about — a person, event, place, or
+relationship — matching what "glx add assertion" accepts. That matters because
+the two properties most likely to have conflicting answers, date and place, are
+normally asserted on the event rather than on the person.
+
+A subject is resolved by exact entity ID first (e.g., event-death-1807), then,
+for persons only, by name search (e.g., "Jane Miller"); if the name matches
+multiple persons, all matches are listed for disambiguation. The property is
+matched exactly, with a case-insensitive fallback when no exact match exists.
+Place, person, and event reference values resolve to the referenced entity's
+name.`,
 	Example: `  # All recorded values for a birthplace property, by ID
   glx evidence person-jane-webb born_at
+
+  # The contested date of an event
+  glx evidence event-death-1807 date
+
+  # Every recorded name for a place
+  glx evidence place-liepen name
 
   # Look the person up by name
   glx evidence "Jane Miller" residence
@@ -1475,6 +1511,7 @@ func runDuplicates(_ *cobra.Command, args []string) error {
 var (
 	coverageArchive string
 	coverageJSON    bool
+	coverageCountry string
 )
 
 var coverageCmd = &cobra.Command{
@@ -1487,7 +1524,8 @@ showing which census records, vital records, and other documents have been found
 versus which are still missing.
 
 Record categories:
-  - Census: US federal census records the person should appear in
+  - Census: national and state census records the person should appear in,
+    on the schedules of the countries their places name
   - Vital: Birth, death, and marriage records
   - Other: Probate, land, military, and church records
 
@@ -1510,7 +1548,10 @@ The person argument can be an exact entity ID or a name substring.`,
   glx coverage "Jane Miller" --json
 
   # Specify archive path
-  glx coverage "Jane Miller" --archive my-archive`,
+  glx coverage "Jane Miller" --archive my-archive
+
+  # Assume UK censuses where the archive names no country
+  glx coverage "Jane Miller" --country "United Kingdom"`,
 	Args: cobra.ExactArgs(1),
 	RunE: runCoverage,
 }
@@ -1518,10 +1559,11 @@ The person argument can be an exact entity ID or a name substring.`,
 func init() {
 	coverageCmd.Flags().StringVarP(&coverageArchive, "archive", "a", ".", "Archive path (directory or single file)")
 	coverageCmd.Flags().BoolVar(&coverageJSON, "json", false, "Output as JSON")
+	coverageCmd.Flags().StringVar(&coverageCountry, "country", "", censusCountryFlagUsage)
 }
 
 func runCoverage(_ *cobra.Command, args []string) error {
-	return showCoverage(coverageArchive, args[0], coverageJSON)
+	return showCoverage(coverageArchive, args[0], coverageCountry, coverageJSON)
 }
 
 // ============================================================================
@@ -1533,6 +1575,7 @@ var (
 	analyzeCheck   string
 	analyzeFormat  string
 	analyzePerson  string
+	analyzeCountry string
 )
 
 var analyzeCmd = &cobra.Command{
@@ -1563,7 +1606,10 @@ Use --format json for machine-readable output.`,
   glx analyze --format json
 
   # Analyze a specific archive
-  glx analyze --archive my-archive`,
+  glx analyze --archive my-archive
+
+  # Assume UK censuses where the archive names no country
+  glx analyze --country "United Kingdom"`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runAnalyze,
 }
@@ -1573,6 +1619,7 @@ func init() {
 	analyzeCmd.Flags().StringVarP(&analyzeCheck, "check", "c", "", "Run a single analysis category (gaps, evidence, consistency, suggestions)")
 	analyzeCmd.Flags().StringVarP(&analyzeFormat, "format", "f", "", "Output format (json for machine-readable)")
 	analyzeCmd.Flags().StringVarP(&analyzePerson, "person", "p", "", "Filter results to a specific person (ID or name)")
+	analyzeCmd.Flags().StringVar(&analyzeCountry, "country", "", censusCountryFlagUsage)
 }
 
 func runAnalyze(_ *cobra.Command, args []string) error {
@@ -1581,7 +1628,7 @@ func runAnalyze(_ *cobra.Command, args []string) error {
 		person = args[0]
 	}
 
-	return showAnalysis(analyzeArchive, person, analyzeCheck, analyzeFormat)
+	return showAnalysis(analyzeArchive, person, analyzeCheck, analyzeFormat, analyzeCountry)
 }
 
 // ============================================================================

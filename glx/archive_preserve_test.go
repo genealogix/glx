@@ -88,6 +88,22 @@ func TestFirstSkippedEntry(t *testing.T) {
 	assert.Equal(t, "persons/.drafts", found)
 }
 
+// relSlash names an entry the way the stale-backup refusal reports it: relative
+// to the backup directory the message already names, with forward slashes on
+// every platform, so the message reads the same on Windows as on Unix (#1272).
+func TestRelSlash(t *testing.T) {
+	base := filepath.Join("tmp", "archive.bak")
+
+	assert.Equal(t, "media/files", relSlash(base, filepath.Join(base, "media", "files")))
+	assert.Equal(t, ".", relSlash(base, base))
+
+	// A path that cannot be made relative to base — here an absolute target
+	// against a relative base — falls back to the whole path, normalized.
+	// Callers pass paths built by joining onto base, so this is defensive.
+	assert.Equal(t, "/elsewhere/media/files",
+		relSlash(base, string(filepath.Separator)+filepath.Join("elsewhere", "media", "files")))
+}
+
 // The loader follows an ordinary symlink and reads its target, so the cache
 // fingerprint has to describe the target too. Recording the link's own
 // metadata let edits to the target leave the fingerprint unchanged and the

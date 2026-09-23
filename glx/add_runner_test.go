@@ -119,6 +119,60 @@ func TestAdd_PersonBadVocabRejected(t *testing.T) {
 	}
 }
 
+// TestAdd_BadVocabErrorNamesValidValues covers the rejection message itself:
+// a caller who guessed wrong needs the accepted keys and the file that holds
+// them, not just the value that was refused.
+func TestAdd_BadVocabErrorNamesValidValues(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+	common := addCommonOptions{ArchivePath: dir}
+
+	if err := addPerson(io, &addPersonOptions{
+		addCommonOptions: common,
+		Given:            "Jane",
+		Surname:          "Doe",
+	}); err != nil {
+		t.Fatalf("addPerson: %v", err)
+	}
+
+	// Short vocabulary: every key is listed.
+	err := addAssertion(io, &addAssertionOptions{
+		addCommonOptions: common,
+		SubjectPerson:    "person-jane-doe",
+		Property:         "occupation",
+		Value:            "Laborer",
+		Confidence:       "0",
+	})
+	if !errors.Is(err, ErrAddVocabKeyUnknown) {
+		t.Fatalf("expected ErrAddVocabKeyUnknown, got %v", err)
+	}
+	for _, want := range []string{"high", "medium", "low", "vocabularies/confidence-levels.glx"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("confidence rejection %q does not mention %q", err, want)
+		}
+	}
+
+	// Long vocabulary: the list is truncated but still points at the file.
+	err = addEvent(io, &addEventOptions{
+		addCommonOptions: common,
+		Type:             "bogus",
+	})
+	if !errors.Is(err, ErrAddVocabKeyUnknown) {
+		t.Fatalf("expected ErrAddVocabKeyUnknown, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "more in vocabularies/event-types.glx") {
+		t.Errorf("event-type rejection %q does not defer to the vocabulary file", err)
+	}
+
+	// A vocabulary with no entries names the file rather than an empty list.
+	// Not reachable through the CLI — loading an archive merges the standard
+	// defaults in — so the hint is exercised directly.
+	empty := vocabKeyHint(glxlib.VocabConfidenceLevels, map[string]*glxlib.VocabularyEntry{})
+	if want := "no values defined in vocabularies/confidence-levels.glx"; empty != want {
+		t.Errorf("empty-vocabulary hint = %q, want %q", empty, want)
+	}
+}
+
 // =============================================================================
 // add place
 // =============================================================================
@@ -785,6 +839,67 @@ func TestAdd_DryRunWritesNothing(t *testing.T) {
 	}
 	if got := trailingLine(out.String()); got != "person-dryrun" {
 		t.Errorf("trailing line: got %q, want person-dryrun", got)
+	}
+}
+
+// TestAdd_ProgressLineUsesSingularWithSeparator pins the shape of the "Adding"
+// line printed by finalizeAdd. The plural EntityType value is the YAML key and
+// directory name, not an English noun, and running it straight into the ID read
+// as a list ("Adding assertions assertion-death-1807-date"). See issue #1276.
+func TestAdd_ProgressLineUsesSingularWithSeparator(t *testing.T) {
+	cases := []struct {
+		name string
+		add  func(*IOStreams, string) error
+		want string
+	}{
+		{
+			name: "person",
+			add: func(io *IOStreams, dir string) error {
+				return addPerson(io, &addPersonOptions{
+					ArchivePath: dir,
+					Given:       "Michael David",
+					Surname:     "Hollnagel",
+				})
+			},
+			want: "Adding person: person-michael-david-hollnagel\n",
+		},
+		{
+			name: "place",
+			add: func(io *IOStreams, dir string) error {
+				return addPlace(io, &addPlaceOptions{
+					ArchivePath: dir,
+					Name:        "Liepen",
+					Type:        "locality",
+				})
+			},
+			want: "Adding place: place-liepen\n",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := initArchiveDir(t)
+			io, out, _ := TestIOStreams()
+
+			if err := tc.add(io, dir); err != nil {
+				t.Fatalf("add %s: %v", tc.name, err)
+			}
+
+			if !strings.Contains(out.String(), tc.want) {
+				t.Errorf("progress line: got %q, want it to contain %q", out.String(), tc.want)
+			}
+		})
+	}
+}
+
+// TestAdd_EveryEntityTypeHasADisplayableSingular guards the label source used by
+// finalizeAdd: an EntityType with no Singular() entry would print
+// "Adding : person-x". See issue #1276.
+func TestAdd_EveryEntityTypeHasADisplayableSingular(t *testing.T) {
+	for _, et := range glxlib.AllEntityTypes {
+		if et.Singular() == "" {
+			t.Errorf("EntityType %s has no Singular(); finalizeAdd would print an empty label", et)
+		}
 	}
 }
 

@@ -24,22 +24,17 @@ import (
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
-// US federal census years.
-var usCensusYears = []int{
-	1790, 1800, 1810, 1820, 1830, 1840, 1850, 1860, 1870, 1880,
-	1890, 1900, 1910, 1920, 1930, 1940, 1950,
-}
-
 // maxLifespan is the assumed maximum lifespan for capping census suggestions
 // when no death date is known.
 const maxLifespan = 100
 
 // Coverage checklist categories, as they appear in the JSON output and as the
-// headings printCoverageText groups by.
+// headings printCoverageText groups by. coverageCategoryCensus shares the
+// literal value of EventTypeCensus.
 const (
-	categoryCensus = glxlib.EventTypeCensus
-	categoryVital  = "vital"
-	categoryOther  = "other"
+	coverageCategoryCensus = "census"
+	categoryVital          = "vital"
+	categoryOther          = "other"
 )
 
 // coverageRecord represents one expected record in the coverage checklist.
@@ -66,7 +61,11 @@ type coverageResult struct {
 }
 
 // showCoverage loads an archive and displays source coverage for a person.
-func showCoverage(archivePath, personQuery string, jsonOutput bool) error {
+func showCoverage(archivePath, personQuery, country string, jsonOutput bool) error {
+	if err := applyCensusCountry(country); err != nil {
+		return err
+	}
+
 	archive, err := loadArchiveForCoverage(archivePath)
 	if err != nil {
 		return err
@@ -170,8 +169,9 @@ func buildCoverage(personID string, person *glxlib.Person, archive *glxlib.GLXFi
 
 	var records []coverageRecord
 
-	// Federal census records
-	records = append(records, buildCensusRecords(birthYear, deathYear, personSources, personEvents)...)
+	// National census records, for the countries the person's places name
+	schedules := censusSchedulesForPlaces(coveragePlaceRefs(personEvents), archive)
+	records = append(records, buildCensusRecords(birthYear, deathYear, schedules, personSources, personEvents)...)
 
 	// State census records
 	states := collectPersonStates(person, archive, personEvents)
@@ -348,8 +348,32 @@ func assertionHasEvidence(assertion *glxlib.Assertion, archive *glxlib.GLXFile) 
 	return false
 }
 
-// buildCensusRecords generates expected census records based on birth/death years.
-func buildCensusRecords(birthYear, deathYear int, sources, events []personSourceInfo) []coverageRecord {
+// coveragePlaceRefs returns the place references of a person's events, for
+// resolving which countries' census schedules apply to them.
+func coveragePlaceRefs(events []personSourceInfo) []string {
+	var refs []string
+	for _, e := range events {
+		if e.PlaceID != "" {
+			refs = append(refs, e.PlaceID)
+		}
+	}
+
+	return refs
+}
+
+// censusPrimeAgeMin and censusPrimeAgeMax bound the ages at which a missing
+// census is flagged high priority: young adults move between households, so
+// the record that places them is the one most worth finding.
+const (
+	censusPrimeAgeMin = 14
+	censusPrimeAgeMax = 25
+)
+
+// buildCensusRecords generates expected census records for every supplied
+// schedule, bounded by the person's birth and death years. A person with no
+// applicable schedule — one whose places name a country GLX has no census
+// schedule for — gets no census rows at all (#186).
+func buildCensusRecords(birthYear, deathYear int, schedules []*censusSchedule, sources, events []personSourceInfo) []coverageRecord {
 	if birthYear == 0 {
 		return nil
 	}
@@ -362,56 +386,54 @@ func buildCensusRecords(birthYear, deathYear int, sources, events []personSource
 
 	var records []coverageRecord
 
-	for _, year := range usCensusYears {
-		if year < birthYear {
-			continue
-		}
-		if year > upperBound {
-			break
-		}
-		// Approximate age at this census year (may be 0 if census year == birth year)
-		age := year - birthYear
+	for _, schedule := range schedules {
+		for _, year := range schedule.years {
+			if year < birthYear {
+				continue
+			}
+			if year > upperBound {
+				break
+			}
+			// Approximate age at this census year (may be 0 if census year == birth year)
+			age := year - birthYear
+			note := schedule.notes[year]
 
-		label := fmt.Sprintf("%d US Census (age ~%d)", year, age)
+			rec := coverageRecord{
+				Category: coverageCategoryCensus,
+				Label:    schedule.coverageLabel(year, age),
+			}
 
-		rec := coverageRecord{
-			Category: categoryCensus,
-			Label:    label,
-		}
+			// Check if we have this census
+			ref := findCensusMatch(year, sources, events)
+			if ref != "" {
+				rec.Found = true
+				rec.SourceRef = ref
+			}
 
-		// 1890 census was mostly destroyed in a 1921 fire
-		if year == 1890 {
-			rec.Description = "mostly destroyed (1921 fire)"
-		}
+			// Census-specific annotations (always added, even when found)
+			rec.Description = appendCensusAnnotation(rec.Description, note, age)
 
-		// Check if we have this census
-		ref := findCensusMatch(year, sources, events)
-		if ref != "" {
-			rec.Found = true
-			rec.SourceRef = ref
-		}
+			if !rec.Found {
+				rec.Description = appendDescription(rec.Description, unevidencedNote(findUnevidencedCensus(year, events)))
+			}
 
-		// Census-specific annotations (always added, even when found)
-		rec.Description = appendCensusAnnotation(rec.Description, year, age)
-
-		if !rec.Found {
-			rec.Description = appendDescription(rec.Description, unevidencedNote(findUnevidencedCensus(year, events)))
-		}
-
-		// Priority annotations for missing records
-		if !rec.Found {
-			if year == 1880 {
-				rec.Priority = "high"
-			} else if age >= 14 && age <= 25 {
-				rec.Priority = "high"
-				// Avoid duplicating parents-household note when 1850 minor annotation already applies
-				if year != 1850 || age >= 18 {
-					rec.Description = appendDescription(rec.Description, "may show in parents' household")
+			// Priority annotations for missing records
+			if !rec.Found {
+				switch {
+				case note.highPriority:
+					rec.Priority = severityHigh
+				case age >= censusPrimeAgeMin && age <= censusPrimeAgeMax:
+					rec.Priority = severityHigh
+					// Avoid duplicating the parents-household note when the
+					// year's own minor annotation already said it
+					if note.minorNote == "" || age >= minorAgeUnder {
+						rec.Description = appendDescription(rec.Description, "may show in parents' household")
+					}
 				}
 			}
-		}
 
-		records = append(records, rec)
+			records = append(records, rec)
+		}
 	}
 
 	return records
@@ -454,8 +476,8 @@ func buildVitalRecords(personID string, archive *glxlib.GLXFile, sources, events
 	var records []coverageRecord
 
 	records = append(records,
-		buildVitalRecord("Birth record", "high", glxlib.EventTypeBirth, "birth", sources, events),
-		buildVitalRecord("Death record", "medium", glxlib.EventTypeDeath, "death", sources, events),
+		buildVitalRecord("Birth record", severityHigh, glxlib.EventTypeBirth, "birth", sources, events),
+		buildVitalRecord("Death record", severityMedium, glxlib.EventTypeDeath, "death", sources, events),
 	)
 
 	// Marriage records — check relationships for spouse
@@ -518,7 +540,7 @@ func buildMarriageRecords(personID string, archive *glxlib.GLXFile, evidenced ma
 			Category: categoryVital,
 			Label:    "Marriage record — " + spouseDisplayName(spouseID, archive),
 			Found:    found,
-			Priority: boolPriority(!found, "medium"),
+			Priority: boolPriority(!found, severityMedium),
 		}
 		if found {
 			rec.SourceRef = ref
@@ -629,7 +651,7 @@ func buildOtherRecords(sources, events []personSourceInfo, probateHighPriority b
 		}
 	} else {
 		if probateHighPriority {
-			rec.Priority = "high"
+			rec.Priority = severityHigh
 			rec.Description = "often names heirs (children) and surviving spouse"
 		}
 		rec.Description = appendDescription(rec.Description, unevidencedNote(firstNonEmpty(
@@ -808,7 +830,7 @@ func printCoverageText(result *coverageResult) {
 		key   string
 		label string
 	}{
-		{categoryCensus, "Census Records"},
+		{coverageCategoryCensus, "Census Records"},
 		{categoryVital, "Vital Records"},
 		{categoryOther, "Other Records"},
 	}
@@ -837,7 +859,7 @@ func printCoverageText(result *coverageResult) {
 				line += fmt.Sprintf(" (via %s)", r.SourceRef)
 			}
 
-			if !r.Found && r.Priority == "high" {
+			if !r.Found && r.Priority == severityHigh {
 				line += " -- HIGH PRIORITY"
 			}
 
@@ -889,16 +911,15 @@ func appendDescription(existing, addition string) string {
 	return existing + "; " + addition
 }
 
-// appendCensusAnnotation adds research-relevant notes for specific census years.
-func appendCensusAnnotation(desc string, year, age int) string {
-	switch year {
-	case 1850:
-		desc = appendDescription(desc, "first census to list individual names")
-		if age < 18 {
-			desc = appendDescription(desc, "likely in parents' household")
-		}
-	case 1880:
-		desc = appendDescription(desc, "first census to list parents' birthplaces")
+// appendCensusAnnotation adds a census year's research notes to a record
+// description. The minor note applies only to someone who was still a child
+// at that census.
+func appendCensusAnnotation(desc string, note censusYearNote, age int) string {
+	if note.note != "" {
+		desc = appendDescription(desc, note.note)
+	}
+	if note.minorNote != "" && age < minorAgeUnder {
+		desc = appendDescription(desc, note.minorNote)
 	}
 
 	return desc

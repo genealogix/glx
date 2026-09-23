@@ -16,7 +16,8 @@ showing which census records, vital records, and other documents have been found
 versus which are still missing.
 
 Record categories:
-  - Census: US federal census records the person should appear in
+  - Census: national and state census records the person should appear in,
+    on the schedules of the countries their places name
   - Vital: Birth, death, and marriage records
   - Other: Probate, land, military, and church records
 
@@ -48,12 +49,16 @@ glx coverage <person> [flags]
 
   # Specify archive path
   glx coverage "Jane Miller" --archive my-archive
+
+  # Assume UK censuses where the archive names no country
+  glx coverage "Jane Miller" --country "United Kingdom"
 ```
 
 ### Options
 
 ```
   -a, --archive string   Archive path (directory or single file) (default ".")
+      --country string   Country whose census schedule to assume for persons whose places name no country (default "United States"; "none" to suggest nothing)
   -h, --help             help for coverage
       --json             Output as JSON
 ```
