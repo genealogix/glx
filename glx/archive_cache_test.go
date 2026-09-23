@@ -378,9 +378,15 @@ func TestCacheGitHeadSHAUnbornHead(t *testing.T) {
 	assert.Empty(t, gitHeadSHA(dir), "unborn HEAD should yield an empty SHA")
 }
 
-// TestCacheGitOpTimeoutFallback shrinks the go-git deadline so the in-process
+// TestCacheGitOpTimeoutFallback exhausts the go-git deadline so the in-process
 // lookups give up, confirming they fall back to the safe "git unavailable"
 // result (empty SHA / ok=false) rather than blocking the command.
+//
+// The deadline is set to zero, which boundedGitOp reads as "already passed",
+// rather than to a very small positive duration. A tiny timeout raced the
+// runtime timer against a real repository read and the winner depended on the
+// platform's timer granularity: on Windows the read regularly finished first
+// and the lookups returned a real SHA (#1272).
 func TestCacheGitOpTimeoutFallback(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")
@@ -388,14 +394,68 @@ func TestCacheGitOpTimeoutFallback(t *testing.T) {
 	dir := miniArchive(t, 1)
 	runGitInit(t, dir)
 
-	orig := gitOpTimeout
-	gitOpTimeout = time.Nanosecond
-	t.Cleanup(func() { gitOpTimeout = orig })
+	setGitOpTimeout(t, 0)
 
 	assert.Empty(t, gitHeadSHA(dir), "timed-out HEAD lookup should yield an empty SHA")
 	clean, ok := gitWorkingTreeClean(dir)
 	assert.False(t, ok, "timed-out status should report not-ok")
 	assert.False(t, clean)
+}
+
+// setGitOpTimeout points gitOpTimeout at d for the duration of the test.
+func setGitOpTimeout(t *testing.T, d time.Duration) {
+	t.Helper()
+	orig := gitOpTimeout
+	gitOpTimeout = d
+	t.Cleanup(func() { gitOpTimeout = orig })
+}
+
+// TestBoundedGitOpCompletes covers the path where the operation finishes inside
+// the deadline: its result is returned as-is.
+func TestBoundedGitOpCompletes(t *testing.T) {
+	setGitOpTimeout(t, time.Minute)
+
+	v, ok := boundedGitOp(func() string { return "done" })
+
+	assert.True(t, ok, "an operation that finishes in time should report ok")
+	assert.Equal(t, "done", v)
+}
+
+// TestBoundedGitOpAbandonsSlowOp covers the deadline branch. The operation
+// blocks until the test releases it, so it cannot finish first however coarse
+// the platform's timer is — the outcome does not depend on timing, only how
+// long the assertion waits.
+func TestBoundedGitOpAbandonsSlowOp(t *testing.T) {
+	release := make(chan struct{})
+	t.Cleanup(func() { close(release) })
+
+	setGitOpTimeout(t, 20*time.Millisecond)
+
+	v, ok := boundedGitOp(func() string {
+		<-release
+
+		return "late"
+	})
+
+	assert.False(t, ok, "an operation that misses the deadline should report not-ok")
+	assert.Empty(t, v, "an abandoned operation yields the zero value")
+}
+
+// TestBoundedGitOpSkipsExpiredDeadline pins the non-positive-timeout shortcut:
+// the operation is abandoned before it starts, so it never runs at all.
+func TestBoundedGitOpSkipsExpiredDeadline(t *testing.T) {
+	setGitOpTimeout(t, 0)
+
+	ran := false
+	v, ok := boundedGitOp(func() string {
+		ran = true
+
+		return "ran"
+	})
+
+	assert.False(t, ok)
+	assert.Empty(t, v)
+	assert.False(t, ran, "an already-expired deadline should not start the operation")
 }
 
 // TestCacheRejectsOversizedFile shrinks the decode ceiling below any real cache
