@@ -477,8 +477,8 @@ func buildVitalRecords(personID string, archive *glxlib.GLXFile, sources, events
 	var records []coverageRecord
 
 	records = append(records,
-		buildVitalRecord("Birth record", "high", glxlib.EventTypeBirth, "birth", sources, events),
-		buildVitalRecord("Death record", "medium", glxlib.EventTypeDeath, "death", sources, events),
+		buildVitalRecord("Birth record", severityHigh, glxlib.EventTypeBirth, "birth", sources, events),
+		buildVitalRecord("Death record", severityMedium, glxlib.EventTypeDeath, "death", sources, events),
 	)
 
 	// Marriage records — check relationships for spouse
@@ -541,7 +541,7 @@ func buildMarriageRecords(personID string, archive *glxlib.GLXFile, evidenced ma
 			Category: coverageCategoryVital,
 			Label:    "Marriage record — " + spouseDisplayName(spouseID, archive),
 			Found:    found,
-			Priority: boolPriority(!found, "medium"),
+			Priority: boolPriority(!found, severityMedium),
 		}
 		if found {
 			rec.SourceRef = ref
@@ -652,7 +652,7 @@ func buildOtherRecords(sources, events []personSourceInfo, probateHighPriority b
 		}
 	} else {
 		if probateHighPriority {
-			rec.Priority = "high"
+			rec.Priority = severityHigh
 			rec.Description = "often names heirs (children) and surviving spouse"
 		}
 		rec.Description = appendDescription(rec.Description, unevidencedNote(firstNonEmpty(
