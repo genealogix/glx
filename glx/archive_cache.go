@@ -282,7 +282,7 @@ var gitOpTimeout = 5 * time.Second
 
 // boundedGitOp runs op and returns its result, or the zero value and false when
 // op has not finished within gitOpTimeout. go-git exposes no context-aware API
-// in v5, so the work cannot be cancelled: op runs in a goroutine and the caller
+// in v5, so the work cannot be canceled: op runs in a goroutine and the caller
 // abandons it after the deadline. The abandoned goroutine finishes on its own
 // and sends to a buffered (capacity-1) channel, so it never blocks or leaks,
 // and the result travels through that channel rather than a shared variable, so
@@ -295,6 +295,8 @@ var gitOpTimeout = 5 * time.Second
 // depends on the platform's timer granularity, and on Windows — where the
 // runtime timer is far coarser than on Linux — the lookup regularly won and the
 // test failed (#1272).
+//
+//nolint:ireturn // T is a type parameter, not an interface: each caller gets its own concrete type
 func boundedGitOp[T any](op func() T) (T, bool) {
 	var zero T
 
