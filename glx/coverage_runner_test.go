@@ -101,13 +101,39 @@ func newTestArchiveForCoverage() *glxlib.GLXFile {
 				},
 			},
 		},
-		Sources:    map[string]*glxlib.Source{},
-		Citations:  map[string]*glxlib.Citation{},
-		Assertions: map[string]*glxlib.Assertion{},
+		// John's events are each backed by an assertion citing a record, so they
+		// count as records found. Jane's birth event deliberately is not: it
+		// stands alone, as a conclusion nothing supports.
+		Sources: map[string]*glxlib.Source{
+			"source-town-records": {
+				Type:  glxlib.SourceTypeVitalRecord,
+				Title: "Town of Greenfield vital records",
+			},
+		},
+		Citations: map[string]*glxlib.Citation{
+			"citation-town-records": {SourceID: "source-town-records"},
+		},
+		Assertions: assertionsEvidencing(
+			"event-birth", "event-death", "event-census-1850", "event-census-1860", "event-marriage",
+		),
 		Places: map[string]*glxlib.Place{
 			"place-ny": {Name: "New York, NY"},
 		},
 	}
+}
+
+// assertionsEvidencing returns one assertion per event ID, each citing
+// citation-town-records, which is what makes the event count as evidenced.
+func assertionsEvidencing(eventIDs ...string) map[string]*glxlib.Assertion {
+	assertions := make(map[string]*glxlib.Assertion, len(eventIDs))
+	for _, eventID := range eventIDs {
+		assertions["assertion-"+eventID] = &glxlib.Assertion{
+			Subject:   glxlib.EntityRef{Event: eventID},
+			Citations: []string{"citation-town-records"},
+		}
+	}
+
+	return assertions
 }
 
 func TestBuildCoverage_BasicPerson(t *testing.T) {
@@ -208,7 +234,7 @@ func TestBuildCoverage_NoDates(t *testing.T) {
 func TestCollectPersonEvents(t *testing.T) {
 	archive := newTestArchiveForCoverage()
 
-	events := collectPersonEvents("person-john", archive)
+	events := collectPersonEvents("person-john", archive, eventsWithEvidence(archive))
 
 	// Should find birth, death, census-1850, census-1860, marriage
 	assert.GreaterOrEqual(t, len(events), 5)
@@ -252,8 +278,9 @@ func TestCollectPersonSources(t *testing.T) {
 
 func TestFindCensusMatch(t *testing.T) {
 	events := []personSourceInfo{
-		{Ref: "event-census-1850", EventType: glxlib.EventTypeCensus, Year: 1850},
-		{Ref: "event-census-1870", EventType: glxlib.EventTypeCensus, Year: 1870},
+		{Ref: "event-census-1850", EventType: glxlib.EventTypeCensus, Year: 1850, Evidenced: true},
+		{Ref: "event-census-1870", EventType: glxlib.EventTypeCensus, Year: 1870, Evidenced: true},
+		{Ref: "event-census-1900", EventType: glxlib.EventTypeCensus, Year: 1900},
 	}
 	sources := []personSourceInfo{
 		{Ref: "source-1860", Type: glxlib.SourceTypeCensus, Year: 1860},
@@ -263,6 +290,8 @@ func TestFindCensusMatch(t *testing.T) {
 	assert.Equal(t, "source-1860", findCensusMatch(1860, sources, events))
 	assert.Equal(t, "event-census-1870", findCensusMatch(1870, sources, events))
 	assert.Empty(t, findCensusMatch(1880, sources, events))
+	assert.Empty(t, findCensusMatch(1900, sources, events),
+		"a census event nothing backs is not a census record found")
 }
 
 func TestCoveragePercent(t *testing.T) {
@@ -278,14 +307,20 @@ func TestBoolPriority(t *testing.T) {
 	assert.Empty(t, boolPriority(false, "high"))
 }
 
-func TestHasEventType(t *testing.T) {
+func TestFindEvidencedEvent(t *testing.T) {
 	events := []personSourceInfo{
-		{EventType: glxlib.EventTypeBirth},
-		{EventType: glxlib.EventTypeCensus},
+		{Ref: "event-birth", EventType: glxlib.EventTypeBirth, Evidenced: true},
+		{Ref: "event-census", EventType: glxlib.EventTypeCensus},
 	}
-	assert.True(t, hasEventType(events, glxlib.EventTypeBirth))
-	assert.True(t, hasEventType(events, glxlib.EventTypeCensus))
-	assert.False(t, hasEventType(events, glxlib.EventTypeDeath))
+
+	assert.Equal(t, "event-birth", findEvidencedEvent(events, glxlib.EventTypeBirth))
+	assert.Empty(t, findEvidencedEvent(events, glxlib.EventTypeCensus),
+		"an event nothing backs is not an evidenced event")
+	assert.Empty(t, findEvidencedEvent(events, glxlib.EventTypeDeath))
+
+	assert.Equal(t, "event-census", findUnevidencedEvent(events, glxlib.EventTypeCensus))
+	assert.Empty(t, findUnevidencedEvent(events, glxlib.EventTypeBirth))
+	assert.Empty(t, findUnevidencedEvent(events, glxlib.EventTypeDeath))
 }
 
 func TestHasSourceType(t *testing.T) {
@@ -561,7 +596,7 @@ func TestCollectPersonStates_FromBirthplace(t *testing.T) {
 	}
 
 	// Pass the birth event info so collectPersonStates can find the state
-	events := collectPersonEvents("person-wi", archive)
+	events := collectPersonEvents("person-wi", archive, eventsWithEvidence(archive))
 	states := collectPersonStates(archive.Persons["person-wi"], archive, events)
 	assert.Contains(t, states, "Wisconsin")
 }
@@ -595,7 +630,7 @@ func TestCollectPersonStates_FromEventPlace(t *testing.T) {
 		Assertions:    map[string]*glxlib.Assertion{},
 	}
 
-	events := collectPersonEvents("person-1", archive)
+	events := collectPersonEvents("person-1", archive, eventsWithEvidence(archive))
 	states := collectPersonStates(archive.Persons["person-1"], archive, events)
 	assert.Contains(t, states, "Wisconsin")
 }
@@ -628,7 +663,7 @@ func TestBuildStateCensusRecords_NoStateMatch(t *testing.T) {
 
 func TestBuildStateCensusRecords_MatchesExistingEvent(t *testing.T) {
 	events := []personSourceInfo{
-		{Ref: "event-1855-census", EventType: glxlib.EventTypeCensus, Year: 1855, Title: "1855 Wisconsin State Census"},
+		{Ref: "event-1855-census", EventType: glxlib.EventTypeCensus, Year: 1855, Title: "1855 Wisconsin State Census", Evidenced: true},
 	}
 	records := buildStateCensusRecords(1850, 1920, []string{"Wisconsin"}, nil, events, nil)
 
@@ -697,7 +732,7 @@ func TestFindStateCensusMatch_PlaceBased(t *testing.T) {
 		},
 	}
 	events := []personSourceInfo{
-		{Ref: "event-1855", EventType: glxlib.EventTypeCensus, Year: 1855, Title: "1855 Census", PlaceID: "place-milwaukee"},
+		{Ref: "event-1855", EventType: glxlib.EventTypeCensus, Year: 1855, Title: "1855 Census", PlaceID: "place-milwaukee", Evidenced: true},
 	}
 	ref := findStateCensusMatch(1855, "Wisconsin", nil, events, archive)
 	assert.Equal(t, "event-1855", ref, "should match via place resolution")
@@ -746,7 +781,7 @@ func TestCollectPersonStates_FromBirthEvent(t *testing.T) {
 		Assertions:    map[string]*glxlib.Assertion{},
 	}
 
-	events := collectPersonEvents("person-1", archive)
+	events := collectPersonEvents("person-1", archive, eventsWithEvidence(archive))
 	states := collectPersonStates(archive.Persons["person-1"], archive, events)
 	assert.Contains(t, states, "Wisconsin")
 }
@@ -955,4 +990,249 @@ func TestCoverageResult_JSONKeys(t *testing.T) {
 	assert.NotContains(t, jsonStr, `"born_at"`)
 	assert.NotContains(t, jsonStr, `"died_on"`)
 	assert.NotContains(t, jsonStr, `"died_at"`)
+}
+
+// archiveWithUnevidencedBirth reproduces the archive from #1267: a death
+// recorded from a parish register, and a birth that is an explicit estimate
+// reckoned back from the age band in that death entry. No birth record exists.
+func archiveWithUnevidencedBirth() *glxlib.GLXFile {
+	return &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-x": {
+				Properties: map[string]any{
+					glxlib.PersonPropertyName: "Michael David Hollnagel",
+				},
+			},
+		},
+		Places: map[string]*glxlib.Place{
+			"place-liepen": {Name: "Liepen"},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-death": {
+				Type:    glxlib.EventTypeDeath,
+				Date:    "1807-08-31",
+				PlaceID: "place-liepen",
+				Participants: []glxlib.Participant{
+					{Person: "person-x", Role: "subject"},
+				},
+			},
+			"event-birth": {
+				Type: glxlib.EventTypeBirth,
+				Date: "BET 1737 AND 1747",
+				Participants: []glxlib.Participant{
+					{Person: "person-x", Role: "subject"},
+				},
+			},
+		},
+		Sources: map[string]*glxlib.Source{
+			"source-parish-register": {
+				Type:  glxlib.SourceTypeChurchRegister,
+				Title: "Liepen parish register, burials",
+			},
+		},
+		Citations: map[string]*glxlib.Citation{
+			"citation-death-entry": {SourceID: "source-parish-register"},
+		},
+		Assertions: map[string]*glxlib.Assertion{
+			"assertion-death": {
+				Subject:   glxlib.EntityRef{Event: "event-death"},
+				Citations: []string{"citation-death-entry"},
+			},
+		},
+		Relationships: map[string]*glxlib.Relationship{},
+	}
+}
+
+func coverageRecordByLabel(t *testing.T, result *coverageResult, label string) coverageRecord {
+	t.Helper()
+
+	for _, r := range result.Records {
+		if r.Label == label {
+			return r
+		}
+	}
+	t.Fatalf("no %q record in coverage output", label)
+
+	return coverageRecord{}
+}
+
+func TestBuildCoverage_UnevidencedEventIsNotARecordFound(t *testing.T) {
+	archive := archiveWithUnevidencedBirth()
+
+	result := buildCoverage("person-x", archive.Persons["person-x"], archive)
+
+	birth := coverageRecordByLabel(t, result, "Birth record")
+	assert.False(t, birth.Found,
+		"a birth event nothing backs is a conclusion, not a birth record found")
+	assert.Equal(t, "high", birth.Priority, "the missing birth record is still worth chasing")
+	assert.Empty(t, birth.SourceRef,
+		"source_ref must not name the unevidenced event, which a caller would read as evidence")
+	assert.Contains(t, birth.Description, "event-birth",
+		"the unsourced birth event is still reported, so it is not silently dropped")
+
+	death := coverageRecordByLabel(t, result, "Death record")
+	assert.True(t, death.Found, "the death event is cited to the parish register")
+	assert.Equal(t, "event-death", death.SourceRef)
+}
+
+func TestBuildCoverage_EvidenceOnEventSubjectAssertionCounts(t *testing.T) {
+	// The shape the example archives in this repo use: the record is cited on
+	// an assertion whose subject is the birth event.
+	archive := archiveWithUnevidencedBirth()
+	archive.Sources["source-birth-register"] = &glxlib.Source{
+		Type:  glxlib.SourceTypeVitalRecord,
+		Title: "Liepen parish register, baptisms",
+	}
+	archive.Citations["citation-baptism-entry"] = &glxlib.Citation{SourceID: "source-birth-register"}
+	archive.Assertions["assertion-birth"] = &glxlib.Assertion{
+		Subject:   glxlib.EntityRef{Event: "event-birth"},
+		Citations: []string{"citation-baptism-entry"},
+	}
+
+	result := buildCoverage("person-x", archive.Persons["person-x"], archive)
+
+	birth := coverageRecordByLabel(t, result, "Birth record")
+	assert.True(t, birth.Found, "the birth event is now cited to a record")
+	assert.Equal(t, "event-birth", birth.SourceRef)
+	assert.Empty(t, birth.Priority)
+	assert.Empty(t, birth.Description)
+}
+
+func TestBuildCoverage_UnevidencedEventDoesNotCountTowardScore(t *testing.T) {
+	archive := archiveWithUnevidencedBirth()
+	withoutBirthEvidence := buildCoverage("person-x", archive.Persons["person-x"], archive)
+
+	archive.Assertions["assertion-birth"] = &glxlib.Assertion{
+		Subject: glxlib.EntityRef{Event: "event-birth"},
+		Sources: []string{"source-parish-register"},
+	}
+	withBirthEvidence := buildCoverage("person-x", archive.Persons["person-x"], archive)
+
+	assert.Equal(t, withoutBirthEvidence.Expected, withBirthEvidence.Expected,
+		"evidence changes what is found, not what is expected")
+	assert.Equal(t, withoutBirthEvidence.Found+1, withBirthEvidence.Found,
+		"citing the birth event is what moves the score, not recording the event")
+}
+
+func TestBuildCoverage_UnevidencedMarriageEventIsNotARecordFound(t *testing.T) {
+	archive := newTestArchiveForCoverage()
+	delete(archive.Assertions, "assertion-event-marriage")
+
+	result := buildCoverage("person-john", archive.Persons["person-john"], archive)
+
+	marriage := coverageRecordByLabel(t, result, "Marriage record — Jane Doe")
+	assert.False(t, marriage.Found, "a marriage event nothing backs is not the marriage record")
+	assert.Empty(t, marriage.SourceRef)
+	assert.Contains(t, marriage.Description, "event-marriage")
+}
+
+func TestBuildCoverage_UnevidencedCensusEventIsNotARecordFound(t *testing.T) {
+	archive := newTestArchiveForCoverage()
+	delete(archive.Assertions, "assertion-event-census-1850")
+
+	result := buildCoverage("person-john", archive.Persons["person-john"], archive)
+
+	census1850 := coverageRecordByLabel(t, result, "1850 US Census (age ~10)")
+	assert.False(t, census1850.Found, "a census event nothing backs is not the census record")
+	assert.Contains(t, census1850.Description, "event-census-1850")
+	assert.Contains(t, census1850.Description, "first census to list individual names",
+		"the year annotation is kept alongside the note")
+}
+
+func TestEventsWithEvidence(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Sources: map[string]*glxlib.Source{
+			"source-1": {Type: glxlib.SourceTypeVitalRecord, Title: "Birth register"},
+		},
+		Citations: map[string]*glxlib.Citation{
+			"citation-1": {SourceID: "source-1"},
+		},
+		Assertions: map[string]*glxlib.Assertion{
+			"assertion-cited": {
+				Subject:   glxlib.EntityRef{Event: "event-cited"},
+				Citations: []string{"citation-1"},
+			},
+			"assertion-sourced": {
+				Subject: glxlib.EntityRef{Event: "event-sourced"},
+				Sources: []string{"source-1"},
+			},
+			"assertion-bare": {
+				Subject:  glxlib.EntityRef{Event: "event-bare"},
+				Property: "date",
+				Value:    "1840",
+			},
+			"assertion-dangling": {
+				Subject:   glxlib.EntityRef{Event: "event-dangling"},
+				Citations: []string{"citation-missing"},
+				Sources:   []string{"source-missing"},
+			},
+			"assertion-about-person": {
+				Subject:   glxlib.EntityRef{Person: "person-1"},
+				Citations: []string{"citation-1"},
+			},
+		},
+	}
+
+	evidenced := eventsWithEvidence(archive)
+
+	assert.True(t, evidenced["event-cited"], "a resolved citation is evidence")
+	assert.True(t, evidenced["event-sourced"], "a resolved source is evidence")
+	assert.False(t, evidenced["event-bare"], "an assertion citing nothing is not evidence")
+	assert.False(t, evidenced["event-dangling"],
+		"a dangling reference is a validation error, not evidence")
+	assert.False(t, evidenced["person-1"], "a person-subject assertion evidences no event")
+	assert.Len(t, evidenced, 2)
+}
+
+func TestEventsWithEvidence_MixedAssertionsOnOneEvent(t *testing.T) {
+	// One event carrying both an uncited assertion and a cited one is evidenced:
+	// the order the assertion map is walked in must not decide the answer.
+	archive := &glxlib.GLXFile{
+		Sources: map[string]*glxlib.Source{
+			"source-1": {Type: glxlib.SourceTypeVitalRecord},
+		},
+		Assertions: map[string]*glxlib.Assertion{
+			"assertion-bare": {
+				Subject:  glxlib.EntityRef{Event: "event-1"},
+				Property: "date",
+				Value:    "1840",
+			},
+			"assertion-sourced": {
+				Subject: glxlib.EntityRef{Event: "event-1"},
+				Sources: []string{"source-1"},
+			},
+		},
+	}
+
+	for range 20 {
+		assert.True(t, eventsWithEvidence(archive)["event-1"])
+	}
+}
+
+func TestBuildCoverage_JSONReportsUnevidencedEventAsNotFound(t *testing.T) {
+	archive := archiveWithUnevidencedBirth()
+
+	result := buildCoverage("person-x", archive.Persons["person-x"], archive)
+
+	data, err := json.Marshal(result)
+	require.NoError(t, err)
+
+	var decoded struct {
+		Records []struct {
+			Label     string `json:"label"`
+			Found     bool   `json:"found"`
+			SourceRef string `json:"source_ref"`
+		} `json:"records"`
+	}
+	require.NoError(t, json.Unmarshal(data, &decoded))
+
+	for _, r := range decoded.Records {
+		if r.Label == "Birth record" {
+			assert.False(t, r.Found, "a caller reading found must not be told a missing record exists")
+			assert.Empty(t, r.SourceRef)
+
+			return
+		}
+	}
+	t.Fatal("no Birth record in JSON output")
 }
