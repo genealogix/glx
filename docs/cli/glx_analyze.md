@@ -53,7 +53,7 @@ glx analyze [person] [flags]
 ```
   -a, --archive string   Archive path (directory or single file) (default ".")
   -c, --check string     Run a single analysis category (gaps, evidence, consistency, suggestions)
-      --country string   Country whose census schedule to assume for persons whose places name no country (default "United States"; "none" to suggest nothing)
+      --country string   Country whose census schedule to assume for persons whose places name no country (default "none", which suggests no census records)
   -f, --format string    Output format (json for machine-readable)
   -h, --help             help for analyze
   -p, --person string    Filter results to a specific person (ID or name)
