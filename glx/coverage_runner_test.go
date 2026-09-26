@@ -1139,6 +1139,9 @@ func TestBuildCoverage_UnevidencedMarriageEventIsNotARecordFound(t *testing.T) {
 }
 
 func TestBuildCoverage_UnevidencedCensusEventIsNotARecordFound(t *testing.T) {
+	// This case is about census evidence, not the country gate, so it opts
+	// into the US schedule the way --country "United States" would (#186).
+	setCensusFallback(t, countryUnitedStates)
 	archive := newTestArchiveForCoverage()
 	delete(archive.Assertions, "assertion-event-census-1850")
 
