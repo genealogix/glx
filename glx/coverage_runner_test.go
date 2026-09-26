@@ -153,6 +153,9 @@ func TestBuildCoverage_BasicPerson(t *testing.T) {
 }
 
 func TestBuildCoverage_CensusRecords(t *testing.T) {
+	// This case is about census-year logic, not the country gate, so it opts
+	// into the US schedule the way --country "United States" would (#186).
+	setCensusFallback(t, countryUnitedStates)
 	archive := newTestArchiveForCoverage()
 	person := archive.Persons["person-john"]
 
@@ -356,6 +359,9 @@ func TestFindPersonForCoverage(t *testing.T) {
 }
 
 func TestBuildCoverage_MaxLifespanCap(t *testing.T) {
+	// This case is about census-year logic, not the country gate, so it opts
+	// into the US schedule the way --country "United States" would (#186).
+	setCensusFallback(t, countryUnitedStates)
 	// Person born 1832, no death date — should cap census records at birth+100
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
@@ -406,6 +412,9 @@ func TestBuildCoverage_MaxLifespanCap(t *testing.T) {
 }
 
 func TestBuildCoverage_BurialInfersDeath(t *testing.T) {
+	// This case is about census-year logic, not the country gate, so it opts
+	// into the US schedule the way --country "United States" would (#186).
+	setCensusFallback(t, countryUnitedStates)
 	// Person born 1832, no death event, but has burial in 1863
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
@@ -465,6 +474,9 @@ func TestBuildCoverage_BurialInfersDeath(t *testing.T) {
 }
 
 func TestBuildCoverage_1890Note(t *testing.T) {
+	// This case is about census-year logic, not the country gate, so it opts
+	// into the US schedule the way --country "United States" would (#186).
+	setCensusFallback(t, countryUnitedStates)
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
 			"person-1890": {
