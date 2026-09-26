@@ -1,0 +1,17 @@
+﻿0 HEAD
+1 GEDC
+2 VERS 7.0
+1 NOTE This file is intended to provide coverage of parts of the specification and does not contain meaningful historical or genealogical data.
+1 SOUR Test
+0 @I1@ INDI
+1 NAME John /Doe/
+1 BIRT
+2 PLAC Town, Country
+3 _LOC @LOC1@
+0 @LOC1@ _LOC
+1 NAME Town
+2 DATE FROM 1800 TO 1900
+1 _LOC @LOC2@
+0 @LOC2@ _LOC
+1 NAME Country
+0 TRLR

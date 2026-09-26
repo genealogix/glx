@@ -1,0 +1,25 @@
+﻿0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @1@ OBJE
+1 FILE example.jpg
+2 FORM image/jpeg
+3 MEDI PHOTO
+2 TITL Example Image File
+1 FILE example.mp3
+2 FORM application/x-mp3
+2 TITL Sound Clip
+1 NOTE note in OBJE record
+0 @X1@ OBJE
+1 FILE gifts.webm
+2 FORM application/x-other
+3 MEDI VIDEO
+1 FILE cake.webm
+2 FORM application/x-other
+3 MEDI VIDEO
+1 NOTE note in OBJE link
+0 @2@ INDI
+1 OBJE @1@
+1 OBJE @X1@
+2 TITL fifth birthday party
+0 TRLR

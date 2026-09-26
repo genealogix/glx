@@ -28,9 +28,12 @@ Files should start with a header like:
 ### Data Format Testing
 - **[age-values/](https://github.com/genealogix/glx/tree/main/glx/testdata/gedcom/7.0/age-values)** - Age field formats (5.9 KB)
 - **[date-formats/](https://github.com/genealogix/glx/tree/main/glx/testdata/gedcom/7.0/date-formats)** - Date format validation (348 KB)
+- **[long-url/](https://github.com/genealogix/glx/tree/main/glx/testdata/gedcom/7.0/long-url)** - Single line longer than the 5.5.1 255-character limit
+- **[media-objects/](https://github.com/genealogix/glx/tree/main/glx/testdata/gedcom/7.0/media-objects)** - OBJE records, multi-file media, and FILE URI forms
 
 ### Family Structures
 - **[same-sex-marriage/](https://github.com/genealogix/glx/tree/main/glx/testdata/gedcom/7.0/same-sex-marriage)** - Same-sex marriage handling
+- **[remarriage/](https://github.com/genealogix/glx/tree/main/glx/testdata/gedcom/7.0/remarriage)** - Divorce and remarriage, as one family or as two
 
 ## Key GEDCOM 7.0 Changes from 5.5.1
 
