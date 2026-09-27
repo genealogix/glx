@@ -29,10 +29,12 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -238,6 +240,13 @@ func snapshotTree(t *testing.T, root string) map[string][]byte {
 	require.NoError(t, err)
 
 	return files
+}
+
+// treePaths returns the sorted relative paths of every regular file under root.
+func treePaths(t *testing.T, root string) []string {
+	t.Helper()
+
+	return slices.Sorted(maps.Keys(snapshotTree(t, root)))
 }
 
 // treeDiff classifies the differences between two snapshots.
