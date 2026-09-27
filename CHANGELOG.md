@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **`id=$(glx add …)` now captures just the ID** — Every `glx add` subcommand printed an `Adding persons person-…` progress line to stdout ahead of the ID. The capture the `add` help documents (`person_id=$(glx add person …)`) therefore got two lines unless you also passed `--quiet`. Progress now goes to stderr and stdout carries only the created ID; `--quiet` still silences the progress line (#1205)
 - **Typos in subcommands and stray arguments are errors instead of silent successes** — `glx add bogus`, `glx cache bogus`, and `glx census bogus` printed help and exited 0. `glx add person extra --given A` ignored `extra` and created the person anyway, and `glx census add` ignored stray arguments the same way. All of these now exit non-zero with `unknown command "…"` (#1205)
 - **`glx link` records today's date as `accessed`, not UTC's** — The citation's `accessed` property was stamped with the UTC calendar date, so a lookup in the US evening was recorded as accessed the next day. It now uses the local date where the command runs (#1205)
+- **`glx census add` output validates without warnings** — Household members' ages were written to `age_at_event` as integers, while the standard vocabulary types that property as a string (it carries GEDCOM `AGE` values such as `3y 2m`). As a result, every archive a census import touched showed one `expected string value, got int` warning per member. Ages are now written as strings (#1205)
 
 ## [0.0.0-beta.12] - 2026-09-16
 
