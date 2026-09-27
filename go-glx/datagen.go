@@ -117,7 +117,10 @@ func GenerateTestData(numPeople int) (*GLXFile, error) {
 
 	// Generate some relationships
 	if numPeople > 1 {
-		relationshipTypes := []string{"marriage", "sibling", "partner", "friend"}
+		// Every type and role here must exist in the standard vocabularies, or
+		// `glx init --create-test-data` intermittently produces an archive
+		// that fails validation, depending on which types the draw picks.
+		relationshipTypes := []string{RelationshipTypeMarriage, RelationshipTypeSibling, RelationshipTypePartner, RelationshipTypeAssociate}
 		for range numPeople / 2 {
 			p1 := personIDs[secureIntn(len(personIDs))]
 			p2 := personIDs[secureIntn(len(personIDs))]
@@ -129,15 +132,13 @@ func GenerateTestData(numPeople int) (*GLXFile, error) {
 			relType := relationshipTypes[secureIntn(len(relationshipTypes))]
 
 			var roles []string
-			switch relType {
-			case "marriage":
-				roles = []string{"spouse", "spouse"}
-			case "sibling":
-				roles = []string{"sibling", "sibling"}
-			case "partner":
-				roles = []string{"partner", "partner"}
+			switch {
+			case IsCoupleRelationshipType(relType):
+				roles = []string{ParticipantRoleSpouse, ParticipantRoleSpouse}
+			case relType == RelationshipTypeSibling:
+				roles = []string{ParticipantRoleSibling, ParticipantRoleSibling}
 			default:
-				roles = []string{"friend", "friend"}
+				roles = []string{ParticipantRoleAssociate, ParticipantRoleAssociate}
 			}
 
 			glxFile.Relationships[relID] = &Relationship{

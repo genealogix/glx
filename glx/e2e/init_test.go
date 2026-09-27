@@ -68,15 +68,19 @@ func TestInit_SingleFile(t *testing.T) {
 	assert.Equal(t, 0, validate.exitCode, validate.stdout+validate.stderr)
 }
 
+// Test data draws relationship types at random, one per two persons, so with
+// only a few persons a type whose roles are missing from the vocabulary
+// fails only occasionally. Twenty persons draw ten, enough that every type
+// shows up in nearly every run.
 func TestInit_TestDataIsValid(t *testing.T) {
 	parent := t.TempDir()
 
-	res := runGLX(t, parent, "init", "family", "--create-test-data", "3")
+	res := runGLX(t, parent, "init", "family", "--create-test-data", "20")
 
 	require.Equal(t, 0, res.exitCode, res.stderr)
 	persons, err := os.ReadDir(filepath.Join(parent, "family", "persons"))
 	require.NoError(t, err)
-	assert.Len(t, persons, 3)
+	assert.Len(t, persons, 20)
 	assertArchiveValid(t, filepath.Join(parent, "family"))
 }
 
