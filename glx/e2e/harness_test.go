@@ -264,6 +264,51 @@ func diffTrees(before, after map[string][]byte) treeDiff {
 	return d
 }
 
+// assertTreeUnchanged asserts that no file under root was changed, created,
+// or removed since before was taken.
+func assertTreeUnchanged(t *testing.T, before map[string][]byte, root string) {
+	t.Helper()
+	diff := diffTrees(before, snapshotTree(t, root))
+	assert.Empty(t, diff.changed, "files changed")
+	assert.Empty(t, diff.created, "files created")
+	assert.Empty(t, diff.removed, "files removed")
+}
+
+// statDir returns path's FileInfo for a later assertSameDirectory.
+func statDir(t *testing.T, path string) os.FileInfo {
+	t.Helper()
+	info, err := os.Stat(path)
+	require.NoError(t, err)
+	require.True(t, info.IsDir(), "%s is not a directory", path)
+
+	return info
+}
+
+// assertSameDirectory asserts that path is still the directory captured in
+// before. A command that swaps the archive directory for a new one leaves a
+// shell sitting in it on a deleted inode (#1192); the path still resolves, so
+// only an identity check catches it.
+func assertSameDirectory(t *testing.T, before os.FileInfo, path string) {
+	t.Helper()
+	after, err := os.Stat(path)
+	require.NoError(t, err)
+	assert.True(t, os.SameFile(before, after), "%s was replaced by a new directory (#1192)", path)
+}
+
+// assertArchiveValid runs `glx validate` on archive and asserts it passes.
+func assertArchiveValid(t *testing.T, archive string) {
+	t.Helper()
+	res := runGLX(t, archive, "validate", ".")
+	assert.Equal(t, 0, res.exitCode, "archive no longer validates:\n%s%s", res.stdout, res.stderr)
+}
+
+// assertExitWithStderr asserts res failed and its stderr mentions want.
+func assertExitWithStderr(t *testing.T, res result, want string) {
+	t.Helper()
+	assert.NotEqual(t, 0, res.exitCode, "expected a non-zero exit")
+	assert.Contains(t, res.stderr, want)
+}
+
 func TestCopyTreeFollowingSymlinks_DirectorySymlink(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("symlink creation needs elevated privileges on Windows")

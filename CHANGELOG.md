@@ -12,6 +12,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [Unreleased]
 
+### Fixed
+
+- **`glx merge`, `glx merge-persons`, and `glx migrate` no longer strand your shell in a deleted directory** — Run from inside the archive (the default `--into .` / `--archive .`, or `glx migrate .`), these commands replaced the archive directory with a freshly written copy. The shell that ran them was left sitting in the old, now-deleted directory: `ls` showed nothing and `git` failed with "Unable to read current working directory" until you `cd`'d back in. This is the same bug #1192 fixed for `glx rename`. The safe-write swap now keeps the archive directory and replaces only the entity directories, `vocabularies/`, and `metadata.glx` inside it. `.git`, `README.md`, and other non-archive files are never moved at all. If the fresh output would collide with one of those files, the swap is refused and undone before anything is deleted, rather than leaving a partial `.bak` behind (#1205)
+
 ## [0.0.0-beta.12] - 2026-09-16
 
 ### Added

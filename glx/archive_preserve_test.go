@@ -555,10 +555,11 @@ func TestSafeWrite_PreservesSymlinkChainWhoseHopSortsFirst(t *testing.T) {
 	assert.NoDirExists(t, archiveDir+".bak")
 }
 
-// A managed top-level name (metadata.glx) that is a skipped symlink is not
-// carried over by restoreForeignEntries, so a fresh metadata.glx from the
-// writer is a genuine collision and must keep the backup.
-func TestSafeWrite_ManagedTopLevelCollisionRetainsBackup(t *testing.T) {
+// A managed top-level name (metadata.glx) that is a skipped symlink is foreign
+// and stays put, so a fresh metadata.glx from the writer is a genuine
+// collision. The swap is refused and undone: the archive is left exactly as it
+// was, with no backup to recover from because nothing was lost.
+func TestSafeWrite_ManagedTopLevelCollisionLeavesArchiveUntouched(t *testing.T) {
 	if runtime.GOOS == goosWindows {
 		t.Skip("symlink creation requires elevation on Windows")
 	}
@@ -573,11 +574,43 @@ func TestSafeWrite_ManagedTopLevelCollisionRetainsBackup(t *testing.T) {
 	if loaded.ImportMetadata == nil {
 		t.Skip("metadata is not loaded from an entity file in this build; collision cannot be staged")
 	}
+	before, err := computeFSFingerprint(archiveDir)
+	require.NoError(t, err)
+
 	err = safeWriteMultiFileArchive(archiveDir, loaded)
 
 	require.ErrorIs(t, err, ErrPreservedEntryCollision)
-	_, lerr := os.Lstat(filepath.Join(archiveDir+".bak", "metadata.glx"))
-	assert.NoError(t, lerr, "the backup with the skipped link must be retained")
+	info, lerr := os.Lstat(filepath.Join(archiveDir, "metadata.glx"))
+	require.NoError(t, lerr, "the skipped link must still be in place")
+	assert.NotZero(t, info.Mode()&os.ModeSymlink)
+	after, err := computeFSFingerprint(archiveDir)
+	require.NoError(t, err)
+	assert.Equal(t, before, after, "a refused swap must leave the archive untouched")
+	assert.NoDirExists(t, archiveDir+".bak")
+}
+
+// The archive directory is often the user's shell cwd. Replacing it with a new
+// directory leaves that shell in a deleted inode (#1192), so the swap must
+// keep the directory itself and replace only what is inside it.
+func TestSafeWrite_KeepsArchiveDirectoryItself(t *testing.T) {
+	archiveDir := filepath.Join(t.TempDir(), "archive")
+	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
+	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	before, err := os.Stat(archiveDir)
+	require.NoError(t, err)
+
+	t.Chdir(archiveDir)
+	require.NoError(t, safeWriteMultiFileArchive(".", preserveTestArchive()))
+
+	after, err := os.Stat(archiveDir)
+	require.NoError(t, err)
+	assert.True(t, os.SameFile(before, after), "the archive directory was replaced rather than rewritten")
+	assert.NoDirExists(t, archiveDir+".bak")
+	entries, err := os.ReadDir(filepath.Dir(archiveDir))
+	require.NoError(t, err)
+	for _, e := range entries {
+		assert.False(t, strings.HasPrefix(e.Name(), ".glx-tmp-"), "temp dir %s left behind", e.Name())
+	}
 }
 
 // fsCaseSensitive reports whether dir lives on a case-sensitive filesystem.
@@ -761,10 +794,10 @@ func TestSafeWrite_UnreadableMediaInStaleBackupIsRefused(t *testing.T) {
 	assert.FileExists(t, filepath.Join(stale, "media", "files", "portrait.jpg"), "the backup must be left intact")
 }
 
-// A skipped link's chain can pass through a top-level foreign entry that
-// restoreForeignEntries carries across before the nested entries are looked
-// at. Classification has to happen on the intact backup, or the nested link
-// resolves no further than the missing hop and is deleted with the backup.
+// A skipped link's chain can pass through a top-level foreign entry that never
+// enters the backup. Classification has to happen on the intact archive, or
+// the nested link, looked at inside the backup, resolves no further than the
+// missing hop and is deleted with the backup.
 func TestSafeWrite_PreservesLinkThroughTopLevelForeignLink(t *testing.T) {
 	if runtime.GOOS == goosWindows {
 		t.Skip("symlink creation requires elevation on Windows")

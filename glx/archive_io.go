@@ -21,6 +21,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
@@ -66,8 +67,12 @@ func isManagedTopLevel(entry fs.DirEntry) bool {
 // first, then swaps it into place. This prevents archive destruction if the write
 // fails partway through (e.g., power loss, disk full, signal).
 //
-// Non-archive top-level entries in destPath (e.g., .git, README.md, CLAUDE.md,
-// dotfiles) are preserved across the swap; see archiveManagedTopLevel.
+// The swap moves the managed top-level entries (entity directories,
+// vocabularies/, metadata.glx), never destPath itself: destPath is commonly the
+// user's shell working directory, and replacing the directory would leave that
+// shell in a deleted inode that no longer shows the archive (#1192). Non-archive
+// top-level entries (e.g., .git, README.md, CLAUDE.md, dotfiles) are therefore
+// never moved at all; see archiveManagedTopLevel.
 func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
 	// Resolve to absolute path so rename and cwd containment checks work
 	// reliably for relative paths like ".". mergeArchives does the same.
@@ -78,8 +83,9 @@ func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
 	destPath = absPath
 
 	// On Windows, a directory cannot be renamed while it is any process's cwd.
-	// If our cwd is inside (or equal to) destPath, temporarily move to the
-	// parent directory so the rename operations succeed.
+	// If our cwd is inside (or equal to) destPath — possibly inside one of the
+	// managed directories the swap moves — temporarily move to the parent
+	// directory so the rename operations succeed.
 	parentDir := filepath.Dir(destPath)
 	if cwd, err := os.Getwd(); err == nil {
 		if absCwd, err2 := filepath.Abs(cwd); err2 == nil {
@@ -95,8 +101,22 @@ func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
 		}
 	}
 
+	if _, err := os.Stat(destPath); err != nil {
+		return fmt.Errorf("cannot access destination: %w", err)
+	}
 	if err := refuseTopLevelGLXFiles(destPath); err != nil {
 		return err
+	}
+
+	// Decide which entries the loader skipped while the archive is still
+	// intact. A skipped symlink is recognized through every hop of its chain,
+	// and a hop can be a top-level foreign entry (persons/z.glx ->
+	// ../alias.glx -> .drafts/x.glx) that never enters the backup, so
+	// classification has to precede every move. The entries themselves are
+	// moved last, once the larger units they may sit inside have gone across.
+	skipped, err := classifySkippedEntries(destPath, destPath)
+	if err != nil {
+		return fmt.Errorf("preserving skipped entries: %w", err)
 	}
 
 	// Create temp dir next to the destination (same filesystem for rename)
@@ -105,55 +125,24 @@ func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
 		return fmt.Errorf("creating temp directory: %w", err)
 	}
 
-	// Clean up temp dir on failure
-	success := false
-	defer func() {
-		if !success {
-			_ = os.RemoveAll(tmpDir)
-		}
-	}()
+	// A completed swap leaves the temp dir empty; a failed one leaves only
+	// fresh output that can be regenerated. Either way it goes.
+	defer os.RemoveAll(tmpDir) //nolint:errcheck // best-effort cleanup
 
 	// Write the archive to temp
 	if err := writeMultiFileArchive(tmpDir, archive, false); err != nil {
 		return fmt.Errorf("writing to temp directory: %w", err)
 	}
 
-	// Create backup of the original
+	// Back up the original's managed entries, then move the fresh ones in.
+	// Foreign entries (.git, README.md, … — genealogix/glx#692) stay where they
+	// are throughout, and so does destPath itself.
 	backupDir := destPath + ".bak"
 	if err := removeStaleBackup(backupDir); err != nil {
 		return err
 	}
-	if err := robustRename(destPath, backupDir); err != nil {
-		return fmt.Errorf("backing up original: %w", err)
-	}
-
-	// Move temp into place
-	if err := robustRename(tmpDir, destPath); err != nil {
-		// Restore backup on failure
-		_ = robustRename(backupDir, destPath) // best-effort restore
-
-		return fmt.Errorf("moving archive into place: %w", err)
-	}
-
-	// Decide which entries the loader skipped while the backup is still intact.
-	// A skipped symlink is recognized through every hop of its chain, and a hop
-	// can be a top-level foreign entry (persons/z.glx -> ../alias.glx ->
-	// .drafts/x.glx) that restoreForeignEntries moves away, so classification
-	// has to precede every move out of the backup. The entries themselves are
-	// moved last, once the larger units they may sit inside have gone across.
-	skipped, err := classifySkippedEntries(backupDir, destPath)
-	if err != nil {
-		// Leave backupDir in place so the user can recover. Do not mark success.
-		return fmt.Errorf("preserving skipped entries: %w", err)
-	}
-
-	// Preserve foreign (non-managed) top-level entries from the backup back into
-	// the newly-written archive. Without this step the swap silently destroys
-	// .git, README.md, and any other user content that sits alongside the
-	// managed entity directories — see genealogix/glx#692.
-	if err := restoreForeignEntries(backupDir, destPath); err != nil {
-		// Leave backupDir in place so the user can recover. Do not mark success.
-		return fmt.Errorf("preserving non-archive files: %w", err)
+	if err := swapManagedEntries(destPath, tmpDir, backupDir); err != nil {
+		return err
 	}
 
 	// The serializer writes Media entity YAML under media/ but never touches
@@ -167,23 +156,22 @@ func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
 	// because its target already exists. Moving media/files/ first carries any
 	// dot entries inside it along with the binaries.
 	if err := preserveMediaBinaries(backupDir, destPath); err != nil {
-		// Leave backupDir in place so the user can recover. Do not mark success.
+		// Leave backupDir in place so the user can recover.
 		return fmt.Errorf("preserving media binaries: %w", err)
 	}
 
 	// Entries the loader skips are never re-emitted by the serializer, so the
-	// fresh tmpDir cannot contain them. Carry them across the swap for the
-	// same reason foreign top-level entries are carried across: otherwise the
-	// swap destroys them silently.
+	// fresh tmpDir cannot contain them. Those nested inside a managed
+	// directory went into the backup with it; carry them back, or deleting
+	// the backup destroys them silently. Top-level ones never moved.
 	if err := moveSkippedEntries(backupDir, destPath, skipped); err != nil {
-		// Leave backupDir in place so the user can recover. Do not mark success.
+		// Leave backupDir in place so the user can recover.
 		return fmt.Errorf("preserving skipped entries: %w", err)
 	}
 
 	// Clean up backup (now contains only managed entries that have been
 	// superseded by the fresh write).
 	_ = os.RemoveAll(backupDir)
-	success = true
 
 	return nil
 }
@@ -241,39 +229,78 @@ func removeStaleBackup(backupDir string) error {
 	return nil
 }
 
-// restoreForeignEntries moves every top-level entry from backupDir into destPath
-// unless the entry name is in archiveManagedTopLevel. The source and destination
-// are on the same filesystem (backupDir and destPath share a parent), so each
-// rename is atomic.
+// swapManagedEntries replaces destPath's managed top-level entries with the
+// entries of the freshly written freshDir, in two phases: every managed entry
+// of destPath moves into a new backupDir, then every entry of freshDir moves
+// into destPath. All three directories share a parent, so each rename is
+// atomic and the data exists under a predictable name at every intermediate
+// state.
 //
-// Preservation runs after the swap rather than before, so at every intermediate
-// state the user's data exists on disk under a predictable name: before the
-// rename it lives in backupDir (still named destPath.bak); after it lives in
-// destPath. If any rename fails the backup is retained so the user can recover.
-func restoreForeignEntries(backupDir, destPath string) error {
-	entries, err := os.ReadDir(backupDir)
-	if err != nil {
-		return fmt.Errorf("reading backup directory: %w", err)
+// A fresh entry whose name is still taken in destPath once the managed entries
+// have left collides with a foreign entry the writer cannot replace:
+// metadata.glx from loaded metadata beside a metadata.glx symlink the loader
+// skipped, or persons/ beside a PERSONS file on a case-insensitive filesystem.
+// Renaming over it would silently destroy that entry, so the swap is refused.
+// On that or any other failure both phases are undone, leaving destPath as it
+// was and no backup behind.
+func swapManagedEntries(destPath, freshDir, backupDir string) error {
+	if err := os.Mkdir(backupDir, dirPermissions); err != nil {
+		return fmt.Errorf("creating backup directory: %w", err)
 	}
-	for _, entry := range entries {
-		name := entry.Name()
-		if isManagedTopLevel(entry) {
+
+	var backedUp, placed []string
+	rollback := func() {
+		// Best effort, newest move first: a failure here leaves the entry at a
+		// predictable path (freshDir, backupDir) rather than losing it, and
+		// backupDir is only removed once it is empty again.
+		for _, p := range slices.Backward(placed) {
+			_ = robustRename(filepath.Join(destPath, p), filepath.Join(freshDir, p))
+		}
+		for _, b := range slices.Backward(backedUp) {
+			_ = robustRename(filepath.Join(backupDir, b), filepath.Join(destPath, b))
+		}
+		_ = os.Remove(backupDir)
+	}
+
+	current, err := os.ReadDir(destPath)
+	if err != nil {
+		rollback()
+
+		return fmt.Errorf("reading archive directory: %w", err)
+	}
+	for _, entry := range current {
+		if !isManagedTopLevel(entry) {
 			continue
 		}
-		src := filepath.Join(backupDir, name)
+		name := entry.Name()
+		if err := robustRename(filepath.Join(destPath, name), filepath.Join(backupDir, name)); err != nil {
+			rollback()
+
+			return fmt.Errorf("backing up %s: %w", name, err)
+		}
+		backedUp = append(backedUp, name)
+	}
+
+	fresh, err := os.ReadDir(freshDir)
+	if err != nil {
+		rollback()
+
+		return fmt.Errorf("reading temp directory: %w", err)
+	}
+	for _, entry := range fresh {
+		name := entry.Name()
 		dst := filepath.Join(destPath, name)
-		// The fresh output holds only managed names, so a foreign entry that
-		// already exists there means the writer produced a file with the same
-		// name (metadata.glx from loaded metadata beside a metadata.glx symlink
-		// the loader skipped, or persons/ beside a PERSONS file on a
-		// case-insensitive filesystem). Renaming over it would silently replace
-		// the writer's output; refuse and keep the backup instead.
 		if _, err := os.Lstat(dst); err == nil {
+			rollback()
+
 			return fmt.Errorf("%w: %s", ErrPreservedEntryCollision, name)
 		}
-		if err := robustRename(src, dst); err != nil {
-			return fmt.Errorf("restoring %s: %w", name, err)
+		if err := robustRename(filepath.Join(freshDir, name), dst); err != nil {
+			rollback()
+
+			return fmt.Errorf("moving %s into place: %w", name, err)
 		}
+		placed = append(placed, name)
 	}
 
 	return nil
@@ -321,7 +348,7 @@ func firstSkippedEntry(backupDir string) (string, error) {
 // user's say-so — see genealogix/glx#1247 — so the write is refused before
 // anything is touched. A missing destination is a fresh archive and passes,
 // and so does a dot-prefixed file (._family.glx, .draft.glx): the loader skips
-// those, and restoreForeignEntries carries them across untouched.
+// those, and the swap leaves them where they are.
 func refuseTopLevelGLXFiles(destPath string) error {
 	entries, err := os.ReadDir(destPath)
 	if err != nil {
@@ -340,32 +367,33 @@ func refuseTopLevelGLXFiles(destPath string) error {
 	return nil
 }
 
-// classifySkippedEntries returns the backup-relative paths of every entry the
-// loader skipped (loaderSkips): dot-prefixed names, symlinks and placeholders
-// into dot-prefixed directories. The serializer never re-emits these, so the
-// swap has to carry them across or it deletes them silently with exit 0 and
-// no .bak left behind — persons/.drafts/ is the common case, since "persons"
-// is managed and the whole subtree goes with the backup.
+// classifySkippedEntries returns the root-relative paths of every entry under
+// root that the loader skipped (loaderSkips): dot-prefixed names, symlinks and
+// placeholders into dot-prefixed directories. The serializer never re-emits
+// these, so the swap has to carry them across or it deletes them silently with
+// exit 0 and no .bak left behind — persons/.drafts/ is the common case, since
+// "persons" is managed and the whole subtree goes with the backup. Backup
+// paths mirror archive paths, so the result addresses both.
 //
-// It must run over the intact backup, before any move: a symlink chain is
-// judged through its intermediate hops, and a hop may itself be about to move
-// (a top-level alias.glx that restoreForeignEntries carries across, or an
-// earlier link in the same directory). Skipped directories are recorded
+// It must run over the intact archive, before any move: a symlink chain is
+// judged through its intermediate hops, and a hop may be about to move (an
+// earlier link in the same managed directory) or may never enter the backup
+// at all (a top-level foreign alias.glx). Skipped directories are recorded
 // without descending; they move as a unit.
-func classifySkippedEntries(backupDir, destPath string) ([]string, error) {
+func classifySkippedEntries(root, destPath string) ([]string, error) {
 	var skipped []string
-	err := filepath.WalkDir(backupDir, func(srcPath string, d fs.DirEntry, walkErr error) error {
+	err := filepath.WalkDir(root, func(srcPath string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
-		if srcPath == backupDir {
+		if srcPath == root {
 			return nil
 		}
-		rel, err := filepath.Rel(backupDir, srcPath)
+		rel, err := filepath.Rel(root, srcPath)
 		if err != nil {
 			return fmt.Errorf("resolving %s: %w", srcPath, err)
 		}
-		if !loaderSkips(backupDir, destPath, rel, d) {
+		if !loaderSkips(root, destPath, rel, d) {
 			return nil
 		}
 		skipped = append(skipped, rel)
@@ -383,9 +411,9 @@ func classifySkippedEntries(backupDir, destPath string) ([]string, error) {
 }
 
 // moveSkippedEntries carries the entries classifySkippedEntries found from the
-// backup into the freshly written archive. It runs last: an entry that has
-// already left the backup inside a larger unit (a top-level dot directory
-// restored as foreign, media/files/.keep inside the media/files/ move) is done
+// backup into the freshly written archive. It runs last: an entry that is not
+// in the backup (a top-level dot directory, which is foreign and never moved,
+// or media/files/.keep, which went back inside the media/files/ move) is done
 // and skipped.
 //
 // Entries are moved, not copied: backupDir and destPath share a parent, so
