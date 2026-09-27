@@ -22,12 +22,16 @@ Subcommands:
   add assertion      Create an assertion
 
 Every subcommand validates supplied values against the archive's vocabularies
-and entity references before writing. The created entity ID is echoed on its
-own line as the final stdout output so it can be captured with shell
-substitution:
+and entity references before writing. The created entity ID is the only
+thing written to stdout (progress goes to stderr), so it can be captured with
+shell substitution:
 
     person_id=$(glx add person --given Johann --surname Jungk --archive .)
     glx add event --type christening --principal "$person_id" --archive .
+
+```
+glx add [flags]
+```
 
 ### Options
 

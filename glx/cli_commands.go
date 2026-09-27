@@ -64,6 +64,15 @@ Use GLX to initialize new archives, validate files, and ensure data quality.`,
 	},
 }
 
+// showHelp is the RunE of a parent command that only groups subcommands (add,
+// cache, census). Paired with Args: cobra.NoArgs it makes an unknown
+// subcommand an error: Cobra treats a command without a Run as help-only and
+// returns before validating arguments, so `glx add bogus` used to print help
+// and exit 0, letting a typo in a script pass silently.
+func showHelp(cmd *cobra.Command, _ []string) error {
+	return cmd.Help()
+}
+
 // silentExitError is returned from a Cobra RunE to terminate the process with
 // a specific exit code without printing an error message. The git merge-driver
 // protocol uses the exit code itself to signal "conflicts remain"; an extra
@@ -1212,6 +1221,8 @@ var censusCmd = &cobra.Command{
 
 Subcommands:
   add    Import a census template into the archive`,
+	Args: cobra.NoArgs,
+	RunE: showHelp,
 }
 
 var (
@@ -1246,6 +1257,7 @@ Use --dry-run to preview what would be generated without writing files.`,
 
   # Verbose output
   glx census add --from 1860-census-lane.yaml --archive my-archive --verbose`,
+	Args: cobra.NoArgs,
 	RunE: runCensusAdd,
 }
 
@@ -2073,6 +2085,8 @@ shown by 'glx cache status', but do not affect staleness. Only multi-file
 
   # Run a command with auto-build on cache miss
   GLX_CACHE=auto glx summary "Jane Webb"`,
+	Args: cobra.NoArgs,
+	RunE: showHelp,
 }
 
 var cacheBuildCmd = &cobra.Command{
