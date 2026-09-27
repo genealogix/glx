@@ -94,13 +94,21 @@ type result struct {
 func runGLX(t *testing.T, workDir string, args ...string) result {
 	t.Helper()
 
+	return runGLXWithEnv(t, nil, workDir, args...)
+}
+
+// runGLXWithEnv is runGLX with extra environment assignments ("KEY=value")
+// applied on top of the inherited environment, e.g. GLX_CACHE=auto or TZ.
+func runGLXWithEnv(t *testing.T, extraEnv []string, workDir string, args ...string) result {
+	t.Helper()
+
 	cmd := exec.CommandContext(t.Context(), glxBinary, args...) //nolint:gosec // args come from the test, not user input
 	cmd.Dir = workDir
 	// Pin the cache mode. Without this the subprocess inherits whatever
 	// GLX_CACHE the developer or CI runner happens to export, so the same test
 	// exercises the cached loader on one machine and the uncached one on
-	// another. Tests that want the cache set it explicitly.
-	cmd.Env = envWithout(os.Environ(), "GLX_CACHE")
+	// another. Tests that want the cache set it explicitly via extraEnv.
+	cmd.Env = append(envWithout(os.Environ(), "GLX_CACHE"), extraEnv...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
