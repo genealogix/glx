@@ -74,7 +74,7 @@ type reportData struct {
 }
 
 // assertionSummary is a short description of an assertion for display.
-type assertionSummary struct { //nolint:revive // SubjectType field name is part of the JSON wire format
+type assertionSummary struct {
 	ID          string
 	SubjectType glxlib.EntityType
 	SubjectID   string

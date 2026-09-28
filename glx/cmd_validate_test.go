@@ -32,7 +32,10 @@ func TestRunValidate_SingleValidFile(t *testing.T) {
 	err := validatePaths(streams, []string{"persons/person-robert-thompson.glx"})
 	require.NoError(t, err, "should successfully validate a valid GLX file")
 	require.Contains(t, out.String(), "Cross-reference validation skipped")
-	require.Contains(t, out.String(), "passed structural and semantic validation")
+	// The success line names what was left out: the cross-reference and
+	// place-hierarchy checks are filtered out of this path, so claiming
+	// "structural and semantic validation" overstated it (#1270).
+	require.Contains(t, out.String(), "passed the checks that apply without the rest of the archive")
 }
 
 func TestValidateSingleFilePaths_FileAndDirectory(t *testing.T) {

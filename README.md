@@ -45,7 +45,7 @@ For a side-by-side look at the GEDCOM-vs-GLX wire formats and the assertion mode
 ## Features
 
 - **📚 Evidence-First Model** — every claim backed by documented sources
-- **🔍 Quality Assessment** — structured evaluation of evidence reliability (0–3 scale)
+- **🔍 Quality Assessment** — structured confidence on every assertion, with the nature of the source and of the information recorded separately
 - **🌳 Git-Native Architecture** — full version control and collaboration support
 - **📋 Human-Readable Format** — clear YAML files instead of binary formats
 - **✅ Schema Validation** — JSON Schema-based validation and error checking

@@ -26,6 +26,112 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// export was the only archive-taking command with a required positional, so
+// the obvious invocation from inside an archive failed on argument count
+// before any export ran (#1274). The archive now defaults to ".", matching
+// stats / serve / validate / places.
+func TestExport_DefaultsArchiveToCurrentDirectory(t *testing.T) {
+	archive := copyExample(t, "basic-family")
+
+	res := runGLX(t, archive, "export", "-f", "70", "-o", "out.ged")
+
+	require.Equal(t, 0, res.exitCode, res.stdout+res.stderr)
+	data, err := os.ReadFile(filepath.Join(archive, "out.ged"))
+	require.NoError(t, err)
+	assert.Contains(t, string(data), "0 HEAD")
+	assert.Contains(t, string(data), "2 VERS 7.0")
+}
+
+// The default must not change what an explicit archive argument does: every
+// invocation that worked before keeps working, and both spellings produce
+// byte-identical output.
+func TestExport_ExplicitArchiveMatchesDefault(t *testing.T) {
+	archive := copyExample(t, "basic-family")
+
+	implicit := runGLX(t, archive, "export", "-f", "70", "-o", "implicit.ged")
+	require.Equal(t, 0, implicit.exitCode, implicit.stdout+implicit.stderr)
+
+	explicit := runGLX(t, archive, "export", ".", "-f", "70", "-o", "explicit.ged")
+	require.Equal(t, 0, explicit.exitCode, explicit.stdout+explicit.stderr)
+
+	fromImplicit, err := os.ReadFile(filepath.Join(archive, "implicit.ged"))
+	require.NoError(t, err)
+	fromExplicit, err := os.ReadFile(filepath.Join(archive, "explicit.ged"))
+	require.NoError(t, err)
+	assert.Equal(t, string(fromImplicit), string(fromExplicit))
+}
+
+// A named archive one directory up still resolves relative to the cwd.
+func TestExport_NamedArchiveFromParentDirectory(t *testing.T) {
+	archive := copyExample(t, "basic-family")
+	parent := filepath.Dir(archive)
+
+	res := runGLX(t, parent, "export", filepath.Base(archive), "-f", "551", "-o", "family.ged")
+
+	require.Equal(t, 0, res.exitCode, res.stdout+res.stderr)
+	assert.FileExists(t, filepath.Join(parent, "family.ged"))
+}
+
+// --output is still required, and its absence is still reported as a missing
+// flag rather than silently writing somewhere.
+func TestExport_StillRequiresOutputFlag(t *testing.T) {
+	archive := copyExample(t, "basic-family")
+
+	res := runGLX(t, archive, "export", "-f", "70")
+
+	assert.NotEqual(t, 0, res.exitCode)
+	assert.Contains(t, res.stderr, `required flag(s) "output" not set`)
+}
+
+// Passing a second positional is a mistake worth reporting, not an argument
+// the command quietly ignores.
+func TestExport_RejectsSecondPositional(t *testing.T) {
+	archive := copyExample(t, "basic-family")
+
+	res := runGLX(t, archive, "export", ".", "extra", "-o", "out.ged")
+
+	assert.NotEqual(t, 0, res.exitCode)
+	assert.Contains(t, res.stderr, "accepts at most 1 arg(s), received 2")
+	assert.NoFileExists(t, filepath.Join(archive, "out.ged"))
+}
+
+// join and split keep both positionals — an output path cannot default — but
+// cobra's "accepts 2 arg(s), received 0" never said which argument was owed
+// (#1274).
+func TestJoinSplit_NameTheMissingPositional(t *testing.T) {
+	dir := t.TempDir()
+
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{"join with none", []string{"join"}, "glx join: missing required argument(s): <input-directory> <output-file>"},
+		{"join with one", []string{"join", "family-archive"}, "glx join: missing required argument(s): <output-file>"},
+		{"split with none", []string{"split"}, "glx split: missing required argument(s): <input-file> <output-directory>"},
+		{"split with one", []string{"split", "family.glx"}, "glx split: missing required argument(s): <output-directory>"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res := runGLX(t, dir, tt.args...)
+
+			assert.NotEqual(t, 0, res.exitCode)
+			assert.Contains(t, res.stderr, tt.want)
+		})
+	}
+}
+
+// Too many positionals are named too, so the count in the message can be
+// matched against the argument list the user typed.
+func TestJoin_NamesPositionalsWhenTooMany(t *testing.T) {
+	dir := t.TempDir()
+
+	res := runGLX(t, dir, "join", "a", "b", "c")
+
+	assert.NotEqual(t, 0, res.exitCode)
+	assert.Contains(t, res.stderr, "glx join: too many arguments: accepts 2 (<input-directory> <output-file>), received 3")
+}
+
 var gedcomIndividual = regexp.MustCompile(`(?m)^0 @[^@]+@ INDI`)
 
 // Exporting to each GEDCOM version and importing the result back yields the
@@ -59,17 +165,6 @@ func TestExport_GEDCOMRoundTrip(t *testing.T) {
 			assertArchiveValid(t, filepath.Join(work, "back"))
 		})
 	}
-}
-
-// The default archive argument is spelled out; export has no implicit ".".
-func TestExport_FromInsideArchiveRoot(t *testing.T) {
-	archive := copyExample(t, "basic-family")
-	out := filepath.Join(t.TempDir(), "family.ged")
-
-	res := runGLX(t, archive, "export", ".", "-o", out)
-
-	require.Equal(t, 0, res.exitCode, res.stderr)
-	assert.FileExists(t, out)
 }
 
 func TestExport_JSONLD(t *testing.T) {
@@ -128,7 +223,6 @@ func TestExport_Errors(t *testing.T) {
 	assertExitWithStderr(t, runGLX(t, work, "export", archive), `required flag(s) "output" not set`)
 	assertExitWithStderr(t, runGLX(t, work, "export", "does-not-exist", "-o", "x.ged"), "input path not found")
 	assertExitWithStderr(t, runGLX(t, work, "export", archive, "-o", "x.ged", "--format", "bogus"), "use '551', '70', or 'jsonld'")
-	assertExitWithStderr(t, runGLX(t, work, "export", "-o", "x.ged"), "accepts 1 arg(s), received 0")
 	entries, err := os.ReadDir(work)
 	require.NoError(t, err)
 	names := make([]string, 0, len(entries))

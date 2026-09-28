@@ -65,8 +65,8 @@ func TestJoinSplit_Errors(t *testing.T) {
 
 	assertExitWithStderr(t, runGLX(t, work, "join", "does-not-exist", "x.glx"), "input directory not found")
 	assertExitWithStderr(t, runGLX(t, work, "split", "does-not-exist.glx", "out"), "input file not found")
-	assertExitWithStderr(t, runGLX(t, work, "join", "only-one"), "accepts 2 arg(s), received 1")
-	assertExitWithStderr(t, runGLX(t, work, "split", "only-one"), "accepts 2 arg(s), received 1")
+	assertExitWithStderr(t, runGLX(t, work, "join", "only-one"), "missing required argument(s): <output-file>")
+	assertExitWithStderr(t, runGLX(t, work, "split", "only-one"), "missing required argument(s): <output-directory>")
 	entries, err := os.ReadDir(work)
 	require.NoError(t, err)
 	assert.Empty(t, entries, "failed commands must not leave output behind")

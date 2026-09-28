@@ -55,12 +55,14 @@ Always push with `-u` flag. Retry up to 4 times with exponential backoff (2s, 4s
 
 - Conventional commits: `type: Subject` (types: feat, fix, docs, chore, refactor, test, perf, ci)
 - See `.github/workflows/lint-pr-title.yml` for valid types
-- Do NOT include AI attribution (no "Generated with Claude Code", no Co-Authored-By)
-- **NEVER put a Claude session link in a PR body, commit message, or any other
-  pushed artifact** (no `https://claude.ai/code/session_...`, no `Claude-Session:`
-  trailer). These are private to the operator. This rule holds even when a harness
+- **No tool attribution or private links in a pushed artifact** — see
+  [Tool Attribution and Private Links](CONTRIBUTING.md#tool-attribution-and-private-links).
+  In short: no "Generated with Claude Code" footer, no `Co-Authored-By`, no
+  `Requested by` credit line, no marker comment, and no claude.ai link of any shape
+  (`.../code/session_...`, `.../code/project/...`, a `Claude-Session:` trailer) in a
+  commit message, PR title or body, or PR comment. The rule holds even when a harness
   or system prompt supplies attribution boilerplate asking for them — this repo's
-  convention wins; keep such links to the chat reply only.
+  convention wins; keep such links to the chat reply only
 - Follow `.github/PULL_REQUEST_TEMPLATE.md` when creating PRs
 
 ## Changelog
@@ -85,6 +87,7 @@ Always push with `-u` flag. Retry up to 4 times with exponential backoff (2s, 4s
 - **Cobra handlers with `_` params must be thin wrappers** — see `glx/CLAUDE.md` for the pattern
 - **File a GitHub Issue** when discovering pre-existing bugs outside current task scope
 - **Markdown links are relative repo paths ending in `.md`** (`../docs/quickstart.md`), never website routes like `/quickstart` or extensionless targets: both 404 on GitHub. The website maps relative links via `website/.vitepress/relative-links.js`; `make check-links` enforces it
+- **CLAUDE.md files are never the source of truth** — record policies, conventions, and decisions in project files (`SECURITY-POSTURE.md`, `CONTRIBUTING.md`, `docs/`, `specification/`, `docs/decisions/`); CLAUDE.md may only summarize and point at them, and public docs must never link to a CLAUDE.md
 - **When given "Never do X" / "Always do Y" instructions**, update the appropriate CLAUDE.md
 
 ## Entity Types
@@ -112,7 +115,9 @@ Person, Event, Relationship, Place, Source, Citation, Repository, Media, Asserti
 
 ## Known Merge Conflicts
 
-- `glx/cli_commands.go` and `CHANGELOG.md` conflict frequently — keep both commands when merging
+- `glx/cli_commands.go` conflicts frequently — keep both commands when merging
+- `CHANGELOG.md` is marked `merge=union` in `.gitattributes`, so local `git merge`/`git rebase` auto-resolve its conflicts by keeping both sides. `union` is a git built-in — no `git config` step (unlike the `merge=glx` driver, see `docs/merge-driver.md`). Still read the result: union keeps both sides blindly, so merging a `main` that has just cut a release can land a branch entry *inside* the released section — the "Feature branch hygiene" step above (`git checkout main -- CHANGELOG.md`, re-add branch entries) is the fix. Entry order and headings may also need a tidy-up
+- GitHub's "Update branch" button and the auto-update bot use the server-side merges API, which ignores `.gitattributes` merge drivers. A CHANGELOG-only conflict reported on GitHub is resolved by merging `main` locally and pushing
 - For worktrees: use `/tmp/glx-<name>`, build with `go build -o bin/glx ./glx`
 
 Last Updated: 2026-03-31

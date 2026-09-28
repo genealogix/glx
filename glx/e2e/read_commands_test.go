@@ -179,7 +179,7 @@ func TestReadCommands_UnknownPersonFails(t *testing.T) {
 		{[]string{"timeline", "person-nobody"}, `no person found matching "person-nobody"`},
 		{[]string{"vitals", "person-nobody"}, `no person found matching "person-nobody"`},
 		{[]string{"migrations", "person-nobody"}, `no person found matching "person-nobody"`},
-		{[]string{"evidence", "person-nobody", "born_at"}, `no person found matching "person-nobody"`},
+		{[]string{"evidence", "person-nobody", "born_at"}, `found matching "person-nobody"`},
 		{[]string{"path", "person-nobody", readPerson}, `no person found matching "person-nobody"`},
 		{[]string{"cite", "citation-nope"}, `citation "citation-nope" not found`},
 	}

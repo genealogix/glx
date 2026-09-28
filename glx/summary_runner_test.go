@@ -283,6 +283,186 @@ func TestFindSpouses_None(t *testing.T) {
 	assert.Empty(t, spouses)
 }
 
+// A marriage recorded only as an event — the shape `glx add event --type
+// marriage --participant a:bride --participant b:groom` produces, and the one
+// `glx add event --help` gives as an example — must still yield a spouse.
+// Before #1275 findSpouses read relationships only, so summary printed
+// "Spouse: (none)" for a marriage timeline happily displayed.
+func TestFindSpouses_EventOnlyMarriage(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-a": {Properties: map[string]any{"name": "Anna Test", "sex": "female"}},
+			"person-b": {Properties: map[string]any{"name": "Bernd Test", "sex": "male"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{},
+		Events: map[string]*glxlib.Event{
+			"event-m": {
+				Type:    "marriage",
+				Date:    "1800-01-01",
+				PlaceID: "place-berlin",
+				Participants: []glxlib.Participant{
+					{Person: "person-a", Role: "bride"},
+					{Person: "person-b", Role: "groom"},
+				},
+			},
+		},
+		Places: map[string]*glxlib.Place{
+			"place-berlin": {Name: "Berlin"},
+		},
+	}
+
+	spouses := findSpouses("person-b", archive)
+	require.Len(t, spouses, 1)
+	assert.Equal(t, "person-a", spouses[0].PersonID)
+	assert.Equal(t, "Anna Test", spouses[0].PersonName)
+	assert.Equal(t, "1800-01-01", spouses[0].MarriageDate)
+	assert.Equal(t, "Berlin", spouses[0].MarriagePlace)
+
+	// The view from the other side must match.
+	reverse := findSpouses("person-a", archive)
+	require.Len(t, reverse, 1)
+	assert.Equal(t, "person-b", reverse[0].PersonID)
+}
+
+// An archive that models the same marriage both ways must not list the spouse
+// twice.
+func TestFindSpouses_EventAndRelationshipNotDoubled(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-a": {Properties: map[string]any{"name": "Anna Test", "sex": "female"}},
+			"person-b": {Properties: map[string]any{"name": "Bernd Test", "sex": "male"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-m": {
+				Type: "marriage",
+				Participants: []glxlib.Participant{
+					{Person: "person-a", Role: "spouse"},
+					{Person: "person-b", Role: "spouse"},
+				},
+			},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-m": {
+				Type: "marriage",
+				Date: "1800-01-01",
+				Participants: []glxlib.Participant{
+					{Person: "person-a", Role: "bride"},
+					{Person: "person-b", Role: "groom"},
+				},
+			},
+		},
+		Places: map[string]*glxlib.Place{},
+	}
+
+	spouses := findSpouses("person-b", archive)
+	require.Len(t, spouses, 1)
+	assert.Equal(t, "person-a", spouses[0].PersonID)
+	assert.Equal(t, "1800-01-01", spouses[0].MarriageDate)
+}
+
+// Two marriages recorded as events sort chronologically alongside each other,
+// and a single-participant marriage event yields no spouse at all.
+func TestFindSpouses_EventOnlyOrderingAndSoleParticipant(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-mary": {Properties: map[string]any{"name": "Mary", "sex": "female"}},
+			"person-a":    {Properties: map[string]any{"name": "Spouse A", "sex": "male"}},
+			"person-b":    {Properties: map[string]any{"name": "Spouse B", "sex": "male"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{},
+		Events: map[string]*glxlib.Event{
+			"event-second": {
+				Type: "marriage",
+				Date: "1880",
+				Participants: []glxlib.Participant{
+					{Person: "person-mary", Role: "bride"},
+					{Person: "person-b", Role: "groom"},
+				},
+			},
+			"event-first": {
+				Type: "marriage",
+				Date: "1870",
+				Participants: []glxlib.Participant{
+					{Person: "person-mary", Role: "bride"},
+					{Person: "person-a", Role: "groom"},
+				},
+			},
+			"event-alone": {
+				Type: "marriage",
+				Date: "1890",
+				Participants: []glxlib.Participant{
+					{Person: "person-mary", Role: "bride"},
+				},
+			},
+		},
+		Places: map[string]*glxlib.Place{},
+	}
+
+	spouses := findSpouses("person-mary", archive)
+	require.Len(t, spouses, 2)
+	assert.Equal(t, "person-a", spouses[0].PersonID, "1870 marriage should come first")
+	assert.Equal(t, "person-b", spouses[1].PersonID, "1880 marriage should come second")
+}
+
+// A marriage event may name a participant that has no person entity in the
+// archive — a dangling reference. The spouse is still listed, under its ID.
+func TestFindSpouses_EventOnlyUnknownPerson(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-b": {Properties: map[string]any{"name": "Bernd Test", "sex": "male"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{},
+		Events: map[string]*glxlib.Event{
+			"event-m": {
+				Type: "marriage",
+				Date: "1800-01-01",
+				Participants: []glxlib.Participant{
+					{Person: "person-missing", Role: "bride"},
+					{Person: "person-b", Role: "groom"},
+				},
+			},
+		},
+		Places: map[string]*glxlib.Place{},
+	}
+
+	spouses := findSpouses("person-b", archive)
+	require.Len(t, spouses, 1)
+	assert.Equal(t, "person-missing", spouses[0].PersonID)
+	assert.Equal(t, "person-missing", spouses[0].PersonName, "an unresolvable participant falls back to its ID")
+}
+
+// Events that record intent or paperwork rather than a union are not marriages.
+func TestFindSpouses_NonUnionMarriageEventsIgnored(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-a": {Properties: map[string]any{"name": "Anna Test", "sex": "female"}},
+			"person-b": {Properties: map[string]any{"name": "Bernd Test", "sex": "male"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{},
+		Events: map[string]*glxlib.Event{
+			"event-banns": {
+				Type: "marriage_banns",
+				Date: "1799-12-01",
+				Participants: []glxlib.Participant{
+					{Person: "person-a", Role: "bride"},
+					{Person: "person-b", Role: "groom"},
+				},
+			},
+			"event-engagement": {
+				Type: "engagement",
+				Date: "1799-06-01",
+				Participants: []glxlib.Participant{
+					{Person: "person-a", Role: "principal"},
+					{Person: "person-b", Role: "principal"},
+				},
+			},
+		},
+		Places: map[string]*glxlib.Place{},
+	}
+
+	assert.Empty(t, findSpouses("person-b", archive))
+}
+
 func TestFindParentIDs(t *testing.T) {
 	archive := newTestArchive()
 

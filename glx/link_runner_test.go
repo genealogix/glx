@@ -31,7 +31,7 @@ import (
 func initArchiveDir(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
-	if err := runInit(dir, false, 0); err != nil {
+	if err := runInit(dir, initOptions{}); err != nil {
 		t.Fatalf("runInit: %v", err)
 	}
 

@@ -127,6 +127,9 @@ func TestBuildCoverage_BasicPerson(t *testing.T) {
 }
 
 func TestBuildCoverage_CensusRecords(t *testing.T) {
+	// This case is about census-year logic, not the country gate, so it opts
+	// into the US schedule the way --country "United States" would (#186).
+	setCensusFallback(t, countryUnitedStates)
 	archive := newTestArchiveForCoverage()
 	person := archive.Persons["person-john"]
 
@@ -321,6 +324,9 @@ func TestFindPersonForCoverage(t *testing.T) {
 }
 
 func TestBuildCoverage_MaxLifespanCap(t *testing.T) {
+	// This case is about census-year logic, not the country gate, so it opts
+	// into the US schedule the way --country "United States" would (#186).
+	setCensusFallback(t, countryUnitedStates)
 	// Person born 1832, no death date — should cap census records at birth+100
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
@@ -371,6 +377,9 @@ func TestBuildCoverage_MaxLifespanCap(t *testing.T) {
 }
 
 func TestBuildCoverage_BurialInfersDeath(t *testing.T) {
+	// This case is about census-year logic, not the country gate, so it opts
+	// into the US schedule the way --country "United States" would (#186).
+	setCensusFallback(t, countryUnitedStates)
 	// Person born 1832, no death event, but has burial in 1863
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
@@ -430,6 +439,9 @@ func TestBuildCoverage_BurialInfersDeath(t *testing.T) {
 }
 
 func TestBuildCoverage_1890Note(t *testing.T) {
+	// This case is about census-year logic, not the country gate, so it opts
+	// into the US schedule the way --country "United States" would (#186).
+	setCensusFallback(t, countryUnitedStates)
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
 			"person-1890": {
@@ -801,7 +813,7 @@ func TestBuildCoverage_IncludesStateCensus(t *testing.T) {
 
 func TestBuildCensusRecords_EnhancedAnnotations(t *testing.T) {
 	// Person born 1830 — check 1850 and 1880 annotations
-	records := buildCensusRecords(1830, 1920, nil, nil)
+	records := buildCensusRecords(1830, 1920, []*censusSchedule{censusSchedulesByCountry[countryUnitedStates]}, nil, nil)
 
 	for _, r := range records {
 		if strings.HasPrefix(r.Label, "1850") && !r.Found {
@@ -817,7 +829,7 @@ func TestBuildCensusRecords_EnhancedAnnotations(t *testing.T) {
 
 func TestBuildCensusRecords_1850InParentsHousehold(t *testing.T) {
 	// Person born 1840 — at 1850 census they're age ~10, should note "likely in parents' household"
-	records := buildCensusRecords(1840, 1920, nil, nil)
+	records := buildCensusRecords(1840, 1920, []*censusSchedule{censusSchedulesByCountry[countryUnitedStates]}, nil, nil)
 
 	for _, r := range records {
 		if strings.HasPrefix(r.Label, "1850") && !r.Found {

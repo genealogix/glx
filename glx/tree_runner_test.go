@@ -334,7 +334,8 @@ func TestAncestorSuggestions_NoParents(t *testing.T) {
 			},
 		},
 		Places: map[string]*glxlib.Place{
-			"place-va": {Name: "Virginia", Type: glxlib.PlaceTypeState},
+			"place-us": {Name: "United States", Type: glxlib.PlaceTypeCountry},
+			"place-va": {Name: "Virginia", Type: glxlib.PlaceTypeState, ParentID: "place-us"},
 		},
 		Sources:    map[string]*glxlib.Source{},
 		Citations:  map[string]*glxlib.Citation{},
@@ -365,14 +366,18 @@ func TestAncestorSuggestions_SuggestsCensus(t *testing.T) {
 		Relationships: map[string]*glxlib.Relationship{},
 		Events: map[string]*glxlib.Event{
 			"event-birth-orphan": {
-				Type: glxlib.EventTypeBirth,
-				Date: "ABT 1832",
+				Type:    glxlib.EventTypeBirth,
+				Date:    "ABT 1832",
+				PlaceID: "place-boston",
 				Participants: []glxlib.Participant{
 					{Person: "person-orphan", Role: "principal"},
 				},
 			},
 		},
-		Places:     map[string]*glxlib.Place{},
+		Places: map[string]*glxlib.Place{
+			"place-us":     {Name: "United States", Type: glxlib.PlaceTypeCountry},
+			"place-boston": {Name: "Boston", Type: glxlib.PlaceTypeCity, ParentID: "place-us"},
+		},
 		Sources:    map[string]*glxlib.Source{},
 		Citations:  map[string]*glxlib.Citation{},
 		Assertions: map[string]*glxlib.Assertion{},
@@ -416,14 +421,18 @@ func TestAncestorSuggestions_Highlights1880(t *testing.T) {
 		Relationships: map[string]*glxlib.Relationship{},
 		Events: map[string]*glxlib.Event{
 			"event-birth-a": {
-				Type: glxlib.EventTypeBirth,
-				Date: "1850",
+				Type:    glxlib.EventTypeBirth,
+				Date:    "1850",
+				PlaceID: "place-boston",
 				Participants: []glxlib.Participant{
 					{Person: "person-a", Role: "principal"},
 				},
 			},
 		},
-		Places:     map[string]*glxlib.Place{},
+		Places: map[string]*glxlib.Place{
+			"place-us":     {Name: "United States", Type: glxlib.PlaceTypeCountry},
+			"place-boston": {Name: "Boston", Type: glxlib.PlaceTypeCity, ParentID: "place-us"},
+		},
 		Sources:    map[string]*glxlib.Source{},
 		Citations:  map[string]*glxlib.Citation{},
 		Assertions: map[string]*glxlib.Assertion{},
@@ -460,7 +469,8 @@ func TestAncestorSuggestions_BirthEventWithPlace(t *testing.T) {
 			},
 		},
 		Places: map[string]*glxlib.Place{
-			"place-va": {Name: "Virginia", Type: glxlib.PlaceTypeState},
+			"place-us": {Name: "United States", Type: glxlib.PlaceTypeCountry},
+			"place-va": {Name: "Virginia", Type: glxlib.PlaceTypeState, ParentID: "place-us"},
 		},
 		Sources:    map[string]*glxlib.Source{},
 		Citations:  map[string]*glxlib.Citation{},

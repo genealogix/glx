@@ -58,7 +58,7 @@ func DecodeGEDCOMBlob(blobText string) ([]byte, error) {
 	}
 
 	result := make([]byte, 0, len(cleaned)*3/4)
-	fullGroups := (len(cleaned) / 4) * 4 //nolint:mnd // 4 chars per group
+	fullGroups := (len(cleaned) / 4) * 4 // 4 chars per group
 
 	for i := 0; i < fullGroups; i += 4 {
 		// Validate each character is in valid GEDCOM BLOB range (0x2E '.' to 0x6D 'm')
@@ -75,7 +75,7 @@ func DecodeGEDCOMBlob(blobText string) ([]byte, error) {
 		b3 := cleaned[i+2] - '.'
 		b4 := cleaned[i+3] - '.'
 
-		//nolint:mnd // well-known base64 bit shifts
+		// Well-known base64 bit shifts.
 		result = append(result,
 			(b1<<2)|(b2>>4),
 			(b2<<4)|(b3>>2),
@@ -96,14 +96,14 @@ func DecodeGEDCOMBlob(blobText string) ([]byte, error) {
 	if trailing == 1 {
 		return nil, fmt.Errorf("%w: %d (trailing single character cannot encode a full byte)", ErrGEDCOMBlobLength, len(cleaned))
 	}
-	if trailing >= 2 { //nolint:mnd // trailing group sizes
+	if trailing >= 2 { // a 2- or 3-char trailing group
 		b1 := cleaned[fullGroups] - '.'
 		b2 := cleaned[fullGroups+1] - '.'
-		result = append(result, (b1<<2)|(b2>>4)) //nolint:mnd // well-known base64 bit shifts
+		result = append(result, (b1<<2)|(b2>>4)) // well-known base64 bit shifts
 
-		if trailing == 3 { //nolint:mnd // 3-char trailing group
+		if trailing == 3 { // 3-char trailing group carries a second byte
 			b3 := cleaned[fullGroups+2] - '.'
-			result = append(result, (b2<<4)|(b3>>2)) //nolint:mnd // well-known base64 bit shifts
+			result = append(result, (b2<<4)|(b3>>2))
 		}
 	}
 

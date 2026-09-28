@@ -24,6 +24,68 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestAdd_ProgressLineIsSingular pins the user-facing shape of the "Adding"
+// line. It used to interpolate the plural EntityType — the YAML key and
+// directory name — straight against the ID ("Adding persons person-x"), which
+// reads as a list rather than a sentence. See issue #1276.
+func TestAdd_ProgressLineIsSingular(t *testing.T) {
+	archive := copyExample(t, "basic-family")
+
+	cases := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{
+			name: "person",
+			args: []string{"add", "person", "--given", "Michael David", "--surname", "Hollnagel"},
+			want: "Adding person: person-michael-david-hollnagel",
+		},
+		{
+			name: "place",
+			args: []string{"add", "place", "--name", "Liepen", "--type", "locality"},
+			want: "Adding place: place-liepen",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			res := runGLX(t, archive, tc.args...)
+
+			require.Equal(t, 0, res.exitCode, res.stderr)
+			// Progress is diagnostic output on stderr; stdout is the ID alone.
+			assert.Contains(t, res.stderr, tc.want+"\n")
+			assert.NotContains(t, res.stdout, "Adding")
+		})
+	}
+}
+
+// TestAdd_LastStdoutLineIsTheBareID guards the documented contract for
+// `id=$(glx add …)`: the progress line may change wording, the ID echo may
+// not. See issue #1276.
+func TestAdd_LastStdoutLineIsTheBareID(t *testing.T) {
+	archive := copyExample(t, "basic-family")
+
+	res := runGLX(t, archive, "add", "person", "--given", "Anna", "--surname", "Jungk")
+
+	require.Equal(t, 0, res.exitCode, res.stderr)
+	lines := strings.Split(strings.TrimRight(res.stdout, "\n"), "\n")
+	assert.Equal(t, "person-anna-jungk", lines[len(lines)-1])
+}
+
+// TestAdd_QuietDropsTheProgressLineButKeepsTheID checks that the progress line
+// is diagnostic output (suppressed by --quiet) while the ID echo survives for
+// shell capture. See issue #1276.
+func TestAdd_QuietDropsTheProgressLineButKeepsTheID(t *testing.T) {
+	archive := copyExample(t, "basic-family")
+
+	res := runGLX(t, archive, "--quiet", "add", "person", "--given", "Quiet", "--surname", "Person")
+
+	require.Equal(t, 0, res.exitCode, res.stderr)
+	assert.NotContains(t, res.stdout, "Adding")
+	assert.Equal(t, "person-quiet-person", strings.TrimSpace(res.stdout))
+}
+
 // Each add subcommand run against basic-family creates exactly one file named
 // after the new ID and touches nothing else. The IDs are derived from the
 // flags, so they are part of the contract being checked.
@@ -52,7 +114,7 @@ func TestAdd_EachSubcommandCreatesExactlyOneFile(t *testing.T) {
 
 			require.Equal(t, 0, res.exitCode, res.stderr)
 			assert.Equal(t, tc.id+"\n", res.stdout, "stdout must be the created ID and nothing else")
-			assert.Contains(t, res.stderr, "Adding "+tc.dir+" "+tc.id)
+			assert.Contains(t, res.stderr, "Adding "+tc.name+": "+tc.id)
 			diff := diffTrees(before, snapshotTree(t, archive))
 			assert.Empty(t, diff.changed)
 			assert.Equal(t, []string{tc.dir + "/" + tc.id + ".glx"}, diff.created)

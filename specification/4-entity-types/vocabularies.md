@@ -230,9 +230,9 @@ place_types:
     category: "religious"
   
   # Additional place types
-  plantation:
-    label: "Plantation"
-    description: "Agricultural estate or plantation"
+  battlefield:
+    label: "Battlefield"
+    description: "Site of a battle or military engagement"
     category: "geographic"
 ```
 
@@ -246,7 +246,7 @@ place_types:
 
 ### Standard Place Types
 
-**Standard Place Types**: GENEALOGIX provides standardized place type codes including administrative divisions (country, state, county, city, town, township, district), geographic features (region, locality, neighborhood, street, building), religious divisions (parish, church), and institutions (hospital, cemetery).
+**Standard Place Types**: GENEALOGIX provides standardized place type codes including administrative divisions (country, state, county, city, town, village, hamlet, township, district, reservation), geographic features (region, locality, neighborhood, street, building, estate, farm, plantation, port), religious divisions (parish, church), and institutions (hospital, cemetery, workhouse, poorhouse, asylum, prison, fort, military_base, school).
 
 **Complete List**: See [Standard Vocabularies - Place Types](../5-standard-vocabularies/#place-types) for the complete default vocabulary file with all standard types.
 
@@ -259,9 +259,9 @@ place_types:
   # ... standard types ...
 
   # Additional types
-  plantation:
-    label: "Plantation"
-    description: "Agricultural estate or plantation"
+  battlefield:
+    label: "Battlefield"
+    description: "Site of a battle or military engagement"
     category: "geographic"
 
   mission:
@@ -999,6 +999,8 @@ Standard properties include:
 - `number_of_children` - Recorded number of children of a couple (GEDCOM `FAM.NCHI`)
 - `legal_status` - Legal form of a coerced-labor relationship (validated against `legal_statuses`)
 - `name_as_recorded` - **Participant-level only**: set under `relationship.participants[].properties`, not `relationship.properties`. The participant's name as written in the source (structured, with name fields)
+
+Use `started_on` / `ended_on` only when the boundary is not modelled as an event; setting one alongside the matching `start_event` / `end_event` generates a warning (see [Relationship - Properties](relationship.md#properties)).
 
 ### Place Properties Vocabulary
 

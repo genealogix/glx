@@ -602,14 +602,19 @@ func TestPreflightFileOps_RejectsCreateOntoExistingFile(t *testing.T) {
 }
 
 func TestPreflightFileOps_ReportsUnexpectedStatError(t *testing.T) {
-	// A path component that is a regular file makes Lstat fail with
-	// ENOTDIR rather than ENOENT.
+	// A stat failure that is not "does not exist" must be reported rather
+	// than treated as a free slot to create. An embedded NUL provokes one on
+	// every platform — Unix and Windows both reject the path when converting
+	// it for the syscall, with EINVAL rather than ENOENT. The obvious
+	// alternative, a non-directory path component, is Unix-only: it yields
+	// ENOTDIR there but ERROR_PATH_NOT_FOUND on Windows, which Go maps to
+	// os.ErrNotExist and preflightFileOps rightly accepts (#1272).
 	root := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(root, "file"), []byte("x"), 0o644))
 
-	err := preflightFileOps(root, []fileOp{{relPath: filepath.Join("file", "x.glx"), newData: []byte("new")}})
+	err := preflightFileOps(root, []fileOp{{relPath: "x\x00.glx", newData: []byte("new")}})
 
 	require.Error(t, err)
+	require.NotErrorIs(t, err, os.ErrNotExist, "an unusable path is not a free slot")
 	assert.Contains(t, err.Error(), "checking")
 }
 

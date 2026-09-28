@@ -1105,7 +1105,7 @@ func printProofJSON(io *IOStreams, result *proofResult) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal JSON: %w", err)
 	}
-	fmt.Fprintln(io.MachineOut, string(data)) //nolint:errcheck // CLI output
+	fmt.Fprintln(io.MachineOut, string(data))
 
 	return nil
 }

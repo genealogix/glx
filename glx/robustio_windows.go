@@ -26,11 +26,13 @@ import (
 
 // errSharingViolation is syscall.Errno(32), equivalent to
 // internal/syscall/windows.ERROR_SHARING_VIOLATION which is not importable.
-const errSharingViolation syscall.Errno = 32 //nolint:mnd // Windows error code
+const errSharingViolation syscall.Errno = 32
 
-const retryTimeout = 2000 * time.Millisecond //nolint:mnd // matches Go toolchain robustio
+// retryTimeout matches the Go toolchain's internal robustio budget.
+const retryTimeout = 2000 * time.Millisecond
 
-const maxSleep = 500 * time.Millisecond //nolint:mnd // cap per-retry sleep
+// maxSleep caps the per-retry sleep.
+const maxSleep = 500 * time.Millisecond
 
 // robustRename is like os.Rename but retries on transient Windows errors.
 //

@@ -136,6 +136,7 @@ Across all files in an archive, the validator checks:
   - Parent born after child (in parent-child relationships)
   - Marriage event before a participant's birth year
   - Relationship `end_event` dated before its `start_event`
+- A relationship boundary recorded twice — both `start_event` and the `started_on` property, or both `end_event` and `ended_on` — generates a warning; see [Relationship - Validation Rules](4-entity-types/relationship.md#validation-rules)
 
 > **Note:** Temporal checks are warnings rather than errors because dates in genealogical records are often estimates (e.g., `ABT 1850`). A flagged inconsistency may indicate a data entry error or simply imprecise dating.
 

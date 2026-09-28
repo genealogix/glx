@@ -46,6 +46,24 @@
   </section>
   {{end}}
 
+  {{if or .Pedigree .Descendancy}}
+  <section class="charts">
+    <h2>Family charts</h2>
+    {{if .Pedigree}}
+    <details class="chart-panel" open>
+      <summary>Ancestors</summary>
+      {{template "chart" .Pedigree}}
+    </details>
+    {{end}}
+    {{if .Descendancy}}
+    <details class="chart-panel">
+      <summary>Descendants</summary>
+      {{template "chart" .Descendancy}}
+    </details>
+    {{end}}
+  </section>
+  {{end}}
+
   {{if or .Parents .Spouses .Children .Siblings}}
   <section>
     <h2>Family</h2>
@@ -81,4 +99,31 @@
   <p class="backlink"><a href="{{$.RootPrefix}}index.html">← All people</a></p>
 </article>
 {{end}}
+{{end}}
+
+{{define "chart"}}
+<figure class="chart chart-{{.Direction}}">
+  <div class="chart-scroll">
+    <svg class="chart-svg" width="{{.Width}}" height="{{.Height}}" viewBox="0 0 {{.Width}} {{.Height}}" role="img" aria-label="{{.Label}}">
+      <title>{{.Label}}</title>
+      <g class="chart-edges">
+        {{range .Edges}}<path d="{{.Path}}"></path>{{end}}
+      </g>
+      {{range .Nodes}}
+        {{if .File}}
+        <a class="chart-node" href="{{.File}}">{{template "chart-box" .}}</a>
+        {{else}}
+        <g class="chart-node is-root">{{template "chart-box" .}}</g>
+        {{end}}
+      {{end}}
+    </svg>
+  </div>
+  {{if .Truncated}}<figcaption class="muted">Chart trimmed to keep the page small — not every relative at this depth is shown.</figcaption>{{end}}
+</figure>
+{{end}}
+
+{{define "chart-box"}}
+<rect x="{{.X}}" y="{{.Y}}" width="{{.W}}" height="{{.H}}" rx="6"></rect>
+<text class="chart-name" x="{{.TextX}}" y="{{.NameY}}">{{.Name}}</text>
+{{if .Dates}}<text class="chart-dates" x="{{.TextX}}" y="{{.DatesY}}">{{.Dates}}</text>{{end}}
 {{end}}

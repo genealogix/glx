@@ -119,8 +119,10 @@ invalidated by [GLXFile.InvalidateCache].
 
 # I/O Boundary
 
-This package is a pure library and never performs filesystem I/O. All methods
-accept and return in-memory types ([]byte, io.Reader, io.Writer, map[string][]byte).
-The calling application is responsible for reading from and writing to disk.
+This package is a pure library and never performs direct filesystem I/O. All methods
+accept and return in-memory types ([]byte, io.Reader, io.Writer, map[string][]byte),
+or an fs.FS the caller supplies when a whole tree of files is needed (see
+[ImportGEDZIP]). The calling application is responsible for reading from and
+writing to disk.
 */
 package glx
