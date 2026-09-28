@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -107,4 +108,23 @@ func TestExportArgsAcceptOptionalArchive(t *testing.T) {
 	require.NoError(t, exportCmd.Args(exportCmd, nil))
 	require.NoError(t, exportCmd.Args(exportCmd, []string{"family-archive"}))
 	require.Error(t, exportCmd.Args(exportCmd, []string{"family-archive", "extra"}))
+}
+
+// The group-only parents (add, cache, census) print help when run bare and
+// reject anything that is not a subcommand, rather than printing help and
+// exiting 0 for a typo.
+func TestGroupParentsRejectUnknownSubcommands(t *testing.T) {
+	for _, parent := range []*cobra.Command{addCmd, cacheCmd, censusCmd} {
+		t.Run(parent.Name(), func(t *testing.T) {
+			require.NotNil(t, parent.Args, "a parent without Args accepts any typo")
+			require.Error(t, parent.Args(parent, []string{"bogus"}))
+			require.NoError(t, parent.Args(parent, nil))
+
+			var out bytes.Buffer
+			parent.SetOut(&out)
+			t.Cleanup(func() { parent.SetOut(nil) })
+			require.NoError(t, parent.RunE(parent, nil))
+			assert.Contains(t, out.String(), parent.Name())
+		})
+	}
 }

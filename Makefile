@@ -176,6 +176,10 @@ test-scripts: ## Unit-test the Node drift-check scripts (spec-schema parser + sc
 ## Example Validation
 validate-examples: build-cli ## Validate all example archives
 	@for dir in docs/examples/*/; do \
+	  if [ -z "$$(find "$$dir" -name '*.glx' -print -quit)" ]; then \
+	    echo "Skipping $$dir: no .glx files (hosted elsewhere?)"; \
+	    continue; \
+	  fi; \
 	  echo "Validating $$dir..."; \
 	  ./bin/glx validate "$$dir" || exit 1; \
 	done

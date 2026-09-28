@@ -571,10 +571,11 @@ func TestSafeWrite_PreservesSymlinkChainWhoseHopSortsFirst(t *testing.T) {
 	assert.NoDirExists(t, archiveDir+".bak")
 }
 
-// A managed top-level name (metadata.glx) that is a skipped symlink is not
-// carried over by restoreForeignEntries, so a fresh metadata.glx from the
-// writer is a genuine collision and must keep the backup.
-func TestSafeWrite_ManagedTopLevelCollisionRetainsBackup(t *testing.T) {
+// A managed top-level name (metadata.glx) that is a skipped symlink is foreign
+// and stays put, so a fresh metadata.glx from the writer is a genuine
+// collision. The swap is refused and undone: the archive is left exactly as it
+// was, with no backup to recover from because nothing was lost.
+func TestSafeWrite_ManagedTopLevelCollisionLeavesArchiveUntouched(t *testing.T) {
 	if runtime.GOOS == goosWindows {
 		t.Skip("symlink creation requires elevation on Windows")
 	}
@@ -589,11 +590,179 @@ func TestSafeWrite_ManagedTopLevelCollisionRetainsBackup(t *testing.T) {
 	if loaded.ImportMetadata == nil {
 		t.Skip("metadata is not loaded from an entity file in this build; collision cannot be staged")
 	}
+	before, err := computeFSFingerprint(archiveDir)
+	require.NoError(t, err)
+
 	err = safeWriteMultiFileArchive(archiveDir, loaded)
 
 	require.ErrorIs(t, err, ErrPreservedEntryCollision)
-	_, lerr := os.Lstat(filepath.Join(archiveDir+".bak", "metadata.glx"))
-	assert.NoError(t, lerr, "the backup with the skipped link must be retained")
+	info, lerr := os.Lstat(filepath.Join(archiveDir, "metadata.glx"))
+	require.NoError(t, lerr, "the skipped link must still be in place")
+	assert.NotZero(t, info.Mode()&os.ModeSymlink)
+	after, err := computeFSFingerprint(archiveDir)
+	require.NoError(t, err)
+	assert.Equal(t, before, after, "a refused swap must leave the archive untouched")
+	assert.NoDirExists(t, archiveDir+".bak")
+}
+
+// The archive directory is often the user's shell cwd. Replacing it with a new
+// directory leaves that shell in a deleted inode (#1192), so the swap must
+// keep the directory itself and replace only what is inside it.
+func TestSafeWrite_KeepsArchiveDirectoryItself(t *testing.T) {
+	archiveDir := filepath.Join(t.TempDir(), "archive")
+	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
+	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	before, err := os.Stat(archiveDir)
+	require.NoError(t, err)
+
+	t.Chdir(archiveDir)
+	require.NoError(t, safeWriteMultiFileArchive(".", preserveTestArchive()))
+
+	after, err := os.Stat(archiveDir)
+	require.NoError(t, err)
+	assert.True(t, os.SameFile(before, after), "the archive directory was replaced rather than rewritten")
+	assert.NoDirExists(t, archiveDir+".bak")
+	entries, err := os.ReadDir(filepath.Dir(archiveDir))
+	require.NoError(t, err)
+	for _, e := range entries {
+		assert.False(t, strings.HasPrefix(e.Name(), ".glx-tmp-"), "temp dir %s left behind", e.Name())
+	}
+}
+
+// Writing through a symlink to the archive must preserve skipped entries in
+// the real directory, and must leave the user's link a link. WalkDir does not
+// descend into a symlinked root, so without resolving it the swap found no
+// skipped entries and deleted persons/.drafts/ with the backup.
+func TestSafeWrite_ThroughSymlinkedArchiveRoot(t *testing.T) {
+	if runtime.GOOS == goosWindows {
+		t.Skip("symlink creation requires elevation on Windows")
+	}
+	base := t.TempDir()
+	target := filepath.Join(base, "real")
+	require.NoError(t, os.MkdirAll(target, 0o755))
+	require.NoError(t, safeWriteMultiFileArchive(target, preserveTestArchive()))
+	draft := filepath.Join(target, "persons", ".drafts", "person-draft.glx")
+	writeSkipTestFile(t, draft, "persons: {}\n")
+	link := filepath.Join(base, "link")
+	require.NoError(t, os.Symlink(target, link))
+
+	require.NoError(t, safeWriteMultiFileArchive(link, preserveTestArchive()))
+
+	assert.FileExists(t, draft, "a skipped entry inside a managed directory must survive")
+	info, err := os.Lstat(link)
+	require.NoError(t, err)
+	assert.NotZero(t, info.Mode()&os.ModeSymlink, "the user's link must stay a link")
+	assert.NoDirExists(t, target+".bak")
+	assert.NoDirExists(t, link+".bak")
+}
+
+// A crash between the swap's renames leaves the backup holding entries the
+// archive no longer has. The next write must refuse rather than delete that
+// backup as stale, or the interruption becomes permanent data loss.
+func TestSafeWrite_RefusesBackupLeftMidSwap(t *testing.T) {
+	archiveDir := filepath.Join(t.TempDir(), "archive")
+	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
+	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+
+	// Stage the state a kill after backing up persons/ leaves behind: the
+	// marker and the only copy of persons/ in the backup.
+	backup := archiveDir + ".bak"
+	require.NoError(t, os.MkdirAll(backup, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(backup, swapInProgressMarker), []byte("x\n"), 0o644))
+	require.NoError(t, os.Rename(filepath.Join(archiveDir, "persons"), filepath.Join(backup, "persons")))
+
+	err := safeWriteMultiFileArchive(archiveDir, preserveTestArchive())
+
+	require.ErrorIs(t, err, ErrInterruptedSwap)
+	// The message names the resolved backup path, which on Windows can differ
+	// textually from t.TempDir()'s (8.3 short names expand), so match its tail.
+	assert.Contains(t, err.Error(), filepath.Base(backup))
+	assert.DirExists(t, filepath.Join(backup, "persons"), "the only copy of persons/ must not be deleted")
+}
+
+// A collision found after some fresh entries are already in place must undo
+// both phases: the placed entries go back to the temp dir, the backed-up ones
+// come home, and no backup or marker is left. Fresh entries are placed in
+// name order, so persons/ lands before a foreign regular file named
+// vocabularies blocks vocabularies/.
+func TestSafeWrite_CollisionAfterPartialPlacementRollsBack(t *testing.T) {
+	archiveDir := filepath.Join(t.TempDir(), "archive")
+	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
+	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	require.NoError(t, os.RemoveAll(filepath.Join(archiveDir, "vocabularies")))
+	writeSkipTestFile(t, filepath.Join(archiveDir, "vocabularies"), "a file, not the vocabularies directory\n")
+	before, err := computeFSFingerprint(archiveDir)
+	require.NoError(t, err)
+
+	err = safeWriteMultiFileArchive(archiveDir, preserveTestArchive())
+
+	require.ErrorIs(t, err, ErrPreservedEntryCollision)
+	after, ferr := computeFSFingerprint(archiveDir)
+	require.NoError(t, ferr)
+	assert.Equal(t, before, after, "the rollback must restore the archive exactly")
+	assert.NoDirExists(t, archiveDir+".bak")
+	assertNoTempDirsBeside(t, archiveDir)
+}
+
+// A rename that fails in the first phase (here: the archive directory is not
+// writable, so persons/ cannot leave it) rolls back and reports, leaving the
+// archive as it was and no backup behind.
+func TestSafeWrite_FailedBackupRenameRollsBack(t *testing.T) {
+	if runtime.GOOS == goosWindows {
+		t.Skip("directory write permission does not gate rename on Windows")
+	}
+	if os.Geteuid() == 0 {
+		t.Skip("root ignores directory permissions")
+	}
+	archiveDir := filepath.Join(t.TempDir(), "archive")
+	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
+	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	before, err := computeFSFingerprint(archiveDir)
+	require.NoError(t, err)
+	require.NoError(t, os.Chmod(archiveDir, 0o555))
+	t.Cleanup(func() { _ = os.Chmod(archiveDir, 0o755) })
+
+	err = safeWriteMultiFileArchive(archiveDir, preserveTestArchive())
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "backing up")
+	require.NoError(t, os.Chmod(archiveDir, 0o755))
+	after, ferr := computeFSFingerprint(archiveDir)
+	require.NoError(t, ferr)
+	assert.Equal(t, before, after)
+	assert.NoDirExists(t, archiveDir+".bak")
+	assertNoTempDirsBeside(t, archiveDir)
+}
+
+func TestSafeWrite_MissingDestinationFails(t *testing.T) {
+	err := safeWriteMultiFileArchive(filepath.Join(t.TempDir(), "does-not-exist"), preserveTestArchive())
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "cannot access destination")
+}
+
+// assertNoTempDirsBeside fails if a safe-write temp dir was left next to dir.
+func assertNoTempDirsBeside(t *testing.T, dir string) {
+	t.Helper()
+	entries, err := os.ReadDir(filepath.Dir(dir))
+	require.NoError(t, err)
+	for _, e := range entries {
+		assert.False(t, strings.HasPrefix(e.Name(), ".glx-tmp-"), "temp dir %s left behind", e.Name())
+	}
+}
+
+// A completed or rolled-back swap leaves no marker behind, so an ordinary
+// leftover backup is still cleaned up as before.
+func TestSafeWrite_LeavesNoSwapMarker(t *testing.T) {
+	archiveDir := filepath.Join(t.TempDir(), "archive")
+	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
+
+	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+
+	assert.NoDirExists(t, archiveDir+".bak")
+	_, err := os.Lstat(filepath.Join(archiveDir, swapInProgressMarker))
+	assert.True(t, os.IsNotExist(err), "the marker belongs in the backup only, and only mid-swap")
 }
 
 // fsCaseSensitive reports whether dir lives on a case-sensitive filesystem.
@@ -777,10 +946,10 @@ func TestSafeWrite_UnreadableMediaInStaleBackupIsRefused(t *testing.T) {
 	assert.FileExists(t, filepath.Join(stale, "media", "files", "portrait.jpg"), "the backup must be left intact")
 }
 
-// A skipped link's chain can pass through a top-level foreign entry that
-// restoreForeignEntries carries across before the nested entries are looked
-// at. Classification has to happen on the intact backup, or the nested link
-// resolves no further than the missing hop and is deleted with the backup.
+// A skipped link's chain can pass through a top-level foreign entry that never
+// enters the backup. Classification has to happen on the intact archive, or
+// the nested link, looked at inside the backup, resolves no further than the
+// missing hop and is deleted with the backup.
 func TestSafeWrite_PreservesLinkThroughTopLevelForeignLink(t *testing.T) {
 	if runtime.GOOS == goosWindows {
 		t.Skip("symlink creation requires elevation on Windows")
