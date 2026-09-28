@@ -210,7 +210,9 @@ func TestInit_SingleFile(t *testing.T) {
 // Test data draws relationship types at random, one per two persons, so with
 // only a few persons a type whose roles are missing from the vocabulary
 // fails only occasionally. Twenty persons draw ten, enough that every type
-// shows up in nearly every run.
+// shows up in nearly every run. The guarantee is the unit test
+// TestTestDataVocabularyIsStandard, which checks the whole table; this is the
+// same property seen through the binary.
 func TestInit_TestDataIsValid(t *testing.T) {
 	parent := t.TempDir()
 

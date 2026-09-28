@@ -22,9 +22,11 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -34,12 +36,39 @@ import (
 
 var serveURLPattern = regexp.MustCompile(`Open this URL in your browser: (http://\S+)`)
 
+// lockedBuffer is a bytes.Buffer safe to write from one goroutine while the
+// test reads it from another: the scanner goroutine appends serve's stdout,
+// and os/exec copies its stderr from a goroutine of its own.
+type lockedBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *lockedBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	return b.buf.Write(p)
+}
+
+func (b *lockedBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	return b.buf.String()
+}
+
 // servedViewer is a running `glx serve` process.
 type servedViewer struct {
 	url    string
 	cmd    *exec.Cmd
-	stdout *bytes.Buffer
-	done   chan error
+	stdout *lockedBuffer
+	// done receives cmd.Wait's result once serve has exited and its stdout
+	// is fully read. Only the scanner goroutine calls Wait.
+	done chan error
+	// exited is closed alongside done, so cleanup can tell whether a test
+	// already consumed the result.
+	exited chan struct{}
 }
 
 // startServe launches `glx serve --port 0 args...` in workDir and waits for
@@ -51,26 +80,33 @@ func startServe(t *testing.T, workDir string, args ...string) *servedViewer {
 	cmd.Env = envWithout(os.Environ(), "GLX_CACHE")
 	pipe, err := cmd.StdoutPipe()
 	require.NoError(t, err)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
+	stderr := &lockedBuffer{}
+	cmd.Stderr = stderr
 	require.NoError(t, cmd.Start())
 
-	v := &servedViewer{cmd: cmd, stdout: &bytes.Buffer{}, done: make(chan error, 1)}
+	v := &servedViewer{cmd: cmd, stdout: &lockedBuffer{}, done: make(chan error, 1), exited: make(chan struct{})}
 	urls := make(chan string, 1)
 	go func() {
 		scanner := bufio.NewScanner(pipe)
 		for scanner.Scan() {
 			line := scanner.Text()
-			v.stdout.WriteString(line + "\n")
+			_, _ = v.stdout.Write([]byte(line + "\n"))
 			if m := serveURLPattern.FindStringSubmatch(line); m != nil {
-				urls <- strings.TrimSuffix(m[1], "/")
+				select {
+				case urls <- strings.TrimSuffix(m[1], "/"):
+				default:
+				}
 			}
 		}
 		v.done <- cmd.Wait()
+		close(v.exited)
 	}()
 	t.Cleanup(func() {
-		if cmd.ProcessState == nil {
+		select {
+		case <-v.exited:
+		default:
 			_ = cmd.Process.Kill()
+			<-v.exited
 		}
 	})
 
@@ -92,7 +128,7 @@ func (v *servedViewer) getJSON(t *testing.T, path string) (int, any) {
 	require.NoError(t, err)
 	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close() //nolint:errcheck // test
+	defer func() { _ = resp.Body.Close() }()
 	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	var decoded any
@@ -124,6 +160,9 @@ func TestServe_ServesArchiveAPIAndStops(t *testing.T) {
 	}
 	status, _ := v.getJSON(t, "/api/persons/person-nobody")
 	assert.Equal(t, http.StatusNotFound, status)
+	// Serving is read-only on every platform, checked before the
+	// platform-specific shutdown below.
+	assertTreeUnchanged(t, before, archive)
 
 	if runtime.GOOS == "windows" {
 		// No SIGINT for a child process on Windows; cleanup kills it.
@@ -137,13 +176,12 @@ func TestServe_ServesArchiveAPIAndStops(t *testing.T) {
 		t.Fatal("glx serve did not stop within 15s of SIGINT")
 	}
 	assert.Contains(t, v.stdout.String(), "Viewer stopped.")
-	assertTreeUnchanged(t, before, archive)
 }
 
 func TestServe_PathArgumentFromOutside(t *testing.T) {
 	archive := copyExample(t, "single-file")
 
-	v := startServe(t, t.TempDir(), archive+"/archive.glx")
+	v := startServe(t, t.TempDir(), filepath.Join(archive, "archive.glx"))
 
 	status, _ := v.getJSON(t, "/api/overview")
 	assert.Equal(t, http.StatusOK, status)

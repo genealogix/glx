@@ -40,6 +40,28 @@ func randomSexValue() string {
 	return datagenSexValues[secureIntn(len(datagenSexValues))]
 }
 
+// testDataRelationshipTypes are the relationship types GenerateTestData draws
+// from. Every one, and every role testDataRoles assigns it, must exist in the
+// standard vocabularies, or `glx init --create-test-data` intermittently
+// writes an archive that fails validation depending on the draw.
+// TestTestDataVocabularyIsStandard checks the whole table, not a sample.
+var testDataRelationshipTypes = []string{
+	RelationshipTypeMarriage, RelationshipTypeSibling, RelationshipTypePartner, RelationshipTypeAssociate,
+}
+
+// testDataRoles returns the two participant roles for a generated
+// relationship of type relType.
+func testDataRoles(relType string) []string {
+	switch {
+	case IsCoupleRelationshipType(relType):
+		return []string{ParticipantRoleSpouse, ParticipantRoleSpouse}
+	case relType == RelationshipTypeSibling:
+		return []string{ParticipantRoleSibling, ParticipantRoleSibling}
+	default:
+		return []string{ParticipantRoleAssociate, ParticipantRoleAssociate}
+	}
+}
+
 // GenerateTestData creates a complete GLXFile structure with plausible test data
 // for a specified number of people.
 func GenerateTestData(numPeople int) (*GLXFile, error) {
@@ -117,10 +139,7 @@ func GenerateTestData(numPeople int) (*GLXFile, error) {
 
 	// Generate some relationships
 	if numPeople > 1 {
-		// Every type and role here must exist in the standard vocabularies, or
-		// `glx init --create-test-data` intermittently produces an archive
-		// that fails validation, depending on which types the draw picks.
-		relationshipTypes := []string{RelationshipTypeMarriage, RelationshipTypeSibling, RelationshipTypePartner, RelationshipTypeAssociate}
+		relationshipTypes := testDataRelationshipTypes
 		for range numPeople / 2 {
 			p1 := personIDs[secureIntn(len(personIDs))]
 			p2 := personIDs[secureIntn(len(personIDs))]
@@ -131,15 +150,7 @@ func GenerateTestData(numPeople int) (*GLXFile, error) {
 			relID := EntityIDPrefixRelationship + gofakeit.UUID()
 			relType := relationshipTypes[secureIntn(len(relationshipTypes))]
 
-			var roles []string
-			switch {
-			case IsCoupleRelationshipType(relType):
-				roles = []string{ParticipantRoleSpouse, ParticipantRoleSpouse}
-			case relType == RelationshipTypeSibling:
-				roles = []string{ParticipantRoleSibling, ParticipantRoleSibling}
-			default:
-				roles = []string{ParticipantRoleAssociate, ParticipantRoleAssociate}
-			}
+			roles := testDataRoles(relType)
 
 			glxFile.Relationships[relID] = &Relationship{
 				Type: relType,

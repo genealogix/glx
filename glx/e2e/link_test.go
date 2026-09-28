@@ -17,6 +17,7 @@ package e2e
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -83,6 +84,11 @@ func TestLink_DryRunWritesNothing(t *testing.T) {
 // Etc/GMT+12 (UTC-12) are 26 hours apart, so their dates always differ: if
 // the CLI stamped UTC's date, at most one of these could pass.
 func TestLink_AccessedDateIsLocal(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// Go takes the local zone from the Windows API there and ignores TZ,
+		// so the subprocess cannot be moved into another zone this way.
+		t.Skip("TZ does not set the local time zone on Windows")
+	}
 	for _, zone := range []string{"Pacific/Kiritimati", "Etc/GMT+12"} {
 		t.Run(zone, func(t *testing.T) {
 			loc, err := time.LoadLocation(zone)

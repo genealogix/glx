@@ -110,7 +110,17 @@ func runGLXWithEnv(t *testing.T, extraEnv []string, workDir string, args ...stri
 	// GLX_CACHE the developer or CI runner happens to export, so the same test
 	// exercises the cached loader on one machine and the uncached one on
 	// another. Tests that want the cache set it explicitly via extraEnv.
-	cmd.Env = append(envWithout(os.Environ(), "GLX_CACHE"), extraEnv...)
+	//
+	// Each extraEnv key is removed from the inherited environment first:
+	// os/exec keeps the first of duplicate assignments, so an inherited TZ=UTC
+	// would otherwise silently win over a test's TZ=Pacific/Kiritimati.
+	env := envWithout(os.Environ(), "GLX_CACHE")
+	for _, kv := range extraEnv {
+		name, _, _ := strings.Cut(kv, "=")
+		env = envWithout(env, name)
+	}
+	env = append(env, extraEnv...)
+	cmd.Env = env
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -134,11 +144,12 @@ func runGLXWithEnv(t *testing.T, extraEnv []string, workDir string, args ...stri
 }
 
 // envWithout returns env with every assignment to the named variable removed.
+// Windows environment names are case-insensitive, so the match is too there.
 func envWithout(env []string, name string) []string {
 	prefix := name + "="
 	out := make([]string, 0, len(env))
 	for _, kv := range env {
-		if strings.HasPrefix(kv, prefix) {
+		if strings.HasPrefix(kv, prefix) || (runtime.GOOS == "windows" && len(kv) >= len(prefix) && strings.EqualFold(kv[:len(prefix)], prefix)) {
 			continue
 		}
 		out = append(out, kv)

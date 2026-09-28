@@ -17,6 +17,7 @@ package e2e
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -46,6 +47,75 @@ var importFixtures = []struct {
 	{"7.0/remarriage/remarriage1.ged", 3},
 	{"7.0/remarriage/remarriage2.ged", 3},
 	{"7.0/minimal-valid/minimal70.gdz", 0},
+	{"7.0/media-objects/obje-1.ged", 1},
+	{"7.0/media-objects/filename-1.ged", 0},
+	{"7.0/extensions/extension-record.ged", 1},
+	{"7.0/long-url/long-url.ged", 0},
+}
+
+// Every fixture survives import → export → re-import through the binary, in
+// both GEDCOM versions, with the same people on the far side. Content the
+// converter is known to lose in transit is tracked separately (#1307, #1308)
+// rather than asserted here.
+func TestImport_RoundTripThroughExport(t *testing.T) {
+	for _, fx := range importFixtures {
+		for _, format := range []string{"551", "70"} {
+			t.Run(fx.rel+"/"+format, func(t *testing.T) {
+				work := t.TempDir()
+				require.Equal(t, 0, runGLX(t, work, "import", gedcomFixture(t, fx.rel), "-o", "first").exitCode)
+
+				exp := runGLX(t, work, "export", "first", "-o", "out.ged", "--format", format)
+				require.Equal(t, 0, exp.exitCode, exp.stderr)
+				back := runGLX(t, work, "import", "out.ged", "-o", "back")
+				require.Equal(t, 0, back.exitCode, back.stderr)
+
+				persons, err := filepath.Glob(filepath.Join(work, "back", "persons", "*.glx"))
+				require.NoError(t, err)
+				assert.Len(t, persons, fx.persons)
+				assertArchiveValid(t, filepath.Join(work, "back"))
+			})
+		}
+	}
+}
+
+// An undocumented _LOC extension record, referenced from a PLAC and nested
+// town → country, imports as a two-level place hierarchy that the birth
+// event points into.
+func TestImport_ExtensionRecordBecomesPlaceHierarchy(t *testing.T) {
+	work := t.TempDir()
+
+	res := runGLX(t, work, "import", gedcomFixture(t, "7.0/extensions/extension-record.ged"), "-o", "archive")
+
+	require.Equal(t, 0, res.exitCode, res.stderr)
+	places, err := filepath.Glob(filepath.Join(work, "archive", "places", "*.glx"))
+	require.NoError(t, err)
+	assert.Len(t, places, 2, "the town and the country")
+	births := runGLX(t, filepath.Join(work, "archive"), "query", "events", "--type", "birth")
+	require.Equal(t, 0, births.exitCode, births.stderr)
+	assert.Contains(t, births.stdout, "1 event(s) found")
+	analysis := runGLX(t, filepath.Join(work, "archive"), "places")
+	require.Equal(t, 0, analysis.exitCode, analysis.stderr)
+	assert.Contains(t, analysis.stdout, "Place analysis: 2 places")
+}
+
+// GEDCOM 7.0 dropped 5.5.1's 255-character line limit, so a ~800-character
+// WWW must arrive whole. (Export currently drops the submitter entirely: #1307.)
+func TestImport_LongLineArrivesWhole(t *testing.T) {
+	work := t.TempDir()
+	src := gedcomFixture(t, "7.0/long-url/long-url.ged")
+	data, err := os.ReadFile(src) //nolint:gosec // test fixture path
+	require.NoError(t, err)
+	_, after, found := strings.Cut(string(data), "1 WWW ")
+	require.True(t, found)
+	url := strings.TrimSpace(strings.SplitN(after, "\n", 2)[0])
+	require.Greater(t, len(url), 255, "the fixture must exceed the 5.5.1 line limit to test anything")
+
+	res := runGLX(t, work, "import", src, "-o", "archive")
+
+	require.Equal(t, 0, res.exitCode, res.stderr)
+	meta, err := os.ReadFile(filepath.Join(work, "archive", "metadata.glx"))
+	require.NoError(t, err)
+	assert.Contains(t, string(meta), url, "the long URL must not be truncated or split")
 }
 
 func TestImport_MultiFileArchivesValidate(t *testing.T) {
@@ -109,17 +179,32 @@ func TestImport_SingleFileFormat(t *testing.T) {
 }
 
 // Media records whose files do not exist import as Media entities without
-// requiring the binaries.
+// requiring the binaries, whatever URI shape the FILE payload takes. Each OBJE
+// currently yields one entity however many FILEs it holds; #1308 tracks the
+// dropped ones, and this count changes when that is fixed.
 func TestImport_MediaWithoutBinaries(t *testing.T) {
-	parent := t.TempDir()
+	for _, tc := range []struct {
+		rel   string
+		media int
+	}{
+		{"7.0/media-objects/obje-1.ged", 2},
+		{"7.0/media-objects/filename-1.ged", 1},
+	} {
+		t.Run(tc.rel, func(t *testing.T) {
+			parent := t.TempDir()
 
-	res := runGLX(t, parent, "import", gedcomFixture(t, "7.0/media-objects/obje-1.ged"), "-o", "archive")
+			res := runGLX(t, parent, "import", gedcomFixture(t, tc.rel), "-o", "archive")
 
-	require.Equal(t, 0, res.exitCode, res.stderr)
-	media, err := filepath.Glob(filepath.Join(parent, "archive", "media", "*.glx"))
-	require.NoError(t, err)
-	assert.NotEmpty(t, media)
-	assertArchiveValid(t, filepath.Join(parent, "archive"))
+			require.Equal(t, 0, res.exitCode, res.stderr)
+			media, err := filepath.Glob(filepath.Join(parent, "archive", "media", "*.glx"))
+			require.NoError(t, err)
+			assert.Len(t, media, tc.media)
+			binaries, err := filepath.Glob(filepath.Join(parent, "archive", "media", "files", "*"))
+			require.NoError(t, err)
+			assert.Empty(t, binaries, "no binaries exist to copy, so none may be invented")
+			assertArchiveValid(t, filepath.Join(parent, "archive"))
+		})
+	}
 }
 
 func TestImport_Errors(t *testing.T) {
