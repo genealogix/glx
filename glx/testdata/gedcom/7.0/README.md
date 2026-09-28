@@ -14,25 +14,25 @@ Files should start with a header like:
 ## Test Categories
 
 ### Specification Samples
-- **[minimal-valid/](https://github.com/genealogix/glx/tree/main/glx/testdata/gedcom/7.0/minimal-valid)** - Minimal legal GEDCOM 7.0 file (32 bytes)
-- **[comprehensive-spec/](https://github.com/genealogix/glx/tree/main/glx/testdata/gedcom/7.0/comprehensive-spec)** - Maximal GEDCOM 7.0 test (15 KB)
+- **[minimal-valid/](minimal-valid/README.md)** - Minimal legal GEDCOM 7.0 file (32 bytes)
+- **[comprehensive-spec/](comprehensive-spec/README.md)** - Maximal GEDCOM 7.0 test (15 KB)
 
 ### GEDCOM 7.0 New Features
-- **[escaping/](https://github.com/genealogix/glx/tree/main/glx/testdata/gedcom/7.0/escaping)** - @ character escaping (@@)
-- **[extensions/](https://github.com/genealogix/glx/tree/main/glx/testdata/gedcom/7.0/extensions)** - Extension tags and custom structures
-- **[language/](https://github.com/genealogix/glx/tree/main/glx/testdata/gedcom/7.0/language)** - BCP 47 language tags (LANG field)
-- **[notes/](https://github.com/genealogix/glx/tree/main/glx/testdata/gedcom/7.0/notes)** - NOTE vs SNOTE (7.0 change)
-- **[void-pointers/](https://github.com/genealogix/glx/tree/main/glx/testdata/gedcom/7.0/void-pointers)** - @VOID@ null references
-- **[cross-references/](https://github.com/genealogix/glx/tree/main/glx/testdata/gedcom/7.0/cross-references)** - XREF format validation
+- **[escaping/](escaping/README.md)** - @ character escaping (@@)
+- **[extensions/](extensions/README.md)** - Extension tags and custom structures
+- **[language/](language/README.md)** - BCP 47 language tags (LANG field)
+- **[notes/](notes/README.md)** - NOTE vs SNOTE (7.0 change)
+- **[void-pointers/](void-pointers/README.md)** - @VOID@ null references
+- **[cross-references/](cross-references/README.md)** - XREF format validation
 
 ### Data Format Testing
-- **[age-values/](https://github.com/genealogix/glx/tree/main/glx/testdata/gedcom/7.0/age-values)** - Age field formats (5.9 KB)
-- **[date-formats/](https://github.com/genealogix/glx/tree/main/glx/testdata/gedcom/7.0/date-formats)** - Date format validation (348 KB)
+- **[age-values/](age-values/README.md)** - Age field formats (5.9 KB)
+- **[date-formats/](date-formats/README.md)** - Date format validation (348 KB)
 - **[long-url/](long-url/README.md)** - Single line longer than the 5.5.1 255-character limit
 - **[media-objects/](media-objects/README.md)** - OBJE records, multi-file media, and FILE URI forms
 
 ### Family Structures
-- **[same-sex-marriage/](https://github.com/genealogix/glx/tree/main/glx/testdata/gedcom/7.0/same-sex-marriage)** - Same-sex marriage handling
+- **[same-sex-marriage/](same-sex-marriage/README.md)** - Same-sex marriage handling
 - **[remarriage/](remarriage/README.md)** - Divorce and remarriage, as one family or as two
 
 ## Key GEDCOM 7.0 Changes from 5.5.1
