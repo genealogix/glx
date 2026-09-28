@@ -278,7 +278,8 @@ func swapManagedEntries(destPath, freshDir, backupDir string) error {
 	// far. The marker says so for as long as that is possible; while it
 	// exists, removeStaleBackup refuses to treat the backup as disposable.
 	marker := filepath.Join(backupDir, swapInProgressMarker)
-	if err := os.WriteFile(marker, []byte("glx: interrupted write to "+destPath+"\n"), filePermissions); err != nil {
+	if err := writeDurableMarker(marker, "glx: interrupted write to "+destPath+"\n"); err != nil {
+		_ = os.Remove(marker)
 		_ = os.Remove(backupDir)
 
 		return fmt.Errorf("marking backup in progress: %w", err)
@@ -349,6 +350,38 @@ func swapManagedEntries(destPath, freshDir, backupDir string) error {
 	// discard on its own).
 	if err := os.Remove(marker); err != nil {
 		return fmt.Errorf("clearing backup marker: %w", err)
+	}
+
+	return nil
+}
+
+// writeDurableMarker writes the swap marker and flushes it, and the directory
+// entry naming it, to stable storage before any rename runs. Without the
+// flush, a power loss could persist the renames that follow but not the
+// marker — the one state the marker exists to catch. Syncing a directory is
+// not supported everywhere (Windows rejects it), so that step is best effort;
+// the file itself must sync.
+func writeDurableMarker(path, content string) error {
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, filePermissions) //nolint:gosec // path is backupDir/marker, built by the caller
+	if err != nil {
+		return err
+	}
+	if _, err := f.WriteString(content); err != nil {
+		_ = f.Close()
+
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		_ = f.Close()
+
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	if dir, err := os.Open(filepath.Dir(path)); err == nil {
+		_ = dir.Sync()
+		_ = dir.Close()
 	}
 
 	return nil
