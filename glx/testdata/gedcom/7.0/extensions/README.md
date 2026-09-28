@@ -10,10 +10,13 @@ GEDCOM 7.0 test file for validating handling of extension tags, custom tags, and
 - **Data preservation**: Maintain unknown/custom data
 - **Specification flexibility**: Non-standard tag support
 
+## Files
+- **`extensions.ged`** (~3.4 KB) — extension tags, custom tags, and non-standard structures
+- **`extension-record.ged`** (~360 bytes) — an undocumented `_LOC` extension *record* type referenced from a `PLAC` via `3 _LOC @LOC1@`, with a nested `_LOC` hierarchy (town → country)
+
 ## File Information
 - **GEDCOM Version**: 7.0
 - **Format**: `.ged` (standard GEDCOM text format)
-- **Size**: ~3.4 KB
 - **Encoding**: UTF-8
 - **Source Software**: gedcom.io test suite
 

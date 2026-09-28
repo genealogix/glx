@@ -250,9 +250,23 @@ jobs:
           # echo, so a renamed/removed docs/examples would hard-fail discovery
           # instead of degrading to an empty matrix (#1036). The aggregator
           # treats an empty matrix with a green build as a pass.
+          #
+          # Only directories that hold an archive are matrix entries. Some
+          # examples are hosted in their own repositories and keep just a
+          # README here (westeros). `glx validate` fails a target with no GLX
+          # files rather than reporting it valid, and "validating" an empty
+          # directory never checked anything anyway.
           if [ -d docs/examples ]; then
-            examples=$(find docs/examples -mindepth 1 -maxdepth 1 -type d -printf '%f\n' \
-              | sort | jq -Rsc 'split("\n") | map(select(length > 0))')
+            examples=$(
+              for dir in docs/examples/*/; do
+                name=$(basename "$dir")
+                if [ -n "$(find "$dir" -name '*.glx' -print -quit)" ]; then
+                  echo "$name"
+                else
+                  echo "Skipping $name: no .glx files (hosted elsewhere?)" >&2
+                fi
+              done | sort | jq -Rsc 'split("\n") | map(select(length > 0))'
+            )
           else
             examples='[]'
           fi

@@ -159,3 +159,85 @@ func TestInit_SingleFileArchiveAlsoGetsARepository(t *testing.T) {
 	_, err = os.Stat(filepath.Join(archive, ".git"))
 	assert.NoError(t, err, "a single-file archive directory is version controlled too")
 }
+
+func TestInit_NamedDirectory(t *testing.T) {
+	parent := t.TempDir()
+
+	res := runGLX(t, parent, "init", "family")
+
+	require.Equal(t, 0, res.exitCode, res.stderr)
+	assert.Contains(t, res.stdout, "Initialized multi-file GENEALOGIX repository in family")
+	archive := filepath.Join(parent, "family")
+	for _, dir := range []string{"persons", "events", "relationships", "places", "sources", "citations", "repositories", "assertions", "media", "vocabularies"} {
+		assert.DirExists(t, filepath.Join(archive, dir))
+	}
+	assert.FileExists(t, filepath.Join(archive, ".gitignore"))
+	assert.FileExists(t, filepath.Join(archive, "README.md"))
+	assert.FileExists(t, filepath.Join(archive, "vocabularies", "event-types.glx"))
+	assertArchiveValid(t, archive)
+}
+
+// With no argument, init writes into the cwd — the directory the user's shell
+// is in must be the one that becomes the archive.
+func TestInit_CurrentDirectory(t *testing.T) {
+	archive := filepath.Join(t.TempDir(), "here")
+	require.NoError(t, os.Mkdir(archive, 0o755))
+	dirBefore := statDir(t, archive)
+
+	res := runGLX(t, archive, "init")
+
+	require.Equal(t, 0, res.exitCode, res.stderr)
+	assert.Contains(t, res.stdout, "in the current directory")
+	assertSameDirectory(t, dirBefore, archive)
+	assert.DirExists(t, filepath.Join(archive, "persons"))
+	assertArchiveValid(t, archive)
+}
+
+// --no-git isolates the archive layout from the repository init also creates
+// (TestInit_SingleFileArchiveAlsoGetsARepository covers that half).
+func TestInit_SingleFile(t *testing.T) {
+	parent := t.TempDir()
+
+	res := runGLX(t, parent, "init", "family", "--single-file", "--no-git")
+
+	require.Equal(t, 0, res.exitCode, res.stderr)
+	archive := filepath.Join(parent, "family")
+	assert.Equal(t, []string{"archive.glx"}, treePaths(t, archive), "a single-file archive is exactly one file")
+	validate := runGLX(t, archive, "validate", "archive.glx")
+	assert.Equal(t, 0, validate.exitCode, validate.stdout+validate.stderr)
+}
+
+// Test data draws relationship types at random, one per two persons, so with
+// only a few persons a type whose roles are missing from the vocabulary
+// fails only occasionally. Twenty persons draw ten, enough that every type
+// shows up in nearly every run. The guarantee is the unit test
+// TestTestDataVocabularyIsStandard, which checks the whole table; this is the
+// same property seen through the binary.
+func TestInit_TestDataIsValid(t *testing.T) {
+	parent := t.TempDir()
+
+	res := runGLX(t, parent, "init", "family", "--create-test-data", "20")
+
+	require.Equal(t, 0, res.exitCode, res.stderr)
+	persons, err := os.ReadDir(filepath.Join(parent, "family", "persons"))
+	require.NoError(t, err)
+	assert.Len(t, persons, 20)
+	assertArchiveValid(t, filepath.Join(parent, "family"))
+}
+
+func TestInit_RefusesNonEmptyDirectory(t *testing.T) {
+	archive := copyExample(t, "basic-family")
+	before := snapshotTree(t, archive)
+
+	assertExitWithStderr(t, runGLX(t, archive, "init"), "non-empty directory")
+	assertTreeUnchanged(t, before, archive)
+}
+
+func TestInit_ArgumentCountIsEnforced(t *testing.T) {
+	parent := t.TempDir()
+
+	assertExitWithStderr(t, runGLX(t, parent, "init", "a", "b"), "accepts at most 1 arg(s), received 2")
+	entries, err := os.ReadDir(parent)
+	require.NoError(t, err)
+	assert.Empty(t, entries, "nothing is created when the arguments are rejected")
+}

@@ -385,9 +385,11 @@ func resolveCensusPersons(census *CensusData, existing *GLXFile, result *CensusR
 			Notes:  memberNotes,
 		}
 
-		// Add age as participant property
+		// Add age as participant property. age_at_event is a string property
+		// (it carries GEDCOM AGE values such as "3y 2m"), so an int here
+		// makes every census-generated archive validate with warnings.
 		if member.Age != nil {
-			p.Properties = map[string]any{"age_at_event": *member.Age}
+			p.Properties = map[string]any{"age_at_event": strconv.Itoa(*member.Age)}
 		}
 
 		participants = append(participants, p)

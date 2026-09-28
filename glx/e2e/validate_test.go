@@ -47,6 +47,37 @@ func TestValidate_IgnoresArchiveCopyUnderDotDirectory(t *testing.T) {
 	assert.NotContains(t, res.stderr, "conflict")
 }
 
+// A target that does not hold an archive must fail, not pass having checked
+// nothing: a typo in a CI step's path would otherwise stay green forever.
+func TestValidate_TargetsWithNothingToValidateFail(t *testing.T) {
+	work := t.TempDir()
+	require.NoError(t, os.Mkdir(filepath.Join(work, "empty"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(work, "notes.txt"), []byte("not a GLX file\n"), 0o644))
+	archive := copyExample(t, "basic-family")
+
+	cases := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{"missing path", []string{"validate", "archvie"}, "cannot access path"},
+		{"missing path among valid ones", []string{"validate", filepath.Join(archive, "persons"), filepath.Join(archive, "evnets")}, "cannot access path"},
+		{"empty directory", []string{"validate", "empty"}, "No GLX files found"},
+		{"non-GLX file", []string{"validate", "notes.txt"}, "No GLX files found"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			res := runGLX(t, work, tc.args...)
+
+			assertExitWithStderr(t, res, tc.want)
+			assert.NotContains(t, res.stdout, "valid", "a failed target must not print a pass")
+		})
+	}
+
+	// Bare `glx validate` in a directory that is not an archive fails too.
+	assertExitWithStderr(t, runGLX(t, filepath.Join(work, "empty"), "validate"), "No GLX files found")
+}
+
 // The reproduction in #1270: join an archive to single-file form, break one
 // reference, and the corruption that is a hard error in the multi-file form
 // used to pass green in the joined one.
