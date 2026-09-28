@@ -382,3 +382,53 @@ jobs:
           files: ./coverage.out
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
+
+  # The Go suite on Windows (#1272). Deliberately a SEPARATE job rather than an
+  # os matrix on test-conformance: a matrix would rename that job's check
+  # contexts to `test-conformance (ubuntu-latest)` etc., and the bare
+  # `test-conformance` name is a required context in the Main Protection
+  # ruleset — renaming it would leave the ruleset waiting on a check that never
+  # reports and deadlock merges (see the job-naming note above).
+  #
+  # This job is NOT required by the ruleset on introduction; making it required
+  # is a manual ruleset change (the context to add is this job's `name:`,
+  # "Go tests (Windows)"). Until then a Windows-only regression shows as a red
+  # check that does not block merging, which is the intended first step.
+  #
+  # Scope is narrower than test-conformance on purpose: no coverage profile and
+  # no upload (Codecov takes the Linux run, and a second report for the same
+  # commit would have to be flag-partitioned to be meaningful), and no `-v`,
+  # which keeps the log readable. The stderr "Warning:" gate stays Linux-only
+  # too — it is a property of the code, not of the platform, so running it in
+  # both places doubles the maintenance for no extra signal. Windows runners
+  # bill at 2x Linux minutes, so this is gated on the same `changes.outputs.go`
+  # filter as the other Go jobs and a docs-only PR does not pay for it.
+  test-windows:
+    name: Go tests (Windows)
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.go == 'true') }}
+    runs-on: windows-latest
+    # Windows runners are appreciably slower than ubuntu-latest for the same
+    # suite (the habsburg.ged fixtures dominate), so this is above the 20
+    # minutes test-conformance allows.
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Download Go modules
+        run: go mod download
+
+      # shell: bash rather than the windows-latest default (pwsh), so a
+      # non-zero `go test` exit fails the step the same way it does everywhere
+      # else in this workflow.
+      - name: Run Go tests
+        shell: bash
+        run: go test ./glx/... ./go-glx/... ./tools/... -timeout 25m
