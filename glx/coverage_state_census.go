@@ -187,9 +187,9 @@ func isAlpha(b byte) bool {
 // confusing state and federal censuses on overlapping years: the title must
 // mention the state name, or the event's place must resolve to the target state.
 func findStateCensusMatch(year int, state string, sources, events []personSourceInfo, archive *glxlib.GLXFile) string {
-	// Check events — require census type + year + state-specific signal
+	// Check events — require census type + year + evidence + state-specific signal
 	for _, e := range events {
-		if e.EventType != glxlib.EventTypeCensus || e.Year != year {
+		if e.EventType != glxlib.EventTypeCensus || e.Year != year || !e.Evidenced {
 			continue
 		}
 		// Title must mention this specific state
