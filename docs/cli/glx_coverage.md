@@ -52,7 +52,7 @@ glx coverage <person> [flags]
 
 ```
   -a, --archive string   Archive path (directory or single file) (default ".")
-      --country string   Country whose census schedule to assume for persons whose places name no country (default "United States"; "none" to suggest nothing)
+      --country string   Country whose census schedule to assume for persons whose places name no country (default "none", which suggests no census records)
   -h, --help             help for coverage
       --json             Output as JSON
 ```

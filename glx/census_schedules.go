@@ -171,22 +171,24 @@ var countryAliases = map[string]string{
 // censusCountryFlagUsage is the --country flag help shared by the commands
 // that suggest census records.
 const censusCountryFlagUsage = "Country whose census schedule to assume for persons " +
-	"whose places name no country (default \"United States\"; \"none\" to suggest nothing)"
+	"whose places name no country (default \"none\", which suggests no census records)"
 
 // censusCountryNone is the --country value that turns census suggestions off
 // for persons whose places do not name a country.
 const censusCountryNone = "none"
 
 // censusCountryFallback is the country assumed for a person no place in the
-// archive puts in one. It defaults to the United States because that is what
-// coverage and analyze assumed unconditionally before this was configurable,
-// and archives written against that behavior should keep working; `--country`
-// overrides it, and `--country none` turns the fallback off (#186).
-var censusCountryFallback = countryUnitedStates
+// archive puts in one. It is empty by default, so an archive that names no
+// country for someone draws no census suggestions at all: guessing the United
+// States from silence is the US-centric default #186 was filed about. Set it
+// with `--country` to research an archive whose places stop short of the
+// country level (#186).
+var censusCountryFallback = ""
 
 // parseCensusCountry resolves a --country flag value to a canonical country
-// name. The empty string leaves the fallback alone, "none" disables it, and
-// anything else must name a country the schedule table knows about.
+// name. The empty string leaves the fallback alone (no fallback, unless one
+// has already been set), "none" disables it, and anything else must name a
+// country the schedule table knows about.
 func parseCensusCountry(value string) (string, error) {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
