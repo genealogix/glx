@@ -362,7 +362,7 @@ func swapManagedEntries(destPath, freshDir, backupDir string) error {
 // not supported everywhere (Windows rejects it), so that step is best effort;
 // the file itself must sync.
 func writeDurableMarker(path, content string) error {
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, filePermissions) //nolint:gosec // path is backupDir/marker, built by the caller
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, filePermissions) // #nosec G304 -- path is <archive>.bak/<marker>, built by swapManagedEntries, not user input
 	if err != nil {
 		return err
 	}
@@ -379,7 +379,7 @@ func writeDurableMarker(path, content string) error {
 	if err := f.Close(); err != nil {
 		return err
 	}
-	if dir, err := os.Open(filepath.Dir(path)); err == nil {
+	if dir, err := os.Open(filepath.Dir(path)); err == nil { // #nosec G304 -- the backup directory swapManagedEntries just created
 		_ = dir.Sync()
 		_ = dir.Close()
 	}
