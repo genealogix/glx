@@ -80,7 +80,20 @@ func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
 	if err != nil {
 		return fmt.Errorf("resolving destination path: %w", err)
 	}
-	destPath = absPath
+	if _, err := os.Stat(absPath); err != nil {
+		return fmt.Errorf("cannot access destination: %w", err)
+	}
+	// Work on the real directory when the archive path is a symlink to it.
+	// WalkDir does not descend into a symlinked root, so classifying through
+	// the link finds no skipped entries while the swap, which does follow it,
+	// moves their managed parents into the backup — and deleting the backup
+	// then destroys persons/.drafts/ and the like. Resolving also puts the
+	// backup and temp dir beside the real directory, on its filesystem, so
+	// every rename stays atomic, and leaves the user's link itself untouched.
+	destPath, err = filepath.EvalSymlinks(absPath)
+	if err != nil {
+		return fmt.Errorf("resolving destination path: %w", err)
+	}
 
 	// On Windows, a directory cannot be renamed while it is any process's cwd.
 	// If our cwd is inside (or equal to) destPath — possibly inside one of the
@@ -88,7 +101,10 @@ func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
 	// directory so the rename operations succeed.
 	parentDir := filepath.Dir(destPath)
 	if cwd, err := os.Getwd(); err == nil {
-		if absCwd, err2 := filepath.Abs(cwd); err2 == nil {
+		// Compare resolved paths: destPath is now symlink-free, so a cwd
+		// reached through a link must be resolved the same way to be seen
+		// as inside it.
+		if absCwd, err2 := filepath.EvalSymlinks(cwd); err2 == nil {
 			if rel, err3 := filepath.Rel(destPath, absCwd); err3 == nil {
 				// cwd is inside destPath if rel is "." or does not start with "..".
 				if rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator))) {
@@ -101,9 +117,6 @@ func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
 		}
 	}
 
-	if _, err := os.Stat(destPath); err != nil {
-		return fmt.Errorf("cannot access destination: %w", err)
-	}
 	if err := refuseTopLevelGLXFiles(destPath); err != nil {
 		return err
 	}
@@ -114,7 +127,11 @@ func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
 	// ../alias.glx -> .drafts/x.glx) that never enters the backup, so
 	// classification has to precede every move. The entries themselves are
 	// moved last, once the larger units they may sit inside have gone across.
-	skipped, err := classifySkippedEntries(destPath, destPath)
+	// Walk the real directory, but judge absolute link targets against the
+	// path as the user spelled it as well: a link may reach a dot directory
+	// through the symlinked path (/link/.drafts/x.glx), and relWithinEither
+	// accepts a target under either root.
+	skipped, err := classifySkippedEntries(destPath, absPath)
 	if err != nil {
 		return fmt.Errorf("preserving skipped entries: %w", err)
 	}
@@ -127,7 +144,7 @@ func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
 
 	// A completed swap leaves the temp dir empty; a failed one leaves only
 	// fresh output that can be regenerated. Either way it goes.
-	defer os.RemoveAll(tmpDir) //nolint:errcheck // best-effort cleanup
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	// Write the archive to temp
 	if err := writeMultiFileArchive(tmpDir, archive, false); err != nil {
@@ -189,6 +206,15 @@ func removeStaleBackup(backupDir string) error {
 
 		return fmt.Errorf("inspecting stale backup %s: %w", backupDir, err)
 	}
+	// A backup left mid-swap is not stale: the archive beside it is missing
+	// whatever had already moved in, so it may be the only copy of those
+	// entities. Deleting it here would complete the loss on the next write.
+	if _, err := os.Lstat(filepath.Join(backupDir, swapInProgressMarker)); err == nil {
+		archive := strings.TrimSuffix(backupDir, ".bak")
+
+		return fmt.Errorf("%w: %s holds entries moved out of %s. Move back any that %s is missing, "+
+			"then delete %s", ErrInterruptedSwap, backupDir, archive, archive, backupDir)
+	}
 	for _, entry := range entries {
 		if !isManagedTopLevel(entry) {
 			return fmt.Errorf("%w: %s contains %q", ErrStaleBackupForeignFile, backupDir, entry.Name())
@@ -247,19 +273,33 @@ func swapManagedEntries(destPath, freshDir, backupDir string) error {
 	if err := os.Mkdir(backupDir, dirPermissions); err != nil {
 		return fmt.Errorf("creating backup directory: %w", err)
 	}
+	// The swap is a sequence of renames, not one, so a crash or kill between
+	// them leaves the archive missing whatever had moved into the backup so
+	// far. The marker says so for as long as that is possible; while it
+	// exists, removeStaleBackup refuses to treat the backup as disposable.
+	marker := filepath.Join(backupDir, swapInProgressMarker)
+	if err := os.WriteFile(marker, []byte("glx: interrupted write to "+destPath+"\n"), filePermissions); err != nil {
+		_ = os.Remove(backupDir)
+
+		return fmt.Errorf("marking backup in progress: %w", err)
+	}
 
 	var backedUp, placed []string
 	rollback := func() {
 		// Best effort, newest move first: a failure here leaves the entry at a
 		// predictable path (freshDir, backupDir) rather than losing it, and
-		// backupDir is only removed once it is empty again.
+		// backupDir is only removed once it is empty again — so a rollback
+		// that could not finish keeps its marker.
 		for _, p := range slices.Backward(placed) {
 			_ = robustRename(filepath.Join(destPath, p), filepath.Join(freshDir, p))
 		}
 		for _, b := range slices.Backward(backedUp) {
 			_ = robustRename(filepath.Join(backupDir, b), filepath.Join(destPath, b))
 		}
-		_ = os.Remove(backupDir)
+		if entries, err := os.ReadDir(backupDir); err == nil && len(entries) == 1 && entries[0].Name() == swapInProgressMarker {
+			_ = os.Remove(marker)
+			_ = os.Remove(backupDir)
+		}
 	}
 
 	current, err := os.ReadDir(destPath)
@@ -303,8 +343,21 @@ func swapManagedEntries(destPath, freshDir, backupDir string) error {
 		placed = append(placed, name)
 	}
 
+	// Every fresh entry is in place: the backup now holds only superseded
+	// managed entries, plus skipped entries and media binaries that the
+	// caller carries back next (and that removeStaleBackup already refuses to
+	// discard on its own).
+	if err := os.Remove(marker); err != nil {
+		return fmt.Errorf("clearing backup marker: %w", err)
+	}
+
 	return nil
 }
+
+// swapInProgressMarker names the file swapManagedEntries keeps in the backup
+// while the archive is between states. It is dot-prefixed, so it is never
+// mistaken for archive content.
+const swapInProgressMarker = ".glx-swap-in-progress"
 
 // firstSkippedEntry returns the path, relative to backupDir, of the first
 // entry the loader would skip (loaderSkips: dot-prefixed names, symlinks or

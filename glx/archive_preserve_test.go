@@ -629,6 +629,69 @@ func TestSafeWrite_KeepsArchiveDirectoryItself(t *testing.T) {
 	}
 }
 
+// Writing through a symlink to the archive must preserve skipped entries in
+// the real directory, and must leave the user's link a link. WalkDir does not
+// descend into a symlinked root, so without resolving it the swap found no
+// skipped entries and deleted persons/.drafts/ with the backup.
+func TestSafeWrite_ThroughSymlinkedArchiveRoot(t *testing.T) {
+	if runtime.GOOS == goosWindows {
+		t.Skip("symlink creation requires elevation on Windows")
+	}
+	base := t.TempDir()
+	target := filepath.Join(base, "real")
+	require.NoError(t, os.MkdirAll(target, 0o755))
+	require.NoError(t, safeWriteMultiFileArchive(target, preserveTestArchive()))
+	draft := filepath.Join(target, "persons", ".drafts", "person-draft.glx")
+	writeSkipTestFile(t, draft, "persons: {}\n")
+	link := filepath.Join(base, "link")
+	require.NoError(t, os.Symlink(target, link))
+
+	require.NoError(t, safeWriteMultiFileArchive(link, preserveTestArchive()))
+
+	assert.FileExists(t, draft, "a skipped entry inside a managed directory must survive")
+	info, err := os.Lstat(link)
+	require.NoError(t, err)
+	assert.NotZero(t, info.Mode()&os.ModeSymlink, "the user's link must stay a link")
+	assert.NoDirExists(t, target+".bak")
+	assert.NoDirExists(t, link+".bak")
+}
+
+// A crash between the swap's renames leaves the backup holding entries the
+// archive no longer has. The next write must refuse rather than delete that
+// backup as stale, or the interruption becomes permanent data loss.
+func TestSafeWrite_RefusesBackupLeftMidSwap(t *testing.T) {
+	archiveDir := filepath.Join(t.TempDir(), "archive")
+	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
+	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+
+	// Stage the state a kill after backing up persons/ leaves behind: the
+	// marker and the only copy of persons/ in the backup.
+	backup := archiveDir + ".bak"
+	require.NoError(t, os.MkdirAll(backup, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(backup, swapInProgressMarker), []byte("x\n"), 0o644))
+	require.NoError(t, os.Rename(filepath.Join(archiveDir, "persons"), filepath.Join(backup, "persons")))
+
+	err := safeWriteMultiFileArchive(archiveDir, preserveTestArchive())
+
+	require.ErrorIs(t, err, ErrInterruptedSwap)
+	assert.Contains(t, err.Error(), backup)
+	assert.DirExists(t, filepath.Join(backup, "persons"), "the only copy of persons/ must not be deleted")
+}
+
+// A completed or rolled-back swap leaves no marker behind, so an ordinary
+// leftover backup is still cleaned up as before.
+func TestSafeWrite_LeavesNoSwapMarker(t *testing.T) {
+	archiveDir := filepath.Join(t.TempDir(), "archive")
+	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
+
+	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+
+	assert.NoDirExists(t, archiveDir+".bak")
+	_, err := os.Lstat(filepath.Join(archiveDir, swapInProgressMarker))
+	assert.True(t, os.IsNotExist(err), "the marker belongs in the backup only, and only mid-swap")
+}
+
 // fsCaseSensitive reports whether dir lives on a case-sensitive filesystem.
 func fsCaseSensitive(t *testing.T, dir string) bool {
 	t.Helper()

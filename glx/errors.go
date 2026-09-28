@@ -48,6 +48,7 @@ var (
 	ErrInvalidExportFormat        = errors.New("invalid GEDCOM version format")
 	ErrInputNotFound              = errors.New("input path not found")
 	ErrStaleBackupForeignFile     = errors.New("stale backup contains non-archive file from a previous failed run; move or inspect it before retrying")
+	ErrInterruptedSwap            = errors.New("a previous write to this archive was interrupted mid-swap; the backup may hold the only copy of some entities")
 	ErrPreservedEntryCollision    = errors.New("an entry the loader skips collides with a file the archive writer produced; the backup is retained")
 	ErrAmbiguousMediaFilesDirs    = errors.New("archive holds more than one media/files directory differing only by case; merge them before writing")
 	ErrTopLevelGLXFile            = errors.New("archive has a top-level .glx file whose entities the multi-file writer would duplicate; move them into entity directories before writing")
