@@ -674,7 +674,9 @@ func TestSafeWrite_RefusesBackupLeftMidSwap(t *testing.T) {
 	err := safeWriteMultiFileArchive(archiveDir, preserveTestArchive())
 
 	require.ErrorIs(t, err, ErrInterruptedSwap)
-	assert.Contains(t, err.Error(), backup)
+	// The message names the resolved backup path, which on Windows can differ
+	// textually from t.TempDir()'s (8.3 short names expand), so match its tail.
+	assert.Contains(t, err.Error(), filepath.Base(backup))
 	assert.DirExists(t, filepath.Join(backup, "persons"), "the only copy of persons/ must not be deleted")
 }
 

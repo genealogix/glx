@@ -18,12 +18,14 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"strings"
+	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+var parentLinkLine = regexp.MustCompile(`(?m)^    parent: place-united-states\r?\n`)
 
 // diffPair returns two copies of basic-family: old untouched, and new with a
 // person added, a person's file edited, and a place removed.
@@ -43,7 +45,8 @@ func diffPair(t *testing.T) (string, string) {
 	illinois := filepath.Join(newDir, "places", "place-illinois.glx")
 	ill, err := os.ReadFile(illinois)
 	require.NoError(t, err)
-	unlinked := strings.Replace(string(ill), "    parent: place-united-states\n", "", 1)
+	// A Windows checkout may carry CRLF line endings.
+	unlinked := parentLinkLine.ReplaceAllString(string(ill), "")
 	require.NotEqual(t, string(ill), unlinked)
 	require.NoError(t, os.WriteFile(illinois, []byte(unlinked), 0o644))
 	assertArchiveValid(t, newDir)

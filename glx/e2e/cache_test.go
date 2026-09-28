@@ -37,7 +37,8 @@ func TestCache_LifecycleFromInsideArchiveRoot(t *testing.T) {
 
 	build := runGLX(t, archive, "cache", "build")
 	require.Equal(t, 0, build.exitCode, build.stderr)
-	assert.Contains(t, build.stdout, "Built binary cache: "+cacheFile)
+	// Printed with the OS separator (.glx\cache.bin on Windows).
+	assert.Contains(t, build.stdout, "Built binary cache: "+filepath.FromSlash(cacheFile))
 	assert.Contains(t, build.stdout, "19 entities")
 	diff := diffTrees(before, snapshotTree(t, archive))
 	assert.Empty(t, diff.changed)
