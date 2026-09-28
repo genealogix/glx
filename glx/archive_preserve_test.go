@@ -680,6 +680,77 @@ func TestSafeWrite_RefusesBackupLeftMidSwap(t *testing.T) {
 	assert.DirExists(t, filepath.Join(backup, "persons"), "the only copy of persons/ must not be deleted")
 }
 
+// A collision found after some fresh entries are already in place must undo
+// both phases: the placed entries go back to the temp dir, the backed-up ones
+// come home, and no backup or marker is left. Fresh entries are placed in
+// name order, so persons/ lands before a foreign regular file named
+// vocabularies blocks vocabularies/.
+func TestSafeWrite_CollisionAfterPartialPlacementRollsBack(t *testing.T) {
+	archiveDir := filepath.Join(t.TempDir(), "archive")
+	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
+	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	require.NoError(t, os.RemoveAll(filepath.Join(archiveDir, "vocabularies")))
+	writeSkipTestFile(t, filepath.Join(archiveDir, "vocabularies"), "a file, not the vocabularies directory\n")
+	before, err := computeFSFingerprint(archiveDir)
+	require.NoError(t, err)
+
+	err = safeWriteMultiFileArchive(archiveDir, preserveTestArchive())
+
+	require.ErrorIs(t, err, ErrPreservedEntryCollision)
+	after, ferr := computeFSFingerprint(archiveDir)
+	require.NoError(t, ferr)
+	assert.Equal(t, before, after, "the rollback must restore the archive exactly")
+	assert.NoDirExists(t, archiveDir+".bak")
+	assertNoTempDirsBeside(t, archiveDir)
+}
+
+// A rename that fails in the first phase (here: the archive directory is not
+// writable, so persons/ cannot leave it) rolls back and reports, leaving the
+// archive as it was and no backup behind.
+func TestSafeWrite_FailedBackupRenameRollsBack(t *testing.T) {
+	if runtime.GOOS == goosWindows {
+		t.Skip("directory write permission does not gate rename on Windows")
+	}
+	if os.Geteuid() == 0 {
+		t.Skip("root ignores directory permissions")
+	}
+	archiveDir := filepath.Join(t.TempDir(), "archive")
+	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
+	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	before, err := computeFSFingerprint(archiveDir)
+	require.NoError(t, err)
+	require.NoError(t, os.Chmod(archiveDir, 0o555))
+	t.Cleanup(func() { _ = os.Chmod(archiveDir, 0o755) })
+
+	err = safeWriteMultiFileArchive(archiveDir, preserveTestArchive())
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "backing up")
+	require.NoError(t, os.Chmod(archiveDir, 0o755))
+	after, ferr := computeFSFingerprint(archiveDir)
+	require.NoError(t, ferr)
+	assert.Equal(t, before, after)
+	assert.NoDirExists(t, archiveDir+".bak")
+	assertNoTempDirsBeside(t, archiveDir)
+}
+
+func TestSafeWrite_MissingDestinationFails(t *testing.T) {
+	err := safeWriteMultiFileArchive(filepath.Join(t.TempDir(), "does-not-exist"), preserveTestArchive())
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "cannot access destination")
+}
+
+// assertNoTempDirsBeside fails if a safe-write temp dir was left next to dir.
+func assertNoTempDirsBeside(t *testing.T, dir string) {
+	t.Helper()
+	entries, err := os.ReadDir(filepath.Dir(dir))
+	require.NoError(t, err)
+	for _, e := range entries {
+		assert.False(t, strings.HasPrefix(e.Name(), ".glx-tmp-"), "temp dir %s left behind", e.Name())
+	}
+}
+
 // A completed or rolled-back swap leaves no marker behind, so an ordinary
 // leftover backup is still cleaned up as before.
 func TestSafeWrite_LeavesNoSwapMarker(t *testing.T) {
