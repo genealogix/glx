@@ -187,6 +187,17 @@ func validatePaths(streams *IOStreams, args []string) error {
 		paths = []string{"."}
 	}
 
+	// Every target must exist. A typo in a CI step (`glx validate archvie`)
+	// used to report "0 files validated" and exit 0 — a false green on an
+	// archive that was never read.
+	for _, p := range paths {
+		if _, err := os.Stat(p); err != nil {
+			streams.Errorf("cannot access path: %v\n", err)
+
+			return fmt.Errorf("%w: %s", ErrNothingToValidate, p)
+		}
+	}
+
 	// Determine archive root and validation mode
 	var archiveRoot string
 	var shouldValidateCrossRefs bool
@@ -217,6 +228,13 @@ func validatePaths(streams *IOStreams, args []string) error {
 	// Single file: structural validation + semantic checks (no cross-references)
 	if !shouldValidateCrossRefs {
 		fileCount, structErrors := validateSingleFilePaths(paths)
+		if fileCount == 0 {
+			// The target exists but is not a .glx file (notes.txt, a
+			// misnamed export): nothing was checked, so nothing passed.
+			streams.Errorf("No GLX files found in %s — nothing was validated.\n", strings.Join(paths, ", "))
+
+			return fmt.Errorf("%w: %s", ErrNothingToValidate, strings.Join(paths, ", "))
+		}
 		if len(structErrors) > 0 {
 			streams.Errorf("Found %d structural errors in %d files:\n", len(structErrors), fileCount)
 			for _, err := range structErrors {
@@ -267,6 +285,13 @@ func validatePaths(streams *IOStreams, args []string) error {
 		return ErrStructuralValidationFailed
 	}
 	fileCount := len(files)
+	if fileCount == 0 {
+		// An empty directory, or the wrong one: reporting it valid would
+		// green-light a CI step that checked nothing.
+		streams.Errorf("No GLX files found in %s — nothing was validated.\n", strings.Join(paths, ", "))
+
+		return fmt.Errorf("%w: %s", ErrNothingToValidate, strings.Join(paths, ", "))
+	}
 
 	archive, duplicates, err := loadArchiveFromFiles(archiveRoot, files, true)
 	if err != nil {
@@ -294,11 +319,7 @@ func validatePaths(streams *IOStreams, args []string) error {
 	// Check media file existence on disk
 	allWarnings = append(allWarnings, validateMediaFileExistence(archive, archiveRoot)...)
 
-	if fileCount == 0 {
-		streams.Println("No GLX files found. Validated 0 files.")
-	} else {
-		streams.Printf("Validated %d files.\n", fileCount)
-	}
+	streams.Printf("Validated %d files.\n", fileCount)
 	if len(allWarnings) > 0 {
 		streams.Errorf("Found %d warnings:\n", len(allWarnings))
 		for _, warn := range allWarnings {

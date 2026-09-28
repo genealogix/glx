@@ -33,6 +33,7 @@ var (
 	ErrInputFileNotFound          = errors.New("input file not found")
 	ErrOutputDirectoryExists      = errors.New("output directory already exists (please remove it first)")
 	ErrStructuralValidationFailed = errors.New("structural validation failed")
+	ErrNothingToValidate          = errors.New("nothing to validate")
 	ErrValidationFailed           = errors.New("validation failed")
 	ErrYAMLNotObject              = errors.New("YAML document is not an object")
 	ErrPathNotFound               = errors.New("path not found")

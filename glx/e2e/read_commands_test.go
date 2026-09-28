@@ -125,11 +125,6 @@ func TestReadCommands_MissingArchiveFails(t *testing.T) {
 	work := t.TempDir()
 
 	for _, tc := range readCases {
-		if tc.name == "validate" {
-			// A missing path passes validate with "0 files validated"; that
-			// behavior is pinned by TestRunValidate_NonExistentPath.
-			continue
-		}
 		t.Run(tc.name, func(t *testing.T) {
 			assertExitWithStderr(t, runGLX(t, work, tc.outside("does-not-exist")...), "does-not-exist")
 		})
