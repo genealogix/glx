@@ -83,12 +83,25 @@ type MergePersonsResult struct {
 //     resolve each collision by its embedded date, preserving unrelated history.
 //   - Other multi-value lists are unioned with deep-equal duplicates removed.
 //
+// Missing standard property definitions are supplied without changing the
+// archive vocabulary maps; explicit custom definitions win. Options and person
+// IDs are validated before any mutation. Successful calls mutate the archive,
+// so callers must synchronize against concurrent readers/writers.
+//
 // Notes are combined per opts.NotesStrategy.
 //
 // Returns an error if either ID is missing, the IDs are equal, either ID is
 // not a person, both KeepNewest and KeepOldest are set, or NotesStrategy is
-// invalid.
+// invalid, or if the archive is nil or comparison options are invalid.
 func MergePersons(glx *GLXFile, keepID, dropID string, opts MergePersonsOptions) (*MergePersonsResult, error) {
+	if err := opts.Comparison.Validate(); err != nil {
+		return nil, err
+	}
+	prepared, err := researchArchive(glx)
+	if err != nil {
+		return nil, err
+	}
+
 	if keepID == dropID {
 		return nil, fmt.Errorf("%w: %q", ErrMergeSelfReferential, keepID)
 	}
@@ -115,7 +128,7 @@ func MergePersons(glx *GLXFile, keepID, dropID string, opts MergePersonsOptions)
 	keep := glx.Persons[keepID]
 	drop := glx.Persons[dropID]
 
-	propsAdded, conflicts := mergePersonProperties(glx, keep, drop, opts)
+	propsAdded, conflicts := mergePersonProperties(prepared, keep, drop, opts)
 	notesAdded := mergePersonNotes(keep, drop, opts.NotesStrategy)
 
 	delete(glx.Persons, dropID)
@@ -241,12 +254,14 @@ func propertyYear(v any) int {
 	if !ok {
 		return 0
 	}
-	d, ok := m["date"].(string)
-	if !ok {
+	switch d := m["date"].(type) {
+	case string:
+		return ExtractFirstYear(d)
+	case DateString:
+		return d.Year()
+	default:
 		return 0
 	}
-
-	return ExtractFirstYear(d)
 }
 
 // unionPropertyList returns the union of two property lists, deduplicating by

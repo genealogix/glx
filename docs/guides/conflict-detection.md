@@ -74,3 +74,62 @@ valid archive data; validation does not choose which claim is correct.
 See the [analyze](../cli/glx_analyze.md), [proof](../cli/glx_proof.md),
 [evidence](../cli/glx_evidence.md), and [merge-persons](../cli/glx_merge-persons.md)
 command references.
+
+## Go SDK contract
+
+The `github.com/genealogix/glx/go-glx` package exposes the same domain operations
+used by the CLI. It performs no filesystem access or terminal output.
+
+| API | Result |
+| --- | --- |
+| `CompareFacts` | Pairwise verdicts for explicitly supplied property semantics |
+| `EvaluateFacts` | Pairwise verdicts, selected/surviving input indices, and resolution |
+| `CollectPersonFacts` | Recorded claims and synthetic duplicate-event facts, with provenance |
+| `PersonConflicts` | Grouped person/event/relationship disagreements, including resolved groups |
+| `AnalyzeConflicts` | Unresolved findings for the archive or one exact person ID |
+| `BuildEvidenceReport` | Ranked evidence and dated/undated history for one typed subject/property |
+| `BuildProof` | Evidence, conflicts, searches, coverage gaps, and a conclusion for a research question |
+| `BuildCoverage` | The source-coverage checklist used by proof |
+| `MergePersons` | An in-memory merge with history preservation and conflict reports |
+
+For example:
+
+```go
+import glx "github.com/genealogix/glx/go-glx"
+
+width := 3
+opts := glx.ComparisonOptions{ApproximationYears: &width}
+report, err := glx.BuildProof(archive, "person-mary", glx.QuestionBirth,
+    glx.ProofOptions{Comparison: opts})
+if err != nil {
+    return err
+}
+// The application renders or serializes report as needed.
+```
+
+Research entry points accept **exact entity IDs**, validate their options, and
+return errors for nil archives, missing subjects, or unknown questions. Use
+`errors.Is` with exported errors such as `ErrInvalidApproximation`,
+`ErrNilArchive`, `ErrPersonNotFound`, and `ErrResearchSubjectNotFound`.
+`ComparisonOptions{}` uses ±2 years; a pointer to zero disables widening.
+Negative widths and widths above 10000 are rejected by both SDK and CLI.
+
+Read operations supply missing standard property definitions without changing
+the archive. Explicit custom definitions take precedence. Nonempty type
+vocabularies remain archive-owned sets. `MergeStandardVocabularies` is available
+when an application explicitly wants to fill defaults in-place. Low-level
+`CompareFacts` and `EvaluateFacts` instead use the provided definition; a nil
+definition means a fixed free-text property.
+
+Read results own their slices and can be modified without changing the archive.
+`ConflictGroup.Facts` retains raw subject IDs, assertion IDs, values, periods,
+and support references; `Evaluation` indexes that fact slice. A singleton
+explicit dispute has a self-comparison (`Left == Right`). Compatibility remains
+pairwise: a broad date cannot make incompatible precise dates agree transitively.
+
+`CoverageOptions.CensusCountry` supplies a fallback country explicitly; its zero
+value makes no geographic assumption. There is no shared mutable SDK run state.
+Applications may run read operations concurrently on an unchanged archive.
+`MergePersons` mutates the archive after argument validation, so synchronize it
+against other readers and writers. These operations tolerate incomplete research
+records but do not replace `GLXFile.Validate` for archive conformance checks.

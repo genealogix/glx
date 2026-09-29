@@ -180,24 +180,24 @@ func TestMergePersons_ExternalIdsDeduped(t *testing.T) {
 
 func TestMergePersons_ConflictDefaultKeepsKeep(t *testing.T) {
 	glx := newTwoPersonArchive()
-	glx.Persons["person-keep"].Properties["occupation"] = "blacksmith"
-	glx.Persons["person-drop"].Properties["occupation"] = "farmer"
+	glx.Persons["person-keep"].Properties["fixed_trade"] = "blacksmith"
+	glx.Persons["person-drop"].Properties["fixed_trade"] = "farmer"
 
 	result, err := MergePersons(glx, "person-keep", "person-drop", MergePersonsOptions{})
 	require.NoError(t, err)
 
-	assert.Equal(t, "blacksmith", glx.Persons["person-keep"].Properties["occupation"])
+	assert.Equal(t, "blacksmith", glx.Persons["person-keep"].Properties["fixed_trade"])
 	require.Len(t, result.Conflicts, 1)
-	assert.Equal(t, "occupation", result.Conflicts[0].Property)
+	assert.Equal(t, "fixed_trade", result.Conflicts[0].Property)
 	assert.Equal(t, ResolutionKeptKeep, result.Conflicts[0].Resolution)
 }
 
 func TestMergePersons_ConflictKeepNewest(t *testing.T) {
 	glx := newTwoPersonArchive()
-	glx.Persons["person-keep"].Properties["residence"] = map[string]any{
+	glx.Persons["person-keep"].Properties["fixed_residence"] = map[string]any{
 		"value": "place-old", "date": "1800",
 	}
-	glx.Persons["person-drop"].Properties["residence"] = map[string]any{
+	glx.Persons["person-drop"].Properties["fixed_residence"] = map[string]any{
 		"value": "place-new", "date": "1820",
 	}
 
@@ -205,7 +205,7 @@ func TestMergePersons_ConflictKeepNewest(t *testing.T) {
 		MergePersonsOptions{KeepNewest: true})
 	require.NoError(t, err)
 
-	res := glx.Persons["person-keep"].Properties["residence"].(map[string]any)
+	res := glx.Persons["person-keep"].Properties["fixed_residence"].(map[string]any)
 	assert.Equal(t, "place-new", res["value"])
 	require.Len(t, result.Conflicts, 1)
 	assert.Equal(t, ResolutionKeptNewest, result.Conflicts[0].Resolution)
@@ -213,10 +213,10 @@ func TestMergePersons_ConflictKeepNewest(t *testing.T) {
 
 func TestMergePersons_ConflictKeepOldest(t *testing.T) {
 	glx := newTwoPersonArchive()
-	glx.Persons["person-keep"].Properties["residence"] = map[string]any{
+	glx.Persons["person-keep"].Properties["fixed_residence"] = map[string]any{
 		"value": "place-newer", "date": "1820",
 	}
-	glx.Persons["person-drop"].Properties["residence"] = map[string]any{
+	glx.Persons["person-drop"].Properties["fixed_residence"] = map[string]any{
 		"value": "place-older", "date": "1800",
 	}
 
@@ -224,20 +224,20 @@ func TestMergePersons_ConflictKeepOldest(t *testing.T) {
 		MergePersonsOptions{KeepOldest: true})
 	require.NoError(t, err)
 
-	res := glx.Persons["person-keep"].Properties["residence"].(map[string]any)
+	res := glx.Persons["person-keep"].Properties["fixed_residence"].(map[string]any)
 	assert.Equal(t, "place-older", res["value"])
 }
 
 func TestMergePersons_ConflictKeepNewestWithoutDates(t *testing.T) {
 	glx := newTwoPersonArchive()
-	glx.Persons["person-keep"].Properties["occupation"] = "blacksmith"
-	glx.Persons["person-drop"].Properties["occupation"] = "farmer"
+	glx.Persons["person-keep"].Properties["fixed_trade"] = "blacksmith"
+	glx.Persons["person-drop"].Properties["fixed_trade"] = "farmer"
 
 	result, err := MergePersons(glx, "person-keep", "person-drop",
 		MergePersonsOptions{KeepNewest: true})
 	require.NoError(t, err)
 
-	assert.Equal(t, "blacksmith", glx.Persons["person-keep"].Properties["occupation"],
+	assert.Equal(t, "blacksmith", glx.Persons["person-keep"].Properties["fixed_trade"],
 		"undated conflict should fall back to keeping keep")
 	require.Len(t, result.Conflicts, 1)
 	assert.Equal(t, ResolutionKeptKeep, result.Conflicts[0].Resolution)

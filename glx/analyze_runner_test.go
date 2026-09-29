@@ -587,7 +587,7 @@ func TestAnalyzeConflicts_DetectsConflicting(t *testing.T) {
 		},
 	}
 
-	issues := analyzeConflicts(archive)
+	issues := mustAnalyzeConflicts(archive)
 	found := findIssueByMessage(issues, "person-mary", "conflicting values")
 	if found == nil {
 		t.Fatal("expected conflict issue for birthplace")
@@ -614,7 +614,7 @@ func TestAnalyzeConflicts_NoConflictWhenSameValue(t *testing.T) {
 		},
 	}
 
-	issues := analyzeConflicts(archive)
+	issues := mustAnalyzeConflicts(archive)
 	if len(issues) != 0 {
 		t.Errorf("expected no conflicts when all values are the same, got %d", len(issues))
 	}
@@ -659,7 +659,7 @@ func TestAnalyzeConflicts_TemporalNoOverlap(t *testing.T) {
 				"a-2": temporalAssertion("residence", "place-london", tt.b),
 			})
 
-			require.Empty(t, analyzeConflicts(archive))
+			require.Empty(t, mustAnalyzeConflicts(archive))
 		})
 	}
 }
@@ -693,7 +693,7 @@ func TestAnalyzeConflicts_TemporalOverlap(t *testing.T) {
 				"a-2": temporalAssertion("residence", "place-london", tt.b),
 			})
 
-			issues := analyzeConflicts(archive)
+			issues := mustAnalyzeConflicts(archive)
 			require.Len(t, issues, 1)
 			require.Equal(t, "residence", issues[0].Property)
 			require.Contains(t, issues[0].Message, "2 conflicting values")
@@ -710,7 +710,7 @@ func TestAnalyzeConflicts_TemporalListsOverlappingOnly(t *testing.T) {
 		"a-4": temporalAssertion("occupation", "miller", "1980"),
 	})
 
-	issues := analyzeConflicts(archive)
+	issues := mustAnalyzeConflicts(archive)
 	require.Len(t, issues, 1)
 	require.Equal(t, "Person A — possible — check: occupation has 2 conflicting values: driver, miller", issues[0].Message)
 }
@@ -719,14 +719,14 @@ func TestAnalyzeConflicts_TemporalPropertiesExample(t *testing.T) {
 	archive, err := loadArchiveForAnalyze("../docs/examples/temporal-properties")
 	require.NoError(t, err)
 
-	require.Empty(t, analyzeConflicts(archive))
+	require.Empty(t, mustAnalyzeConflicts(archive))
 }
 
 func TestAnalyzeConflicts_TemporalPropertiesExampleSingleFile(t *testing.T) {
 	archive, err := loadArchiveForAnalyze("../docs/examples/temporal-properties/archive.glx")
 	require.NoError(t, err)
 
-	require.Empty(t, analyzeConflicts(archive))
+	require.Empty(t, mustAnalyzeConflicts(archive))
 }
 
 // Non-temporal properties must keep the date-blind comparison: two different
@@ -752,7 +752,7 @@ func TestAnalyzeConflicts_NonTemporalIgnoresDates(t *testing.T) {
 				archive.PersonProperties["birthplace"] = tt.definition
 			}
 
-			issues := analyzeConflicts(archive)
+			issues := mustAnalyzeConflicts(archive)
 			require.Len(t, issues, 1)
 			require.Equal(t, "birthplace", issues[0].Property)
 			require.Contains(t, issues[0].Message, "2 conflicting values")

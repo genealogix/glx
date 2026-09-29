@@ -15,6 +15,7 @@
 package glx
 
 import (
+	"fmt"
 	"strings"
 	"unicode"
 
@@ -33,13 +34,30 @@ const (
 	conflictPlaceField = "place"
 )
 
-// ApproximationWidth returns the effective, non-negative approximation width.
-func (o ComparisonOptions) ApproximationWidth() int {
+// ApproximationWidth returns the effective width or ErrInvalidApproximation.
+func (o ComparisonOptions) ApproximationWidth() (int, error) {
+	if err := o.Validate(); err != nil {
+		return 0, err
+	}
+
+	return o.approximationWidth(), nil
+}
+
+// Validate rejects widths outside 0..10000. A nil width selects the default.
+func (o ComparisonOptions) Validate() error {
+	if o.ApproximationYears != nil && (*o.ApproximationYears < 0 || *o.ApproximationYears > glxdate.MaxApproximationYears) {
+		return fmt.Errorf("%w: must be between 0 and %d", ErrInvalidApproximation, glxdate.MaxApproximationYears)
+	}
+
+	return nil
+}
+
+func (o ComparisonOptions) approximationWidth() int {
 	if o.ApproximationYears == nil {
 		return DefaultApproximationYears
 	}
 
-	return min(glxdate.MaxApproximationYears, max(0, *o.ApproximationYears))
+	return *o.ApproximationYears
 }
 
 // FactValue is a recorded claim, including the period during which it is true.
@@ -78,10 +96,22 @@ func (c FactComparison) IsConflict() bool {
 	return c.Verdict == VerdictDefinite || c.Verdict == VerdictPossible || c.Verdict == VerdictDisputed
 }
 
-// CompareFacts compares all pairs independently. Compatibility is deliberately
+// CompareFacts validates options and compares all pairs independently. A nil
+// definition explicitly means a non-temporal free-text property; archive-level
+// callers should use the research workflows for vocabulary defaults. Invalid
+// approximation widths return ErrInvalidApproximation. Compatibility is deliberately
 // not transitive: a broad date or ancestor place must not bridge two conflicting
 // precise claims. This pure function never modifies its inputs.
-func CompareFacts(values []FactValue, definition *PropertyDefinition, places map[string]*Place, opts ComparisonOptions) []FactComparison {
+// A singleton known dispute is represented by a self-pair (Left == Right).
+func CompareFacts(values []FactValue, definition *PropertyDefinition, places map[string]*Place, opts ComparisonOptions) ([]FactComparison, error) {
+	if err := opts.Validate(); err != nil {
+		return nil, err
+	}
+
+	return compareFacts(values, definition, places, opts), nil
+}
+
+func compareFacts(values []FactValue, definition *PropertyDefinition, places map[string]*Place, opts ComparisonOptions) []FactComparison {
 	var result []FactComparison
 	for i := range values {
 		for j := i + 1; j < len(values); j++ {
@@ -168,7 +198,7 @@ func compareValues(a, b string, def *PropertyDefinition, places map[string]*Plac
 		case def.ValueType == conflictDateType:
 			ad, _ := glxdate.Parse(a)
 			bd, _ := glxdate.Parse(b)
-			x, y := ad.ValueBounds(opts.ApproximationWidth()), bd.ValueBounds(opts.ApproximationWidth())
+			x, y := ad.ValueBounds(opts.approximationWidth()), bd.ValueBounds(opts.approximationWidth())
 			if ad.Equal(bd) {
 				return VerdictAgree
 			}
@@ -220,6 +250,9 @@ func placeAncestor(ancestor, child string, places map[string]*Place) bool {
 // ConflictProperty returns vocabulary semantics, including structural event
 // fields, whose definitions do not live in the property vocabulary.
 func ConflictProperty(archive *GLXFile, subject EntityRef, property string) *PropertyDefinition {
+	if archive == nil {
+		return nil
+	}
 	var definitions map[string]*PropertyDefinition
 	switch subject.Type() {
 	case EntityTypePersons:
@@ -254,6 +287,10 @@ func ConflictProperty(archive *GLXFile, subject EntityRef, property string) *Pro
 }
 
 // AssertionFact preserves the value, period and researcher status of an assertion.
+// A nil assertion returns the zero FactValue.
 func AssertionFact(a *Assertion) FactValue {
+	if a == nil {
+		return FactValue{}
+	}
 	return FactValue{Value: a.Value, Date: a.Date, Confidence: a.Confidence, Status: a.Status}
 }

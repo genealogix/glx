@@ -39,24 +39,29 @@ func TestConflictVerdicts(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.Name, func(t *testing.T) {
 			def := &PropertyDefinition{Temporal: &tc.Temporal, ValueType: tc.Kind, ReferenceType: tc.Reference, VocabularyType: tc.Vocabulary}
-			result := CompareFacts(tc.Values, def, places, ComparisonOptions{ApproximationYears: tc.Width})
+			result, err := CompareFacts(tc.Values, def, places, ComparisonOptions{ApproximationYears: tc.Width})
+			require.NoError(t, err)
 			require.Len(t, result, 1)
 			require.Equal(t, tc.Verdict, result[0].Verdict)
 			reversed := []FactValue{tc.Values[1], tc.Values[0]}
-			require.Equal(t, result[0].Verdict, CompareFacts(reversed, def, places, ComparisonOptions{ApproximationYears: tc.Width})[0].Verdict)
+			other, err := CompareFacts(reversed, def, places, ComparisonOptions{ApproximationYears: tc.Width})
+			require.NoError(t, err)
+			require.Equal(t, result[0].Verdict, other[0].Verdict)
 		})
 	}
 }
 
 func TestConflictCompatibilityDoesNotBridge(t *testing.T) {
 	values := []FactValue{{Value: "1850-01-01"}, {Value: "1850"}, {Value: "1850-12-31"}}
-	comparisons := CompareFacts(values, &PropertyDefinition{ValueType: "date"}, nil, ComparisonOptions{})
+	comparisons, err := CompareFacts(values, &PropertyDefinition{ValueType: "date"}, nil, ComparisonOptions{})
+	require.NoError(t, err)
 	require.Equal(t, VerdictDefinite, comparisons[1].Verdict)
 }
 
 func TestConflictPlaceCycle(t *testing.T) {
 	places := map[string]*Place{"a": {ParentID: "b"}, "b": {ParentID: "a"}}
-	result := CompareFacts([]FactValue{{Value: "a"}, {Value: "c"}}, &PropertyDefinition{ReferenceType: "places"}, places, ComparisonOptions{})
+	result, err := CompareFacts([]FactValue{{Value: "a"}, {Value: "c"}}, &PropertyDefinition{ReferenceType: "places"}, places, ComparisonOptions{})
+	require.NoError(t, err)
 	require.Equal(t, VerdictDefinite, result[0].Verdict)
 }
 

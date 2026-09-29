@@ -87,12 +87,19 @@ func showAnalysis(archivePath, personFilter, checkFilter, format, country string
 
 	var issues []AnalysisIssue
 
+	var conflictIssues []AnalysisIssue
+	if checkFilter == "" || checkFilter == conflictsCheck || checkFilter == conflictCategory {
+		conflictIssues, err = analyzeConflictsWithOptions(archive, comparisonOptions(options))
+		if err != nil {
+			return err
+		}
+	}
 	checks := map[string]func(*glxlib.GLXFile) []AnalysisIssue{
 		"gaps":        analyzeGaps,
 		"evidence":    analyzeEvidence,
 		"consistency": analyzeConsistency,
 		conflictsCheck: func(a *glxlib.GLXFile) []AnalysisIssue {
-			return analyzeConflictsWithOptions(a, comparisonOptions(options))
+			return conflictIssues
 		},
 		"suggestions": analyzeSuggestions,
 	}

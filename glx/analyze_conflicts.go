@@ -30,52 +30,42 @@ const (
 )
 
 // analyzeConflicts reports shared-engine conflicts on each person's facts.
-func analyzeConflicts(archive *glxlib.GLXFile) []AnalysisIssue {
-	return analyzeConflictsWithOptions(archive, glxlib.ComparisonOptions{})
-}
-
-func analyzeConflictsWithOptions(archive *glxlib.GLXFile, opts glxlib.ComparisonOptions) []AnalysisIssue {
+func analyzeConflictsWithOptions(archive *glxlib.GLXFile, opts glxlib.ComparisonOptions) ([]AnalysisIssue, error) {
+	findings, err := glxlib.AnalyzeConflicts(archive, glxlib.ConflictAnalysisOptions{Comparison: opts})
+	if err != nil {
+		return nil, err
+	}
 	var issues []AnalysisIssue
-	for _, personID := range sortedKeys(archive.Persons) {
-		for _, c := range detectProofConflicts(collectPersonProofAssertions(archive, personID), archive, opts) {
-			if c.Resolved {
-				continue
-			}
-			severity := severityHigh
-			qualifier := ""
-			if c.Verdict == glxlib.VerdictPossible {
-				severity = severityMedium
-				qualifier = "possible — check: "
-			}
-			if c.Verdict == glxlib.VerdictDisputed {
-				severity = severityLow
-				qualifier = "known dispute: "
-			}
-			var parts []string
-			for _, v := range c.Values {
-				entry := v.Value
-				if v.Confidence != "" {
-					entry += " [" + v.Confidence + "]"
-				}
-				parts = append(parts, entry)
-			}
-			subject := c.Subject
-			label := c.Property
-			if subject == glxlib.EntityTypePersons.String()+":"+personID {
-				subject = ""
-			}
-			if subject != "" {
-				label = subject + " " + label
-			}
-			issues = append(issues, AnalysisIssue{
-				Subject:  subject,
-				Category: conflictCategory, Severity: severity, Person: personID, Property: c.Property,
-				Message: fmt.Sprintf("%s — %s%s has %d conflicting values: %s", personName(archive, personID), qualifier, label, len(c.Values), strings.Join(parts, ", ")),
-			})
+	for i := range findings {
+		finding := &findings[i]
+		personID, c := finding.PersonID, &finding.Conflict
+		qualifier := ""
+		if c.Verdict == glxlib.VerdictPossible {
+			qualifier = "possible — check: "
 		}
+		if c.Verdict == glxlib.VerdictDisputed {
+			qualifier = "known dispute: "
+		}
+		var parts []string
+		for _, v := range c.Values {
+			entry := v.Value
+			if v.Confidence != "" {
+				entry += " [" + v.Confidence + "]"
+			}
+			parts = append(parts, entry)
+		}
+		subject, label := c.Subject, c.Property
+		if subject == glxlib.EntityTypePersons.String()+":"+personID {
+			subject = ""
+		}
+		if subject != "" {
+			label = subject + " " + label
+		}
+		issues = append(issues, AnalysisIssue{Subject: subject, Category: conflictCategory, Severity: finding.Severity, Person: personID, Property: c.Property, Message: fmt.Sprintf("%s — %s%s has %d conflicting values: %s", personName(archive, personID), qualifier, label, len(c.Values), strings.Join(parts, ", "))})
 	}
 	sortIssues(issues)
-	return issues
+
+	return issues, nil
 }
 
 // confidenceRank returns a numeric rank for confidence levels (lower = higher confidence).

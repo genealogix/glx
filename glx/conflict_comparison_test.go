@@ -55,9 +55,10 @@ func TestConflictCommandParity(t *testing.T) {
 				archive.Assertions[string(rune('a'+i))] = &glxlib.Assertion{Subject: subject, Property: tc.Property, Value: v.Value, Date: v.Date, Status: v.Status}
 			}
 			opts := glxlib.ComparisonOptions{ApproximationYears: tc.Width}
-			analysis := analyzeConflictsWithOptions(archive, opts)
-			proof := detectProofConflicts(collectPersonProofAssertions(archive, "p"), archive, opts)
-			evidence := collectEvidence(archive, subject, tc.Property, opts)
+			analysis := mustAnalyzeConflictsWithOptions(archive, opts)
+			proof, err := glxlib.PersonConflicts(archive, "p", opts)
+			require.NoError(t, err)
+			evidence := mustCollectEvidence(archive, subject, tc.Property, opts)
 			severity := map[glxlib.Verdict]string{glxlib.VerdictDefinite: "high", glxlib.VerdictPossible: "medium", glxlib.VerdictDisputed: "low"}[tc.Verdict]
 			if severity == "" {
 				require.Empty(t, analysis)
@@ -93,16 +94,16 @@ func TestConflictScopeDuplicateEventsAndRelationships(t *testing.T) {
 			"r2": {Subject: glxlib.EntityRef{Relationship: "rel"}, Property: "started_on", Value: "1901"},
 		},
 	}
-	issues := analyzeConflicts(archive)
+	issues := mustAnalyzeConflicts(archive)
 	require.Len(t, issues, 2)
 	for _, issue := range issues {
 		require.Equal(t, "p", issue.Person)
 	}
-	proof := buildProof("p", archive.Persons["p"], "birth", archive)
+	proof := mustBuildProof("p", archive.Persons["p"], "birth", archive)
 	require.Len(t, proof.Conflicts, 1)
 	require.Equal(t, proofConclusionConflicted, proof.Conclusion)
 	archive.Events["birth-b"].Date = "1850-03-02"
-	require.Len(t, analyzeConflicts(archive), 1)
+	require.Len(t, mustAnalyzeConflicts(archive), 1)
 }
 
 func TestConflictHistoryAndPossibleProof(t *testing.T) {
@@ -112,18 +113,18 @@ func TestConflictHistoryAndPossibleProof(t *testing.T) {
 		"c": {Subject: glxlib.EntityRef{Person: "p"}, Property: "name", Value: "Mary Brown"},
 	}}
 	require.NoError(t, glxlib.LoadStandardVocabulariesIntoGLX(archive))
-	proof := buildProof("p", archive.Persons["p"], "identity", archive)
+	proof := mustBuildProof("p", archive.Persons["p"], "identity", archive)
 	require.NotEqual(t, proofConclusionConflicted, proof.Conclusion)
 	require.NotEqual(t, proofConclusionProven, proof.Conclusion)
 	require.Len(t, proof.Undated, 1)
 	require.Len(t, proof.Conflicts, 1)
-	evidence := collectEvidence(archive, glxlib.EntityRef{Person: "p"}, "name")
+	evidence := mustCollectEvidence(archive, glxlib.EntityRef{Person: "p"}, "name")
 	require.Len(t, evidence.Groups, 2)
 	require.Len(t, evidence.Undated, 1)
 	require.Empty(t, evidence.BestEvidence)
 	archive.Assertions["b"].Date = "1870"
-	require.Empty(t, analyzeConflicts(archive))
-	evidence = collectEvidence(archive, glxlib.EntityRef{Person: "p"}, "name")
+	require.Empty(t, mustAnalyzeConflicts(archive))
+	evidence = mustCollectEvidence(archive, glxlib.EntityRef{Person: "p"}, "name")
 	require.Equal(t, glxlib.DateString("1850"), evidence.Groups[0].Date)
 	require.Empty(t, evidence.Conflicts)
 	require.Empty(t, evidence.Groups[0].BestEvidence)
@@ -135,8 +136,8 @@ func TestConflictDisprovenSurvivorAndNamesakes(t *testing.T) {
 		"b": {Subject: glxlib.EntityRef{Person: "p"}, Property: "born_on", Value: "1851", Status: "disproven"},
 		"c": {Subject: glxlib.EntityRef{Person: "p"}, Property: "born_on", Value: "1852", Status: "disproven"},
 	}}
-	require.Empty(t, analyzeConflicts(archive))
-	result := buildProof("p", archive.Persons["p"], "birth", archive)
+	require.Empty(t, mustAnalyzeConflicts(archive))
+	result := mustBuildProof("p", archive.Persons["p"], "birth", archive)
 	require.Len(t, result.Conflicts, 1)
 	require.True(t, result.Conflicts[0].Resolved)
 	archive.Places = map[string]*glxlib.Place{"il": {Name: "Springfield"}, "ma": {Name: "Springfield"}}
@@ -144,7 +145,7 @@ func TestConflictDisprovenSurvivorAndNamesakes(t *testing.T) {
 		"a": {Subject: glxlib.EntityRef{Person: "p"}, Property: "born_at", Value: "il"},
 		"b": {Subject: glxlib.EntityRef{Person: "p"}, Property: "born_at", Value: "ma"},
 	}
-	evidence := collectEvidence(archive, glxlib.EntityRef{Person: "p"}, "born_at")
+	evidence := mustCollectEvidence(archive, glxlib.EntityRef{Person: "p"}, "born_at")
 	require.Len(t, evidence.Groups, 2)
 	require.NotEqual(t, evidence.Groups[0].Value, evidence.Groups[1].Value)
 }
@@ -161,8 +162,8 @@ func TestProofNonPropertyDisputes(t *testing.T) {
 				if participant {
 					archive.Assertions["claim"].Participant = &glxlib.Participant{Person: "parent", Role: "parent"}
 				}
-				result := buildProof("child", archive.Persons["child"], topicParentage, archive)
-				issues := analyzeConflicts(archive)
+				result := mustBuildProof("child", archive.Persons["child"], topicParentage, archive)
+				issues := mustAnalyzeConflicts(archive)
 				if status == statusDisputed {
 					require.Equal(t, proofConclusionConflicted, result.Conclusion)
 					require.Len(t, result.Conflicts, 1)
@@ -199,7 +200,7 @@ func TestProofMarkdownUndatedDetails(t *testing.T) {
 		}},
 	}
 	require.NoError(t, glxlib.LoadStandardVocabulariesIntoGLX(archive))
-	result := buildProof("p", archive.Persons["p"], topicIdentity, archive)
+	result := mustBuildProof("p", archive.Persons["p"], topicIdentity, archive)
 	require.Empty(t, result.Evidence)
 	require.Len(t, result.Undated, 1)
 	streams, out, _ := TestIOStreams()

@@ -18,9 +18,12 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 func TestConflictApproximationFlagParity(t *testing.T) {
@@ -172,5 +175,65 @@ func TestMergePersonsPreservesDropDisagreementsOnDisk(t *testing.T) {
 	require.NoError(t, err)
 	for _, occupation := range []string{"farmer", "miller", "driver"} {
 		require.Contains(t, string(data), occupation)
+	}
+}
+
+// This comparison uses the SDK as an external consumer and runs the CLI binary;
+// it covers loading/defaults and option forwarding as well as the shared engine.
+func TestResearchSDKAndCLIParity(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "archive.glx")
+	data := []byte(`persons:
+  p:
+    properties: {name: Mary}
+events:
+  birth:
+    type: birth
+    date: "1850"
+    participants: [{person: p, role: subject}]
+sources:
+  register: {title: Register}
+assertions:
+  birth-a: {subject: {event: birth}, property: date, value: ABT 1850, sources: [register], confidence: high}
+  birth-b: {subject: {event: birth}, property: date, value: "1853", sources: [register], confidence: high}
+  name-a: {subject: {person: p}, property: name, value: Mary Smith, date: "1850", sources: [register]}
+  name-b: {subject: {person: p}, property: name, value: Mary Jones, date: "1890", sources: [register]}
+  name-c: {subject: {person: p}, property: name, value: Mary Green, sources: [register]}
+`)
+	require.NoError(t, os.WriteFile(path, data, 0o600))
+	archive, err := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false}).DeserializeSingleFileBytes(data)
+	require.NoError(t, err)
+	for _, width := range []int{0, 2, 3} {
+		t.Run(strconv.Itoa(width), func(t *testing.T) {
+			opts := glxlib.ComparisonOptions{ApproximationYears: &width}
+			proof, err := glxlib.BuildProof(archive, "p", "birth", glxlib.ProofOptions{Comparison: opts})
+			require.NoError(t, err)
+			want, err := json.Marshal(proof)
+			require.NoError(t, err)
+			actual := runGLX(t, dir, "proof", "p", "--question", "birth", "--archive", path, "--format", "json", "--approximation-years", strconv.Itoa(width))
+			require.Equal(t, 0, actual.exitCode, actual.stderr)
+			require.JSONEq(t, string(want), actual.stdout)
+			evidence, err := glxlib.BuildEvidenceReport(archive, glxlib.EntityRef{Person: "p"}, "name", opts)
+			require.NoError(t, err)
+			want, err = json.Marshal(evidence)
+			require.NoError(t, err)
+			actual = runGLX(t, dir, "evidence", "p", "name", "--archive", path, "--format", "json", "--approximation-years", strconv.Itoa(width))
+			require.Equal(t, 0, actual.exitCode, actual.stderr)
+			require.JSONEq(t, string(want), actual.stdout)
+			findings, err := glxlib.AnalyzeConflicts(archive, glxlib.ConflictAnalysisOptions{Comparison: opts})
+			require.NoError(t, err)
+			actual = runGLX(t, dir, "analyze", "--check", "conflicts", "--archive", path, "--format", "json", "--approximation-years", strconv.Itoa(width))
+			require.Equal(t, 0, actual.exitCode, actual.stderr)
+			var report struct {
+				Issues []struct{ Person, Property, Severity string }
+			}
+			require.NoError(t, json.Unmarshal([]byte(actual.stdout), &report))
+			require.Len(t, report.Issues, len(findings))
+			for i, finding := range findings {
+				require.Equal(t, finding.PersonID, report.Issues[i].Person)
+				require.Equal(t, finding.Conflict.Property, report.Issues[i].Property)
+				require.Equal(t, finding.Severity, report.Issues[i].Severity)
+			}
+		})
 	}
 }
