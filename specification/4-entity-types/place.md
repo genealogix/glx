@@ -249,4 +249,4 @@ See [place.schema.json](../schema/v1/place.schema.json) for the complete JSON Sc
 - [Event Entity](event.md) - Events that occur at places
 - [Person Entity](person.md) - Residence and birth/death places
 - [Vocabularies](vocabularies.md#place-types-vocabulary) - Place types vocabulary
-- [Core Concepts - Data Types](../2-core-concepts.md#data-types) - Coordinate and date formats
+- [Core Concepts - Data Types](../2-core-concepts.md#data-types) - Date formats and reference types

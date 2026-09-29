@@ -494,6 +494,7 @@ sources/
 Source
     ├── held in → Repository (via repository field)
     ├── referenced by → Citations (citations point to sources)
+    ├── referenced by → Assertions (via the assertion's `sources` array, when no citation-level detail is needed)
     └── documented by → Media (via media array)
 
 Repository
@@ -511,7 +512,7 @@ Media
 - `title` must be present and non-empty
 - If `repository` is specified, it must reference an existing Repository entity
 - If `media` array is present, all IDs must reference existing Media entities
-- `date` should follow standard date formats (YYYY, YYYY-MM-DD, or `FROM YYYY TO YYYY` for ranges)
+- `date` should follow the [date format standard](../2-core-concepts.md#date-format-standard) (e.g. `1851`, `1851-03-30`, `FROM 1840 TO 1860`, `ABT 1850`)
 - If `type` is specified, it must be from the [source types vocabulary](vocabularies.md#source-types-vocabulary)
 
 ## GEDCOM Mapping

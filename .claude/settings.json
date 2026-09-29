@@ -1,6 +1,8 @@
 {
   "permissions": {
     "allow": [
+      "Bash",
+      "Edit",
       "Bash(go build:*)",
       "Bash(go test:*)",
       "Bash(go vet:*)",

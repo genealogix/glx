@@ -185,7 +185,8 @@ sources:
   source-tna-wills:
     title: "Wills and Probate Records"
     repository: repository-tna
-    description: "Wills proved in the Prerogative Court of Canterbury"
+    properties:
+      description: "Wills proved in the Prerogative Court of Canterbury"
 ```
 
 ## File Organization
@@ -245,9 +246,9 @@ Best practices for recording repository access:
 
 ## Related Entities
 
-- **Source**: References specific collections within repositories
-- **Citation**: May reference repository location information via Source
-- **Holdings**: Detailed inventory of materials within repository
+- **Source**: References the repository that holds it (`repository` field)
+- **Citation**: May reference a Repository directly (`repository` field) or inherit it via its Source
+- **ResearchLog**: Search entries reference the Repository that was searched
 
 ## Schema Reference
 

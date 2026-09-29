@@ -205,8 +205,6 @@ func tagConflicts(entityType EntityType, id string, conflicts []Merge3Conflict) 
 // with a null value" — git's merge can land us with a map literal that lists
 // an ID but no body (e.g. an empty `persons:` entry under YAML serialization
 // quirks), and we never want to emit `persons: {p1: null}` back out.
-//
-//nolint:gocyclo // 7-case finite presence enumeration; splitting further hurts readability.
 func merge3EntityID[V any](
 	entityType EntityType, id string,
 	base, ours, theirs map[string]*V,

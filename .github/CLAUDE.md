@@ -1,53 +1,50 @@
 # .github/ — Claude Guide
 
-## GitHub Actions pinning: SHA-pin third-party, floats only for first-party
+## This file is never the source of truth
 
-<!-- Last reviewed: 2026-08-23 (#1046) -->
+Policies, conventions, and decisions live in project files —
+`../SECURITY-POSTURE.md`, `../CONTRIBUTING.md`, `../docs/`,
+`../specification/`, `../docs/decisions/`. A `CLAUDE.md` may only summarize
+them and point at them, and public docs must never link to a `CLAUDE.md`.
+When a convention changes, change the project file first; update the summary
+here afterwards.
 
-**The repo's actual convention (since the #963/#968 SHA-pin sweep):**
+## GitHub Actions pinning: SHA-pin everything, no exceptions
 
-1. **Third-party actions (the default rule): full-commit-SHA pin plus a
-   trailing `# vX.Y.Z` comment.** This is the OpenSSF Scorecard
-   "pin dependencies" form and the default every third-party `uses:` in the
-   repo follows today, apart from the exceptions in rule 3, e.g.
+<!-- Last reviewed: 2026-09-18 (#1022, reversed) -->
 
-   ```yaml
-   uses: golangci/golangci-lint-action@82606bf257cbaff209d206a39f5134f0cfbfd2ee # v9.2.1
-   ```
+**Source of truth: the "Action pinning" section of `../SECURITY-POSTURE.md`.**
+Read it before changing any `uses:` line, and record any change to the
+convention there — not here. This is a summary for applying the rule, and
+nothing in it may contradict that section.
 
-   Do NOT "tidy" a SHA pin down to a bare tag — tags are force-repointable
-   upstream (the tj-actions/changed-files incident, CVE-2025-30066). Dependabot
-   understands the SHA + comment form and bumps both together.
+Every `uses:` reference — third-party, `github/*`, and first-party `actions/*`
+alike — is a full commit SHA with a trailing version comment:
 
-2. **First-party `actions/*` (checkout, setup-go, setup-node, setup-python,
-   upload/download-artifact, cache): floating major tags are the current
-   documented choice**, pending the decision in #1022. Don't SHA-pin these
-   piecemeal — with one standing exception: `actions/attest` in `release.yml`
-   is SHA-pinned already, because it runs inside the privileged release job
-   (id-token: write) where a repointed tag would sit upstream of signing.
-
-3. **Exceptions without a floating major** (they only publish `vX.Y.Z`):
-   pin the exact patch tag as the floor, SHA preferred. Each one carries a
-   comment so nobody "tidies" it back to `@vN`, which fails with
-   `Unable to resolve action <owner>/<repo>@vN`:
-
-   | Action | Pin form | Issue |
-   |---|---|---|
-   | `sigstore/cosign-installer` | `@v4.1.2` exact tag (no floating `@v4`) | #938 |
-   | `ossf/scorecard-action` | full SHA + `# vX.Y.Z` comment (no floating `@v2`) | #779 |
-
-**Verify before you push.** Before editing any `uses:` line, check what tags
-the action actually publishes:
-
-```bash
-gh api repos/<owner>/<repo>/tags --jq '.[].name' | head
+```yaml
+uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 ```
 
-Caveat: a SHA pin is necessary, not sufficient — it does not pin the action's
-transitive `uses:` references, and a pinned action can still fetch a
-re-registrable domain at runtime. See `SECURITY-POSTURE.md` for the posture
-this supports, and the root `CLAUDE.md` / `go-glx/CLAUDE.md` for sibling
-guides.
+The rule is namespace-blind. There is no first-party carve-out: the floating
+`actions/*` majors were removed in #1022 (reversing that issue's original
+"accept the floats" close), because a major tag is a mutable ref no matter who
+publishes it.
+
+Practical consequences:
+
+- Never "tidy" a SHA pin down to a bare tag. Any bare `@vN` in a workflow diff
+  is a defect, whatever the namespace.
+- Three actions publish no floating major at all — `ossf/scorecard-action`
+  (#779), `mszostok/codeowners-validator`, `sigstore/cosign-installer` (#938).
+  Their `uses:` lines carry a trailing "do not tidy to @vN" note; "correcting"
+  them fails with `Unable to resolve action <owner>/<repo>@vN`.
+- Dependabot sustains the pins: it bumps the SHA and rewrites the `# vX.Y.Z`
+  comment together, weekly, via the `github-actions` ecosystem entry.
+- To find the SHA for a tag (this dereferences annotated tags correctly):
+
+  ```bash
+  gh api repos/<owner>/<repo>/commits/<tag> --jq .sha
+  ```
 
 ## Release pipeline: never move a published tag — cut a new patch tag
 

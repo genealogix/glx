@@ -72,16 +72,16 @@ func TestIOStreams() (*IOStreams, *bytes.Buffer, *bytes.Buffer) {
 // sequences. MachineOut is not written through this method and is left
 // byte-faithful.
 func (s *IOStreams) Printf(format string, args ...any) {
-	fmt.Fprint(s.Out, sanitizeForTerminal(fmt.Sprintf(format, args...))) //nolint:errcheck // CLI output
+	fmt.Fprint(s.Out, sanitizeForTerminal(fmt.Sprintf(format, args...)))
 }
 
 // Println writes a line to the standard output stream, sanitized as in Printf.
 func (s *IOStreams) Println(msg string) {
-	fmt.Fprintln(s.Out, sanitizeForTerminal(msg)) //nolint:errcheck // CLI output
+	fmt.Fprintln(s.Out, sanitizeForTerminal(msg))
 }
 
 // Errorf writes a formatted string to the error output stream, sanitized as
 // in Printf.
 func (s *IOStreams) Errorf(format string, args ...any) {
-	fmt.Fprint(s.ErrOut, sanitizeForTerminal(fmt.Sprintf(format, args...))) //nolint:errcheck // CLI output
+	fmt.Fprint(s.ErrOut, sanitizeForTerminal(fmt.Sprintf(format, args...)))
 }

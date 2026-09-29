@@ -749,15 +749,14 @@ func collectProofGaps(personID string, person *glxlib.Person, topic string, arch
 }
 
 // gapRelevant reports whether a missing coverage record bears on the topic.
-// The coverage "census" category shares the literal value of EventTypeCensus.
 func gapRelevant(topic string, rec *coverageRecord) bool {
 	switch topic {
 	case topicParentage:
 		// Records that name or place a person within their family of origin.
-		return rec.Category == glxlib.EventTypeCensus ||
+		return rec.Category == coverageCategoryCensus ||
 			labelContains(rec.Label, "Birth record", "Death record", "Church records", "Probate/will")
 	case topicBirth:
-		return rec.Category == glxlib.EventTypeCensus ||
+		return rec.Category == coverageCategoryCensus ||
 			labelContains(rec.Label, "Birth record", "Church records")
 	case topicDeath:
 		return labelContains(rec.Label, "Death record", "Probate/will", "Church records")
@@ -1105,7 +1104,7 @@ func printProofJSON(io *IOStreams, result *proofResult) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal JSON: %w", err)
 	}
-	fmt.Fprintln(io.MachineOut, string(data)) //nolint:errcheck // CLI output
+	fmt.Fprintln(io.MachineOut, string(data))
 
 	return nil
 }

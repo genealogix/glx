@@ -288,7 +288,7 @@ func isPartialMonth(tokens []string) bool {
 		_, ok := MonthNumber(tokens[0])
 
 		return ok
-	case 2: //nolint:mnd // DD MONTH
+	case 2: // DD MONTH
 		_, ok := MonthNumber(tokens[1])
 
 		return ok && dayToken(tokens[0]) > 0
@@ -410,7 +410,7 @@ func parsePoint(cal Calendar, tokens []string) point {
 // structured body, returning the remaining tokens and the era token as
 // written ("" when absent). A body that is only an era token is left alone.
 func splitEra(tokens []string) ([]string, string) {
-	if len(tokens) < 2 { //nolint:mnd // a date and its era
+	if len(tokens) < 2 { // an era split needs a date and its era
 		return tokens, ""
 	}
 	last := tokens[len(tokens)-1]
@@ -464,11 +464,11 @@ func parseNamedMonth(tokens []string, p *point) bool {
 	var month, year, day int
 	var ok bool
 	switch len(toks) {
-	case 2: //nolint:mnd // MONTH YYYY
+	case 2: // MONTH YYYY
 		month, ok = MonthNumber(toks[0])
 		year = yearToken(toks[1])
 		p.precision = PrecisionMonth
-	case 3: //nolint:mnd // DD MONTH YYYY or MONTH DD, YYYY
+	case 3: // DD MONTH YYYY or MONTH DD, YYYY
 		year = yearToken(toks[2])
 		if month, ok = MonthNumber(toks[1]); ok {
 			day = dayToken(toks[0])

@@ -33,7 +33,7 @@ var (
 )
 
 var migrateCmd = &cobra.Command{
-	Use:   "migrate [archive]",
+	Use:   "migrate <archive>",
 	Short: "Migrate an archive to the current format",
 	Long: `Converts deprecated person properties (born_on, born_at, died_on, died_at, buried_on, buried_at) to birth/death/burial events.
 

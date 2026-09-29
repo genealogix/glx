@@ -14,6 +14,10 @@ Tools for working with census records in a GENEALOGIX archive.
 Subcommands:
   add    Import a census template into the archive
 
+```
+glx census [flags]
+```
+
 ### Options
 
 ```

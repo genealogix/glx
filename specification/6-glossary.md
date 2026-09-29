@@ -18,9 +18,15 @@ A date with uncertainty or imprecision, expressed using keywords like ABT (about
 
 ### Archive
 
-A complete GENEALOGIX repository containing family history data organized in a Git repository with standardized directory structure and validation.
+A complete set of GENEALOGIX files containing family history data, conventionally kept in a Git repository. The directory layout is a recommendation, not a requirement; the parser identifies files by their top-level keys.
 
 > **See Also:** [Archive Organization](3-archive-organization.md)
+
+### Archive Metadata
+
+An optional top-level `metadata` block, typically in the archive's root file, carrying archive-level provenance: export date, source system and version, GEDCOM version, character set, copyright, language, notes, and submitter contact details. Preserved through GEDCOM import/export.
+
+> **See Also:** [Archive Metadata](3-archive-organization.md#archive-metadata)
 
 ### Archive-Level Validation
 
@@ -64,7 +70,7 @@ Supporting evidence from multiple independent sources that agree on a conclusion
 
 ### Calendar Prefix
 
-An optional prefix on a DateString indicating the calendar system: JULIAN, HEBREW, or FRENCH_R. Gregorian is the default (no prefix). Imported from GEDCOM calendar escape sequences (e.g., `@#DJULIAN@`).
+An optional prefix on a DateString indicating the calendar system: JULIAN, HEBREW, or FRENCH_R, or an underscore-prefixed extension calendar such as `_ROMAN`. Gregorian is the default (no prefix). Imported from GEDCOM calendar escape sequences (e.g., `@#DJULIAN@`).
 
 > **See Also:** [Non-Gregorian Calendar Dates](2-core-concepts.md#non-gregorian-calendar-dates)
 
@@ -174,6 +180,12 @@ A date with imprecision or uncertainty, such as "about 1850" or "between 1880 an
 
 ## G
 
+### GEDCOM
+
+The GEnealogical Data COMmunication format (5.5.1 and 7.0) used by most genealogy software for data exchange. `glx import` converts GEDCOM into a GLX archive and `glx export` converts back; each entity specification carries a GEDCOM Mapping table showing how its fields correspond to GEDCOM tags.
+
+> **See Also:** [Migration from GEDCOM](../docs/guides/migration-from-gedcom.md)
+
 ### GENEALOGIX (GLX)
 
 An open standard for version-controlled family archives using Git-native workflows, human-readable YAML files, and evidence-first data modeling.
@@ -230,6 +242,12 @@ Standard vocabulary (`legal_statuses`) backing the `legal_status` relationship p
 
 > **See Also:** [Legal Statuses Vocabulary](4-entity-types/vocabularies.md#legal-statuses-vocabulary), [Relationship Entity](4-entity-types/relationship.md)
 
+### Living
+
+A non-temporal boolean person property that opts a person into export-time privacy filters (`glx export --privatize-living`). `true` forces redaction, `false` opts out of the date-based heuristic, and absence lets the heuristic decide. GLX-specific; never written to GEDCOM.
+
+> **See Also:** [Person Entity - Living](4-entity-types/person.md#living--privacy-marker)
+
 ### Locator
 
 A specific reference to a location within a source document, such as page number, entry number, film number, or URL.
@@ -282,7 +300,7 @@ First-hand, eyewitness accounts or documents created at the time of the event.
 
 ### Participant
 
-A person involved in an event with a specific role such as subject, witness, officiant, parent, or spouse.
+A person involved in an event or relationship with a specific role such as subject, witness, officiant, parent, or spouse. Written as a `person` reference plus an optional `role`, `properties`, and `notes`.
 
 ### Participant Assertion
 
@@ -292,7 +310,7 @@ An assertion whose `participant` field (instead of `property`/`value`) makes a c
 
 ### Participant Role
 
-The specific function or relationship a person has in an event (e.g., bride, groom, witness, officiant).
+The specific function a person has in an event or relationship (e.g., bride, groom, witness, officiant; spouse, parent, child). Each role's `applies_to` in the vocabulary states whether it is valid on events, relationships, or both; an unknown role is a validation error.
 
 > **See Also:** [Participant Roles Vocabulary](4-entity-types/vocabularies.md#participant-roles-vocabulary)
 
@@ -324,6 +342,12 @@ Classification of geographic locations including country, county, city, parish, 
 
 Information created at the time of the event by someone with direct knowledge (birth certificates, contemporary letters).
 
+### Principal
+
+The canonical participant role for the primary person in an event (the child at a birth, the deceased at a death). `subject` is an accepted synonym; tooling treats the two as equivalent, and the specification's examples use `subject`.
+
+> **See Also:** [Participant Roles Vocabulary](4-entity-types/vocabularies.md#participant-roles-vocabulary)
+
 ### Property
 
 A vocabulary-defined attribute of an entity (e.g., `sex`, `occupation`, `residence`, `gender`). Properties are defined in property vocabularies and used in the `properties` field of entities.
@@ -344,7 +368,9 @@ The complete history of how information came to be known, including source attri
 
 ### QUAY
 
-GEDCOM quality indicator (0-3 scale). When importing GEDCOM files, QUAY values are preserved in citation notes for reference.
+GEDCOM quality indicator (0-3 scale) on a source citation. It is not mapped to assertion `confidence`; on import the value is preserved as a `GEDCOM QUAY: n` note on the citation.
+
+> **See Also:** [Citation Entity - GEDCOM Mapping](4-entity-types/citation.md#gedcom-mapping)
 
 ## R
 
@@ -366,7 +392,7 @@ A connection between people such as parent-child, marriage, adoption, or other f
 
 ### Relationship Type
 
-Classification of connections between people including parent-child, marriage, adoption, guardianship, etc.
+Classification of connections between people. Standard keys include `parent_child` (plus `biological_parent_child`, `adoptive_parent_child`, `foster_parent_child`), `marriage`, `civil_union`, `common_law_marriage`, `partner`, `sibling`, `guardian`, `godparent`, `enslavement`, and `possibly_same_person`.
 
 > **See Also:** [Relationship Types Vocabulary](4-entity-types/vocabularies.md#relationship-types-vocabulary)
 
@@ -404,7 +430,7 @@ Lifecycle state of a [ResearchLog](#researchlog), validated against the `researc
 
 ### Search
 
-A single query performed during a research investigation, embedded as a sub-entity within a [ResearchLog](#researchlog). Records the repository / source / citation searched, the date, the query, the `result` (see [Search Result](#search-result)), and — when something was located — the citation produced.
+A single query performed during a research investigation, embedded as a sub-entity within a [ResearchLog](#researchlog). Records the repository, source, or free-form collection searched, the date, the query, the `result` (see [Search Result](#search-result)), and — when something was located — the citation produced.
 
 > **See Also:** [ResearchLog Entity](4-entity-types/research-log.md), [Negative Evidence](#negative-evidence)
 
@@ -458,7 +484,7 @@ Standard vocabulary (`source_natures`) backing the `source_nature` source proper
 
 ### Source Type
 
-Classification of original materials including vital_record, census, church_register, newspaper, letter, etc.
+Classification of original materials including `vital_record`, `census`, `church_register`, `newspaper`, `correspondence`, `probate`, `gravestone`, etc.
 
 > **See Also:** [Source Types Vocabulary](4-entity-types/vocabularies.md#source-types-vocabulary)
 
@@ -492,7 +518,7 @@ Classification of a Study, validated against the `study_types` vocabulary. Stand
 
 ### Status (Assertion)
 
-The research verification state of an assertion, independent of confidence. Common values include `proven` (verified through primary evidence), `speculative` (hypothesis needing further research), `disproven` (evidence contradicts the assertion), and `unresearched` (no search has been conducted yet — tracks research gaps). Free-text; archives may use any labels.
+The research verification state of an assertion, independent of confidence. Common values include `proven` (verified through primary evidence), `speculative` (hypothesis needing further research), `disputed` (sources conflict, resolution unclear), `disproven` (evidence contradicts the assertion), and `unresearched` (no search has been conducted yet — tracks research gaps). Free-text; archives may use any labels.
 
 > **See Also:** [Assertion Entity - Status](4-entity-types/assertion.md#status)
 
@@ -540,9 +566,15 @@ The specific data or content of a property in an assertion (e.g., "1850-01-15" f
 
 ### Value Type
 
-The data type specification for a property value: string, date, integer, boolean, or a reference type pointing to entities.
+The data type specification for a property value: `value_type` (string, date, integer, boolean), `reference_type` (an entity ID from a named collection), or `vocabulary_type` (a key from a named vocabulary). Exactly one of the three is declared per property.
 
-> **See Also:** [Data Types](2-core-concepts.md#data-types)
+> **See Also:** [Data Types](2-core-concepts.md#data-types), [Property Definition Structure](4-entity-types/vocabularies.md#property-definition-structure)
+
+### Vocabulary Type
+
+A property attribute (`vocabulary_type: sex_types`, `gender_types`, `legal_statuses`, `source_natures`, `information_types`) constraining the property's values to the keys of a vocabulary. Unlike structural type fields, an out-of-vocabulary value on such a property is a warning, not an error.
+
+> **See Also:** [Vocabulary Validation](4-entity-types/vocabularies.md#vocabulary-validation)
 
 ### Vocabularies
 

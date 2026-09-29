@@ -10,7 +10,7 @@ layout: doc
 
 ## Overview
 
-The Person entity represents an individual in the family archive. Person entities can be stored in any `.glx` file in the repository under the `persons` key.
+The Person entity represents an individual in the family archive. Person entities can be stored in any `.glx` file in the archive under the `persons` key.
 
 ## File Format
 
@@ -348,7 +348,7 @@ persons/
 
 - Properties should be from the [person properties vocabulary](vocabularies.md#person-properties-vocabulary) (unknown properties generate warnings)
 - All place references must point to existing Place entities
-- Date formats must follow genealogical date conventions
+- Date formats must follow the [date format standard](../2-core-concepts.md#date-format-standard) (invalid formats generate warnings)
 
 ## Schema Reference
 

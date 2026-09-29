@@ -17,7 +17,7 @@ git clone https://github.com/genealogix/glx-archive-westeros.git
 cd glx-archive-westeros
 ```
 
-If you haven't installed the CLI yet, see the [installation instructions](https://github.com/genealogix/glx/blob/main/glx/README.md#installation).
+If you haven't installed the CLI yet, see the [installation instructions](../../glx/README.md#installation).
 
 ## Archive Health
 
@@ -147,6 +147,35 @@ glx analyze --check consistency
 # JSON output for tooling
 glx analyze --format json
 ```
+
+#### Which censuses get suggested
+
+Census suggestions are tied to the country a person's places name. `glx`
+walks each event's place up its `parent` chain to the first place with
+`type: country`, and suggests that country's census years — US federal
+censuses for someone in Illinois, UK censuses for someone in Bath. A person
+whose places span a move gets both countries' schedules.
+
+If the country has no schedule in `glx` (the table currently covers the
+United States, the United Kingdom, Canada and Ireland), no census is
+suggested for that person. Suggesting the 1790 US census to someone who
+never left Mecklenburg is worse than suggesting nothing.
+
+When nothing in the archive names a country for a person — place hierarchies
+that stop at a city, say — no census is suggested either. `glx` does not guess
+a country from silence. Give it one with `--country` when you know where the
+archive is rooted:
+
+```bash
+# Assume UK censuses where the archive names no country
+glx analyze --country "United Kingdom"
+glx coverage "Jane Webb" --country "United Kingdom"
+```
+
+Adding a `type: country` place to the hierarchy is the durable fix, since it
+also tells everyone else reading the archive where these people lived.
+
+The same rules govern the census rows in `glx coverage`.
 
 ### `glx proof` — Structured proof summary for a research question
 
@@ -651,7 +680,12 @@ Census Import Summary
 (dry run — no files written)
 ```
 
-Notice it matched Rickard and Lyarra Stark to existing archive persons by name — no `person_id` needed. When you're satisfied, run without `--dry-run`:
+Notice it matched Rickard and Lyarra Stark to existing archive persons by name — no `person_id` needed.
+
+`census.source.title` is optional. Left out, the title is built from the year,
+the `census.type` and the location — `type: federal` gives "1860 Federal Census
+— Marion County, Florida", and no type at all gives "1860 Census — …". The
+country is never assumed: put it in `source.title` when you want it named. When you're satisfied, run without `--dry-run`:
 
 ```bash
 glx census add --from 1860-census-stark.yaml --archive .

@@ -98,7 +98,7 @@ func cleanCache(io *IOStreams, path string) error {
 	if err := os.Remove(cacheDir(root)); err != nil && !os.IsNotExist(err) {
 		// Non-empty or permission issue — leave it; the cache file is gone, which
 		// is what the user asked for.
-		return nil //nolint:nilerr // directory cleanup is best-effort
+		return nil
 	}
 
 	return nil

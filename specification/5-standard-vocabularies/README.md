@@ -322,8 +322,8 @@ Defines standard and custom properties for relationship entities.
 
 **Standard Properties Include:**
 
-- `started_on` - When the relationship began
-- `ended_on` - When the relationship ended
+- `started_on` - When the relationship began (use `start_event` instead when the boundary is a documented event; setting both warns)
+- `ended_on` - When the relationship ended (use `end_event` instead when the boundary is a documented event; setting both warns)
 - `location` - Location of the relationship (reference)
 - `description` - Relationship description
 
