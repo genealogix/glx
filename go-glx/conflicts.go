@@ -292,5 +292,6 @@ func AssertionFact(a *Assertion) FactValue {
 	if a == nil {
 		return FactValue{}
 	}
+
 	return FactValue{Value: a.Value, Date: a.Date, Confidence: a.Confidence, Status: a.Status}
 }
