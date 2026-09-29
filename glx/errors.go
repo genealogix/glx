@@ -22,6 +22,7 @@ import (
 
 // Command validation errors
 var (
+	ErrInvalidApproximation       = errors.New("invalid approximation width")
 	ErrMissingArguments           = errors.New("missing required argument(s)")
 	ErrTooManyArguments           = errors.New("too many arguments")
 	ErrMediaFileNotFound          = errors.New("file not found")

@@ -1051,17 +1051,37 @@ func mergeStandardVocabularies(glx *glxlib.GLXFile) error {
 	if len(glx.InformationTypes) == 0 {
 		glx.InformationTypes = std.InformationTypes
 	}
-	if len(glx.PersonProperties) == 0 {
-		glx.PersonProperties = std.PersonProperties
+	if glx.PersonProperties == nil {
+		glx.PersonProperties = make(map[string]*glxlib.PropertyDefinition)
 	}
-	if len(glx.EventProperties) == 0 {
-		glx.EventProperties = std.EventProperties
+	for key, def := range std.PersonProperties {
+		if _, exists := glx.PersonProperties[key]; !exists {
+			glx.PersonProperties[key] = def
+		}
 	}
-	if len(glx.RelationshipProperties) == 0 {
-		glx.RelationshipProperties = std.RelationshipProperties
+	if glx.EventProperties == nil {
+		glx.EventProperties = make(map[string]*glxlib.PropertyDefinition)
 	}
-	if len(glx.PlaceProperties) == 0 {
-		glx.PlaceProperties = std.PlaceProperties
+	for key, def := range std.EventProperties {
+		if _, exists := glx.EventProperties[key]; !exists {
+			glx.EventProperties[key] = def
+		}
+	}
+	if glx.RelationshipProperties == nil {
+		glx.RelationshipProperties = make(map[string]*glxlib.PropertyDefinition)
+	}
+	for key, def := range std.RelationshipProperties {
+		if _, exists := glx.RelationshipProperties[key]; !exists {
+			glx.RelationshipProperties[key] = def
+		}
+	}
+	if glx.PlaceProperties == nil {
+		glx.PlaceProperties = make(map[string]*glxlib.PropertyDefinition)
+	}
+	for key, def := range std.PlaceProperties {
+		if _, exists := glx.PlaceProperties[key]; !exists {
+			glx.PlaceProperties[key] = def
+		}
 	}
 	if len(glx.MediaProperties) == 0 {
 		glx.MediaProperties = std.MediaProperties

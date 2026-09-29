@@ -123,6 +123,8 @@ type proofConflictValue struct {
 // proofConflict records two or more assertions that disagree on the same
 // subject/property (GPS element 4 — resolution of conflicting evidence).
 type proofConflict struct {
+	Verdict    glxlib.Verdict       `json:"verdict"`
+	Definite   bool                 `json:"definite,omitempty"`
 	Subject    string               `json:"subject,omitempty"`
 	Property   string               `json:"property"`
 	Values     []proofConflictValue `json:"values"`
@@ -142,6 +144,7 @@ type proofSearch struct {
 
 // proofResult is the full structured proof argument for one research question.
 type proofResult struct {
+	Undated      []proofEvidence `json:"undated,omitempty"`
 	PersonID     string          `json:"person_id"`
 	PersonName   string          `json:"person_name"`
 	Question     string          `json:"question"`
@@ -159,7 +162,7 @@ type proofResult struct {
 // Human-readable text/markdown is written to io.Out (silenced by --quiet); JSON,
 // which is machine-consumable, is written to io.MachineOut so it survives --quiet
 // for shell capture.
-func showProof(io *IOStreams, archivePath, personQuery, question, format string) error {
+func showProof(io *IOStreams, archivePath, personQuery, question, format string, options ...glxlib.ComparisonOptions) error {
 	topic, ok := canonicalQuestion(question)
 	if !ok {
 		return fmt.Errorf("%w %q (valid: %s)", errUnknownQuestion, question, strings.Join(proofQuestionKeys(), ", "))
@@ -175,7 +178,7 @@ func showProof(io *IOStreams, archivePath, personQuery, question, format string)
 		return err
 	}
 
-	result := buildProof(personID, person, topic, archive)
+	result := buildProof(personID, person, topic, archive, options...)
 
 	switch format {
 	case proofFormatJSON:
@@ -199,7 +202,7 @@ func proofFormatKeys() []string {
 }
 
 // buildProof assembles the proof argument for a person and research topic.
-func buildProof(personID string, person *glxlib.Person, topic string, archive *glxlib.GLXFile) *proofResult {
+func buildProof(personID string, person *glxlib.Person, topic string, archive *glxlib.GLXFile, options ...glxlib.ComparisonOptions) *proofResult {
 	name := glxlib.PersonDisplayName(person)
 	if name == "" {
 		name = personID
@@ -215,11 +218,25 @@ func buildProof(personID string, person *glxlib.Person, topic string, archive *g
 	}
 
 	evidence := make([]proofEvidence, 0, len(relevant))
+	var undated []proofEvidence
 	for i := range relevant {
-		evidence = append(evidence, buildProofEvidence(&relevant[i], archive))
+		ev := buildProofEvidence(&relevant[i], archive)
+		def := glxlib.ConflictProperty(archive, relevant[i].a.Subject, relevant[i].a.Property)
+		date, _ := relevant[i].a.Date.Parse()
+		if glxlib.IsTemporalProperty(def) && !date.Timing().Known {
+			undated = append(undated, ev)
+		} else {
+			evidence = append(evidence, ev)
+		}
 	}
 
-	conflicts := detectProofConflicts(relevant, archive)
+	sort.SliceStable(evidence, func(i, j int) bool {
+		a, _ := glxlib.DateString(evidence[i].Date).Parse()
+		b, _ := glxlib.DateString(evidence[j].Date).Parse()
+
+		return a.Timing().Outer.Start < b.Timing().Outer.Start
+	})
+	conflicts := detectProofConflicts(relevant, archive, options...)
 	gaps := collectProofGaps(personID, person, topic, archive)
 	searches := collectProofSearches(personID, archive)
 
@@ -231,6 +248,7 @@ func buildProof(personID string, person *glxlib.Person, topic string, archive *g
 		Question:     topic,
 		QuestionText: questionText(topic, name),
 		Evidence:     evidence,
+		Undated:      undated,
 		Gaps:         gaps,
 		Conflicts:    conflicts,
 		Searches:     searches,
@@ -315,6 +333,7 @@ type proofAssertion struct {
 	subjectID  string // person, event, or relationship ID the assertion is about
 	eventType  string // set when the subject is an event the person participates in
 	relType    string // set when the subject is a relationship the person participates in
+	factKey    string // shared identity of duplicate birth/death events
 	personRole string // the person's role in the subject relationship
 }
 
@@ -359,7 +378,7 @@ func collectPersonProofAssertions(archive *glxlib.GLXFile, personID string) []pr
 		}
 	}
 
-	return out
+	return appendDuplicateEventFacts(out, archive, personID)
 }
 
 // personEventIDSet returns the set of event IDs the person participates in.
@@ -560,7 +579,7 @@ func resolveProofValue(value string, archive *glxlib.GLXFile) string {
 // detectProofConflicts finds relevant assertions that disagree on the same
 // subject/property and reports whether the disagreement has been resolved via
 // the assertion `status` field (proven over disproven).
-func detectProofConflicts(relevant []proofAssertion, archive *glxlib.GLXFile) []proofConflict {
+func detectProofConflicts(relevant []proofAssertion, archive *glxlib.GLXFile, options ...glxlib.ComparisonOptions) []proofConflict {
 	type conflictKey struct {
 		subject  string
 		property string
@@ -577,7 +596,11 @@ func detectProofConflicts(relevant []proofAssertion, archive *glxlib.GLXFile) []
 		if pa.a.Property == "" || pa.a.Value == "" {
 			continue
 		}
-		key := conflictKey{subject: pa.subjectID, property: pa.a.Property}
+		subjectKey := pa.a.Subject.Type().String() + ":" + pa.subjectID
+		if pa.factKey != "" {
+			subjectKey = pa.factKey
+		}
+		key := conflictKey{subject: subjectKey, property: pa.a.Property}
 		g, seen := groups[key]
 		if !seen {
 			g = &conflictGroup{label: describeProofSubject(pa, archive)}
@@ -598,10 +621,11 @@ func detectProofConflicts(relevant []proofAssertion, archive *glxlib.GLXFile) []
 	var conflicts []proofConflict
 	for _, key := range order {
 		g := groups[key]
-		values := distinctProofValues(g.assertions, archive)
-		if len(values) < 2 {
+		selected, verdict, definite := comparedAssertions(g.assertions, archive, comparisonOptions(options))
+		if len(selected) == 0 {
 			continue
 		}
+		values := distinctProofValues(selected, archive)
 
 		// Disambiguate which subject the conflict belongs to. Fall back to the
 		// raw subject ID when there is no descriptive label (e.g. the person
@@ -612,7 +636,13 @@ func detectProofConflicts(relevant []proofAssertion, archive *glxlib.GLXFile) []
 		}
 
 		resolved, resolution := resolveConflict(values)
+		resolved = verdict == glxlib.VerdictResolved
+		if resolved && resolution == "" {
+			resolution = "Disproven claims excluded."
+		}
 		conflicts = append(conflicts, proofConflict{
+			Verdict:    verdict,
+			Definite:   definite,
 			Subject:    subject,
 			Property:   key.property,
 			Values:     values,
@@ -821,24 +851,28 @@ const conflictedSummary = "Conflicting evidence remains unresolved — resolve b
 // concludeProof determines the conclusion level and a one-line summary.
 func concludeProof(topic, personID string, archive *glxlib.GLXFile, relevant []proofAssertion, conflicts []proofConflict, gaps []proofGap) (string, string) {
 	for i := range conflicts {
-		if !conflicts[i].Resolved {
+		if !conflicts[i].Resolved && (conflicts[i].Definite || conflicts[i].Verdict == "") {
 			return proofConclusionConflicted, conflictedSummary
 		}
 	}
 
-	// A relevant assertion explicitly flagged `disputed` represents unresolved
-	// conflicting evidence even when only a single value was recorded — the spec
-	// allows a lone disputed assertion citing conflicting sources (see the
-	// assertion-disputed-birth example in specification/2-core-concepts.md).
-	// detectProofConflicts only emits multi-value disagreements, so the status
-	// must be checked directly here.
-	for i := range relevant {
-		if strings.EqualFold(relevant[i].a.Status, statusDisputed) {
-			return proofConclusionConflicted, conflictedSummary
+	possible := false
+	for _, c := range conflicts {
+		if !c.Resolved && !c.Definite {
+			possible = true
 		}
 	}
 
 	answer, found := deriveProofAnswer(topic, personID, archive)
+	for _, c := range conflicts {
+		if c.Resolved {
+			if asserted, ok := answerFromAssertions(relevant, archive); ok {
+				answer, found = asserted, true
+			}
+
+			break
+		}
+	}
 	if !found {
 		// The archive's structural data (events/relationships/name) yields no
 		// answer, but relevant assertions may still carry one — e.g. legacy
@@ -853,7 +887,12 @@ func concludeProof(topic, personID string, archive *glxlib.GLXFile, relevant []p
 		return proofConclusionInsufficient, insufficientSummary(topic, gaps)
 	}
 
-	switch supportLevel(relevant) {
+	level := supportLevel(relevant)
+	if possible {
+		level = min(level, supportWeak)
+		answer += " Possible conflict — check the recorded periods."
+	}
+	switch level {
 	case supportStrong:
 		return proofConclusionProven, appendNextSteps(answer, gaps)
 	case supportModerate:
@@ -1122,6 +1161,12 @@ func printProofText(io *IOStreams, result *proofResult) {
 		printProofEvidenceText(io, i+1, &result.Evidence[i])
 	}
 
+	if len(result.Undated) > 0 {
+		io.Printf("\n  Undated:\n")
+		for i := range result.Undated {
+			printProofEvidenceText(io, i+1, &result.Undated[i])
+		}
+	}
 	io.Printf("\n  Evidence Gaps:\n")
 	if len(result.Gaps) == 0 {
 		io.Println("    (none identified)")
@@ -1240,6 +1285,8 @@ func printProofConflictText(io *IOStreams, c *proofConflict) {
 	io.Printf("    ! %s: %s\n", conflictLabel(c), conflictValuesString(c))
 	if c.Resolved {
 		io.Printf("      RESOLVED: %s\n", c.Resolution)
+	} else if !c.Definite && c.Verdict != "" {
+		io.Printf("      possible — check\n")
 	} else {
 		io.Printf("      UNRESOLVED — resolution needed\n")
 	}
@@ -1331,6 +1378,12 @@ func printProofMarkdown(io *IOStreams, result *proofResult) {
 	}
 
 	printMarkdownEvidence(io, result.Evidence)
+	if len(result.Undated) > 0 {
+		io.Printf("\n## Undated\n\n")
+		for i := range result.Undated {
+			io.Printf("- %s\n", evidenceHeader(&result.Undated[i]))
+		}
+	}
 	printMarkdownGaps(io, result.Gaps)
 	printMarkdownSearches(io, result.Searches)
 	printMarkdownConflicts(io, result.Conflicts)
@@ -1387,6 +1440,8 @@ func printMarkdownConflicts(io *IOStreams, conflicts []proofConflict) {
 		io.Printf("- **%s:** %s\n", conflictLabel(c), conflictValuesString(c))
 		if c.Resolved {
 			io.Printf("  - _Resolved:_ %s\n", c.Resolution)
+		} else if !c.Definite && c.Verdict != "" {
+			io.Printf("  - _possible — check._\n")
 		} else {
 			io.Printf("  - _Unresolved — resolution needed._\n")
 		}

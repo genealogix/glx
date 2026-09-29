@@ -32,6 +32,7 @@ type AnalysisIssue struct {
 	Entity   string `json:"entity,omitempty"`
 	Message  string `json:"message"`
 	Property string `json:"property,omitempty"`
+	Subject  string `json:"subject,omitempty"`
 }
 
 // AnalysisResult holds all findings from the analysis engine.
@@ -62,11 +63,19 @@ func loadArchiveForAnalyze(path string) (*glxlib.GLXFile, error) {
 		return archive, nil
 	}
 
-	return readSingleFileArchive(path, false)
+	archive, err := readSingleFileArchive(path, false)
+	if err != nil {
+		return nil, err
+	}
+	if err := mergeStandardVocabularies(archive); err != nil {
+		return nil, err
+	}
+
+	return archive, nil
 }
 
 // showAnalysis runs the analysis engine and prints results.
-func showAnalysis(archivePath, personFilter, checkFilter, format, country string) error {
+func showAnalysis(archivePath, personFilter, checkFilter, format, country string, options ...glxlib.ComparisonOptions) error {
 	if err := applyCensusCountry(country); err != nil {
 		return err
 	}
@@ -82,15 +91,17 @@ func showAnalysis(archivePath, personFilter, checkFilter, format, country string
 		"gaps":        analyzeGaps,
 		"evidence":    analyzeEvidence,
 		"consistency": analyzeConsistency,
-		"conflicts":   analyzeConflicts,
+		conflictsCheck: func(a *glxlib.GLXFile) []AnalysisIssue {
+			return analyzeConflictsWithOptions(a, comparisonOptions(options))
+		},
 		"suggestions": analyzeSuggestions,
 	}
 
-	// Accept singular aliases ("gap" → "gaps", "conflict" → "conflicts", "suggestion" → "suggestions")
+	// Accept singular aliases (gap → gaps, conflict → conflicts, suggestion → suggestions).
 	singularToPlural := map[string]string{
-		"gap":        "gaps",
-		"suggestion": "suggestions",
-		"conflict":   "conflicts",
+		analysisGapCategory:        "gaps",
+		analysisSuggestionCategory: "suggestions",
+		conflictCategory:           conflictsCheck,
 	}
 
 	if checkFilter != "" {
@@ -103,7 +114,7 @@ func showAnalysis(archivePath, personFilter, checkFilter, format, country string
 		}
 		issues = fn(archive)
 	} else {
-		for _, category := range []string{"gaps", "evidence", "consistency", "conflicts", "suggestions"} {
+		for _, category := range []string{"gaps", "evidence", "consistency", conflictsCheck, "suggestions"} {
 			issues = append(issues, checks[category](archive)...)
 		}
 	}
@@ -170,11 +181,11 @@ func filterByPerson(issues []AnalysisIssue, query string, archive *glxlib.GLXFil
 // buildSummary counts issues by category.
 func buildSummary(issues []AnalysisIssue) map[string]int {
 	summary := map[string]int{
-		"gap":         0,
-		"evidence":    0,
-		"consistency": 0,
-		"conflict":    0,
-		"suggestion":  0,
+		analysisGapCategory:        0,
+		"evidence":                 0,
+		"consistency":              0,
+		conflictCategory:           0,
+		analysisSuggestionCategory: 0,
 	}
 	for _, issue := range issues {
 		summary[issue.Category]++
@@ -212,7 +223,7 @@ func printAnalysisTerminal(result AnalysisResult) {
 		{"gap", "EVIDENCE GAPS"},
 		{"evidence", "EVIDENCE QUALITY"},
 		{"consistency", "CONSISTENCY"},
-		{"conflict", "CONFLICTS"},
+		{conflictCategory, "CONFLICTS"},
 		{"suggestion", "SUGGESTIONS"},
 	}
 
@@ -257,7 +268,7 @@ func printIssue(issue *AnalysisIssue) {
 	msg := sanitizeForTerminal(issue.Message)
 
 	switch issue.Category {
-	case "suggestion":
+	case analysisSuggestionCategory:
 		fmt.Printf("  →   %-30s %s\n", ref, msg)
 	default:
 		sev := strings.ToUpper(issue.Severity)

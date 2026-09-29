@@ -649,7 +649,8 @@ func TestBuildProof_DisputedSingleAssertion(t *testing.T) {
 	result := buildProof("person-d", archive.Persons["person-d"], "birth", archive)
 
 	require.Len(t, result.Evidence, 1, "the disputed assertion is still collected as evidence")
-	assert.Empty(t, result.Conflicts, "a single disputed value produces no multi-value conflict entry")
+	require.Len(t, result.Conflicts, 1, "a single disputed value remains a known dispute")
+	assert.Equal(t, glxlib.VerdictDisputed, result.Conflicts[0].Verdict)
 	assert.Equal(t, proofConclusionConflicted, result.Conclusion, "disputed status must conclude CONFLICTED")
 	assert.Contains(t, result.Summary, "unresolved")
 }

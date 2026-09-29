@@ -15,8 +15,12 @@
 package glx
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
+	"slices"
+	"sort"
+	"strings"
 )
 
 // NotesStrategy controls how MergePersons combines notes from the drop person
@@ -34,6 +38,7 @@ const (
 
 // MergePersonsOptions controls behavior of the MergePersons operation.
 type MergePersonsOptions struct {
+	Comparison    ComparisonOptions
 	NotesStrategy NotesStrategy
 	KeepNewest    bool // resolve same-property conflicts by date, latest wins
 	KeepOldest    bool // resolve same-property conflicts by date, earliest wins
@@ -51,6 +56,7 @@ const (
 
 // PersonMergeConflict records a property collision encountered during a merge.
 type PersonMergeConflict struct {
+	Verdict    Verdict
 	Property   string
 	KeepValue  any
 	DropValue  any
@@ -71,12 +77,12 @@ type MergePersonsResult struct {
 // to dropID elsewhere in the archive are rewritten to point at keepID.
 //
 // Property-merge rules:
-//   - If keep doesn't have a property, drop's value is copied verbatim.
-//   - If both values are []any (multi-value temporal lists), the result is the
-//     union with duplicates removed by deep-equal.
-//   - Otherwise the values conflict. Default behavior keeps keep's value and
-//     records a PersonMergeConflict. Pass KeepNewest/KeepOldest to resolve
-//     dated conflicts by comparing the values' embedded `date` fields.
+//   - Missing properties are copied, and identical values agree silently.
+//   - Vocabulary-defined temporal properties combine non-conflicting dated and
+//     undated history, whether the inputs are scalars, objects, or lists.
+//   - Genuine conflicts use keep's value by default. KeepNewest/KeepOldest
+//     resolve each collision by its embedded date, preserving unrelated history.
+//   - Other multi-value lists are unioned with deep-equal duplicates removed.
 //
 // Notes are combined per opts.NotesStrategy.
 //
@@ -110,7 +116,7 @@ func MergePersons(glx *GLXFile, keepID, dropID string, opts MergePersonsOptions)
 	keep := glx.Persons[keepID]
 	drop := glx.Persons[dropID]
 
-	propsAdded, conflicts := mergePersonProperties(keep, drop, opts)
+	propsAdded, conflicts := mergePersonProperties(glx, keep, drop, opts)
 	notesAdded := mergePersonNotes(keep, drop, opts.NotesStrategy)
 
 	delete(glx.Persons, dropID)
@@ -141,14 +147,20 @@ func requirePerson(glx *GLXFile, id, role string) error {
 // mergePersonProperties folds drop.Properties into keep.Properties per the
 // rules documented on MergePersons. Returns the count of new/replaced property
 // entries and any property collisions encountered.
-func mergePersonProperties(keep, drop *Person, opts MergePersonsOptions) (added int, conflicts []PersonMergeConflict) {
+func mergePersonProperties(archive *GLXFile, keep, drop *Person, opts MergePersonsOptions) (added int, conflicts []PersonMergeConflict) {
 	if len(drop.Properties) == 0 {
 		return 0, nil
 	}
 	if keep.Properties == nil {
 		keep.Properties = map[string]any{}
 	}
-	for prop, dropVal := range drop.Properties {
+	properties := make([]string, 0, len(drop.Properties))
+	for prop := range drop.Properties {
+		properties = append(properties, prop)
+	}
+	sort.Strings(properties)
+	for _, prop := range properties {
+		dropVal := drop.Properties[prop]
 		keepVal, exists := keep.Properties[prop]
 		if !exists {
 			keep.Properties[prop] = dropVal
@@ -157,6 +169,18 @@ func mergePersonProperties(keep, drop *Person, opts MergePersonsOptions) (added 
 			continue
 		}
 
+		if reflect.DeepEqual(keepVal, dropVal) {
+			continue
+		}
+		def := ConflictProperty(archive, EntityRef{Person: "keep"}, prop)
+		if IsTemporalProperty(def) {
+			merged, count, collisions := mergeTemporalProperty(prop, keepVal, dropVal, def, archive.Places, opts)
+			keep.Properties[prop] = merged
+			added += count
+			conflicts = append(conflicts, collisions...)
+
+			continue
+		}
 		keepList, keepIsList := keepVal.([]any)
 		dropList, dropIsList := dropVal.([]any)
 		if keepIsList && dropIsList {
@@ -166,6 +190,10 @@ func mergePersonProperties(keep, drop *Person, opts MergePersonsOptions) (added 
 
 			continue
 		}
+		c := compareFactPair(propertyFact(keepVal), propertyFact(dropVal), def, archive.Places, opts.Comparison)
+		if !c.IsConflict() {
+			continue
+		}
 
 		useDrop, label := resolveConflict(keepVal, dropVal, opts)
 		if useDrop {
@@ -173,6 +201,7 @@ func mergePersonProperties(keep, drop *Person, opts MergePersonsOptions) (added 
 			added++
 		}
 		conflicts = append(conflicts, PersonMergeConflict{
+			Verdict:    c.Verdict,
 			Property:   prop,
 			KeepValue:  keepVal,
 			DropValue:  dropVal,
@@ -275,4 +304,122 @@ func mergePersonNotes(keep, drop *Person, strategy NotesStrategy) int {
 	}
 
 	return 0
+}
+
+func propertyEntries(v any) []any {
+	if list, ok := v.([]any); ok {
+		return list
+	}
+
+	return []any{v}
+}
+
+const temporalValueField = "value"
+
+func propertyFact(v any) FactValue {
+	f := FactValue{}
+	if m, ok := v.(map[string]any); ok {
+		f.Value = propertyText(m[temporalValueField])
+		f.Date = DateString(propertyText(m["date"]))
+		f.Status = propertyText(m["status"])
+		f.Confidence = propertyText(m["confidence"])
+	} else {
+		f.Value = propertyText(v)
+	}
+
+	return f
+}
+
+func propertyText(v any) string {
+	if v == nil {
+		return ""
+	}
+	if s, ok := v.(string); ok {
+		return s
+	}
+	if s, ok := v.(DateString); ok {
+		return string(s)
+	}
+	data, err := json.Marshal(v)
+	if err != nil {
+		return fmt.Sprint(v)
+	}
+
+	return string(data)
+}
+
+// FormatPropertyValue renders scalar, structured and temporal property values
+// readably for merge reports, retaining dates and structured field details.
+func FormatPropertyValue(v any) string {
+	if entries, ok := v.([]any); ok {
+		parts := make([]string, len(entries))
+		for i, entry := range entries {
+			parts[i] = FormatPropertyValue(entry)
+		}
+
+		return strings.Join(parts, "; ")
+	}
+	f := propertyFact(v)
+	if f.Value == "" {
+		return propertyText(v)
+	}
+	if f.Date != "" {
+		return f.Value + " (" + string(f.Date) + ")"
+	}
+
+	return f.Value
+}
+
+func mergeTemporalProperty(property string, keep, drop any, def *PropertyDefinition, places map[string]*Place, opts MergePersonsOptions) (any, int, []PersonMergeConflict) {
+	entries := append([]any(nil), propertyEntries(keep)...)
+	added := 0
+	var conflicts []PersonMergeConflict
+	for _, incoming := range propertyEntries(drop) {
+		if containsEntry(entries, incoming) {
+			continue
+		}
+		var collisions []int
+		accept := true
+		for i, existing := range entries {
+			c := compareFactPair(propertyFact(existing), propertyFact(incoming), def, places, opts.Comparison)
+			if !c.IsConflict() {
+				continue
+			}
+			useDrop, label := resolveConflict(existing, incoming, opts)
+			conflicts = append(conflicts, PersonMergeConflict{Verdict: c.Verdict, Property: property, KeepValue: existing, DropValue: incoming, Resolution: label})
+			if useDrop {
+				collisions = append(collisions, i)
+			} else {
+				accept = false
+			}
+		}
+		if !accept {
+			continue
+		}
+		for _, idx := range slices.Backward(collisions) {
+			entries = append(entries[:idx], entries[idx+1:]...)
+		}
+		entries = append(entries, incoming)
+		added++
+	}
+	if added == 0 {
+		return keep, 0, conflicts
+	}
+	sort.SliceStable(entries, func(i, j int) bool {
+		a, _ := propertyFact(entries[i]).Date.Parse()
+		b, _ := propertyFact(entries[j]).Date.Parse()
+		if a.Timing().Known != b.Timing().Known {
+			return a.Timing().Known
+		}
+
+		return a.Timing().Outer.Start < b.Timing().Outer.Start
+	})
+	// Temporal lists require objects even when an input was an undated scalar.
+	for i, entry := range entries {
+		if _, structured := entry.(map[string]any); !structured {
+			entries[i] = map[string]any{temporalValueField: entry}
+		}
+	}
+
+	return entries, added, conflicts
 }

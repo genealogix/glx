@@ -46,17 +46,20 @@ func TestEvidence_GroupsConflictingValues(t *testing.T) {
 	assert.Contains(t, res.stdout, "2 reports across 2 values")
 	assert.Contains(t, res.stdout, "Clerk — 1 report, best confidence: high")
 	assert.Contains(t, res.stdout, "Farmer — 1 report, best confidence: low")
-	assert.Contains(t, res.stdout, "Best evidence: Clerk")
+	assert.Contains(t, res.stdout, "Undated:")
+	assert.NotContains(t, res.stdout, "Best evidence:")
 
 	asJSON := runGLX(t, archive, "evidence", readPerson, "occupation", "--format", "json")
 	require.Equal(t, 0, asJSON.exitCode, asJSON.stderr)
 	var doc struct {
 		TotalReports int `json:"total_reports"`
 		Groups       []any
+		Undated      []any
 	}
 	require.NoError(t, json.Unmarshal([]byte(asJSON.stdout), &doc), asJSON.stdout)
 	assert.Equal(t, 2, doc.TotalReports)
-	assert.Len(t, doc.Groups, 2)
+	assert.Empty(t, doc.Groups)
+	assert.Len(t, doc.Undated, 2)
 }
 
 func TestQuery_Filters(t *testing.T) {

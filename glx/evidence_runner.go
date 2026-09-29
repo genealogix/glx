@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
+	"github.com/genealogix/glx/go-glx/glxdate"
 )
 
 // unspecifiedValue labels reports whose assertion carries no value (an
@@ -43,15 +44,27 @@ type EvidenceItem struct {
 // EvidenceGroup holds every report that agrees on a single value, with the
 // best (highest-ranked) confidence seen among them.
 type EvidenceGroup struct {
-	Value          string         `json:"value"`
-	Reports        int            `json:"reports"`
-	BestConfidence string         `json:"best_confidence,omitempty"`
-	Items          []EvidenceItem `json:"items"`
+	Date           glxlib.DateString `json:"date,omitempty"`
+	RawValue       string            `json:"raw_value,omitempty"`
+	BestEvidence   string            `json:"best_evidence,omitempty"`
+	Value          string            `json:"value"`
+	Reports        int               `json:"reports"`
+	BestConfidence string            `json:"best_confidence,omitempty"`
+	Items          []EvidenceItem    `json:"items"`
 }
 
 // EvidenceReport is the full evidence breakdown for one subject+property,
 // ranked so the most-supported value comes first.
+// EvidenceConflict is a shared-engine verdict with the original claims.
+type EvidenceConflict struct {
+	Verdict glxlib.Verdict     `json:"verdict"`
+	Values  []glxlib.FactValue `json:"values"`
+}
+
 type EvidenceReport struct {
+	Temporal  bool               `json:"temporal,omitempty"`
+	Undated   []EvidenceGroup    `json:"undated,omitempty"`
+	Conflicts []EvidenceConflict `json:"conflicts,omitempty"`
 	// Subject is the entity ID the evidence is about; SubjectType is its
 	// singular entity type ("person", "event", "place", "relationship") and
 	// SubjectName its display label.
@@ -75,7 +88,7 @@ type EvidenceReport struct {
 
 // showEvidence loads an archive, resolves the subject, and prints the grouped
 // evidence for the requested property in text or JSON form.
-func showEvidence(io *IOStreams, archivePath, subjectQuery, property, format string) error {
+func showEvidence(io *IOStreams, archivePath, subjectQuery, property, format string, options ...glxlib.ComparisonOptions) error {
 	archive, err := loadArchiveForEvidence(io, archivePath)
 	if err != nil {
 		return err
@@ -86,7 +99,7 @@ func showEvidence(io *IOStreams, archivePath, subjectQuery, property, format str
 		return err
 	}
 
-	report := collectEvidence(archive, subject, property)
+	report := collectEvidence(archive, subject, property, options...)
 
 	switch format {
 	case "", "text":
@@ -240,7 +253,7 @@ func (g *EvidenceGroup) noteConfidence(c string) {
 // collectEvidence gathers every assertion for the given subject+property,
 // groups the supporting reports by asserted value, and ranks the values by
 // report count and confidence. Output is deterministic.
-func collectEvidence(archive *glxlib.GLXFile, subject glxlib.EntityRef, property string) EvidenceReport {
+func collectEvidence(archive *glxlib.GLXFile, subject glxlib.EntityRef, property string, options ...glxlib.ComparisonOptions) EvidenceReport {
 	assertions, canonicalProperty := matchingAssertions(archive, subject, property)
 	report := EvidenceReport{
 		Subject:     subject.ID(),
@@ -256,6 +269,10 @@ func collectEvidence(archive *glxlib.GLXFile, subject glxlib.EntityRef, property
 		report.PersonName = report.SubjectName
 	}
 
+	def := glxlib.ConflictProperty(archive, subject, canonicalProperty)
+	report.Temporal = glxlib.IsTemporalProperty(def)
+	report.Conflicts = evidenceConflicts(assertions, def, archive, comparisonOptions(options))
+
 	groups := make(map[string]*EvidenceGroup)
 	// citationIdx maps value -> citationID -> index of that citation's report in
 	// the group's Items. The same record cited for the same value by more than
@@ -264,26 +281,33 @@ func collectEvidence(archive *glxlib.GLXFile, subject glxlib.EntityRef, property
 	citationIdx := make(map[string]map[string]int)
 
 	for _, a := range assertions {
+		if strings.EqualFold(a.Status, "disproven") {
+			continue
+		}
 		// Resolve against the matched assertion's own property key (a.Property),
 		// not the raw query string: under the case-insensitive fallback the query
 		// casing can differ, and placeRefProperties / PersonProperties lookups are
 		// case-sensitive, so resolving by the query would miss place/person/event
 		// references.
-		value := resolveAssertionValue(a.Value, a.Property, subject, archive)
+		value := factDisplay(a.Value, subject, a.Property, archive)
 		if value == "" {
 			value = unspecifiedValue
 		}
 
-		g, ok := groups[value]
+		key := evidenceGroupKey(a, groups, def, archive, comparisonOptions(options))
+		g, ok := groups[key]
 		if !ok {
-			g = &EvidenceGroup{Value: value}
-			groups[value] = g
-			citationIdx[value] = make(map[string]int)
+			g = &EvidenceGroup{Value: value, RawValue: a.Value}
+			if report.Temporal {
+				g.Date = a.Date
+			}
+			groups[key] = g
+			citationIdx[key] = make(map[string]int)
 		}
 
 		for _, item := range assertionItems(a, archive) {
 			if item.CitationID != "" {
-				if idx, seen := citationIdx[value][item.CitationID]; seen {
+				if idx, seen := citationIdx[key][item.CitationID]; seen {
 					// Same record cited again: keep one report, but raise its
 					// confidence (and the group's) when this assertion is stronger.
 					if confidenceRank(item.Confidence) < confidenceRank(g.Items[idx].Confidence) {
@@ -293,7 +317,7 @@ func collectEvidence(archive *glxlib.GLXFile, subject glxlib.EntityRef, property
 
 					continue
 				}
-				citationIdx[value][item.CitationID] = len(g.Items)
+				citationIdx[key][item.CitationID] = len(g.Items)
 			}
 
 			g.Items = append(g.Items, item)
@@ -313,6 +337,9 @@ func collectEvidence(archive *glxlib.GLXFile, subject glxlib.EntityRef, property
 	}
 	sortEvidenceGroups(report.Groups)
 	report.BestEvidence = bestEvidence(report.Groups)
+	if report.Temporal {
+		arrangeEvidenceHistory(&report)
+	}
 
 	return report
 }
@@ -437,7 +464,7 @@ func resolveAssertionValue(value, property string, subject glxlib.EntityRef, arc
 		return value
 	}
 
-	// Fast path matching analyze's resolveConflictValue for place properties.
+	// Resolve standard place-reference properties.
 	if placeRefProperties[property] {
 		return resolvePlaceName(value, archive)
 	}
@@ -539,7 +566,7 @@ func bestEvidence(groups []EvidenceGroup) string {
 
 // printEvidenceText renders the human-readable report.
 func printEvidenceText(io *IOStreams, r *EvidenceReport) {
-	if len(r.Groups) == 0 {
+	if len(r.Groups) == 0 && len(r.Undated) == 0 {
 		io.Printf("No assertions found for %s of %s (%s).\n", r.Property, r.SubjectName, r.Subject)
 
 		return
@@ -548,16 +575,21 @@ func printEvidenceText(io *IOStreams, r *EvidenceReport) {
 	io.Printf("Evidence for %s of %s (%s):\n", r.Property, r.SubjectName, r.Subject)
 	io.Printf("%d %s across %d %s\n\n",
 		r.TotalReports, pluralize(r.TotalReports, "report", "reports"),
-		len(r.Groups), pluralize(len(r.Groups), "value", "values"))
+		len(r.Groups)+len(r.Undated), pluralize(len(r.Groups)+len(r.Undated), "value", "values"))
 
-	for _, g := range r.Groups {
-		io.Printf("  %s — %d %s, best confidence: %s\n",
-			g.Value, g.Reports, pluralize(g.Reports, "report", "reports"), displayOrDash(g.BestConfidence))
-		for _, item := range g.Items {
-			io.Printf("    %-32s %-30s %s\n",
-				displayOrDash(item.CitationID), item.Source, displayOrDash(item.Confidence))
-		}
-		io.Println("")
+	if r.Temporal {
+		io.Println("Dated history:")
+	}
+	printEvidenceGroups(io, r.Groups)
+	if len(r.Undated) > 0 {
+		io.Println("Undated:")
+		printEvidenceGroups(io, r.Undated)
+	}
+	for _, c := range r.Conflicts {
+		io.Printf("  %s conflict: %s / %s\n", c.Verdict, c.Values[0].Value, c.Values[1].Value)
+	}
+	if r.Temporal {
+		return
 	}
 
 	printBestEvidence(io, r)
@@ -598,4 +630,112 @@ func pluralize(n int, singular, plural string) string {
 	}
 
 	return plural
+}
+
+func printEvidenceGroups(io *IOStreams, groups []EvidenceGroup) {
+	for _, g := range groups {
+		if g.Date != "" {
+			io.Printf("  %s\n", g.Date)
+		}
+		io.Printf("  %s — %d %s, best confidence: %s\n", g.Value, g.Reports, pluralize(g.Reports, "report", "reports"), displayOrDash(g.BestConfidence))
+		for _, item := range g.Items {
+			io.Printf("    %-32s %-30s %s\n", displayOrDash(item.CitationID), item.Source, displayOrDash(item.Confidence))
+		}
+		if g.BestEvidence != "" {
+			io.Printf("    Best evidence among overlapping claims: %s\n", g.BestEvidence)
+		}
+		io.Println("")
+	}
+}
+
+func arrangeEvidenceHistory(report *EvidenceReport) {
+	report.BestEvidence = ""
+	dated := make([]EvidenceGroup, 0, len(report.Groups))
+	for _, g := range report.Groups {
+		d, _ := g.Date.Parse()
+		if !d.Timing().Known {
+			report.Undated = append(report.Undated, g)
+		} else {
+			dated = append(dated, g)
+		}
+	}
+	sort.SliceStable(dated, func(i, j int) bool {
+		a, _ := dated[i].Date.Parse()
+		b, _ := dated[j].Date.Parse()
+		x, y := a.Timing().Outer.Start, b.Timing().Outer.Start
+		if x != y {
+			return x < y
+		}
+		if dated[i].Date != dated[j].Date {
+			return dated[i].Date < dated[j].Date
+		}
+
+		return dated[i].RawValue < dated[j].RawValue
+	})
+	for i := range dated {
+		a, _ := dated[i].Date.Parse()
+		candidates := []EvidenceGroup{dated[i]}
+		for j := range dated {
+			if i == j {
+				continue
+			}
+			b, _ := dated[j].Date.Parse()
+			if glxdate.CompareTiming(a, b) != glxdate.NoOverlap {
+				candidates = append(candidates, dated[j])
+			}
+		}
+		if len(candidates) > 1 && simultaneousEvidence(candidates) {
+			sortEvidenceGroups(candidates)
+			dated[i].BestEvidence = bestEvidence(candidates)
+		}
+	}
+	report.Groups = dated
+}
+
+func evidenceConflicts(assertions []*glxlib.Assertion, def *glxlib.PropertyDefinition, archive *glxlib.GLXFile, opts glxlib.ComparisonOptions) []EvidenceConflict {
+	var conflicts []EvidenceConflict
+	facts := make([]glxlib.FactValue, len(assertions))
+	for i, a := range assertions {
+		facts[i] = glxlib.AssertionFact(a)
+	}
+	for _, c := range glxlib.CompareFacts(facts, def, archive.Places, opts) {
+		if c.IsConflict() {
+			conflicts = append(conflicts, EvidenceConflict{Verdict: c.Verdict, Values: []glxlib.FactValue{facts[c.Left], facts[c.Right]}})
+		}
+	}
+
+	return conflicts
+}
+
+func evidenceGroupKey(a *glxlib.Assertion, groups map[string]*EvidenceGroup, def *glxlib.PropertyDefinition, archive *glxlib.GLXFile, opts glxlib.ComparisonOptions) string {
+	key := a.Value
+	if glxlib.IsTemporalProperty(def) {
+		key += "\x00" + string(a.Date)
+	}
+	for existing, group := range groups {
+		if glxlib.IsTemporalProperty(def) && group.Date != a.Date {
+			continue
+		}
+		values := []glxlib.FactValue{{Value: group.RawValue}, {Value: a.Value}}
+		if glxlib.CompareFacts(values, def, archive.Places, opts)[0].Verdict == glxlib.VerdictAgree {
+			return existing
+		}
+	}
+
+	return key
+}
+
+// A long period must not join two disjoint histories into one ranked contest.
+func simultaneousEvidence(groups []EvidenceGroup) bool {
+	for i := range groups {
+		a, _ := groups[i].Date.Parse()
+		for j := i + 1; j < len(groups); j++ {
+			b, _ := groups[j].Date.Parse()
+			if glxdate.CompareTiming(a, b) == glxdate.NoOverlap {
+				return false
+			}
+		}
+	}
+
+	return true
 }
