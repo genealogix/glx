@@ -16,6 +16,7 @@ package glx_test
 
 import (
 	"encoding/json"
+	"strconv"
 	"sync"
 	"testing"
 
@@ -229,5 +230,112 @@ func TestResearchAPI_CompatibleAggregateIgnoresInputOrder(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, glxlib.VerdictHistory, result.Verdict)
 		require.Empty(t, result.Selected)
+	}
+}
+
+func TestResearchAPI_SharedFactIndexPreservesScope(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{"p": {}, "q": {}, "empty": {}, "nil": nil},
+		Events: map[string]*glxlib.Event{
+			"birth-a": {Type: "birth", Date: "1850", Participants: []glxlib.Participant{{Person: "p", Role: "witness"}, {Person: "p", Role: "subject"}, {Person: "q", Role: "parent"}}},
+			"birth-b": {Type: "birth", Date: "1852", Participants: []glxlib.Participant{{Person: "p", Role: "subject"}, {Person: "q", Role: "parent"}}},
+			"shared":  {Type: "census", Participants: []glxlib.Participant{{Person: "p", Role: "subject"}, {Person: "p", Role: "witness"}, {Person: "q", Role: "subject"}}},
+			"nil":     nil,
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel": {Type: "parent_child", Participants: []glxlib.Participant{{Person: "p", Role: "child"}, {Person: "p", Role: "witness"}, {Person: "q", Role: "parent"}}},
+			"nil": nil,
+		},
+		Assertions: map[string]*glxlib.Assertion{
+			"direct-a": {Subject: glxlib.EntityRef{Person: "p"}, Property: "fixed", Value: "first"},
+			"direct-b": {Subject: glxlib.EntityRef{Person: "p"}, Property: "fixed", Value: "second"},
+			"other":    {Subject: glxlib.EntityRef{Person: "q"}, Property: "fixed", Value: "only"},
+			"shared-a": {Subject: glxlib.EntityRef{Event: "shared"}, Property: "cause", Value: "first"},
+			"shared-b": {Subject: glxlib.EntityRef{Event: "shared"}, Property: "cause", Value: "second"},
+			"rel-a":    {Subject: glxlib.EntityRef{Relationship: "rel"}, Property: "description", Value: "first"},
+			"rel-b":    {Subject: glxlib.EntityRef{Relationship: "rel"}, Property: "description", Value: "second"},
+			"nil":      nil,
+		},
+	}
+	before := snapshot(t, archive)
+	findings, err := glxlib.AnalyzeConflicts(archive, glxlib.ConflictAnalysisOptions{})
+	require.NoError(t, err)
+	require.Len(t, findings, 6)
+	for personID, want := range map[string]int{"p": 4, "q": 2, "empty": 0} {
+		selected, err := glxlib.AnalyzeConflicts(archive, glxlib.ConflictAnalysisOptions{PersonID: personID})
+		require.NoError(t, err)
+		require.Len(t, selected, want)
+		var matching []glxlib.ConflictFinding
+		for i := range findings {
+			if findings[i].PersonID == personID {
+				matching = append(matching, findings[i])
+			}
+		}
+		require.Equal(t, matching, selected, "shared archive indexing must match a single-person query")
+	}
+	facts, err := glxlib.CollectPersonFacts(archive, "p")
+	require.NoError(t, err)
+	ids := make(map[string]int)
+	for _, fact := range facts {
+		ids[fact.ID]++
+		if fact.Subject.Relationship == "rel" {
+			require.Equal(t, "child", fact.PersonRole)
+		}
+	}
+	require.Equal(t, 1, ids["shared-a"], "multiple roles must not duplicate a claim")
+	require.Zero(t, ids["other"])
+	require.Equal(t, 1, ids["birth-a:date"], "a later principal role must still qualify")
+	require.Equal(t, 1, ids["birth-b:date"])
+	parentFacts, err := glxlib.CollectPersonFacts(archive, "q")
+	require.NoError(t, err)
+	for _, fact := range parentFacts {
+		require.False(t, fact.Synthetic, "the parent's participation does not make this their birth")
+	}
+	require.JSONEq(t, before, snapshot(t, archive))
+}
+
+func TestResearchAPI_NamesakeEvidenceOrder(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons:          map[string]*glxlib.Person{"p": {}, "q1": {Properties: map[string]any{"name": "John Smith"}}, "q2": {Properties: map[string]any{"name": "John Smith"}}},
+		PersonProperties: map[string]*glxlib.PropertyDefinition{"mentor": {ReferenceType: "persons"}},
+		Assertions: map[string]*glxlib.Assertion{
+			"a": {Subject: glxlib.EntityRef{Person: "p"}, Property: "mentor", Value: "q1", Confidence: "high"},
+			"b": {Subject: glxlib.EntityRef{Person: "p"}, Property: "mentor", Value: "q2", Confidence: "high"},
+		},
+	}
+	for range 30 {
+		report, err := glxlib.BuildEvidenceReport(archive, glxlib.EntityRef{Person: "p"}, "mentor", glxlib.ComparisonOptions{})
+		require.NoError(t, err)
+		require.Len(t, report.Groups, 2)
+		require.Equal(t, report.Groups[0].Value, report.Groups[1].Value)
+		require.Equal(t, "q1", report.Groups[0].RawValue)
+		require.Equal(t, "q2", report.Groups[1].RawValue)
+		require.Empty(t, report.BestEvidence, "ordering cannot turn equal support into a winner")
+	}
+}
+
+func BenchmarkResearchAPI_AnalyzeConflicts(b *testing.B) {
+	for _, size := range []int{500, 1000, 2000} {
+		b.Run(strconv.Itoa(size), func(b *testing.B) {
+			archive := &glxlib.GLXFile{Persons: map[string]*glxlib.Person{}, Assertions: map[string]*glxlib.Assertion{}}
+			for i := range size {
+				id := "person-" + strconv.Itoa(i)
+				archive.Persons[id] = &glxlib.Person{}
+				for j := range 5 {
+					property := "property-" + strconv.Itoa(j)
+					archive.Assertions[id+"-"+property] = &glxlib.Assertion{Subject: glxlib.EntityRef{Person: id}, Property: property, Value: "value"}
+				}
+			}
+			b.ReportAllocs()
+			for b.Loop() {
+				findings, err := glxlib.AnalyzeConflicts(archive, glxlib.ConflictAnalysisOptions{})
+				if err != nil {
+					b.Fatal(err)
+				}
+				if len(findings) != 0 {
+					b.Fatal("unexpected conflicts")
+				}
+			}
+		})
 	}
 }

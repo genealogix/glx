@@ -74,8 +74,7 @@ func nonPropertyProofDispute(pa *proofAssertion, archive *GLXFile, opts Comparis
 // in the principal role. Parents and witnesses do not acquire the child's birth.
 // A structural field is used only when no assertion records that field, so a
 // denormalized conclusion never revives a researcher's disproven claim.
-func appendDuplicateEventFacts(out []proofAssertion, archive *GLXFile, personID string) []proofAssertion {
-	groups := duplicateVitalEventIDs(archive, personID)
+func appendDuplicateEventFacts(out []proofAssertion, archive *GLXFile, personID string, groups map[string][]string) []proofAssertion {
 	for _, eventType := range []string{EventTypeBirth, EventTypeDeath} {
 		ids := groups[eventType]
 		if len(ids) < 2 {
@@ -118,25 +117,6 @@ func factDisplay(value string, subject EntityRef, property string, archive *GLXF
 	}
 
 	return display
-}
-
-func duplicateVitalEventIDs(archive *GLXFile, personID string) map[string][]string {
-	groups := make(map[string][]string)
-	for _, id := range sortedKeys(archive.Events) {
-		ev := archive.Events[id]
-		if ev == nil || (ev.Type != EventTypeBirth && ev.Type != EventTypeDeath) {
-			continue
-		}
-		for _, p := range ev.Participants {
-			if p.Person == personID && (p.Role == "subject" || p.Role == "principal" || p.Role == "" || p.Role == ParticipantRoleChild || p.Role == "deceased") {
-				groups[ev.Type] = append(groups[ev.Type], id)
-
-				break
-			}
-		}
-	}
-
-	return groups
 }
 
 // researchConfidenceRank returns a numeric rank for confidence levels (lower = higher confidence).

@@ -280,78 +280,7 @@ func (pa *proofAssertion) subjectIsPerson() bool {
 // collectPersonProofAssertions gathers every assertion whose subject is the
 // person, or an event/relationship the person participates in.
 func collectPersonProofAssertions(archive *GLXFile, personID string) []proofAssertion {
-	eventIDs := personEventIDSet(archive, personID)
-	relRoles := personRelationshipRoles(archive, personID)
-
-	var out []proofAssertion
-	for _, id := range sortedKeys(archive.Assertions) {
-		a := archive.Assertions[id]
-		if a == nil {
-			continue
-		}
-
-		switch {
-		case a.Subject.Person == personID:
-			out = append(out, proofAssertion{id: id, a: a, subjectID: personID})
-		case a.Subject.Event != "" && eventIDs[a.Subject.Event]:
-			eventType := ""
-			if ev := archive.Events[a.Subject.Event]; ev != nil {
-				eventType = ev.Type
-			}
-			out = append(out, proofAssertion{id: id, a: a, subjectID: a.Subject.Event, eventType: eventType})
-		case a.Subject.Relationship != "":
-			role, ok := relRoles[a.Subject.Relationship]
-			if !ok {
-				continue
-			}
-			relType := ""
-			if rel := archive.Relationships[a.Subject.Relationship]; rel != nil {
-				relType = rel.Type
-			}
-			out = append(out, proofAssertion{id: id, a: a, subjectID: a.Subject.Relationship, relType: relType, personRole: role})
-		}
-	}
-
-	return appendDuplicateEventFacts(out, archive, personID)
-}
-
-// personEventIDSet returns the set of event IDs the person participates in.
-func personEventIDSet(archive *GLXFile, personID string) map[string]bool {
-	set := make(map[string]bool)
-	for id, ev := range archive.Events {
-		if ev == nil {
-			continue
-		}
-		for _, p := range ev.Participants {
-			if p.Person == personID {
-				set[id] = true
-
-				break
-			}
-		}
-	}
-
-	return set
-}
-
-// personRelationshipRoles maps each relationship the person participates in to
-// the person's role within it.
-func personRelationshipRoles(archive *GLXFile, personID string) map[string]string {
-	roles := make(map[string]string)
-	for id, rel := range archive.Relationships {
-		if rel == nil {
-			continue
-		}
-		for _, p := range rel.Participants {
-			if p.Person == personID {
-				roles[id] = p.Role
-
-				break
-			}
-		}
-	}
-
-	return roles
+	return newPersonFactIndex(archive, []string{personID}).collect(archive, personID)
 }
 
 // Property-name sets for matching legacy direct-on-person assertions to a topic.

@@ -398,7 +398,8 @@ func sortEvidenceItems(items []EvidenceItem) {
 }
 
 // sortEvidenceGroups ranks values by report count (desc), then best confidence
-// (highest first), then value (asc) for stable, predictable output.
+// (highest first), then display value, raw identity and date (asc). Distinct
+// references can share a display name, so that label alone is not a total order.
 func sortEvidenceGroups(groups []EvidenceGroup) {
 	sort.SliceStable(groups, func(i, j int) bool {
 		if groups[i].Reports != groups[j].Reports {
@@ -410,7 +411,14 @@ func sortEvidenceGroups(groups []EvidenceGroup) {
 			return ri < rj
 		}
 
-		return groups[i].Value < groups[j].Value
+		if groups[i].Value != groups[j].Value {
+			return groups[i].Value < groups[j].Value
+		}
+		if groups[i].RawValue != groups[j].RawValue {
+			return groups[i].RawValue < groups[j].RawValue
+		}
+
+		return groups[i].Date < groups[j].Date
 	})
 }
 

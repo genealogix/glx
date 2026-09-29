@@ -164,12 +164,13 @@ func AnalyzeConflicts(archive *GLXFile, opts ConflictAnalysisOptions) ([]Conflic
 		}
 		ids = []string{opts.PersonID}
 	}
+	index := newPersonFactIndex(prepared, ids)
 	var findings []ConflictFinding
 	for _, id := range ids {
 		if prepared.Persons[id] == nil {
 			continue
 		}
-		groups := detectProofConflicts(collectPersonProofAssertions(prepared, id), prepared, opts.Comparison)
+		groups := detectProofConflicts(index.collect(prepared, id), prepared, opts.Comparison)
 		for i := range groups {
 			group := &groups[i]
 			if group.Resolved {

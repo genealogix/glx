@@ -560,3 +560,15 @@ func TestResolveAssertionValue_EventReferenceResolvesToTitle(t *testing.T) {
 		t.Errorf("untitled event = %q, want the raw ID", got)
 	}
 }
+
+func TestSortEvidenceGroups_RawIdentityAndDate(t *testing.T) {
+	groups := []EvidenceGroup{
+		{Value: "John Smith", RawValue: "q2", Date: "1900", Reports: 1, BestConfidence: "high"},
+		{Value: "John Smith", RawValue: "q1", Date: "1900", Reports: 1, BestConfidence: "high"},
+		{Value: "John Smith", RawValue: "q1", Date: "1850", Reports: 1, BestConfidence: "high"},
+	}
+	sortEvidenceGroups(groups)
+	if groups[0].RawValue != "q1" || groups[0].Date != "1850" || groups[1].RawValue != "q1" || groups[1].Date != "1900" || groups[2].RawValue != "q2" {
+		t.Fatalf("unexpected tied group order: %#v", groups)
+	}
+}
