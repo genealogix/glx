@@ -186,6 +186,11 @@ func CompareTiming(a, b Date) Overlap {
 	if !x.Known || !y.Known {
 		return NoOverlap
 	}
+	// Civil bounds are relative to their calendar. Without conversion, even
+	// numerically disjoint spans in different calendars may be simultaneous.
+	if a.Calendar() != b.Calendar() || a.CalendarName() != b.CalendarName() {
+		return PossibleOverlap
+	}
 	if !x.Outer.Intersects(y.Outer) {
 		return NoOverlap
 	}
@@ -193,7 +198,7 @@ func CompareTiming(a, b Date) Overlap {
 		return NoOverlap
 	}
 
-	if x.Uncertain || y.Uncertain || a.Calendar() != b.Calendar() || a.CalendarName() != b.CalendarName() {
+	if x.Uncertain || y.Uncertain {
 		return PossibleOverlap
 	}
 	if (x.Inner.Start < x.Inner.End && x.Inner.Contains(y.Outer)) ||

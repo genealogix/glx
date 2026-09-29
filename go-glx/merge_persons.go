@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"slices"
 	"sort"
 	"strings"
 )
@@ -371,40 +370,44 @@ func FormatPropertyValue(v any) string {
 }
 
 func mergeTemporalProperty(property string, keep, drop any, def *PropertyDefinition, places map[string]*Place, opts MergePersonsOptions) (any, int, []PersonMergeConflict) {
-	entries := append([]any(nil), propertyEntries(keep)...)
-	added := 0
+	// Compare against the original kept history, never previously accepted drop
+	// entries. A person's pre-existing disagreements are not ours to resolve.
+	kept := propertyEntries(keep)
+	removed := make([]bool, len(kept))
+	var accepted []any
 	var conflicts []PersonMergeConflict
 	for _, incoming := range propertyEntries(drop) {
-		if containsEntry(entries, incoming) {
+		if containsEntry(accepted, incoming) {
 			continue
 		}
-		var collisions []int
-		accept := true
-		for i, existing := range entries {
-			c := compareFactPair(propertyFact(existing), propertyFact(incoming), def, places, opts.Comparison)
-			if !c.IsConflict() {
-				continue
-			}
-			useDrop, label := resolveConflict(existing, incoming, opts)
-			conflicts = append(conflicts, PersonMergeConflict{Verdict: c.Verdict, Property: property, KeepValue: existing, DropValue: incoming, Resolution: label})
-			if useDrop {
-				collisions = append(collisions, i)
-			} else {
-				accept = false
-			}
+		if containsEntry(kept, incoming) {
+			// An identical claim already belongs to both histories. Do not use
+			// its duplicate to adjudicate an existing keep-side disagreement.
+			accepted = append(accepted, incoming)
+
+			continue
 		}
+		accept, collisions, reports := compareTemporalMergeEntry(property, kept, incoming, def, places, opts)
+		conflicts = append(conflicts, reports...)
 		if !accept {
 			continue
 		}
-		for _, idx := range slices.Backward(collisions) {
-			entries = append(entries[:idx], entries[idx+1:]...)
+		for _, idx := range collisions {
+			removed[idx] = true
 		}
-		entries = append(entries, incoming)
-		added++
+		accepted = append(accepted, incoming)
 	}
+	entries := make([]any, 0, len(kept)+len(accepted))
+	for i, entry := range kept {
+		if !removed[i] {
+			entries = append(entries, entry)
+		}
+	}
+	entries, added := unionPropertyList(entries, accepted)
 	if added == 0 {
 		return keep, 0, conflicts
 	}
+
 	sort.SliceStable(entries, func(i, j int) bool {
 		a, _ := propertyFact(entries[i]).Date.Parse()
 		b, _ := propertyFact(entries[j]).Date.Parse()
@@ -422,4 +425,27 @@ func mergeTemporalProperty(property string, keep, drop any, def *PropertyDefinit
 	}
 
 	return entries, added, conflicts
+}
+
+// Each decision uses the same original keep-side values, so processing one
+// incoming claim cannot change how a later incoming claim is evaluated.
+func compareTemporalMergeEntry(property string, kept []any, incoming any, def *PropertyDefinition, places map[string]*Place, opts MergePersonsOptions) (bool, []int, []PersonMergeConflict) {
+	accept := true
+	var collisions []int
+	var reports []PersonMergeConflict
+	for i, existing := range kept {
+		c := compareFactPair(propertyFact(existing), propertyFact(incoming), def, places, opts.Comparison)
+		if !c.IsConflict() {
+			continue
+		}
+		useDrop, label := resolveConflict(existing, incoming, opts)
+		reports = append(reports, PersonMergeConflict{Verdict: c.Verdict, Property: property, KeepValue: existing, DropValue: incoming, Resolution: label})
+		if useDrop {
+			collisions = append(collisions, i)
+		} else {
+			accept = false
+		}
+	}
+
+	return accept, collisions, reports
 }

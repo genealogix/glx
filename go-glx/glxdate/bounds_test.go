@@ -47,6 +47,10 @@ func TestTimingBounds(t *testing.T) {
 		{"FROM 1900 TO 1900", "FROM 1900 TO 1900", PossibleOverlap},
 		{"JULIAN 1900-02-29", "JULIAN 1900-03-01", NoOverlap},
 		{"JULIAN 1900-01-01", "1900-01-01", PossibleOverlap},
+		{"JULIAN 1900-03-01", "1900-03-14", PossibleOverlap},
+		{"FROM 1900 TO 1950", "HEBREW 5650", PossibleOverlap},
+		{"_ROMAN 1900", "_MAYAN 1950", PossibleOverlap},
+		{"JULIAN 1900", "", NoOverlap},
 		{"0001 BCE", "0001", NoOverlap},
 		{"FROM 0044 BCE TO 0001 BCE", "0020 BCE", DefiniteOverlap},
 	}

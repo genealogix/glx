@@ -168,7 +168,7 @@ func showProof(io *IOStreams, archivePath, personQuery, question, format string,
 		return fmt.Errorf("%w %q (valid: %s)", errUnknownQuestion, question, strings.Join(proofQuestionKeys(), ", "))
 	}
 
-	archive, err := loadArchiveForCoverage(archivePath)
+	archive, err := loadArchiveForEvidence(io, archivePath)
 	if err != nil {
 		return err
 	}
@@ -591,9 +591,13 @@ func detectProofConflicts(relevant []proofAssertion, archive *glxlib.GLXFile, op
 
 	groups := make(map[conflictKey]*conflictGroup)
 	var order []conflictKey
+	var conflicts []proofConflict
 	for i := range relevant {
 		pa := &relevant[i]
 		if pa.a.Property == "" || pa.a.Value == "" {
+			if conflict, disputed := nonPropertyProofDispute(pa, archive, comparisonOptions(options)); disputed {
+				conflicts = append(conflicts, conflict)
+			}
 			continue
 		}
 		subjectKey := pa.a.Subject.Type().String() + ":" + pa.subjectID
@@ -618,7 +622,6 @@ func detectProofConflicts(relevant []proofAssertion, archive *glxlib.GLXFile, op
 		return order[i].property < order[j].property
 	})
 
-	var conflicts []proofConflict
 	for _, key := range order {
 		g := groups[key]
 		selected, verdict, definite := comparedAssertions(g.assertions, archive, comparisonOptions(options))
@@ -1380,9 +1383,7 @@ func printProofMarkdown(io *IOStreams, result *proofResult) {
 	printMarkdownEvidence(io, result.Evidence)
 	if len(result.Undated) > 0 {
 		io.Printf("\n## Undated\n\n")
-		for i := range result.Undated {
-			io.Printf("- %s\n", evidenceHeader(&result.Undated[i]))
-		}
+		printMarkdownEvidenceItems(io, result.Undated)
 	}
 	printMarkdownGaps(io, result.Gaps)
 	printMarkdownSearches(io, result.Searches)
@@ -1395,6 +1396,10 @@ func printMarkdownEvidence(io *IOStreams, evidence []proofEvidence) {
 	if len(evidence) == 0 {
 		io.Println("_No evidence collected._")
 	}
+	printMarkdownEvidenceItems(io, evidence)
+}
+
+func printMarkdownEvidenceItems(io *IOStreams, evidence []proofEvidence) {
 	for i := range evidence {
 		ev := &evidence[i]
 		io.Printf("%d. **%s**\n", i+1, evidenceHeader(ev))

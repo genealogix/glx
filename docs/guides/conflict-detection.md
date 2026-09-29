@@ -22,6 +22,10 @@ Approximate dates, open ends, reversed ranges, and `BET … AND` uncertainty nev
 prove simultaneous validity. An undated temporal value cannot contradict a
 history.
 
+Periods recorded in different calendars are possible overlaps until they can be
+compared in a common calendar. Their numeric date components alone cannot prove
+that the periods are disjoint.
+
 ## Agreement and resolution
 
 - A precise date can refine a year: `1850` and `1850-03-02` agree.
@@ -34,6 +38,7 @@ history.
   and entity references retain their exact identity.
 - `disproven` claims drop out. `disputed` claims remain acknowledged disputes,
   including an explicitly disputed claim with no competing value recorded.
+  This also applies to participant and existence assertions.
 
 Agreement is checked pairwise. A broad year does not make two incompatible exact
 birth dates agree merely because both fall within that year.
@@ -60,6 +65,8 @@ scalar, structured, and list representations. Identical values agree silently.
 Conflicting entries retain the kept person's value unless `--keep-newest` or
 `--keep-oldest` selects the other entry. Those flags affect collisions; they do
 not remove unrelated history. Use `--dry-run` to inspect the report.
+Disagreements already recorded within either person's history are preserved;
+merging people does not resolve those claims based on their order in a list.
 
 `validate` warns when a range ends before it starts. Conflicting evidence remains
 valid archive data; validation does not choose which claim is correct.

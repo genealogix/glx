@@ -506,7 +506,7 @@
       },
       {
         "value": "London",
-        "date": "1950"
+        "date": "JULIAN 1950"
       }
     ],
     "verdict": "possible"
@@ -522,7 +522,7 @@
       },
       {
         "value": "London",
-        "date": "1900"
+        "date": "JULIAN 1900"
       }
     ],
     "verdict": "history"
@@ -538,7 +538,7 @@
       },
       {
         "value": "London",
-        "date": "1900"
+        "date": "JULIAN 1900"
       }
     ],
     "verdict": "history"
@@ -1027,5 +1027,37 @@
     ],
     "verdict": "definite",
     "temporal": true
+  },
+  {
+    "name": "different calendars JULIAN 1900-03-01 / 1900-03-14",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "JULIAN 1900-03-01"
+      },
+      {
+        "value": "London",
+        "date": "1900-03-14"
+      }
+    ],
+    "verdict": "possible"
+  },
+  {
+    "name": "different calendars FROM 1900 TO 1950 / HEBREW 5650",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "FROM 1900 TO 1950"
+      },
+      {
+        "value": "London",
+        "date": "HEBREW 5650"
+      }
+    ],
+    "verdict": "possible"
   }
 ]

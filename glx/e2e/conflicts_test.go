@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -90,4 +91,86 @@ func TestMergePersonsPreservesDatedHistoryOnDisk(t *testing.T) {
 	require.Contains(t, string(data), "farmer")
 	require.Contains(t, string(data), "1851")
 	require.Contains(t, string(data), "1875")
+}
+
+func TestProofSingleFileTemporalParity(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "archive.glx")
+	require.NoError(t, os.WriteFile(path, []byte(`persons:
+  person-mary:
+    properties: {name: Mary Smith}
+sources:
+  source-register:
+    title: Name register
+assertions:
+  old-name:
+    subject: {person: person-mary}
+    property: name
+    value: Mary Smith
+    date: "1850"
+    confidence: high
+    sources: [source-register]
+  later-name:
+    subject: {person: person-mary}
+    property: name
+    value: Mary Jones
+    date: "1890"
+    confidence: high
+    sources: [source-register]
+  undated-name:
+    subject: {person: person-mary}
+    property: name
+    value: Mary Green
+    confidence: low
+    notes: Name recorded without a date.
+    sources: [source-register]
+`), 0o600))
+	var previous string
+	for _, archive := range []string{path, dir} {
+		result := runGLX(t, dir, "proof", "person-mary", "--question", "identity", "--archive", archive, "--format", "json")
+		require.Equal(t, 0, result.exitCode, result.stderr)
+		var report struct {
+			Conclusion string
+			Conflicts  []any
+			Undated    []struct{ Value string }
+		}
+		require.NoError(t, json.Unmarshal([]byte(result.stdout), &report))
+		require.Empty(t, report.Conflicts)
+		require.NotEqual(t, "CONFLICTED", report.Conclusion)
+		require.Len(t, report.Undated, 1)
+		require.Equal(t, "Mary Green", report.Undated[0].Value)
+		if previous != "" {
+			require.JSONEq(t, previous, result.stdout)
+		}
+		previous = result.stdout
+		markdown := runGLX(t, dir, "proof", "person-mary", "--question", "identity", "--archive", archive, "--format", "markdown")
+		require.Equal(t, 0, markdown.exitCode, markdown.stderr)
+		require.Contains(t, markdown.stdout, "name = Mary Green")
+		require.Contains(t, markdown.stdout, "Name recorded without a date.")
+	}
+}
+
+func TestMergePersonsPreservesDropDisagreementsOnDisk(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "archive.glx")
+	require.NoError(t, os.WriteFile(path, []byte(`persons:
+  keep:
+    properties:
+      name: Mary
+      occupation: [{value: farmer, date: "1900"}]
+  drop:
+    properties:
+      name: Mary
+      occupation:
+        - {value: miller, date: "1851"}
+        - {value: driver, date: "1851"}
+`), 0o600))
+	result := runGLX(t, dir, "merge-persons", "keep", "drop", "--archive", path)
+	require.Equal(t, 0, result.exitCode, result.stderr)
+	require.NotContains(t, result.stderr, "Conflict")
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	for _, occupation := range []string{"farmer", "miller", "driver"} {
+		require.Contains(t, string(data), occupation)
+	}
 }

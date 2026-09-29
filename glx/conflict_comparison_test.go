@@ -16,9 +16,13 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 
 	glxlib "github.com/genealogix/glx/go-glx"
@@ -143,4 +147,145 @@ func TestConflictDisprovenSurvivorAndNamesakes(t *testing.T) {
 	evidence := collectEvidence(archive, glxlib.EntityRef{Person: "p"}, "born_at")
 	require.Len(t, evidence.Groups, 2)
 	require.NotEqual(t, evidence.Groups[0].Value, evidence.Groups[1].Value)
+}
+
+func TestProofNonPropertyDisputes(t *testing.T) {
+	for _, participant := range []bool{false, true} {
+		for _, status := range []string{statusDisputed, statusProven, statusDisproven} {
+			t.Run(fmt.Sprintf("participant=%t/status=%s", participant, status), func(t *testing.T) {
+				archive := &glxlib.GLXFile{
+					Persons:       map[string]*glxlib.Person{"child": {Properties: map[string]any{"name": "Child"}}, "parent": {Properties: map[string]any{"name": "Alleged Father"}}},
+					Relationships: map[string]*glxlib.Relationship{"rel": {Type: glxlib.RelationshipTypeParentChild, Participants: []glxlib.Participant{{Person: "child", Role: "child"}, {Person: "parent", Role: "parent"}}}},
+					Assertions:    map[string]*glxlib.Assertion{"claim": {Subject: glxlib.EntityRef{Relationship: "rel"}, Status: status, Confidence: "high"}},
+				}
+				if participant {
+					archive.Assertions["claim"].Participant = &glxlib.Participant{Person: "parent", Role: "parent"}
+				}
+				result := buildProof("child", archive.Persons["child"], topicParentage, archive)
+				issues := analyzeConflicts(archive)
+				if status == statusDisputed {
+					require.Equal(t, proofConclusionConflicted, result.Conclusion)
+					require.Len(t, result.Conflicts, 1)
+					require.Equal(t, glxlib.VerdictDisputed, result.Conflicts[0].Verdict)
+					require.True(t, result.Conflicts[0].Definite)
+					require.NotEmpty(t, issues)
+					for _, issue := range issues {
+						require.Equal(t, severityLow, issue.Severity)
+					}
+					if participant {
+						require.Contains(t, result.Conflicts[0].Values[0].Value, "Alleged Father")
+					}
+				} else {
+					require.Empty(t, result.Conflicts)
+					require.Empty(t, issues)
+					if status == statusProven {
+						require.Equal(t, proofConclusionProven, result.Conclusion)
+					} else {
+						require.Equal(t, proofConclusionInsufficient, result.Conclusion)
+					}
+				}
+			})
+		}
+	}
+}
+
+func TestProofMarkdownUndatedDetails(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{"p": {Properties: map[string]any{"name": "Mary Smith"}}},
+		Sources: map[string]*glxlib.Source{"source": {Title: "Name register"}},
+		Assertions: map[string]*glxlib.Assertion{"undated-name": {
+			Subject: glxlib.EntityRef{Person: "p"}, Property: "name", Value: "Mary Green", Status: statusDisputed, Confidence: "low",
+			Sources: []string{"source"}, Notes: glxlib.NoteList{"Name recorded without a date."},
+		}},
+	}
+	require.NoError(t, glxlib.LoadStandardVocabulariesIntoGLX(archive))
+	result := buildProof("p", archive.Persons["p"], topicIdentity, archive)
+	require.Empty(t, result.Evidence)
+	require.Len(t, result.Undated, 1)
+	streams, out, _ := TestIOStreams()
+	printProofMarkdown(streams, result)
+	_, undated, found := strings.Cut(out.String(), "## Undated")
+	require.True(t, found)
+	for _, text := range []string{"Name register (source)", "name = Mary Green", "confidence: low", "status: disputed", "Name recorded without a date."} {
+		require.Contains(t, undated, text)
+	}
+}
+
+func TestComparisonCommandHandlersForwardWidth(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "archive.glx")
+	original := []byte(`persons:
+  p:
+    properties: {name: Mary, birth_fact: ABT 1850}
+  q:
+    properties: {name: Mary, birth_fact: "1853"}
+person_properties:
+  birth_fact: {label: Birth fact, value_type: date}
+assertions:
+  a: {subject: {person: p}, property: born_on, value: ABT 1850}
+  b: {subject: {person: p}, property: born_on, value: "1853"}
+`)
+	require.NoError(t, os.WriteFile(path, original, 0o600))
+	setString := func(target *string, value string) {
+		old := *target
+		t.Cleanup(func() { *target = old })
+		*target = value
+	}
+	for _, target := range []*string{&analyzeArchive, &evidenceArchive, &proofArchive, &mergePersonsArchive} {
+		setString(target, path)
+	}
+	setString(&analyzeCheck, conflictsCheck)
+	setString(&analyzeFormat, "json")
+	setString(&analyzeCountry, "")
+	setString(&censusCountryFallback, "")
+	setString(&evidenceFormat, "json")
+	setString(&proofFormat, "json")
+	setString(&proofQuestion, topicBirth)
+	setString(&mergePersonsNotesStrategy, "append")
+	oldDryRun, oldNewest, oldOldest := mergePersonsDryRun, mergePersonsKeepNewest, mergePersonsKeepOldest
+	t.Cleanup(func() {
+		mergePersonsDryRun, mergePersonsKeepNewest, mergePersonsKeepOldest = oldDryRun, oldNewest, oldOldest
+	})
+	mergePersonsDryRun, mergePersonsKeepNewest, mergePersonsKeepOldest = true, false, false
+	cases := []struct {
+		name     string
+		run      func(*cobra.Command, []string) error
+		args     []string
+		conflict string
+	}{
+		{"analyze", runAnalyze, []string{"p"}, `"conflict": 1`},
+		{"proof", runProof, []string{"p"}, `"conclusion": "CONFLICTED"`},
+		{"evidence", runEvidence, []string{"p", "born_on"}, `"verdict": "definite"`},
+		{"merge-persons", runMergePersons, []string{"p", "q"}, `Conflict on "birth_fact"`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, width := range []string{"", "0", "3", "-1", "10001"} {
+				t.Run("width="+width, func(t *testing.T) {
+					cmd := &cobra.Command{}
+					cmd.Flags().Int(approximationFlag, glxlib.DefaultApproximationYears, "")
+					if width != "" {
+						require.NoError(t, cmd.ParseFlags([]string{"--" + approximationFlag, width}))
+					}
+					var runErr error
+					var stdout string
+					stderr := captureStderr(t, func() { stdout = captureStdout(t, func() { runErr = tc.run(cmd, tc.args) }) })
+					if width == "-1" || width == "10001" {
+						require.ErrorIs(t, runErr, ErrInvalidApproximation)
+						require.Empty(t, stdout+stderr)
+					} else {
+						require.NoError(t, runErr)
+						if width == "3" {
+							require.NotContains(t, stdout+stderr, tc.conflict)
+						} else {
+							require.Contains(t, stdout+stderr, tc.conflict)
+						}
+					}
+					after, err := os.ReadFile(path)
+					require.NoError(t, err)
+					require.Equal(t, original, after)
+				})
+			}
+			require.Error(t, tc.run(&cobra.Command{}, nil), "a missing flag registration must return before accessing arguments")
+		})
+	}
 }

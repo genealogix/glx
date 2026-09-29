@@ -105,6 +105,34 @@ func verdictRank(v glxlib.Verdict) int {
 	}
 }
 
+// Non-property assertions cannot enter a property/value comparison, but an
+// explicit dispute about participation or existence still needs resolution.
+// Let the shared engine classify the status, just as for a singleton property.
+func nonPropertyProofDispute(pa *proofAssertion, archive *glxlib.GLXFile, opts glxlib.ComparisonOptions) (proofConflict, bool) {
+	comparisons := glxlib.CompareFacts([]glxlib.FactValue{glxlib.AssertionFact(pa.a)}, nil, archive.Places, opts)
+	if len(comparisons) == 0 || !comparisons[0].IsConflict() {
+		return proofConflict{}, false
+	}
+	subject := describeProofSubject(pa, archive)
+	if subject == "" {
+		subject = pa.subjectID
+	}
+	property, value := "existence", "existence asserted"
+	if participant := pa.a.Participant; participant != nil {
+		property = "participation"
+		value = personName(archive, participant.Person)
+		if participant.Role != "" {
+			value += " (" + participant.Role + ")"
+		}
+	}
+
+	return proofConflict{
+		Subject: subject, Property: property,
+		Verdict: comparisons[0].Verdict, Definite: comparisons[0].Definite,
+		Values: []proofConflictValue{{Value: value, Confidence: pa.a.Confidence, Status: pa.a.Status}},
+	}, true
+}
+
 // appendDuplicateEventFacts compares repeated birth/death events for the person
 // in the principal role. Parents and witnesses do not acquire the child's birth.
 // A structural field is used only when no assertion records that field, so a

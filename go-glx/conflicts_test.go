@@ -16,7 +16,9 @@ package glx
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -118,4 +120,75 @@ func TestMergeTemporalScalarProducesValidHistory(t *testing.T) {
 	archive.validatePropertyValue(EntityTypePersons, "keep", "trade", archive.Persons["keep"].Properties["trade"], archive.PersonProperties["trade"], validation)
 	require.Empty(t, validation.Errors)
 	require.Empty(t, validation.Warnings)
+}
+
+func TestMergeTemporalPreservesDropSideDisagreements(t *testing.T) {
+	for _, opts := range []MergePersonsOptions{{}, {KeepNewest: true}, {KeepOldest: true}} {
+		for _, reverse := range []bool{false, true} {
+			t.Run(fmt.Sprintf("newest=%t/oldest=%t/reverse=%t", opts.KeepNewest, opts.KeepOldest, reverse), func(t *testing.T) {
+				farmer := map[string]any{"value": "farmer", "date": "1900"}
+				miller := map[string]any{"value": "miller", "date": "1851"}
+				driver := map[string]any{"value": "driver", "date": "1851"}
+				incoming := []any{miller, driver}
+				if reverse {
+					incoming = []any{driver, miller}
+				}
+				archive := &GLXFile{Persons: map[string]*Person{
+					"keep": {Properties: map[string]any{"occupation": []any{farmer}}},
+					"drop": {Properties: map[string]any{"occupation": incoming}},
+				}}
+				require.NoError(t, LoadStandardVocabulariesIntoGLX(archive))
+				result, err := MergePersons(archive, "keep", "drop", opts)
+				require.NoError(t, err)
+				require.Empty(t, result.Conflicts)
+				require.Equal(t, 2, result.PropertiesMerged)
+				require.ElementsMatch(t, []any{farmer, miller, driver}, archive.Persons["keep"].Properties["occupation"])
+			})
+		}
+	}
+}
+
+func TestMergeTemporalResolvesAgainstOriginalKeepHistory(t *testing.T) {
+	// Both incoming claims conflict with keep, but the second must not be compared
+	// against the first accepted drop claim or escape its original keep collision.
+	for _, reverse := range []bool{false, true} {
+		t.Run(strconv.FormatBool(reverse), func(t *testing.T) {
+			kept := map[string]any{"value": "farmer", "date": "FROM 1850 TO 1900"}
+			a := map[string]any{"value": "miller", "date": "FROM 1870 TO 1900"}
+			b := map[string]any{"value": "driver", "date": "FROM 1875 TO 1900"}
+			incoming := []any{a, b}
+			if reverse {
+				incoming = []any{b, a}
+			}
+			archive := &GLXFile{Persons: map[string]*Person{
+				"keep": {Properties: map[string]any{"occupation": kept}},
+				"drop": {Properties: map[string]any{"occupation": incoming}},
+			}}
+			require.NoError(t, LoadStandardVocabulariesIntoGLX(archive))
+			result, err := MergePersons(archive, "keep", "drop", MergePersonsOptions{KeepNewest: true})
+			require.NoError(t, err)
+			require.Len(t, result.Conflicts, 2)
+			for _, conflict := range result.Conflicts {
+				require.Equal(t, kept, conflict.KeepValue)
+			}
+			require.ElementsMatch(t, []any{a, b}, archive.Persons["keep"].Properties["occupation"])
+		})
+	}
+}
+
+func TestMergeTemporalDuplicateDoesNotResolveKeepDisagreement(t *testing.T) {
+	older := map[string]any{"value": "miller", "date": "FROM 1850 TO 1900"}
+	newer := map[string]any{"value": "driver", "date": "1875"}
+	for _, opts := range []MergePersonsOptions{{}, {KeepNewest: true}, {KeepOldest: true}} {
+		archive := &GLXFile{Persons: map[string]*Person{
+			"keep": {Properties: map[string]any{"occupation": []any{older, newer}}},
+			"drop": {Properties: map[string]any{"occupation": newer}},
+		}}
+		require.NoError(t, LoadStandardVocabulariesIntoGLX(archive))
+		result, err := MergePersons(archive, "keep", "drop", opts)
+		require.NoError(t, err)
+		require.Empty(t, result.Conflicts)
+		require.Zero(t, result.PropertiesMerged)
+		require.Equal(t, []any{older, newer}, archive.Persons["keep"].Properties["occupation"])
+	}
 }
