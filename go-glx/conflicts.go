@@ -115,9 +115,12 @@ func CompareFacts(values []FactValue, definition *PropertyDefinition, places map
 
 func compareFacts(values []FactValue, definition *PropertyDefinition, places map[string]*Place, opts ComparisonOptions) []FactComparison {
 	var result []FactComparison
-	for i := range values {
-		for j := i + 1; j < len(values); j++ {
-			c := compareFactPair(values[i], values[j], definition, places, opts)
+	for i, left := range values {
+		for j, right := range values {
+			if j <= i {
+				continue
+			}
+			c := compareFactPair(left, right, definition, places, opts)
 			c.Left, c.Right = i, j
 			result = append(result, c)
 		}
@@ -272,10 +275,10 @@ func ConflictProperty(archive *GLXFile, subject EntityRef, property string) *Pro
 		}
 	}
 	// Legacy assertions remain readable after the event-fact migration.
-	switch property {
-	case "born_on", "died_on", "buried_on", "birth_date", "death_date", "burial_date":
+	switch _, field := legacyVitalProperty(property); field {
+	case conflictDateType:
 		return &PropertyDefinition{ValueType: conflictDateType}
-	case "born_at", "died_at", "buried_at", "birth_place", "death_place", "burial_place":
+	case eventFieldPlace:
 		return &PropertyDefinition{ReferenceType: EntityTypePlaces.String()}
 	}
 

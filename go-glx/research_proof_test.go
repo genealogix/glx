@@ -343,8 +343,8 @@ func TestDetectProofConflicts_DistinctPlacesSameName(t *testing.T) {
 		},
 	}
 	relevant := []proofAssertion{
-		{id: "a1", subjectID: "event-x", eventType: EventTypeBirth, a: &Assertion{Property: "place", Value: "place-il-springfield", Confidence: "high"}},
-		{id: "a2", subjectID: "event-x", eventType: EventTypeBirth, a: &Assertion{Property: "place", Value: "place-mo-springfield", Confidence: "high"}},
+		{id: "a1", subjectID: "event-x", eventType: EventTypeBirth, a: &Assertion{Subject: EntityRef{Event: "event-x"}, Property: "place", Value: "place-il-springfield", Confidence: "high"}},
+		{id: "a2", subjectID: "event-x", eventType: EventTypeBirth, a: &Assertion{Subject: EntityRef{Event: "event-x"}, Property: "place", Value: "place-mo-springfield", Confidence: "high"}},
 	}
 	conflicts := detectProofConflicts(relevant, archive)
 
@@ -397,9 +397,9 @@ func TestGapRelevant(t *testing.T) {
 
 func TestResolveProofValue(t *testing.T) {
 	archive := newTestArchiveForProof()
-	assert.Equal(t, "Florida", resolveProofValue("place-fl", archive))
-	assert.Equal(t, "1850", resolveProofValue("1850", archive))
-	assert.Empty(t, resolveProofValue("", archive))
+	assert.Equal(t, "Florida", resolveProofValue("place-fl", EntityRef{Event: "birth"}, "place", archive))
+	assert.Equal(t, "1850", resolveProofValue("1850", EntityRef{Event: "birth"}, "date", archive))
+	assert.Empty(t, resolveProofValue("", EntityRef{Event: "birth"}, "place", archive))
 }
 
 func TestParentNames(t *testing.T) {

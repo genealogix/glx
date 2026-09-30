@@ -21,6 +21,8 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+
+	"github.com/genealogix/glx/go-glx/glxdate"
 )
 
 // NotesStrategy controls how MergePersons combines notes from the drop person
@@ -80,6 +82,8 @@ type MergePersonsResult struct {
 //   - Missing properties are copied, and identical values agree silently.
 //   - TemporalValue, []TemporalValue and mixed lists are normalized to GLX
 //     value/date objects before comparison; pointer forms are also accepted.
+//   - Fixed-property refinements retain the narrower date or descendant place.
+//     Overlapping ranges with no containment are reported for collision selection.
 //   - Vocabulary-defined temporal properties combine non-conflicting dated and
 //     undated history, whether the inputs are scalars, objects, or lists.
 //   - Genuine conflicts use keep's value by default. KeepNewest/KeepOldest
@@ -208,8 +212,18 @@ func mergePersonProperties(archive *GLXFile, keep, drop *Person, opts MergePerso
 
 			continue
 		}
-		c := compareFactPair(propertyFact(keepVal), propertyFact(dropVal), def, archive.Places, opts.Comparison)
-		if !c.IsConflict() {
+		keepFact, dropFact := propertyFact(keepVal), propertyFact(dropVal)
+		c := compareFactPair(keepFact, dropFact, def, archive.Places, opts.Comparison)
+		if c.Verdict == VerdictRefinement {
+			if useDrop, ordered := refinementPreference(keepFact, dropFact, def, archive.Places, opts.Comparison); ordered {
+				if useDrop {
+					keep.Properties[prop] = dropVal
+					added++
+				}
+
+				continue
+			}
+		} else if !c.IsConflict() {
 			continue
 		}
 
@@ -228,6 +242,36 @@ func mergePersonProperties(archive *GLXFile, keep, drop *Person, opts MergePerso
 	}
 
 	return added, conflicts
+}
+
+// refinementPreference selects a strictly narrower compatible claim. Intersecting
+// dates need not contain one another, so they cannot always be ranked by precision.
+func refinementPreference(keep, drop FactValue, def *PropertyDefinition, places map[string]*Place, opts ComparisonOptions) (useDrop, ordered bool) {
+	if equalStatus(drop.Status, statusDisproven) {
+		return false, true
+	}
+	if equalStatus(keep.Status, statusDisproven) {
+		return true, true
+	}
+	if equalStatus(keep.Status, statusDisputed) || equalStatus(drop.Status, statusDisputed) {
+		return false, false
+	}
+	if def.ReferenceType == EntityTypePlaces.String() {
+		keepAncestor, dropAncestor := placeAncestor(keep.Value, drop.Value, places), placeAncestor(drop.Value, keep.Value, places)
+
+		return keepAncestor, keepAncestor != dropAncestor
+	}
+	a, _ := glxdate.Parse(keep.Value)
+	b, _ := glxdate.Parse(drop.Value)
+	x, y := a.ValueBounds(opts.approximationWidth()), b.ValueBounds(opts.approximationWidth())
+	if x.Outer == y.Outer {
+		return x.Uncertain && !y.Uncertain, true
+	}
+	if x.Outer.Contains(y.Outer) {
+		return true, true
+	}
+
+	return false, y.Outer.Contains(x.Outer)
 }
 
 // resolveConflict decides whether to replace keep's value with drop's. Returns

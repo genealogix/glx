@@ -71,7 +71,7 @@ func buildCoverage(personID string, person *Person, archive *GLXFile, fallback s
 	deathYear := deathYearUpperBound(deathDate)
 
 	// Build indexes: what sources/citations/events reference this person, and
-	// which events an assertion actually backs with a citation or source
+	// which events an assertion actually backs with a citation, source or media
 	personSources := collectPersonSources(personID, archive)
 	evidencedEvents := eventsWithEvidence(archive)
 	personEvents := collectPersonEvents(personID, archive, evidencedEvents)
@@ -128,7 +128,7 @@ type personSourceInfo struct {
 	EventType string // if found via an event
 	PlaceID   string // place reference (events only)
 	Year      int
-	Evidenced bool // events only: an assertion about this event cites a source
+	Evidenced bool // events only: an assertion resolves a citation, source or media
 }
 
 // collectPersonSources gathers all sources and citations that reference a person
@@ -236,7 +236,7 @@ const (
 
 // eventsWithEvidence returns the set of event IDs backed by evidence: those
 // that are the subject of an assertion resolving at least one citation or
-// source.
+// source or media object.
 //
 // An event carries no citations or sources of its own — under the GLX evidence
 // model the event is a conclusion, and what supports it is the assertion
@@ -263,7 +263,7 @@ func eventsWithEvidence(archive *GLXFile) map[string]bool {
 }
 
 // assertionHasEvidence reports whether an assertion resolves at least one
-// citation or source. A dangling reference does not count: reference
+// citation, source, or media object. A dangling reference does not count: reference
 // validation already reports it as an error, and honoring it here would let a
 // typo stand in for a record.
 func assertionHasEvidence(assertion *Assertion, archive *GLXFile) bool {
@@ -275,6 +275,11 @@ func assertionHasEvidence(assertion *Assertion, archive *GLXFile) bool {
 
 	for _, srcID := range assertion.Sources {
 		if src := archive.Sources[srcID]; src != nil {
+			return true
+		}
+	}
+	for _, mediaID := range assertion.Media {
+		if archive.Media[mediaID] != nil {
 			return true
 		}
 	}
@@ -669,7 +674,7 @@ func unevidencedNote(ref string) string {
 		return ""
 	}
 
-	return ref + " is recorded, but no citation or source backs it"
+	return ref + " is recorded, but no citation, source or media backs it"
 }
 
 func hasSourceType(sources []personSourceInfo, sourceType, titleKeyword string) bool {

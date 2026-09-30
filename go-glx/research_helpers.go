@@ -70,34 +70,97 @@ func nonPropertyProofDispute(pa *proofAssertion, archive *GLXFile, opts Comparis
 	}, true
 }
 
-// appendDuplicateEventFacts compares repeated birth/death events for the person
-// in the principal role. Parents and witnesses do not acquire the child's birth.
-// A structural field is used only when no assertion records that field, so a
-// denormalized conclusion never revives a researcher's disproven claim.
-func appendDuplicateEventFacts(out []proofAssertion, archive *GLXFile, personID string, groups map[string][]string) []proofAssertion {
-	for _, eventType := range []string{EventTypeBirth, EventTypeDeath} {
-		ids := groups[eventType]
-		if len(ids) < 2 {
+// appendVitalEventFacts compares duplicate birth/death events and legacy vital
+// assertions with their corresponding event fields. Only principal events share
+// the person's fact key. An asserted field suppresses its structural fallback,
+// including when that assertion is disproven.
+func appendVitalEventFacts(out []proofAssertion, archive *GLXFile, personID string, groups map[string][]string) []proofAssertion {
+	legacy := canonicalLegacyVitalFacts(out, archive, personID)
+	for _, eventType := range []string{EventTypeBirth, EventTypeDeath, EventTypeBurial} {
+		fields := legacy[eventType]
+		if eventType != EventTypeBurial && len(groups[eventType]) >= 2 {
+			fields = map[string]bool{conflictDateType: true, eventFieldPlace: true}
+		}
+		if len(fields) == 0 {
 			continue
 		}
-		for _, id := range ids {
-			seen := make(map[string]bool)
-			key := personID + ":" + eventType
-			for i := range out {
-				if out[i].a.Subject.Event == id {
-					out[i].factKey = key
-					seen[out[i].a.Property] = true
-				}
-			}
-			ev := archive.Events[id]
-			for _, field := range []struct{ property, value string }{{conflictDateType, string(ev.Date)}, {eventFieldPlace, ev.PlaceID}} {
-				if field.value == "" || seen[field.property] {
-					continue
-				}
-				a := &Assertion{Subject: EntityRef{Event: id}, Property: field.property, Value: field.value}
-				out = append(out, proofAssertion{id: id + ":" + field.property, a: a, subjectID: id, eventType: eventType, factKey: key})
-			}
+		for _, id := range groups[eventType] {
+			out = appendVitalEventFields(out, archive, id, personID+":"+eventType, fields)
 		}
+	}
+
+	return out
+}
+
+func canonicalLegacyVitalFacts(assertions []proofAssertion, archive *GLXFile, personID string) map[string]map[string]bool {
+	fields := make(map[string]map[string]bool)
+	for i := range assertions {
+		pa := &assertions[i]
+		if pa.a.Subject.Person != personID {
+			continue
+		}
+		kind, field := legacyVitalProperty(pa.a.Property)
+		if field == "" || !hasVitalSemantics(ConflictProperty(archive, pa.a.Subject, pa.a.Property), field) ||
+			!hasVitalSemantics(ConflictProperty(archive, EntityRef{Event: "event"}, field), field) {
+			continue
+		}
+		pa.factKey, pa.factProperty = personID+":"+kind, field
+		if fields[kind] == nil {
+			fields[kind] = make(map[string]bool)
+		}
+		fields[kind][field] = true
+	}
+
+	return fields
+}
+
+func legacyVitalProperty(property string) (kind, field string) {
+	switch property {
+	case DeprecatedPropertyBornOn, "birth_date":
+		return EventTypeBirth, conflictDateType
+	case DeprecatedPropertyBornAt, "birth_place":
+		return EventTypeBirth, eventFieldPlace
+	case DeprecatedPropertyDiedOn, "death_date":
+		return EventTypeDeath, conflictDateType
+	case DeprecatedPropertyDiedAt, "death_place":
+		return EventTypeDeath, eventFieldPlace
+	case DeprecatedPropertyBuriedOn, "burial_date":
+		return EventTypeBurial, conflictDateType
+	case DeprecatedPropertyBuriedAt, "burial_place":
+		return EventTypeBurial, eventFieldPlace
+	default:
+		return "", ""
+	}
+}
+
+// Custom and explicit nil definitions must not acquire another field's semantics.
+func hasVitalSemantics(def *PropertyDefinition, field string) bool {
+	if def == nil || IsTemporalProperty(def) || def.VocabularyType != "" {
+		return false
+	}
+	if field == conflictDateType {
+		return def.ValueType == conflictDateType && def.ReferenceType == ""
+	}
+
+	return def.ReferenceType == EntityTypePlaces.String()
+}
+
+func appendVitalEventFields(out []proofAssertion, archive *GLXFile, eventID, key string, fields map[string]bool) []proofAssertion {
+	seen := make(map[string]bool)
+	for i := range out {
+		pa := &out[i]
+		if pa.a.Subject.Event == eventID && fields[pa.a.Property] {
+			pa.factKey, pa.factProperty = key, pa.a.Property
+			seen[pa.a.Property] = true
+		}
+	}
+	ev := archive.Events[eventID]
+	for _, field := range []struct{ property, value string }{{conflictDateType, string(ev.Date)}, {eventFieldPlace, ev.PlaceID}} {
+		if !fields[field.property] || field.value == "" || seen[field.property] {
+			continue
+		}
+		a := &Assertion{Subject: EntityRef{Event: eventID}, Property: field.property, Value: field.value}
+		out = append(out, proofAssertion{id: eventID + ":" + field.property, a: a, subjectID: eventID, eventType: ev.Type, factKey: key, factProperty: field.property})
 	}
 
 	return out
@@ -224,11 +287,6 @@ func extractDateString(raw any) string {
 	}
 
 	return ""
-}
-
-// placeRefProperties is the set form of placeRefPropertyKeys for quick lookup.
-var placeRefProperties = map[string]bool{
-	"buried_at": true, "residence": true,
 }
 
 // collectPlaceRefsFromProperty extracts place IDs from a property value,

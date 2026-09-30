@@ -15,12 +15,275 @@
 package glx_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
+
+func TestResearchAPI_MediaBackedCoverage(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons:       map[string]*glxlib.Person{"p": {}, "q": {}},
+		Events:        map[string]*glxlib.Event{},
+		Assertions:    map[string]*glxlib.Assertion{},
+		Media:         map[string]*glxlib.Media{"record": {URI: "record.jpg", Title: "Record scan"}},
+		Relationships: map[string]*glxlib.Relationship{"couple": {Type: "marriage", StartEvent: "marriage", Participants: []glxlib.Participant{{Person: "p", Role: "spouse"}, {Person: "q", Role: "spouse"}}}},
+	}
+	for kind, date := range map[string]glxlib.DateString{"birth": "1850", "death": "1920", "census": "1870", "marriage": "1875", "probate": "1920", "baptism": "1850"} {
+		archive.Events[kind] = &glxlib.Event{Type: kind, Date: date, Participants: []glxlib.Participant{{Person: "p", Role: "subject"}}}
+		archive.Assertions["a-"+kind] = &glxlib.Assertion{Subject: glxlib.EntityRef{Event: kind}, Media: []string{"record"}, Confidence: "high"}
+	}
+	before := snapshot(t, archive)
+	report, err := glxlib.BuildCoverage(archive, "p", glxlib.CoverageOptions{CensusCountry: glxlib.CensusCountryUnitedStates})
+	require.NoError(t, err)
+	found := map[string]bool{}
+	for _, record := range report.Records {
+		if record.Found {
+			found[record.SourceRef] = true
+		}
+	}
+	require.Equal(t, map[string]bool{"birth": true, "death": true, "census": true, "marriage": true, "probate": true, "baptism": true}, found)
+	proof, err := glxlib.BuildProof(archive, "p", glxlib.QuestionBirth, glxlib.ProofOptions{})
+	require.NoError(t, err)
+	for _, gap := range proof.Gaps {
+		require.NotEqual(t, "Birth record", gap.Label)
+	}
+	require.Equal(t, "media", proof.Evidence[0].Support[0].Kind)
+	require.Equal(t, "record", proof.Evidence[0].Support[0].Ref)
+	require.Equal(t, "Record scan", proof.Evidence[0].Support[0].SourceTitle)
+	facts, err := glxlib.CollectPersonFacts(archive, "p")
+	require.NoError(t, err)
+	facts[0].Media[0] = "changed"
+	require.JSONEq(t, before, snapshot(t, archive))
+	for _, media := range []map[string]*glxlib.Media{nil, {"record": nil}} {
+		archive.Media = media
+		report, err = glxlib.BuildCoverage(archive, "p", glxlib.CoverageOptions{})
+		require.NoError(t, err)
+		require.Zero(t, report.Found, "dangling or nil media must not count as evidence")
+	}
+}
+
+func TestResearchAPI_FixedRefinementPreservesPrecision(t *testing.T) {
+	cases := []struct{ property, broad, narrow string }{
+		{"born_on", "1850", "1850-02-01"},
+		{"died_on", "ABT 1900", "1901-01-01"},
+		{"born_at", "state", "county"},
+	}
+	for _, tc := range cases {
+		for _, reverse := range []bool{false, true} {
+			keep, drop := tc.broad, tc.narrow
+			if reverse {
+				keep, drop = drop, keep
+			}
+			archive := &glxlib.GLXFile{
+				Persons: map[string]*glxlib.Person{"keep": {Properties: map[string]any{tc.property: keep}}, "drop": {Properties: map[string]any{tc.property: drop}}},
+				Places:  map[string]*glxlib.Place{"state": {Name: "State"}, "county": {Name: "County", ParentID: "state"}},
+			}
+			result, err := glxlib.MergePersons(archive, "keep", "drop", glxlib.MergePersonsOptions{})
+			require.NoError(t, err)
+			require.Empty(t, result.Conflicts)
+			require.Equal(t, tc.narrow, archive.Persons["keep"].Properties[tc.property])
+		}
+	}
+	// Intersecting ranges without containment cannot silently discard either claim.
+	archive := &glxlib.GLXFile{Persons: map[string]*glxlib.Person{
+		"keep": {Properties: map[string]any{"born_on": "BET 1850 AND 1860"}},
+		"drop": {Properties: map[string]any{"born_on": "BET 1855 AND 1870"}},
+	}}
+	result, err := glxlib.MergePersons(archive, "keep", "drop", glxlib.MergePersonsOptions{})
+	require.NoError(t, err)
+	require.Len(t, result.Conflicts, 1)
+	require.Equal(t, "BET 1855 AND 1870", result.Conflicts[0].DropValue)
+	require.Equal(t, glxlib.VerdictRefinement, result.Conflicts[0].Verdict)
+}
+
+func TestResearchAPI_RefinementRespectsResearcherStatus(t *testing.T) {
+	broad := map[string]any{"value": "1850", "status": "proven"}
+	narrow := map[string]any{"value": "1850-02-01", "status": "disproven"}
+	for _, reverse := range []bool{false, true} {
+		keep, drop := broad, narrow
+		if reverse {
+			keep, drop = drop, keep
+		}
+		archive := &glxlib.GLXFile{Persons: map[string]*glxlib.Person{
+			"keep": {Properties: map[string]any{"born_on": keep}},
+			"drop": {Properties: map[string]any{"born_on": drop}},
+		}}
+		result, err := glxlib.MergePersons(archive, "keep", "drop", glxlib.MergePersonsOptions{})
+		require.NoError(t, err)
+		require.Empty(t, result.Conflicts)
+		require.Equal(t, broad, archive.Persons["keep"].Properties["born_on"])
+	}
+}
+
+func TestResearchAPI_ProofResolvesOnlyReferences(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons:    map[string]*glxlib.Person{"p": {}},
+		Places:     map[string]*glxlib.Place{"paris": {Name: "Paris, France"}},
+		Assertions: map[string]*glxlib.Assertion{"a": {Subject: glxlib.EntityRef{Person: "p"}, Property: "name", Value: "paris", Confidence: "high"}},
+	}
+	proof, err := glxlib.BuildProof(archive, "p", glxlib.QuestionIdentity, glxlib.ProofOptions{})
+	require.NoError(t, err)
+	require.Equal(t, "paris", proof.Undated[0].Value)
+	require.Contains(t, proof.Summary, "paris")
+	require.NotContains(t, proof.Summary, "Paris, France")
+	archive.Assertions["a"].Property = "born_at"
+	proof, err = glxlib.BuildProof(archive, "p", glxlib.QuestionBirth, glxlib.ProofOptions{})
+	require.NoError(t, err)
+	require.Equal(t, "Paris, France", proof.Evidence[0].Value)
+	archive.PersonProperties = map[string]*glxlib.PropertyDefinition{"born_at": nil}
+	proof, err = glxlib.BuildProof(archive, "p", glxlib.QuestionBirth, glxlib.ProofOptions{})
+	require.NoError(t, err)
+	require.Equal(t, "paris", proof.Evidence[0].Value, "nil overrides also suppress reference display")
+}
+
+func TestResearchAPI_LegacyVitalFactsShareEventComparisons(t *testing.T) {
+	cases := []struct{ kind, property, field string }{
+		{"birth", "born_on", "date"},
+		{"birth", "birth_date", "date"},
+		{"birth", "born_at", "place"},
+		{"birth", "birth_place", "place"},
+		{"death", "died_on", "date"},
+		{"death", "death_date", "date"},
+		{"death", "died_at", "place"},
+		{"death", "death_place", "place"},
+		{"burial", "buried_on", "date"},
+		{"burial", "burial_date", "date"},
+		{"burial", "buried_at", "place"},
+		{"burial", "burial_place", "place"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.property, func(t *testing.T) {
+			for _, asserted := range []bool{false, true} {
+				archive := &glxlib.GLXFile{
+					Persons:    map[string]*glxlib.Person{"p": {}},
+					Events:     map[string]*glxlib.Event{"vital": {Type: tc.kind, Date: "1900", PlaceID: "b", Participants: []glxlib.Participant{{Person: "p", Role: "subject"}}}},
+					Places:     map[string]*glxlib.Place{"a": {Name: "Alpha"}, "b": {Name: "Beta"}},
+					Assertions: map[string]*glxlib.Assertion{"legacy": {Subject: glxlib.EntityRef{Person: "p"}, Property: tc.property, Value: "1850", Confidence: "high"}},
+				}
+				if tc.kind == "burial" {
+					archive.Events["vital"].Participants[0].Role = "deceased"
+				}
+				value := "1900"
+				if tc.field == "place" {
+					archive.Assertions["legacy"].Value = "a"
+					value = "b"
+				}
+				if asserted {
+					archive.Assertions["event"] = &glxlib.Assertion{Subject: glxlib.EntityRef{Event: "vital"}, Property: tc.field, Value: value, Confidence: "low"}
+				}
+				before := snapshot(t, archive)
+				topic := tc.kind
+				if topic == "burial" {
+					topic = glxlib.QuestionDeath
+				}
+				proof, err := glxlib.BuildProof(archive, "p", topic, glxlib.ProofOptions{})
+				require.NoError(t, err)
+				require.Equal(t, glxlib.ConclusionConflicted, proof.Conclusion)
+				require.Len(t, proof.Conflicts, 1)
+				require.Equal(t, tc.field, proof.Conflicts[0].Property)
+				require.Len(t, proof.Conflicts[0].Facts, 2)
+				findings, err := glxlib.AnalyzeConflicts(archive, glxlib.ConflictAnalysisOptions{})
+				require.NoError(t, err)
+				require.Len(t, findings, 1)
+				require.Equal(t, "high", findings[0].Severity)
+				facts, err := glxlib.CollectPersonFacts(archive, "p")
+				require.NoError(t, err)
+				require.Len(t, facts, 2)
+				require.Equal(t, facts[0].FactKey, facts[1].FactKey)
+				require.Equal(t, tc.field, facts[0].FactProperty)
+				require.Equal(t, facts[0].FactProperty, facts[1].FactProperty)
+				require.NotEqual(t, facts[0].Property, facts[1].Property, "raw aliases are retained")
+				require.JSONEq(t, before, snapshot(t, archive))
+				if asserted {
+					archive.Assertions["event"].Status = "disproven"
+					proof, err = glxlib.BuildProof(archive, "p", topic, glxlib.ProofOptions{})
+					require.NoError(t, err)
+					require.True(t, proof.Conflicts[0].Resolved)
+					unwanted := value
+					if tc.field == "place" {
+						unwanted = "Beta"
+					}
+					require.NotContains(t, proof.Summary, unwanted, "structural values must not revive disproven evidence")
+				}
+			}
+		})
+	}
+}
+
+func TestResearchAPI_VitalAliasesRespectRolesAndOverrides(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{"p": {}, "q": {}},
+		Events:  map[string]*glxlib.Event{"birth": {Type: "birth", Date: "1900", Participants: []glxlib.Participant{{Person: "p", Role: "parent"}, {Person: "q", Role: "subject"}}}},
+		Assertions: map[string]*glxlib.Assertion{
+			"legacy": {Subject: glxlib.EntityRef{Person: "p"}, Property: "born_on", Value: "1850", Confidence: "high"},
+			"event":  {Subject: glxlib.EntityRef{Event: "birth"}, Property: "date", Value: "1900"},
+		},
+	}
+	groups, err := glxlib.PersonConflicts(archive, "p", glxlib.ComparisonOptions{})
+	require.NoError(t, err)
+	require.Empty(t, groups, "a parent's own birth must not be compared with their child's birth")
+	archive.Events["birth"].Participants = []glxlib.Participant{{Person: "p", Role: "subject"}}
+	for _, personOverride := range []bool{false, true} {
+		archive.PersonProperties, archive.EventProperties = nil, nil
+		if personOverride {
+			archive.PersonProperties = map[string]*glxlib.PropertyDefinition{"born_on": nil}
+		} else {
+			archive.EventProperties = map[string]*glxlib.PropertyDefinition{"date": nil}
+		}
+		facts, err := glxlib.CollectPersonFacts(archive, "p")
+		require.NoError(t, err)
+		require.NotEqual(t, facts[0].FactKey, facts[1].FactKey, "custom definitions must not inherit another property's semantics")
+	}
+}
+
+func TestResearchAPI_ParticipantProofEvidence(t *testing.T) {
+	cases := []struct {
+		topic, kind, personRole, claimedRole string
+		event                                bool
+	}{
+		{"parentage", "parent_child", "child", "parent", false},
+		{"parentage", "birth", "subject", "parent", true},
+		{"marriage", "marriage", "spouse", "spouse", false},
+		{"marriage", "marriage", "bride", "groom", true},
+		{"marriage", "marriage", "spouse", "witness", false},
+	}
+	for _, tc := range cases {
+		t.Run(strings.Join([]string{tc.topic, tc.kind, tc.claimedRole}, "/"), func(t *testing.T) {
+			archive := &glxlib.GLXFile{Persons: map[string]*glxlib.Person{"p": {}, "q": {Properties: map[string]any{"name": "Alex"}}}}
+			subject := glxlib.EntityRef{Relationship: "subject"}
+			participants := []glxlib.Participant{{Person: "p", Role: tc.personRole}}
+			if tc.kind == "birth" {
+				participants = append([]glxlib.Participant{{Person: "p", Role: "witness"}}, participants...)
+			}
+			if tc.event {
+				subject = glxlib.EntityRef{Event: "subject"}
+				archive.Events = map[string]*glxlib.Event{"subject": {Type: tc.kind, Participants: participants}}
+			} else {
+				archive.Relationships = map[string]*glxlib.Relationship{"subject": {Type: tc.kind, Participants: participants}}
+			}
+			archive.Assertions = map[string]*glxlib.Assertion{"claim": {Subject: subject, Participant: &glxlib.Participant{Person: "q", Role: tc.claimedRole}, Confidence: "high"}}
+			proof, err := glxlib.BuildProof(archive, "p", tc.topic, glxlib.ProofOptions{})
+			require.NoError(t, err)
+			require.Len(t, proof.Evidence, 1)
+			require.Equal(t, "q", proof.Evidence[0].ParticipantPerson)
+			require.Equal(t, tc.claimedRole, proof.Evidence[0].ParticipantRole)
+			require.Equal(t, "Alex (q) — "+tc.claimedRole, proof.Evidence[0].Value)
+			if tc.claimedRole == "witness" {
+				require.Equal(t, glxlib.ConclusionInsufficient, proof.Conclusion)
+			} else {
+				require.Equal(t, glxlib.ConclusionProven, proof.Conclusion)
+				require.Contains(t, proof.Summary, "Alex (q)")
+				archive.Assertions["claim"].Status = "disproven"
+				proof, err = glxlib.BuildProof(archive, "p", tc.topic, glxlib.ProofOptions{})
+				require.NoError(t, err)
+				require.Equal(t, glxlib.ConclusionInsufficient, proof.Conclusion)
+			}
+		})
+	}
+}
 
 func TestResearchAPI_TypedTemporalMerges(t *testing.T) {
 	shapes := []struct {

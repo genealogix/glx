@@ -61,30 +61,34 @@ const (
 const (
 	proofKindCitation = "citation"
 	proofKindSource   = "source"
+	proofKindMedia    = "media"
 )
 
-// ProofSupport is a single citation or source backing an assertion, resolved to
-// human-readable form (GPS element 2 — complete citations).
+// ProofSupport is a single citation, source or media object backing an assertion,
+// resolved to human-readable form (GPS element 2 — complete citations).
 type ProofSupport struct {
-	Ref         string `json:"ref"`                    // citation or source ID
-	Kind        string `json:"kind"`                   // proofKindCitation or proofKindSource
-	SourceID    string `json:"source_id,omitempty"`    // resolved source ID (citations only)
-	SourceTitle string `json:"source_title,omitempty"` // resolved source title
+	Ref         string `json:"ref"`                    // citation, source or media ID
+	Kind        string `json:"kind"`                   // "citation", "source" or "media"
+	SourceID    string `json:"source_id,omitempty"`    // source ID, including one linked by citation/media
+	SourceTitle string `json:"source_title,omitempty"` // resolved source or media title
 	Locator     string `json:"locator,omitempty"`      // citation locator (page, entry, certificate no.)
 }
 
 // ProofEvidence is one assertion gathered as evidence for the research question
 // (GPS element 3 — analysis of evidence).
 type ProofEvidence struct {
-	AssertionID string         `json:"assertion_id"`
-	Subject     string         `json:"subject,omitempty"` // subject context (e.g. "birth event (1955)")
-	Property    string         `json:"property,omitempty"`
-	Value       string         `json:"value,omitempty"`
-	Date        string         `json:"date,omitempty"`
-	Confidence  string         `json:"confidence,omitempty"`
-	Status      string         `json:"status,omitempty"`
-	Notes       string         `json:"notes,omitempty"`
-	Support     []ProofSupport `json:"support,omitempty"`
+	// Participant fields retain raw claim identity alongside the Value label.
+	ParticipantPerson string         `json:"participant_person,omitempty"`
+	ParticipantRole   string         `json:"participant_role,omitempty"`
+	AssertionID       string         `json:"assertion_id"`
+	Subject           string         `json:"subject,omitempty"` // subject context (e.g. "birth event (1955)")
+	Property          string         `json:"property,omitempty"`
+	Value             string         `json:"value,omitempty"`
+	Date              string         `json:"date,omitempty"`
+	Confidence        string         `json:"confidence,omitempty"`
+	Status            string         `json:"status,omitempty"`
+	Notes             string         `json:"notes,omitempty"`
+	Support           []ProofSupport `json:"support,omitempty"`
 }
 
 // ProofGap is a missing record that would strengthen the proof (GPS element 1 —
@@ -262,13 +266,14 @@ func questionText(topic, name string) string {
 // proofAssertion couples an assertion with its resolved subject context so
 // relevance and conflict logic can reason about it without re-resolving.
 type proofAssertion struct {
-	id         string
-	a          *Assertion
-	subjectID  string // person, event, or relationship ID the assertion is about
-	eventType  string // set when the subject is an event the person participates in
-	relType    string // set when the subject is a relationship the person participates in
-	factKey    string // shared identity of duplicate birth/death events
-	personRole string // the person's role in the subject relationship
+	id           string
+	a            *Assertion
+	subjectID    string // person, event, or relationship ID the assertion is about
+	eventType    string // set when the subject is an event the person participates in
+	relType      string // set when the subject is a relationship the person participates in
+	factKey      string // shared identity of a person's vital fact
+	factProperty string // canonical date/place field, retaining a.Property as provenance
+	personRole   string // the person's role in the subject event or relationship
 }
 
 // subjectIsPerson reports whether the assertion's subject is the target person
@@ -289,41 +294,26 @@ var (
 		"father": true, "mother": true, ParticipantRoleParent: true, "parents": true,
 		"father_name": true, "mother_name": true,
 	}
-	birthPropertyNames = map[string]bool{
-		"birth_date": true, "birth_place": true,
-		DeprecatedPropertyBornOn: true, DeprecatedPropertyBornAt: true,
-	}
-	deathPropertyNames = map[string]bool{
-		"death_date": true, "death_place": true, "burial_date": true, "burial_place": true,
-		DeprecatedPropertyDiedOn: true, DeprecatedPropertyDiedAt: true,
-		DeprecatedPropertyBuriedOn: true, DeprecatedPropertyBuriedAt: true,
-	}
 )
 
 // assertionRelevant reports whether an assertion is evidence for the topic.
 func assertionRelevant(topic string, pa *proofAssertion) bool {
+	legacyKind, _ := legacyVitalProperty(pa.a.Property)
 	switch topic {
 	case topicParentage:
-		if pa.relType != "" && researchIsParentChildType(pa.relType) && pa.personRole == ParticipantRoleChild {
-			return true
-		}
-		if pa.eventType == EventTypeBirth && parentPropertyNames[pa.a.Property] {
-			return true
-		}
-
-		return pa.subjectIsPerson() && parentPropertyNames[pa.a.Property]
+		return parentageAssertionRelevant(pa)
 	case topicBirth:
 		if isBirthEventType(pa.eventType) {
 			return true
 		}
 
-		return pa.subjectIsPerson() && birthPropertyNames[pa.a.Property]
+		return pa.subjectIsPerson() && legacyKind == EventTypeBirth
 	case topicDeath:
 		if isDeathEventType(pa.eventType) {
 			return true
 		}
 
-		return pa.subjectIsPerson() && deathPropertyNames[pa.a.Property]
+		return pa.subjectIsPerson() && (legacyKind == EventTypeDeath || legacyKind == EventTypeBurial)
 	case topicMarriage:
 		if pa.relType == RelationshipTypeMarriage || pa.relType == RelationshipTypePartner {
 			return true
@@ -335,6 +325,21 @@ func assertionRelevant(topic string, pa *proofAssertion) bool {
 	default:
 		return false
 	}
+}
+
+func parentageAssertionRelevant(pa *proofAssertion) bool {
+	if researchIsParentChildType(pa.relType) && pa.personRole == ParticipantRoleChild {
+		return true
+	}
+	if pa.eventType == EventTypeBirth {
+		if parentPropertyNames[pa.a.Property] {
+			return true
+		}
+
+		return isVitalPrincipal(pa.eventType, pa.personRole) && pa.a.Participant != nil && pa.a.Participant.Role == ParticipantRoleParent
+	}
+
+	return pa.subjectIsPerson() && parentPropertyNames[pa.a.Property]
 }
 
 func isBirthEventType(t string) bool {
@@ -361,17 +366,23 @@ func isMarriageEventType(t string) bool {
 func buildProofEvidence(pa *proofAssertion, archive *GLXFile) ProofEvidence {
 	a := pa.a
 
-	return ProofEvidence{
+	evidence := ProofEvidence{
 		AssertionID: pa.id,
 		Subject:     describeProofSubject(pa, archive),
 		Property:    a.Property,
-		Value:       resolveProofValue(a.Value, archive),
+		Value:       proofAssertionValue(a, archive),
 		Date:        string(a.Date),
 		Confidence:  a.Confidence,
 		Status:      a.Status,
 		Notes:       firstLine(a.Notes.String()),
 		Support:     buildProofSupport(a, archive),
 	}
+	if a.Participant != nil {
+		evidence.ParticipantPerson = a.Participant.Person
+		evidence.ParticipantRole = a.Participant.Role
+	}
+
+	return evidence
 }
 
 // describeProofSubject returns a short label for an assertion's subject when it
@@ -392,10 +403,10 @@ func describeProofSubject(pa *proofAssertion, archive *GLXFile) string {
 	}
 }
 
-// buildProofSupport resolves an assertion's citations and sources into complete,
+// buildProofSupport resolves an assertion's citations, sources and media into complete,
 // human-readable references.
 func buildProofSupport(a *Assertion, archive *GLXFile) []ProofSupport {
-	support := make([]ProofSupport, 0, len(a.Citations)+len(a.Sources))
+	support := make([]ProofSupport, 0, len(a.Citations)+len(a.Sources)+len(a.Media))
 
 	for _, citID := range a.Citations {
 		s := ProofSupport{Ref: citID, Kind: proofKindCitation}
@@ -415,20 +426,29 @@ func buildProofSupport(a *Assertion, archive *GLXFile) []ProofSupport {
 			SourceTitle: resolveSourceTitle(srcID, archive),
 		})
 	}
+	for _, mediaID := range a.Media {
+		s := ProofSupport{Ref: mediaID, Kind: proofKindMedia}
+		if media := archive.Media[mediaID]; media != nil {
+			s.SourceTitle = media.Title
+			s.SourceID = media.Source
+		}
+		support = append(support, s)
+	}
 
 	return support
 }
 
-// resolveProofValue renders an assertion value, resolving place IDs to names.
-func resolveProofValue(value string, archive *GLXFile) string {
-	if value == "" {
-		return ""
-	}
-	if place, ok := archive.Places[value]; ok && place != nil && place.Name != "" {
-		return place.Name
+// resolveProofValue renders only references declared for the assertion's property.
+func resolveProofValue(value string, subject EntityRef, property string, archive *GLXFile) string {
+	return resolveAssertionValue(value, property, subject, archive)
+}
+
+func proofAssertionValue(a *Assertion, archive *GLXFile) string {
+	if a.Participant != nil {
+		return participantEvidenceValue(a.Participant, archive)
 	}
 
-	return value
+	return resolveProofValue(a.Value, a.Subject, a.Property, archive)
 }
 
 // detectProofConflicts finds relevant assertions that disagree on the same
@@ -461,7 +481,11 @@ func detectProofConflicts(relevant []proofAssertion, archive *GLXFile, options .
 		if pa.factKey != "" {
 			subjectKey = pa.factKey
 		}
-		key := conflictKey{subject: subjectKey, property: pa.a.Property}
+		property := pa.a.Property
+		if pa.factProperty != "" {
+			property = pa.factProperty
+		}
+		key := conflictKey{subject: subjectKey, property: property}
 		g, seen := groups[key]
 		if !seen {
 			g = &conflictGroup{label: describeProofSubject(pa, archive)}
@@ -486,7 +510,7 @@ func detectProofConflicts(relevant []proofAssertion, archive *GLXFile, options .
 		for i, a := range g.assertions {
 			raw[i] = AssertionFact(a)
 		}
-		evaluation := evaluateFacts(raw, ConflictProperty(archive, g.assertions[0].Subject, key.property), archive.Places, comparisonOptions(options))
+		evaluation := evaluateFacts(raw, ConflictProperty(archive, g.assertions[0].Subject, g.assertions[0].Property), archive.Places, comparisonOptions(options))
 		selected := make([]*Assertion, 0, len(evaluation.Selected))
 		for _, i := range evaluation.Selected {
 			selected = append(selected, g.assertions[i])
@@ -505,7 +529,7 @@ func detectProofConflicts(relevant []proofAssertion, archive *GLXFile, options .
 		}
 
 		resolved := evaluation.Resolved
-		resolution := resolveProofValue(evaluation.Resolution, archive)
+		resolution := resolveProofValue(evaluation.Resolution, g.assertions[0].Subject, g.assertions[0].Property, archive)
 		if resolved && resolution == "" {
 			resolution = "Disproven claims excluded."
 		}
@@ -543,7 +567,7 @@ func distinctProofValues(assertions []*Assertion, archive *GLXFile) []ConflictVa
 	for _, a := range assertions {
 		cur, exists := seen[a.Value]
 		if !exists {
-			seen[a.Value] = &agg{display: resolveProofValue(a.Value, archive), confidence: a.Confidence, status: a.Status}
+			seen[a.Value] = &agg{display: proofAssertionValue(a, archive), confidence: a.Confidence, status: a.Status}
 			order = append(order, a.Value)
 
 			continue
@@ -695,7 +719,7 @@ func concludeProof(topic, personID string, archive *GLXFile, relevant []proofAss
 	for i := range conflicts {
 		c := &conflicts[i]
 		if c.Resolved {
-			if asserted, ok := answerFromAssertions(relevant, archive); ok {
+			if asserted, ok := answerFromAssertions(relevant, archive, topic, personID); ok {
 				answer, found = asserted, true
 			}
 
@@ -710,7 +734,7 @@ func concludeProof(topic, personID string, archive *GLXFile, relevant []proofAss
 		// never filled in while an assertion records the value. Fall back to the
 		// gathered evidence so collected assertions can still drive a conclusion
 		// instead of a spurious INSUFFICIENT EVIDENCE.
-		answer, found = answerFromAssertions(relevant, archive)
+		answer, found = answerFromAssertions(relevant, archive, topic, personID)
 	}
 	if !found {
 		return proofConclusionInsufficient, insufficientSummary(topic, gaps)
@@ -845,7 +869,7 @@ func eventAnswer(personID string, archive *GLXFile, eventType, label string) (st
 // Date/PlaceID, can still yield a conclusion rather than INSUFFICIENT EVIDENCE.
 // The topic context is already carried by the result's question text, so the
 // summary only needs the supporting values.
-func answerFromAssertions(relevant []proofAssertion, archive *GLXFile) (string, bool) {
+func answerFromAssertions(relevant []proofAssertion, archive *GLXFile, topic, personID string) (string, bool) {
 	seen := make(map[string]bool)
 	var values []string
 	for i := range relevant {
@@ -853,7 +877,10 @@ func answerFromAssertions(relevant []proofAssertion, archive *GLXFile) (string, 
 		if strings.EqualFold(a.Status, statusDisproven) {
 			continue
 		}
-		value := resolveProofValue(a.Value, archive)
+		if a.Participant != nil && !participantAnswersQuestion(a.Participant, topic, personID) {
+			continue
+		}
+		value := proofAssertionValue(a, archive)
 		if value == "" || seen[value] {
 			continue
 		}
@@ -866,6 +893,20 @@ func answerFromAssertions(relevant []proofAssertion, archive *GLXFile) (string, 
 	sort.Strings(values)
 
 	return "Supported by evidence: " + strings.Join(values, ", ") + ".", true
+}
+
+func participantAnswersQuestion(participant *Participant, topic, personID string) bool {
+	if participant.Person == "" || participant.Person == personID {
+		return false
+	}
+	switch topic {
+	case topicParentage:
+		return participant.Role == ParticipantRoleParent
+	case topicMarriage:
+		return participant.Role == ParticipantRoleSpouse || participant.Role == ParticipantRoleBride || participant.Role == ParticipantRoleGroom
+	default:
+		return false
+	}
 }
 
 // parentNames returns the display names of a person's parents, drawn from

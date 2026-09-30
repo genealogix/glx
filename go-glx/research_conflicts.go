@@ -94,8 +94,10 @@ func evaluateFacts(values []FactValue, definition *PropertyDefinition, places ma
 }
 
 // ResearchFact is an owned snapshot of a recorded claim and its subject context.
-// Synthetic marks structural date/place facts generated from duplicate vital
-// events; their IDs identify event fields rather than archive assertions.
+// FactKey and FactProperty identify the comparison group, including legacy vital
+// aliases; Subject and Property retain the original assertion context.
+// Synthetic marks structural date/place facts compared with legacy assertions or
+// duplicate vital events; their IDs identify event fields rather than assertions.
 type ResearchFact struct {
 	ID                string    `json:"id"`
 	Subject           EntityRef `json:"subject"`
@@ -105,17 +107,20 @@ type ResearchFact struct {
 	RelationshipType  string    `json:"relationship_type,omitempty"`
 	PersonRole        string    `json:"person_role,omitempty"`
 	FactKey           string    `json:"fact_key"`
+	FactProperty      string    `json:"fact_property"`
 	Synthetic         bool      `json:"synthetic,omitempty"`
 	ParticipantPerson string    `json:"participant_person,omitempty"`
 	ParticipantRole   string    `json:"participant_role,omitempty"`
 	Citations         []string  `json:"citations,omitempty"`
 	Sources           []string  `json:"sources,omitempty"`
+	Media             []string  `json:"media,omitempty"`
 	Notes             []string  `json:"notes,omitempty"`
 }
 
 // CollectPersonFacts gathers claims on an exact person ID and their events and
-// relationships, including structural fields of duplicate vital events. It does
-// not mutate the archive; modifying returned facts cannot alter the archive.
+// relationships, including vital fields needed for legacy and duplicate-event
+// comparisons. It does not mutate the archive; modifying returned facts cannot
+// alter the archive.
 func CollectPersonFacts(archive *GLXFile, personID string) ([]ResearchFact, error) {
 	if archive == nil {
 		return nil, ErrNilArchive
@@ -192,6 +197,11 @@ func AnalyzeConflicts(archive *GLXFile, opts ConflictAnalysisOptions) ([]Conflic
 
 func researchFact(pa *proofAssertion, archive *GLXFile) ResearchFact {
 	f := ResearchFact{ID: pa.id, Subject: pa.a.Subject, Property: pa.a.Property, Fact: AssertionFact(pa.a), EventType: pa.eventType, RelationshipType: pa.relType, PersonRole: pa.personRole, FactKey: pa.factKey, Synthetic: archive.Assertions[pa.id] == nil, Citations: slices.Clone(pa.a.Citations), Sources: slices.Clone(pa.a.Sources), Notes: slices.Clone([]string(pa.a.Notes))}
+	f.Media = slices.Clone(pa.a.Media)
+	f.FactProperty = pa.factProperty
+	if f.FactProperty == "" {
+		f.FactProperty = pa.a.Property
+	}
 	if f.FactKey == "" {
 		f.FactKey = pa.a.Subject.Type().String() + ":" + pa.subjectID
 	}

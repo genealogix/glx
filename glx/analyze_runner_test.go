@@ -572,6 +572,7 @@ func TestAnalyzeConsistency_BurialAfterDeath_OK(t *testing.T) {
 
 func TestAnalyzeConflicts_DetectsConflicting(t *testing.T) {
 	archive := &glxlib.GLXFile{
+		PersonProperties: map[string]*glxlib.PropertyDefinition{"birthplace": {ReferenceType: glxlib.EntityTypePlaces.String()}},
 		Persons: map[string]*glxlib.Person{
 			"person-mary": {Properties: map[string]any{"name": "Mary Green"}},
 		},

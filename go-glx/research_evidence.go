@@ -347,19 +347,7 @@ func resolveAssertionValue(value, property string, subject EntityRef, archive *G
 		return value
 	}
 
-	// Resolve standard place-reference properties.
-	if placeRefProperties[property] {
-		return resolvePlaceName(value, archive)
-	}
-
-	// `place` on an event subject is the event's own structural place field
-	// (Event.PlaceID), not a vocabulary property, so no definition declares it
-	// a reference. `glx migrate` maps it the same way.
-	if subject.Event != "" && property == eventFieldPlace {
-		return resolvePlaceName(value, archive)
-	}
-
-	if def, ok := subjectPropertyDefinitions(archive, subject)[property]; ok && def != nil {
+	if def := ConflictProperty(archive, subject, property); def != nil {
 		// PropertyDefinition.ReferenceType is an untyped string from YAML;
 		// bridge to EntityType via .String() to match the convention used by
 		// isPlaceReferenceProperty in summary_runner.go.
@@ -376,25 +364,6 @@ func resolveAssertionValue(value, property string, subject EntityRef, archive *G
 	}
 
 	return value
-}
-
-// subjectPropertyDefinitions returns the vocabulary property definitions that
-// apply to a subject's entity type. A nil map is a safe read in Go, so an
-// unknown type (or a vocabulary that was never loaded) simply resolves nothing
-// and values are shown verbatim.
-func subjectPropertyDefinitions(archive *GLXFile, subject EntityRef) map[string]*PropertyDefinition {
-	switch subject.Type() {
-	case EntityTypePersons:
-		return archive.PersonProperties
-	case EntityTypeEvents:
-		return archive.EventProperties
-	case EntityTypePlaces:
-		return archive.PlaceProperties
-	case EntityTypeRelationships:
-		return archive.RelationshipProperties
-	default:
-		return nil
-	}
 }
 
 // sortEvidenceItems orders reports within a group deterministically:

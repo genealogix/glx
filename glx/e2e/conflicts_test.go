@@ -366,3 +366,73 @@ assertions:
 	require.Equal(t, "p", report.Conflicts[0].ParticipantPerson)
 	require.Equal(t, "witness", report.Conflicts[0].ParticipantRole)
 }
+
+func TestProofAndCoverageReviewRegressions(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "archive.glx")
+	require.NoError(t, os.WriteFile(path, []byte(`persons:
+  p: {}
+  child: {}
+  parent: {properties: {name: Alex}}
+  literal: {}
+places:
+  paris: {name: 'Paris, France'}
+events:
+  birth: {type: birth, date: "1900", participants: [{person: p, role: subject}]}
+relationships:
+  family: {type: parent_child, participants: [{person: child, role: child}]}
+media:
+  record: {uri: record.jpg, title: Birth register scan}
+assertions:
+  legacy: {subject: {person: p}, property: born_on, value: "1850", confidence: high}
+  event: {subject: {event: birth}, property: date, value: "1900", confidence: low, media: [record]}
+  parent-claim: {subject: {relationship: family}, participant: {person: parent, role: parent}, confidence: high}
+  literal-claim: {subject: {person: literal}, property: name, value: paris, confidence: high}
+`), 0o600))
+	result := runGLX(t, dir, "proof", "p", "--question", "birth", "--archive", path, "--format", "json")
+	require.Equal(t, 0, result.exitCode, result.stderr)
+	var proof glxlib.ProofResult
+	require.NoError(t, json.Unmarshal([]byte(result.stdout), &proof))
+	require.Equal(t, glxlib.ConclusionConflicted, proof.Conclusion)
+	require.Len(t, proof.Conflicts, 1)
+	require.Len(t, proof.Conflicts[0].Facts, 2)
+	result = runGLX(t, dir, "coverage", "p", "--archive", path, "--json")
+	require.Equal(t, 0, result.exitCode, result.stderr)
+	var coverage glxlib.CoverageResult
+	require.NoError(t, json.Unmarshal([]byte(result.stdout), &coverage))
+	birthFound := false
+	for _, record := range coverage.Records {
+		if record.Label == "Birth record" {
+			birthFound = record.Found
+		}
+	}
+	require.True(t, birthFound)
+	result = runGLX(t, dir, "proof", "child", "--question", "parentage", "--archive", path)
+	require.Equal(t, 0, result.exitCode, result.stderr)
+	require.Contains(t, result.stdout, "Alex (parent) — parent")
+	require.Contains(t, result.stdout, "PROVEN")
+	result = runGLX(t, dir, "proof", "literal", "--question", "identity", "--archive", path)
+	require.Equal(t, 0, result.exitCode, result.stderr)
+	require.Contains(t, result.stdout, "paris")
+	require.NotContains(t, result.stdout, "Paris, France")
+}
+
+func TestMergePersonsKeepsMorePreciseValue(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "archive.glx")
+	require.NoError(t, os.WriteFile(path, []byte(`persons:
+  keep: {properties: {confirmed_date: "1850"}}
+  drop: {properties: {confirmed_date: "1850-02-01"}}
+person_properties:
+  confirmed_date: {value_type: date, temporal: false}
+`), 0o600))
+	result := runGLX(t, dir, "merge-persons", "keep", "drop", "--archive", path)
+	require.Equal(t, 0, result.exitCode, result.stderr)
+	require.NotContains(t, result.stderr, "Conflict")
+	saved, err := os.ReadFile(path)
+	require.NoError(t, err)
+	archive, err := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false}).DeserializeSingleFileBytes(saved)
+	require.NoError(t, err)
+	require.Equal(t, "1850-02-01", archive.Persons["keep"].Properties["confirmed_date"])
+	require.NotContains(t, archive.Persons, "drop")
+}

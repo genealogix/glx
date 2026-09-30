@@ -68,7 +68,7 @@ func newPersonFactIndex(archive *GLXFile, personIDs []string) *personFactIndex {
 			if seen[p.Person] {
 				continue
 			}
-			index.assertions[p.Person] = append(index.assertions[p.Person], proofAssertion{id: id, a: a, subjectID: a.Subject.Event, eventType: event.kind})
+			index.assertions[p.Person] = append(index.assertions[p.Person], proofAssertion{id: id, a: a, subjectID: a.Subject.Event, eventType: event.kind, personRole: p.Role})
 			seen[p.Person] = true
 		}
 		rel := relationships[a.Subject.Relationship]
@@ -95,7 +95,7 @@ func (index *personFactIndex) eventScopes(archive *GLXFile, wanted map[string]bo
 		if len(participants) > 0 {
 			scopes[id] = researchScope{kind: event.Type, participants: participants}
 		}
-		if event.Type != EventTypeBirth && event.Type != EventTypeDeath {
+		if event.Type != EventTypeBirth && event.Type != EventTypeDeath && event.Type != EventTypeBurial {
 			continue
 		}
 		seen := make(map[string]bool)
@@ -106,6 +106,13 @@ func (index *personFactIndex) eventScopes(archive *GLXFile, wanted map[string]bo
 				continue
 			}
 			seen[p.Person] = true
+			// Topic selection must use the principal role too, even when a
+			// witness entry for this person appeared first in the event.
+			for i := range participants {
+				if participants[i].Person == p.Person {
+					participants[i].Role = p.Role
+				}
+			}
 			if index.vitalEvents[p.Person] == nil {
 				index.vitalEvents[p.Person] = make(map[string][]string)
 			}
@@ -139,7 +146,7 @@ func isVitalPrincipal(eventType, role string) bool {
 	case ParticipantRoleChild:
 		return eventType == EventTypeBirth
 	case "deceased":
-		return eventType == EventTypeDeath
+		return eventType == EventTypeDeath || eventType == EventTypeBurial
 	default:
 		return false
 	}
@@ -150,5 +157,5 @@ func (index *personFactIndex) collect(archive *GLXFile, personID string) []proof
 	// its slice even if the index is reused for the same person.
 	out := slices.Clone(index.assertions[personID])
 
-	return appendDuplicateEventFacts(out, archive, personID, index.vitalEvents[personID])
+	return appendVitalEventFacts(out, archive, personID, index.vitalEvents[personID])
 }

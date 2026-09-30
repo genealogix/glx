@@ -197,9 +197,10 @@ func TestCollectEvidence_ValueResolution(t *testing.T) {
 		},
 		PersonProperties: map[string]*PropertyDefinition{
 			"named_for": {Label: "Named For", ReferenceType: EntityTypePersons.String()},
+			"residence": {ReferenceType: EntityTypePlaces.String()},
 		},
 		Assertions: map[string]*Assertion{
-			// residence is a built-in place-ref property (placeRefProperties).
+			// residence resolves through its place-reference definition.
 			"a1": {Subject: EntityRef{Person: "p"}, Property: "residence", Value: "place-richmond", Confidence: "high"},
 			// named_for resolves via the archive's PropertyDefinition (persons).
 			"a2": {Subject: EntityRef{Person: "p"}, Property: "named_for", Value: "person-clara", Confidence: "high"},
@@ -291,8 +292,9 @@ func TestCollectEvidence_CaseInsensitiveFallback(t *testing.T) {
 
 func TestCollectEvidence_CaseInsensitiveResolvesReferences(t *testing.T) {
 	archive := &GLXFile{
-		Persons: map[string]*Person{"p": {}},
-		Places:  map[string]*Place{"place-richmond": {Name: "Richmond, Virginia"}},
+		Persons:          map[string]*Person{"p": {}},
+		Places:           map[string]*Place{"place-richmond": {Name: "Richmond, Virginia"}},
+		PersonProperties: map[string]*PropertyDefinition{"residence": {ReferenceType: EntityTypePlaces.String()}},
 		Assertions: map[string]*Assertion{
 			// Stored property is "residence" (a place reference); the query uses
 			// different casing and matches via the case-insensitive fallback.
