@@ -275,11 +275,13 @@ func ConflictProperty(archive *GLXFile, subject EntityRef, property string) *Pro
 		}
 	}
 	// Legacy assertions remain readable after the event-fact migration.
-	switch _, field := legacyVitalProperty(property); field {
-	case conflictDateType:
-		return &PropertyDefinition{ValueType: conflictDateType}
-	case eventFieldPlace:
-		return &PropertyDefinition{ReferenceType: EntityTypePlaces.String()}
+	if subject.Person != "" {
+		switch _, field := legacyVitalProperty(property); field {
+		case conflictDateType:
+			return &PropertyDefinition{ValueType: conflictDateType}
+		case eventFieldPlace:
+			return &PropertyDefinition{ReferenceType: EntityTypePlaces.String()}
+		}
 	}
 
 	return nil

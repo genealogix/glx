@@ -274,3 +274,73 @@ func TestResearchAPI_MediaLinkedPersonCensusSource(t *testing.T) {
 		require.NotEqual(t, "census-source", record.SourceRef)
 	}
 }
+
+func TestResearchAPI_LegacyAliasesArePersonScoped(t *testing.T) {
+	for _, subject := range []glxlib.EntityRef{{Event: "event"}, {Relationship: "relationship"}, {Place: "place"}} {
+		archive := &glxlib.GLXFile{
+			Persons:       map[string]*glxlib.Person{"p": {}},
+			Events:        map[string]*glxlib.Event{"event": {Type: "birth"}},
+			Relationships: map[string]*glxlib.Relationship{"relationship": {Type: "marriage"}},
+			Places:        map[string]*glxlib.Place{"place": {Name: "Subject place"}, "paris": {Name: "Paris, France"}},
+		}
+		for _, property := range []string{"born_on", "birth_date", "born_at", "birth_place"} {
+			first, second := "1850", "1850-02-01"
+			if property == "born_at" || property == "birth_place" {
+				first, second = "paris", "other"
+			}
+			archive.Assertions = map[string]*glxlib.Assertion{
+				"first":  {Subject: subject, Property: property, Value: first},
+				"second": {Subject: subject, Property: property, Value: second},
+			}
+			report, err := glxlib.BuildEvidenceReport(archive, subject, property, glxlib.ComparisonOptions{})
+			require.NoError(t, err)
+			require.Len(t, report.Conflicts, 1)
+			require.Equal(t, glxlib.VerdictDefinite, report.Conflicts[0].Verdict)
+			for _, group := range report.Groups {
+				require.NotEqual(t, "Paris, France", group.Value, "unknown non-person aliases stay literal")
+			}
+		}
+	}
+	archive := &glxlib.GLXFile{
+		Events:          map[string]*glxlib.Event{"event": {Type: "birth"}},
+		EventProperties: map[string]*glxlib.PropertyDefinition{"birth_date": {ValueType: "date"}},
+		Assertions: map[string]*glxlib.Assertion{
+			"first":  {Subject: glxlib.EntityRef{Event: "event"}, Property: "birth_date", Value: "1850"},
+			"second": {Subject: glxlib.EntityRef{Event: "event"}, Property: "birth_date", Value: "1850-02-01"},
+		},
+	}
+	report, err := glxlib.BuildEvidenceReport(archive, glxlib.EntityRef{Event: "event"}, "birth_date", glxlib.ComparisonOptions{})
+	require.NoError(t, err)
+	require.Empty(t, report.Conflicts, "an explicit event definition still controls its own property")
+}
+
+func TestResearchAPI_UnrelatedResolutionsPreserveVitalAnswers(t *testing.T) {
+	for _, kind := range []string{"birth", "death"} {
+		archive := &glxlib.GLXFile{
+			Persons:         map[string]*glxlib.Person{"p": {}},
+			Events:          map[string]*glxlib.Event{"event": {Type: kind, Date: "1900", Participants: []glxlib.Participant{{Person: "p", Role: "subject"}}}},
+			EventProperties: map[string]*glxlib.PropertyDefinition{"ceremony": {ValueType: "string"}},
+			Assertions: map[string]*glxlib.Assertion{
+				"old":  {Subject: glxlib.EntityRef{Event: "event"}, Property: "ceremony", Value: "church", Status: "disproven"},
+				"live": {Subject: glxlib.EntityRef{Event: "event"}, Property: "ceremony", Value: "home", Status: "proven", Confidence: "high"},
+			},
+		}
+		proof, err := glxlib.BuildProof(archive, "p", kind, glxlib.ProofOptions{})
+		require.NoError(t, err)
+		require.Contains(t, proof.Summary, "1900")
+		require.NotContains(t, proof.Summary, "home")
+		require.True(t, proof.Conflicts[0].Resolved)
+		archive.Events["event"].Date = ""
+		proof, err = glxlib.BuildProof(archive, "p", kind, glxlib.ProofOptions{})
+		require.NoError(t, err)
+		require.Equal(t, glxlib.ConclusionInsufficient, proof.Conclusion, "a ceremony is not a date/place answer")
+		archive.Events["event"].Date = "1900"
+		archive.Assertions["old-date"] = &glxlib.Assertion{Subject: glxlib.EntityRef{Event: "event"}, Property: "date", Value: "1900", Status: "disproven"}
+		archive.Assertions["live-date"] = &glxlib.Assertion{Subject: glxlib.EntityRef{Event: "event"}, Property: "date", Value: "1910", Status: "proven"}
+		proof, err = glxlib.BuildProof(archive, "p", kind, glxlib.ProofOptions{})
+		require.NoError(t, err)
+		require.Contains(t, proof.Summary, "1910", "a resolved vital claim must replace stale structural data")
+		require.NotContains(t, proof.Summary, "1900")
+		require.NotContains(t, proof.Summary, "home")
+	}
+}

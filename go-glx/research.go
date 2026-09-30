@@ -47,6 +47,7 @@ func BuildEvidenceReport(archive *GLXFile, subject EntityRef, property string, o
 // Vital and marriage event claims must concern the person in a principal role.
 // Synthetic structural facts can reveal conflicts but never count as evidence
 // or support for a conclusion.
+// Only resolved claims answering the topic replace a structural answer.
 // It is read-only, deterministic, and supplies missing standard vocabularies.
 // Invalid options, unknown questions, nil archives and missing persons return
 // errors without mutating the archive. Returned data is owned by the caller.

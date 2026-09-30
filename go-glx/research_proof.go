@@ -725,7 +725,7 @@ func concludeProof(topic, personID string, archive *GLXFile, relevant []proofAss
 	answer, found := deriveProofAnswer(topic, personID, archive)
 	for i := range conflicts {
 		c := &conflicts[i]
-		if c.Resolved {
+		if c.Resolved && proofResolutionAnswersQuestion(c, topic, personID) {
 			if asserted, ok := answerFromAssertions(relevant, archive, topic, personID); ok {
 				answer, found = asserted, true
 			}
@@ -884,7 +884,7 @@ func answerFromAssertions(relevant []proofAssertion, archive *GLXFile, topic, pe
 		if relevant[i].synthetic || strings.EqualFold(a.Status, statusDisproven) {
 			continue
 		}
-		if a.Participant != nil && !participantAnswersQuestion(a.Participant, topic, personID) {
+		if !proofAssertionAnswersQuestion(&relevant[i], topic, personID) {
 			continue
 		}
 		value := proofAssertionValue(a, archive)
@@ -900,6 +900,45 @@ func answerFromAssertions(relevant []proofAssertion, archive *GLXFile, topic, pe
 	sort.Strings(values)
 
 	return "Supported by evidence: " + strings.Join(values, ", ") + ".", true
+}
+
+func proofAssertionAnswersQuestion(pa *proofAssertion, topic, personID string) bool {
+	if pa.a.Participant != nil {
+		return participantAnswersQuestion(pa.a.Participant, topic, personID)
+	}
+
+	return proofPropertyAnswersQuestion(pa.a.Subject, pa.eventType, pa.relType, pa.a.Property, topic)
+}
+
+func proofPropertyAnswersQuestion(subject EntityRef, eventType, relationshipType, property, topic string) bool {
+	kind, field := legacyVitalProperty(property)
+	vitalField := property == conflictDateType || property == eventFieldPlace
+	switch topic {
+	case topicBirth:
+		return subject.Person != "" && kind == EventTypeBirth && field != "" || isBirthEventType(eventType) && vitalField
+	case topicDeath:
+		return subject.Person != "" && (kind == EventTypeDeath || kind == EventTypeBurial) && field != "" || isDeathEventType(eventType) && vitalField
+	case topicMarriage:
+		return isMarriageEventType(eventType) && vitalField ||
+			(relationshipType == RelationshipTypeMarriage || relationshipType == RelationshipTypePartner) && (property == ParticipantRoleSpouse || property == RelationshipTypePartner)
+	default:
+		return true
+	}
+}
+
+func proofResolutionAnswersQuestion(conflict *ConflictGroup, topic, personID string) bool {
+	for i := range conflict.Facts {
+		fact := &conflict.Facts[i]
+		if fact.ParticipantPerson != "" {
+			if participantAnswersQuestion(&Participant{Person: fact.ParticipantPerson, Role: fact.ParticipantRole}, topic, personID) {
+				return true
+			}
+		} else if proofPropertyAnswersQuestion(fact.Subject, fact.EventType, fact.RelationshipType, fact.Property, topic) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func participantAnswersQuestion(participant *Participant, topic, personID string) bool {
