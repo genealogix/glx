@@ -157,13 +157,17 @@ func findEvidenceSubject(archive *glxlib.GLXFile, query string) (glxlib.EntityRe
 
 // printEvidenceText renders the human-readable report.
 func printEvidenceText(io *IOStreams, r *EvidenceReport) {
+	property := r.Property
+	if property == "" {
+		property = "participation and existence"
+	}
 	if len(r.Groups) == 0 && len(r.Undated) == 0 {
-		io.Printf("No assertions found for %s of %s (%s).\n", r.Property, r.SubjectName, r.Subject)
+		io.Printf("No assertions found for %s of %s (%s).\n", property, r.SubjectName, r.Subject)
 
 		return
 	}
 
-	io.Printf("Evidence for %s of %s (%s):\n", r.Property, r.SubjectName, r.Subject)
+	io.Printf("Evidence for %s of %s (%s):\n", property, r.SubjectName, r.Subject)
 	io.Printf("%d %s across %d %s\n\n",
 		r.TotalReports, pluralize(r.TotalReports, "report", "reports"),
 		len(r.Groups)+len(r.Undated), pluralize(len(r.Groups)+len(r.Undated), "value", "values"))
@@ -178,17 +182,34 @@ func printEvidenceText(io *IOStreams, r *EvidenceReport) {
 	}
 	for _, c := range r.Conflicts {
 		if c.Verdict == glxlib.VerdictDisputed && len(c.Values) == 2 && c.Values[0] == c.Values[1] {
-			io.Printf("  Known dispute: %s\n", c.Values[0].Value)
+			io.Printf("  Known dispute: %s\n", evidenceDisputeLabel(r, c))
 
 			continue
 		}
 		io.Printf("  %s conflict: %s / %s\n", c.Verdict, c.Values[0].Value, c.Values[1].Value)
 	}
-	if r.Temporal {
+	if r.Temporal || r.Property == "" {
 		return
 	}
 
 	printBestEvidence(io, r)
+}
+
+func evidenceDisputeLabel(report *EvidenceReport, conflict EvidenceConflict) string {
+	if report.Property != "" {
+		return conflict.Values[0].Value
+	}
+	if conflict.ParticipantPerson == "" {
+		return "existence asserted"
+	}
+	for i := range report.Groups {
+		group := &report.Groups[i]
+		if group.ParticipantPerson == conflict.ParticipantPerson && group.ParticipantRole == conflict.ParticipantRole && group.Date == conflict.Values[0].Date {
+			return group.Value
+		}
+	}
+
+	return conflict.ParticipantPerson
 }
 
 // printBestEvidence prints the closing best-evidence line (or a tie notice).
@@ -229,7 +250,8 @@ func pluralize(n int, singular, plural string) string {
 }
 
 func printEvidenceGroups(io *IOStreams, groups []EvidenceGroup) {
-	for _, g := range groups {
+	for i := range groups {
+		g := &groups[i]
 		if g.Date != "" {
 			io.Printf("  %s\n", g.Date)
 		}

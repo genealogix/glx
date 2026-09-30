@@ -20,9 +20,12 @@ import (
 
 // BuildEvidenceReport gathers one subject/property's evidence, ranked within
 // overlapping periods. Subject must contain one exact entity ID. An empty
-// property selects existence/participation assertions. Property matching prefers
-// exact spelling, then a case-insensitive match. Missing standard definitions
-// are supplied without changing archive or overriding custom vocabularies.
+// property selects existence/participation assertions.
+// Non-property claims are grouped by participant identity, role and date; their
+// coexistence does not imply a conflict or select one participant as a winner.
+// Property matching prefers exact spelling, then a case-insensitive match.
+// Missing standard definitions are supplied without changing archive or
+// overriding custom vocabularies.
 // Results are deterministic, detached from the archive and safe to modify.
 func BuildEvidenceReport(archive *GLXFile, subject EntityRef, property string, opts ComparisonOptions) (EvidenceReport, error) {
 	if err := opts.Validate(); err != nil {

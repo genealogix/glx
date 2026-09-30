@@ -17,6 +17,7 @@ package glx
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"reflect"
 	"sort"
 	"strings"
@@ -77,6 +78,8 @@ type MergePersonsResult struct {
 //
 // Property-merge rules:
 //   - Missing properties are copied, and identical values agree silently.
+//   - TemporalValue, []TemporalValue and mixed lists are normalized to GLX
+//     value/date objects before comparison; pointer forms are also accepted.
 //   - Vocabulary-defined temporal properties combine non-conflicting dated and
 //     undated history, whether the inputs are scalars, objects, or lists.
 //   - Genuine conflicts use keep's value by default. KeepNewest/KeepOldest
@@ -160,6 +163,9 @@ func requirePerson(glx *GLXFile, id, role string) error {
 // rules documented on MergePersons. Returns the count of new/replaced property
 // entries and any property collisions encountered.
 func mergePersonProperties(archive *GLXFile, keep, drop *Person, opts MergePersonsOptions) (added int, conflicts []PersonMergeConflict) {
+	for property, value := range keep.Properties {
+		keep.Properties[property] = normalizeTemporalProperty(value)
+	}
 	if len(drop.Properties) == 0 {
 		return 0, nil
 	}
@@ -172,7 +178,7 @@ func mergePersonProperties(archive *GLXFile, keep, drop *Person, opts MergePerso
 	}
 	sort.Strings(properties)
 	for _, prop := range properties {
-		dropVal := drop.Properties[prop]
+		dropVal := normalizeTemporalProperty(drop.Properties[prop])
 		keepVal, exists := keep.Properties[prop]
 		if !exists {
 			keep.Properties[prop] = dropVal
@@ -254,7 +260,7 @@ func propertyYear(v any) int {
 	if !ok {
 		return 0
 	}
-	switch d := m["date"].(type) {
+	switch d := m[temporalDateField].(type) {
 	case string:
 		return ExtractFirstYear(d)
 	case DateString:
@@ -320,7 +326,60 @@ func mergePersonNotes(keep, drop *Person, strategy NotesStrategy) int {
 	return 0
 }
 
+// normalizeTemporalProperty converts the SDK's typed history forms to the
+// canonical map/list representation used by deserialization and validation.
+// Maps and slices are copied when rewritten; caller-held typed values are not
+// modified. Unrelated structured fields remain intact.
+func normalizeTemporalProperty(value any) any {
+	switch v := value.(type) {
+	case TemporalValue:
+		entry := map[string]any{temporalValueField: v.Value}
+		if v.Date != "" {
+			entry[temporalDateField] = string(v.Date)
+		}
+
+		return entry
+	case *TemporalValue:
+		if v == nil {
+			return nil
+		}
+
+		return normalizeTemporalProperty(*v)
+	case []TemporalValue:
+		entries := make([]any, len(v))
+		for i, entry := range v {
+			entries[i] = normalizeTemporalProperty(entry)
+		}
+
+		return entries
+	case []*TemporalValue:
+		entries := make([]any, len(v))
+		for i, entry := range v {
+			entries[i] = normalizeTemporalProperty(entry)
+		}
+
+		return entries
+	case []any:
+		entries := make([]any, len(v))
+		for i, entry := range v {
+			entries[i] = normalizeTemporalProperty(entry)
+		}
+
+		return entries
+	case map[string]any:
+		if date, ok := v[temporalDateField].(DateString); ok {
+			entry := maps.Clone(v)
+			entry[temporalDateField] = string(date)
+
+			return entry
+		}
+	}
+
+	return value
+}
+
 func propertyEntries(v any) []any {
+	v = normalizeTemporalProperty(v)
 	if list, ok := v.([]any); ok {
 		return list
 	}
@@ -328,13 +387,17 @@ func propertyEntries(v any) []any {
 	return []any{v}
 }
 
-const temporalValueField = "value"
+const (
+	temporalValueField = "value"
+	temporalDateField  = "date"
+)
 
 func propertyFact(v any) FactValue {
+	v = normalizeTemporalProperty(v)
 	f := FactValue{}
 	if m, ok := v.(map[string]any); ok {
 		f.Value = propertyText(m[temporalValueField])
-		f.Date = DateString(propertyText(m["date"]))
+		f.Date = DateString(propertyText(m[temporalDateField]))
 		f.Status = propertyText(m["status"])
 		f.Confidence = propertyText(m["confidence"])
 	} else {
@@ -365,6 +428,7 @@ func propertyText(v any) string {
 // FormatPropertyValue renders scalar, structured and temporal property values
 // readably for merge reports, retaining dates and structured field details.
 func FormatPropertyValue(v any) string {
+	v = normalizeTemporalProperty(v)
 	if entries, ok := v.([]any); ok {
 		parts := make([]string, len(entries))
 		for i, entry := range entries {

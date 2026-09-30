@@ -39,19 +39,27 @@ type EvidenceItem struct {
 // EvidenceGroup holds every report that agrees on a single value, with the
 // best (highest-ranked) confidence seen among them.
 type EvidenceGroup struct {
-	Date           DateString     `json:"date,omitempty"`
-	RawValue       string         `json:"raw_value,omitempty"`
-	BestEvidence   string         `json:"best_evidence,omitempty"`
-	Value          string         `json:"value"`
-	Reports        int            `json:"reports"`
-	BestConfidence string         `json:"best_confidence,omitempty"`
-	Items          []EvidenceItem `json:"items"`
+	// ParticipantPerson and ParticipantRole identify participation claims when
+	// the report's property is empty. RawValue then contains the person ID.
+	ParticipantPerson string         `json:"participant_person,omitempty"`
+	ParticipantRole   string         `json:"participant_role,omitempty"`
+	Date              DateString     `json:"date,omitempty"`
+	RawValue          string         `json:"raw_value,omitempty"`
+	BestEvidence      string         `json:"best_evidence,omitempty"`
+	Value             string         `json:"value"`
+	Reports           int            `json:"reports"`
+	BestConfidence    string         `json:"best_confidence,omitempty"`
+	Items             []EvidenceItem `json:"items"`
 }
 
 // EvidenceConflict is a shared-engine verdict with the original claims.
 type EvidenceConflict struct {
-	Verdict Verdict     `json:"verdict"`
-	Values  []FactValue `json:"values"`
+	// ParticipantPerson and ParticipantRole identify an explicitly disputed
+	// participation claim; Values retains the original assertion's fact fields.
+	ParticipantPerson string      `json:"participant_person,omitempty"`
+	ParticipantRole   string      `json:"participant_role,omitempty"`
+	Verdict           Verdict     `json:"verdict"`
+	Values            []FactValue `json:"values"`
 }
 
 // EvidenceReport is a deterministic evidence breakdown. Temporal groups are
@@ -75,9 +83,9 @@ type EvidenceReport struct {
 	Property     string          `json:"property"`
 	TotalReports int             `json:"total_reports"`
 	Groups       []EvidenceGroup `json:"groups"`
-	// BestEvidence is the winning value, or "" when the top two groups tie on
-	// both report count and confidence — an unresolved conflict surfaced to the
-	// researcher rather than papered over.
+	// BestEvidence is the winning fixed-property value, or "" when the top two
+	// groups tie on both report count and confidence. Temporal histories and
+	// empty-property existence/participation reports have no overall winner.
 	BestEvidence string `json:"best_evidence,omitempty"`
 }
 
@@ -140,34 +148,21 @@ func collectEvidence(archive *GLXFile, subject EntityRef, property string, optio
 	report.Temporal = IsTemporalProperty(def)
 	report.Conflicts = evidenceConflicts(assertions, def, archive, comparisonOptions(options))
 
-	groups := make(map[string]*EvidenceGroup)
+	groups := make(map[evidenceClaimKey]*EvidenceGroup)
 	// citationIdx maps value -> citationID -> index of that citation's report in
 	// the group's Items. The same record cited for the same value by more than
 	// one assertion is a single report — but its confidence is upgraded to the
 	// strongest seen across those assertions, rather than whichever was seen first.
-	citationIdx := make(map[string]map[string]int)
+	citationIdx := make(map[evidenceClaimKey]map[string]int)
 
 	for _, a := range assertions {
 		if strings.EqualFold(a.Status, "disproven") {
 			continue
 		}
-		// Resolve against the matched assertion's own property key (a.Property),
-		// not the raw query string: under the case-insensitive fallback the query
-		// casing can differ, and placeRefProperties / PersonProperties lookups are
-		// case-sensitive, so resolving by the query would miss place/person/event
-		// references.
-		value := factDisplay(a.Value, subject, a.Property, archive)
-		if value == "" {
-			value = unspecifiedValue
-		}
-
 		key := evidenceGroupKey(a, groups, def, archive, comparisonOptions(options))
 		g, ok := groups[key]
 		if !ok {
-			g = &EvidenceGroup{Value: value, RawValue: a.Value}
-			if report.Temporal {
-				g.Date = a.Date
-			}
+			g = newEvidenceGroup(a, subject, archive, report.Temporal)
 			groups[key] = g
 			citationIdx[key] = make(map[string]int)
 		}
@@ -194,21 +189,42 @@ func collectEvidence(archive *GLXFile, subject EntityRef, property string, optio
 		}
 	}
 
-	// Group order is fully determined by sortEvidenceGroups: values are unique,
-	// so its Value tiebreaker makes the ordering total and map iteration order
-	// cannot affect the result.
+	// Raw identity, role and date distinguish equal display labels when ranking
+	// ties, so map iteration cannot change the returned order.
 	report.Groups = make([]EvidenceGroup, 0, len(groups))
 	for _, g := range groups {
 		sortEvidenceItems(g.Items)
 		report.Groups = append(report.Groups, *g)
 	}
 	sortEvidenceGroups(report.Groups)
-	report.BestEvidence = bestEvidence(report.Groups)
+	if canonicalProperty != "" {
+		report.BestEvidence = bestEvidence(report.Groups)
+	}
 	if report.Temporal {
 		arrangeEvidenceHistory(&report)
 	}
 
 	return report
+}
+
+func newEvidenceGroup(a *Assertion, subject EntityRef, archive *GLXFile, temporal bool) *EvidenceGroup {
+	// Resolve references with the matched assertion's property key: a
+	// case-insensitive query may have different spelling from the vocabulary.
+	g := &EvidenceGroup{Value: factDisplay(a.Value, subject, a.Property, archive), RawValue: a.Value}
+	if a.Property == "" && a.Participant != nil {
+		g.Value = participantEvidenceValue(a.Participant, archive)
+		g.ParticipantPerson = a.Participant.Person
+		g.ParticipantRole = a.Participant.Role
+		g.RawValue = a.Participant.Person
+	}
+	if g.Value == "" {
+		g.Value = unspecifiedValue
+	}
+	if temporal || a.Property == "" {
+		g.Date = a.Date
+	}
+
+	return g
 }
 
 // matchingAssertions returns the assertions whose subject is subject and whose
@@ -417,6 +433,9 @@ func sortEvidenceGroups(groups []EvidenceGroup) {
 		if groups[i].RawValue != groups[j].RawValue {
 			return groups[i].RawValue < groups[j].RawValue
 		}
+		if groups[i].ParticipantRole != groups[j].ParticipantRole {
+			return groups[i].ParticipantRole < groups[j].ParticipantRole
+		}
 
 		return groups[i].Date < groups[j].Date
 	})
@@ -442,12 +461,13 @@ func bestEvidence(groups []EvidenceGroup) string {
 func arrangeEvidenceHistory(report *EvidenceReport) {
 	report.BestEvidence = ""
 	dated := make([]EvidenceGroup, 0, len(report.Groups))
-	for _, g := range report.Groups {
+	for i := range report.Groups {
+		g := &report.Groups[i]
 		d, _ := g.Date.Parse()
 		if !d.Timing().Known {
-			report.Undated = append(report.Undated, g)
+			report.Undated = append(report.Undated, *g)
 		} else {
-			dated = append(dated, g)
+			dated = append(dated, *g)
 		}
 	}
 	sort.SliceStable(dated, func(i, j int) bool {
@@ -484,6 +504,9 @@ func arrangeEvidenceHistory(report *EvidenceReport) {
 }
 
 func evidenceConflicts(assertions []*Assertion, def *PropertyDefinition, archive *GLXFile, opts ComparisonOptions) []EvidenceConflict {
+	if len(assertions) > 0 && assertions[0].Property == "" {
+		return nonPropertyEvidenceDisputes(assertions, archive, opts)
+	}
 	var conflicts []EvidenceConflict
 	facts := make([]FactValue, len(assertions))
 	for i, a := range assertions {
@@ -498,10 +521,26 @@ func evidenceConflicts(assertions []*Assertion, def *PropertyDefinition, archive
 	return conflicts
 }
 
-func evidenceGroupKey(a *Assertion, groups map[string]*EvidenceGroup, def *PropertyDefinition, archive *GLXFile, opts ComparisonOptions) string {
-	key := a.Value
+type evidenceClaimKey struct {
+	value, person, role string
+	date                DateString
+	participation       bool
+}
+
+func evidenceGroupKey(a *Assertion, groups map[evidenceClaimKey]*EvidenceGroup, def *PropertyDefinition, archive *GLXFile, opts ComparisonOptions) evidenceClaimKey {
+	key := evidenceClaimKey{value: a.Value}
+	if a.Property == "" {
+		key.date = a.Date
+		if a.Participant != nil {
+			key.participation = true
+			key.person = a.Participant.Person
+			key.role = a.Participant.Role
+		}
+
+		return key
+	}
 	if IsTemporalProperty(def) {
-		key += "\x00" + string(a.Date)
+		key.date = a.Date
 	}
 	for existing, group := range groups {
 		if IsTemporalProperty(def) && group.Date != a.Date {
@@ -529,4 +568,41 @@ func simultaneousEvidence(groups []EvidenceGroup) bool {
 	}
 
 	return true
+}
+
+// Membership claims may all be true (including different roles for one person).
+// An empty-property report preserves explicit disputes without inferring a
+// contradiction between different participants or an existence assertion.
+func nonPropertyEvidenceDisputes(assertions []*Assertion, archive *GLXFile, opts ComparisonOptions) []EvidenceConflict {
+	var disputes []EvidenceConflict
+	for _, a := range assertions {
+		fact := AssertionFact(a)
+		for _, comparison := range compareFacts([]FactValue{fact}, nil, archive.Places, opts) {
+			if !comparison.IsConflict() {
+				continue
+			}
+			dispute := EvidenceConflict{Verdict: comparison.Verdict, Values: []FactValue{fact, fact}}
+			if a.Participant != nil {
+				dispute.ParticipantPerson = a.Participant.Person
+				dispute.ParticipantRole = a.Participant.Role
+			}
+			disputes = append(disputes, dispute)
+		}
+	}
+
+	return disputes
+}
+
+func participantEvidenceValue(participant *Participant, archive *GLXFile) string {
+	value := personName(archive, participant.Person)
+	if value == "" {
+		value = "(unspecified participant)"
+	} else if value != participant.Person {
+		value += " (" + participant.Person + ")"
+	}
+	if participant.Role != "" {
+		value += " — " + participant.Role
+	}
+
+	return value
 }

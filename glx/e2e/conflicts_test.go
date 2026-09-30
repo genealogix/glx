@@ -286,3 +286,83 @@ assertions:
 		require.Contains(t, rendered.stdout, "resolution needed")
 	}
 }
+
+func TestMergePersonsDoesNotPersistComparisonDefaults(t *testing.T) {
+	for _, custom := range []bool{false, true} {
+		t.Run(strconv.FormatBool(custom), func(t *testing.T) {
+			dir := t.TempDir()
+			path := filepath.Join(dir, "archive.glx")
+			data := `persons:
+  p:
+    properties:
+      name: Pat
+      occupation: {value: miller, date: "1851"}
+  q:
+    properties:
+      name: Pat
+      occupation: {value: farmer, date: "1875"}
+`
+			if custom {
+				data += `person_properties:
+  custom_note: {label: Custom note, value_type: string}
+`
+			}
+			require.NoError(t, os.WriteFile(path, []byte(data), 0o600))
+			result := runGLX(t, dir, "merge-persons", "p", "q", "--archive", path)
+			require.Equal(t, 0, result.exitCode, result.stderr)
+			require.NotContains(t, result.stderr, "Conflict")
+			saved, err := os.ReadFile(path)
+			require.NoError(t, err)
+			archive, err := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false}).DeserializeSingleFileBytes(saved)
+			require.NoError(t, err)
+			require.Len(t, archive.Persons["p"].Properties["occupation"], 2, "comparison defaults must still preserve dated history")
+			require.Nil(t, archive.EventTypes)
+			require.Nil(t, archive.RelationshipTypes)
+			require.Nil(t, archive.ParticipantRoles)
+			require.Nil(t, archive.ConfidenceLevels)
+			require.Nil(t, archive.EventProperties)
+			if custom {
+				require.Len(t, archive.PersonProperties, 1)
+				require.Equal(t, "Custom note", archive.PersonProperties["custom_note"].Label)
+			} else {
+				require.Nil(t, archive.PersonProperties)
+			}
+		})
+	}
+}
+
+func TestEvidenceShowsDistinctParticipants(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "archive.glx")
+	require.NoError(t, os.WriteFile(path, []byte(`persons:
+  p: {properties: {name: Alex}}
+  q: {properties: {name: Alex}}
+events:
+  event: {type: birth}
+sources:
+  source: {title: Register}
+citations:
+  citation: {source: source}
+assertions:
+  parent-p: {subject: {event: event}, participant: {person: p, role: parent}, citations: [citation]}
+  parent-q: {subject: {event: event}, participant: {person: q, role: parent}, citations: [citation]}
+  witness-p: {subject: {event: event}, participant: {person: p, role: witness}, citations: [citation], status: disputed}
+`), 0o600))
+	result := runGLX(t, dir, "evidence", "event", "", "--archive", path)
+	require.Equal(t, 0, result.exitCode, result.stderr)
+	require.Contains(t, result.stdout, "participation and existence")
+	for _, label := range []string{"Alex (p) — parent", "Alex (q) — parent", "Alex (p) — witness"} {
+		require.Contains(t, result.stdout, label)
+	}
+	require.Contains(t, result.stdout, "3 reports across 3 values")
+	require.Contains(t, result.stdout, "Known dispute: Alex (p) — witness")
+	require.NotContains(t, result.stdout, "Best evidence:")
+	asJSON := runGLX(t, dir, "evidence", "event", "", "--archive", path, "--format", "json")
+	require.Equal(t, 0, asJSON.exitCode, asJSON.stderr)
+	var report glxlib.EvidenceReport
+	require.NoError(t, json.Unmarshal([]byte(asJSON.stdout), &report))
+	require.Len(t, report.Groups, 3)
+	require.Len(t, report.Conflicts, 1)
+	require.Equal(t, "p", report.Conflicts[0].ParticipantPerson)
+	require.Equal(t, "witness", report.Conflicts[0].ParticipantRole)
+}

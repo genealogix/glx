@@ -51,10 +51,6 @@ func mergePersons(archivePath, keepID, dropID string, opts glxlib.MergePersonsOp
 		archive = loaded
 	}
 
-	if err := mergeStandardVocabularies(archive); err != nil {
-		return err
-	}
-
 	result, err := glxlib.MergePersons(archive, keepID, dropID, opts)
 	if err != nil {
 		return err

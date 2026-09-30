@@ -102,7 +102,7 @@ func (index *personFactIndex) eventScopes(archive *GLXFile, wanted map[string]bo
 		// Check every original role: someone listed as both witness and subject is
 		// a principal even when the witness entry happens to appear first.
 		for _, p := range event.Participants {
-			if !wanted[p.Person] || seen[p.Person] || !isVitalPrincipal(p.Role) {
+			if !wanted[p.Person] || seen[p.Person] || !isVitalPrincipal(event.Type, p.Role) {
 				continue
 			}
 			seen[p.Person] = true
@@ -132,10 +132,14 @@ func selectedResearchParticipants(participants []Participant, wanted map[string]
 	return selected
 }
 
-func isVitalPrincipal(role string) bool {
+func isVitalPrincipal(eventType, role string) bool {
 	switch role {
-	case "", ParticipantRoleSubject, ParticipantRolePrincipal, ParticipantRoleChild, "deceased":
+	case "", ParticipantRoleSubject, ParticipantRolePrincipal:
 		return true
+	case ParticipantRoleChild:
+		return eventType == EventTypeBirth
+	case "deceased":
+		return eventType == EventTypeDeath
 	default:
 		return false
 	}

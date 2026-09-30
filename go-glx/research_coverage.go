@@ -138,7 +138,8 @@ func collectPersonSources(personID string, archive *GLXFile) []personSourceInfo 
 	seen := make(map[string]bool)
 
 	// From assertions about this person
-	for _, assertion := range archive.Assertions {
+	for _, assertionID := range sortedKeys(archive.Assertions) {
+		assertion := archive.Assertions[assertionID]
 		if assertion == nil || assertion.Subject.ID() != personID {
 			continue
 		}
