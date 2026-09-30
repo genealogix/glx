@@ -103,6 +103,8 @@ func (c FactComparison) IsConflict() bool {
 // not transitive: a broad date or ancestor place must not bridge two conflicting
 // precise claims. This pure function never modifies its inputs.
 // A singleton known dispute is represented by a self-pair (Left == Right).
+// Explicit disputes remain visible even when a temporal claim has no known
+// period; missing timing only prevents inferring conflicts between values.
 func CompareFacts(values []FactValue, definition *PropertyDefinition, places map[string]*Place, opts ComparisonOptions) ([]FactComparison, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, err
@@ -136,12 +138,6 @@ func compareFacts(values []FactValue, definition *PropertyDefinition, places map
 			continue
 		}
 		definite := !IsTemporalProperty(definition)
-		if !definite {
-			date, _ := value.Date.Parse()
-			if !date.Timing().Known {
-				continue
-			}
-		}
 		result = append(result, FactComparison{Left: i, Right: i, Verdict: VerdictDisputed, Definite: definite})
 	}
 
@@ -264,7 +260,7 @@ func ConflictProperty(archive *GLXFile, subject EntityRef, property string) *Pro
 	case EntityTypePlaces:
 		definitions = archive.PlaceProperties
 	}
-	if def := definitions[property]; def != nil {
+	if def, defined := definitions[property]; defined {
 		return def
 	}
 	if subject.Event != "" {

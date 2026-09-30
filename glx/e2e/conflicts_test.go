@@ -237,3 +237,52 @@ assertions:
 		})
 	}
 }
+
+func TestUndatedDisputeRemainsVisible(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "archive.glx")
+	require.NoError(t, os.WriteFile(path, []byte(`persons:
+  p:
+    properties: {name: Mary}
+sources:
+  register: {title: Register}
+assertions:
+  disputed-name:
+    subject: {person: p}
+    property: name
+    value: Mary Green
+    sources: [register]
+    confidence: high
+    status: disputed
+`), 0o600))
+	proof := runGLX(t, dir, "proof", "p", "--question", "identity", "--archive", path, "--format", "json")
+	require.Equal(t, 0, proof.exitCode, proof.stderr)
+	var report struct {
+		Conclusion, Summary string
+		Conflicts           []struct {
+			Verdict  string
+			Definite bool
+		}
+	}
+	require.NoError(t, json.Unmarshal([]byte(proof.stdout), &report))
+	require.Equal(t, "POSSIBLE", report.Conclusion)
+	require.Contains(t, report.Summary, "Known dispute")
+	require.Len(t, report.Conflicts, 1)
+	require.Equal(t, "known-dispute", report.Conflicts[0].Verdict)
+	require.False(t, report.Conflicts[0].Definite)
+	evidence := runGLX(t, dir, "evidence", "p", "name", "--archive", path)
+	require.Equal(t, 0, evidence.exitCode, evidence.stderr)
+	require.Contains(t, evidence.stdout, "Undated:")
+	require.Contains(t, evidence.stdout, "Known dispute: Mary Green")
+	require.NotContains(t, evidence.stdout, "Mary Green / Mary Green")
+	analysis := runGLX(t, dir, "analyze", "--check", "conflicts", "--archive", path, "--format", "json")
+	require.Equal(t, 0, analysis.exitCode, analysis.stderr)
+	require.Contains(t, analysis.stdout, `"severity": "low"`)
+	require.NotContains(t, analysis.stdout, `"severity": "high"`)
+	for _, format := range []string{"text", "markdown"} {
+		rendered := runGLX(t, dir, "proof", "p", "--question", "identity", "--archive", path, "--format", format)
+		require.Equal(t, 0, rendered.exitCode, rendered.stderr)
+		require.Contains(t, rendered.stdout, "dispute")
+		require.Contains(t, rendered.stdout, "resolution needed")
+	}
+}

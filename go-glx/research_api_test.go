@@ -17,6 +17,7 @@ package glx_test
 import (
 	"encoding/json"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 
@@ -338,4 +339,132 @@ func BenchmarkResearchAPI_AnalyzeConflicts(b *testing.B) {
 			}
 		})
 	}
+}
+
+func TestResearchAPI_NilOverridesSuppressFallbackSemantics(t *testing.T) {
+	cases := []struct {
+		name, property, first, second string
+		subject                       glxlib.EntityRef
+	}{
+		{"legacy date", "born_on", "ABT 1850", "1851", glxlib.EntityRef{Person: "p"}},
+		{"event date", "date", "1850", "1850-03-02", glxlib.EntityRef{Event: "birth"}},
+		{"legacy place", "born_at", "county", "state", glxlib.EntityRef{Person: "p"}},
+		{"event place", "place", "county", "state", glxlib.EntityRef{Event: "birth"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			archive := researchFixture()
+			archive.Places = map[string]*glxlib.Place{"county": {Name: "County", ParentID: "state"}, "state": {Name: "State"}}
+			archive.Assertions = map[string]*glxlib.Assertion{
+				"first":  {Subject: tc.subject, Property: tc.property, Value: tc.first, Confidence: "high"},
+				"second": {Subject: tc.subject, Property: tc.property, Value: tc.second, Confidence: "high"},
+			}
+			original, err := glxlib.BuildEvidenceReport(archive, tc.subject, tc.property, glxlib.ComparisonOptions{})
+			require.NoError(t, err)
+			require.Empty(t, original.Conflicts, "absent definitions retain the fallback refinement")
+			if tc.subject.Person != "" {
+				archive.PersonProperties = map[string]*glxlib.PropertyDefinition{tc.property: nil}
+			} else {
+				archive.EventProperties = map[string]*glxlib.PropertyDefinition{tc.property: nil}
+			}
+			require.NoError(t, glxlib.MergeStandardVocabularies(archive))
+			require.Nil(t, glxlib.ConflictProperty(archive, tc.subject, tc.property))
+			before := snapshot(t, archive)
+			report, err := glxlib.BuildEvidenceReport(archive, tc.subject, tc.property, glxlib.ComparisonOptions{})
+			require.NoError(t, err)
+			require.Len(t, report.Conflicts, 1)
+			require.Equal(t, glxlib.VerdictDefinite, report.Conflicts[0].Verdict)
+			proof, err := glxlib.BuildProof(archive, "p", glxlib.QuestionBirth, glxlib.ProofOptions{})
+			require.NoError(t, err)
+			require.Equal(t, glxlib.ConclusionConflicted, proof.Conclusion)
+			findings, err := glxlib.AnalyzeConflicts(archive, glxlib.ConflictAnalysisOptions{})
+			require.NoError(t, err)
+			require.Len(t, findings, 1)
+			require.Equal(t, "high", findings[0].Severity)
+			require.JSONEq(t, before, snapshot(t, archive))
+		})
+	}
+	archive := researchFixture()
+	archive.PersonProperties = map[string]*glxlib.PropertyDefinition{"born_on": nil}
+	archive.Persons["p"].Properties["born_on"] = "ABT 1850"
+	archive.Persons["q"].Properties["born_on"] = "1851"
+	merged, err := glxlib.MergePersons(archive, "p", "q", glxlib.MergePersonsOptions{})
+	require.NoError(t, err)
+	require.Len(t, merged.Conflicts, 1)
+	require.Equal(t, "born_on", merged.Conflicts[0].Property)
+}
+
+func TestResearchAPI_MarriageCoverageOrder(t *testing.T) {
+	archive := researchFixture()
+	archive.Persons["s-a"] = &glxlib.Person{Properties: map[string]any{"name": "Alpha"}}
+	archive.Persons["s-b"] = &glxlib.Person{Properties: map[string]any{"name": "Beta"}}
+	archive.Persons["s-c"] = &glxlib.Person{Properties: map[string]any{"name": "Gamma"}}
+	archive.Relationships = map[string]*glxlib.Relationship{
+		"rel-c": {Type: "marriage", Participants: []glxlib.Participant{{Person: "p", Role: "spouse"}, {Person: "s-c", Role: "spouse"}}},
+		"rel-a": {Type: "marriage", Participants: []glxlib.Participant{{Person: "p", Role: "spouse"}, {Person: "s-a", Role: "spouse"}}},
+		"rel-b": {Type: "marriage", Participants: []glxlib.Participant{{Person: "p", Role: "spouse"}, {Person: "s-b", Role: "spouse"}}},
+		"nil":   nil,
+	}
+	want := []string{"Marriage record — Alpha", "Marriage record — Beta", "Marriage record — Gamma"}
+	for range 30 {
+		coverage, err := glxlib.BuildCoverage(archive, "p", glxlib.CoverageOptions{})
+		require.NoError(t, err)
+		var marriages []string
+		for _, record := range coverage.Records {
+			if strings.HasPrefix(record.Label, "Marriage record") {
+				marriages = append(marriages, record.Label)
+			}
+		}
+		require.Equal(t, want, marriages)
+		proof, err := glxlib.BuildProof(archive, "p", glxlib.QuestionMarriage, glxlib.ProofOptions{})
+		require.NoError(t, err)
+		gaps := make([]string, 0, len(proof.Gaps))
+		for _, gap := range proof.Gaps {
+			gaps = append(gaps, gap.Label)
+		}
+		require.Equal(t, want, gaps)
+	}
+}
+
+func TestResearchAPI_UndatedDisputePreserved(t *testing.T) {
+	for _, date := range []glxlib.DateString{"", "spring"} {
+		for _, status := range []string{"", "disputed", "DISPUTED"} {
+			t.Run(string(date)+"/"+status, func(t *testing.T) {
+				archive := researchFixture()
+				archive.Assertions = map[string]*glxlib.Assertion{"claim": {Subject: glxlib.EntityRef{Person: "p"}, Property: "name", Value: "Mary Green", Date: date, Confidence: "high", Status: status}}
+				findings, err := glxlib.AnalyzeConflicts(archive, glxlib.ConflictAnalysisOptions{})
+				require.NoError(t, err)
+				evidence, err := glxlib.BuildEvidenceReport(archive, glxlib.EntityRef{Person: "p"}, "name", glxlib.ComparisonOptions{})
+				require.NoError(t, err)
+				require.Len(t, evidence.Undated, 1)
+				proof, err := glxlib.BuildProof(archive, "p", glxlib.QuestionIdentity, glxlib.ProofOptions{})
+				require.NoError(t, err)
+				require.Len(t, proof.Undated, 1)
+				if status == "" {
+					require.Empty(t, findings)
+					require.Empty(t, evidence.Conflicts)
+					require.Empty(t, proof.Conflicts)
+					require.Equal(t, glxlib.ConclusionProven, proof.Conclusion)
+				} else {
+					require.Len(t, findings, 1)
+					require.Equal(t, "low", findings[0].Severity)
+					require.Len(t, evidence.Conflicts, 1)
+					require.Equal(t, glxlib.VerdictDisputed, evidence.Conflicts[0].Verdict)
+					require.Len(t, proof.Conflicts, 1)
+					require.Equal(t, glxlib.VerdictDisputed, proof.Conflicts[0].Verdict)
+					require.False(t, proof.Conflicts[0].Definite)
+					require.Equal(t, glxlib.ConclusionPossible, proof.Conclusion)
+				}
+			})
+		}
+	}
+	temporal := true
+	definition := &glxlib.PropertyDefinition{Temporal: &temporal}
+	values := []glxlib.FactValue{{Value: "Mary Green", Status: "disputed"}, {Value: "Mary Jones", Date: "1890"}}
+	comparisons, err := glxlib.CompareFacts(values, definition, nil, glxlib.ComparisonOptions{})
+	require.NoError(t, err)
+	require.Len(t, comparisons, 2)
+	require.Equal(t, glxlib.VerdictHistory, comparisons[0].Verdict, "undated claims still cannot imply an overlap")
+	require.Equal(t, glxlib.VerdictDisputed, comparisons[1].Verdict)
+	require.Equal(t, comparisons[1].Left, comparisons[1].Right, "the dispute is explicitly recorded, not inferred between claims")
 }

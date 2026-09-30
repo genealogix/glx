@@ -689,13 +689,7 @@ func concludeProof(topic, personID string, archive *GLXFile, relevant []proofAss
 		}
 	}
 
-	possible := false
-	for i := range conflicts {
-		c := &conflicts[i]
-		if !c.Resolved && !c.Definite {
-			possible = true
-		}
-	}
+	caveat := proofConflictCaveat(conflicts)
 
 	answer, found := deriveProofAnswer(topic, personID, archive)
 	for i := range conflicts {
@@ -723,9 +717,9 @@ func concludeProof(topic, personID string, archive *GLXFile, relevant []proofAss
 	}
 
 	level := supportLevel(relevant)
-	if possible {
+	if caveat != "" {
 		level = min(level, supportWeak)
-		answer += " Possible conflict — check the recorded periods."
+		answer += " " + caveat
 	}
 	switch level {
 	case supportStrong:
@@ -737,6 +731,24 @@ func concludeProof(topic, personID string, archive *GLXFile, relevant []proofAss
 	default:
 		return proofConclusionInsufficient, insufficientSummary(topic, gaps)
 	}
+}
+
+func proofConflictCaveat(conflicts []ConflictGroup) string {
+	var caveat string
+	for i := range conflicts {
+		c := &conflicts[i]
+		if c.Resolved {
+			continue
+		}
+		if c.Verdict == VerdictDisputed {
+			return "Known dispute — review the disputed evidence."
+		}
+		if !c.Definite {
+			caveat = "Possible conflict — check the recorded periods."
+		}
+	}
+
+	return caveat
 }
 
 // supportLevel returns the strongest support score among non-disproven relevant

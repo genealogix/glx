@@ -177,6 +177,11 @@ func printEvidenceText(io *IOStreams, r *EvidenceReport) {
 		printEvidenceGroups(io, r.Undated)
 	}
 	for _, c := range r.Conflicts {
+		if c.Verdict == glxlib.VerdictDisputed && len(c.Values) == 2 && c.Values[0] == c.Values[1] {
+			io.Printf("  Known dispute: %s\n", c.Values[0].Value)
+
+			continue
+		}
 		io.Printf("  %s conflict: %s / %s\n", c.Verdict, c.Values[0].Value, c.Values[1].Value)
 	}
 	if r.Temporal {

@@ -436,7 +436,8 @@ func buildMarriageRecords(personID string, archive *GLXFile, evidenced map[strin
 	var records []CoverageRecord
 
 	// Find spouse relationships
-	for _, rel := range archive.Relationships {
+	for _, relID := range sortedKeys(archive.Relationships) {
+		rel := archive.Relationships[relID]
 		if rel == nil {
 			continue
 		}

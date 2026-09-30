@@ -233,6 +233,8 @@ func printProofConflictText(io *IOStreams, c *proofConflict) {
 	io.Printf("    ! %s: %s\n", conflictLabel(c), conflictValuesString(c))
 	if c.Resolved {
 		io.Printf("      RESOLVED: %s\n", c.Resolution)
+	} else if c.Verdict == glxlib.VerdictDisputed {
+		io.Printf("      KNOWN DISPUTE — resolution needed\n")
 	} else if !c.Definite && c.Verdict != "" {
 		io.Printf("      possible — check\n")
 	} else {
@@ -390,6 +392,8 @@ func printMarkdownConflicts(io *IOStreams, conflicts []proofConflict) {
 		io.Printf("- **%s:** %s\n", conflictLabel(c), conflictValuesString(c))
 		if c.Resolved {
 			io.Printf("  - _Resolved:_ %s\n", c.Resolution)
+		} else if c.Verdict == glxlib.VerdictDisputed {
+			io.Printf("  - _Known dispute — resolution needed._\n")
 		} else if !c.Definite && c.Verdict != "" {
 			io.Printf("  - _possible — check._\n")
 		} else {
