@@ -513,3 +513,49 @@ assertions:
 		}
 	}
 }
+
+func TestProofContextCannotStrengthenVitalAnswer(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "archive.glx")
+	require.NoError(t, os.WriteFile(path, []byte(`persons:
+  p: {}
+events:
+  birth: {type: birth, date: "1900", participants: [{person: p, role: subject}]}
+event_properties:
+  ceremony: {value_type: string}
+assertions:
+  context: {subject: {event: birth}, property: ceremony, value: home, confidence: high}
+`), 0o600))
+	result := runGLX(t, dir, "proof", "p", "--question", "birth", "--archive", path, "--format", "json")
+	require.Equal(t, 0, result.exitCode, result.stderr)
+	var proof glxlib.ProofResult
+	require.NoError(t, json.Unmarshal([]byte(result.stdout), &proof))
+	require.Equal(t, glxlib.ConclusionInsufficient, proof.Conclusion)
+	require.Len(t, proof.Evidence, 1)
+}
+
+func TestEvidenceRendersAndDeduplicatesMedia(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "archive.glx")
+	require.NoError(t, os.WriteFile(path, []byte(`persons:
+  p: {}
+media:
+  scan: {uri: record.jpg, title: Register scan}
+assertions:
+  a: {subject: {person: p}, property: claim, value: "A", media: [scan], confidence: low}
+  b: {subject: {person: p}, property: claim, value: "A", media: [scan], confidence: high}
+`), 0o600))
+	result := runGLX(t, dir, "evidence", "p", "claim", "--archive", path)
+	require.Equal(t, 0, result.exitCode, result.stderr)
+	require.Contains(t, result.stdout, "1 report across 1 value")
+	require.Contains(t, result.stdout, "Register scan")
+	require.Contains(t, result.stdout, "scan")
+	require.NotContains(t, result.stdout, "(no citation)")
+	result = runGLX(t, dir, "evidence", "p", "claim", "--archive", path, "--format", "json")
+	require.Equal(t, 0, result.exitCode, result.stderr)
+	var evidence glxlib.EvidenceReport
+	require.NoError(t, json.Unmarshal([]byte(result.stdout), &evidence))
+	require.Equal(t, 1, evidence.TotalReports)
+	require.Equal(t, "scan", evidence.Groups[0].Items[0].MediaID)
+	require.Equal(t, "high", evidence.Groups[0].Items[0].Confidence)
+}

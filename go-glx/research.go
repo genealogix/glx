@@ -48,6 +48,7 @@ func BuildEvidenceReport(archive *GLXFile, subject EntityRef, property string, o
 // Synthetic structural facts can reveal conflicts but never count as evidence
 // or support for a conclusion.
 // Only resolved claims answering the topic replace a structural answer.
+// Related context can appear in Evidence but cannot strengthen the conclusion.
 // It is read-only, deterministic, and supplies missing standard vocabularies.
 // Invalid options, unknown questions, nil archives and missing persons return
 // errors without mutating the archive. Returned data is owned by the caller.

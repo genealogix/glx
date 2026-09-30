@@ -257,7 +257,11 @@ func printEvidenceGroups(io *IOStreams, groups []EvidenceGroup) {
 		}
 		io.Printf("  %s — %d %s, best confidence: %s\n", g.Value, g.Reports, pluralize(g.Reports, "report", "reports"), displayOrDash(g.BestConfidence))
 		for _, item := range g.Items {
-			io.Printf("    %-32s %-30s %s\n", displayOrDash(item.CitationID), item.Source, displayOrDash(item.Confidence))
+			reference := item.CitationID
+			if reference == "" {
+				reference = item.MediaID
+			}
+			io.Printf("    %-32s %-30s %s\n", displayOrDash(reference), item.Source, displayOrDash(item.Confidence))
 		}
 		if g.BestEvidence != "" {
 			io.Printf("    Best evidence among overlapping claims: %s\n", g.BestEvidence)

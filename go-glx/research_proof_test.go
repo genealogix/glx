@@ -360,23 +360,23 @@ func TestDetectProofConflicts_DistinctPlacesSameName(t *testing.T) {
 
 func TestSupportLevel(t *testing.T) {
 	proven := []proofAssertion{{a: &Assertion{Status: "proven"}}}
-	assert.Equal(t, supportStrong, supportLevel(proven))
+	assert.Equal(t, supportStrong, supportLevel(proven, topicIdentity, "p"))
 
 	high := []proofAssertion{{a: &Assertion{Confidence: "high"}}}
-	assert.Equal(t, supportStrong, supportLevel(high))
+	assert.Equal(t, supportStrong, supportLevel(high, topicIdentity, "p"))
 
 	medium := []proofAssertion{{a: &Assertion{Confidence: "medium"}}}
-	assert.Equal(t, supportModerate, supportLevel(medium))
+	assert.Equal(t, supportModerate, supportLevel(medium, topicIdentity, "p"))
 
 	low := []proofAssertion{{a: &Assertion{Confidence: "low"}}}
-	assert.Equal(t, supportWeak, supportLevel(low))
+	assert.Equal(t, supportWeak, supportLevel(low, topicIdentity, "p"))
 
 	none := []proofAssertion{}
-	assert.Equal(t, supportNone, supportLevel(none))
+	assert.Equal(t, supportNone, supportLevel(none, topicIdentity, "p"))
 
 	// A disproven assertion provides no support.
 	disproven := []proofAssertion{{a: &Assertion{Confidence: "high", Status: "disproven"}}}
-	assert.Equal(t, supportNone, supportLevel(disproven))
+	assert.Equal(t, supportNone, supportLevel(disproven, topicIdentity, "p"))
 }
 
 func TestGapRelevant(t *testing.T) {

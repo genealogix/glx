@@ -321,8 +321,9 @@ func TestResearchAPI_UnrelatedResolutionsPreserveVitalAnswers(t *testing.T) {
 			Events:          map[string]*glxlib.Event{"event": {Type: kind, Date: "1900", Participants: []glxlib.Participant{{Person: "p", Role: "subject"}}}},
 			EventProperties: map[string]*glxlib.PropertyDefinition{"ceremony": {ValueType: "string"}},
 			Assertions: map[string]*glxlib.Assertion{
-				"old":  {Subject: glxlib.EntityRef{Event: "event"}, Property: "ceremony", Value: "church", Status: "disproven"},
-				"live": {Subject: glxlib.EntityRef{Event: "event"}, Property: "ceremony", Value: "home", Status: "proven", Confidence: "high"},
+				"old":             {Subject: glxlib.EntityRef{Event: "event"}, Property: "ceremony", Value: "church", Status: "disproven"},
+				"live":            {Subject: glxlib.EntityRef{Event: "event"}, Property: "ceremony", Value: "home", Status: "proven", Confidence: "high"},
+				"supporting-date": {Subject: glxlib.EntityRef{Event: "event"}, Property: "date", Value: "1900", Confidence: "low"},
 			},
 		}
 		proof, err := glxlib.BuildProof(archive, "p", kind, glxlib.ProofOptions{})
@@ -331,6 +332,7 @@ func TestResearchAPI_UnrelatedResolutionsPreserveVitalAnswers(t *testing.T) {
 		require.NotContains(t, proof.Summary, "home")
 		require.True(t, proof.Conflicts[0].Resolved)
 		archive.Events["event"].Date = ""
+		delete(archive.Assertions, "supporting-date")
 		proof, err = glxlib.BuildProof(archive, "p", kind, glxlib.ProofOptions{})
 		require.NoError(t, err)
 		require.Equal(t, glxlib.ConclusionInsufficient, proof.Conclusion, "a ceremony is not a date/place answer")
@@ -343,4 +345,69 @@ func TestResearchAPI_UnrelatedResolutionsPreserveVitalAnswers(t *testing.T) {
 		require.NotContains(t, proof.Summary, "1900")
 		require.NotContains(t, proof.Summary, "home")
 	}
+}
+
+func TestResearchAPI_OnlyAnsweringClaimsStrengthenProof(t *testing.T) {
+	for _, kind := range []string{"birth", "death", "marriage"} {
+		t.Run(kind, func(t *testing.T) {
+			archive := &glxlib.GLXFile{
+				Persons:         map[string]*glxlib.Person{"p": {}, "q": {Properties: map[string]any{"name": "Alex"}}},
+				Events:          map[string]*glxlib.Event{"event": {Type: kind, Date: "1900", Participants: []glxlib.Participant{{Person: "p", Role: "subject"}}}},
+				EventProperties: map[string]*glxlib.PropertyDefinition{"ceremony": {ValueType: "string"}},
+				Assertions:      map[string]*glxlib.Assertion{"context": {Subject: glxlib.EntityRef{Event: "event"}, Property: "ceremony", Value: "home", Confidence: "high", Status: "proven"}},
+			}
+			if kind == "marriage" {
+				archive.Relationships = map[string]*glxlib.Relationship{"couple": {Type: "marriage", Participants: []glxlib.Participant{{Person: "p", Role: "spouse"}, {Person: "q", Role: "spouse"}}}}
+			}
+			proof, err := glxlib.BuildProof(archive, "p", kind, glxlib.ProofOptions{})
+			require.NoError(t, err)
+			require.Equal(t, glxlib.ConclusionInsufficient, proof.Conclusion)
+			require.Len(t, proof.Evidence, 1, "related context remains available for inspection")
+			archive.Assertions["date"] = &glxlib.Assertion{Subject: glxlib.EntityRef{Event: "event"}, Property: "date", Value: "1900", Confidence: "low"}
+			proof, err = glxlib.BuildProof(archive, "p", kind, glxlib.ProofOptions{})
+			require.NoError(t, err)
+			require.Equal(t, glxlib.ConclusionPossible, proof.Conclusion, "unrelated high confidence must not upgrade weak actual support")
+			archive.Assertions["date"].Confidence = "high"
+			proof, err = glxlib.BuildProof(archive, "p", kind, glxlib.ProofOptions{})
+			require.NoError(t, err)
+			require.Equal(t, glxlib.ConclusionProven, proof.Conclusion)
+		})
+	}
+}
+
+func TestResearchAPI_MediaReportsPreserveIdentityAndDeduplicate(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{"p": {}},
+		Media:   map[string]*glxlib.Media{"a-media": {URI: "a.jpg", Title: "Record scan"}, "b-media": {URI: "b.jpg", Title: "Record scan"}, "c-media": {URI: "c.jpg", Title: "Record scan"}},
+		Assertions: map[string]*glxlib.Assertion{
+			"a1": {Subject: glxlib.EntityRef{Person: "p"}, Property: "claim", Value: "A", Media: []string{"a-media"}, Confidence: "low"},
+			"a2": {Subject: glxlib.EntityRef{Person: "p"}, Property: "claim", Value: "A", Media: []string{"a-media", "a-media"}, Confidence: "high"},
+			"b1": {Subject: glxlib.EntityRef{Person: "p"}, Property: "claim", Value: "B", Media: []string{"c-media", "b-media"}, Confidence: "high"},
+		},
+	}
+	before := snapshot(t, archive)
+	report, err := glxlib.BuildEvidenceReport(archive, glxlib.EntityRef{Person: "p"}, "claim", glxlib.ComparisonOptions{})
+	require.NoError(t, err)
+	require.Equal(t, 3, report.TotalReports)
+	require.Equal(t, "B", report.BestEvidence)
+	require.Len(t, report.Groups, 2)
+	require.Equal(t, 2, report.Groups[0].Reports)
+	require.Equal(t, "b-media", report.Groups[0].Items[0].MediaID)
+	require.Equal(t, "c-media", report.Groups[0].Items[1].MediaID)
+	require.Equal(t, "Record scan", report.Groups[0].Items[0].Source)
+	require.Equal(t, 1, report.Groups[1].Reports)
+	require.Equal(t, "a-media", report.Groups[1].Items[0].MediaID)
+	require.Equal(t, "high", report.Groups[1].Items[0].Confidence)
+	report.Groups[1].Items[0].MediaID = "changed"
+	require.JSONEq(t, before, snapshot(t, archive))
+	// Reusing a media object for a distinct participation claim is independent support.
+	archive.Events = map[string]*glxlib.Event{"event": {Type: "birth"}}
+	archive.Assertions = map[string]*glxlib.Assertion{
+		"parent":  {Subject: glxlib.EntityRef{Event: "event"}, Participant: &glxlib.Participant{Person: "p", Role: "parent"}, Media: []string{"a-media"}},
+		"witness": {Subject: glxlib.EntityRef{Event: "event"}, Participant: &glxlib.Participant{Person: "p", Role: "witness"}, Media: []string{"a-media"}},
+	}
+	report, err = glxlib.BuildEvidenceReport(archive, glxlib.EntityRef{Event: "event"}, "", glxlib.ComparisonOptions{})
+	require.NoError(t, err)
+	require.Len(t, report.Groups, 2)
+	require.Equal(t, 2, report.TotalReports)
 }

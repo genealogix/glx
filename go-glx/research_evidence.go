@@ -25,13 +25,14 @@ import (
 // existential or placeholder assertion) so they still group and count.
 const unspecifiedValue = "(unspecified)"
 
-// noCitationLabel marks a report backed by neither a citation nor a source.
+// noCitationLabel marks a report backed by no citation, source or media.
 const noCitationLabel = "(no citation)"
 
 // EvidenceItem is a single supporting report — one citation, one direct
-// source, or a bare assertion — backing a particular value.
+// source, one media object, or a bare assertion — backing a particular value.
 type EvidenceItem struct {
 	CitationID string `json:"citation_id,omitempty"`
+	MediaID    string `json:"media_id,omitempty"`
 	Source     string `json:"source,omitempty"`
 	Confidence string `json:"confidence,omitempty"`
 }
@@ -149,11 +150,11 @@ func collectEvidence(archive *GLXFile, subject EntityRef, property string, optio
 	report.Conflicts = evidenceConflicts(assertions, def, archive, comparisonOptions(options))
 
 	groups := make(map[evidenceClaimKey]*EvidenceGroup)
-	// citationIdx maps value -> citationID -> index of that citation's report in
-	// the group's Items. The same record cited for the same value by more than
+	// reportIdx maps claim -> report identity -> index in the group's Items.
+	// The same citation or media supporting the same claim more than
 	// one assertion is a single report — but its confidence is upgraded to the
 	// strongest seen across those assertions, rather than whichever was seen first.
-	citationIdx := make(map[evidenceClaimKey]map[string]int)
+	reportIdx := make(map[evidenceClaimKey]map[string]int)
 
 	for _, a := range assertions {
 		if strings.EqualFold(a.Status, "disproven") {
@@ -164,12 +165,12 @@ func collectEvidence(archive *GLXFile, subject EntityRef, property string, optio
 		if !ok {
 			g = newEvidenceGroup(a, subject, archive, report.Temporal)
 			groups[key] = g
-			citationIdx[key] = make(map[string]int)
+			reportIdx[key] = make(map[string]int)
 		}
 
 		for _, item := range assertionItems(a, archive) {
-			if item.CitationID != "" {
-				if idx, seen := citationIdx[key][item.CitationID]; seen {
+			if identity := evidenceItemIdentity(item); identity != "" {
+				if idx, seen := reportIdx[key][identity]; seen {
 					// Same record cited again: keep one report, but raise its
 					// confidence (and the group's) when this assertion is stronger.
 					if researchConfidenceRank(item.Confidence) < researchConfidenceRank(g.Items[idx].Confidence) {
@@ -179,7 +180,7 @@ func collectEvidence(archive *GLXFile, subject EntityRef, property string, optio
 
 					continue
 				}
-				citationIdx[key][item.CitationID] = len(g.Items)
+				reportIdx[key][identity] = len(g.Items)
 			}
 
 			g.Items = append(g.Items, item)
@@ -266,8 +267,8 @@ func matchingAssertions(archive *GLXFile, subject EntityRef, property string) (m
 }
 
 // assertionItems expands an assertion into its supporting reports: one per
-// citation, else one per direct source, else a single bare report. Each
-// inherits the assertion's confidence.
+// citation, else one per direct source, else one per media object, else a bare
+// report. Each inherits the assertion's confidence.
 func assertionItems(a *Assertion, archive *GLXFile) []EvidenceItem {
 	var items []EvidenceItem
 
@@ -289,6 +290,15 @@ func assertionItems(a *Assertion, archive *GLXFile) []EvidenceItem {
 	}
 
 	if len(items) == 0 {
+		for _, mediaID := range a.Media {
+			label := mediaID
+			if media := archive.Media[mediaID]; media != nil && media.Title != "" {
+				label = media.Title
+			}
+			items = append(items, EvidenceItem{MediaID: mediaID, Source: label, Confidence: a.Confidence})
+		}
+	}
+	if len(items) == 0 {
 		items = append(items, EvidenceItem{
 			Source:     noCitationLabel,
 			Confidence: a.Confidence,
@@ -296,6 +306,17 @@ func assertionItems(a *Assertion, archive *GLXFile) []EvidenceItem {
 	}
 
 	return items
+}
+
+func evidenceItemIdentity(item EvidenceItem) string {
+	if item.CitationID != "" {
+		return proofKindCitation + ":" + item.CitationID
+	}
+	if item.MediaID != "" {
+		return proofKindMedia + ":" + item.MediaID
+	}
+
+	return ""
 }
 
 // citationSourceLabel resolves a citation to its source title, falling back to
@@ -367,7 +388,7 @@ func resolveAssertionValue(value, property string, subject EntityRef, archive *G
 }
 
 // sortEvidenceItems orders reports within a group deterministically:
-// citation-backed reports first (by citation ID), then source-only reports.
+// citation-backed reports first (by citation ID), then media and source reports.
 func sortEvidenceItems(items []EvidenceItem) {
 	sort.SliceStable(items, func(i, j int) bool {
 		a, b := items[i], items[j]
@@ -376,6 +397,9 @@ func sortEvidenceItems(items []EvidenceItem) {
 		}
 		if a.CitationID != b.CitationID {
 			return a.CitationID < b.CitationID
+		}
+		if a.MediaID != b.MediaID {
+			return a.MediaID < b.MediaID
 		}
 
 		return a.Source < b.Source

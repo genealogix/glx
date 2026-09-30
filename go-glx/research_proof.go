@@ -747,7 +747,7 @@ func concludeProof(topic, personID string, archive *GLXFile, relevant []proofAss
 		return proofConclusionInsufficient, insufficientSummary(topic, gaps)
 	}
 
-	level := supportLevel(relevant)
+	level := supportLevel(relevant, topic, personID)
 	if caveat != "" {
 		level = min(level, supportWeak)
 		answer += " " + caveat
@@ -782,13 +782,13 @@ func proofConflictCaveat(conflicts []ConflictGroup) string {
 	return caveat
 }
 
-// supportLevel returns the strongest support score among non-disproven relevant
-// assertions, or supportNone when nothing backs the answer.
-func supportLevel(relevant []proofAssertion) int {
+// supportLevel scores only non-disproven assertions that answer the question.
+// Related context and synthetic comparisons cannot strengthen the conclusion.
+func supportLevel(relevant []proofAssertion, topic, personID string) int {
 	best := supportNone
 	for i := range relevant {
 		a := relevant[i].a
-		if relevant[i].synthetic || strings.EqualFold(a.Status, statusDisproven) {
+		if relevant[i].synthetic || strings.EqualFold(a.Status, statusDisproven) || !proofAssertionAnswersQuestion(&relevant[i], topic, personID) {
 			continue
 		}
 		if score := assertionSupportScore(a); score > best {
