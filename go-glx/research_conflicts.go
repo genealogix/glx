@@ -131,7 +131,7 @@ func CollectPersonFacts(archive *GLXFile, personID string) ([]ResearchFact, erro
 	collected := collectPersonProofAssertions(archive, personID)
 	out := make([]ResearchFact, 0, len(collected))
 	for i := range collected {
-		out = append(out, researchFact(&collected[i], archive))
+		out = append(out, researchFact(&collected[i]))
 	}
 
 	return out, nil
@@ -195,8 +195,8 @@ func AnalyzeConflicts(archive *GLXFile, opts ConflictAnalysisOptions) ([]Conflic
 	return findings, nil
 }
 
-func researchFact(pa *proofAssertion, archive *GLXFile) ResearchFact {
-	f := ResearchFact{ID: pa.id, Subject: pa.a.Subject, Property: pa.a.Property, Fact: AssertionFact(pa.a), EventType: pa.eventType, RelationshipType: pa.relType, PersonRole: pa.personRole, FactKey: pa.factKey, Synthetic: archive.Assertions[pa.id] == nil, Citations: slices.Clone(pa.a.Citations), Sources: slices.Clone(pa.a.Sources), Notes: slices.Clone([]string(pa.a.Notes))}
+func researchFact(pa *proofAssertion) ResearchFact {
+	f := ResearchFact{ID: pa.id, Subject: pa.a.Subject, Property: pa.a.Property, Fact: AssertionFact(pa.a), EventType: pa.eventType, RelationshipType: pa.relType, PersonRole: pa.personRole, FactKey: pa.factKey, Synthetic: pa.synthetic, Citations: slices.Clone(pa.a.Citations), Sources: slices.Clone(pa.a.Sources), Notes: slices.Clone([]string(pa.a.Notes))}
 	f.Media = slices.Clone(pa.a.Media)
 	f.FactProperty = pa.factProperty
 	if f.FactProperty == "" {

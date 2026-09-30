@@ -44,6 +44,9 @@ func BuildEvidenceReport(archive *GLXFile, subject EntityRef, property string, o
 
 // BuildProof builds the complete evidence, conflict, search and coverage report
 // for an exact person ID and research question (or its documented alias).
+// Vital and marriage event claims must concern the person in a principal role.
+// Synthetic structural facts can reveal conflicts but never count as evidence
+// or support for a conclusion.
 // It is read-only, deterministic, and supplies missing standard vocabularies.
 // Invalid options, unknown questions, nil archives and missing persons return
 // errors without mutating the archive. Returned data is owned by the caller.
@@ -72,6 +75,8 @@ func BuildProof(archive *GLXFile, personID, question string, opts ProofOptions) 
 
 // BuildCoverage returns the complete source-coverage checklist for an exact
 // person ID, without mutating archive. The result has no references to its maps.
+// Vital and church event records require the person's principal role; census
+// records allow ordinary participation. Media-linked sources are recognized.
 func BuildCoverage(archive *GLXFile, personID string, opts CoverageOptions) (*CoverageResult, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, err

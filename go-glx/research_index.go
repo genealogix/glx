@@ -46,7 +46,7 @@ func newPersonFactIndex(archive *GLXFile, personIDs []string) *personFactIndex {
 		if rel == nil {
 			continue
 		}
-		participants := selectedResearchParticipants(rel.Participants, wanted)
+		participants := selectedResearchParticipants(rel.Participants, wanted, rel.Type)
 		if len(participants) > 0 {
 			relationships[id] = researchScope{kind: rel.Type, participants: participants}
 		}
@@ -91,7 +91,7 @@ func (index *personFactIndex) eventScopes(archive *GLXFile, wanted map[string]bo
 		if event == nil {
 			continue
 		}
-		participants := selectedResearchParticipants(event.Participants, wanted)
+		participants := selectedResearchParticipants(event.Participants, wanted, event.Type)
 		if len(participants) > 0 {
 			scopes[id] = researchScope{kind: event.Type, participants: participants}
 		}
@@ -106,13 +106,7 @@ func (index *personFactIndex) eventScopes(archive *GLXFile, wanted map[string]bo
 				continue
 			}
 			seen[p.Person] = true
-			// Topic selection must use the principal role too, even when a
-			// witness entry for this person appeared first in the event.
-			for i := range participants {
-				if participants[i].Person == p.Person {
-					participants[i].Role = p.Role
-				}
-			}
+
 			if index.vitalEvents[p.Person] == nil {
 				index.vitalEvents[p.Person] = make(map[string][]string)
 			}
@@ -123,20 +117,44 @@ func (index *personFactIndex) eventScopes(archive *GLXFile, wanted map[string]bo
 	return scopes
 }
 
-func selectedResearchParticipants(participants []Participant, wanted map[string]bool) []Participant {
+func selectedResearchParticipants(participants []Participant, wanted map[string]bool, kind string) []Participant {
 	var selected []Participant
-	seen := make(map[string]bool)
+	positions := make(map[string]int)
 	for _, p := range participants {
-		if !wanted[p.Person] || seen[p.Person] {
+		if !wanted[p.Person] {
 			continue
 		}
-		seen[p.Person] = true
-		// Only identity/role are needed. Preserve the first relationship role,
-		// matching person-level proof collection, without retaining properties.
+		if i, seen := positions[p.Person]; seen {
+			if isResearchPrincipal(kind, p.Role) && !isResearchPrincipal(kind, selected[i].Role) {
+				selected[i].Role = p.Role
+			}
+
+			continue
+		}
+		positions[p.Person] = len(selected)
+		// The owned scope records only identity and the applicable role, never
+		// caller-owned participant property maps.
 		selected = append(selected, Participant{Person: p.Person, Role: p.Role})
 	}
 
 	return selected
+}
+
+func isResearchPrincipal(kind, role string) bool {
+	if isBirthEventType(kind) || isDeathEventType(kind) {
+		return isVitalPrincipal(kind, role)
+	}
+
+	return (isMarriageEventType(kind) || kind == RelationshipTypePartner) && isMarriagePrincipal(role)
+}
+
+func isMarriagePrincipal(role string) bool {
+	switch role {
+	case "", ParticipantRoleSubject, ParticipantRolePrincipal, ParticipantRoleSpouse, ParticipantRoleBride, ParticipantRoleGroom:
+		return true
+	default:
+		return false
+	}
 }
 
 func isVitalPrincipal(eventType, role string) bool {
@@ -144,9 +162,9 @@ func isVitalPrincipal(eventType, role string) bool {
 	case "", ParticipantRoleSubject, ParticipantRolePrincipal:
 		return true
 	case ParticipantRoleChild:
-		return eventType == EventTypeBirth
+		return isBirthEventType(eventType)
 	case "deceased":
-		return eventType == EventTypeDeath || eventType == EventTypeBurial
+		return isDeathEventType(eventType)
 	default:
 		return false
 	}

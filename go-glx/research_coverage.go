@@ -15,6 +15,7 @@
 package glx
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -122,13 +123,14 @@ func buildCoverage(personID string, person *Person, archive *GLXFile, fallback s
 
 // personSourceInfo tracks a source or citation found for a person.
 type personSourceInfo struct {
-	Ref       string // source or citation ID
-	Type      string // source type
-	Title     string
-	EventType string // if found via an event
-	PlaceID   string // place reference (events only)
-	Year      int
-	Evidenced bool // events only: an assertion resolves a citation, source or media
+	Ref        string // source or citation ID
+	Type       string // source type
+	Title      string
+	EventType  string // if found via an event
+	PersonRole string // this person's role in that event
+	PlaceID    string // place reference (events only)
+	Year       int
+	Evidenced  bool // events only: an assertion resolves a citation, source or media
 }
 
 // collectPersonSources gathers all sources and citations that reference a person
@@ -161,7 +163,7 @@ func collectPersonSources(personID string, archive *GLXFile) []personSourceInfo 
 			}
 			sources = append(sources, info)
 		}
-		for _, srcID := range assertion.Sources {
+		for _, srcID := range sourcesWithMedia(assertion, archive) {
 			if seen[srcID] {
 				continue
 			}
@@ -182,10 +184,25 @@ func collectPersonSources(personID string, archive *GLXFile) []personSourceInfo 
 	return sources
 }
 
+// sourcesWithMedia returns a detached list of directly linked sources and the
+// source IDs reached through media. Missing media/source references are ignored
+// when constructing personSourceInfo, just like directly linked missing sources.
+func sourcesWithMedia(assertion *Assertion, archive *GLXFile) []string {
+	ids := slices.Clone(assertion.Sources)
+	for _, id := range assertion.Media {
+		if media := archive.Media[id]; media != nil && media.Source != "" {
+			ids = append(ids, media.Source)
+		}
+	}
+
+	return ids
+}
+
 // collectPersonEvents gathers all events this person participates in, marking
 // each with whether it carries supporting evidence per the evidenced index.
 func collectPersonEvents(personID string, archive *GLXFile, evidenced map[string]bool) []personSourceInfo {
 	var events []personSourceInfo
+	wanted := map[string]bool{personID: true}
 
 	// Sorted so a person with more than one event of a type reports the same
 	// one on every run
@@ -194,15 +211,16 @@ func collectPersonEvents(personID string, archive *GLXFile, evidenced map[string
 		if event == nil {
 			continue
 		}
-		for _, p := range event.Participants {
+		for _, p := range selectedResearchParticipants(event.Participants, wanted, event.Type) {
 			if p.Person == personID {
 				events = append(events, personSourceInfo{
-					Ref:       eventID,
-					EventType: event.Type,
-					Year:      ExtractFirstYear(string(event.Date)),
-					Title:     event.Title,
-					PlaceID:   event.PlaceID,
-					Evidenced: evidenced[eventID],
+					Ref:        eventID,
+					EventType:  event.Type,
+					PersonRole: p.Role,
+					Year:       ExtractFirstYear(string(event.Date)),
+					Title:      event.Title,
+					PlaceID:    event.PlaceID,
+					Evidenced:  evidenced[eventID],
 				})
 
 				break
@@ -415,7 +433,8 @@ func buildVitalRecords(personID string, archive *GLXFile, sources, events []pers
 // exactly the people whose records are missing.
 func buildVitalRecord(label, missingPriority, eventType, titleKeyword string, sources, events []personSourceInfo) CoverageRecord {
 	eventRef := findEvidencedEvent(events, eventType)
-	found := eventRef != "" || hasSourceType(sources, SourceTypeVitalRecord, titleKeyword)
+	sourceRef := findMatchingSourceRef(sources, SourceTypeVitalRecord, titleKeyword)
+	found := eventRef != "" || sourceRef != ""
 
 	rec := CoverageRecord{
 		Category: coverageCategoryVital,
@@ -426,7 +445,7 @@ func buildVitalRecord(label, missingPriority, eventType, titleKeyword string, so
 	if found {
 		rec.SourceRef = eventRef
 		if rec.SourceRef == "" {
-			rec.SourceRef = findSourceRef(sources, SourceTypeVitalRecord)
+			rec.SourceRef = sourceRef
 		}
 	} else {
 		rec.Description = unevidencedNote(findUnevidencedEvent(events, eventType))
@@ -658,12 +677,23 @@ func findUnevidencedEvent(events []personSourceInfo, eventType string) string {
 
 func findEventRef(events []personSourceInfo, eventType string, evidenced bool) string {
 	for _, e := range events {
-		if e.EventType == eventType && e.Evidenced == evidenced {
+		if e.EventType == eventType && e.Evidenced == evidenced && coverageEventRelevant(e.EventType, e.PersonRole) {
 			return e.Ref
 		}
 	}
 
 	return ""
+}
+
+func coverageEventRelevant(kind, role string) bool {
+	if isBirthEventType(kind) || isDeathEventType(kind) {
+		return isVitalPrincipal(kind, role)
+	}
+	if isMarriageEventType(kind) {
+		return isMarriagePrincipal(role)
+	}
+
+	return true
 }
 
 // unevidencedNote describes an event that exists but that nothing backs, so a
@@ -678,15 +708,25 @@ func unevidencedNote(ref string) string {
 }
 
 func hasSourceType(sources []personSourceInfo, sourceType, titleKeyword string) bool {
-	for _, s := range sources {
-		if s.Type == sourceType {
-			if titleKeyword == "" || strings.Contains(strings.ToLower(s.Title), titleKeyword) {
-				return true
-			}
+	_, found := matchingSource(sources, sourceType, titleKeyword)
+
+	return found
+}
+
+func findMatchingSourceRef(sources []personSourceInfo, sourceType, titleKeyword string) string {
+	source, _ := matchingSource(sources, sourceType, titleKeyword)
+
+	return source.Ref
+}
+
+func matchingSource(sources []personSourceInfo, sourceType, titleKeyword string) (personSourceInfo, bool) {
+	for _, source := range sources {
+		if source.Type == sourceType && (titleKeyword == "" || strings.Contains(strings.ToLower(source.Title), titleKeyword)) {
+			return source, true
 		}
 	}
 
-	return false
+	return personSourceInfo{}, false
 }
 
 // firstNonEmpty returns the first non-empty value, or "" when there is none.
@@ -701,13 +741,7 @@ func firstNonEmpty(values ...string) string {
 }
 
 func findSourceRef(sources []personSourceInfo, sourceType string) string {
-	for _, s := range sources {
-		if s.Type == sourceType {
-			return s.Ref
-		}
-	}
-
-	return ""
+	return findMatchingSourceRef(sources, sourceType, "")
 }
 
 func boolPriority(condition bool, priority string) string {
@@ -724,7 +758,7 @@ func boolPriority(condition bool, priority string) string {
 func inferDeathYearFromEvents(events []personSourceInfo) int {
 	earliest := 0
 	for _, e := range events {
-		if e.EventType == EventTypeBurial && e.Year > 0 {
+		if e.EventType == EventTypeBurial && e.Year > 0 && coverageEventRelevant(e.EventType, e.PersonRole) {
 			if earliest == 0 || e.Year < earliest {
 				earliest = e.Year
 			}

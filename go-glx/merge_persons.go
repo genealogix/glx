@@ -84,6 +84,8 @@ type MergePersonsResult struct {
 //     value/date objects before comparison; pointer forms are also accepted.
 //   - Fixed-property refinements retain the narrower date or descendant place.
 //     Overlapping ranges with no containment are reported for collision selection.
+//   - Disproven fixed values never replace surviving claims. Compatible structured
+//     fields combine; differing values for the same field are reported as collisions.
 //   - Vocabulary-defined temporal properties combine non-conflicting dated and
 //     undated history, whether the inputs are scalars, objects, or lists.
 //   - Genuine conflicts use keep's value by default. KeepNewest/KeepOldest
@@ -212,36 +214,91 @@ func mergePersonProperties(archive *GLXFile, keep, drop *Person, opts MergePerso
 
 			continue
 		}
-		keepFact, dropFact := propertyFact(keepVal), propertyFact(dropVal)
-		c := compareFactPair(keepFact, dropFact, def, archive.Places, opts.Comparison)
-		if c.Verdict == VerdictRefinement {
-			if useDrop, ordered := refinementPreference(keepFact, dropFact, def, archive.Places, opts.Comparison); ordered {
-				if useDrop {
-					keep.Properties[prop] = dropVal
-					added++
-				}
-
-				continue
-			}
-		} else if !c.IsConflict() {
-			continue
-		}
-
-		useDrop, label := resolveConflict(keepVal, dropVal, opts)
-		if useDrop {
-			keep.Properties[prop] = dropVal
+		merged, collision := mergeFixedProperty(prop, keepVal, dropVal, def, archive.Places, opts)
+		if !reflect.DeepEqual(keepVal, merged) {
+			keep.Properties[prop] = merged
 			added++
 		}
-		conflicts = append(conflicts, PersonMergeConflict{
-			Verdict:    c.Verdict,
-			Property:   prop,
-			KeepValue:  keepVal,
-			DropValue:  dropVal,
-			Resolution: label,
-		})
+		if collision != nil {
+			conflicts = append(conflicts, *collision)
+		}
 	}
 
 	return added, conflicts
+}
+
+// mergeFixedProperty preserves the researcher's resolution before selecting a
+// compatible value. Structured breakdowns are part of the claim: disjoint fields
+// combine, while differing values of a shared field require collision selection.
+func mergeFixedProperty(property string, keep, drop any, def *PropertyDefinition, places map[string]*Place, opts MergePersonsOptions) (any, *PersonMergeConflict) {
+	kept, incoming := propertyFact(keep), propertyFact(drop)
+	if equalStatus(incoming.Status, statusDisproven) {
+		return keep, nil
+	}
+	if equalStatus(kept.Status, statusDisproven) {
+		return drop, nil
+	}
+	comparison := compareFactPair(kept, incoming, def, places, opts.Comparison)
+	chosen, compatible := keep, comparison.Verdict == VerdictAgree
+	if comparison.Verdict == VerdictRefinement {
+		var useDrop bool
+		useDrop, compatible = refinementPreference(kept, incoming, def, places, opts.Comparison)
+		if useDrop {
+			chosen = drop
+		}
+	}
+	if compatible {
+		if merged, fieldsAgree := combinePropertyFields(keep, drop, chosen); fieldsAgree {
+			return merged, nil
+		}
+		comparison.Verdict = VerdictDefinite
+	} else if !comparison.IsConflict() && comparison.Verdict != VerdictRefinement {
+		return keep, nil
+	}
+	useDrop, label := resolveConflict(keep, drop, opts)
+	if useDrop {
+		chosen = drop
+	} else {
+		chosen = keep
+	}
+
+	return chosen, &PersonMergeConflict{Verdict: comparison.Verdict, Property: property, KeepValue: keep, DropValue: drop, Resolution: label}
+}
+
+const propertyFieldsField = "fields"
+
+func propertyFields(value any) map[string]any {
+	if object, ok := value.(map[string]any); ok {
+		fields, _ := object[propertyFieldsField].(map[string]any)
+
+		return fields
+	}
+
+	return nil
+}
+
+func combinePropertyFields(keep, drop, chosen any) (any, bool) {
+	kept, incoming := propertyFields(keep), propertyFields(drop)
+	if len(kept)+len(incoming) == 0 {
+		return chosen, true
+	}
+	fields := make(map[string]any, len(kept)+len(incoming))
+	maps.Copy(fields, kept)
+	for key, value := range incoming {
+		if previous, exists := fields[key]; exists && !reflect.DeepEqual(previous, value) {
+			return chosen, false
+		}
+		fields[key] = value
+	}
+	object, structured := chosen.(map[string]any)
+	if structured {
+		object = maps.Clone(object)
+	} else {
+		object = map[string]any{temporalValueField: chosen}
+	}
+	object[propertyFieldsField] = fields
+
+	return object, true
 }
 
 // refinementPreference selects a strictly narrower compatible claim. Intersecting
@@ -485,11 +542,24 @@ func FormatPropertyValue(v any) string {
 	if f.Value == "" {
 		return propertyText(v)
 	}
+	text := f.Value
 	if f.Date != "" {
-		return f.Value + " (" + string(f.Date) + ")"
+		text += " (" + string(f.Date) + ")"
+	}
+	if fields := propertyFields(v); len(fields) > 0 {
+		parts := make([]string, 0, len(fields))
+		keys := make([]string, 0, len(fields))
+		for key := range fields {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			parts = append(parts, key+": "+propertyText(fields[key]))
+		}
+		text += " [" + strings.Join(parts, ", ") + "]"
 	}
 
-	return f.Value
+	return text
 }
 
 func mergeTemporalProperty(property string, keep, drop any, def *PropertyDefinition, places map[string]*Place, opts MergePersonsOptions) (any, int, []PersonMergeConflict) {

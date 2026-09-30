@@ -63,7 +63,7 @@ func nonPropertyProofDispute(pa *proofAssertion, archive *GLXFile, opts Comparis
 	}
 
 	return ConflictGroup{
-		Facts: []ResearchFact{researchFact(pa, archive)}, Evaluation: evaluation,
+		Facts: []ResearchFact{researchFact(pa)}, Evaluation: evaluation,
 		Subject: subject, Property: property,
 		Verdict: comparisons[0].Verdict, Definite: comparisons[0].Definite,
 		Values: []ConflictValue{{Value: value, Confidence: pa.a.Confidence, Status: pa.a.Status}},
@@ -160,7 +160,7 @@ func appendVitalEventFields(out []proofAssertion, archive *GLXFile, eventID, key
 			continue
 		}
 		a := &Assertion{Subject: EntityRef{Event: eventID}, Property: field.property, Value: field.value}
-		out = append(out, proofAssertion{id: eventID + ":" + field.property, a: a, subjectID: eventID, eventType: ev.Type, factKey: key, factProperty: field.property})
+		out = append(out, proofAssertion{id: eventID + ":" + field.property, a: a, subjectID: eventID, eventType: ev.Type, factKey: key, factProperty: field.property, synthetic: true})
 	}
 
 	return out

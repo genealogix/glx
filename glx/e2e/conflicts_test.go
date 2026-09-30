@@ -436,3 +436,80 @@ person_properties:
 	require.Equal(t, "1850-02-01", archive.Persons["keep"].Properties["confirmed_date"])
 	require.NotContains(t, archive.Persons, "drop")
 }
+
+func TestMergePersonsRetainsResolvedClaim(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "archive.glx")
+	require.NoError(t, os.WriteFile(path, []byte(`persons:
+  keep: {properties: {confirmed_date: {value: "1850", status: disproven}}}
+  drop: {properties: {confirmed_date: {value: "1860", status: proven}}}
+person_properties:
+  confirmed_date: {value_type: date, temporal: false}
+`), 0o600))
+	result := runGLX(t, dir, "merge-persons", "keep", "drop", "--keep-oldest", "--archive", path)
+	require.Equal(t, 0, result.exitCode, result.stderr)
+	require.NotContains(t, result.stderr, "Conflict")
+	saved, err := os.ReadFile(path)
+	require.NoError(t, err)
+	archive, err := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false}).DeserializeSingleFileBytes(saved)
+	require.NoError(t, err)
+	require.Equal(t, map[string]any{"value": "1860", "status": "proven"}, archive.Persons["keep"].Properties["confirmed_date"])
+}
+
+func TestProofUsesOwnEvidenceAndCoverageUsesMatchingMediaSource(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "archive.glx")
+	require.NoError(t, os.WriteFile(path, []byte(`persons:
+  parent: {}
+  child: {}
+  media-person: {}
+events:
+  own-a: {type: birth, date: "1850", participants: [{person: parent, role: subject}]}
+  own-b: {type: birth, date: "1850-03-02", participants: [{person: parent, role: subject}]}
+  child-birth: {type: birth, date: "1900", participants: [{person: parent, role: parent}, {person: child, role: subject}]}
+sources:
+  birth-source: {type: vital_record, title: Birth certificate}
+  death-source: {type: vital_record, title: Death certificate}
+media:
+  birth-scan: {uri: birth.jpg, source: birth-source}
+  death-scan: {uri: death.jpg, source: death-source}
+assertions:
+  child-claim: {subject: {event: child-birth}, property: date, value: "1900", confidence: high, sources: [birth-source]}
+  a-death: {subject: {person: media-person}, media: [death-scan]}
+  z-birth: {subject: {person: media-person}, media: [birth-scan]}
+`), 0o600))
+	for _, id := range []string{"parent", "child"} {
+		result := runGLX(t, dir, "proof", id, "--question", "birth", "--archive", path, "--format", "json")
+		require.Equal(t, 0, result.exitCode, result.stderr)
+		var proof glxlib.ProofResult
+		require.NoError(t, json.Unmarshal([]byte(result.stdout), &proof))
+		if id == "parent" {
+			require.Equal(t, glxlib.ConclusionInsufficient, proof.Conclusion)
+			require.Empty(t, proof.Evidence)
+		} else {
+			require.Equal(t, glxlib.ConclusionProven, proof.Conclusion)
+			require.Len(t, proof.Evidence, 1)
+		}
+	}
+	for _, id := range []string{"parent", "media-person"} {
+		result := runGLX(t, dir, "coverage", id, "--archive", path, "--json")
+		require.Equal(t, 0, result.exitCode, result.stderr)
+		var coverage glxlib.CoverageResult
+		require.NoError(t, json.Unmarshal([]byte(result.stdout), &coverage))
+		for _, record := range coverage.Records {
+			if id == "parent" && record.Label == "Birth record" {
+				require.False(t, record.Found)
+			}
+			if id == "media-person" {
+				switch record.Label {
+				case "Birth record":
+					require.True(t, record.Found)
+					require.Equal(t, "birth-source", record.SourceRef)
+				case "Death record":
+					require.True(t, record.Found)
+					require.Equal(t, "death-source", record.SourceRef)
+				}
+			}
+		}
+	}
+}

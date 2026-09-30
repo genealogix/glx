@@ -166,6 +166,9 @@ func buildProof(personID string, person *Person, topic string, archive *GLXFile,
 	evidence := make([]ProofEvidence, 0, len(relevant))
 	var undated []ProofEvidence
 	for i := range relevant {
+		if relevant[i].synthetic {
+			continue
+		}
 		ev := buildProofEvidence(&relevant[i], archive)
 		def := ConflictProperty(archive, relevant[i].a.Subject, relevant[i].a.Property)
 		date, _ := relevant[i].a.Date.Parse()
@@ -274,6 +277,7 @@ type proofAssertion struct {
 	factKey      string // shared identity of a person's vital fact
 	factProperty string // canonical date/place field, retaining a.Property as provenance
 	personRole   string // the person's role in the subject event or relationship
+	synthetic    bool   // structural comparison input; never proof evidence or support
 }
 
 // subjectIsPerson reports whether the assertion's subject is the target person
@@ -304,22 +308,22 @@ func assertionRelevant(topic string, pa *proofAssertion) bool {
 		return parentageAssertionRelevant(pa)
 	case topicBirth:
 		if isBirthEventType(pa.eventType) {
-			return true
+			return isVitalPrincipal(pa.eventType, pa.personRole)
 		}
 
 		return pa.subjectIsPerson() && legacyKind == EventTypeBirth
 	case topicDeath:
 		if isDeathEventType(pa.eventType) {
-			return true
+			return isVitalPrincipal(pa.eventType, pa.personRole)
 		}
 
 		return pa.subjectIsPerson() && (legacyKind == EventTypeDeath || legacyKind == EventTypeBurial)
 	case topicMarriage:
 		if pa.relType == RelationshipTypeMarriage || pa.relType == RelationshipTypePartner {
-			return true
+			return isMarriagePrincipal(pa.personRole)
 		}
 
-		return isMarriageEventType(pa.eventType)
+		return isMarriageEventType(pa.eventType) && isMarriagePrincipal(pa.personRole)
 	case topicIdentity:
 		return pa.subjectIsPerson() && pa.a.Property == PersonPropertyName
 	default:
@@ -332,6 +336,9 @@ func parentageAssertionRelevant(pa *proofAssertion) bool {
 		return true
 	}
 	if pa.eventType == EventTypeBirth {
+		if !isVitalPrincipal(pa.eventType, pa.personRole) {
+			return false
+		}
 		if parentPropertyNames[pa.a.Property] {
 			return true
 		}
@@ -493,7 +500,7 @@ func detectProofConflicts(relevant []proofAssertion, archive *GLXFile, options .
 			order = append(order, key)
 		}
 		g.assertions = append(g.assertions, pa.a)
-		g.facts = append(g.facts, researchFact(pa, archive))
+		g.facts = append(g.facts, researchFact(pa))
 	}
 
 	sort.Slice(order, func(i, j int) bool {
@@ -781,7 +788,7 @@ func supportLevel(relevant []proofAssertion) int {
 	best := supportNone
 	for i := range relevant {
 		a := relevant[i].a
-		if strings.EqualFold(a.Status, statusDisproven) {
+		if relevant[i].synthetic || strings.EqualFold(a.Status, statusDisproven) {
 			continue
 		}
 		if score := assertionSupportScore(a); score > best {
@@ -874,7 +881,7 @@ func answerFromAssertions(relevant []proofAssertion, archive *GLXFile, topic, pe
 	var values []string
 	for i := range relevant {
 		a := relevant[i].a
-		if strings.EqualFold(a.Status, statusDisproven) {
+		if relevant[i].synthetic || strings.EqualFold(a.Status, statusDisproven) {
 			continue
 		}
 		if a.Participant != nil && !participantAnswersQuestion(a.Participant, topic, personID) {
