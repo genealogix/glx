@@ -625,6 +625,34 @@ glx cluster person-eddard-stark --json
 The FAN club technique is most powerful when combined with `glx timeline` and `glx query assertions`. Find the associates, then check the timeline and evidence chains to understand *how* they were connected.
 :::
 
+## Logging Research
+
+### `glx add research-log`, `glx add search`, `glx add study` — Record searches as you go
+
+A [research log](../../specification/4-entity-types/research-log.md) records every search you make, including the ones that found nothing. That negative evidence is what shows a "reasonably exhaustive search", and it stops you repeating a fruitless query next session. Open a log once, then append one search per lookup:
+
+```bash
+# Open a log about a person
+glx add research-log --id rl-jon-snow-mother --subject-person person-jon-snow \
+  --objective "Identify Jon Snow's mother" --status in_progress
+
+# Append searches as you make them
+glx add search --log rl-jon-snow-mother --collection "Winterfell household rolls" \
+  --query "Snow, 280-284" --result not_found --date 2026-09-17
+
+glx add search --log rl-jon-snow-mother --collection "Tower of Joy accounts" \
+  --result not_searched --note "Next session"
+```
+
+Each `add search` validates `--result` against the archive's `search_result_types` vocabulary, checks that `--source`, `--repository` and `--citation` exist, and rewrites only the log's own file. A `--citation` is also rolled up into the log's `citations` list.
+
+A [study](../../specification/4-entity-types/study.md) sets the scope of a larger project:
+
+```bash
+glx add study --title "Stark household, 260-300 AC" --type family_reconstruction \
+  --status active --place place-winterfell --date-range "FROM 260 TO 300"
+```
+
 ## Adding Census Records
 
 ### `glx census add` — Bulk census import from a template
