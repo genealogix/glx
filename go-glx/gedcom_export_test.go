@@ -2551,7 +2551,7 @@ func TestExportPersonEvent_WithCitations(t *testing.T) {
 		},
 	}
 
-	record := exportPersonEvent(event, expCtx)
+	record := exportPersonEvent("event-birth", event, expCtx)
 	require.NotNil(t, record)
 	assert.Equal(t, GedcomTagBirt, record.Tag)
 
@@ -2607,7 +2607,7 @@ func TestExportPersonEvent_WithDirectSources(t *testing.T) {
 		},
 	}
 
-	record := exportPersonEvent(event, expCtx)
+	record := exportPersonEvent("event-death", event, expCtx)
 	require.NotNil(t, record)
 
 	sourCount := 0
@@ -3035,7 +3035,7 @@ func TestExportPersonEvent_NoteFromProperties(t *testing.T) {
 		SourceXRefMap: make(map[string]string),
 	}
 
-	record := exportPersonEvent(event, expCtx)
+	record := exportPersonEvent("event-birth", event, expCtx)
 	require.NotNil(t, record)
 	assert.Equal(t, GedcomTagBirt, record.Tag)
 
@@ -3198,4 +3198,217 @@ func TestBuildHEADRecord_EmptyImportMetadataFields(t *testing.T) {
 		assert.NotEqual(t, GedcomTagCopr, sub.Tag, "HEAD should NOT include empty COPR")
 	}
 	assert.True(t, foundLang, "HEAD should include non-empty LANG")
+}
+
+// ============================================================================
+// Event-subject assertion evidence export tests (issue #1269)
+// ============================================================================
+
+// eventAssertionExportContext builds an export context for a single birth event
+// whose date and place are evidenced by event-subject assertions.
+func eventAssertionExportContext(assertions map[string]*Assertion) *ExportContext {
+	expCtx := &ExportContext{
+		GLX: &GLXFile{
+			Events: map[string]*Event{
+				"event-birth-john": {
+					Type: "birth",
+					Date: "1850-01-15",
+				},
+			},
+			Citations: map[string]*Citation{
+				"citation-parish": {
+					SourceID: "source-parish",
+					Properties: map[string]any{
+						"locator": "Entry 145, Page 23",
+					},
+				},
+				"citation-census": {
+					SourceID: "source-census",
+					Properties: map[string]any{
+						"locator": "Folio 234, Page 23",
+					},
+				},
+			},
+			Assertions: assertions,
+		},
+		SourceXRefMap: map[string]string{
+			"source-parish": "@S2@",
+			"source-census": "@S1@",
+		},
+		ExportIndex: &ExportIndex{
+			EventTypes: map[string]string{
+				"birth":           GedcomTagBirt,
+				EventTypeMarriage: GedcomTagMarr,
+			},
+			EventProperties: make(map[string]string),
+		},
+		PlaceStrings: make(map[string]string),
+	}
+	buildEventPropertyAssertionsIndex(expCtx)
+
+	return expCtx
+}
+
+// sourRefs collects the SOUR subrecords of a record as (xref, page) pairs.
+func sourRefs(record *GEDCOMRecord) [][2]string {
+	var refs [][2]string
+	for _, sub := range record.SubRecords {
+		if sub.Tag != GedcomTagSour {
+			continue
+		}
+		page := ""
+		for _, sourSub := range sub.SubRecords {
+			if sourSub.Tag == GedcomTagPage {
+				page = sourSub.Value
+
+				break
+			}
+		}
+		refs = append(refs, [2]string{sub.Value, page})
+	}
+
+	return refs
+}
+
+func TestExportPersonEvent_EventSubjectAssertionCitations(t *testing.T) {
+	// A birth date cited to two citations exports both as SOUR under BIRT.
+	expCtx := eventAssertionExportContext(map[string]*Assertion{
+		"assertion-john-birth-date": {
+			Subject:   EntityRef{Event: "event-birth-john"},
+			Property:  "date",
+			Value:     "1850-01-15",
+			Citations: []string{"citation-parish", "citation-census"},
+		},
+	})
+
+	record := exportPersonEvent("event-birth-john", expCtx.GLX.Events["event-birth-john"], expCtx)
+	require.NotNil(t, record)
+	assert.Equal(t, GedcomTagBirt, record.Tag)
+
+	assert.Equal(t, [][2]string{
+		{"@S2@", "Entry 145, Page 23"},
+		{"@S1@", "Folio 234, Page 23"},
+	}, sourRefs(record), "BIRT should carry the SOUR of its event-subject assertion")
+}
+
+func TestExportPersonEvent_EventSubjectAssertionDedupesSharedPage(t *testing.T) {
+	// The birth date and the birth place read off one register entry: the page
+	// is cited once, not once per assertion.
+	expCtx := eventAssertionExportContext(map[string]*Assertion{
+		"assertion-john-birth-date": {
+			Subject:   EntityRef{Event: "event-birth-john"},
+			Property:  "date",
+			Value:     "1850-01-15",
+			Citations: []string{"citation-parish"},
+		},
+		"assertion-john-birth-place": {
+			Subject:   EntityRef{Event: "event-birth-john"},
+			Property:  "place",
+			Value:     "place-leeds",
+			Citations: []string{"citation-parish"},
+		},
+	})
+
+	record := exportPersonEvent("event-birth-john", expCtx.GLX.Events["event-birth-john"], expCtx)
+	require.NotNil(t, record)
+
+	assert.Equal(t, [][2]string{{"@S2@", "Entry 145, Page 23"}}, sourRefs(record),
+		"two assertions citing one page should emit a single SOUR")
+}
+
+func TestExportPersonEvent_EventSubjectAssertionKeepsDistinctPages(t *testing.T) {
+	// Same source, different pages: both references survive.
+	expCtx := eventAssertionExportContext(map[string]*Assertion{
+		"assertion-john-birth-date": {
+			Subject:   EntityRef{Event: "event-birth-john"},
+			Property:  "date",
+			Citations: []string{"citation-parish"},
+		},
+		"assertion-john-birth-place": {
+			Subject:   EntityRef{Event: "event-birth-john"},
+			Property:  "place",
+			Citations: []string{"citation-parish-other"},
+		},
+	})
+	expCtx.GLX.Citations["citation-parish-other"] = &Citation{
+		SourceID: "source-parish",
+		Properties: map[string]any{
+			"locator": "Entry 146, Page 24",
+		},
+	}
+	buildEventPropertyAssertionsIndex(expCtx)
+
+	record := exportPersonEvent("event-birth-john", expCtx.GLX.Events["event-birth-john"], expCtx)
+	require.NotNil(t, record)
+
+	assert.Equal(t, [][2]string{
+		{"@S2@", "Entry 145, Page 23"},
+		{"@S2@", "Entry 146, Page 24"},
+	}, sourRefs(record), "distinct pages of one source are distinct evidence")
+}
+
+func TestExportPersonEvent_EventSubjectAssertionDirectSource(t *testing.T) {
+	// An assertion citing a source directly (no citation entity) still exports.
+	expCtx := eventAssertionExportContext(map[string]*Assertion{
+		"assertion-john-birth-date": {
+			Subject:  EntityRef{Event: "event-birth-john"},
+			Property: "date",
+			Sources:  []string{"source-parish"},
+		},
+	})
+
+	record := exportPersonEvent("event-birth-john", expCtx.GLX.Events["event-birth-john"], expCtx)
+	require.NotNil(t, record)
+
+	assert.Equal(t, [][2]string{{"@S2@", ""}}, sourRefs(record))
+}
+
+func TestExportPersonEvent_EventSubjectAssertionDedupesEventCitation(t *testing.T) {
+	// The event itself and an assertion about it cite the same page: one SOUR.
+	expCtx := eventAssertionExportContext(map[string]*Assertion{
+		"assertion-john-birth-date": {
+			Subject:   EntityRef{Event: "event-birth-john"},
+			Property:  "date",
+			Citations: []string{"citation-parish"},
+		},
+	})
+	expCtx.GLX.Events["event-birth-john"].Properties = map[string]any{
+		PropertyCitations: []string{"citation-parish"},
+	}
+
+	record := exportPersonEvent("event-birth-john", expCtx.GLX.Events["event-birth-john"], expCtx)
+	require.NotNil(t, record)
+
+	assert.Equal(t, [][2]string{{"@S2@", "Entry 145, Page 23"}}, sourRefs(record))
+}
+
+func TestExportPersonEvent_WithoutAssertionsHasNoSOUR(t *testing.T) {
+	// An uncited event still exports bare — the fix adds evidence, not noise.
+	expCtx := eventAssertionExportContext(map[string]*Assertion{})
+
+	record := exportPersonEvent("event-birth-john", expCtx.GLX.Events["event-birth-john"], expCtx)
+	require.NotNil(t, record)
+
+	assert.Empty(t, sourRefs(record))
+}
+
+func TestExportFamilyEvent_EventSubjectAssertionCitations(t *testing.T) {
+	// MARR carries the evidence of its event-subject assertions too.
+	expCtx := eventAssertionExportContext(map[string]*Assertion{
+		"assertion-marriage-date": {
+			Subject:   EntityRef{Event: "event-marriage-1875"},
+			Property:  "date",
+			Citations: []string{"citation-parish"},
+		},
+	})
+	expCtx.GLX.Events["event-marriage-1875"] = &Event{
+		Type: EventTypeMarriage,
+		Date: "1875-05-10",
+	}
+	buildEventPropertyAssertionsIndex(expCtx)
+
+	record := exportFamilyEvent("event-marriage-1875", GedcomTagMarr, expCtx)
+	require.NotNil(t, record)
+
+	assert.Equal(t, [][2]string{{"@S2@", "Entry 145, Page 23"}}, sourRefs(record))
 }
