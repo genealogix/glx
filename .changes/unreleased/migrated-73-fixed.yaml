@@ -1,0 +1,6 @@
+kind: Fixed
+body: |-
+  **`glx merge`, `glx merge-persons`, and `glx migrate` no longer strand your shell in a deleted directory** — Run from inside the archive (the default `--into .` / `--archive .`, or `glx migrate .`), these commands replaced the archive directory with a freshly written copy. The shell that ran them was left sitting in the old, now-deleted directory: `ls` showed nothing and `git` failed with "Unable to read current working directory" until you `cd`'d back in. This is the same bug #1192 fixed for `glx rename`. The safe-write swap now keeps the archive directory and replaces only the entity directories, `vocabularies/`, and `metadata.glx` inside it. `.git`, `README.md`, and other non-archive files are never moved at all. If the fresh output would collide with one of those files, the swap is refused and undone before anything is deleted, rather than leaving a partial `.bak` behind. A write through a symlink to the archive now works on the real directory and leaves the link in place. If a write is killed partway through, the next write refuses to delete the leftover `.bak` and tells you how to recover it, instead of treating it as stale
+time: 2026-10-01T00:00:21Z
+custom:
+  Issue: "#1205"
