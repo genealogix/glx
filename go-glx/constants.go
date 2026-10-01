@@ -116,7 +116,32 @@ const (
 	ParticipantRoleAssociate      = "associate"
 	ParticipantRoleHouseholdHead  = "household_head"
 	ParticipantRoleBoarder        = "boarder"
+	// ParticipantRoleHouseholdMember is a census household member other than
+	// the head, named on the schedule or (with participant property
+	// named: false) counted only as a tick mark (#1332).
+	ParticipantRoleHouseholdMember = "household_member"
 )
+
+// Participant-level event properties used by census households (#1332, #119).
+const (
+	// ParticipantPropertyAgeAtEvent is the participant's age as recorded.
+	ParticipantPropertyAgeAtEvent = "age_at_event"
+	// ParticipantPropertyNamed is false when the source counts the person in
+	// the household without naming them (a tick mark in an age bracket).
+	ParticipantPropertyNamed = "named"
+	// ParticipantPropertyRelationshipToHead is the participant's relationship
+	// to the head of household as recorded (head, wife, son, boarder...).
+	ParticipantPropertyRelationshipToHead = "relationship_to_head"
+)
+
+// IsUnnamedParticipant reports whether a participant was counted in the
+// event's household without being named in the source (participant property
+// named: false). Absent or any other value means named.
+func IsUnnamedParticipant(p Participant) bool {
+	v, ok := p.Properties[ParticipantPropertyNamed].(bool)
+
+	return ok && !v
+}
 
 // Standard Person Property Names - commonly used properties on Person entities
 const (

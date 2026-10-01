@@ -45,6 +45,12 @@ participant_roles:
     description: "Female marriage participant"
     applies_to:
       - event
+
+  household_member:
+    label: "Household Member"
+    description: "Member of a census household other than its head, who is the event's principal. Set the participant property 'named: false' when the schedule counts the person only as a tick mark in an age bracket rather than naming them (US 1790-1840 and similar head-only enumerations)."
+    applies_to:
+      - event
   
   # Relationship Roles
   spouse:
