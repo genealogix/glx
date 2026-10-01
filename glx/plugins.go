@@ -328,8 +328,7 @@ func runPlugin(ctx context.Context, p Plugin, args []string, stdin io.Reader, st
 	if err == nil {
 		return 0
 	}
-	var ee *exec.ExitError
-	if errors.As(err, &ee) {
+	if ee, ok := errors.AsType[*exec.ExitError](err); ok {
 		return ee.ExitCode()
 	}
 	_, _ = fmt.Fprintf(stderr, "glx: failed to run plugin %q: %v\n", p.Name, err)
