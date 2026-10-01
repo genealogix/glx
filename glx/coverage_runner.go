@@ -171,7 +171,7 @@ func buildCoverage(personID string, person *glxlib.Person, archive *glxlib.GLXFi
 
 	// National census records, for the countries the person's places name
 	schedules := censusSchedulesForPlaces(coveragePlaceRefs(personEvents), archive)
-	records = append(records, buildCensusRecords(birthYear, deathYear, schedules, personSources, personEvents)...)
+	records = append(records, buildCensusRecords(birthYear, deathYear, schedules, personSources, personEvents, archive)...)
 
 	// State census records
 	states := collectPersonStates(person, archive, personEvents)
@@ -300,6 +300,19 @@ func collectPersonEvents(personID string, archive *glxlib.GLXFile, evidenced map
 	return events
 }
 
+// coverageDatedPlaces returns the dated places of a person's events, for
+// working out which state or territory they were in at a census (#1333).
+func coverageDatedPlaces(events []personSourceInfo) []datedPlace {
+	var places []datedPlace
+	for _, e := range events {
+		if e.PlaceID != "" && e.Year != 0 {
+			places = append(places, datedPlace{year: e.Year, placeID: e.PlaceID})
+		}
+	}
+
+	return places
+}
+
 // coveragePlaceRefs returns the place references of a person's events, for
 // resolving which countries' census schedules apply to them.
 func coveragePlaceRefs(events []personSourceInfo) []string {
@@ -372,8 +385,12 @@ func assertionHasEvidence(assertion *glxlib.Assertion, archive *glxlib.GLXFile) 
 // buildCensusRecords generates expected census records for every supplied
 // schedule, bounded by the person's birth and death years. A person with no
 // applicable schedule — one whose places name a country GLX has no census
-// schedule for — gets no census rows at all (#186).
-func buildCensusRecords(birthYear, deathYear int, schedules []*censusSchedule, sources, events []personSourceInfo) []coverageRecord {
+// schedule for — gets no census rows at all (#186). A census whose schedules
+// are lost for every state or territory the person's events place them in
+// around that year gets no row unless one was found anyway, so it does not
+// count as missing; one lost for only some of them carries a note (#1333).
+// archive resolves event places to states and territories; nil skips that.
+func buildCensusRecords(birthYear, deathYear int, schedules []*censusSchedule, sources, events []personSourceInfo, archive *glxlib.GLXFile) []coverageRecord {
 	if birthYear == 0 {
 		return nil
 	}
@@ -385,6 +402,7 @@ func buildCensusRecords(birthYear, deathYear int, schedules []*censusSchedule, s
 	}
 
 	var records []coverageRecord
+	places := coverageDatedPlaces(events)
 
 	for _, schedule := range schedules {
 		for _, year := range schedule.years {
@@ -394,6 +412,7 @@ func buildCensusRecords(birthYear, deathYear int, schedules []*censusSchedule, s
 			if year > upperBound {
 				break
 			}
+			survival := schedule.survival(year, places, archive)
 			// Approximate age at this census year (may be 0 if census year == birth year)
 			age := year - birthYear
 			note := schedule.notes[year]
@@ -410,8 +429,14 @@ func buildCensusRecords(birthYear, deathYear int, schedules []*censusSchedule, s
 				rec.SourceRef = ref
 			}
 
+			// A census lost wherever the person was cannot be missing
+			if survival.lost && !rec.Found {
+				continue
+			}
+
 			// Census-specific annotations (always added, even when found)
 			rec.Description = appendCensusAnnotation(rec.Description, note, age)
+			rec.Description = appendDescription(rec.Description, survival.note)
 
 			// An unevidenced census event is named, not counted
 			if !rec.Found {
@@ -420,17 +445,7 @@ func buildCensusRecords(birthYear, deathYear int, schedules []*censusSchedule, s
 
 			// Priority annotations for missing records
 			if !rec.Found {
-				switch {
-				case note.highPriority:
-					rec.Priority = severityHigh
-				case age >= censusPrimeAgeMin && age <= censusPrimeAgeMax:
-					rec.Priority = severityHigh
-					// Avoid duplicating the parents-household note when the
-					// year's own minor annotation already said it
-					if note.minorNote == "" || age >= minorAgeUnder {
-						rec.Description = appendDescription(rec.Description, "may show in parents' household")
-					}
-				}
+				prioritizeMissingCensus(&rec, note, age)
 			}
 
 			records = append(records, rec)
@@ -438,6 +453,22 @@ func buildCensusRecords(birthYear, deathYear int, schedules []*censusSchedule, s
 	}
 
 	return records
+}
+
+// prioritizeMissingCensus sets the research priority of a census the person
+// has not been found in.
+func prioritizeMissingCensus(rec *coverageRecord, note censusYearNote, age int) {
+	switch {
+	case note.highPriority:
+		rec.Priority = severityHigh
+	case age >= censusPrimeAgeMin && age <= censusPrimeAgeMax:
+		rec.Priority = severityHigh
+		// Avoid duplicating the parents-household note when the
+		// year's own minor annotation already said it
+		if note.minorNote == "" || age >= minorAgeUnder {
+			rec.Description = appendDescription(rec.Description, "may show in parents' household")
+		}
+	}
 }
 
 // findCensusMatch checks if a census for a given year exists in sources or events.

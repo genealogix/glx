@@ -123,8 +123,9 @@ func suggestCensusSearches(archive *glxlib.GLXFile) []AnalysisIssue {
 	addCensusYearFromSources(archive, personCensusYears)
 	personBurialYear := buildBurialYearIndex(archive)
 	personPlaces := buildPersonPlaceIndex(archive)
+	personDatedPlaces := buildPersonDatedPlaceIndex(archive)
 
-	plans := buildCensusSuggestionPlans(archive, personCensusYears, personBurialYear, personPlaces)
+	plans := buildCensusSuggestionPlans(archive, personCensusYears, personBurialYear, personPlaces, personDatedPlaces)
 	parentExtras, suppressed := consolidateParentChildCensus(archive, plans)
 
 	return emitCensusSuggestions(archive, plans, parentExtras, suppressed)
@@ -143,6 +144,10 @@ type censusYearRef struct {
 type censusSuggestionPlan struct {
 	birthYear int
 	missing   []censusYearRef
+	// lossNotes annotates the missing censuses whose schedules are lost
+	// for some of the states or territories the person may have been in
+	// (#1333).
+	lossNotes map[censusYearRef]string
 }
 
 // coveredChild records a minor child whose census suggestion is rolled up
@@ -157,12 +162,15 @@ type coveredChild struct {
 // death is unknown) that are not already represented by a census event or
 // census source for that person. Which censuses those are depends on where
 // the person's places put them: a person whose places name a country with no
-// census schedule gets no plan at all (#186).
+// census schedule gets no plan at all (#186). A census whose schedules are
+// lost for every state or territory the person can be placed in around that
+// year is left out, since it can never be found (#1333).
 func buildCensusSuggestionPlans(
 	archive *glxlib.GLXFile,
 	personCensusYears map[string]map[int]bool,
 	personBurialYear map[string]int,
 	personPlaces map[string][]string,
+	personDatedPlaces map[string][]datedPlace,
 ) map[string]*censusSuggestionPlan {
 	plans := make(map[string]*censusSuggestionPlan)
 	for _, id := range sortedPersonIDs(archive.Persons) {
@@ -186,16 +194,25 @@ func buildCensusSuggestionPlans(
 
 		existing := personCensusYears[id]
 		var missing []censusYearRef
+		lossNotes := make(map[censusYearRef]string)
 		for _, schedule := range censusSchedulesForPlaces(personPlaces[id], archive) {
 			for _, censusYear := range schedule.years {
 				if censusYear < birthYear || censusYear > upperBound || existing[censusYear] {
 					continue
 				}
-				missing = append(missing, censusYearRef{schedule: schedule, year: censusYear})
+				survival := schedule.survival(censusYear, personDatedPlaces[id], archive)
+				if survival.lost {
+					continue
+				}
+				ref := censusYearRef{schedule: schedule, year: censusYear}
+				missing = append(missing, ref)
+				if survival.note != "" {
+					lossNotes[ref] = survival.note
+				}
 			}
 		}
 		if len(missing) > 0 {
-			plans[id] = &censusSuggestionPlan{birthYear: birthYear, missing: missing}
+			plans[id] = &censusSuggestionPlan{birthYear: birthYear, missing: missing, lossNotes: lossNotes}
 		}
 	}
 
@@ -463,6 +480,9 @@ func emitCensusSuggestions(
 			note := fmt.Sprintf("%s — search %s (alive, no census event)", name, ref.schedule.suggestionLabel(ref.year))
 			if yearNote := ref.schedule.notes[ref.year]; yearNote.note != "" {
 				note += " — " + yearNote.note
+			}
+			if lossNote := plan.lossNotes[ref]; lossNote != "" {
+				note += " — " + lossNote
 			}
 			if extras := parentExtras[id][ref]; len(extras) > 0 {
 				parts := make([]string, 0, len(extras))
