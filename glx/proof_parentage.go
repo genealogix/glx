@@ -153,6 +153,32 @@ func parentageConflicts(survivors []parentCandidate) []proofConflict {
 	return conflicts
 }
 
+// competingParents returns the IDs of the survivors that compete with another
+// survivor, by the rule parentageConflicts applies: same sex, both claimed
+// through birth parent-child relationships.
+func competingParents(survivors []parentCandidate) map[string]bool {
+	bySex := map[string][]string{}
+	for i := range survivors {
+		c := &survivors[i]
+		sex := strings.ToLower(c.sex)
+		if !c.birth || (sex != glxlib.SexMale && sex != glxlib.SexFemale) {
+			continue
+		}
+		bySex[sex] = append(bySex[sex], c.personID)
+	}
+	competing := map[string]bool{}
+	for _, ids := range bySex {
+		if len(ids) < 2 {
+			continue
+		}
+		for _, id := range ids {
+			competing[id] = true
+		}
+	}
+
+	return competing
+}
+
 // strongestClaim returns the highest confidence among the assertions and
 // their combined status (see combineStatus).
 func strongestClaim(assertions []*glxlib.Assertion) (confidence, status string) {

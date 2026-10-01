@@ -348,3 +348,15 @@ func TestPublishFamilyGroups(t *testing.T) {
 	}
 	assert.Contains(t, chartNames, "Annie Mary Lewis (?)")
 }
+
+func TestPrintFamilySection_CompetingFathersAreAlternatives(t *testing.T) {
+	archive := littleFamilyArchive()
+	// Revive John as a surviving candidate alongside Daniel.
+	archive.Assertions["a-john"].Status = "speculative"
+
+	out := captureStdout(t, func() { printFamilySection("person-lewis", archive) })
+	assert.Contains(t, out, "Father:           Johannes Daniel Little  (?)  (alternative)\n")
+	assert.Contains(t, out, "Father:           John Little  (?)  (alternative)\n")
+	assert.Contains(t, out, "Mother:           Annie Mary Lewis  (?)\n", "a single mother is no alternative")
+	assert.Contains(t, out, "Excluded:         Jacob Little  (disproven parent)\n")
+}

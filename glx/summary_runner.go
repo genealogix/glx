@@ -529,8 +529,16 @@ func printFamilySection(personID string, archive *glxlib.GLXFile) {
 		fmt.Printf("  %-18s%s\n", "Father:", "(unknown)")
 		fmt.Printf("  %-18s%s\n", "Mother:", "(unknown)")
 	}
+	// Two or more surviving birth fathers (or mothers) are alternatives the
+	// research has not yet decided between, not several fathers.
+	survivors, _ := parentageCandidates(personID, archive)
+	competing := competingParents(survivors)
 	for _, e := range ownParents {
-		fmt.Printf("  %-18s%s\n", parentLabel(summaryPersonSex(e.PersonID, archive))+":", withHypotheticalMarker(summaryPersonName(e.PersonID, archive), e.Hypothetical))
+		name := withHypotheticalMarker(summaryPersonName(e.PersonID, archive), e.Hypothetical)
+		if competing[e.PersonID] {
+			name += "  (alternative)"
+		}
+		fmt.Printf("  %-18s%s\n", parentLabel(summaryPersonSex(e.PersonID, archive))+":", name)
 	}
 	for _, e := range stepParents {
 		fmt.Printf("  %-18s%s\n", stepParentLabel(summaryPersonSex(e.PersonID, archive))+":", withHypotheticalMarker(summaryPersonName(e.PersonID, archive), e.Hypothetical))
