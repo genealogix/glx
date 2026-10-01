@@ -151,6 +151,7 @@ func showSummary(archivePath, personQuery string) error {
 	printFamilySection(personID, archive)
 	printOtherRelationshipsSection(personID, archive)
 	printLifeHistorySection(personID, person, archive)
+	printResearchSection(personID, archive)
 
 	return nil
 }

@@ -1,0 +1,17 @@
+# Standard Lead Statuses
+# This file defines the states of a lead (a competing hypothesis) inside a
+# ResearchLog, such as a candidate parent in a brick-wall investigation.
+# Archives can extend this with custom statuses by adding additional entries.
+
+lead_statuses:
+  active:
+    label: "Active"
+    description: "Hypothesis is still being pursued; evidence neither rules it in nor out yet."
+
+  eliminated:
+    label: "Eliminated"
+    description: "Hypothesis has been ruled out by contradicting evidence."
+
+  confirmed:
+    label: "Confirmed"
+    description: "Hypothesis has been proven; the conclusion belongs in assertions and relationships."

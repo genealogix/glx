@@ -236,6 +236,12 @@ Standard vocabulary (`information_types`) backing the `information_type` source 
 
 ## L
 
+### Lead
+
+A competing hypothesis under investigation inside a [ResearchLog](#researchlog), such as one candidate father in a brick-wall search. Records a description, optional candidate persons, evidence for and against, a confidence, next steps, and a status (`active`, `eliminated`, `confirmed`) from the standard `lead_statuses` vocabulary.
+
+> **See Also:** [ResearchLog Entity - Leads](4-entity-types/research-log.md#leads-competing-hypotheses), [Lead Statuses Vocabulary](4-entity-types/vocabularies.md#lead-statuses-vocabulary)
+
 ### Legal Statuses
 
 Standard vocabulary (`legal_statuses`) backing the `legal_status` relationship property. Distinguishes forms of coerced labor on enslavement relationships: `chattel`, `indentured`, `debt_bondage`, `apprenticeship`. Archives may extend with custom values.
@@ -416,7 +422,7 @@ Documented analysis and decision-making process for genealogical conclusions, in
 
 ### ResearchLog
 
-First-class entity that records research investigations: an objective, a status, and an embedded list of `Search` entries documenting every query performed (including searches that found nothing). Backs the Genealogical Proof Standard requirement for a "reasonably exhaustive search" by making negative evidence machine-readable.
+First-class entity that records research investigations: an objective, a status, an embedded list of `Search` entries documenting every query performed (including searches that found nothing), and an embedded list of [leads](#lead) (competing hypotheses). Backs the Genealogical Proof Standard requirement for a "reasonably exhaustive search" by making negative evidence machine-readable.
 
 > **See Also:** [ResearchLog Entity](4-entity-types/research-log.md), [Search](#search), [Negative Evidence](#negative-evidence)
 

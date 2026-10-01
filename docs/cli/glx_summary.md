@@ -24,6 +24,8 @@ Sections displayed:
   - Family: spouse(s) with marriage info, parents, siblings
   - Relationships: godparent, neighbor, household, employment, etc.
   - Life History: auto-generated biographical narrative
+  - Research: research logs about the person (as subject or as a lead
+    candidate) with objective, status, planned searches, and active leads
 
 ```
 glx summary <person> [flags]

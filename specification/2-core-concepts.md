@@ -62,6 +62,7 @@ When you create an archive with `glx init` or `glx import`, standard vocabulary 
 | `study-statuses.glx` | Active, paused, completed, abandoned |
 | `search-result-types.glx` | found, not_found, inconclusive, partial, not_searched |
 | `research-log-status-types.glx` | open, in_progress, complete, blocked |
+| `lead-statuses.glx` | active, eliminated, confirmed (research-log leads) |
 | `person-properties.glx` | Person properties (name, occupation, etc.) |
 | `event-properties.glx` | Event properties |
 | `relationship-properties.glx` | Relationship properties |
