@@ -417,6 +417,15 @@ const (
 	ResearchLogStatusBlocked    = "blocked"
 )
 
+// Standard Lead Statuses - from lead-statuses.glx vocabulary.
+// Used by ResearchLead.Status to record whether a hypothesis inside a
+// ResearchLog is still being pursued, has been ruled out, or has been proven.
+const (
+	LeadStatusActive     = "active"
+	LeadStatusEliminated = "eliminated"
+	LeadStatusConfirmed  = "confirmed"
+)
+
 // Standard Source Types - from source-types.glx vocabulary
 const (
 	SourceTypeVitalRecord        = "vital_record"        // Birth, marriage, death certificates
@@ -636,6 +645,7 @@ const (
 	VocabGenderTypes            = "gender_types"
 	VocabSearchResultTypes      = "search_result_types"
 	VocabResearchLogStatusTypes = "research_log_status_types"
+	VocabLeadStatuses           = "lead_statuses"
 	VocabStudyTypes             = "study_types"
 	VocabStudyStatuses          = "study_statuses"
 	VocabLegalStatuses          = "legal_statuses"

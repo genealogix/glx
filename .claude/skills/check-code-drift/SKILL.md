@@ -61,7 +61,7 @@ Read `go-glx/types.go`. Find the `GLXFile` struct. For every field of type `map[
 
 As of the last-verified SHA above, `GLXFile` contains:
 - Entity maps: `persons`, `relationships`, `events`, `places`, `sources`, `citations`, `repositories`, `assertions`, `media`, `research_logs`, `studies`
-- VocabularyEntry maps: `event_types`, `participant_roles`, `confidence_levels`, `relationship_types`, `place_types`, `source_types`, `repository_types`, `media_types`, `sex_types`, `gender_types`, `search_result_types`, `research_log_status_types`, `study_types`, `study_statuses`, `legal_statuses`
+- VocabularyEntry maps: `event_types`, `participant_roles`, `confidence_levels`, `relationship_types`, `place_types`, `source_types`, `repository_types`, `media_types`, `sex_types`, `gender_types`, `search_result_types`, `research_log_status_types`, `lead_statuses`, `study_types`, `study_statuses`, `legal_statuses`
 - PropertyDefinition maps: `person_properties`, `event_properties`, `relationship_properties`, `place_properties`, `media_properties`, `repository_properties`, `citation_properties`, `source_properties`
 
 This list is illustrative. Always derive it from the live file; the definitive list is whatever `GLXFile` contains at HEAD.

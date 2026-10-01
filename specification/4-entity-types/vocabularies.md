@@ -34,6 +34,7 @@ The standard vocabulary files are:
 - `repository-types.glx`
 - `search-result-types.glx`
 - `research-log-status-types.glx`
+- `lead-statuses.glx`
 - `person-properties.glx`
 - `event-properties.glx`
 - `relationship-properties.glx`
@@ -704,6 +705,46 @@ research_log_status_types:
 ### Standard Research Log Status Types
 
 See [ResearchLog Entity - Status lifecycle](research-log.md#status-lifecycle) for the standard status values and the investigation lifecycle.
+
+---
+
+## Lead Statuses Vocabulary
+
+**Default file**: `vocabularies/lead-statuses.glx`
+
+**Used By**: [ResearchLog Entity](research-log.md#leads-competing-hypotheses) (each lead's `status`)
+
+**Purpose**: Records whether a lead (a competing hypothesis inside a research log) is still being pursued, has been ruled out, or has been proven.
+
+**Standard Templates**: See [Standard Vocabularies - Lead Statuses](../5-standard-vocabularies/#lead-statuses) for the complete default vocabulary.
+
+### Structure
+
+```yaml
+lead_statuses:
+  active:
+    label: "Active"
+    description: "Hypothesis is still being pursued; evidence neither rules it in nor out yet."
+
+  eliminated:
+    label: "Eliminated"
+    description: "Hypothesis has been ruled out by contradicting evidence."
+
+  confirmed:
+    label: "Confirmed"
+    description: "Hypothesis has been proven; the conclusion belongs in assertions and relationships."
+```
+
+### Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `label` | Yes | Human-readable label |
+| `description` | No | Detailed description |
+
+### Standard Lead Statuses
+
+See [ResearchLog Entity - Leads](research-log.md#leads-competing-hypotheses) for guidance on recording and eliminating leads.
 
 ---
 
@@ -1747,6 +1788,7 @@ Each vocabulary type has a corresponding JSON Schema for validation:
 | Study Statuses | [study-statuses.schema.json](../schema/v1/vocabularies/study-statuses.schema.json) |
 | Search Result Types | [search-result-types.schema.json](../schema/v1/vocabularies/search-result-types.schema.json) |
 | Research Log Status Types | [research-log-status-types.schema.json](../schema/v1/vocabularies/research-log-status-types.schema.json) |
+| Lead Statuses | [lead-statuses.schema.json](../schema/v1/vocabularies/lead-statuses.schema.json) |
 | Person Properties | [person-properties.schema.json](../schema/v1/vocabularies/person-properties.schema.json) |
 | Event Properties | [event-properties.schema.json](../schema/v1/vocabularies/event-properties.schema.json) |
 | Relationship Properties | [relationship-properties.schema.json](../schema/v1/vocabularies/relationship-properties.schema.json) |

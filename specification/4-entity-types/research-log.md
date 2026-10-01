@@ -1,6 +1,6 @@
 ---
 title: ResearchLog Entity
-description: Documents searches performed during a research investigation, including negative results, to support a "reasonably exhaustive search"
+description: Documents a research investigation (the searches performed, including negative results, and the competing hypotheses under evaluation) to support a "reasonably exhaustive search"
 layout: doc
 ---
 
@@ -10,7 +10,7 @@ layout: doc
 
 ## Overview
 
-A ResearchLog entity records what a researcher has searched for, where, when, and what was (or was not) found. It treats **negative evidence** — "the source was searched and the target was not present" — as a first-class outcome, supporting the [Genealogical Proof Standard](https://bcgcertification.org/ethics-standards/) requirement for a "reasonably exhaustive search."
+A ResearchLog entity records what a researcher has searched for, where, when, and what was (or was not) found, together with the **leads** (competing hypotheses) the research is trying to settle. It treats **negative evidence** — "the source was searched and the target was not present" — as a first-class outcome, supporting the [Genealogical Proof Standard](https://bcgcertification.org/ethics-standards/) requirement for a "reasonably exhaustive search."
 
 Without a ResearchLog, this information lives in freeform notes or external spreadsheets and is not queryable. Researchers end up duplicating searches across sessions because there is no structured record that a given collection has already been checked.
 
@@ -45,7 +45,7 @@ research_logs:
 
 - Entity ID is the map key (`research-log-1860-census-jane-webb`)
 - IDs can be descriptive or random, 1-64 alphanumeric/hyphens
-- Searches are embedded inside the log; they are not standalone entities
+- Searches and leads are embedded inside the log; they are not standalone entities
 
 ## Core Concepts
 
@@ -81,6 +81,22 @@ Each `Search` records one query and its outcome. The standard outcomes are:
 
 **See [Vocabularies - Research Log Status Types](vocabularies.md#research-log-status-types-vocabulary).**
 
+### Leads: competing hypotheses
+
+Searches record *what was searched*; leads record *what we are trying to figure out*. A brick-wall question such as "who were Mary Green's parents?" usually has several candidate answers at once. Each candidate is a **lead**: a description, optional references to the candidate persons, the evidence for and against it, a confidence, and the next steps for pursuing it. Researchers eliminate leads one by one until one is confirmed.
+
+A lead's `status` is one of:
+
+- `active`: still being pursued; the evidence neither rules it in nor out yet
+- `eliminated`: ruled out by contradicting evidence (keep it, with `evidence_against`, so the elimination is documented and nobody re-investigates it)
+- `confirmed`: proven
+
+**See [Vocabularies - Lead Statuses](vocabularies.md#lead-statuses-vocabulary).**
+
+A lead is research workflow state, not a conclusion. When a lead is confirmed, record the conclusion where it belongs in the archive: a [Relationship](relationship.md) or property value backed by an [Assertion](assertion.md) with citations. A lead can point at those assertions through its `assertions` list, so the hypothesis and the evidence-backed claim stay linked. A speculative candidate parent can likewise be modelled early as a `parent_child` relationship with a low-confidence assertion, referenced from the lead and marked `disproven` if the lead is eliminated.
+
+`evidence_for` and `evidence_against` are free-text summaries, since much brick-wall reasoning ("daughter of the right age in the 1840 census", "father born in England") is an inference over several records rather than a single citation. Use the lead's `citations` and `assertions` lists to point at the structured evidence those summaries rest on.
+
 ## Fields
 
 ### Required Fields
@@ -102,6 +118,7 @@ A log with only an entity ID is a valid, minimal placeholder; `objective` and a 
 | `objective` | string | Research question or goal |
 | `status` | string | Lifecycle status (validated against `research_log_status_types` vocabulary) |
 | `searches` | array | List of `Search` entries — one per search attempt |
+| `leads` | array | List of `ResearchLead` entries — competing hypotheses under investigation |
 | `citations` | array | Citations produced by this log (denormalized from per-search refs) |
 | `conclusions` | string | Summary of findings |
 | `properties` | object | Vocabulary-extensible metadata. There is no research-log property vocabulary in this revision, so keys are not validated and unknown keys do not produce warnings |
@@ -121,6 +138,23 @@ Each entry in `searches` is a structured record of one search attempt:
 | `result` | string | Outcome (validated against `search_result_types` vocabulary) |
 | `citation` | string | Reference to the Citation produced when result is `found` |
 | `notes` | string \| string[] | Free-form notes about this attempt |
+
+### Lead entry fields
+
+Each entry in `leads` is one hypothesis under investigation. All fields are optional, though `description` is strongly recommended.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `description` | string | Brief description of the hypothesis (e.g., "John H. Green of Wheeling, VA") |
+| `persons` | string[] | References to candidate Person entities the lead is about |
+| `status` | string | `active`, `eliminated`, or `confirmed` (validated against `lead_statuses` vocabulary) |
+| `confidence` | string | Researcher's confidence in the hypothesis (validated against `confidence_levels` vocabulary) |
+| `evidence_for` | string[] | Free-text summaries of evidence supporting the hypothesis |
+| `evidence_against` | string[] | Free-text summaries of evidence contradicting the hypothesis |
+| `citations` | string[] | References to Citations that bear on the lead |
+| `assertions` | string[] | References to Assertions that model the hypothesis (e.g., a speculative `parent_child` claim) |
+| `next_steps` | string[] | Actionable next steps for pursuing the lead |
+| `notes` | string \| string[] | Free-form notes about the lead |
 
 ## Usage Patterns
 
@@ -167,6 +201,43 @@ research_logs:
       - "Continue with Litchfield County land records 1785-1810 next session"
 ```
 
+### Tracking competing candidates
+
+When several candidate answers are in play, record each as a lead and eliminate them as evidence comes in:
+
+```yaml
+research_logs:
+  research-log-mary-green-parents:
+    subject:
+      person: person-mary-green
+    objective: "Identify Mary Green's parents"
+    status: in_progress
+    searches:
+      - collection: "United States, Census, 1850"
+        query: "Green households, Ohio County, Virginia"
+        result: not_searched
+    leads:
+      - description: "John H. Green of Wheeling, VA"
+        persons: [person-john-h-green]
+        status: active
+        confidence: medium
+        evidence_for:
+          - "Daughter aged 5-10 in the 1840 census"
+          - "Wheeling is Daniel Lane's birthplace"
+        evidence_against:
+          - "Father born in England, not connected to the NY Greens"
+        next_steps:
+          - "Search 1850 census, Ohio County, VA"
+      - description: "Luther Green of Springwater, NY"
+        persons: [person-luther-green]
+        status: eliminated
+        confidence: low
+        evidence_against:
+          - "No daughter of the right age in the 1840 or 1850 census"
+```
+
+`glx query research_logs --subject person-mary-green` lists the logs about Mary (as subject) and, because leads name candidate persons, `--subject person-john-h-green` finds this log too. `glx summary` shows a Research section for a person with each log's objective, status, outstanding `not_searched` searches, and active leads.
+
 ### Linking to citations
 
 When a search produces a citable record, link the citation both inline (on the search entry) and at the log level for easy roll-up:
@@ -202,16 +273,18 @@ research_logs/
 - `status` if present must be from the [research log status types vocabulary](vocabularies.md#research-log-status-types-vocabulary)
 - Each search's `repository`, `source`, and `citation` if present must reference existing entities
 - Each search's `result` if present must be from the [search result types vocabulary](vocabularies.md#search-result-types-vocabulary)
+- Each lead's `persons`, `citations`, and `assertions` entries must reference existing Person, Citation, and Assertion entities
+- Each lead's `status` if present must be from the [lead statuses vocabulary](vocabularies.md#lead-statuses-vocabulary), and its `confidence` if present from the [confidence levels vocabulary](vocabularies.md#confidence-levels-vocabulary)
 - `citations` entries must reference existing Citation entities
 
 ## Related Issues
 
-ResearchLog tracks individual searches and their outcomes. It is intentionally distinct from related concepts being designed in parallel:
+ResearchLog records both *what was searched* (`searches`) and *what we are trying to figure out* (`leads`):
 
-- **Research investigation** ([#660](https://github.com/genealogix/glx/issues/660)): a higher-level workflow tracker for a research question — leads, hypotheses, next steps. ResearchLog records *what was searched*; Research records *what we are trying to figure out*.
+- **Research investigation** ([#660](https://github.com/genealogix/glx/issues/660)) originally proposed a separate Research entity for leads, hypotheses, and next steps. Because ResearchLog already carried the subject, objective, status, conclusions, and searches that entity needed, the proposal was folded into ResearchLog as `leads` instead of adding a new entity type. Candidate matching for unknown parentage ([#183](https://github.com/genealogix/glx/issues/183)) is modelled the same way: one lead per candidate, with evidence for and against.
 - **[Study](study.md)** (issue #226, shipped in beta.11): defines the scope of a research project (e.g., a One Place Study). Logs performed within a study are associated by convention (shared `subject`, places, or sources); there is no linking field between the two entities in this revision.
 
-CLI commands for adding and querying logs are tracked separately and are not part of this specification.
+CLI support (`glx query research_logs --subject`, the Research section of `glx summary`) is described in the [CLI reference](../../docs/cli/glx_query.md); it is not part of this specification.
 
 ## GEDCOM Mapping
 

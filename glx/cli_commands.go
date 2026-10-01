@@ -696,7 +696,8 @@ var queryCmd = &cobra.Command{
 	Long: `Filter and list entities from a GENEALOGIX archive.
 
 Supported entity types: persons, events, assertions, sources,
-relationships, places, citations, repositories, media.
+relationships, places, citations, repositories, media, research_logs,
+studies.
 
 Filters vary by entity type:
   persons:       --name, --born-before, --born-after, --birthplace
@@ -706,6 +707,8 @@ Filters vary by entity type:
   relationships: --type
   places:        --name
   repositories:  --name
+  research_logs: --status, --subject (the log's subject or a lead's
+                 candidate person, by ID or name substring)
 
 All entity types support --archive to specify the archive path.`,
 	Example: `  # Find persons born before 1850
@@ -725,6 +728,9 @@ All entity types support --archive to specify the archive path.`,
 
   # Find persons by name in a specific archive
   glx query persons --name "Smith" --archive my-archive
+
+  # Find research logs about a person (as subject or as a lead candidate)
+  glx query research_logs --subject person-mary-green
 
   # List all sources
   glx query sources`,
@@ -754,10 +760,10 @@ func init() {
 	queryCmd.Flags().IntVar(&queryBefore, "before", 0, "Filter events with date before this year")
 	queryCmd.Flags().IntVar(&queryAfter, "after", 0, "Filter events with date after this year")
 	queryCmd.Flags().StringVar(&queryConfidence, "confidence", "", "Filter assertions by confidence level")
-	queryCmd.Flags().StringVar(&queryStatus, "status", "", "Filter assertions by status")
+	queryCmd.Flags().StringVar(&queryStatus, "status", "", "Filter assertions or research logs by status")
 	queryCmd.Flags().StringVar(&querySource, "source", "", "Filter assertions by source ID (direct or via citation)")
 	queryCmd.Flags().StringVar(&queryCitation, "citation", "", "Filter assertions by citation ID")
-	queryCmd.Flags().StringVar(&querySubject, "subject", "", "Filter assertions by subject entity ID or person name substring")
+	queryCmd.Flags().StringVar(&querySubject, "subject", "", "Filter assertions or research logs by subject entity ID or person name substring")
 	queryCmd.Flags().StringVar(&queryBirthplace, "birthplace", "", "Filter persons by birthplace (place ID or name substring)")
 }
 
@@ -960,7 +966,9 @@ Sections displayed:
   - Life Events: census, immigration, naturalization, military service, etc.
   - Family: spouse(s) with marriage info, parents, siblings
   - Relationships: godparent, neighbor, household, employment, etc.
-  - Life History: auto-generated biographical narrative`,
+  - Life History: auto-generated biographical narrative
+  - Research: research logs about the person (as subject or as a lead
+    candidate) with objective, status, planned searches, and active leads`,
 	Example: `  # Summary by person ID
   glx summary person-abc123
 

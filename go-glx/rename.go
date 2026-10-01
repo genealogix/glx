@@ -417,6 +417,11 @@ func updateAllRefs(glx *GLXFile, oldID, newID string) int {
 				count++
 			}
 		}
+		for i := range rl.Leads {
+			count += replaceInSlice(rl.Leads[i].Persons, oldID, newID)
+			count += replaceInSlice(rl.Leads[i].Citations, oldID, newID)
+			count += replaceInSlice(rl.Leads[i].Assertions, oldID, newID)
+		}
 		count += replaceInSlice(rl.Citations, oldID, newID)
 		count += replaceInProperties(rl.Properties, oldID, newID)
 	}

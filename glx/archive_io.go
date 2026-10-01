@@ -999,7 +999,7 @@ func writePartialArchive(dirPath string, partial *glxlib.GLXFile) (int, error) {
 // mergeStandardVocabularies loads standard vocabularies into a GLXFile,
 // filling only empty maps. User-defined vocabularies are preserved.
 //
-//nolint:gocyclo // 21 vocab fields with identical empty-map guards; splitting hurts readability
+//nolint:gocyclo // 26 vocab fields with identical empty-map guards; splitting hurts readability
 func mergeStandardVocabularies(glx *glxlib.GLXFile) error {
 	std := &glxlib.GLXFile{}
 	if err := glxlib.LoadStandardVocabulariesIntoGLX(std); err != nil {
@@ -1041,6 +1041,15 @@ func mergeStandardVocabularies(glx *glxlib.GLXFile) error {
 	}
 	if len(glx.StudyStatuses) == 0 {
 		glx.StudyStatuses = std.StudyStatuses
+	}
+	if len(glx.SearchResultTypes) == 0 {
+		glx.SearchResultTypes = std.SearchResultTypes
+	}
+	if len(glx.ResearchLogStatusTypes) == 0 {
+		glx.ResearchLogStatusTypes = std.ResearchLogStatusTypes
+	}
+	if len(glx.LeadStatuses) == 0 {
+		glx.LeadStatuses = std.LeadStatuses
 	}
 	if len(glx.LegalStatuses) == 0 {
 		glx.LegalStatuses = std.LegalStatuses

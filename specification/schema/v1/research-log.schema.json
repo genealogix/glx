@@ -128,6 +128,79 @@
         "additionalProperties": false
       }
     },
+    "leads": {
+      "type": "array",
+      "description": "Competing hypotheses under investigation (e.g., candidate parents in a brick-wall search), each with evidence for and against, a status, and next steps",
+      "items": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "Brief description of the hypothesis (e.g., 'John H. Green of Wheeling, VA')"
+          },
+          "persons": {
+            "type": "array",
+            "description": "Candidate Person entities this lead is about",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9-]{1,64}$"
+            },
+            "uniqueItems": true
+          },
+          "status": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Lead status (validated against lead_statuses vocabulary: active, eliminated, confirmed)"
+          },
+          "confidence": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Researcher's confidence in the hypothesis (validated against confidence_levels vocabulary)"
+          },
+          "evidence_for": {
+            "type": "array",
+            "description": "Free-text summaries of evidence supporting the hypothesis",
+            "items": { "type": "string" }
+          },
+          "evidence_against": {
+            "type": "array",
+            "description": "Free-text summaries of evidence contradicting the hypothesis",
+            "items": { "type": "string" }
+          },
+          "citations": {
+            "type": "array",
+            "description": "Citations that bear on this lead",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9-]{1,64}$"
+            },
+            "uniqueItems": true
+          },
+          "assertions": {
+            "type": "array",
+            "description": "Assertions that model this hypothesis (e.g., a speculative parent_child assertion)",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9-]{1,64}$"
+            },
+            "uniqueItems": true
+          },
+          "next_steps": {
+            "type": "array",
+            "description": "Actionable next steps for pursuing this lead",
+            "items": { "type": "string" }
+          },
+          "notes": {
+            "oneOf": [
+              { "type": "string" },
+              { "type": "array", "items": { "type": "string" } }
+            ],
+            "description": "Free-form notes about this lead"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
     "citations": {
       "type": "array",
       "description": "Citations produced by this research log (denormalized from per-search citation refs for easy roll-up)",
