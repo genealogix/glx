@@ -837,6 +837,10 @@ func loadArchiveFromFiles(rootPath string, files map[string][]byte, schemaValida
 			}
 		}
 		if len(allErrors) > 0 {
+			// files is a map: sort so the report lists files in the same
+			// order on every run.
+			slices.Sort(allErrors)
+
 			return nil, nil, fmt.Errorf("%w:\n\n%s", ErrMultipleFilesFailed, strings.Join(allErrors, "\n\n"))
 		}
 	}
