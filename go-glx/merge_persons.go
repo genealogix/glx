@@ -565,11 +565,11 @@ func FormatPropertyValue(v any) string {
 func mergeTemporalProperty(property string, keep, drop any, def *PropertyDefinition, places map[string]*Place, opts MergePersonsOptions) (any, int, []PersonMergeConflict) {
 	// Compare against the original kept history, never previously accepted drop
 	// entries. A person's pre-existing disagreements are not ours to resolve.
-	kept := propertyEntries(keep)
+	kept := temporalEntries(keep)
 	removed := make([]bool, len(kept))
 	var accepted []any
 	var conflicts []PersonMergeConflict
-	for _, incoming := range propertyEntries(drop) {
+	for _, incoming := range temporalEntries(drop) {
 		if containsEntry(accepted, incoming) {
 			continue
 		}
@@ -610,14 +610,22 @@ func mergeTemporalProperty(property string, keep, drop any, def *PropertyDefinit
 
 		return a.Timing().Outer.Start < b.Timing().Outer.Start
 	})
-	// Temporal lists require objects even when an input was an undated scalar.
+
+	return entries, added, conflicts
+}
+
+// temporalEntries returns history entries as value/date objects. Temporal lists
+// require objects, and wrapping undated scalars before deduplication keeps
+// "Farmer" and {value: Farmer} from surviving as two identical entries.
+func temporalEntries(v any) []any {
+	entries := propertyEntries(v)
 	for i, entry := range entries {
 		if _, structured := entry.(map[string]any); !structured {
 			entries[i] = map[string]any{temporalValueField: entry}
 		}
 	}
 
-	return entries, added, conflicts
+	return entries
 }
 
 // Each decision uses the same original keep-side values, so processing one

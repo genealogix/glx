@@ -377,3 +377,19 @@ func TestMergePersons_NoteListPreservedWhenDropHasNone(t *testing.T) {
 		"prefer-drop with empty drop notes should not erase keep notes")
 	assert.Equal(t, 0, result.NotesMerged)
 }
+
+func TestMergePersons_TemporalScalarMatchesWrappedEntry(t *testing.T) {
+	glx := &GLXFile{
+		Persons: map[string]*Person{
+			"person-keep": {Properties: map[string]any{"occupation": "Farmer"}},
+			"person-drop": {Properties: map[string]any{"occupation": []any{map[string]any{"value": "Farmer"}}}},
+		},
+	}
+
+	result, err := MergePersons(glx, "person-keep", "person-drop", MergePersonsOptions{})
+	require.NoError(t, err)
+	assert.Equal(t, "Farmer", glx.Persons["person-keep"].Properties["occupation"],
+		"an undated scalar and its {value: ...} form are the same claim")
+	assert.Equal(t, 0, result.PropertiesMerged)
+	assert.Empty(t, result.Conflicts)
+}
