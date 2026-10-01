@@ -125,6 +125,9 @@ func ExportGEDCOM(glx *GLXFile, version GEDCOMVersion, logWriter io.Writer) ([]b
 		expCtx.Stats.FamiliesExported++
 	}
 
+	// Name every event no INDI or FAM record carried (#1320, #1321)
+	reportUnexportedEvents(expCtx)
+
 	// SUBM record (required by GEDCOM 5.5.1)
 	if expCtx.Version == GEDCOM551 {
 		records = append(records, buildSUBMRecord(expCtx))
@@ -171,8 +174,14 @@ type ExportContext struct {
 	// Place cache: placeID -> full GEDCOM place string
 	PlaceStrings map[string]string
 
-	// PersonEvents maps person ID -> event IDs where person is principal
+	// PersonEvents maps person ID -> event IDs the person's INDI record
+	// carries: those where the person is principal (or, for an event with no
+	// principal, holds a household role). See eventHostIDs.
 	PersonEvents map[string][]string
+
+	// familyEventsExported records the event IDs written under a FAM record,
+	// so reportUnexportedEvents can name the events no record carried.
+	familyEventsExported map[string]bool
 
 	// Reconstructed family records
 	Families      []*ExportFamily
@@ -192,7 +201,8 @@ type ExportContext struct {
 // ExportIndex provides forward lookups from GLX keys to GEDCOM tags.
 // This is the reverse of GEDCOMIndex (which maps GEDCOM tags to GLX keys).
 type ExportIndex struct {
-	EventTypes             map[string]string // "birth" -> "BIRT"
+	EventTypes             map[string]string // "birth" -> "BIRT"; types with no tag -> "EVEN"
+	GenericEventTypes      map[string]bool   // types with no tag of their own: EVEN + TYPE <label> (#1320)
 	PersonProperties       map[string]string
 	EventProperties        map[string]string
 	RelationshipProperties map[string]string // "number_of_children" -> "NCHI"
@@ -247,6 +257,7 @@ type ExportWarning struct {
 func buildExportIndex(glx *GLXFile) *ExportIndex {
 	index := &ExportIndex{
 		EventTypes:             make(map[string]string),
+		GenericEventTypes:      make(map[string]bool),
 		PersonProperties:       make(map[string]string),
 		EventProperties:        make(map[string]string),
 		RelationshipProperties: make(map[string]string),
@@ -257,10 +268,18 @@ func buildExportIndex(glx *GLXFile) *ExportIndex {
 		RelationshipTypes:      make(map[string]string),
 	}
 
-	// Build event type index: GLX key -> GEDCOM tag
+	// Build event type index: GLX key -> GEDCOM tag. A vocabulary type with
+	// no tag of its own (taxation, voter_registration, archive-defined types)
+	// maps to the generic EVEN, which carries a TYPE naming it (#1320).
 	for key, eventType := range glx.EventTypes {
+		if eventType == nil {
+			continue
+		}
 		if eventType.GEDCOM != "" {
 			index.EventTypes[key] = eventType.GEDCOM
+		} else {
+			index.EventTypes[key] = GedcomTagEven
+			index.GenericEventTypes[key] = true
 		}
 	}
 

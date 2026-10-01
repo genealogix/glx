@@ -177,6 +177,8 @@ Relative file paths in the GEDCOM are resolved from the directory containing the
 | `WILL` | `will` | |
 | `GRAD` | `graduation` | |
 | `RETI` | `retirement` | |
+| `EVEN` | `event` | `TYPE` → `event_subtype`. A `TYPE` naming an event type with no tag of its own (`Taxation`, `Voter Registration`, or `<label>: <subtype>`) restores that type, which is how GLX exports those types |
+| `ASSO` (under an event) | participant | `ROLE` (7.0) or `RELA` (5.5.1) → participant role; `ROLE OTHER` with a `PHRASE`, or a `RELA`, naming a vocabulary role restores that role |
 
 #### Properties
 
@@ -229,7 +231,7 @@ Relative file paths in the GEDCOM are resolved from the directory containing the
 | `MARS` | `marriage_settlement` | |
 | `ANUL` | `annulment` | |
 | `DIVF` | `divorce_filed` | |
-| `EVEN` | `event` | Generic family event |
+| `EVEN` | `event` | Generic family event; `TYPE` handled as for individual events |
 
 ### Source Records (SOUR)
 

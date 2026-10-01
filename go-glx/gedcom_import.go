@@ -175,6 +175,17 @@ type GEDCOMIndex struct {
 	// EventTypes maps GEDCOM event tags to GLX event type keys (e.g., "BIRT" → "birth")
 	EventTypes map[string]string
 
+	// GenericEventTypes maps the lowercased label and key of each event type
+	// with no GEDCOM tag of its own to that type's key (e.g., "voter
+	// registration" → "voter_registration"). Export writes such events as EVEN
+	// with a TYPE naming the type; import uses this to restore the type (#1320).
+	GenericEventTypes map[string]string
+
+	// ParticipantRoles maps the lowercased label and key of each participant
+	// role to its key (e.g., "informant" → "informant"), so an ASSO whose
+	// ROLE OTHER PHRASE or RELA names a vocabulary role restores it (#1321).
+	ParticipantRoles map[string]string
+
 	// RepositoryTypes maps GEDCOM REPO.TYPE values to GLX repository type keys
 	// (e.g., "archive" → "archive", "society" → "historical_society"). Keys
 	// are lowercased so callers can lower-case the GEDCOM value at lookup time.
@@ -206,6 +217,8 @@ type GEDCOMIndex struct {
 func buildGEDCOMIndex(glx *GLXFile) *GEDCOMIndex {
 	index := &GEDCOMIndex{
 		EventTypes:             make(map[string]string),
+		GenericEventTypes:      make(map[string]string),
+		ParticipantRoles:       make(map[string]string),
 		RepositoryTypes:        make(map[string]string),
 		PersonProperties:       make(map[string]string),
 		EventProperties:        make(map[string]string),
@@ -222,6 +235,7 @@ func buildGEDCOMIndex(glx *GLXFile) *GEDCOMIndex {
 			index.EventTypes[eventType.GEDCOM] = key
 		}
 	}
+	index.GenericEventTypes, index.ParticipantRoles = buildLabelIndexes(glx)
 
 	// BASM is a non-standard alias for BATM (bat_mitzvah) used by some exporters
 	if key, ok := index.EventTypes[GedcomTagBatm]; ok {
