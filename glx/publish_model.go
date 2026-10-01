@@ -69,7 +69,7 @@ type personLink struct {
 	ID    string
 	File  string // unique HTML filename of the target page (collision-safe)
 	Name  string
-	Dates string // e.g. "1850–1920", "b. 1850", or "" when unknown
+	Dates string // e.g. "1850–1920", "b. c. 1850", or "" when unknown; see formatLifeSpan
 }
 
 // personPage is the presentation model for a single person profile page.
@@ -81,7 +81,7 @@ type personPage struct {
 	AltNames   []string
 	Sex        string
 	Gender     string
-	LifeSpan   string // "1850–1920", "b. 1850", "d. 1920", or ""
+	LifeSpan   string // "1850–1920", "1756/1774 – 1826/1830", "b. c. 1850", or ""; see formatLifeSpan
 	Living     bool
 	BirthDate  string
 	BirthPlace string
@@ -658,39 +658,19 @@ func vitalEvents(personID string, archive *glxlib.GLXFile) (birth, death *glxlib
 	return birth, death
 }
 
-// lifeSpan renders a compact life span from birth/death events.
+// lifeSpan renders a compact life span from birth/death events, keeping date
+// qualifiers and ranges ("c. 1765 – 1830", "1756/1774 – 1826/1830"); see
+// formatLifeSpan.
 func lifeSpan(birth, death *glxlib.Event) string {
 	var b, d string
 	if birth != nil {
-		b = eventYear(string(birth.Date))
+		b = string(birth.Date)
 	}
 	if death != nil {
-		d = eventYear(string(death.Date))
-	}
-	switch {
-	case b != "" && d != "":
-		return b + "–" + d
-	case b != "":
-		return "b. " + b
-	case d != "":
-		return "d. " + d
-	default:
-		return ""
-	}
-}
-
-// eventYear extracts the year of a GLX date for display ("1850", "44 BCE"),
-// or "" if none can be determined.
-func eventYear(date string) string {
-	year := glxlib.ExtractFirstYear(date)
-	switch {
-	case year == 0:
-		return ""
-	case year < 0:
-		return strconv.Itoa(-year) + " BCE"
+		d = string(death.Date)
 	}
 
-	return strconv.Itoa(year)
+	return formatLifeSpan(b, d)
 }
 
 // placeFullName builds a hierarchical place name by walking parent places,
