@@ -592,7 +592,7 @@ participant_roles:
 | `label` | Yes | Human-readable label |
 | `description` | No | Detailed description |
 | `applies_to` | No | Array of entity types (event, relationship) |
-| `gedcom` | No | GEDCOM `ASSO ROLE` tag value emitted/consumed for round-trip (#524) |
+| `gedcom` | No | GEDCOM 7.0 `ASSO.ROLE` enumeration value (e.g., `WITN`, `CLERGY`) emitted on export, overriding the built-in mapping (#524). Roles without one export as `ROLE OTHER` with a `PHRASE` naming the role |
 
 ### Standard Participant Roles
 

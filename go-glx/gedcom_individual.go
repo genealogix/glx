@@ -276,6 +276,13 @@ func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOM
 		}
 	}
 
+	// EVEN + TYPE naming a vocabulary event type that has no tag of its own
+	// restores that type (#1320)
+	if eventRecord.Tag == GedcomTagEven {
+		resolveGenericEventType(event, conv.GEDCOMIndex)
+		eventType = event.Type
+	}
+
 	// Add principal participant
 	event.Participants = []Participant{
 		{
@@ -899,24 +906,16 @@ func convertASSOToParticipant(assoRecord *GEDCOMRecord, conv *ConversionContext)
 	for _, sub := range assoRecord.SubRecords {
 		switch sub.Tag {
 		case GedcomTagRole:
+			var roleNotes []string
+			role, roleNotes = convertASSORole(sub, role, conv)
+			notes = append(notes, roleNotes...)
+		case GedcomTagRela:
+			// GEDCOM 5.5.1 RELA tag — map an enumeration value or a vocabulary
+			// role label (as glx export writes it), otherwise preserve in notes
 			glxRole, mapped := gedcomRoleToGLX[strings.ToUpper(sub.Value)]
-			if mapped {
-				role = glxRole
-			} else if sub.Value != "" {
-				// Unknown role — don't set as Role (would fail vocab validation).
-				// Use witness as default and preserve original in notes.
-				role = ParticipantRoleWitness
-				notes = append(notes, "GEDCOM ROLE: "+sub.Value)
+			if !mapped {
+				glxRole, mapped = lookupLabelIndex(conv.GEDCOMIndex.ParticipantRoles, sub.Value)
 			}
-			// Check for PHRASE sub-sub-record (GEDCOM 7.0)
-			for _, roleSub := range sub.SubRecords {
-				if roleSub.Tag == "PHRASE" && roleSub.Value != "" {
-					notes = append(notes, "Role: "+roleSub.Value)
-				}
-			}
-		case "RELA":
-			// GEDCOM 5.5.1 RELA tag — try to map, otherwise preserve in notes
-			glxRole, mapped := gedcomRoleToGLX[strings.ToUpper(sub.Value)]
 			if mapped {
 				role = glxRole
 			} else if sub.Value != "" {
@@ -941,6 +940,43 @@ func convertASSOToParticipant(assoRecord *GEDCOMRecord, conv *ConversionContext)
 	return participant
 }
 
+// convertASSORole maps a GEDCOM 7.0 ASSO ROLE to a GLX participant role,
+// returning fallback when the ROLE is empty, plus the notes that preserve what
+// the role could not carry.
+func convertASSORole(roleRecord *GEDCOMRecord, fallback string, conv *ConversionContext) (string, []string) {
+	var phrases []string
+	for _, roleSub := range roleRecord.SubRecords {
+		if roleSub.Tag == GedcomTagPhrase && roleSub.Value != "" {
+			phrases = append(phrases, roleSub.Value)
+		}
+	}
+
+	role := fallback
+	var notes []string
+	glxRole, mapped := gedcomRoleToGLX[strings.ToUpper(roleRecord.Value)]
+	if !mapped && len(phrases) == 1 {
+		// ROLE OTHER (or another unmapped value) whose PHRASE names a
+		// vocabulary role, as glx export writes it (#1321)
+		if glxRole, mapped = lookupLabelIndex(conv.GEDCOMIndex.ParticipantRoles, phrases[0]); mapped {
+			phrases = nil
+		}
+	}
+	if mapped {
+		role = glxRole
+	} else if roleRecord.Value != "" {
+		// Unknown role — don't set as Role (would fail vocab validation).
+		// Use witness as default and preserve original in notes.
+		role = ParticipantRoleWitness
+		notes = append(notes, "GEDCOM ROLE: "+roleRecord.Value)
+	}
+	// PHRASE sub-sub-records not consumed as the role
+	for _, phrase := range phrases {
+		notes = append(notes, "Role: "+phrase)
+	}
+
+	return role, notes
+}
+
 // appendASSOParticipants scans an event record's sub-records for ASSO tags
 // and appends the resulting participants to the event. Used by both individual
 // and family event converters.
@@ -953,4 +989,77 @@ func appendASSOParticipants(event *Event, eventRecord *GEDCOMRecord, conv *Conve
 			}
 		}
 	}
+}
+
+// resolveGenericEventType restores the event type of a generic EVEN whose
+// TYPE names a vocabulary event type with no GEDCOM tag of its own, the shape
+// glx export writes for such events (#1320). The TYPE is either the type's
+// label (or key), or "<label>: <subtype>", in which case the remainder is kept
+// as the event subtype. Any other TYPE stays the event subtype of a generic
+// event.
+func resolveGenericEventType(event *Event, gedcomIndex *GEDCOMIndex) {
+	subtypeKey, ok := gedcomIndex.EventProperties[GedcomTagType]
+	if !ok {
+		return
+	}
+	value, _ := event.Properties[subtypeKey].(string)
+	if value == "" {
+		return
+	}
+
+	if key, ok := lookupLabelIndex(gedcomIndex.GenericEventTypes, value); ok {
+		event.Type = key
+		delete(event.Properties, subtypeKey)
+
+		return
+	}
+
+	label, subtype, found := strings.Cut(value, genericEventSubtypeSeparator)
+	if !found {
+		return
+	}
+	if key, ok := lookupLabelIndex(gedcomIndex.GenericEventTypes, label); ok {
+		event.Type = key
+		if subtype = strings.TrimSpace(subtype); subtype != "" {
+			event.Properties[subtypeKey] = subtype
+		} else {
+			delete(event.Properties, subtypeKey)
+		}
+	}
+}
+
+// buildLabelIndexes indexes, by lowercased key and label, the event types
+// with no GEDCOM tag of their own and the participant roles.
+func buildLabelIndexes(glx *GLXFile) (genericEventTypes, participantRoles map[string]string) {
+	genericEventTypes = make(map[string]string)
+	for key, eventType := range glx.EventTypes {
+		if eventType != nil && eventType.GEDCOM == "" {
+			addLabelIndexEntry(genericEventTypes, key, eventType.Label)
+		}
+	}
+
+	participantRoles = make(map[string]string)
+	for key, role := range glx.ParticipantRoles {
+		if role != nil {
+			addLabelIndexEntry(participantRoles, key, role.Label)
+		}
+	}
+
+	return genericEventTypes, participantRoles
+}
+
+// addLabelIndexEntry indexes a vocabulary key under its lowercased key and
+// label, for case-insensitive lookup by either.
+func addLabelIndexEntry(index map[string]string, key, label string) {
+	index[strings.ToLower(key)] = key
+	if label != "" {
+		index[strings.ToLower(strings.TrimSpace(label))] = key
+	}
+}
+
+// lookupLabelIndex finds a vocabulary key by its key or label, ignoring case.
+func lookupLabelIndex(index map[string]string, value string) (string, bool) {
+	key, ok := index[strings.ToLower(strings.TrimSpace(value))]
+
+	return key, ok
 }

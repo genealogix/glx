@@ -16,6 +16,7 @@ package glx
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -46,8 +47,10 @@ var skipPersonProperties = map[string]bool{
 }
 
 // buildPersonEventsIndex scans all events and builds a map from person ID
-// to the event IDs where that person is the event's subject (role principal,
-// subject, or unset — see isSubjectRole).
+// to the event IDs that person's INDI record carries: those where the person
+// is the event's subject (role principal, subject, or unset — see
+// isSubjectRole), or, for an event with no subject, holds a household role
+// (see eventHostIDs). The event's other participants are written as ASSO.
 // This avoids scanning all events for each person during export.
 func buildPersonEventsIndex(expCtx *ExportContext) {
 	expCtx.PersonEvents = make(map[string][]string)
@@ -59,11 +62,8 @@ func buildPersonEventsIndex(expCtx *ExportContext) {
 		if event == nil {
 			continue
 		}
-		for _, participant := range event.Participants {
-			if participant.Person != "" && isSubjectRole(participant.Role) {
-				expCtx.PersonEvents[participant.Person] = append(
-					expCtx.PersonEvents[participant.Person], eventID)
-			}
+		for _, personID := range eventHostIDs(event) {
+			expCtx.PersonEvents[personID] = append(expCtx.PersonEvents[personID], eventID)
 		}
 	}
 }
@@ -490,6 +490,13 @@ func exportPersonEvent(event *Event, expCtx *ExportContext) *GEDCOMRecord {
 		SubRecords: []*GEDCOMRecord{},
 	}
 
+	// TYPE naming an event type that has no GEDCOM tag of its own, which
+	// exports as a generic EVEN (#1320)
+	genericType := genericEventTypeRecord(event, expCtx)
+	if genericType != nil {
+		record.SubRecords = append(record.SubRecords, genericType)
+	}
+
 	// DATE
 	if event.Date != "" {
 		gedcomDate := formatGEDCOMDate(event.Date, expCtx.Version)
@@ -507,8 +514,21 @@ func exportPersonEvent(event *Event, expCtx *ExportContext) *GEDCOMRecord {
 		record.SubRecords = append(record.SubRecords, placRecords...)
 	}
 
-	// Event properties (AGE, CAUS, TYPE)
-	record.SubRecords = append(record.SubRecords, exportEventPropertySubrecords(event, expCtx)...)
+	// Event properties (AGE, CAUS, TYPE). A generic EVEN's TYPE above already
+	// carries the event subtype.
+	for _, propRec := range exportEventPropertySubrecords(event, expCtx) {
+		if genericType != nil && propRec.Tag == GedcomTagType {
+			continue
+		}
+		record.SubRecords = append(record.SubRecords, propRec)
+	}
+
+	// ASSO for the participants the record is not written under: witnesses,
+	// godparents, informants and other roles (#1321)
+	hosts := eventHostIDs(event)
+	record.SubRecords = append(record.SubRecords, exportEventAssociations(event, func(p Participant) bool {
+		return slices.Contains(hosts, p.Person)
+	}, expCtx)...)
 
 	// NOTE - emit one NOTE subrecord per note
 	for _, note := range event.Notes {
