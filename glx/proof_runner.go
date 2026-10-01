@@ -138,6 +138,7 @@ type proofSearch struct {
 	Repository string `json:"repository,omitempty"`
 	Source     string `json:"source,omitempty"`
 	Result     string `json:"result,omitempty"`
+	Notes      string `json:"notes,omitempty"`
 }
 
 // proofResult is the full structured proof argument for one research question.
@@ -803,6 +804,7 @@ func collectProofSearches(personID string, archive *glxlib.GLXFile) []proofSearc
 				Repository: s.RepositoryID,
 				Source:     s.SourceID,
 				Result:     s.Result,
+				Notes:      strings.Join(s.Notes, "; "),
 			})
 		}
 	}
@@ -1315,9 +1317,31 @@ func formatSearchLine(s *proofSearch) string {
 	if s.Result != "" {
 		b.WriteString(" -> ")
 		b.WriteString(s.Result)
+		b.WriteString(searchResultAnnotation(s))
 	}
 
 	return b.String()
+}
+
+// searchResultAnnotation qualifies the search outcomes that are not themselves
+// evidence, so a reader can tell outstanding work (not_searched,
+// requires_visit) from a documented gap that cannot be closed (unavailable).
+// For an unavailable source the notes, which say why, are appended.
+func searchResultAnnotation(s *proofSearch) string {
+	switch s.Result {
+	case glxlib.SearchResultNotSearched:
+		return " (outstanding)"
+	case glxlib.SearchResultRequiresVisit:
+		return " (outstanding: on-site or by request)"
+	case glxlib.SearchResultUnavailable:
+		if s.Notes != "" {
+			return " (documented gap: " + s.Notes + ")"
+		}
+
+		return " (documented gap)"
+	default:
+		return ""
+	}
 }
 
 // printProofMarkdown renders the proof result as Markdown.
