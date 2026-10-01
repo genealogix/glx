@@ -1,1 +1,129 @@
-../../../../specification/5-standard-vocabularies/participant-roles.glx
+# Standard Participant Roles
+# This file defines the standard roles that people play in events and relationships.
+# Archives can extend this with custom roles by adding additional entries.
+
+participant_roles:
+  # Event Roles
+  principal:
+    label: "Principal"
+    description: "Primary person in the event. Canonical role for the event's subject; tooling also accepts 'subject' as a synonym."
+    applies_to:
+      - event
+
+  subject:
+    label: "Subject"
+    description: "Synonym of 'principal'. Both terms are accepted by tooling; 'principal' is canonical and is what 'glx init' and GEDCOM import emit."
+    applies_to:
+      - event
+
+  witness:
+    label: "Witness"
+    description: "Person who witnessed the event"
+    applies_to:
+      - event
+  
+  officiant:
+    label: "Officiant"
+    description: "Person who officiated the ceremony"
+    applies_to:
+      - event
+  
+  informant:
+    label: "Informant"
+    description: "Person providing information"
+    applies_to:
+      - event
+  
+  groom:
+    label: "Groom"
+    description: "Male marriage participant"
+    applies_to:
+      - event
+  
+  bride:
+    label: "Bride"
+    description: "Female marriage participant"
+    applies_to:
+      - event
+  
+  # Relationship Roles
+  spouse:
+    label: "Spouse"
+    description: "Marriage partner"
+    applies_to:
+      - relationship
+  
+  parent:
+    label: "Parent"
+    description: "Parent in parent-child relationship"
+    applies_to:
+      - relationship
+  
+  child:
+    label: "Child"
+    description: "Child in parent-child relationship"
+    applies_to:
+      - relationship
+  
+  adoptive_parent:
+    label: "Adoptive Parent"
+    description: "Adoptive parent in adoption relationship"
+    applies_to:
+      - relationship
+
+  adopted_child:
+    label: "Adopted Child"
+    description: "Adopted child in adoption relationship"
+    applies_to:
+      - relationship
+  
+  sibling:
+    label: "Sibling"
+    description: "Brother or sister"
+    applies_to:
+      - relationship
+
+  godparent:
+    label: "Godparent"
+    description: "Spiritual sponsor role (in baptism/christening events, or in godparent relationships)"
+    applies_to:
+      - event
+      - relationship
+
+  godchild:
+    label: "Godchild"
+    description: "Person sponsored by a godparent (in baptism/christening events, or in godparent relationships)"
+    applies_to:
+      - event
+      - relationship
+
+  enslaver:
+    label: "Enslaver"
+    description: "Person who legally claimed ownership of an enslaved person"
+    applies_to:
+      - relationship
+
+  enslaved_person:
+    label: "Enslaved Person"
+    description: "Person held in enslavement (preferred term over 'slave', which reduces personhood to legal status)"
+    applies_to:
+      - relationship
+
+  associate:
+    label: "Associate"
+    description: "Person in an associate (FAN — friend, colleague, community member) relationship"
+    applies_to:
+      - relationship
+
+  household_head:
+    label: "Household Head"
+    description: "Head of household in a boarder relationship"
+    applies_to:
+      - relationship
+
+  boarder:
+    label: "Boarder"
+    description: "Boarder, lodger, ward, or servant in a household"
+    applies_to:
+      - relationship
+

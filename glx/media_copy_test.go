@@ -16,8 +16,10 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -90,6 +92,50 @@ func TestCopyMediaFiles_BlobWrite(t *testing.T) {
 	}
 }
 
+func TestCopyMediaFiles_RelativePathNormalized(t *testing.T) {
+	// Verify that GEDCOM import produces slash-normalized RelativePath
+	// and copyMediaFiles successfully copies files referenced with backslashes (#1139).
+	srcDir := t.TempDir()
+	photosDir := filepath.Join(srcDir, "photos", "sub")
+	if err := os.MkdirAll(photosDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(photosDir, "portrait.jpg"), []byte("portrait-bytes"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n" +
+		"0 @M1@ OBJE\n1 FILE photos\\sub\\portrait.jpg\n1 FORM jpeg\n1 TITL Portrait\n" +
+		"0 TRLR\n"
+
+	_, result, err := glxlib.ImportGEDCOM(strings.NewReader(gedcom), nil)
+	if err != nil {
+		t.Fatalf("Import failed: %v", err)
+	}
+
+	if len(result.MediaFiles) != 1 {
+		t.Fatalf("Expected 1 media file source, got %d", len(result.MediaFiles))
+	}
+	if result.MediaFiles[0].RelativePath != "photos/sub/portrait.jpg" {
+		t.Errorf("Expected RelativePath to be slash-normalized 'photos/sub/portrait.jpg', got %q",
+			result.MediaFiles[0].RelativePath)
+	}
+
+	destDir := t.TempDir()
+	streams, _, _ := TestIOStreams()
+	if err := copyMediaFiles(streams, destDir, result.MediaFiles, srcDir, false); err != nil {
+		t.Fatalf("copyMediaFiles failed: %v", err)
+	}
+
+	copiedBytes, err := os.ReadFile(filepath.Join(destDir, "media", "files", "portrait.jpg"))
+	if err != nil {
+		t.Fatalf("Failed to read copied file: %v", err)
+	}
+	if string(copiedBytes) != "portrait-bytes" {
+		t.Errorf("Copied file content = %q, want %q", string(copiedBytes), "portrait-bytes")
+	}
+}
+
 func TestCopyMediaFiles_MissingSourceWarns(t *testing.T) {
 	destDir := t.TempDir()
 	srcDir := t.TempDir() // Empty source directory
@@ -144,6 +190,65 @@ func TestCopyMediaFile_PathTraversal(t *testing.T) {
 		if !strings.Contains(err.Error(), "path traversal") {
 			t.Errorf("expected path traversal error for %q, got: %v", p, err)
 		}
+	}
+}
+
+func TestCopyMediaFile_SymlinkEscapeRejected(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation is privilege-gated on Windows")
+	}
+	outside := t.TempDir()
+	secret := filepath.Join(outside, "secret.txt")
+	if err := os.WriteFile(secret, []byte("secret"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	srcDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(srcDir, "media"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(secret, filepath.Join(srcDir, "media", "portrait.jpg")); err != nil {
+		t.Fatal(err)
+	}
+	destPath := filepath.Join(t.TempDir(), "out.jpg")
+
+	err := copyMediaFile(srcDir, "media/portrait.jpg", destPath)
+	if err == nil {
+		t.Fatal("expected error for symlink escaping the GEDCOM directory, got nil")
+	}
+	if errors.Is(err, ErrMediaFileNotFound) {
+		t.Errorf("symlink escape must not be reported as a missing file: %v", err)
+	}
+	if _, statErr := os.Stat(destPath); statErr == nil {
+		t.Error("destination must not be written when the source escapes the GEDCOM directory")
+	}
+}
+
+func TestCopyMediaFile_SymlinkInsideDirFollowed(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation is privilege-gated on Windows")
+	}
+	srcDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(srcDir, "media"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(srcDir, "media", "real.jpg"), []byte("img"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("real.jpg", filepath.Join(srcDir, "media", "alias.jpg")); err != nil {
+		t.Fatal(err)
+	}
+	destPath := filepath.Join(t.TempDir(), "out.jpg")
+
+	if err := copyMediaFile(srcDir, "media/alias.jpg", destPath); err != nil {
+		t.Fatalf("symlink staying inside the GEDCOM directory should copy, got: %v", err)
+	}
+	data, err := os.ReadFile(destPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "img" {
+		t.Errorf("copied content = %q, want %q", data, "img")
 	}
 }
 

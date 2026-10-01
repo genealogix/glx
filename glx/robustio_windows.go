@@ -26,11 +26,13 @@ import (
 
 // errSharingViolation is syscall.Errno(32), equivalent to
 // internal/syscall/windows.ERROR_SHARING_VIOLATION which is not importable.
-const errSharingViolation syscall.Errno = 32 //nolint:mnd // Windows error code
+const errSharingViolation syscall.Errno = 32
 
-const retryTimeout = 2000 * time.Millisecond //nolint:mnd // matches Go toolchain robustio
+// retryTimeout matches the Go toolchain's internal robustio budget.
+const retryTimeout = 2000 * time.Millisecond
 
-const maxSleep = 500 * time.Millisecond //nolint:mnd // cap per-retry sleep
+// maxSleep caps the per-retry sleep.
+const maxSleep = 500 * time.Millisecond
 
 // robustRename is like os.Rename but retries on transient Windows errors.
 //
@@ -44,6 +46,18 @@ const maxSleep = 500 * time.Millisecond //nolint:mnd // cap per-retry sleep
 //
 // Modeled after Go's cmd/internal/robustio (used by cmd/go, gopls, golangci-lint).
 func robustRename(oldpath, newpath string) error {
+	return retryRename(func() error { return os.Rename(oldpath, newpath) })
+}
+
+// robustRenameIn is robustRename scoped to root: both paths are resolved
+// inside it, so no symlinked path component can redirect the rename outside.
+func robustRenameIn(root *os.Root, oldname, newname string) error {
+	return retryRename(func() error { return root.Rename(oldname, newname) })
+}
+
+// retryRename runs rename, retrying transient Windows lock failures with the
+// backoff described on robustRename.
+func retryRename(rename func() error) error {
 	var (
 		lastErr   error
 		start     time.Time
@@ -51,7 +65,7 @@ func robustRename(oldpath, newpath string) error {
 	)
 
 	for {
-		err := os.Rename(oldpath, newpath)
+		err := rename()
 		if err == nil || !isEphemeralError(err) {
 			return err
 		}

@@ -6,7 +6,7 @@ layout: doc
 
 # Study Entity
 
-[← Back to Entity Types](README)
+[← Back to Entity Types](README.md)
 
 ## Overview
 
@@ -51,8 +51,8 @@ studies:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `type` | string | Study type from the [study types vocabulary](vocabularies#study-types-vocabulary) |
-| `status` | string | Current status from the [study statuses vocabulary](vocabularies#study-statuses-vocabulary) |
+| `type` | string | Study type from the [study types vocabulary](vocabularies.md#study-types-vocabulary) |
+| `status` | string | Current status from the [study statuses vocabulary](vocabularies.md#study-statuses-vocabulary) |
 | `date_range` | string | Temporal scope as a GLX date string, typically a range (`FROM YYYY TO YYYY`) |
 | `places` | string[] | References to Place entities in scope |
 | `sources` | string[] | References to Source entities in scope |
@@ -71,7 +71,7 @@ Classification of the study. Standard types:
 - `brick_wall` — Focused investigation of a specific genealogical problem
 - `other` — Other study type
 
-Archives can extend this vocabulary by adding entries to `study-types.glx`. See [Study Types Vocabulary](vocabularies#study-types-vocabulary).
+Archives can extend this vocabulary by adding entries to `study-types.glx`. See [Study Types Vocabulary](vocabularies.md#study-types-vocabulary).
 
 ### `status`
 
@@ -82,7 +82,7 @@ Current state of the study. Standard values:
 - `completed` — Research goals met
 - `abandoned` — Will not be continued
 
-See [Study Statuses Vocabulary](vocabularies#study-statuses-vocabulary).
+See [Study Statuses Vocabulary](vocabularies.md#study-statuses-vocabulary).
 
 ### `date_range`
 
@@ -96,7 +96,7 @@ Single dates and qualifiers (`ABT`, `BEF`, `AFT`) are also accepted but ranges a
 
 ### `places`
 
-Array of Place entity IDs that fall within the study's geographic scope. For a One Place Study this is typically a single place (and the [Place hierarchy](place#place-hierarchy) extends it implicitly to subordinate places). For a regional study, list each top-level place.
+Array of Place entity IDs that fall within the study's geographic scope. For a One Place Study this is typically a single place (and the [Place hierarchy](place.md#place-hierarchy) extends it implicitly to subordinate places). For a regional study, list each top-level place.
 
 ### `sources`
 
@@ -104,7 +104,7 @@ Array of Source entity IDs that are explicitly within scope. Useful when a study
 
 ### `properties`
 
-Free-form metadata. There is no `study_properties` vocabulary in this revision, so keys inside `properties` are not validated and unknown keys do not produce warnings. (Note: the `type` and `status` fields on the Study itself *are* validated against the `study_types` and `study_statuses` vocabularies as hard errors — see [Vocabularies → Validation Errors](vocabularies#validation-errors-hard-failures).) Suggested uses:
+Free-form metadata. There is no `study_properties` vocabulary in this revision, so keys inside `properties` are not validated and unknown keys do not produce warnings. (Note: the `type` and `status` fields on the Study itself *are* validated against the `study_types` and `study_statuses` vocabularies as hard errors — see [Vocabularies → Validation Errors](vocabularies.md#validation-errors-hard-failures).) Suggested uses:
 
 - `source_types` — Source-type categories in scope, when individual sources are not enumerated
 - `surname_variants` — For one-name studies, the spellings/variants in scope
@@ -227,8 +227,8 @@ studies/
 ## Validation Rules
 
 - `title` must be present and non-empty
-- `type`, if specified, must exist in the [study types vocabulary](vocabularies#study-types-vocabulary)
-- `status`, if specified, must exist in the [study statuses vocabulary](vocabularies#study-statuses-vocabulary)
+- `type`, if specified, must exist in the [study types vocabulary](vocabularies.md#study-types-vocabulary)
+- `status`, if specified, must exist in the [study statuses vocabulary](vocabularies.md#study-statuses-vocabulary)
 - All IDs in `places` must reference existing Place entities
 - All IDs in `sources` must reference existing Source entities
 - `date_range` should follow GLX date format (e.g., `FROM YYYY TO YYYY`)
@@ -249,7 +249,7 @@ See [study.schema.json](../schema/v1/study.schema.json) for the complete JSON Sc
 
 ## See Also
 
-- [Place Entity](place) — Geographic scope
-- [Source Entity](source) — In-scope sources
-- [Vocabularies — Study Types](vocabularies#study-types-vocabulary)
-- [Vocabularies — Study Statuses](vocabularies#study-statuses-vocabulary)
+- [Place Entity](place.md) — Geographic scope
+- [Source Entity](source.md) — In-scope sources
+- [Vocabularies — Study Types](vocabularies.md#study-types-vocabulary)
+- [Vocabularies — Study Statuses](vocabularies.md#study-statuses-vocabulary)

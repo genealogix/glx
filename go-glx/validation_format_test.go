@@ -121,51 +121,6 @@ func TestValidateValueType(t *testing.T) {
 	}
 }
 
-// TestIsValidSimpleDate tests the simple date validation function
-func TestIsValidSimpleDate(t *testing.T) {
-	tests := []struct {
-		date  string
-		valid bool
-	}{
-		// Valid — 4-digit years
-		{"1850", true},
-		{"2020", true},
-		{"1850-03", true},
-		{"2020-12", true},
-		{"1850-03-15", true},
-		{"2020-12-31", true},
-
-		// Valid — short years (1-3 digits for historical dates)
-		{"5", true},
-		{"85", true},
-		{"850", true},
-		{"5-03", true},
-		{"85-03", true},
-		{"850-03", true},
-		{"850-03-15", true},
-
-		// Invalid
-		{"18500", false},
-		{"1850-3", false},
-		{"1850-003", false},
-		{"1850-03-5", false},
-		{"1850-03-015", false},
-		{"1850/03/15", false},
-		{"1850.03.15", false},
-		{"March 1850", false},
-		{"", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.date, func(t *testing.T) {
-			result := isValidSimpleDate(tt.date)
-			if result != tt.valid {
-				t.Errorf("isValidSimpleDate('%s') = %v, want %v", tt.date, result, tt.valid)
-			}
-		})
-	}
-}
-
 // TestPropertyValueFormatValidation tests end-to-end format validation
 func TestPropertyValueFormatValidation(t *testing.T) {
 	glx := &GLXFile{

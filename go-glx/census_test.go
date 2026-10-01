@@ -159,7 +159,7 @@ func TestBuildCensusEntities_ExistingSource(t *testing.T) {
 	existing := &GLXFile{
 		Sources: map[string]*Source{
 			"source-1860-census": {
-				Title: "1860 U.S. Federal Census — Marion County, Florida",
+				Title: "1860 Census — Marion County, Florida",
 				Type:  SourceTypeCensus,
 			},
 		},
@@ -541,7 +541,8 @@ func TestBuildCensusEntities_ParticipantAge(t *testing.T) {
 
 	event := result.Event[result.EventID]
 	require.Len(t, event.Participants, 1)
-	assert.Equal(t, 30, event.Participants[0].Properties["age_at_event"])
+	// A string, matching age_at_event's value_type in the standard vocabulary.
+	assert.Equal(t, "30", event.Participants[0].Properties["age_at_event"])
 }
 
 func TestValidateCensusTemplate_MissingYear(t *testing.T) {

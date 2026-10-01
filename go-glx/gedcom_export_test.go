@@ -116,7 +116,7 @@ func TestFormatGEDCOMDate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := formatGEDCOMDate(tt.input)
+			result := formatGEDCOMDate(tt.input, GEDCOM551)
 			assert.Equal(t, tt.expected, result)
 		})
 	}

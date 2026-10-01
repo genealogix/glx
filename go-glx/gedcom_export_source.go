@@ -87,7 +87,7 @@ func exportSource(sourceID string, source *Source, expCtx *ExportContext) *GEDCO
 	}
 
 	// DATA subrecord (contains DATE, AGNC, EVEN)
-	dataRecord := buildSourceDataRecord(source)
+	dataRecord := buildSourceDataRecord(source, expCtx)
 	if dataRecord != nil {
 		record.SubRecords = append(record.SubRecords, dataRecord)
 	}
@@ -135,7 +135,7 @@ func exportSource(sourceID string, source *Source, expCtx *ExportContext) *GEDCO
 
 // buildSourceDataRecord builds a DATA subrecord from source date, agency,
 // and events_recorded properties. Returns nil if there is no data to include.
-func buildSourceDataRecord(source *Source) *GEDCOMRecord {
+func buildSourceDataRecord(source *Source, expCtx *ExportContext) *GEDCOMRecord {
 	dataRecord := &GEDCOMRecord{
 		Tag:        GedcomTagData,
 		SubRecords: []*GEDCOMRecord{},
@@ -178,7 +178,7 @@ func buildSourceDataRecord(source *Source) *GEDCOMRecord {
 
 	// DATE from source.Date
 	if source.Date != "" {
-		gedcomDate := formatGEDCOMDate(source.Date)
+		gedcomDate := formatGEDCOMDate(source.Date, expCtx.Version)
 		if gedcomDate != "" {
 			dataRecord.SubRecords = append(dataRecord.SubRecords, &GEDCOMRecord{
 				Tag:   GedcomTagDate,

@@ -13,6 +13,23 @@ on:
 permissions:
   contents: read
 
+# Key on the tag ref, not the workflow. GitHub keeps only ONE pending run per
+# concurrency group: queueing a third run cancels the one already waiting, and
+# cancel-in-progress: false protects only the run that is already executing. A
+# workflow-wide group would therefore silently drop a release — push three tags
+# together (a batched `git push --tags`) and the middle tag's run is cancelled
+# before it starts, producing no archives, no checksums, no cosign signature, no
+# attestation and no announce, reported as "cancelled" rather than failed. Since
+# the sanctioned re-run flow (.github/CLAUDE.md, "never move a published tag")
+# cuts a NEW patch tag, distinct releases land in distinct groups and run in
+# parallel, which is what we want; the group still collapses a genuine duplicate
+# run of the same tag. cancel-in-progress MUST stay false — cancelling between
+# asset upload and signing would leave an unsigned/partially-signed release.
+# (#1008)
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   GIT_CONFIG_COUNT: 2
   GIT_CONFIG_KEY_0: init.defaultBranch
@@ -31,12 +48,12 @@ jobs:
       attestations: write   # store the build-provenance attestation (issue #256)
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
       - name: Set up Go
-        uses: actions/setup-go@v7
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
           # cache-poisoning guard (#1051): this privileged job holds id-token: write
@@ -51,14 +68,34 @@ jobs:
         run: go mod download
 
       - name: Install cosign
-        uses: sigstore/cosign-installer@v4.1.2   # pin: action only publishes vX.Y.Z tags, no floating v4 (#938; same no-floating-major pitfall as ossf/scorecard-action, #779)
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2 -- only vX.Y.Z tags published, no floating v4; do not "tidy" to @v4 (#938)
         with:
           cosign-release: 'v3.0.6'   # pin: --bundle output format is part of our release verification contract
+
+      # GoReleaser's `sboms:` stanza shells out to syft, which is not preinstalled
+      # on ubuntu-latest. Without this step the release fails at the SBOM pipe
+      # ("syft: executable file not found in $PATH") after the archives are built
+      # but before signing, so it must stay ahead of the GoReleaser step. (#269)
+      #
+      # Accepted risk, recorded in SECURITY-POSTURE.md under "Action pinning":
+      # the SHA pin below does NOT make this step hermetic. At that SHA the
+      # action downloads https://raw.githubusercontent.com/anchore/syft/<ver>/
+      # install.sh - a mutable git tag ref - and runs it with `sh`, inside this
+      # job's id-token: write context and upstream of signing and attestation.
+      # Do not read the pin as closing that path.
+      - name: Install syft
+        uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
-          version: '~> v2'
+          # Pin the GoReleaser tool to a minor (patch-floating), not '~> v2':
+          # the action SHA pin above pins the action, not the tool binary it
+          # downloads, so '~> v2' would build a tagged release with whatever
+          # v2.x is newest at run time — different artifacts from the same
+          # source. Dependabot does NOT manage this input, and no currency gate
+          # watches it yet (#1215): bump it deliberately. (#1009)
+          version: '~> v2.18'
           args: release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -78,19 +115,26 @@ jobs:
         if: success() && env.DISCORD_WEBHOOK != ''
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_RELEASE_WEBHOOK }}
+        # Build the payload with jq --arg (correct JSON-string escaping) instead
+        # of hand-spliced strings: the -beta* trigger glob admits any non-slash
+        # character, and git permits `"` in a ref name, so splicing the raw
+        # $GITHUB_REF_NAME into the body could emit malformed JSON. The tag is
+        # additionally @uri-encoded where it lands in the URL, so characters
+        # like `"` or `)` cannot break the URL or the Markdown link.
+        # GITHUB_REPOSITORY/GITHUB_REF_NAME are runner-provided env vars — no
+        # ${{ }} interpolation in run:. (#1010)
         run: |
-          TAG="${GITHUB_REF_NAME}"
-          RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${TAG}"
-          curl -sSf -H "Content-Type: application/json" \
-            -d "{
-              \"embeds\": [{
-                \"title\": \"GLX ${TAG}\",
-                \"url\": \"${RELEASE_URL}\",
-                \"description\": \"A new version of the GLX CLI has been released.\",
-                \"color\": 5814783,
-                \"fields\": [
-                  {\"name\": \"Release Notes & Downloads\", \"value\": \"[View on GitHub](${RELEASE_URL})\"}
+          jq -n --arg tag "$GITHUB_REF_NAME" --arg repo "$GITHUB_REPOSITORY" \
+            '("https://github.com/" + $repo + "/releases/tag/" + ($tag | @uri)) as $url |
+            {
+              embeds: [{
+                title: ("GLX " + $tag),
+                url: $url,
+                description: "A new version of the GLX CLI has been released.",
+                color: 5814783,
+                fields: [
+                  {name: "Release Notes & Downloads", value: ("[View on GitHub](" + $url + ")")}
                 ]
               }]
-            }" \
-            "$DISCORD_WEBHOOK"
+            }' \
+          | curl -sSf -H "Content-Type: application/json" -d @- "$DISCORD_WEBHOOK"

@@ -27,8 +27,6 @@ import (
 // Note: some state census years overlap with federal census years (e.g.,
 // Mississippi 1860). The matching logic requires a state-specific signal
 // to avoid confusing state and federal censuses.
-//
-//nolint:goconst // state names are data entries, not magic strings
 var stateCensusYears = map[string][]int{
 	"Wisconsin":     {1855, 1865, 1875, 1885, 1895, 1905},
 	"New York":      {1825, 1835, 1845, 1855, 1865, 1875, 1892, 1905, 1915, 1925},
@@ -137,7 +135,7 @@ func buildStateCensusRecords(birthYear, deathYear int, states []string, sources,
 			label := fmt.Sprintf("%d %s State Census (age ~%d)", year, state, age)
 
 			rec := coverageRecord{
-				Category: "census",
+				Category: coverageCategoryCensus,
 				Label:    label,
 			}
 
@@ -189,9 +187,9 @@ func isAlpha(b byte) bool {
 // confusing state and federal censuses on overlapping years: the title must
 // mention the state name, or the event's place must resolve to the target state.
 func findStateCensusMatch(year int, state string, sources, events []personSourceInfo, archive *glxlib.GLXFile) string {
-	// Check events — require census type + year + state-specific signal
+	// Check events — require census type + year + evidence + state-specific signal
 	for _, e := range events {
-		if e.EventType != glxlib.EventTypeCensus || e.Year != year {
+		if e.EventType != glxlib.EventTypeCensus || e.Year != year || !e.Evidenced {
 			continue
 		}
 		// Title must mention this specific state

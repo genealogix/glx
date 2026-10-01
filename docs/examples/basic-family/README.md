@@ -43,7 +43,7 @@ basic-family/
 │   └── citation-robert-birth.glx
 ├── assertions/
 │   └── assertion-robert-birth-date.glx
-├── vocabularies/           # Symlinks to standard vocabularies
+├── vocabularies/           # Copies of the standard vocabularies
 └── README.md
 ```
 

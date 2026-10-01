@@ -162,24 +162,26 @@ func findRepoRoot() (string, error) {
 // to dir using forward slashes (matching how $refs are written).
 func readSchemaFiles(dir string) (map[string][]byte, error) {
 	files := make(map[string][]byte)
-	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, walkErr error) error {
+	// Reads go through an os.Root scoped to dir so a symlink under the schema
+	// directory cannot redirect the read outside it (CWE-367 / gosec G122).
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = root.Close() }()
+
+	err = fs.WalkDir(root.FS(), ".", func(path string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
 		if d.IsDir() || !strings.HasSuffix(d.Name(), ".schema.json") {
 			return nil
 		}
-		// #nosec G304 G122 -- path is a repo schema file discovered by WalkDir, not user
-		// input; root-scoped (os.Root) reads for walk callbacks are tracked in #1090.
-		data, readErr := os.ReadFile(path)
+		data, readErr := root.ReadFile(path)
 		if readErr != nil {
 			return readErr
 		}
-		rel, relErr := filepath.Rel(dir, path)
-		if relErr != nil {
-			return relErr
-		}
-		files[filepath.ToSlash(rel)] = data
+		files[path] = data
 
 		return nil
 	})

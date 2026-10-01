@@ -16,21 +16,7 @@ package glx
 
 import (
 	"fmt"
-	"regexp"
-	"strconv"
-	"strings"
 )
-
-// dayMonthRegexp matches day-of-month followed by a month abbreviation
-// (e.g., "15 MAR"). Used to strip day values before year extraction so that
-// 1–2 digit days are not mistaken for 1–2 digit years.
-var dayMonthRegexp = regexp.MustCompile(`(?i)\b\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\b`)
-
-// temporalYearRegexp matches the first 1–4 digit year in a date string.
-var temporalYearRegexp = regexp.MustCompile(`\b(\d{1,4})\b`)
-
-// lastYearRegexp matches 1–5 digit sequences (supports Hebrew years like 5765).
-var lastYearRegexp = regexp.MustCompile(`\b(\d{1,5})\b`)
 
 // validateTemporalConsistency checks for logical inconsistencies in dates
 // across persons, events, and relationships. All issues are reported as
@@ -40,6 +26,7 @@ func (glx *GLXFile) validateTemporalConsistency(result *ValidationResult) {
 	glx.validateParentChildAges(result)
 	glx.validateMarriageBeforeBirth(result)
 	glx.validateRelationshipEventOrder(result)
+	glx.validateRelationshipBoundarySources(result)
 }
 
 // extractEventYear finds a person's event of the given type and returns the
@@ -203,6 +190,140 @@ func (glx *GLXFile) validateRelationshipEventOrder(result *ValidationResult) {
 	}
 }
 
+// validateRelationshipBoundarySources checks that a relationship records each
+// of its boundaries once: either as an event reference (`start_event` /
+// `end_event`) or as a date property (`started_on` / `ended_on`), not both.
+// Setting both is redundant because tooling reads the event, and the two can
+// drift apart. Boundaries where the event reference is unresolvable or where
+// either date has no parseable year are skipped — a dangling reference is
+// already reported as an error by reference validation.
+func (glx *GLXFile) validateRelationshipBoundarySources(result *ValidationResult) {
+	for relID, rel := range glx.Relationships {
+		if rel == nil {
+			continue
+		}
+
+		glx.checkBoundarySource(relID, rel.StartEvent, RelationshipPropertyStartedOn, "start_event", rel, result)
+		glx.checkBoundarySource(relID, rel.EndEvent, RelationshipPropertyEndedOn, "end_event", rel, result)
+	}
+}
+
+// checkBoundarySource warns when one relationship boundary is recorded both as
+// an event reference and as a date property.
+func (glx *GLXFile) checkBoundarySource(
+	relID, eventID, propName, eventField string,
+	rel *Relationship,
+	result *ValidationResult,
+) {
+	if eventID == "" {
+		return
+	}
+
+	propValue, ok := rel.Properties[propName]
+	if !ok {
+		return
+	}
+
+	eventYear := resolveEventYear(glx, eventID)
+	if eventYear == 0 {
+		return
+	}
+
+	propYear := boundaryPropertyYear(propValue, eventYear)
+	if propYear == 0 {
+		return
+	}
+
+	field := "properties." + propName
+
+	var message string
+	if propYear == eventYear {
+		message = fmt.Sprintf(
+			"%s[%s]: %s %s and %s both record the same boundary; the event is authoritative — if the property is the more precise date, move it onto the event, then remove %s",
+			EntityTypeRelationships, relID, eventField, eventID, field, field,
+		)
+	} else {
+		message = fmt.Sprintf(
+			"%s[%s]: %s %s (%d) and %s (%d) record different years; the event is authoritative — reconcile the dates, then remove %s",
+			EntityTypeRelationships, relID, eventField, eventID, eventYear, field, propYear, field,
+		)
+	}
+
+	result.Warnings = append(result.Warnings, ValidationWarning{
+		SourceType: EntityTypeRelationships,
+		SourceID:   relID,
+		Field:      field,
+		Message:    message,
+	})
+}
+
+// boundaryPropertyYear picks the year a boundary date property records, given
+// the year the boundary's event records. Entries with no parseable year are
+// ignored; among the rest, a year that differs from the event's wins over one
+// that matches, so a temporal list that mixes agreeing and conflicting entries
+// is reported as a conflict rather than as a plain duplicate. Returns 0 when
+// no entry yields a year.
+func boundaryPropertyYear(propValue any, eventYear int) int {
+	found := 0
+	for _, dateStr := range propertyDateStrings(propValue) {
+		year := ExtractFirstYear(dateStr)
+		if year == 0 {
+			continue
+		}
+		if year != eventYear {
+			return year
+		}
+		found = year
+	}
+
+	return found
+}
+
+// propertyDateStrings collects the date strings a property value carries. The
+// value may be a plain string, a structured {value, ...} object, or a temporal
+// list of {value, date} objects (or plain strings); when a structured entry
+// carries both date and value, date wins as the authoritative parseable source.
+// A shape that carries no string value yields nothing.
+func propertyDateStrings(propValue any) []string {
+	switch v := propValue.(type) {
+	case string:
+		return []string{v}
+	case map[string]any:
+		if dateStr := propertyDateString(v); dateStr != "" {
+			return []string{dateStr}
+		}
+	case []any:
+		values := make([]string, 0, len(v))
+		for _, item := range v {
+			switch entry := item.(type) {
+			case string:
+				if entry != "" {
+					values = append(values, entry)
+				}
+			case map[string]any:
+				if dateStr := propertyDateString(entry); dateStr != "" {
+					values = append(values, dateStr)
+				}
+			}
+		}
+
+		return values
+	}
+
+	return nil
+}
+
+func propertyDateString(value map[string]any) string {
+	if dateStr, isString := value["date"].(string); isString && dateStr != "" {
+		return dateStr
+	}
+	if dateStr, isString := value["value"].(string); isString && dateStr != "" {
+		return dateStr
+	}
+
+	return ""
+}
+
 // resolveEventYear resolves an event reference to the year of its date, or 0
 // if the event does not exist or its date has no parseable year.
 func resolveEventYear(archive *GLXFile, eventID string) int {
@@ -227,75 +348,13 @@ func isParentChildRelType(relType string) bool {
 }
 
 // ExtractFirstYear extracts the first (or start) year from a date string.
-// Calendar-aware: for Gregorian/Julian dates, strips DD MMM and finds the first
-// number. For Hebrew/French Republican dates, finds the last number in the first
-// date component (year appears after day and month in non-Gregorian formats).
-// For ranges (BET...AND, FROM...TO), only the start date is considered.
-// Returns 0 if no year is found.
+// It is a convenience wrapper over glxdate.Parse: for ranges only the start
+// date is considered (for an open-start "TO 1950" the end year, the only
+// one present), a BCE year is negative, non-Gregorian bodies take the year
+// that follows the day and month ("HEBREW 15 TSH 5765" → 5765), and
+// raw-preserved Gregorian bodies prefer a 4-digit token so a day of month
+// is never reported as the year ("1 JANUARY 1900" → 1900, not 1). Returns 0
+// if no year is found.
 func ExtractFirstYear(dateStr string) int {
-	if dateStr == "" {
-		return 0
-	}
-
-	// Strip calendar prefix and use calendar-specific extraction.
-	cal, body := ExtractCalendarPrefix(DateString(dateStr))
-	bodyStr := string(body)
-
-	// For ranges, only consider the first date (start of range).
-	bodyStr = extractFirstDateComponent(bodyStr)
-
-	// For non-Gregorian calendars where the year is the LAST token
-	// (e.g., "15 TSH 5765" for Hebrew, "1 VEND 0012" for French Republican),
-	// extract the last number instead of the first. Fixes #565.
-	if cal == CalendarHebrew || cal == CalendarFrenchR {
-		return extractLastNumber(bodyStr)
-	}
-
-	// For Gregorian/Julian: strip DD MMM patterns, then find first number.
-	cleaned := dayMonthRegexp.ReplaceAllString(bodyStr, "")
-
-	match := temporalYearRegexp.FindStringSubmatch(cleaned)
-	if len(match) < 2 {
-		return 0
-	}
-
-	year, err := strconv.Atoi(match[1])
-	if err != nil {
-		return 0
-	}
-
-	return year
-}
-
-// extractFirstDateComponent returns the first date in a range expression.
-// "BET 15 TSH 5765 AND 15 TSH 5766" → "BET 15 TSH 5765"
-// "FROM 1900 TO 1950" → "FROM 1900"
-// "ABT 1850" → "ABT 1850" (unchanged)
-func extractFirstDateComponent(dateStr string) string {
-	if idx := strings.Index(dateStr, " AND "); idx != -1 {
-		return dateStr[:idx]
-	}
-	if idx := strings.Index(dateStr, " TO "); idx != -1 {
-		return dateStr[:idx]
-	}
-
-	return dateStr
-}
-
-// extractLastNumber finds the last 1–5 digit sequence in a date string.
-// Used for non-Gregorian calendars where the year appears after day and month.
-// Supports Hebrew years >4 digits (e.g., 5765).
-func extractLastNumber(dateStr string) int {
-	matches := lastYearRegexp.FindAllStringSubmatch(dateStr, -1)
-	if len(matches) == 0 {
-		return 0
-	}
-
-	lastMatch := matches[len(matches)-1]
-	year, err := strconv.Atoi(lastMatch[1])
-	if err != nil {
-		return 0
-	}
-
-	return year
+	return DateString(dateStr).Year()
 }

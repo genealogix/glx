@@ -59,5 +59,5 @@ glx census add [flags]
 
 ### SEE ALSO
 
-* [glx census](/cli/glx_census)	 - Bulk census record tools
+* [glx census](glx_census.md)	 - Bulk census record tools
 

@@ -49,5 +49,5 @@ glx cache build [archive-path] [flags]
 
 ### SEE ALSO
 
-* [glx cache](/cli/glx_cache)	 - Manage the binary archive cache for fast repeated loading
+* [glx cache](glx_cache.md)	 - Manage the binary archive cache for fast repeated loading
 

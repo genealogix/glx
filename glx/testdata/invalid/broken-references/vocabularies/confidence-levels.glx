@@ -1,1 +1,22 @@
-../../../../../specification/5-standard-vocabularies/confidence-levels.glx
+# Standard Confidence Levels
+# This file defines the standard confidence levels for assertions.
+# These provide an alternative to citation quality ratings and reflect
+# overall confidence in conclusions based on all available evidence.
+# Archives can extend this with custom levels by adding additional entries.
+
+confidence_levels:
+  high:
+    label: "High Confidence"
+    description: "Multiple high-quality sources agree, minimal uncertainty"
+    rank: 3
+
+  medium:
+    label: "Medium Confidence"
+    description: "Some evidence supports conclusion, but conflicts or gaps exist"
+    rank: 2
+
+  low:
+    label: "Low Confidence"
+    description: "Limited evidence, significant uncertainty"
+    rank: 0
+

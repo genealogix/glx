@@ -18,7 +18,8 @@ When you run `glx init`, these standard vocabulary files are copied to your arch
 - Editing descriptions and labels
 - Adding additional types
 - Adjusting to match your research focus
-  :::
+
+:::
 
 ## Overview
 

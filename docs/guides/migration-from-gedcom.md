@@ -27,7 +27,7 @@ Understanding how GENEALOGIX differs from GEDCOM helps you get the most out of y
 
 ### Prerequisites
 
-- The `glx` CLI tool installed ([installation instructions](https://github.com/genealogix/glx/blob/main/glx/README.md#installation))
+- The `glx` CLI tool installed ([installation instructions](../../glx/README.md#installation))
 - Your GEDCOM file (`.ged`)
 - Git installed (recommended for version control)
 
@@ -326,7 +326,7 @@ properties:
 
 The importer also handles GEDCOM name substructure tags (`NPFX`, `GIVN`, `NICK`, `SPFX`, `SURN`, `NSFX`) which override the parsed values when present.
 
-**Multiple NAME records** on a single individual are imported as a temporal name list. The `TYPE` subrecord (e.g., `birth`, `married`, `aka`) is preserved as the `type` field. See [Name Variations](/specification/4-entity-types/person#name-variation-examples) for all supported type values.
+**Multiple NAME records** on a single individual are imported as a temporal name list. The `TYPE` subrecord (e.g., `birth`, `married`, `aka`) is preserved as the `type` field. See [Name Variations](../../specification/4-entity-types/person.md#name-variation-examples) for all supported type values.
 
 Recognized surname prefixes include: von, van, de, der, den, del, della, di, da, le, la, du, des, af, av.
 
@@ -376,14 +376,19 @@ GEDCOM dates are converted to ISO 8601 format where possible. Qualified and rang
 | `BEF 1920` | `BEF 1920` | Before |
 | `AFT 15 MAR 1900` | `AFT 1900-03-15` | After |
 | `CAL 1850` | `CAL 1850` | Calculated |
+| `EST 1850` | `EST 1850` | Estimated from another event |
+| `circa 1850`, `c. 1850`, `about 1850` | `ABT 1850` | Dialect spellings canonicalize |
+| `510 BC`, `510 B.C.` | `0510 BCE` | Before the common era (year reads as -510) |
 | `BET 1849 AND 1851` | `BET 1849 AND 1851` | Between range |
+| `BET 1675 - 1740` | `BET 1675 AND 1740` | Dash for AND canonicalizes |
+| `BET JUL AND SEP 1857` | `BET 1857-07 AND 1857-09` | Start takes the end's year |
 | `FROM 1900 TO 1950` | `FROM 1900 TO 1950` | Period range |
 | `@#DJULIAN@ 15 MAR 1731` | `JULIAN 1731-03-15` | Julian calendar date |
 | `@#DHEBREW@ 15 TSH 5765` | `HEBREW 15 TSH 5765` | Hebrew calendar (raw preserved) |
 | `@#DFRENCH R@ 1 VEND 0012` | `FRENCH_R 1 VEND 0012` | French Republican (raw preserved) |
 | `@#DGREGORIAN@ 15 MAR 1731` | `1731-03-15` | Gregorian (default, no prefix) |
 
-See [Core Concepts - Data Types](/specification/2-core-concepts#data-types) for the complete date format specification.
+See [Core Concepts - Data Types](../../specification/2-core-concepts.md#data-types) for the complete date format specification.
 
 ### Evidence Chains
 
@@ -550,7 +555,7 @@ Most differences are handled transparently by the importer, but it helps to know
 
 ## See Also
 
-- [Quickstart Guide](/quickstart) - Create a new archive from scratch
-- [Entity Types](/specification/4-entity-types/) - Entity specifications
-- [Best Practices](best-practices) - Workflow recommendations
-- [CLI Documentation](/cli) - Command reference
+- [Quickstart Guide](../quickstart.md) - Create a new archive from scratch
+- [Entity Types](../../specification/4-entity-types/README.md) - Entity specifications
+- [Best Practices](best-practices.md) - Workflow recommendations
+- [CLI Documentation](../cli/index.md) - Command reference

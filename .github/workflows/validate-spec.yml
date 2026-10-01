@@ -38,18 +38,92 @@ env:
 # name: changes the displayed context, which would leave the ruleset waiting
 # on checks that never report and deadlock merges. Rename those only in
 # lockstep with a ruleset update.
+#
+# Path scoping (#1034): docs-only PRs shouldn't pay for the full Go suite, so
+# the `changes` job below computes one boolean from the diff and the Go-only
+# jobs carry a job-level `if:` on it. This MUST stay a job-level `if:` and not
+# a trigger-level `paths:` filter — a job skipped by `if:` still reports its
+# context to branch protection as success, whereas a run filtered out at the
+# trigger never reports at all, leaving the required `test-conformance` context
+# stuck on "Expected" and deadlocking the merge.
+#
+# What is deliberately NOT gated:
+#   - build-cli / validate-example / validate-examples — the aggregator exits 1
+#     unless build-cli's result is exactly `success`, so skipping the build
+#     would fail a required context.
+#   - validate-schemas, check-memory-drift — docs and memory-file changes are
+#     exactly what they check.
+# Pushes to main always run everything (the filter output defaults to true for
+# any non-pull_request event).
+#
+# The gate fails OPEN: the `if:` is written as
+# `!cancelled() && (needs.changes.result != 'success' || ...outputs.go == 'true')`
+# so that a broken or unavailable `changes` job runs the Go jobs anyway. With a
+# bare `outputs.go == 'true'` the expression would be false whenever `changes`
+# errored, silently skipping — and therefore greening — a required context.
 jobs:
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      # Defaults to 'true' off pull_request (push to main, manual re-runs), so
+      # the full suite still runs on the branch that produces releases.
+      go: ${{ github.event_name != 'pull_request' || steps.filter.outputs.go == 'true' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # `token: ''` forces the git-diff detection mode (PR head vs. its base
+      # branch). The action's default is `${{ github.token }}`, which makes it
+      # call GET /pulls/{n}/files instead and therefore need
+      # `pull-requests: read` — a scope this job deliberately does not grant.
+      #
+      # The `go` filter must cover every input to the Go jobs, including
+      # non-.go files embedded into the binary (vocabularies, publish/serve
+      # templates, defaults) and the drift-check inputs. When in doubt, add the
+      # path: a false positive costs one redundant test run, a false negative
+      # merges an untested change with a green required check.
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        if: github.event_name == 'pull_request'
+        with:
+          token: ''
+          filters: |
+            go:
+              - '**/*.go'
+              - 'go.mod'
+              - 'go.sum'
+              - 'ci-tools/**'
+              - '**/testdata/**'
+              - 'docs/examples/**'
+              - 'specification/schema/**'
+              - 'specification/5-standard-vocabularies/**'
+              - 'specification/jsonld/**'
+              - 'glx/defaults/**'
+              - 'glx/publish/**'
+              - 'glx/web/**'
+              - '.claude/drift-allowlist.yaml'
+              - 'Makefile'
+              - '.github/workflows/validate-spec.yml'
+              - '.golangci*'
+
   validate-mod:
     name: Go modules tidy
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.go == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: Set up Go
-        uses: actions/setup-go@v7
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
           cache: true
@@ -65,15 +139,17 @@ jobs:
 
   check-code-drift:
     name: Schema vs Go-code drift
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.go == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: Set up Go
-        uses: actions/setup-go@v7
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
           cache: true
@@ -86,12 +162,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: Set up Go
-        uses: actions/setup-go@v7
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
           cache: true
@@ -104,12 +180,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: Set up Node
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
           cache: 'npm'
@@ -137,12 +213,12 @@ jobs:
     outputs:
       examples: ${{ steps.discover.outputs.examples }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: Set up Go
-        uses: actions/setup-go@v7
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
           cache: true
@@ -157,7 +233,7 @@ jobs:
           go build -o bin/glx ./glx
 
       - name: Upload glx binary
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: glx-binary
           path: bin/glx
@@ -174,9 +250,23 @@ jobs:
           # echo, so a renamed/removed docs/examples would hard-fail discovery
           # instead of degrading to an empty matrix (#1036). The aggregator
           # treats an empty matrix with a green build as a pass.
+          #
+          # Only directories that hold an archive are matrix entries. Some
+          # examples are hosted in their own repositories and keep just a
+          # README here (westeros). `glx validate` fails a target with no GLX
+          # files rather than reporting it valid, and "validating" an empty
+          # directory never checked anything anyway.
           if [ -d docs/examples ]; then
-            examples=$(find docs/examples -mindepth 1 -maxdepth 1 -type d -printf '%f\n' \
-              | sort | jq -Rsc 'split("\n") | map(select(length > 0))')
+            examples=$(
+              for dir in docs/examples/*/; do
+                name=$(basename "$dir")
+                if [ -n "$(find "$dir" -name '*.glx' -print -quit)" ]; then
+                  echo "$name"
+                else
+                  echo "Skipping $name: no .glx files (hosted elsewhere?)" >&2
+                fi
+              done | sort | jq -Rsc 'split("\n") | map(select(length > 0))'
+            )
           else
             examples='[]'
           fi
@@ -194,12 +284,12 @@ jobs:
       matrix:
         example: ${{ fromJSON(needs.build-cli.outputs.examples) }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: Download glx binary
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: glx-binary
           path: bin
@@ -246,15 +336,19 @@ jobs:
 
   test-conformance:
     # No name: — job key is a required status-check context (see note above).
+    # Skipped (not filtered out) on docs-only PRs, so the required context still
+    # reports — see the path-scoping note above (#1034).
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.go == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       
       - name: Set up Go
-        uses: actions/setup-go@v7
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
           cache: true
@@ -297,8 +391,58 @@ jobs:
           fi
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           files: ./coverage.out
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
+
+  # The Go suite on Windows (#1272). Deliberately a SEPARATE job rather than an
+  # os matrix on test-conformance: a matrix would rename that job's check
+  # contexts to `test-conformance (ubuntu-latest)` etc., and the bare
+  # `test-conformance` name is a required context in the Main Protection
+  # ruleset — renaming it would leave the ruleset waiting on a check that never
+  # reports and deadlock merges (see the job-naming note above).
+  #
+  # This job is NOT required by the ruleset on introduction; making it required
+  # is a manual ruleset change (the context to add is this job's `name:`,
+  # "Go tests (Windows)"). Until then a Windows-only regression shows as a red
+  # check that does not block merging, which is the intended first step.
+  #
+  # Scope is narrower than test-conformance on purpose: no coverage profile and
+  # no upload (Codecov takes the Linux run, and a second report for the same
+  # commit would have to be flag-partitioned to be meaningful), and no `-v`,
+  # which keeps the log readable. The stderr "Warning:" gate stays Linux-only
+  # too — it is a property of the code, not of the platform, so running it in
+  # both places doubles the maintenance for no extra signal. Windows runners
+  # bill at 2x Linux minutes, so this is gated on the same `changes.outputs.go`
+  # filter as the other Go jobs and a docs-only PR does not pay for it.
+  test-windows:
+    name: Go tests (Windows)
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.go == 'true') }}
+    runs-on: windows-latest
+    # Windows runners are appreciably slower than ubuntu-latest for the same
+    # suite (the habsburg.ged fixtures dominate), so this is above the 20
+    # minutes test-conformance allows.
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Download Go modules
+        run: go mod download
+
+      # shell: bash rather than the windows-latest default (pwsh), so a
+      # non-zero `go test` exit fails the step the same way it does everywhere
+      # else in this workflow.
+      - name: Run Go tests
+        shell: bash
+        run: go test ./glx/... ./go-glx/... ./tools/... -timeout 25m

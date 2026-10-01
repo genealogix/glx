@@ -147,7 +147,7 @@ func FindCrossArchiveDuplicates(dest, src *GLXFile, opts DuplicateOptions) (*Dup
 			results = append(results, DuplicatePair{
 				PersonA: pair[0],
 				PersonB: pair[1],
-				Score:   math.Round(score*100) / 100, //nolint:mnd // round to 2 decimal places
+				Score:   math.Round(score*100) / 100,
 				Signals: signals,
 			})
 		}

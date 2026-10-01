@@ -6,7 +6,7 @@ layout: doc
 
 # Hands-On CLI Guide
 
-This guide walks through every `glx` command using the [Westeros demo archive](/examples/westeros/) — a large-scale genealogy of 790+ characters from *A Song of Ice and Fire*. By the end, you'll know how to validate, query, explore, and export any GLX archive.
+This guide walks through every `glx` command using the [Westeros demo archive](../examples/westeros/README.md) — a large-scale genealogy of 790+ characters from *A Song of Ice and Fire*. By the end, you'll know how to validate, query, explore, and export any GLX archive.
 
 ## Setup
 
@@ -17,7 +17,7 @@ git clone https://github.com/genealogix/glx-archive-westeros.git
 cd glx-archive-westeros
 ```
 
-If you haven't installed the CLI yet, see the [installation instructions](https://github.com/genealogix/glx/blob/main/glx/README.md#installation).
+If you haven't installed the CLI yet, see the [installation instructions](../../glx/README.md#installation).
 
 ## Archive Health
 
@@ -147,6 +147,35 @@ glx analyze --check consistency
 # JSON output for tooling
 glx analyze --format json
 ```
+
+#### Which censuses get suggested
+
+Census suggestions are tied to the country a person's places name. `glx`
+walks each event's place up its `parent` chain to the first place with
+`type: country`, and suggests that country's census years — US federal
+censuses for someone in Illinois, UK censuses for someone in Bath. A person
+whose places span a move gets both countries' schedules.
+
+If the country has no schedule in `glx` (the table currently covers the
+United States, the United Kingdom, Canada and Ireland), no census is
+suggested for that person. Suggesting the 1790 US census to someone who
+never left Mecklenburg is worse than suggesting nothing.
+
+When nothing in the archive names a country for a person — place hierarchies
+that stop at a city, say — no census is suggested either. `glx` does not guess
+a country from silence. Give it one with `--country` when you know where the
+archive is rooted:
+
+```bash
+# Assume UK censuses where the archive names no country
+glx analyze --country "United Kingdom"
+glx coverage "Jane Webb" --country "United Kingdom"
+```
+
+Adding a `type: country` place to the hierarchy is the durable fix, since it
+also tells everyone else reading the archive where these people lived.
+
+The same rules govern the census rows in `glx coverage`.
 
 ### `glx proof` — Structured proof summary for a research question
 
@@ -651,7 +680,12 @@ Census Import Summary
 (dry run — no files written)
 ```
 
-Notice it matched Rickard and Lyarra Stark to existing archive persons by name — no `person_id` needed. When you're satisfied, run without `--dry-run`:
+Notice it matched Rickard and Lyarra Stark to existing archive persons by name — no `person_id` needed.
+
+`census.source.title` is optional. Left out, the title is built from the year,
+the `census.type` and the location — `type: federal` gives "1860 Federal Census
+— Marion County, Florida", and no type at all gives "1860 Census — …". The
+country is never assumed: put it in `source.title` when you want it named. When you're satisfied, run without `--dry-run`:
 
 ```bash
 glx census add --from 1860-census-stark.yaml --archive .
@@ -771,15 +805,15 @@ The command creates birth/death/burial events from the property values, converts
 
 Now that you've explored the Westeros archive, try these on your own data:
 
-1. **Import a GEDCOM file**: `glx import family.ged -o family-archive` — see the [Migration Guide](/guides/migration-from-gedcom)
-2. **Create an archive from scratch**: `glx init my-archive` — see the [Quickstart](/quickstart)
+1. **Import a GEDCOM file**: `glx import family.ged -o family-archive` — see the [Migration Guide](migration-from-gedcom.md)
+2. **Create an archive from scratch**: `glx init my-archive` — see the [Quickstart](../quickstart.md)
 3. **Add custom vocabularies**: Define domain-specific event types and relationship types for your research
 4. **Track evidence**: Build assertion chains from sources through citations to conclusions
 
 ## See Also
 
-- [Westeros Example Archive](/examples/westeros/) — Details on the archive structure and contents
-- [CLI Reference](/cli) — Full documentation for every command and flag
-- [Quickstart Guide](/quickstart) — Create your first archive from scratch
-- [Migration from GEDCOM](/guides/migration-from-gedcom) — Import existing GEDCOM files
-- [Git Workflow Guide](/guides/git-workflow) — Branching strategies and collaboration patterns
+- [Westeros Example Archive](../examples/westeros/README.md) — Details on the archive structure and contents
+- [CLI Reference](../cli/index.md) — Full documentation for every command and flag
+- [Quickstart Guide](../quickstart.md) — Create your first archive from scratch
+- [Migration from GEDCOM](migration-from-gedcom.md) — Import existing GEDCOM files
+- [Git Workflow Guide](git-workflow.md) — Branching strategies and collaboration patterns

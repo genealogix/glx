@@ -61,7 +61,7 @@ What to expect when you pick one up:
 
 ### Prerequisites
 
-- **Go 1.26+** ([install](https://golang.org/doc/install)) — the project uses Go 1.26 in go.mod
+- **Go 1.27+** ([install](https://golang.org/doc/install)) — the project uses Go 1.27 in go.mod
 - **Git** ([install](https://git-scm.com/downloads))
 - **Node.js** — for website builds (`npm install` in `website/`) and schema validation (`npm ci --prefix specification`)
 
@@ -76,7 +76,7 @@ The easiest way to get started is with the included [Dev Container](https://cont
 # GitHub Codespaces: Click "Code" → "Codespaces" → "Create codespace on main"
 ```
 
-The container includes Go, Node.js, golangci-lint, and lefthook (pre-commit hooks installed automatically at create time). `goreleaser` is **not** installed in the container — it's only needed for `make release-snapshot` (maintainer/release work) and should be [installed manually](https://goreleaser.com/install/) on demand.
+The container includes Go, Node.js, golangci-lint, and lefthook (pre-commit hooks installed automatically at create time). `goreleaser` and `syft` are **not** installed in the container — they're only needed for `make release-snapshot` (maintainer/release work) and should be installed manually on demand ([goreleaser](https://goreleaser.com/install/), [syft](https://github.com/anchore/syft#installation)).
 
 ### Manual Setup
 
@@ -185,6 +185,47 @@ docs: Update quickstart guide
 
 Every commit must also carry a `Signed-off-by` trailer — see [Developer Certificate of Origin (DCO)](#developer-certificate-of-origin-dco) for how to add one and what you're attesting to.
 
+### Changelog Conflicts
+
+`CHANGELOG.md` is marked `merge=union` in `.gitattributes`. When your branch and
+`main` both add entries, a local `git merge main` (or `git rebase main`) keeps
+both sides instead of leaving conflict markers. `union` is a git built-in, so it
+works in every clone with no `git config` step — unlike the optional `merge=glx`
+driver for `.glx` files described in [docs/merge-driver.md](docs/merge-driver.md).
+
+Review the merged result anyway — union keeps every line from both sides
+without understanding the file:
+
+- **Across a release boundary it can misfile your entry.** If `main` promoted
+  `## [Unreleased]` to a released version heading while your branch added an
+  entry under it, union keeps both and your entry ends up *inside* the released
+  section, which must never be edited. After merging `main` following a
+  release, check that your entries sit under `## [Unreleased]`; the reliable
+  fix is to restore the file from the freshly fetched upstream ref —
+  `git checkout upstream/main -- CHANGELOG.md` on a fork, `origin/main` on a
+  direct clone — and then re-add your branch's entries. Don't restore from a
+  local `main` branch unless you have just updated it; a stale one would
+  discard the release you are merging in.
+- Entry order and duplicated headings may still need a tidy-up when both sides
+  restructured the same region.
+
+GitHub's "Update branch" button — and the auto-update bot that keeps PR branches
+current — merge server-side, and the GitHub merge API does not honor
+`.gitattributes` merge drivers. If GitHub reports a conflict in `CHANGELOG.md`
+only, resolve it by merging `main` locally and pushing:
+
+```bash
+# Fork workflow: the canonical repo is `upstream`, your PR branch lives on `origin`.
+git fetch upstream
+git merge upstream/main   # union resolves CHANGELOG.md
+git push origin HEAD
+
+# Org members pushing branches directly: the canonical repo is `origin`.
+git fetch origin
+git merge origin/main
+git push
+```
+
 ## Testing
 
 Prefer using the Makefile to run tests for consistency. `go test` directly is fine for targeted runs.
@@ -241,10 +282,13 @@ All checks must pass before merge.
 
 ### Internal Links
 
-Specification documents omit the `.md` file extension for VitePress compatibility:
+Link between markdown files with relative repository paths that include the `.md` extension. That is the form GitHub renders; the website maps the same links through its rewrites table (`website/.vitepress/relative-links.js`), so one form serves both.
 
-- Good: `[Person Entity](4-entity-types/person)`
-- Bad: `[Person Entity](4-entity-types/person.md)`
+- Good: `[Person Entity](4-entity-types/person.md)`, `[Quickstart](../docs/quickstart.md)`
+- Bad: `[Person Entity](4-entity-types/person)` (GitHub does not append `.md`)
+- Bad: `[Quickstart](/quickstart)` (a website route; on GitHub it resolves to `github.com/quickstart`)
+
+`make check-links` enforces this for `specification/`, `docs/`, the root `*.md` files and `.github/SUPPORT.md`. Absolute routes are fine in `website/` itself, which is never read on GitHub.
 
 ### Markdown Linting
 
@@ -435,6 +479,29 @@ Assisted-by: Claude <noreply@anthropic.com>
 
 `Co-authored-by` trailers added automatically by AI coding tools are also acceptable.
 
+### Tool Attribution and Private Links
+
+Never put a link to an AI tool's private session, chat, or project thread in a
+commit message, PR title or body, review comment, code comment, or any other
+pushed artifact. URLs such as `https://claude.ai/code/session_...` and
+`https://claude.ai/code/project/...` resolve only for the operator who ran the
+tool, so they are dead ends for every reader and they disclose where the work
+happened. The `Claude-Session:` trailer is the same rule.
+
+Tool-generated attribution blocks do not belong in a PR body either, link or
+no link: no "Requested by *name*" credit line, no machine-readable marker
+comment, no "Generated with *tool*" footer. Git records who authored the
+commits and the PR records who opened it, so the block adds nothing a reader
+cannot already see.
+
+Both rules hold even when the tool's own boilerplate supplies the line — strip
+it before pushing.
+
+This is about attribution a tool adds for itself. The trailers this project
+asks for are unaffected: `Signed-off-by` is required on every commit by the
+[DCO](#developer-certificate-of-origin-dco), and `Assisted-by:` above is how to
+disclose AI assistance. Both stay, and neither needs a link.
+
 ### Enforcement
 
 Maintainers will close low-quality or bot-generated contributions without detailed explanation. Repeated violations will result in the account being blocked from the org.
@@ -454,9 +521,13 @@ To report a vulnerability, see our [Security Policy](https://github.com/genealog
 Releases use [GoReleaser](https://goreleaser.com/install/) (automated in CI on tag push):
 
 ```bash
-# Test release build locally (requires goreleaser CLI)
+# Test release build locally (requires the goreleaser and syft CLIs)
 make release-snapshot
 ```
+
+`syft` is required because `.goreleaser.yml` generates an SPDX-JSON SBOM for each release archive; without it on `PATH` the snapshot build fails at the SBOM step. Install it from <https://github.com/anchore/syft#installation> (in CI, `release.yml` installs it via `anchore/sbom-action/download-syft`).
+
+`cosign` is *not* required: the target passes `--skip=sign`. `--snapshot` on its own implies only `--skip=announce,publish,validate`, so the `signs:` stanza would otherwise still run and either fail with `cosign: executable file not found` or block on an interactive keyless OIDC prompt. Release signing is exercised by `release.yml` on a real tag push, not by the snapshot target.
 
 ## Questions?
 

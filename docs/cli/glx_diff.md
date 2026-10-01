@@ -64,5 +64,5 @@ glx diff <dir1> <dir2> [flags]
 
 ### SEE ALSO
 
-* [glx](/cli/glx)	 - GENEALOGIX CLI - Manage and validate genealogy archives
+* [glx](glx.md)	 - GENEALOGIX CLI - Manage and validate genealogy archives
 
