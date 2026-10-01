@@ -13,7 +13,7 @@ GENEALOGIX archives.
 
 All schemas declare [JSON Schema 2020-12](https://json-schema.org/draft/2020-12)
 (`"$schema": "https://json-schema.org/draft/2020-12/schema"`) — see
-[ADR-0007](/decisions/0007-json-schema-2020-12). Subschemas live
+[ADR-0007](../../docs/decisions/0007-json-schema-2020-12.md). Subschemas live
 under `$defs`, and property co-requirements use `dependentRequired`. Use a
 2020-12-capable validator; draft-07 idioms (`definitions`, array-form
 `dependencies`) are not accepted by the meta-schema.
@@ -92,4 +92,4 @@ These URIs directly serve the schema files from the main branch. Additional sche
 
 ## Custom Extensions
 
-Archives can extend the base format using archive-owned vocabularies. See [Core Concepts](../2-core-concepts#archive-owned-vocabularies) for details.
+Archives can extend the base format using archive-owned vocabularies. See [Core Concepts](../2-core-concepts.md#archive-owned-vocabularies) for details.

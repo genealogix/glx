@@ -1,1 +1,244 @@
-../../../../../specification/5-standard-vocabularies/event-types.glx
+# Standard Event Types
+# This file defines the standard event types for GENEALOGIX archives.
+# Archives can extend this with custom types by adding additional entries.
+#
+# Note: Attributes like occupation, religion, etc. are typically represented
+# as temporal properties on Person entities, not as events.
+
+event_types:
+  # Lifecycle Events
+  birth:
+    label: "Birth"
+    description: "Person's birth"
+    category: "lifecycle"
+    gedcom: "BIRT"
+  
+  death:
+    label: "Death"
+    description: "Person's death"
+    category: "lifecycle"
+    gedcom: "DEAT"
+  
+  marriage:
+    label: "Marriage"
+    description: "Marriage ceremony"
+    category: "lifecycle"
+    gedcom: "MARR"
+  
+  divorce:
+    label: "Divorce"
+    description: "Legal dissolution of marriage"
+    category: "lifecycle"
+    gedcom: "DIV"
+  
+  engagement:
+    label: "Engagement"
+    description: "Engagement to be married"
+    category: "lifecycle"
+    gedcom: "ENGA"
+
+  marriage_settlement:
+    label: "Marriage Settlement"
+    description: "Marriage settlement or prenuptial agreement"
+    category: "lifecycle"
+    gedcom: "MARS"
+
+  marriage_banns:
+    label: "Marriage Banns"
+    description: "Marriage banns or announcement"
+    category: "lifecycle"
+    gedcom: "MARB"
+
+  marriage_contract:
+    label: "Marriage Contract"
+    description: "Marriage contract"
+    category: "lifecycle"
+    gedcom: "MARC"
+
+  marriage_license:
+    label: "Marriage License"
+    description: "Marriage license"
+    category: "lifecycle"
+    gedcom: "MARL"
+
+  adoption:
+    label: "Adoption"
+    description: "Legal adoption"
+    category: "lifecycle"
+    gedcom: "ADOP"
+
+  burial:
+    label: "Burial"
+    description: "Burial of remains"
+    category: "lifecycle"
+    gedcom: "BURI"
+
+  cremation:
+    label: "Cremation"
+    description: "Cremation of remains"
+    category: "lifecycle"
+    gedcom: "CREM"
+  
+  # Religious Events
+  baptism:
+    label: "Baptism"
+    description: "Christian baptism ceremony"
+    category: "religious"
+    gedcom: "BAPM"
+  
+  confirmation:
+    label: "Confirmation"
+    description: "Religious confirmation"
+    category: "religious"
+    gedcom: "CONF"
+  
+  bar_mitzvah:
+    label: "Bar Mitzvah"
+    description: "Jewish coming of age ceremony (male)"
+    category: "religious"
+    gedcom: "BARM"
+  
+  bat_mitzvah:
+    label: "Bat Mitzvah"
+    description: "Jewish coming of age ceremony (female). Also known as Bas Mitzvah."
+    category: "religious"
+    gedcom: "BATM"
+
+  christening:
+    label: "Christening"
+    description: "Infant christening"
+    category: "religious"
+    gedcom: "CHR"
+
+  adult_christening:
+    label: "Adult Christening"
+    description: "Adult christening or adult baptism"
+    category: "religious"
+    gedcom: "CHRA"
+
+  blessing:
+    label: "Blessing"
+    description: "Religious blessing ceremony"
+    category: "religious"
+    gedcom: "BLES"
+
+  first_communion:
+    label: "First Communion"
+    description: "First Holy Communion"
+    category: "religious"
+    gedcom: "FCOM"
+
+  ordination:
+    label: "Ordination"
+    description: "Religious ordination"
+    category: "religious"
+    gedcom: "ORDN"
+
+  # Legal and Administrative Events
+  annulment:
+    label: "Annulment"
+    description: "Legal annulment of marriage"
+    category: "legal"
+    gedcom: "ANUL"
+
+  divorce_filed:
+    label: "Divorce Filed"
+    description: "Divorce filing"
+    category: "legal"
+    gedcom: "DIVF"
+
+  probate:
+    label: "Probate"
+    description: "Probate of estate"
+    category: "legal"
+    gedcom: "PROB"
+
+  will:
+    label: "Will"
+    description: "Creation of will"
+    category: "legal"
+    gedcom: "WILL"
+
+  # Lifecycle Events (continued)
+  graduation:
+    label: "Graduation"
+    description: "Graduation from school or university"
+    category: "lifecycle"
+    gedcom: "GRAD"
+
+  retirement:
+    label: "Retirement"
+    description: "Retirement from occupation"
+    category: "lifecycle"
+    gedcom: "RETI"
+
+  residence:
+    label: "Residence"
+    description: "Period of residence at a location"
+    category: "lifecycle"
+    gedcom: "RESI"
+
+  # Migration Events
+  naturalization:
+    label: "Naturalization"
+    description: "Naturalization or citizenship"
+    category: "migration"
+    gedcom: "NATU"
+  immigration:
+    label: "Immigration"
+    description: "Immigration to a new country"
+    category: "migration"
+    gedcom: "IMMI"
+
+  emigration:
+    label: "Emigration"
+    description: "Emigration from a country"
+    category: "migration"
+    gedcom: "EMIG"
+
+  legal_separation:
+    label: "Legal Separation"
+    description: "Legal separation of a married couple without dissolution of the marriage"
+    category: "legal"
+
+  taxation:
+    label: "Taxation"
+    description: "Tax assessment, payment, or listing (e.g., tax rolls, tithes)"
+    category: "legal"
+
+  voter_registration:
+    label: "Voter Registration"
+    description: "Registration to vote or appearance on a voter roll"
+    category: "legal"
+
+  # Military and Service Events
+  military_service:
+    label: "Military Service"
+    description: "Period of military service, enlistment, or conscription"
+    category: "lifecycle"
+
+  # Other Lifecycle Events
+  stillborn:
+    label: "Stillborn"
+    description: "Stillbirth"
+    category: "lifecycle"
+
+  affiliation:
+    label: "Affiliation"
+    description: "Membership or association with an organization, society, or group"
+    category: "other"
+
+  # Census Events
+  census:
+    label: "Census"
+    description: "Census enumeration"
+    category: "other"
+    gedcom: "CENS"
+
+  # Generic Events
+  event:
+    label: "Event"
+    description: "Generic event or fact"
+    category: "other"
+    gedcom: "EVEN"
+

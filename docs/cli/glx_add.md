@@ -22,12 +22,16 @@ Subcommands:
   add assertion      Create an assertion
 
 Every subcommand validates supplied values against the archive's vocabularies
-and entity references before writing. The created entity ID is echoed on its
-own line as the final stdout output so it can be captured with shell
-substitution:
+and entity references before writing. The created entity ID is the only
+thing written to stdout (progress goes to stderr), so it can be captured with
+shell substitution:
 
     person_id=$(glx add person --given Johann --surname Jungk --archive .)
     glx add event --type christening --principal "$person_id" --archive .
+
+```
+glx add [flags]
+```
 
 ### Options
 
@@ -43,13 +47,13 @@ substitution:
 
 ### SEE ALSO
 
-* [glx](/cli/glx)	 - GENEALOGIX CLI - Manage and validate genealogy archives
-* [glx add assertion](/cli/glx_add_assertion)	 - Create an assertion entity
-* [glx add citation](/cli/glx_add_citation)	 - Create a citation entity
-* [glx add event](/cli/glx_add_event)	 - Create an event entity
-* [glx add person](/cli/glx_add_person)	 - Create a person entity
-* [glx add place](/cli/glx_add_place)	 - Create a place entity
-* [glx add relationship](/cli/glx_add_relationship)	 - Create a relationship entity
-* [glx add repository](/cli/glx_add_repository)	 - Create a repository entity
-* [glx add source](/cli/glx_add_source)	 - Create a source entity
+* [glx](glx.md)	 - GENEALOGIX CLI - Manage and validate genealogy archives
+* [glx add assertion](glx_add_assertion.md)	 - Create an assertion entity
+* [glx add citation](glx_add_citation.md)	 - Create a citation entity
+* [glx add event](glx_add_event.md)	 - Create an event entity
+* [glx add person](glx_add_person.md)	 - Create a person entity
+* [glx add place](glx_add_place.md)	 - Create a place entity
+* [glx add relationship](glx_add_relationship.md)	 - Create a relationship entity
+* [glx add repository](glx_add_repository.md)	 - Create a repository entity
+* [glx add source](glx_add_source.md)	 - Create a source entity
 

@@ -444,7 +444,7 @@ func exportFamilyEvent(eventID, gedcomTag string, expCtx *ExportContext) *GEDCOM
 
 	// DATE
 	if event.Date != "" {
-		gedcomDate := formatGEDCOMDate(event.Date)
+		gedcomDate := formatGEDCOMDate(event.Date, expCtx.Version)
 		if gedcomDate != "" {
 			record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
 				Tag:   GedcomTagDate,

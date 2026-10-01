@@ -1,1 +1,55 @@
-../../../../specification/5-standard-vocabularies/place-properties.glx
+# Standard Place Properties
+# This file defines the standard properties for place entities.
+# Properties allow capturing historical information about places that doesn't
+# fit into the standard structural fields.
+
+place_properties:
+  existed_from:
+    label: "Existence Start"
+    description: "When the place came into existence"
+    value_type: date
+  
+  existed_to:
+    label: "Existence End"
+    description: "When the place ceased to exist"
+    value_type: date
+  
+  population:
+    label: "Population"
+    description: "Population count"
+    value_type: integer
+    temporal: true
+  
+  description:
+    label: "Place Description"
+    description: "Detailed description of the place"
+    value_type: string
+
+  jurisdiction:
+    label: "Jurisdiction"
+    description: "Formal jurisdiction identifier or code (e.g., ISO 3166, FIPS code)"
+    value_type: string
+
+  place_format:
+    label: "Place Format"
+    description: "Standard format string for place hierarchy (GEDCOM PLAC.FORM style, e.g., 'City, County, Country')"
+    value_type: string
+
+  alternative_names:
+    label: "Alternative Names"
+    description: "Historical or alternate names for a place (e.g., former names, names in other languages)"
+    value_type: string
+    temporal: true
+    multi_value: true
+
+  external_ids:
+    label: "External Identifiers"
+    description: "Identifiers from external geographic databases (e.g., GeoNames, Wikidata, OpenStreetMap)"
+    value_type: string
+    multi_value: true
+    gedcom: "EXID"
+    fields:
+      type:
+        label: "Identifier Type"
+        description: "Authority or system that issued this identifier (e.g., geonames, wikidata, openstreetmap, familysearch). Often a URI, especially when imported from GEDCOM 7 EXID.TYPE."
+

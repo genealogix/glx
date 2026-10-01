@@ -1,1 +1,25 @@
-../../../../specification/5-standard-vocabularies/gender-types.glx
+# Standard Gender Types
+# This file defines the standard gender identity types for GENEALOGIX archives.
+# Gender values represent self-identified gender identity, primarily relevant for
+# modern records and living persons. For sex as recorded in historical sources,
+# see sex-types.glx.
+# Archives can extend this with custom types by adding additional entries.
+# GEDCOM has no direct mapping for gender identity (it defers to FACT); archives
+# may add a `gedcom:` field if they choose to export identity to a specific tag.
+
+gender_types:
+  male:
+    label: "Male"
+    description: "Self-identified as male"
+
+  female:
+    label: "Female"
+    description: "Self-identified as female"
+
+  nonbinary:
+    label: "Non-binary"
+    description: "Self-identified as non-binary"
+
+  other:
+    label: "Other"
+    description: "Self-identified gender outside the male/female/non-binary categories"

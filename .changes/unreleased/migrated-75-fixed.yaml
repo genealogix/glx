@@ -1,0 +1,6 @@
+kind: Fixed
+body: |-
+  **Typos in subcommands and stray arguments are errors instead of silent successes** — `glx add bogus`, `glx cache bogus`, and `glx census bogus` printed help and exited 0. `glx add person extra --given A` ignored `extra` and created the person anyway, and `glx census add` ignored stray arguments the same way. All of these now exit non-zero with `unknown command "…"`
+time: 2026-10-01T00:00:23Z
+custom:
+  Issue: "#1205"

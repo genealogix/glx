@@ -18,7 +18,8 @@ Download the latest pre-compiled binary for your operating system from the [GitH
 Developers can install from source:
 
 ```bash
-go install github.com/genealogix/glx/glx@latest
+# Pin the release tag for a reproducible install; bump it when a new release ships
+go install github.com/genealogix/glx/glx@v0.0.0-beta.12
 ```
 
 ## Quick Start
@@ -39,24 +40,12 @@ glx validate
 
 Traditional formats like GEDCOM solve file exchange but stop short of modern collaborative research. GENEALOGIX is a Git-native, evidence-first archive format that aims to be a permanent foundation, not just an export target.
 
-| Challenge | GEDCOM | GENEALOGIX |
-|-----------|--------|------------|
-| **Collaboration** | File sharing only | Git-native workflows |
-| **Evidence Tracking** | Basic source records | Complete evidence chains |
-| **Version Control** | Manual or difficult | Built-in Git integration |
-| **Human Readability** | Don't even try | Clear YAML structure |
-| **Validation** | Syntax only | Schema-based validation |
-| **Extensibility** | Limited | JSON Schema-based |
-| **Data Portability** | Vendor lock-in | Open format you own |
-| **Interoperability** | GEDCOM export only | Import/export + Git workflows |
-| **Custom Types** | Fixed schema | Archive-defined vocabularies |
-
-For a side-by-side look at the GEDCOM-vs-GLX wire formats and the assertion model that backs every claim with evidence, see [Core Concepts](/specification/2-core-concepts).
+For a side-by-side look at the GEDCOM-vs-GLX wire formats and the assertion model that backs every claim with evidence, see [Core Concepts](specification/2-core-concepts.md).
 
 ## Features
 
 - **📚 Evidence-First Model** — every claim backed by documented sources
-- **🔍 Quality Assessment** — structured evaluation of evidence reliability (0–3 scale)
+- **🔍 Quality Assessment** — structured confidence on every assertion, with the nature of the source and of the information recorded separately
 - **🌳 Git-Native Architecture** — full version control and collaboration support
 - **📋 Human-Readable Format** — clear YAML files instead of binary formats
 - **✅ Schema Validation** — JSON Schema-based validation and error checking
@@ -65,7 +54,7 @@ For a side-by-side look at the GEDCOM-vs-GLX wire formats and the assertion mode
 
 ## CLI Commands
 
-The `glx` CLI groups its commands into archive management, import/export, exploration, data entry, analysis, and shell completion. See the [full CLI reference](https://genealogix.io/cli) for flags, examples, and per-command details.
+The `glx` CLI groups its commands into archive management, import/export, exploration, data entry, analysis, and shell completion. See the [full CLI reference](https://genealogix.io/cli/commands) for flags, examples, and per-command details.
 
 ### Archive Management
 
@@ -140,25 +129,25 @@ sources:
 - Entity IDs are map keys: `person-john-smith` or `person-a1b2c3d4`
 - IDs can be descriptive or random (1–64 alphanumeric/hyphens)
 - Files can contain any combination of entity types
-- Parser collates all entities across all .glx files in repository
+- Parser collates all entities across all .glx files in repository, except under dot-prefixed directories (`.git`, `.glx`, editor scratch dirs), which are not archive content
 - Controlled vocabularies define valid types in `vocabularies/` directory
 
 ## Documentation
 
-- [🚀 Quickstart](/quickstart) — 5-minute getting started
-- [💡 Examples](/examples/) — runnable sample archives
-- [🛠 CLI Reference](https://genealogix.io/cli) — every command and flag
-- [📐 Best Practices](/guides/best-practices) — recommended workflows
-- [🔁 Migration from GEDCOM](/guides/migration-from-gedcom) — manual conversion guidance
-- [🔀 GLX-aware Git merge driver](/docs/merge-driver) — genealogy-aware conflict resolution for .glx files
-- [📖 Specification](/specification/) — full spec
-- [📋 JSON Schemas](/specification/schema/) — machine-readable schemas
-- [📚 Glossary](/specification/6-glossary) — key terms and concepts
+- [🚀 Quickstart](docs/quickstart.md) — 5-minute getting started
+- [💡 Examples](docs/examples/README.md) — runnable sample archives
+- [🛠 CLI Reference](https://genealogix.io/cli/commands) — every command and flag
+- [📐 Best Practices](docs/guides/best-practices.md) — recommended workflows
+- [🔁 Migration from GEDCOM](docs/guides/migration-from-gedcom.md) — manual conversion guidance
+- [🔀 GLX-aware Git merge driver](docs/merge-driver.md) — genealogy-aware conflict resolution for .glx files
+- [📖 Specification](specification/README.md) — full spec
+- [📋 JSON Schemas](specification/schema/README.md) — machine-readable schemas
+- [📚 Glossary](specification/6-glossary.md) — key terms and concepts
 - [🧱 Dev Container](https://github.com/genealogix/glx/tree/main/.devcontainer) — preconfigured dev environment
 
 ## Specification Status
 
-This specification follows [Semantic Versioning](https://semver.org/). Current release: **v0.0.0-beta.10** (Beta).
+This specification follows [Semantic Versioning](https://semver.org/). Current release: **v0.0.0-beta.12** (Beta).
 
 - **Draft** — under active development, may change significantly
 - **Release Candidate** — stable, final review before release
@@ -172,7 +161,7 @@ This specification follows [Semantic Versioning](https://semver.org/). Current r
 | **Discussions & Q&A** | [github.com/genealogix/glx/discussions](https://github.com/genealogix/glx/discussions) |
 | **Chat** | [Discord](https://genealogix.io/discord) |
 | **Mailing list** | [groups.google.com/g/genealogix](https://groups.google.com/g/genealogix) |
-| **Contributing** | [CONTRIBUTING.md](CONTRIBUTING.md) · [website guide](/development/contributing) |
+| **Contributing** | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | **Code of Conduct** | [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) |
 | **Security** | [SECURITY.md](SECURITY.md) · [SECURITY-POSTURE.md](SECURITY-POSTURE.md) (OSPS Baseline, EU CRA readiness) |
 | **Releases** | [GitHub Releases](https://github.com/genealogix/glx/releases) |

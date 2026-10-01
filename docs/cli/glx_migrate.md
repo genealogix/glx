@@ -56,7 +56,7 @@ year remains recoverable from the event's `date` field, where it
 belongs (#1032).
 
 ```
-glx migrate [archive] [flags]
+glx migrate <archive> [flags]
 ```
 
 ### Examples
@@ -107,5 +107,5 @@ glx migrate [archive] [flags]
 
 ### SEE ALSO
 
-* [glx](/cli/glx)	 - GENEALOGIX CLI - Manage and validate genealogy archives
+* [glx](glx.md)	 - GENEALOGIX CLI - Manage and validate genealogy archives
 

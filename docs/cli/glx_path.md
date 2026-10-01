@@ -60,5 +60,5 @@ glx path <person-a> <person-b> [flags]
 
 ### SEE ALSO
 
-* [glx](/cli/glx)	 - GENEALOGIX CLI - Manage and validate genealogy archives
+* [glx](glx.md)	 - GENEALOGIX CLI - Manage and validate genealogy archives
 

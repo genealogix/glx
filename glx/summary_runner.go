@@ -23,6 +23,7 @@ import (
 	"unicode/utf8"
 
 	glxlib "github.com/genealogix/glx/go-glx"
+	"github.com/genealogix/glx/go-glx/glxdate"
 )
 
 // nameVariant holds a single name variant with its type classification.
@@ -63,6 +64,19 @@ var marriageRelTypes = map[string]bool{
 	glxlib.RelationshipTypeCivilUnion:        true,
 	glxlib.RelationshipTypeCommonLawMarriage: true,
 	glxlib.RelationshipTypePartner:           true,
+}
+
+// marriageEventTypes maps event types that record a spousal union. It is the
+// event-side counterpart of marriageRelTypes: a marriage recorded only as an
+// event still makes its participants spouses. Events that record intent or
+// paperwork rather than a union (engagement, marriage_banns, marriage_license,
+// marriage_contract, marriage_settlement) are deliberately excluded.
+var marriageEventTypes = map[string]bool{
+	glxlib.EventTypeMarriage: true,
+	// Not in the standard event-type vocabulary, but archives that extend it
+	// record these unions as events; the names match their relationship types.
+	glxlib.RelationshipTypeCivilUnion:        true,
+	glxlib.RelationshipTypeCommonLawMarriage: true,
 }
 
 // summarySkippedEventTypes are event types excluded from the life events section.
@@ -173,7 +187,7 @@ func findPersonByQuery(archive *glxlib.GLXFile, query string) (string, *glxlib.P
 
 	switch len(matches) {
 	case 0:
-		return "", nil, fmt.Errorf("no person found matching %q", query)
+		return "", nil, fmt.Errorf("%w %q", ErrNoPersonMatch, query)
 	case 1:
 		return matches[0], archive.Persons[matches[0]], nil
 	default:
@@ -574,9 +588,13 @@ func printLifeHistorySection(personID string, person *glxlib.Person, archive *gl
 // Relationship finders
 // ============================================================================
 
-// findSpouses finds spouse/partner relationships for a person.
+// findSpouses finds spouse/partner relationships for a person, from both
+// relationship entities and marriage events. A marriage that exists only as an
+// event (the shape `glx add event --type marriage` produces) yields spouses
+// too; spouses already found via a relationship are not repeated.
 func findSpouses(personID string, archive *glxlib.GLXFile) []spouseInfo {
 	var spouses []spouseInfo
+	seen := map[string]bool{}
 
 	ids := sortedKeys(archive.Relationships)
 	for _, relID := range ids {
@@ -590,9 +608,10 @@ func findSpouses(personID string, archive *glxlib.GLXFile) []spouseInfo {
 		}
 
 		for _, p := range rel.Participants {
-			if p.Person == personID {
+			if p.Person == personID || p.Person == "" || seen[p.Person] {
 				continue
 			}
+			seen[p.Person] = true
 
 			info := spouseInfo{
 				PersonID: p.Person,
@@ -622,6 +641,8 @@ func findSpouses(personID string, archive *glxlib.GLXFile) []spouseInfo {
 		}
 	}
 
+	spouses = append(spouses, findEventOnlySpouses(personID, seen, archive)...)
+
 	// Sort spouses chronologically by full date (not just year).
 	// Uses dateSortKey which handles ISO dates, prefixed dates, and
 	// sorts undated ("\xff") after all dated entries.
@@ -631,6 +652,49 @@ func findSpouses(personID string, archive *glxlib.GLXFile) []spouseInfo {
 
 		return ki < kj
 	})
+
+	return spouses
+}
+
+// findEventOnlySpouses derives spouses from marriage events the person takes
+// part in, skipping any person in seen (already found via a relationship).
+// Every spouse it returns is marked in seen, so an event modeled twice does
+// not produce the same spouse twice.
+func findEventOnlySpouses(personID string, seen map[string]bool, archive *glxlib.GLXFile) []spouseInfo {
+	var spouses []spouseInfo
+
+	for _, evID := range sortedKeys(archive.Events) {
+		ev := archive.Events[evID]
+		if ev == nil || !marriageEventTypes[strings.ToLower(ev.Type)] {
+			continue
+		}
+
+		if !hasParticipant(personID, ev.Participants) {
+			continue
+		}
+
+		for _, p := range ev.Participants {
+			if p.Person == personID || p.Person == "" || seen[p.Person] {
+				continue
+			}
+			seen[p.Person] = true
+
+			info := spouseInfo{
+				PersonID:      p.Person,
+				RelType:       ev.Type,
+				MarriageDate:  string(ev.Date),
+				MarriagePlace: resolvePlaceName(ev.PlaceID, archive),
+			}
+
+			if sp, ok := archive.Persons[p.Person]; ok && sp != nil {
+				info.PersonName = extractPersonName(sp)
+			} else {
+				info.PersonName = p.Person
+			}
+
+			spouses = append(spouses, info)
+		}
+	}
 
 	return spouses
 }
@@ -1115,36 +1179,72 @@ func findEventDatePlace(personID, eventType string, archive *glxlib.GLXFile) (st
 	return "", ""
 }
 
-// narrativeDate converts a GLX date string to narrative form.
+// narrativeDate converts a GLX date string to narrative form. It reads the
+// parsed date rather than the text, so every keyword, range form, calendar
+// prefix, and era glxdate knows renders the same way here.
 func narrativeDate(date string) string {
-	trimmed := strings.TrimSpace(date)
-	upper := strings.ToUpper(trimmed)
+	d, _ := glxlib.DateString(date).Parse()
+	_, form := glxlib.ExtractCalendarPrefix(glxlib.DateString(d.String()))
 
 	switch {
-	case strings.HasPrefix(upper, "ABT "):
-		return "about " + formatReadableDate(trimmed[4:])
-	case strings.HasPrefix(upper, "BEF "):
-		return "before " + formatReadableDate(trimmed[4:])
-	case strings.HasPrefix(upper, "AFT "):
-		return "after " + formatReadableDate(trimmed[4:])
-	case strings.HasPrefix(upper, "BET "):
-		rest := trimmed[4:]
-		if idx := strings.Index(strings.ToUpper(rest), " AND "); idx >= 0 {
-			from := formatReadableDate(strings.TrimSpace(rest[:idx]))
-			to := formatReadableDate(strings.TrimSpace(rest[idx+5:]))
-
-			return "between " + from + " and " + to
-		}
-
-		return "between " + rest
-	default:
-		readable := formatReadableDate(trimmed)
-		if isFullDate(trimmed) {
-			return "on " + readable
-		}
-
-		return "in " + readable
+	case d.IsOpenStart():
+		return "until " + narrativePoint(d.End())
+	case d.IsOpenEnded():
+		return "from " + narrativePoint(d.Start())
+	case d.IsRange() && strings.HasPrefix(string(form), "FROM "):
+		return "from " + narrativePoint(d.Start()) + " to " + narrativePoint(d.End())
+	case d.IsRange():
+		return "between " + narrativePoint(d.Start()) + " and " + narrativePoint(d.End())
 	}
+
+	body := narrativePoint(d)
+	switch d.Qualifier() {
+	case glxdate.QualifierAbout:
+		return "about " + body
+	case glxdate.QualifierBefore:
+		return "before " + body
+	case glxdate.QualifierAfter:
+		return "after " + body
+	case glxdate.QualifierEstimated:
+		return "an estimated " + body
+	case glxdate.QualifierCalculated:
+		return "a calculated " + body
+	case glxdate.QualifierInterpreted:
+		if text, ok := d.InterpretedText(); ok {
+			return "on or about " + body + " (recorded as " + text + ")"
+		}
+
+		return "on or about " + body
+	case glxdate.QualifierNone:
+	}
+
+	if _, hasDay := d.Day(); hasDay {
+		return "on " + body
+	}
+
+	return "in " + body
+}
+
+// narrativePoint renders one date component readably: the body without its
+// calendar prefix through formatReadableDate, then the calendar name when
+// the date is not Gregorian.
+func narrativePoint(d glxdate.Date) string {
+	_, prefixed := glxlib.ExtractCalendarPrefix(glxlib.DateString(d.Start().String()))
+	body := string(prefixed)
+	// A point date carries its own qualifier and any INT text; the caller
+	// has already spoken for those.
+	if kw := d.Qualifier().Keyword(); kw != "" {
+		body = strings.TrimPrefix(body, kw+" ")
+	}
+	if text, ok := d.InterpretedText(); ok {
+		body = strings.TrimSuffix(body, " ("+text+")")
+	}
+	readable := formatReadableDate(body)
+	if name := d.CalendarName(); name != "" {
+		readable += " (" + strings.ToLower(strings.TrimPrefix(name, "_")) + " calendar)"
+	}
+
+	return readable
 }
 
 // pronounFor returns subject ("He"/"She"/"They") and possessive ("his"/"her"/"their")

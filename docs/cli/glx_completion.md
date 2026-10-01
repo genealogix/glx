@@ -27,9 +27,9 @@ See each sub-command's help for details on how to use the generated script.
 
 ### SEE ALSO
 
-* [glx](/cli/glx)	 - GENEALOGIX CLI - Manage and validate genealogy archives
-* [glx completion bash](/cli/glx_completion_bash)	 - Generate the autocompletion script for bash
-* [glx completion fish](/cli/glx_completion_fish)	 - Generate the autocompletion script for fish
-* [glx completion powershell](/cli/glx_completion_powershell)	 - Generate the autocompletion script for powershell
-* [glx completion zsh](/cli/glx_completion_zsh)	 - Generate the autocompletion script for zsh
+* [glx](glx.md)	 - GENEALOGIX CLI - Manage and validate genealogy archives
+* [glx completion bash](glx_completion_bash.md)	 - Generate the autocompletion script for bash
+* [glx completion fish](glx_completion_fish.md)	 - Generate the autocompletion script for fish
+* [glx completion powershell](glx_completion_powershell.md)	 - Generate the autocompletion script for powershell
+* [glx completion zsh](glx_completion_zsh.md)	 - Generate the autocompletion script for zsh
 

@@ -6,11 +6,11 @@ layout: doc
 
 # Vocabularies
 
-[← Back to Entity Types](README)
+[← Back to Entity Types](README.md)
 
 ## Overview
 
-GENEALOGIX uses **archive-owned vocabularies** to define controlled lists of types, roles, and classifications used throughout the archive. Vocabulary files are ordinary `.glx` files that can live anywhere in the archive — the parser scans all `.glx` and `.yaml` files regardless of directory. By convention, the CLI places them in a `vocabularies/` directory (via `glx init` and `glx import`), but this is not a requirement.
+GENEALOGIX uses **archive-owned vocabularies** to define controlled lists of types, roles, and classifications used throughout the archive. Vocabulary files are ordinary `.glx` files that can live anywhere in the archive — the parser scans all `.glx` files regardless of directory. By convention, the CLI places them in a `vocabularies/` directory (via `glx init` and `glx import`), but this is not a requirement.
 
 ## Benefits of Vocabularies
 
@@ -58,7 +58,7 @@ When creating an archive with `glx init` or `glx import`, these files are automa
 
 **Default file**: `vocabularies/event-types.glx`
 
-**Used By**: [Event Entity](event#event-types)
+**Used By**: [Event Entity](event.md#event-types)
 
 **Purpose**: Defines all event and fact types used in the archive (birth, marriage, death, immigration, etc.)
 
@@ -87,7 +87,7 @@ event_types:
     category: "lifecycle"
 ```
 
-**Note:** Attributes like occupation, residence, religion, and nationality are represented as temporal properties on Person entities, not as events. See [Person Entity](person) for details.
+**Note:** Attributes like occupation, religion, and nationality are represented as temporal properties on Person entities, not as events. Residence can be either: a temporal `residence` person property for a simple place reference, or a `residence` event when participants, dates, or detailed evidence are needed. See [Person Entity](person.md) and [Event Entity](event.md) for details.
 
 ### Fields
 
@@ -120,7 +120,7 @@ event_types:
   land-grant:
     label: "Land Grant"
     description: "Receipt of land grant or patent"
-    category: "property"
+    category: "legal"
     gedcom: "_LAND"
 ```
 
@@ -130,7 +130,7 @@ event_types:
 
 **Default file**: `vocabularies/relationship-types.glx`
 
-**Used By**: [Relationship Entity](relationship#relationship-types)
+**Used By**: [Relationship Entity](relationship.md#relationship-types)
 
 **Purpose**: Defines all relationship types between persons (marriage, parent-child, sibling, etc.)
 
@@ -199,7 +199,7 @@ relationship_types:
 
 **Default file**: `vocabularies/place-types.glx`
 
-**Used By**: [Place Entity](place#place-types)
+**Used By**: [Place Entity](place.md#place-types)
 
 **Purpose**: Defines geographic and administrative place classifications (country, state, city, parish, etc.)
 
@@ -221,8 +221,8 @@ place_types:
   
   city:
     label: "City"
-    description: "City or town"
-    category: "geographic"
+    description: "Incorporated city or large municipality"
+    category: "administrative"
   
   parish:
     label: "Parish"
@@ -230,9 +230,9 @@ place_types:
     category: "religious"
   
   # Additional place types
-  plantation:
-    label: "Plantation"
-    description: "Agricultural estate or plantation"
+  battlefield:
+    label: "Battlefield"
+    description: "Site of a battle or military engagement"
     category: "geographic"
 ```
 
@@ -246,7 +246,7 @@ place_types:
 
 ### Standard Place Types
 
-**Standard Place Types**: GENEALOGIX provides standardized place type codes including administrative divisions (country, state, county, district, township), geographic features (city, town, locality, region, neighborhood, street, building), religious divisions (parish, church), and institutions (hospital, cemetery).
+**Standard Place Types**: GENEALOGIX provides standardized place type codes including administrative divisions (country, state, county, city, town, village, hamlet, township, district, reservation), geographic features (region, locality, neighborhood, street, building, estate, farm, plantation, port), religious divisions (parish, church), and institutions (hospital, cemetery, workhouse, poorhouse, asylum, prison, fort, military_base, school).
 
 **Complete List**: See [Standard Vocabularies - Place Types](../5-standard-vocabularies/#place-types) for the complete default vocabulary file with all standard types.
 
@@ -259,9 +259,9 @@ place_types:
   # ... standard types ...
 
   # Additional types
-  plantation:
-    label: "Plantation"
-    description: "Agricultural estate or plantation"
+  battlefield:
+    label: "Battlefield"
+    description: "Site of a battle or military engagement"
     category: "geographic"
 
   mission:
@@ -276,7 +276,7 @@ place_types:
 
 **Default file**: `vocabularies/source-types.glx`
 
-**Used By**: [Source Entity](source#source-types)
+**Used By**: [Source Entity](source.md#source-types)
 
 **Purpose**: Defines categories of sources (vital records, census, church registers, newspapers, etc.)
 
@@ -341,7 +341,7 @@ source_types:
 
 **Default file**: `vocabularies/media-types.glx`
 
-**Used By**: [Media Entity](media#media-types)
+**Used By**: [Media Entity](media.md#media-types)
 
 **Purpose**: Defines categories of media objects (photographs, documents, audio, video, etc.)
 
@@ -418,7 +418,7 @@ media_types:
 
 **Default file**: `vocabularies/confidence-levels.glx`
 
-**Used By**: [Assertion Entity](assertion#confidence)
+**Used By**: [Assertion Entity](assertion.md#confidence)
 
 **Purpose**: Defines confidence levels for assertions
 
@@ -466,7 +466,7 @@ confidence_levels:
 - **Archive-defined**: Each archive can customize the meaning of confidence levels
 - **Rank is optional**: Archives that extend the vocabulary with custom levels can opt into `glx diff` upgrade detection by supplying a `rank`. Levels without a rank are still valid; they just don't contribute to the confidence-upgrade/downgrade counters.
 
-See [Assertion Entity - Confidence](assertion#confidence) for usage details.
+See [Assertion Entity - Confidence](assertion.md#confidence) for usage details.
 
 ---
 
@@ -474,7 +474,7 @@ See [Assertion Entity - Confidence](assertion#confidence) for usage details.
 
 **Default file**: `vocabularies/repository-types.glx`
 
-**Used By**: [Repository Entity](repository#repository-types)
+**Used By**: [Repository Entity](repository.md#repository-types)
 
 **Purpose**: Defines categories of repositories (archives, libraries, churches, online databases, etc.)
 
@@ -520,7 +520,7 @@ repository_types:
 
 ### Standard Repository Types
 
-See [Repository Entity](repository#repository-types) for the complete list of standard repository types.
+See [Repository Entity](repository.md#repository-types) for the complete list of standard repository types.
 
 ---
 
@@ -528,7 +528,7 @@ See [Repository Entity](repository#repository-types) for the complete list of st
 
 **Default file**: `vocabularies/participant-roles.glx`
 
-**Used By**: [Event Entity](event#participant-roles), [Relationship Entity](relationship#participant-roles)
+**Used By**: [Event Entity](event.md#participant-roles), [Relationship Entity](relationship.md#participant-roles)
 
 **Purpose**: Defines roles that people play in events and relationships (principal, witness, officiant, etc.)
 
@@ -619,7 +619,7 @@ Common relationship roles:
 
 **Default file**: `vocabularies/search-result-types.glx`
 
-**Used By**: [ResearchLog Entity](research-log#search-results)
+**Used By**: [ResearchLog Entity](research-log.md#search-results)
 
 **Purpose**: Defines the outcome of each search recorded in a research log (found, not found, inconclusive, partial, not searched). Negative evidence (`not_found`) is a first-class outcome, supporting the [Genealogical Proof Standard](https://bcgcertification.org/ethics-standards/) requirement for a "reasonably exhaustive search."
 
@@ -659,7 +659,7 @@ search_result_types:
 
 ### Standard Search Result Types
 
-See [ResearchLog Entity - Search results](research-log#search-results) for the standard search result types and guidance on when to use each.
+See [ResearchLog Entity - Search results](research-log.md#search-results) for the standard search result types and guidance on when to use each.
 
 ---
 
@@ -667,7 +667,7 @@ See [ResearchLog Entity - Search results](research-log#search-results) for the s
 
 **Default file**: `vocabularies/research-log-status-types.glx`
 
-**Used By**: [ResearchLog Entity](research-log#status-lifecycle)
+**Used By**: [ResearchLog Entity](research-log.md#status-lifecycle)
 
 **Purpose**: Defines the lifecycle status of a research investigation (open, in progress, complete, blocked).
 
@@ -703,7 +703,7 @@ research_log_status_types:
 
 ### Standard Research Log Status Types
 
-See [ResearchLog Entity - Status lifecycle](research-log#status-lifecycle) for the standard status values and the investigation lifecycle.
+See [ResearchLog Entity - Status lifecycle](research-log.md#status-lifecycle) for the standard status values and the investigation lifecycle.
 
 ---
 
@@ -711,7 +711,7 @@ See [ResearchLog Entity - Status lifecycle](research-log#status-lifecycle) for t
 
 **Default file**: `vocabularies/study-types.glx`
 
-**Used By**: [Study Entity](study#type)
+**Used By**: [Study Entity](study.md#type)
 
 **Purpose**: Classifies the kind of research project a Study represents (one place study, one name study, family reconstruction, brick-wall investigation, etc.)
 
@@ -748,7 +748,7 @@ study_types:
 
 ### Standard Study Types
 
-See [Study Entity](study#type) for the full list of standard types.
+See [Study Entity](study.md#type) for the full list of standard types.
 
 ---
 
@@ -756,7 +756,7 @@ See [Study Entity](study#type) for the full list of standard types.
 
 **Default file**: `vocabularies/study-statuses.glx`
 
-**Used By**: [Study Entity](study#status)
+**Used By**: [Study Entity](study.md#status)
 
 **Purpose**: Indicates the current state of a research project (active, paused, completed, abandoned).
 
@@ -792,7 +792,7 @@ study_statuses:
 
 ### Standard Study Statuses
 
-See [Study Entity](study#status) for the full list of standard statuses.
+See [Study Entity](study.md#status) for the full list of standard statuses.
 
 ---
 
@@ -800,7 +800,7 @@ See [Study Entity](study#status) for the full list of standard statuses.
 
 **Default file**: `vocabularies/sex-types.glx`
 
-**Used By**: [Person Entity](person) via the `sex` person property.
+**Used By**: [Person Entity](person.md) via the `sex` person property.
 
 **Purpose**: Defines the recorded-sex values used in source documents (GEDCOM `SEX`, census enumerations, vital records). For self-identified gender identity, see the Gender Types Vocabulary below.
 
@@ -822,7 +822,7 @@ See [Study Entity](study#status) for the full list of standard statuses.
 
 **Default file**: `vocabularies/gender-types.glx`
 
-**Used By**: [Person Entity](person) via the `gender` person property.
+**Used By**: [Person Entity](person.md) via the `gender` person property.
 
 **Purpose**: Defines self-identified gender identity values, primarily relevant for modern records and living persons. For sex as recorded in historical sources, see the Sex Types Vocabulary above. GEDCOM has no direct mapping for gender identity (it defers to `FACT`); archives may extend entries with a `gedcom:` field if they choose to export identity to a specific tag.
 
@@ -843,7 +843,7 @@ See [Study Entity](study#status) for the full list of standard statuses.
 
 **Default file**: `vocabularies/legal-statuses.glx`
 
-**Used By**: [Relationship Entity](relationship) via the `legal_status` relationship property, primarily for distinguishing forms of coerced labor on the `enslavement` relationship type.
+**Used By**: [Relationship Entity](relationship.md) via the `legal_status` relationship property, primarily for distinguishing forms of coerced labor on the `enslavement` relationship type.
 
 **Purpose**: Captures the legal form under which a relationship operated when the distinction is historically meaningful (e.g., chattel slavery vs. indentured servitude vs. debt bondage).
 
@@ -864,7 +864,7 @@ See [Study Entity](study#status) for the full list of standard statuses.
 
 **Default file**: `vocabularies/source-natures.glx`
 
-**Used By**: [Source Entity](source#source-classification-evidence-explained) via the `source_nature` source property.
+**Used By**: [Source Entity](source.md#source-classification-evidence-explained) via the `source_nature` source property.
 
 **Purpose**: Classifies a source by how it was produced relative to the event it documents, following the "source" axis of [Evidence Explained](https://www.evidenceexplained.com/) (Elizabeth Shown Mills, 4th ed., 2024). This axis is independent of the information-quality axis below — a source carries one nature but may convey both primary and secondary information.
 
@@ -884,7 +884,7 @@ See [Study Entity](study#status) for the full list of standard statuses.
 
 **Default file**: `vocabularies/information-types.glx`
 
-**Used By**: [Source Entity](source#source-classification-evidence-explained) via the `information_type` source property.
+**Used By**: [Source Entity](source.md#source-classification-evidence-explained) via the `information_type` source property.
 
 **Purpose**: Classifies the information a source conveys by the informant's relationship to the event, following the "information" axis of Evidence Explained. A single source can carry both primary and secondary information (a death certificate records the death firsthand but the deceased's birth date secondhand); at the source level this records the predominant or default quality, with fact-level variation expressed per item.
 
@@ -934,7 +934,7 @@ vocabularies/
 
 **Default file**: `vocabularies/person-properties.glx`
 
-**Used By**: [Person Entity](person#properties)
+**Used By**: [Person Entity](person.md#properties)
 
 **Purpose**: Defines properties that can be set on person entities (name, sex, gender, occupation, residence, etc.)
 
@@ -961,11 +961,13 @@ GENEALOGIX provides standard person properties:
 | `external_ids` | string (multi) | No | EXID | External identifiers from other systems |
 | `living` | boolean | No | | Opt-in marker that the person is currently living; honored by `glx export --privatize-living` (see [#288](https://github.com/genealogix/glx/issues/288)) |
 
+**Upgrading archives from earlier betas.** Several standard keys were renamed or moved in the beta.11 and beta.12 releases; `glx migrate` rewrites existing archives in place, one flag per change: `--rename-ssn-to-national-id` (person `ssn` → `national_id`), `--rename-gender-to-sex` (the pre-split `gender` property → `sex`), `--confidence-disputed-to-status` (assertion `confidence: disputed` → `status: disputed`), `--source-description-to-property` and `--media-description-to-property` (top-level `description` → `properties.description`), and `--strip-event-title-year` (stale `(YEAR)` suffix on imported event titles). See `glx migrate --help` for details.
+
 ### Event Properties Vocabulary
 
 **Default file**: `vocabularies/event-properties.glx`
 
-**Used By**: [Event Entity](event#properties)
+**Used By**: [Event Entity](event.md#properties)
 
 **Purpose**: Defines properties that can be set on event entities
 
@@ -974,6 +976,8 @@ Event properties are generally less common than person properties, since most ev
 - `age_at_event` - Age of the person at the time of the event (GEDCOM: AGE)
 - `cause` - Cause of the event, e.g., cause of death (GEDCOM: CAUS)
 - `event_subtype` - Further classification of the event type (GEDCOM: TYPE)
+- `marriage_type` - Free-text `MARR TYPE` value preserved on import (civil, religious, common law, …)
+- `name_as_recorded` - **Participant-level only**: set under `event.participants[].properties`, not `event.properties`. The participant's name as written in the source (structured, with name fields)
 - `description` - Event description
 
 **Note:** Event timing and location are handled by the `date` and `place` fields directly on the event, not as properties. The `notes` field is a standard entity field available on all entity types, not a property.
@@ -982,7 +986,7 @@ Event properties are generally less common than person properties, since most ev
 
 **Default file**: `vocabularies/relationship-properties.glx`
 
-**Used By**: [Relationship Entity](relationship#properties)
+**Used By**: [Relationship Entity](relationship.md#properties)
 
 **Purpose**: Defines properties that can be set on relationship entities
 
@@ -993,12 +997,16 @@ Standard properties include:
 - `location` - Location of the relationship
 - `description` - Relationship description
 - `number_of_children` - Recorded number of children of a couple (GEDCOM `FAM.NCHI`)
+- `legal_status` - Legal form of a coerced-labor relationship (validated against `legal_statuses`)
+- `name_as_recorded` - **Participant-level only**: set under `relationship.participants[].properties`, not `relationship.properties`. The participant's name as written in the source (structured, with name fields)
+
+Use `started_on` / `ended_on` only when the boundary is not modelled as an event; setting one alongside the matching `start_event` / `end_event` generates a warning (see [Relationship - Properties](relationship.md#properties)).
 
 ### Place Properties Vocabulary
 
 **Default file**: `vocabularies/place-properties.glx`
 
-**Used By**: [Place Entity](place#properties)
+**Used By**: [Place Entity](place.md#properties)
 
 **Purpose**: Defines properties that can be set on place entities
 
@@ -1017,12 +1025,13 @@ Standard properties include:
 
 **Default file**: `vocabularies/media-properties.glx`
 
-**Used By**: [Media Entity](media#properties)
+**Used By**: [Media Entity](media.md#properties)
 
 **Purpose**: Defines properties that can be set on media entities
 
 Standard properties include:
 
+- `description` - Detailed description of the media content
 - `subjects` - People or entities depicted/recorded
 - `width` - Width in pixels (for images/video)
 - `height` - Height in pixels (for images/video)
@@ -1033,12 +1042,13 @@ Standard properties include:
 - `original_filename` - Original filename when imported
 - `photographer` - Person who captured the media
 - `location` - Location where media was captured
+- `blob_size` - Length in bytes of the encoded GEDCOM 5.5.1 BLOB text (pre-decode), when imported from a BLOB record
 
 ### Repository Properties Vocabulary
 
 **Default file**: `vocabularies/repository-properties.glx`
 
-**Used By**: [Repository Entity](repository#properties)
+**Used By**: [Repository Entity](repository.md#properties)
 
 **Purpose**: Defines properties that can be set on repository entities for contact information, access details, and holdings
 
@@ -1056,7 +1066,7 @@ Standard properties include:
 
 **Default file**: `vocabularies/source-properties.glx`
 
-**Used By**: [Source Entity](source#properties)
+**Used By**: [Source Entity](source.md#properties)
 
 **Purpose**: Defines properties that can be set on source entities for bibliographic metadata
 
@@ -1078,7 +1088,7 @@ Standard properties include:
 
 **Default file**: `vocabularies/citation-properties.glx`
 
-**Used By**: [Citation Entity](citation#properties)
+**Used By**: [Citation Entity](citation.md#properties)
 
 **Purpose**: Defines properties that can be set on citation entities for locator, transcription, record-level links, and external identifier details
 
@@ -1202,7 +1212,7 @@ media:
 
 #### Multi-Value with Temporal Properties
 
-A property can be both `multi_value: true` and `temporal: true`. In this case, each temporal entry contains an array:
+A property can be both `multi_value: true` and `temporal: true`. The value is then a single list of dated entries with one scalar `value` each — one entry per value, and entries may share a date. Do not nest an array inside an entry's `value`; the validator checks each entry's `value` against the declared `value_type` and warns on a list:
 
 ```yaml
 person_properties:
@@ -1219,13 +1229,13 @@ persons:
   person-john:
     properties:
       nicknames:
-        - value:
-            - "Johnny"
-            - "Jack"
+        - value: "Johnny"
           date: "FROM 1950 TO 1970"
-        - value:
-            - "Big John"
-            - "J.D."
+        - value: "Jack"
+          date: "FROM 1950 TO 1970"
+        - value: "Big John"
+          date: "FROM 1970"
+        - value: "J.D."
           date: "FROM 1970"
 ```
 
@@ -1320,6 +1330,8 @@ When a property has `fields` defined, the property value can be either:
            surname: "Smith"
    ```
 
+   Entries in a temporal list may omit `date` (an *undated list*, for values known without dates), and dated and undated entries may be mixed. For properties that are also `multi_value: true`, list one entry per value; each entry's `value` stays a scalar (see [Multi-Value with Temporal Properties](#multi-value-with-temporal-properties)). These are the same shapes described under [Core Concepts - Temporal Properties](../2-core-concepts.md#temporal-properties) and [Structured Properties](../2-core-concepts.md#structured-properties).
+
 #### When to Use Fields
 
 Use `fields` when:
@@ -1382,17 +1394,16 @@ properties:
       surname: "Smith"
 ```
 
-When there is no natural single-value representation, fields-only is valid:
+When there is no natural single-value representation, fields-only is valid. A fields-only value is written as a bare map of the field values, with no `value` key and no `fields:` wrapper:
 
 ```yaml
 # Fields only: appropriate for structured data like coordinates
 properties:
   crop:
-    fields:
-      top: 450
-      left: 100
-      width: 800
-      height: 200
+    top: 450
+    left: 100
+    width: 800
+    height: 200
 ```
 
 #### Custom Structured Properties
@@ -1457,7 +1468,7 @@ properties:
       date: "FROM 1920 TO 1950"
 ```
 
-See [Core Concepts - Data Types - Temporal Properties](../2-core-concepts#temporal-properties) for complete documentation.
+See [Core Concepts - Data Types - Temporal Properties](../2-core-concepts.md#temporal-properties) for complete documentation.
 
 ### Adding Additional Properties
 
@@ -1504,6 +1515,10 @@ The validator:
 4. **Emits warnings for unknown properties** (allows flexibility for emerging properties)
 5. Validates the value according to the property's `value_type` or `reference_type`
 6. **Emits errors for broken references** when a property is defined with `reference_type` but the referenced entity doesn't exist
+
+Structural entity fields are valid `property` targets without a vocabulary entry: `date`, `place`, and `title` on event subjects; `name`, `type`, and `parent` on place subjects; `type`, `start_event`, and `end_event` on relationship subjects. `property: date` on an event is the most common assertion in the specification's examples.
+
+> **Implementation status:** steps 2–5 above describe the intended behavior. The current `glx validate` does not yet look an assertion's `property` up in the property vocabulary, so an unknown property name is accepted silently; participant `properties` on assertions are checked. Tracked in [#1224](https://github.com/genealogix/glx/issues/1224).
 
 ---
 
@@ -1610,7 +1625,7 @@ event_types:
   land-grant:
     label: "Land Grant"
     description: "Receipt of land grant or patent"
-    category: "property"
+    category: "legal"
     gedcom: "_LAND"  # Non-standard GEDCOM tag
 ```
 
@@ -1746,21 +1761,21 @@ All vocabulary schemas are located in `specification/schema/v1/vocabularies/` an
 - Required top-level key (e.g., `event_types`, `relationship_types`)
 - Required fields for each entry (typically `label`)
 - Optional fields (e.g., `description`, `gedcom`)
-- Pattern properties for vocabulary keys (alphanumeric with hyphens, 1-64 characters)
+- Vocabulary keys: the per-vocabulary schemas listed above accept any map key, but the archive-root schema (`glx-file.schema.json`) constrains keys in every vocabulary collection to `^[a-zA-Z0-9_-]+$` — letters, digits, underscores, and hyphens, with no length cap. By convention keys are lowercase with underscores (`parent_child`, `vital_record`), matching the standard vocabularies
 
 Vocabulary files are validated by the `glx validate` command using these schemas.
 
 ## See Also
 
 - **[Standard Vocabularies](../5-standard-vocabularies/)** - Complete default vocabulary files with all standard types
-- [Core Concepts - Archive-Owned Vocabularies](../2-core-concepts#archive-owned-vocabularies)
-- [Archive Organization](../3-archive-organization) - Where vocabulary files are stored
-- [Event Entity](event) - Event types vocabulary
-- [Relationship Entity](relationship) - Relationship types vocabulary
-- [Place Entity](place) - Place types vocabulary
-- [Source Entity](source) - Source types vocabulary
-- [Media Entity](media) - Media types vocabulary
-- [Citation Entity](citation) - Citation documentation
-- [ResearchLog Entity](research-log) - Search result types and research log status types vocabularies
+- [Core Concepts - Archive-Owned Vocabularies](../2-core-concepts.md#archive-owned-vocabularies)
+- [Archive Organization](../3-archive-organization.md) - Where vocabulary files are stored
+- [Event Entity](event.md) - Event types vocabulary
+- [Relationship Entity](relationship.md) - Relationship types vocabulary
+- [Place Entity](place.md) - Place types vocabulary
+- [Source Entity](source.md) - Source types vocabulary
+- [Media Entity](media.md) - Media types vocabulary
+- [Citation Entity](citation.md) - Citation documentation
+- [ResearchLog Entity](research-log.md) - Search result types and research log status types vocabularies
 
 ---

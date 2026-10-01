@@ -16,8 +16,12 @@ package main
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
+	"runtime"
+	"slices"
 	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
@@ -28,9 +32,13 @@ import (
 // (user docs, .git, dotfiles, etc.) and must be preserved across a safe-write swap.
 // See genealogix/glx#692. Derived from glxlib.AllEntityTypes so new entity types
 // are picked up automatically.
+// archiveMetadataFile is the top-level file the multi-file serializer writes the
+// archive's metadata block to.
+const archiveMetadataFile = "metadata.glx"
+
 var archiveManagedTopLevel = func() map[string]bool {
 	m := map[string]bool{
-		"metadata.glx":                true,
+		archiveMetadataFile:           true,
 		glxlib.ArchiveDirVocabularies: true,
 	}
 	for _, entityType := range glxlib.AllEntityTypes {
@@ -40,12 +48,31 @@ var archiveManagedTopLevel = func() map[string]bool {
 	return m
 }()
 
+// isManagedTopLevel reports whether a top-level archive entry is one the
+// serializer owns and may replace: a real directory whose name matches a
+// managed directory case-insensitively (PERSONS/ counts, so it is replaced by
+// persons/ rather than duplicated — #1246), or the metadata file by its exact
+// name. Anything else — a regular file that happens to be named PERSONS, a
+// symlink named Persons, a directory named Metadata.glx — is foreign data the
+// loader never read and the swap must preserve, not delete.
+func isManagedTopLevel(entry fs.DirEntry) bool {
+	if entry.Type().IsDir() {
+		return archiveManagedTopLevel[strings.ToLower(entry.Name())] && strings.ToLower(entry.Name()) != archiveMetadataFile
+	}
+
+	return entry.Type().IsRegular() && entry.Name() == archiveMetadataFile
+}
+
 // safeWriteMultiFileArchive writes a multi-file archive to a temporary directory
 // first, then swaps it into place. This prevents archive destruction if the write
 // fails partway through (e.g., power loss, disk full, signal).
 //
-// Non-archive top-level entries in destPath (e.g., .git, README.md, CLAUDE.md,
-// dotfiles) are preserved across the swap; see archiveManagedTopLevel.
+// The swap moves the managed top-level entries (entity directories,
+// vocabularies/, metadata.glx), never destPath itself: destPath is commonly the
+// user's shell working directory, and replacing the directory would leave that
+// shell in a deleted inode that no longer shows the archive (#1192). Non-archive
+// top-level entries (e.g., .git, README.md, CLAUDE.md, dotfiles) are therefore
+// never moved at all; see archiveManagedTopLevel.
 func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
 	// Resolve to absolute path so rename and cwd containment checks work
 	// reliably for relative paths like ".". mergeArchives does the same.
@@ -53,14 +80,31 @@ func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
 	if err != nil {
 		return fmt.Errorf("resolving destination path: %w", err)
 	}
-	destPath = absPath
+	if _, err := os.Stat(absPath); err != nil {
+		return fmt.Errorf("cannot access destination: %w", err)
+	}
+	// Work on the real directory when the archive path is a symlink to it.
+	// WalkDir does not descend into a symlinked root, so classifying through
+	// the link finds no skipped entries while the swap, which does follow it,
+	// moves their managed parents into the backup — and deleting the backup
+	// then destroys persons/.drafts/ and the like. Resolving also puts the
+	// backup and temp dir beside the real directory, on its filesystem, so
+	// every rename stays atomic, and leaves the user's link itself untouched.
+	destPath, err = filepath.EvalSymlinks(absPath)
+	if err != nil {
+		return fmt.Errorf("resolving destination path: %w", err)
+	}
 
 	// On Windows, a directory cannot be renamed while it is any process's cwd.
-	// If our cwd is inside (or equal to) destPath, temporarily move to the
-	// parent directory so the rename operations succeed.
+	// If our cwd is inside (or equal to) destPath — possibly inside one of the
+	// managed directories the swap moves — temporarily move to the parent
+	// directory so the rename operations succeed.
 	parentDir := filepath.Dir(destPath)
 	if cwd, err := os.Getwd(); err == nil {
-		if absCwd, err2 := filepath.Abs(cwd); err2 == nil {
+		// Compare resolved paths: destPath is now symlink-free, so a cwd
+		// reached through a link must be resolved the same way to be seen
+		// as inside it.
+		if absCwd, err2 := filepath.EvalSymlinks(cwd); err2 == nil {
 			if rel, err3 := filepath.Rel(destPath, absCwd); err3 == nil {
 				// cwd is inside destPath if rel is "." or does not start with "..".
 				if rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator))) {
@@ -73,64 +117,78 @@ func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
 		}
 	}
 
+	if err := refuseTopLevelGLXFiles(destPath); err != nil {
+		return err
+	}
+
+	// Decide which entries the loader skipped while the archive is still
+	// intact. A skipped symlink is recognized through every hop of its chain,
+	// and a hop can be a top-level foreign entry (persons/z.glx ->
+	// ../alias.glx -> .drafts/x.glx) that never enters the backup, so
+	// classification has to precede every move. The entries themselves are
+	// moved last, once the larger units they may sit inside have gone across.
+	// Walk the real directory, but judge absolute link targets against the
+	// path as the user spelled it as well: a link may reach a dot directory
+	// through the symlinked path (/link/.drafts/x.glx), and relWithinEither
+	// accepts a target under either root.
+	skipped, err := classifySkippedEntries(destPath, absPath)
+	if err != nil {
+		return fmt.Errorf("preserving skipped entries: %w", err)
+	}
+
 	// Create temp dir next to the destination (same filesystem for rename)
 	tmpDir, err := os.MkdirTemp(parentDir, ".glx-tmp-")
 	if err != nil {
 		return fmt.Errorf("creating temp directory: %w", err)
 	}
 
-	// Clean up temp dir on failure
-	success := false
-	defer func() {
-		if !success {
-			_ = os.RemoveAll(tmpDir)
-		}
-	}()
+	// A completed swap leaves the temp dir empty; a failed one leaves only
+	// fresh output that can be regenerated. Either way it goes.
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	// Write the archive to temp
 	if err := writeMultiFileArchive(tmpDir, archive, false); err != nil {
 		return fmt.Errorf("writing to temp directory: %w", err)
 	}
 
-	// Create backup of the original
+	// Back up the original's managed entries, then move the fresh ones in.
+	// Foreign entries (.git, README.md, … — genealogix/glx#692) stay where they
+	// are throughout, and so does destPath itself.
 	backupDir := destPath + ".bak"
 	if err := removeStaleBackup(backupDir); err != nil {
 		return err
 	}
-	if err := robustRename(destPath, backupDir); err != nil {
-		return fmt.Errorf("backing up original: %w", err)
-	}
-
-	// Move temp into place
-	if err := robustRename(tmpDir, destPath); err != nil {
-		// Restore backup on failure
-		_ = robustRename(backupDir, destPath) // best-effort restore
-
-		return fmt.Errorf("moving archive into place: %w", err)
-	}
-
-	// Preserve foreign (non-managed) top-level entries from the backup back into
-	// the newly-written archive. Without this step the swap silently destroys
-	// .git, README.md, and any other user content that sits alongside the
-	// managed entity directories — see genealogix/glx#692.
-	if err := restoreForeignEntries(backupDir, destPath); err != nil {
-		// Leave backupDir in place so the user can recover. Do not mark success.
-		return fmt.Errorf("preserving non-archive files: %w", err)
+	if err := swapManagedEntries(destPath, tmpDir, backupDir); err != nil {
+		return err
 	}
 
 	// The serializer writes Media entity YAML under media/ but never touches
 	// media/files/, so the fresh tmpDir has no binaries. Move the dest's
 	// pre-existing media/files/ across the swap; without this every safe-write
 	// would silently destroy media binaries — see genealogix/glx#593.
+	//
+	// This must run before moveSkippedEntries: that step would otherwise
+	// recreate media/files/ in destPath to hold a dot entry such as
+	// media/files/.keep, and the whole-directory rename below would then fail
+	// because its target already exists. Moving media/files/ first carries any
+	// dot entries inside it along with the binaries.
 	if err := preserveMediaBinaries(backupDir, destPath); err != nil {
-		// Leave backupDir in place so the user can recover. Do not mark success.
+		// Leave backupDir in place so the user can recover.
 		return fmt.Errorf("preserving media binaries: %w", err)
+	}
+
+	// Entries the loader skips are never re-emitted by the serializer, so the
+	// fresh tmpDir cannot contain them. Those nested inside a managed
+	// directory went into the backup with it; carry them back, or deleting
+	// the backup destroys them silently. Top-level ones never moved.
+	if err := moveSkippedEntries(backupDir, destPath, skipped); err != nil {
+		// Leave backupDir in place so the user can recover.
+		return fmt.Errorf("preserving skipped entries: %w", err)
 	}
 
 	// Clean up backup (now contains only managed entries that have been
 	// superseded by the fresh write).
 	_ = os.RemoveAll(backupDir)
-	success = true
 
 	return nil
 }
@@ -148,8 +206,17 @@ func removeStaleBackup(backupDir string) error {
 
 		return fmt.Errorf("inspecting stale backup %s: %w", backupDir, err)
 	}
+	// A backup left mid-swap is not stale: the archive beside it is missing
+	// whatever had already moved in, so it may be the only copy of those
+	// entities. Deleting it here would complete the loss on the next write.
+	if _, err := os.Lstat(filepath.Join(backupDir, swapInProgressMarker)); err == nil {
+		archive := strings.TrimSuffix(backupDir, ".bak")
+
+		return fmt.Errorf("%w: %s holds entries moved out of %s. Move back any that %s is missing, "+
+			"then delete %s", ErrInterruptedSwap, backupDir, archive, archive, backupDir)
+	}
 	for _, entry := range entries {
-		if !archiveManagedTopLevel[entry.Name()] {
+		if !isManagedTopLevel(entry) {
 			return fmt.Errorf("%w: %s contains %q", ErrStaleBackupForeignFile, backupDir, entry.Name())
 		}
 	}
@@ -160,16 +227,26 @@ func removeStaleBackup(backupDir string) error {
 	// exist" (e.g., permissions, transient I/O) is also refused — we cannot
 	// confirm the backup is empty, so the safe move is to leave it for the
 	// user to inspect.
-	mediaFilesDir := filepath.Join(backupDir, glxlib.MediaFilesDir)
-	switch mediaEntries, err := os.ReadDir(mediaFilesDir); {
-	case err == nil:
-		if len(mediaEntries) > 0 {
-			return fmt.Errorf("%w: %s contains %q", ErrStaleBackupForeignFile, backupDir, glxlib.MediaFilesDir)
+	mediaFilesDirs, err := mediaFilesDirsIn(backupDir)
+	if err != nil {
+		return fmt.Errorf("inspecting stale backup %s: %w", backupDir, err)
+	}
+	for _, mediaFilesDir := range mediaFilesDirs {
+		mediaEntries, err := os.ReadDir(mediaFilesDir)
+		if err != nil {
+			return fmt.Errorf("inspecting %s: %w", mediaFilesDir, err)
 		}
-	case os.IsNotExist(err):
-		// No media/files/ in the backup — safe to proceed.
-	default:
-		return fmt.Errorf("inspecting %s: %w", mediaFilesDir, err)
+		if len(mediaEntries) > 0 {
+			return fmt.Errorf("%w: %s contains %q", ErrStaleBackupForeignFile, backupDir, relSlash(backupDir, mediaFilesDir))
+		}
+	}
+	// A dot-prefixed entry nested inside a managed directory (persons/.drafts/)
+	// is skipped by the loader, so it was never re-emitted into the new
+	// archive. Like media/files/, it is unrecovered data — refuse to delete it.
+	if nested, err := firstSkippedEntry(backupDir); err != nil {
+		return err
+	} else if nested != "" {
+		return fmt.Errorf("%w: %s contains %q", ErrStaleBackupForeignFile, backupDir, nested)
 	}
 	if err := os.RemoveAll(backupDir); err != nil {
 		return fmt.Errorf("removing stale backup %s: %w", backupDir, err)
@@ -178,33 +255,493 @@ func removeStaleBackup(backupDir string) error {
 	return nil
 }
 
-// restoreForeignEntries moves every top-level entry from backupDir into destPath
-// unless the entry name is in archiveManagedTopLevel. The source and destination
-// are on the same filesystem (backupDir and destPath share a parent), so each
-// rename is atomic.
+// swapManagedEntries replaces destPath's managed top-level entries with the
+// entries of the freshly written freshDir, in two phases: every managed entry
+// of destPath moves into a new backupDir, then every entry of freshDir moves
+// into destPath. All three directories share a parent, so each rename is
+// atomic and the data exists under a predictable name at every intermediate
+// state.
 //
-// Preservation runs after the swap rather than before, so at every intermediate
-// state the user's data exists on disk under a predictable name: before the
-// rename it lives in backupDir (still named destPath.bak); after it lives in
-// destPath. If any rename fails the backup is retained so the user can recover.
-func restoreForeignEntries(backupDir, destPath string) error {
-	entries, err := os.ReadDir(backupDir)
-	if err != nil {
-		return fmt.Errorf("reading backup directory: %w", err)
+// A fresh entry whose name is still taken in destPath once the managed entries
+// have left collides with a foreign entry the writer cannot replace:
+// metadata.glx from loaded metadata beside a metadata.glx symlink the loader
+// skipped, or persons/ beside a PERSONS file on a case-insensitive filesystem.
+// Renaming over it would silently destroy that entry, so the swap is refused.
+// On that or any other failure both phases are undone, leaving destPath as it
+// was and no backup behind.
+func swapManagedEntries(destPath, freshDir, backupDir string) error {
+	if err := os.Mkdir(backupDir, dirPermissions); err != nil {
+		return fmt.Errorf("creating backup directory: %w", err)
 	}
-	for _, entry := range entries {
-		name := entry.Name()
-		if archiveManagedTopLevel[name] {
+	// The swap is a sequence of renames, not one, so a crash or kill between
+	// them leaves the archive missing whatever had moved into the backup so
+	// far. The marker says so for as long as that is possible; while it
+	// exists, removeStaleBackup refuses to treat the backup as disposable.
+	marker := filepath.Join(backupDir, swapInProgressMarker)
+	if err := writeDurableMarker(marker, "glx: interrupted write to "+destPath+"\n"); err != nil {
+		_ = os.Remove(marker)
+		_ = os.Remove(backupDir)
+
+		return fmt.Errorf("marking backup in progress: %w", err)
+	}
+
+	var backedUp, placed []string
+	rollback := func() {
+		// Best effort, newest move first: a failure here leaves the entry at a
+		// predictable path (freshDir, backupDir) rather than losing it, and
+		// backupDir is only removed once it is empty again — so a rollback
+		// that could not finish keeps its marker.
+		for _, p := range slices.Backward(placed) {
+			_ = robustRename(filepath.Join(destPath, p), filepath.Join(freshDir, p))
+		}
+		for _, b := range slices.Backward(backedUp) {
+			_ = robustRename(filepath.Join(backupDir, b), filepath.Join(destPath, b))
+		}
+		if entries, err := os.ReadDir(backupDir); err == nil && len(entries) == 1 && entries[0].Name() == swapInProgressMarker {
+			_ = os.Remove(marker)
+			_ = os.Remove(backupDir)
+		}
+	}
+
+	current, err := os.ReadDir(destPath)
+	if err != nil {
+		rollback()
+
+		return fmt.Errorf("reading archive directory: %w", err)
+	}
+	for _, entry := range current {
+		if !isManagedTopLevel(entry) {
 			continue
 		}
-		src := filepath.Join(backupDir, name)
+		name := entry.Name()
+		if err := robustRename(filepath.Join(destPath, name), filepath.Join(backupDir, name)); err != nil {
+			rollback()
+
+			return fmt.Errorf("backing up %s: %w", name, err)
+		}
+		backedUp = append(backedUp, name)
+	}
+
+	fresh, err := os.ReadDir(freshDir)
+	if err != nil {
+		rollback()
+
+		return fmt.Errorf("reading temp directory: %w", err)
+	}
+	for _, entry := range fresh {
+		name := entry.Name()
 		dst := filepath.Join(destPath, name)
-		if err := robustRename(src, dst); err != nil {
-			return fmt.Errorf("restoring %s: %w", name, err)
+		if _, err := os.Lstat(dst); err == nil {
+			rollback()
+
+			return fmt.Errorf("%w: %s", ErrPreservedEntryCollision, name)
+		}
+		if err := robustRename(filepath.Join(freshDir, name), dst); err != nil {
+			rollback()
+
+			return fmt.Errorf("moving %s into place: %w", name, err)
+		}
+		placed = append(placed, name)
+	}
+
+	// Every fresh entry is in place: the backup now holds only superseded
+	// managed entries, plus skipped entries and media binaries that the
+	// caller carries back next (and that removeStaleBackup already refuses to
+	// discard on its own).
+	if err := os.Remove(marker); err != nil {
+		return fmt.Errorf("clearing backup marker: %w", err)
+	}
+
+	return nil
+}
+
+// writeDurableMarker writes the swap marker and flushes it, and the directory
+// entry naming it, to stable storage before any rename runs. Without the
+// flush, a power loss could persist the renames that follow but not the
+// marker — the one state the marker exists to catch. Syncing a directory is
+// not supported everywhere (Windows rejects it), so that step is best effort;
+// the file itself must sync.
+func writeDurableMarker(path, content string) error {
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, filePermissions) // #nosec G304 -- path is <archive>.bak/<marker>, built by swapManagedEntries, not user input
+	if err != nil {
+		return err
+	}
+	if _, err := f.WriteString(content); err != nil {
+		_ = f.Close()
+
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		_ = f.Close()
+
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	if dir, err := os.Open(filepath.Dir(path)); err == nil { // #nosec G304 -- the backup directory swapManagedEntries just created
+		_ = dir.Sync()
+		_ = dir.Close()
+	}
+
+	return nil
+}
+
+// swapInProgressMarker names the file swapManagedEntries keeps in the backup
+// while the archive is between states. It is dot-prefixed, so it is never
+// mistaken for archive content.
+const swapInProgressMarker = ".glx-swap-in-progress"
+
+// firstSkippedEntry returns the path, relative to backupDir, of the first
+// entry the loader would skip (loaderSkips: dot-prefixed names, symlinks or
+// placeholders into dot-prefixed directories), or "" when there is none. Its
+// caller has already rejected top-level foreign entries, so what this reports
+// in practice is an entry nested inside a managed directory — unrecovered
+// data that a stale backup must not be deleted with.
+func firstSkippedEntry(backupDir string) (string, error) {
+	var found string
+	err := filepath.WalkDir(backupDir, func(srcPath string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if srcPath == backupDir {
+			return nil
+		}
+		rel, err := filepath.Rel(backupDir, srcPath)
+		if err != nil {
+			return fmt.Errorf("resolving %s: %w", srcPath, err)
+		}
+		if !loaderSkips(backupDir, strings.TrimSuffix(backupDir, ".bak"), rel, d) {
+			return nil
+		}
+		found = filepath.ToSlash(rel)
+
+		return filepath.SkipAll
+	})
+	if err != nil {
+		return "", fmt.Errorf("inspecting stale backup %s: %w", backupDir, err)
+	}
+
+	return found, nil
+}
+
+// refuseTopLevelGLXFiles rejects a destination that holds a .glx file at its
+// top level other than metadata.glx. The loader reads such a file as archive
+// content, so its entities are re-emitted under the entity directories, but
+// the writer has no place for the file itself: carrying it across the swap as
+// foreign duplicates every entity in it on the next load, and dropping it
+// deletes a file the user laid out by hand. Neither is acceptable without the
+// user's say-so — see genealogix/glx#1247 — so the write is refused before
+// anything is touched. A missing destination is a fresh archive and passes,
+// and so does a dot-prefixed file (._family.glx, .draft.glx): the loader skips
+// those, and the swap leaves them where they are.
+func refuseTopLevelGLXFiles(destPath string) error {
+	entries, err := os.ReadDir(destPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+
+		return fmt.Errorf("inspecting %s: %w", destPath, err)
+	}
+	for _, entry := range entries {
+		if entry.Type().IsRegular() && isGLXFile(entry.Name()) && !isDotName(entry.Name()) && entry.Name() != archiveMetadataFile {
+			return fmt.Errorf("%w: %s", ErrTopLevelGLXFile, entry.Name())
 		}
 	}
 
 	return nil
+}
+
+// classifySkippedEntries returns the root-relative paths of every entry under
+// root that the loader skipped (loaderSkips): dot-prefixed names, symlinks and
+// placeholders into dot-prefixed directories. The serializer never re-emits
+// these, so the swap has to carry them across or it deletes them silently with
+// exit 0 and no .bak left behind — persons/.drafts/ is the common case, since
+// "persons" is managed and the whole subtree goes with the backup. Backup
+// paths mirror archive paths, so the result addresses both.
+//
+// It must run over the intact archive, before any move: a symlink chain is
+// judged through its intermediate hops, and a hop may be about to move (an
+// earlier link in the same managed directory) or may never enter the backup
+// at all (a top-level foreign alias.glx). Skipped directories are recorded
+// without descending; they move as a unit.
+func classifySkippedEntries(root, destPath string) ([]string, error) {
+	var skipped []string
+	err := filepath.WalkDir(root, func(srcPath string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if srcPath == root {
+			return nil
+		}
+		rel, err := filepath.Rel(root, srcPath)
+		if err != nil {
+			return fmt.Errorf("resolving %s: %w", srcPath, err)
+		}
+		if !loaderSkips(root, destPath, rel, d) {
+			return nil
+		}
+		skipped = append(skipped, rel)
+		if d.IsDir() {
+			return fs.SkipDir
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return skipped, nil
+}
+
+// moveSkippedEntries carries the entries classifySkippedEntries found from the
+// backup into the freshly written archive. It runs last: an entry that is not
+// in the backup (a top-level dot directory, which is foreign and never moved,
+// or media/files/.keep, which went back inside the media/files/ move) is done
+// and skipped.
+//
+// Entries are moved, not copied: backupDir and destPath share a parent, so
+// each rename is atomic and the data exists under a predictable name at every
+// intermediate state. An entry whose destination already exists is left in the
+// backup rather than overwritten — the fresh write wins, and the backup is
+// then retained by the caller's error path for the user to inspect.
+func moveSkippedEntries(backupDir, destPath string, skipped []string) error {
+	for _, rel := range skipped {
+		src := filepath.Join(backupDir, rel)
+		dst := filepath.Join(destPath, rel)
+		if _, err := os.Lstat(src); err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+
+			return fmt.Errorf("inspecting %s: %w", src, err)
+		}
+		if _, err := os.Lstat(dst); err == nil {
+			// The entry is still in the backup, so nothing earlier carried it
+			// across, and the serializer never writes skipped shapes: a match
+			// means the writer produced a file at the same path. Moving on
+			// would let the backup, and the entry with it, be removed; refuse
+			// instead so the user can resolve the clash.
+			return fmt.Errorf("%w: %s", ErrPreservedEntryCollision, filepath.ToSlash(rel))
+		}
+		if err := os.MkdirAll(filepath.Dir(dst), dirPermissions); err != nil {
+			return fmt.Errorf("creating %s: %w", filepath.Dir(dst), err)
+		}
+		if err := robustRename(src, dst); err != nil {
+			return fmt.Errorf("restoring %s: %w", rel, err)
+		}
+	}
+
+	return nil
+}
+
+// loaderSkips reports whether the archive loader would skip the entry at rel
+// (OS-native, relative to root) — the entries the serializer therefore never
+// re-emits and the safe-write swap must carry across. It mirrors walkGLXFiles:
+//
+//   - a dot-prefixed name (isDotName);
+//   - a symlink whose chain ends under a dot-prefixed directory
+//     (lexicalResolveInArchive, the lexical twin of
+//     symlinkTargetIsExcluded);
+//   - on Windows, a Git symlink placeholder file whose text points under a
+//     dot-prefixed directory (placeholderTarget, as resolveSymlinkPlaceholder).
+//
+// The symlink and placeholder checks work from link text rather than
+// resolving targets, so they give the same answer whether or not the target
+// currently exists: by the time the swap inspects the backup, top-level dot
+// directories have already been moved to the destination.
+func loaderSkips(root, archiveRoot, rel string, d fs.DirEntry) bool {
+	return loaderSkipsOn(runtime.GOOS, root, archiveRoot, rel, d)
+}
+
+// loaderSkipsOn is loaderSkips with the platform made explicit so the Windows
+// placeholder branch can be exercised by tests on any host. root is the tree
+// being inspected (the backup); archiveRoot is the archive's own path, which
+// absolute symlink targets refer to.
+func loaderSkipsOn(goos, root, archiveRoot, rel string, d fs.DirEntry) bool {
+	if isDotName(d.Name()) {
+		return true
+	}
+	if d.Type()&fs.ModeSymlink != 0 {
+		resolved, ok := lexicalResolveInArchive(root, archiveRoot, filepath.ToSlash(rel))
+
+		return ok && pathHasDotComponent(resolved)
+	}
+	if goos == goosWindows && d.Type().IsRegular() && isGLXFile(d.Name()) {
+		// A placeholder is at most maxSymlinkPlaceholderLength bytes; do not
+		// read whole entity files to find that out.
+		info, err := d.Info()
+		if err != nil || info.Size() > maxSymlinkPlaceholderLength {
+			return false
+		}
+		data, err := os.ReadFile(filepath.Join(root, rel)) // #nosec G304 -- path enumerated from the archive backup
+		if err != nil {
+			return false
+		}
+		target, ok := placeholderTarget(rel, data)
+
+		return ok && pathHasDotComponent(target)
+	}
+
+	return false
+}
+
+// maxSymlinkHops bounds the chain walk in lexicalResolveInArchive so a
+// link cycle cannot spin forever; the OS limit for real resolution is similar.
+const maxSymlinkHops = 40
+
+// lexicalResolveInArchive expands every symlink on the path rel (slash
+// separated, relative to root) component by component, using link text only,
+// and returns the fully expanded archive-relative path. It is the
+// existence-tolerant twin of the loader's EvalSymlinks: a component that no
+// longer exists ends expansion and the remaining components are appended as
+// written, so a link into a dot directory that has already been moved away is
+// still recognized. Intermediate symlinked directories are expanded too, which
+// plain Lstat on the whole path would silently follow. An absolute target is
+// accepted when it lies under archiveRoot or root and is folded back into an
+// archive-relative path, as the loader accepts an absolute target that resolves
+// inside the archive. A target that climbs out, or a cycle, returns false.
+func lexicalResolveInArchive(root, archiveRoot, rel string) (string, bool) {
+	pending := strings.Split(path.Clean(rel), "/")
+	var done []string
+	hops := 0
+	for len(pending) > 0 {
+		done = append(done, pending[0])
+		pending = pending[1:]
+		cur := path.Join(done...)
+		if cur == ".." || strings.HasPrefix(cur, "../") {
+			return "", false
+		}
+		info, err := os.Lstat(filepath.Join(root, filepath.FromSlash(cur)))
+		if err != nil {
+			return path.Clean(path.Join(append(done, pending...)...)), true
+		}
+		if info.Mode()&os.ModeSymlink == 0 {
+			continue
+		}
+		hops++
+		if hops > maxSymlinkHops {
+			return "", false
+		}
+		target, err := os.Readlink(filepath.Join(root, filepath.FromSlash(cur)))
+		if err != nil {
+			return "", false
+		}
+		var next string
+		if filepath.IsAbs(target) {
+			inside, ok := relWithinEither(target, archiveRoot, root)
+			if !ok {
+				return "", false
+			}
+			next = inside
+		} else {
+			next = path.Clean(path.Join(path.Join(done[:len(done)-1]...), filepath.ToSlash(target)))
+		}
+		if next == ".." || strings.HasPrefix(next, "../") {
+			return "", false
+		}
+		pending = append(strings.Split(next, "/"), pending...)
+		done = nil
+	}
+
+	return path.Clean(path.Join(done...)), true
+}
+
+// relWithinEither returns abs relative (slash separated) to the first of the
+// given roots that contains it, or false when neither does.
+func relWithinEither(abs string, roots ...string) (string, bool) {
+	for _, r := range roots {
+		if r == "" {
+			continue
+		}
+		if rel, ok := relWithin(abs, r); ok {
+			return filepath.ToSlash(rel), true
+		}
+	}
+
+	return "", false
+}
+
+// relSlash renders path as a slash-separated path relative to base, for an
+// error message that already names base. Naming the entry relative to the
+// directory it sits in keeps the message short, and slashes rather than the
+// platform separator keep it — and the tests that assert on it — identical on
+// every platform. A path that cannot be made relative to base is returned
+// whole, with its separators normalized.
+func relSlash(base, path string) string {
+	rel, err := filepath.Rel(base, path)
+	if err != nil {
+		return filepath.ToSlash(path)
+	}
+
+	return filepath.ToSlash(rel)
+}
+
+// mediaFilesDirsIn returns every media/files/ subtree under dir, matching each
+// path component case-insensitively so an archive laid out as MEDIA/files/ or
+// media/FILES/ keeps its binaries across a safe write. On a case-sensitive
+// filesystem more than one can exist at once (media/files/ beside
+// MEDIA/files/); callers treat that as ambiguous rather than pick one and
+// delete the other with the backup. An empty result means there is none.
+//
+// Only real directories are matched at each level. A symlink such as
+// `MEDIA -> ../assets` is not archive content, and renaming a path that runs
+// through it would move data from outside the archive. A directory that cannot
+// be listed is reported as an error rather than treated as absent, so callers
+// that decide whether a backup is safe to delete fail closed.
+func mediaFilesDirsIn(dir string) ([]string, error) {
+	parts := strings.Split(filepath.ToSlash(glxlib.MediaFilesDir), "/")
+	dirs := []string{dir}
+	for i, part := range parts {
+		var next []string
+		for _, d := range dirs {
+			names, err := childDirsCaseInsensitive(d, part, i == len(parts)-1)
+			if err != nil {
+				return nil, err
+			}
+			for _, name := range names {
+				next = append(next, filepath.Join(d, name))
+			}
+		}
+		dirs = next
+	}
+
+	return dirs, nil
+}
+
+// childDirsCaseInsensitive returns the names of dir's real subdirectories that
+// match name case-insensitively, the exact match first when present. With
+// allowLink set, a symlink of that name is matched as well: the final
+// media/files component may be a link to storage elsewhere, and renaming a
+// link moves the link itself, not its target, so preserving it is safe where
+// renaming *through* a linked intermediate directory would not be. A missing
+// dir yields no names; any other listing failure is returned.
+func childDirsCaseInsensitive(dir, name string, allowLink bool) ([]string, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+
+		return nil, fmt.Errorf("listing %s: %w", dir, err)
+	}
+	var names []string
+	for _, e := range entries {
+		isLink := e.Type()&fs.ModeSymlink != 0
+		if !e.Type().IsDir() && (!allowLink || !isLink) {
+			continue
+		}
+		switch {
+		case e.Name() == name:
+			names = append([]string{name}, names...)
+		case strings.EqualFold(e.Name(), name):
+			names = append(names, e.Name())
+		}
+	}
+
+	return names, nil
 }
 
 // preserveMediaBinaries carries media/files/ from the backup into the freshly
@@ -214,8 +751,22 @@ func restoreForeignEntries(backupDir, destPath string) error {
 // from the backup is the only way for the user's media files to survive the
 // safe-write swap. See genealogix/glx#593.
 func preserveMediaBinaries(backupDir, destPath string) error {
-	srcDir := filepath.Join(backupDir, glxlib.MediaFilesDir)
-	info, err := os.Stat(srcDir)
+	srcDirs, err := mediaFilesDirsIn(backupDir)
+	if err != nil {
+		return err
+	}
+	if len(srcDirs) == 0 {
+		return nil
+	}
+	if len(srcDirs) > 1 {
+		// Two case variants cannot both become the canonical media/files/;
+		// refuse (the backup is retained) rather than keep one and delete the
+		// other.
+		return fmt.Errorf("%w: %s and %s", ErrAmbiguousMediaFilesDirs, srcDirs[0], srcDirs[1])
+	}
+	srcDir := srcDirs[0]
+	// Lstat: a media/files symlink is moved as a link, whatever it points at.
+	info, err := os.Lstat(srcDir)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil
@@ -223,7 +774,7 @@ func preserveMediaBinaries(backupDir, destPath string) error {
 
 		return fmt.Errorf("inspecting backup media/files: %w", err)
 	}
-	if !info.IsDir() {
+	if !info.IsDir() && info.Mode()&os.ModeSymlink == 0 {
 		return nil
 	}
 
@@ -257,6 +808,17 @@ func LoadArchiveWithOptions(rootPath string, schemaValidate bool) (*glxlib.GLXFi
 		return nil, nil, err
 	}
 
+	return loadArchiveFromFiles(rootPath, files, schemaValidate)
+}
+
+// loadArchiveFromFiles builds an archive from an already-collected file map
+// (relative path -> contents, as returned by collectGLXFilesFromDir). It is
+// the half of LoadArchiveWithOptions that does no I/O of its own, split out so
+// a caller that needs to know how many files the archive contains can read it
+// off the map instead of walking the tree a second time with its own copy of
+// the "what is archive content" rules — two walks that had already drifted
+// apart on a symlinked archive root.
+func loadArchiveFromFiles(rootPath string, files map[string][]byte, schemaValidate bool) (*glxlib.GLXFile, []string, error) {
 	if schemaValidate {
 		var allErrors []string
 		for relPath, data := range files {
@@ -285,6 +847,7 @@ func LoadArchiveWithOptions(rootPath string, schemaValidate bool) (*glxlib.GLXFi
 	if err != nil {
 		return nil, nil, err
 	}
+	duplicates = sanitizeDuplicateWarnings(duplicates)
 
 	// Load standard vocabularies as defaults for any vocabulary maps not
 	// already defined by the archive. This enables property reference
@@ -298,6 +861,21 @@ func LoadArchiveWithOptions(rootPath string, schemaValidate bool) (*glxlib.GLXFi
 	glx.InvalidateCache()
 
 	return glx, duplicates, nil
+}
+
+// sanitizeDuplicateWarnings makes deserializer duplicate warnings safe to
+// print. The warnings quote archive-controlled entity IDs and file names and
+// exist only to be shown as diagnostics — two dozen runners write them to
+// stderr, several with a bare fmt.Fprintf. Every caller of
+// DeserializeMultiFileFromMap must pass its duplicates through here so no
+// print site can leak a control sequence (genealogix/glx#925). The slice is
+// sanitized in place and returned for convenience.
+func sanitizeDuplicateWarnings(duplicates []string) []string {
+	for i, d := range duplicates {
+		duplicates[i] = sanitizeForTerminal(d)
+	}
+
+	return duplicates
 }
 
 // createSerializer creates a new serializer with the specified options
@@ -328,8 +906,18 @@ func readSingleFileArchive(path string, validate bool) (*glxlib.GLXFile, error) 
 	return glx, nil
 }
 
-// writeSingleFileArchive serializes and writes a single-file GLX archive
+// writeSingleFileArchive serializes and writes a single-file GLX archive with
+// the default file permissions. Callers rewriting a file that already exists
+// should use writeSingleFileArchiveWithMode instead.
 func writeSingleFileArchive(path string, glx *glxlib.GLXFile, validate bool) error {
+	return writeSingleFileArchiveWithMode(path, glx, validate, filePermissions)
+}
+
+// writeSingleFileArchiveWithMode is writeSingleFileArchive with an explicit
+// permission mode. In-place rewrites pass the mode the file already has so a
+// deliberately private archive (0600, say) does not come back world-readable
+// because the write went through a fresh temp file.
+func writeSingleFileArchiveWithMode(path string, glx *glxlib.GLXFile, validate bool, perm os.FileMode) error {
 	serializer := createSerializer(validate, true, "  ")
 
 	yamlBytes, err := serializer.SerializeSingleFileBytes(glx)
@@ -337,20 +925,34 @@ func writeSingleFileArchive(path string, glx *glxlib.GLXFile, validate bool) err
 		return fmt.Errorf("failed to serialize GLX file: %w", err)
 	}
 
-	if err := atomicWriteFile(path, yamlBytes, filePermissions); err != nil {
+	if err := atomicWriteFile(path, yamlBytes, perm); err != nil {
 		return fmt.Errorf("failed to write GLX file: %w", err)
 	}
 
 	return nil
 }
 
-// writeMultiFileArchive serializes and writes a multi-file GLX archive
-func writeMultiFileArchive(dirPath string, glx *glxlib.GLXFile, validate bool) error {
+// serializeMultiFileArchive serializes (and, when validate is set, validates) a
+// multi-file GLX archive, returning the files to write without touching the
+// filesystem. Split out from writeMultiFileArchive so callers with other side
+// effects to commit can fail on serialization or validation *before* any of
+// them happen — see the GEDZIP import path, which stages media first.
+func serializeMultiFileArchive(glx *glxlib.GLXFile, validate bool) (map[string][]byte, error) {
 	serializer := createSerializer(validate, true, "  ")
 
 	files, err := serializer.SerializeMultiFileToMap(glx)
 	if err != nil {
-		return fmt.Errorf("failed to serialize multi-file archive: %w", err)
+		return nil, fmt.Errorf("failed to serialize multi-file archive: %w", err)
+	}
+
+	return files, nil
+}
+
+// writeMultiFileArchive serializes and writes a multi-file GLX archive
+func writeMultiFileArchive(dirPath string, glx *glxlib.GLXFile, validate bool) error {
+	files, err := serializeMultiFileArchive(glx, validate)
+	if err != nil {
+		return err
 	}
 
 	if err := writeFilesToDir(dirPath, files); err != nil {
@@ -381,7 +983,7 @@ func writePartialArchive(dirPath string, partial *glxlib.GLXFile) (int, error) {
 		if strings.HasPrefix(relPath, "vocabularies/") {
 			continue
 		}
-		if relPath == "metadata.glx" {
+		if relPath == archiveMetadataFile {
 			continue
 		}
 		entityFiles[relPath] = data

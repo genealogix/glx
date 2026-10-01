@@ -66,7 +66,11 @@ func loadArchiveForAnalyze(path string) (*glxlib.GLXFile, error) {
 }
 
 // showAnalysis runs the analysis engine and prints results.
-func showAnalysis(archivePath, personFilter, checkFilter, format string) error {
+func showAnalysis(archivePath, personFilter, checkFilter, format, country string) error {
+	if err := applyCensusCountry(country); err != nil {
+		return err
+	}
+
 	archive, err := loadArchiveForAnalyze(archivePath)
 	if err != nil {
 		return fmt.Errorf("failed to load archive: %w", err)
@@ -238,7 +242,9 @@ func filterCategory(issues []AnalysisIssue, category string) []AnalysisIssue {
 	return filtered
 }
 
-// printIssue prints a single analysis issue.
+// printIssue prints a single analysis issue. The reference and message carry
+// archive-controlled text (IDs, names, place names), so both are sanitized
+// before reaching the terminal.
 func printIssue(issue *AnalysisIssue) {
 	ref := issue.Person
 	if ref == "" {
@@ -247,13 +253,15 @@ func printIssue(issue *AnalysisIssue) {
 	if ref == "" {
 		ref = "(archive)"
 	}
+	ref = sanitizeForTerminal(ref)
+	msg := sanitizeForTerminal(issue.Message)
 
 	switch issue.Category {
 	case "suggestion":
-		fmt.Printf("  →   %-30s %s\n", ref, issue.Message)
+		fmt.Printf("  →   %-30s %s\n", ref, msg)
 	default:
 		sev := strings.ToUpper(issue.Severity)
-		fmt.Printf("  %-4s %-30s %s\n", sev, ref, issue.Message)
+		fmt.Printf("  %-4s %-30s %s\n", sev, ref, msg)
 	}
 }
 

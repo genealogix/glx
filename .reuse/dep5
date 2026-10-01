@@ -25,11 +25,11 @@ Files: go.mod go.sum
 Copyright: 2025 Oracynth, Inc.
 License: Apache-2.0
 
-Files: Makefile .goreleaser.yml renovate.json .gitattributes .gitignore .npmrc
+Files: Makefile .goreleaser.yml .gitattributes .gitignore .npmrc
 Copyright: 2025 Oracynth, Inc.
 License: Apache-2.0
 
-Files: .golangci.yml .golangci-lint-version .gosec-version .markdownlint-cli2.jsonc codecov.yml lefthook.yml .changie.yaml
+Files: .golangci.yml .golangci-lint-version .gosec-version .markdownlint-cli2.jsonc codecov.yml lefthook.yml osv-scanner.toml .changie.yaml
 Copyright: 2025 Oracynth, Inc.
 License: Apache-2.0
 
@@ -112,3 +112,10 @@ License: Apache-2.0
 Comment: GEDCOM test data files from various sources. Some files contain
  third-party copyright notices (e.g., torture-test by H. Eichmann).
  Files without explicit copyright are treated as project test fixtures.
+
+Files: go-glx/glxdate/testdata/*
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+Comment: Date-string corpus sampled by shape from GEDCOM DATE values, plus
+ golden files of the parser's expected output. Bare date strings carry no
+ authorship; the sampling and expected outcomes are project test fixtures.

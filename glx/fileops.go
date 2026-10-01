@@ -19,10 +19,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
-	"runtime"
 	"strings"
 )
 
@@ -47,18 +46,63 @@ const (
 	filePermissions = 0o644
 )
 
-// ensureGLXExtension adds .glx extension if not present
+// ensureGLXExtension adds the .glx extension if not present, in any letter
+// case, so ARCHIVE.GLX is not turned into ARCHIVE.GLX.glx.
 func ensureGLXExtension(path string) string {
-	if !strings.HasSuffix(path, FileExtGLX) {
+	if !isGLXFile(path) {
 		return path + FileExtGLX
 	}
 
 	return path
 }
 
-// isGLXFile checks if a file has the .glx extension.
+// isGLXFile checks if a file has the .glx extension. The match is
+// case-insensitive because user-supplied filenames vary by platform: on a
+// case-insensitive filesystem a file the user created as PERSON.GLX is the
+// same file the archive refers to as person.glx, and a case-sensitive
+// comparison would make it silently invisible to every command.
 func isGLXFile(filename string) bool {
-	return filepath.Ext(filename) == FileExtGLX
+	return strings.EqualFold(filepath.Ext(filename), FileExtGLX)
+}
+
+// isDotName reports whether a directory or file name starts with ".".
+//
+// Dot-prefixed entries are not archive content. Directories carry tool state
+// that frequently contains whole copies of the archive (git worktrees, the
+// .glx cache, editor and sync-client scratch dirs), and loading those copies
+// produces duplicate entity IDs for every entity in the archive — see
+// genealogix/glx#1212. Dot-prefixed *files* are editor and filesystem
+// droppings (._foo.glx AppleDouble sidecars, .#foo.glx Emacs lock symlinks)
+// that are not valid GLX and fail the whole archive load when read.
+//
+// Every enumerator that decides what belongs to an archive uses this
+// predicate: walkGLXFiles (and so collectGLXFilesFromDir, which is where
+// validatePaths now gets its file count), computeFSFingerprint, and
+// validateSingleFileSemantics. Keep them in agreement — when they drift, the
+// cache, the loader, and the validator disagree about what the archive is.
+func isDotName(name string) bool {
+	return strings.HasPrefix(name, ".")
+}
+
+// pathHasDotComponent reports whether any component of relPath (a
+// slash-separated path relative to the archive root) is dot-prefixed.
+//
+// walkGLXFiles skips dot directories during traversal, but a relative symlink
+// at a visible path can still point *into* one, and following it would read
+// back exactly the duplicate entities the skip exists to exclude. This
+// predicate is applied to a symlink's resolved target so the skip governs
+// reads as well as traversal.
+func pathHasDotComponent(relPath string) bool {
+	for part := range strings.SplitSeq(filepath.ToSlash(relPath), "/") {
+		if part == "" || part == "." {
+			continue
+		}
+		if isDotName(part) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // isGEDZIPPath reports whether the given file path has the .gdz extension.
@@ -119,42 +163,18 @@ func isDirectoryEmpty(path string) error {
 	return fmt.Errorf("%w (found: %s)", ErrNonEmptyDirectory, listing)
 }
 
-// collectGLXFilesFromDir recursively collects all GLX/YAML files from a directory
+// collectGLXFilesFromDir recursively collects all GLX files from a directory
 // into a map with relative paths as keys and file contents as values.
-// Only files with .glx, .yaml, or .yml extensions are included.
+// Only files with the .glx extension are included. Reads are contained to
+// rootDir (see walkGLXFiles): a symlink inside the archive that points outside
+// it fails the load rather than pulling the target's contents in.
 func collectGLXFilesFromDir(rootDir string) (map[string][]byte, error) {
 	files := make(map[string][]byte)
 
-	err := filepath.WalkDir(rootDir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
+	err := walkGLXFiles(rootDir, func(relPath string, data []byte, readErr error) error {
+		if readErr != nil {
+			return fmt.Errorf("failed to read %s: %w", filepath.Join(rootDir, relPath), readErr)
 		}
-		if d.IsDir() {
-			return nil
-		}
-		if !isGLXFile(d.Name()) {
-			return nil
-		}
-
-		path = filepath.Clean(path)
-		// #nosec G122 -- a symlink inside the archive can redirect this read outside
-		// the walked root; containment via root-scoped (os.Root) reads is tracked in #1090.
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return fmt.Errorf("failed to read %s: %w", path, err)
-		}
-
-		// On Windows, Git stores symlinks as text files containing the
-		// target path. Detect these and read the actual target file.
-		if runtime.GOOS == "windows" {
-			data = resolveSymlinkPlaceholder(path, data)
-		}
-
-		relPath, err := filepath.Rel(rootDir, path)
-		if err != nil {
-			return fmt.Errorf("failed to get relative path: %w", err)
-		}
-
 		files[relPath] = data
 
 		return nil
@@ -166,32 +186,55 @@ func collectGLXFilesFromDir(rootDir string) (map[string][]byte, error) {
 // resolveSymlinkPlaceholder detects Git symlink placeholders on Windows.
 // Git stores symlinks as small text files containing the target path when
 // core.symlinks is false (the default on Windows). This function detects
-// such files and reads the actual target content.
-func resolveSymlinkPlaceholder(filePath string, data []byte) []byte {
+// such files and reads the actual target content. relPath is the
+// placeholder's slash-separated path relative to root; the target is read
+// through the same root, so a placeholder whose target escapes the archive
+// directory is left unresolved instead of being followed.
+//
+// The second result is true when the placeholder points into a dot-prefixed
+// directory. That is the Windows equivalent of the symlink case walkGLXFiles
+// rejects: the walk has already declared that subtree not to be archive
+// content, so the caller must skip the entry entirely rather than parse the
+// placeholder text (or the target) as a GLX file.
+func resolveSymlinkPlaceholder(root *os.Root, relPath string, data []byte) ([]byte, bool) {
+	target, ok := placeholderTarget(relPath, data)
+	if !ok {
+		return data, false
+	}
+	if pathHasDotComponent(target) {
+		return nil, true
+	}
+	targetData, err := root.ReadFile(target)
+	if err != nil {
+		return data, false // Not a valid symlink placeholder; return original content
+	}
+
+	return targetData, false
+}
+
+// placeholderTarget reports whether data looks like a Git symlink placeholder
+// (a short, single-line relative path) and, if so, returns the slash-separated
+// archive-relative path it points at, resolved against the placeholder's own
+// directory. Absolute targets and targets that climb out of the archive root
+// are not placeholders the archive can act on and return false; a leading ".."
+// would otherwise read as a dot-directory component.
+func placeholderTarget(relPath string, data []byte) (string, bool) {
 	content := strings.TrimSpace(string(data))
-	// Symlink placeholders are short, single-line, and look like relative paths
 	if len(content) > maxSymlinkPlaceholderLength || strings.ContainsAny(content, symlinkPlaceholderInvalidChars) {
-		return data
+		return "", false
 	}
 	if !strings.Contains(content, "/") && !strings.Contains(content, "\\") {
-		return data
+		return "", false
 	}
-	// Git symlink targets are always relative; reject absolute paths
-	// to prevent reading arbitrary files.
 	if filepath.IsAbs(filepath.FromSlash(content)) || filepath.VolumeName(filepath.FromSlash(content)) != "" {
-		return data
+		return "", false
+	}
+	target := path.Join(path.Dir(filepath.ToSlash(relPath)), filepath.ToSlash(content))
+	if target == ".." || strings.HasPrefix(target, "../") {
+		return "", false
 	}
 
-	// Resolve the target path relative to the file's directory
-	dir := filepath.Dir(filePath)
-	targetPath := filepath.Join(dir, filepath.FromSlash(content))
-	targetPath = filepath.Clean(targetPath)
-	targetData, err := os.ReadFile(targetPath) //nolint:gosec // path is relative to archive, not user input
-	if err != nil {
-		return data // Not a valid symlink placeholder; return original content
-	}
-
-	return targetData
+	return target, true
 }
 
 // writeFilesToDir writes a map of files (relative path -> content) to a directory

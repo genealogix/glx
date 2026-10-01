@@ -17,6 +17,8 @@ package glx
 import (
 	"fmt"
 	"path"
+	"sort"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -321,13 +323,27 @@ func (s *DefaultSerializer) DeserializeMultiFileFromMap(files map[string][]byte)
 	// Each file is a GLXFile fragment — the YAML top-level keys (persons:,
 	// events:, event_types:, etc.) determine what entities it contains,
 	// regardless of which directory the file lives in.
-	for filePath, data := range files {
-		ext := path.Ext(filePath)
+	//
+	// Files are merged in sorted path order. Map iteration order is randomized
+	// per process, so when two files define the same entity ID the surviving
+	// record used to be chosen at random on every run: consecutive invocations
+	// returned different data for the same archive, and `glx cache build`
+	// froze one arbitrary winner, letting two developers' caches disagree
+	// about the same commit. The duplicate is still reported as a conflict;
+	// sorting only makes which record wins reproducible.
+	filePaths := make([]string, 0, len(files))
+	for filePath := range files {
+		filePaths = append(filePaths, filePath)
+	}
+	sort.Strings(filePaths)
+
+	for _, filePath := range filePaths {
+		ext := strings.ToLower(path.Ext(filePath))
 		if ext != FileExtGLX && ext != ".yaml" && ext != ".yml" {
 			continue
 		}
 		var partial GLXFile
-		if err := yaml.Unmarshal(data, &partial); err != nil {
+		if err := yaml.Unmarshal(files[filePath], &partial); err != nil {
 			return nil, nil, fmt.Errorf("failed to unmarshal %s: %w", filePath, err)
 		}
 		conflicts, _ := glx.Merge(&partial)

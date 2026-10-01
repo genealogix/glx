@@ -25,7 +25,7 @@ A central registry gives better cross-archive comparability but creates a govern
 
 Vocabularies live inside each archive as YAML files (typically in a `vocabularies/` directory). The project ships a **standard starter set** — embedded via `go:embed` in the `specification/5-standard-vocabularies` package and re-exported by the `go-glx` library — that archives can use directly or extend.
 
-From [Core Concepts](/specification/2-core-concepts):
+From [Core Concepts](../../specification/2-core-concepts.md):
 
 > Unlike traditional genealogy formats with fixed type systems, GENEALOGIX uses *archive-owned controlled vocabularies*. Each archive defines its own valid types in vocabulary files, combining standardization with flexibility.
 

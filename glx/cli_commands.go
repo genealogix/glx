@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -64,6 +65,15 @@ Use GLX to initialize new archives, validate files, and ensure data quality.`,
 	},
 }
 
+// showHelp is the RunE of a parent command that only groups subcommands (add,
+// cache, census). Paired with Args: cobra.NoArgs it makes an unknown
+// subcommand an error: Cobra treats a command without a Run as help-only and
+// returns before validating arguments, so `glx add bogus` used to print help
+// and exit 0, letting a typo in a script pass silently.
+func showHelp(cmd *cobra.Command, _ []string) error {
+	return cmd.Help()
+}
+
 // silentExitError is returned from a Cobra RunE to terminate the process with
 // a specific exit code without printing an error message. The git merge-driver
 // protocol uses the exit code itself to signal "conflicts remain"; an extra
@@ -81,14 +91,17 @@ func (e *silentExitError) Error() string {
 //
 // A *silentExitError returned by a RunE means "exit with this code, do not
 // print a message" — see runMergeDriverCmd for the canonical use. Any other
-// non-nil error is printed to stderr before exiting with code 1.
+// non-nil error is printed to stderr before exiting with code 1. The message
+// is passed through sanitizeForTerminal first: errors routinely embed
+// archive-controlled text (a symlink's filename from a containment failure,
+// an entity ID from a reference error), and this is the one print site that
+// every runner's returned error funnels through.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		var silent *silentExitError
-		if errors.As(err, &silent) {
+		if silent, ok := errors.AsType[*silentExitError](err); ok {
 			os.Exit(silent.code)
 		}
-		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintln(os.Stderr, sanitizeForTerminal(err.Error()))
 		os.Exit(exitCodeForError(err))
 	}
 }
@@ -113,6 +126,26 @@ func exitCodeForError(err error) int {
 		return exitBadInvocation
 	default:
 		return 1
+	}
+}
+
+// exactNamedArgs returns a cobra.PositionalArgs accepting exactly the named
+// positional arguments, naming the missing ones when the count is short.
+// cobra.ExactArgs reports only a count ("accepts 2 arg(s), received 0"), and
+// the Usage: line that does carry the names sits above the flag block in
+// --help, which is easy to scroll past (#1274).
+func exactNamedArgs(names ...string) cobra.PositionalArgs {
+	return func(cmd *cobra.Command, args []string) error {
+		switch {
+		case len(args) == len(names):
+			return nil
+		case len(args) > len(names):
+			return fmt.Errorf("%s: %w: accepts %d (%s), received %d", cmd.CommandPath(),
+				ErrTooManyArguments, len(names), strings.Join(names, " "), len(args))
+		default:
+			return fmt.Errorf("%s: %w: %s", cmd.CommandPath(),
+				ErrMissingArguments, strings.Join(names[len(args):], " "))
+		}
 	}
 }
 
@@ -240,14 +273,15 @@ var (
 )
 
 var exportCmd = &cobra.Command{
-	Use:   "export <glx-archive>",
+	Use:   "export [glx-archive]",
 	Short: "Export a GLX archive to GEDCOM or JSON-LD format",
 	Long: `Export a GLX archive to GEDCOM or JSON-LD format.
 
 Supports GEDCOM 5.5.1, GEDCOM 7.0, and JSON-LD output formats.
 
 The input can be either a single-file GLX archive (.glx) or a multi-file
-archive directory.
+archive directory. It is optional and defaults to the current directory, so
+"glx export -o out.ged" works from inside an archive.
 
 GEDCOM output (--format 551 or 70) includes:
 - All individuals (INDI records)
@@ -288,7 +322,10 @@ Redaction operates on the loaded archive before either exporter runs, so the
 same guarantees apply to GEDCOM and JSON-LD output. Event types and family
 structure are preserved (GEDCOM FAM / FAMS / FAMC still reconstruct; JSON-LD
 Relationship and Participation nodes still link) so the export stays valid.`,
-	Example: `  # Export to GEDCOM 5.5.1 (default)
+	Example: `  # Export the archive in the current directory to GEDCOM 5.5.1 (default)
+  glx export -o family.ged
+
+  # Export a named archive
   glx export family-archive -o family.ged
 
   # Export a single-file archive
@@ -305,7 +342,7 @@ Relationship and Participation nodes still link) so the export stays valid.`,
 
   # Export with verbose output
   glx export family-archive -o family.ged --verbose`,
-	Args: cobra.ExactArgs(1),
+	Args: cobra.MaximumNArgs(1),
 	RunE: runExport,
 }
 
@@ -319,11 +356,16 @@ func init() {
 }
 
 func runExport(_ *cobra.Command, args []string) error {
+	path := "."
+	if len(args) > 0 {
+		path = args[0]
+	}
+
 	switch exportFormat {
 	case ExportFormatJSONLD:
-		return exportToJSONLD(args[0], exportOutput, exportVerbose, exportPrivatizeLiving)
+		return exportToJSONLD(path, exportOutput, exportVerbose, exportPrivatizeLiving)
 	default:
-		return exportToGEDCOM(args[0], exportOutput, exportFormat, exportVerbose, exportPrivatizeLiving)
+		return exportToGEDCOM(path, exportOutput, exportFormat, exportVerbose, exportPrivatizeLiving)
 	}
 }
 
@@ -334,6 +376,7 @@ func runExport(_ *cobra.Command, args []string) error {
 var (
 	initSingleFile bool
 	createTestData int
+	initNoGit      bool
 )
 
 var initCmd = &cobra.Command{
@@ -348,7 +391,12 @@ By default, creates a multi-file archive with separate directories for each
 entity type (persons/, events/, places/, etc.) along with standard vocabulary
 files and supporting documentation.
 
-Use --single-file to create a single archive.glx file instead.`,
+Use --single-file to create a single archive.glx file instead.
+
+The new archive directory is made a Git repository (no files staged, no commit
+made) so the generated .gitignore takes effect and the archive is ready for
+version control. An archive created inside an existing repository is left to
+that repository. Use --no-git to skip this entirely.`,
 	Example: `  # Initialize in a new directory
   glx init my-family-archive
 
@@ -356,7 +404,10 @@ Use --single-file to create a single archive.glx file instead.`,
   glx init my-family-archive --single-file
 
   # Initialize with test data in a new directory
-  glx init my-family-archive --create-test-data 10`,
+  glx init my-family-archive --create-test-data 10
+
+  # Initialize without making the directory a Git repository
+  glx init my-family-archive --no-git`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runInitCmd,
 }
@@ -364,6 +415,7 @@ Use --single-file to create a single archive.glx file instead.`,
 func init() {
 	initCmd.Flags().BoolVarP(&initSingleFile, "single-file", "s", false, "create a single-file archive instead of multi-file")
 	initCmd.Flags().IntVarP(&createTestData, "create-test-data", "t", 0, "number of persons to generate test data for")
+	initCmd.Flags().BoolVar(&initNoGit, "no-git", false, "skip initializing a Git repository in the archive directory")
 }
 
 func runInitCmd(_ *cobra.Command, args []string) error {
@@ -374,7 +426,11 @@ func runInitCmd(_ *cobra.Command, args []string) error {
 		targetDir = "."
 	}
 
-	return runInit(targetDir, initSingleFile, createTestData)
+	return runInit(targetDir, initOptions{
+		singleFile:  initSingleFile,
+		numTestData: createTestData,
+		noGit:       initNoGit,
+	})
 }
 
 // ============================================================================
@@ -398,17 +454,39 @@ Performs comprehensive validation including:
 - YAML syntax correctness
 - Required fields presence
 - Entity ID format validation
-- Cross-reference integrity (directories only)
+- Cross-reference integrity (directories and single-file archives)
 - Duplicate ID detection (directories only)
 - Vocabulary validation (if vocabularies/ exists)
 
 Validation behavior:
-- Single file: Validates file structure only, skips cross-reference checks
+- Single file holding a whole archive: full validation, cross-references
+  included. A file counts as a whole archive when it carries its own
+  vocabularies alongside its entities (what glx join writes) or declares every
+  entity collection (what glx init --single-file scaffolds)
+- Single file holding a fragment of a multi-file archive: structure and the
+  semantic checks that stand on their own; cross-reference and place-hierarchy
+  checks are skipped, because the entities those references name live in the
+  fragment's siblings, which are not being validated
 - Directory: Validates all .glx files with full cross-reference validation
 - No arguments: Validates current directory with full cross-reference validation
+- Several paths (directories, .glx files, or a mix): Loaded together as one
+  archive rooted at the enclosing archive directory — their deepest common
+  directory, or its parent when that is itself an entity directory such as
+  events/ — so cross-references between them resolve and duplicate IDs across
+  them are caught. The archive's vocabularies/ under that root is included
+  automatically; files that are not .glx are ignored. References to entities
+  outside the named paths are errors: the selection is validated as the
+  archive it would be on its own.
+
+Dot-prefixed directories and files (.git, .glx, .worktrees, ._name.glx) are not
+archive content and are skipped when a directory is walked, including symlinks
+that point into them. A dot-prefixed .glx file named explicitly on the command
+line is validated. An
+archive whose own root directory is dot-named is still validated normally.
 
 Use --report to generate a confidence summary showing assertion coverage
-and highlighting unsupported claims.`,
+and highlighting unsupported claims. The archive is validated first, so
+--report fails on an archive that plain validate rejects.`,
 	Example: `  # Validate current directory (with cross-reference checks)
   glx validate
 
@@ -418,8 +496,11 @@ and highlighting unsupported claims.`,
   # Validate multiple paths (with cross-reference checks)
   glx validate persons/ events/ places/
 
-  # Validate single file (structure only, no cross-reference checks)
+  # Validate a single-file archive (with cross-reference checks)
   glx validate archive.glx
+
+  # Validate one file of a multi-file archive (structure only)
+  glx validate events/event-births.glx
 
   # Generate confidence summary report
   glx validate --report
@@ -446,15 +527,7 @@ func runValidate(_ *cobra.Command, args []string) error {
 		return validateStdinEntity(SystemIOStreams(), validateEntityType, args, os.Stdin)
 	}
 	if validateReport {
-		if len(args) > 1 {
-			return errReportTooManyArgs
-		}
-		path := "."
-		if len(args) == 1 {
-			path = args[0]
-		}
-
-		return confidenceReport(path)
+		return validateAndReport(SystemIOStreams(), args)
 	}
 
 	return validatePaths(SystemIOStreams(), args)
@@ -493,7 +566,7 @@ Each entity file uses standard GLX structure with the entity ID as the map key.`
 
   # Split without validation
   glx split family.glx family-archive --no-validate`,
-	Args: cobra.ExactArgs(2),
+	Args: exactNamedArgs("<input-file>", "<output-directory>"),
 	RunE: runSplit,
 }
 
@@ -542,7 +615,7 @@ Entity IDs are read from the map key in each file.`,
 
   # Join without validation
   glx join family-archive family.glx --no-validate`,
-	Args: cobra.ExactArgs(2),
+	Args: exactNamedArgs("<input-directory>", "<output-file>"),
 	RunE: runJoin,
 }
 
@@ -927,8 +1000,9 @@ var publishCmd = &cobra.Command{
 with family who won't install tools or read YAML.
 
 The site includes a person profile page for everyone in the archive (with
-vital facts, a life timeline, linked family members, supporting sources, and
-a media gallery), plus source and place indexes and a client-side search.
+vital facts, a life timeline, pedigree and descendancy charts, linked family
+members, supporting sources, and a media gallery), plus source and place
+indexes and a client-side search.
 The output is a plain directory of HTML/CSS/JS with no server, database, or
 build tooling required — open index.html directly with file:// or host it
 anywhere (GitHub Pages, S3, Netlify).
@@ -1149,9 +1223,9 @@ var (
 )
 
 var evidenceCmd = &cobra.Command{
-	Use:   "evidence <person> <property>",
+	Use:   "evidence <subject> <property>",
 	Short: "Show all evidence for a property, grouped by value",
-	Long: `Display every assertion for one person+property side-by-side, grouped by
+	Long: `Display every assertion for one subject+property side-by-side, grouped by
 value, with the supporting citations and confidence for each.
 
 Where "glx analyze" emits a one-line conflict warning and "glx proof" summarizes
@@ -1161,13 +1235,25 @@ shows the supporting reports (citation and source), counts them, and reports the
 best confidence; the closing line highlights the best-supported value, or notes
 when the leading values tie.
 
-The person argument can be an exact entity ID (e.g., person-jane-webb) or a
-name to search for (e.g., "Jane Miller"). If the name matches multiple persons,
-all matches are listed for disambiguation. The property is matched exactly, with
-a case-insensitive fallback when no exact match exists. Place, person, and event
-reference values resolve to the referenced entity's name.`,
+The subject is any entity an assertion can be about — a person, event, place, or
+relationship — matching what "glx add assertion" accepts. That matters because
+the two properties most likely to have conflicting answers, date and place, are
+normally asserted on the event rather than on the person.
+
+A subject is resolved by exact entity ID first (e.g., event-death-1807), then,
+for persons only, by name search (e.g., "Jane Miller"); if the name matches
+multiple persons, all matches are listed for disambiguation. The property is
+matched exactly, with a case-insensitive fallback when no exact match exists.
+Place, person, and event reference values resolve to the referenced entity's
+name.`,
 	Example: `  # All recorded values for a birthplace property, by ID
   glx evidence person-jane-webb born_at
+
+  # The contested date of an event
+  glx evidence event-death-1807 date
+
+  # Every recorded name for a place
+  glx evidence place-liepen name
 
   # Look the person up by name
   glx evidence "Jane Miller" residence
@@ -1201,6 +1287,8 @@ var censusCmd = &cobra.Command{
 
 Subcommands:
   add    Import a census template into the archive`,
+	Args: cobra.NoArgs,
+	RunE: showHelp,
 }
 
 var (
@@ -1235,6 +1323,7 @@ Use --dry-run to preview what would be generated without writing files.`,
 
   # Verbose output
   glx census add --from 1860-census-lane.yaml --archive my-archive --verbose`,
+	Args: cobra.NoArgs,
 	RunE: runCensusAdd,
 }
 
@@ -1434,6 +1523,7 @@ func runDuplicates(_ *cobra.Command, args []string) error {
 var (
 	coverageArchive string
 	coverageJSON    bool
+	coverageCountry string
 )
 
 var coverageCmd = &cobra.Command{
@@ -1446,9 +1536,16 @@ showing which census records, vital records, and other documents have been found
 versus which are still missing.
 
 Record categories:
-  - Census: US federal census records the person should appear in
+  - Census: national and state census records the person should appear in,
+    on the schedules of the countries their places name
   - Vital: Birth, death, and marriage records
   - Other: Probate, land, military, and church records
+
+A record counts as found only when evidence backs it: a source about the person,
+or an event that is the subject of an assertion citing a source. An event on its
+own is a conclusion, not a record, so it is reported without counting toward the
+score -- an estimated birth date reckoned back from a death entry does not mean a
+birth record exists.
 
 Missing high-priority records are flagged to guide research efforts.
 
@@ -1463,7 +1560,10 @@ The person argument can be an exact entity ID or a name substring.`,
   glx coverage "Jane Miller" --json
 
   # Specify archive path
-  glx coverage "Jane Miller" --archive my-archive`,
+  glx coverage "Jane Miller" --archive my-archive
+
+  # Assume UK censuses where the archive names no country
+  glx coverage "Jane Miller" --country "United Kingdom"`,
 	Args: cobra.ExactArgs(1),
 	RunE: runCoverage,
 }
@@ -1471,10 +1571,11 @@ The person argument can be an exact entity ID or a name substring.`,
 func init() {
 	coverageCmd.Flags().StringVarP(&coverageArchive, "archive", "a", ".", "Archive path (directory or single file)")
 	coverageCmd.Flags().BoolVar(&coverageJSON, "json", false, "Output as JSON")
+	coverageCmd.Flags().StringVar(&coverageCountry, "country", "", censusCountryFlagUsage)
 }
 
 func runCoverage(_ *cobra.Command, args []string) error {
-	return showCoverage(coverageArchive, args[0], coverageJSON)
+	return showCoverage(coverageArchive, args[0], coverageCountry, coverageJSON)
 }
 
 // ============================================================================
@@ -1486,6 +1587,7 @@ var (
 	analyzeCheck   string
 	analyzeFormat  string
 	analyzePerson  string
+	analyzeCountry string
 )
 
 var analyzeCmd = &cobra.Command{
@@ -1516,7 +1618,10 @@ Use --format json for machine-readable output.`,
   glx analyze --format json
 
   # Analyze a specific archive
-  glx analyze --archive my-archive`,
+  glx analyze --archive my-archive
+
+  # Assume UK censuses where the archive names no country
+  glx analyze --country "United Kingdom"`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runAnalyze,
 }
@@ -1526,6 +1631,7 @@ func init() {
 	analyzeCmd.Flags().StringVarP(&analyzeCheck, "check", "c", "", "Run a single analysis category (gaps, evidence, consistency, suggestions)")
 	analyzeCmd.Flags().StringVarP(&analyzeFormat, "format", "f", "", "Output format (json for machine-readable)")
 	analyzeCmd.Flags().StringVarP(&analyzePerson, "person", "p", "", "Filter results to a specific person (ID or name)")
+	analyzeCmd.Flags().StringVar(&analyzeCountry, "country", "", censusCountryFlagUsage)
 }
 
 func runAnalyze(_ *cobra.Command, args []string) error {
@@ -1534,7 +1640,7 @@ func runAnalyze(_ *cobra.Command, args []string) error {
 		person = args[0]
 	}
 
-	return showAnalysis(analyzeArchive, person, analyzeCheck, analyzeFormat)
+	return showAnalysis(analyzeArchive, person, analyzeCheck, analyzeFormat, analyzeCountry)
 }
 
 // ============================================================================
@@ -1796,7 +1902,7 @@ the driver to fall back to git's text merge — standard <<<<<<< markers
 land in <ours>, and a diagnostic summary listing both sides' values
 (with assertion confidence and citations when applicable) is written to
 stderr.`,
-	Args: cobra.RangeArgs(3, 4), //nolint:mnd // git merge-driver signature is %O %A %B [%P]
+	Args: cobra.RangeArgs(3, 4), // git merge-driver signature is %O %A %B [%P]
 	RunE: runMergeDriverCmd,
 }
 
@@ -1806,7 +1912,7 @@ func runMergeDriverCmd(_ *cobra.Command, args []string) error {
 		OursPath:   args[1],
 		TheirsPath: args[2],
 	}
-	if len(args) >= 4 { //nolint:mnd // %P is git's 4th positional arg
+	if len(args) >= 4 { // %P is git's 4th positional arg
 		in.OrigPath = args[3]
 	} else {
 		in.OrigPath = in.OursPath
@@ -2062,6 +2168,8 @@ shown by 'glx cache status', but do not affect staleness. Only multi-file
 
   # Run a command with auto-build on cache miss
   GLX_CACHE=auto glx summary "Jane Webb"`,
+	Args: cobra.NoArgs,
+	RunE: showHelp,
 }
 
 var cacheBuildCmd = &cobra.Command{

@@ -23,40 +23,40 @@ Use GLX to initialize new archives, validate files, and ensure data quality.
 
 ### SEE ALSO
 
-* [glx add](/cli/glx_add)	 - Create entities (person, place, event, …) from CLI flags
-* [glx analyze](/cli/glx_analyze)	 - Analyze archive for research gaps, evidence quality, and consistency
-* [glx ancestors](/cli/glx_ancestors)	 - Show ancestor tree for a person
-* [glx cache](/cli/glx_cache)	 - Manage the binary archive cache for fast repeated loading
-* [glx census](/cli/glx_census)	 - Bulk census record tools
-* [glx cite](/cli/glx_cite)	 - Generate formatted citation text from structured fields
-* [glx cluster](/cli/glx_cluster)	 - FAN club analysis — find associates of a person
-* [glx completion](/cli/glx_completion)	 - Generate the autocompletion script for the specified shell
-* [glx coverage](/cli/glx_coverage)	 - Show source coverage matrix for a person
-* [glx descendants](/cli/glx_descendants)	 - Show descendant tree for a person
-* [glx diff](/cli/glx_diff)	 - Compare two GLX archive states
-* [glx duplicates](/cli/glx_duplicates)	 - Detect potential duplicate persons in a GLX archive
-* [glx evidence](/cli/glx_evidence)	 - Show all evidence for a property, grouped by value
-* [glx export](/cli/glx_export)	 - Export a GLX archive to GEDCOM or JSON-LD format
-* [glx import](/cli/glx_import)	 - Import a GEDCOM or GEDZIP file to GLX format
-* [glx init](/cli/glx_init)	 - Initialize a new GENEALOGIX archive in the specified directory
-* [glx join](/cli/glx_join)	 - Join a multi-file GLX archive into single-file format
-* [glx link](/cli/glx_link)	 - Create a FamilySearch citation from an ARK
-* [glx merge](/cli/glx_merge)	 - Merge another archive into the destination archive
-* [glx merge-persons](/cli/glx_merge-persons)	 - Merge two person entities, keeping the first and folding in the second
-* [glx migrate](/cli/glx_migrate)	 - Migrate an archive to the current format
-* [glx migrations](/cli/glx_migrations)	 - Track a person's geographic movement over time
-* [glx path](/cli/glx_path)	 - Find the shortest relationship path between two people
-* [glx places](/cli/glx_places)	 - Analyze places for ambiguity and completeness
-* [glx proof](/cli/glx_proof)	 - Compile evidence into a structured proof summary for a research question
-* [glx publish](/cli/glx_publish)	 - Generate a browsable static HTML site from an archive
-* [glx query](/cli/glx_query)	 - Query entities in a GLX archive
-* [glx rename](/cli/glx_rename)	 - Rename an entity ID and update all references
-* [glx search](/cli/glx_search)	 - Full-text search across all entities
-* [glx serve](/cli/glx_serve)	 - Serve a local browser-based viewer for a GLX archive (prints a URL to open)
-* [glx split](/cli/glx_split)	 - Split a single-file GLX archive into multi-file format
-* [glx stats](/cli/glx_stats)	 - Show summary statistics for a GLX archive
-* [glx summary](/cli/glx_summary)	 - Show a comprehensive profile for a person
-* [glx timeline](/cli/glx_timeline)	 - Show chronological timeline of events for a person
-* [glx validate](/cli/glx_validate)	 - Validate GLX files and cross-references
-* [glx vitals](/cli/glx_vitals)	 - Show vital records for a person
+* [glx add](glx_add.md)	 - Create entities (person, place, event, …) from CLI flags
+* [glx analyze](glx_analyze.md)	 - Analyze archive for research gaps, evidence quality, and consistency
+* [glx ancestors](glx_ancestors.md)	 - Show ancestor tree for a person
+* [glx cache](glx_cache.md)	 - Manage the binary archive cache for fast repeated loading
+* [glx census](glx_census.md)	 - Bulk census record tools
+* [glx cite](glx_cite.md)	 - Generate formatted citation text from structured fields
+* [glx cluster](glx_cluster.md)	 - FAN club analysis — find associates of a person
+* [glx completion](glx_completion.md)	 - Generate the autocompletion script for the specified shell
+* [glx coverage](glx_coverage.md)	 - Show source coverage matrix for a person
+* [glx descendants](glx_descendants.md)	 - Show descendant tree for a person
+* [glx diff](glx_diff.md)	 - Compare two GLX archive states
+* [glx duplicates](glx_duplicates.md)	 - Detect potential duplicate persons in a GLX archive
+* [glx evidence](glx_evidence.md)	 - Show all evidence for a property, grouped by value
+* [glx export](glx_export.md)	 - Export a GLX archive to GEDCOM or JSON-LD format
+* [glx import](glx_import.md)	 - Import a GEDCOM or GEDZIP file to GLX format
+* [glx init](glx_init.md)	 - Initialize a new GENEALOGIX archive in the specified directory
+* [glx join](glx_join.md)	 - Join a multi-file GLX archive into single-file format
+* [glx link](glx_link.md)	 - Create a FamilySearch citation from an ARK
+* [glx merge](glx_merge.md)	 - Merge another archive into the destination archive
+* [glx merge-persons](glx_merge-persons.md)	 - Merge two person entities, keeping the first and folding in the second
+* [glx migrate](glx_migrate.md)	 - Migrate an archive to the current format
+* [glx migrations](glx_migrations.md)	 - Track a person's geographic movement over time
+* [glx path](glx_path.md)	 - Find the shortest relationship path between two people
+* [glx places](glx_places.md)	 - Analyze places for ambiguity and completeness
+* [glx proof](glx_proof.md)	 - Compile evidence into a structured proof summary for a research question
+* [glx publish](glx_publish.md)	 - Generate a browsable static HTML site from an archive
+* [glx query](glx_query.md)	 - Query entities in a GLX archive
+* [glx rename](glx_rename.md)	 - Rename an entity ID and update all references
+* [glx search](glx_search.md)	 - Full-text search across all entities
+* [glx serve](glx_serve.md)	 - Serve a local browser-based viewer for a GLX archive (prints a URL to open)
+* [glx split](glx_split.md)	 - Split a single-file GLX archive into multi-file format
+* [glx stats](glx_stats.md)	 - Show summary statistics for a GLX archive
+* [glx summary](glx_summary.md)	 - Show a comprehensive profile for a person
+* [glx timeline](glx_timeline.md)	 - Show chronological timeline of events for a person
+* [glx validate](glx_validate.md)	 - Validate GLX files and cross-references
+* [glx vitals](glx_vitals.md)	 - Show vital records for a person
 

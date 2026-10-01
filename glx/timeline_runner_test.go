@@ -32,20 +32,25 @@ func TestDateSortKey(t *testing.T) {
 		input string
 		want  string
 	}{
-		{"1850-01-15", "1850-01-15"},
-		{"1850-01", "1850-01"},
-		{"1850", "1850"},
-		{"ABT 1880", "1880"},
-		{"BEF 1920-01-15", "1920-01-15"},
-		{"AFT 1900", "1900"},
-		{"BET 1880 AND 1890", "1880"},
-		{"CAL 1855", "1855"},
-		{"800", "0800"},
-		{"476", "0476"},
-		{"ABT 476", "0476"},
-		{"BET 900 AND 1000", "0900"},
-		{"15 MAR 800", "0800"},
-		{"15 MAR 1850", "1850"},
+		{"1850-01-15", "01850-01-15"},
+		{"1850-01", "01850-01"},
+		{"1850", "01850"},
+		{"ABT 1880", "01880"},
+		{"BEF 1920-01-15", "01920-01-15"},
+		{"AFT 1900", "01900"},
+		{"BET 1880 AND 1890", "01880"},
+		{"CAL 1855", "01855"},
+		{"800", "00800"},
+		{"476", "00476"},
+		{"ABT 476", "00476"},
+		{"BET 900 AND 1000", "00900"},
+		{"15 MAR 800", "00800-03-15"},
+		{"15 MAR 1850", "01850-03-15"},
+		{"TO 1950", "01950"},
+		{"0044-03-15 BCE", "-99955-03-15"},
+		{"BET 0100 BCE AND 0050 BCE", "-99899"},
+		{"HEBREW 15 TSH 5765", "05765"},
+		{"HEBREW 15 TSH 10000", "10000"},
 		{"", "\xff"},
 		{"unknown", "\xff"},
 	}
@@ -588,8 +593,8 @@ func TestTimelineResolvePlaceName(t *testing.T) {
 
 func TestPrintTimeline_FormatsISODates(t *testing.T) {
 	entries := []timelineEntry{
-		{Date: "1860-07-17", SortKey: "1860-07-17", Label: "Census", Detail: "Oakdale"},
-		{Date: "ABT 1815", SortKey: "1815", Label: "Birth", Detail: "Virginia"},
+		{Date: "1860-07-17", SortKey: "01860-07-17", Label: "Census", Detail: "Oakdale"},
+		{Date: "ABT 1815", SortKey: "01815", Label: "Birth", Detail: "Virginia"},
 		{Date: "", SortKey: "\xff", Label: "Undated Event"},
 	}
 

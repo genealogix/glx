@@ -1,1 +1,75 @@
-../../../../specification/5-standard-vocabularies/relationship-properties.glx
+# Standard Relationship Properties
+# This file defines the standard properties for relationship entities.
+# Properties on relationships are generally less common than on persons, as most
+# relationship data is structural (type, participants, events).
+
+relationship_properties:
+  started_on:
+    label: "Start Date"
+    description: "When the relationship began"
+    value_type: date
+  
+  ended_on:
+    label: "End Date"
+    description: "When the relationship ended"
+    value_type: date
+  
+  location:
+    label: "Location"
+    description: "Location where the relationship occurred"
+    reference_type: places
+  
+  description:
+    label: "Relationship Description"
+    description: "Detailed description of the relationship"
+    value_type: string
+
+  number_of_children:
+    label: "Number of Children"
+    description: |
+      Known number of children of this couple, as recorded in the source.
+      May differ from the count of individually-linked parent-child
+      relationships when some children are not recorded as separate persons.
+      Imported from and exported to the GEDCOM FAM.NCHI tag.
+    value_type: integer
+    gedcom: "NCHI"
+
+  name_as_recorded:
+    label: "Name As Recorded"
+    description: |
+      Name of this participant exactly as written in the source document
+      backing the relationship. Captures source-specific renderings
+      (Latin-genitive forms in 18th-century parish registers, abbreviations,
+      transcription quirks) that should not be promoted to the Person entity.
+      Distinct from person_properties.name, which conveys a conclusion about
+      the person's name. Set on relationship.participants[].properties; the
+      as-recorded string is implicitly attested by the source citing the
+      relationship.
+    value_type: string
+    fields:
+      prefix:
+        label: "Prefix"
+        description: "Honorific prefix (Dr., Rev., Hon.)"
+      given:
+        label: "Given Name"
+        description: "Given/first name(s)"
+      surname_prefix:
+        label: "Surname Prefix"
+        description: "Article or prefix (von, van, de)"
+      surname:
+        label: "Surname"
+        description: "Family name"
+      suffix:
+        label: "Suffix"
+        description: "Generational suffix (Jr., Sr., III)"
+
+  legal_status:
+    label: "Legal Status"
+    description: |
+      Legal classification of the relationship. Primarily used on
+      enslavement relationships to distinguish chattel slavery, indentured
+      servitude, debt bondage, and apprenticeship-as-enslavement. Values
+      are validated against the legal_statuses vocabulary; archives may
+      extend that vocabulary with custom values.
+    vocabulary_type: legal_statuses
+

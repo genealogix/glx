@@ -262,7 +262,7 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 		conv.MediaFileSources = append(conv.MediaFileSources, MediaFileSource{
 			MediaID:        mediaID,
 			SourceType:     MediaSourceFile,
-			RelativePath:   fileRef,
+			RelativePath:   normalizedRef,
 			TargetFilename: targetName,
 		})
 		media.URI = MediaFilesDir + "/" + targetName
@@ -417,6 +417,10 @@ func classifyFileRef(fileRef string) bool {
 	}
 	// Absolute Windows path (e.g., C:\, D:/)
 	if len(fileRef) >= 2 && fileRef[1] == ':' {
+		return false
+	}
+	// UNC path (e.g., \\server\share\photo.jpg)
+	if strings.HasPrefix(fileRef, `\\`) {
 		return false
 	}
 

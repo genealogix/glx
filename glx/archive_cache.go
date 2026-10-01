@@ -23,6 +23,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -61,8 +62,27 @@ const (
 	// cacheFileName is the binary cache file inside cacheDirName.
 	cacheFileName = "cache.bin"
 	// cacheFormatVersion is bumped whenever the on-disk layout changes in a way
-	// that makes older caches unreadable. A mismatch triggers a rebuild.
-	cacheFormatVersion uint32 = 1
+	// that makes older caches unreadable, or whenever the loader's trust
+	// boundary changes so that a cache built by the old loader must not be
+	// trusted. A mismatch triggers a rebuild.
+	//
+	//   1: initial format.
+	//   2: archive reads are contained with os.Root (#1090). A v1 cache
+	//      could have been built from a symlink escaping the archive; its
+	//      stat-only fingerprint (path, size, mtime) would still match and
+	//      the GLXVersion gate is no help for locally built "dev" binaries,
+	//      so v1 caches are rebuilt. Duplicate warnings are also stored
+	//      terminal-sanitized from v2 on.
+	//   3: dot-prefixed directories and files are no longer archive content
+	//      (#1212). A v2 cache holds the entities the old loader read out of
+	//      dot-prefixed worktree copies, along with the duplicate-ID warnings
+	//      they produced, and computeFSFingerprint is unchanged for the files
+	//      both loaders agree on — so the fingerprint of a v2 cache still
+	//      matches and nothing else would force a rebuild. Locally built
+	//      binaries all report GLXVersion "dev", so that gate is no help
+	//      either. Without this bump a stale v2 cache is served as fresh and
+	//      replays exactly the duplicates this release removes.
+	cacheFormatVersion uint32 = 3
 )
 
 // cacheMagic is a fixed prefix written before the gob stream so a foreign or
@@ -185,39 +205,48 @@ func cachePath(root string) string { return filepath.Join(root, cacheDirName, ca
 // computeFSFingerprint walks every .glx entity file under root and returns a
 // SHA-256 hash of the sorted (relative-path, size, mtime) tuples. It performs
 // stat calls only — no file reads — so it stays cheap even on large archives.
-// The .glx (cache) and .git directories are skipped: neither holds entity
-// files, and skipping them keeps the fingerprint independent of cache writes.
+//
+// The walk skips exactly what the loader skips: dot-prefixed directories and
+// files (see isDotName), which covers the .glx cache directory and .git. The
+// two sets must match. When the fingerprint covered more than the loader did,
+// an edit inside a dot-prefixed worktree copy invalidated a cache whose contents
+// could not have changed, and an unreadable dot directory made the cache
+// permanently un-buildable while the loader succeeded.
+//
+// root is resolved with EvalSymlinks first. filepath.WalkDir lstats its root,
+// so a symlinked archive path would otherwise walk zero files and hash the
+// empty string — a fingerprint that matches forever, leaving the cache "fresh"
+// no matter how the archive changes.
 func computeFSFingerprint(root string) (string, error) {
-	type fileMeta struct {
-		rel  string
-		size int64
-		mod  int64
+	var metas []fsFileMeta
+
+	resolvedRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return "", fmt.Errorf("resolving archive root: %w", err)
 	}
-	var metas []fileMeta
+	root = resolvedRoot
 
 	walkErr := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if d.IsDir() {
-			if path != root && (d.Name() == cacheDirName || d.Name() == ".git") {
+			if path != root && isDotName(d.Name()) {
 				return filepath.SkipDir
 			}
 
 			return nil
 		}
-		if !isGLXFile(d.Name()) {
+		if isDotName(d.Name()) || !isGLXFile(d.Name()) {
 			return nil
-		}
-		info, err := d.Info()
-		if err != nil {
-			return err
 		}
 		rel, err := filepath.Rel(root, path)
 		if err != nil {
 			return err
 		}
-		metas = append(metas, fileMeta{rel: filepath.ToSlash(rel), size: info.Size(), mod: info.ModTime().UnixNano()})
+		if meta, ok := fingerprintEntry(root, path, filepath.ToSlash(rel), d); ok {
+			metas = append(metas, meta)
+		}
 
 		return nil
 	})
@@ -244,16 +273,47 @@ func computeFSFingerprint(root string) (string, error) {
 }
 
 // gitOpTimeout bounds each go-git lookup so a pathological or very large
-// enclosing repository can never stall a glx command. go-git exposes no
-// context-aware API in v5, so the work runs in a goroutine and the caller
-// abandons it after the deadline, treating the result as "git unavailable" —
-// the safe direction, since the git data is only informational and staleness is
-// decided by the filesystem fingerprint. The abandoned goroutine finishes on
-// its own and sends to a buffered (capacity-1) channel, so it never blocks or
-// leaks, and the result is passed through the channel rather than a shared
-// variable, so there is no data race with a late-finishing goroutine. It is a
-// var (not a const) only so tests can shrink it to exercise the timeout path.
+// enclosing repository can never stall a glx command. Exceeding it is treated
+// as "git unavailable" — the safe direction, since the git data is only
+// informational and staleness is decided by the filesystem fingerprint. It is a
+// var (not a const) only so tests can shrink it to exercise the timeout path;
+// see boundedGitOp for how that deadline is applied.
 var gitOpTimeout = 5 * time.Second
+
+// boundedGitOp runs op and returns its result, or the zero value and false when
+// op has not finished within gitOpTimeout. go-git exposes no context-aware API
+// in v5, so the work cannot be canceled: op runs in a goroutine and the caller
+// abandons it after the deadline. The abandoned goroutine finishes on its own
+// and sends to a buffered (capacity-1) channel, so it never blocks or leaks,
+// and the result travels through that channel rather than a shared variable, so
+// there is no data race with a late-finishing goroutine.
+//
+// A non-positive gitOpTimeout means the deadline has already passed, so op is
+// abandoned before it starts. No production call site configures one; tests use
+// it to reach the give-up path deterministically. Racing a very small timeout
+// against real I/O does not work for that: whether the timer or the lookup wins
+// depends on the platform's timer granularity, and on Windows — where the
+// runtime timer is far coarser than on Linux — the lookup regularly won and the
+// test failed (#1272).
+//
+//nolint:ireturn // T is a type parameter, not an interface: each caller gets its own concrete type
+func boundedGitOp[T any](op func() T) (T, bool) {
+	var zero T
+
+	if gitOpTimeout <= 0 {
+		return zero, false
+	}
+
+	ch := make(chan T, 1)
+	go func() { ch <- op() }()
+
+	select {
+	case v := <-ch:
+		return v, true
+	case <-time.After(gitOpTimeout):
+		return zero, false
+	}
+}
 
 // openArchiveRepo opens the git repository that contains root using the pure-Go
 // go-git library (no `git` binary on PATH required). DetectDotGit walks parent
@@ -278,29 +338,23 @@ func openArchiveRepo(root string) (*git.Repository, bool) {
 // the lookup exceeds gitOpTimeout. The result is recorded in the cache header
 // for `glx cache status`; it does not affect staleness detection.
 func gitHeadSHA(root string) string {
-	ch := make(chan string, 1)
-	go func() {
-		repo, ok := openArchiveRepo(root)
-		if !ok {
-			ch <- ""
-
-			return
+	sha, ok := boundedGitOp(func() string {
+		repo, repoOK := openArchiveRepo(root)
+		if !repoOK {
+			return ""
 		}
 		head, err := repo.Head()
 		if err != nil {
-			ch <- ""
-
-			return
+			return ""
 		}
-		ch <- head.Hash().String()
-	}()
 
-	select {
-	case sha := <-ch:
-		return sha
-	case <-time.After(gitOpTimeout):
+		return head.Hash().String()
+	})
+	if !ok {
 		return ""
 	}
+
+	return sha
 }
 
 // gitWorkingTreeClean reports whether the work tree has no changes, for the
@@ -315,37 +369,31 @@ func gitHeadSHA(root string) string {
 // why this result is never trusted for freshness: cacheIsFresh relies solely on
 // the filesystem fingerprint.
 func gitWorkingTreeClean(root string) (clean, ok bool) {
-	type result struct{ clean, ok bool }
+	// gitStatus carries both return values back through boundedGitOp's single
+	// result channel.
+	type gitStatus struct{ clean, ok bool }
 
-	ch := make(chan result, 1)
-	go func() {
+	status, done := boundedGitOp(func() gitStatus {
 		repo, repoOK := openArchiveRepo(root)
 		if !repoOK {
-			ch <- result{}
-
-			return
+			return gitStatus{}
 		}
 		wt, err := repo.Worktree()
 		if err != nil {
-			ch <- result{}
-
-			return
+			return gitStatus{}
 		}
-		status, err := wt.Status()
+		st, err := wt.Status()
 		if err != nil {
-			ch <- result{}
-
-			return
+			return gitStatus{}
 		}
-		ch <- result{status.IsClean(), true}
-	}()
 
-	select {
-	case r := <-ch:
-		return r.clean, r.ok
-	case <-time.After(gitOpTimeout):
+		return gitStatus{clean: st.IsClean(), ok: true}
+	})
+	if !done {
 		return false, false
 	}
+
+	return status.clean, status.ok
 }
 
 // writeCache builds the cache header and gob-encodes the header plus archive to
@@ -477,7 +525,7 @@ func loadCache(root string) (*glxlib.GLXFile, *CacheHeader, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	defer f.Close() //nolint:errcheck // read-only handle
+	defer f.Close()
 
 	var archive glxlib.GLXFile
 	if err := dec.Decode(&archive); err != nil {
@@ -519,7 +567,7 @@ func tryLoadFreshCache(root string) (*glxlib.GLXFile, []string, bool) {
 	if err != nil {
 		return nil, nil, false
 	}
-	defer f.Close() //nolint:errcheck // read-only handle
+	defer f.Close()
 
 	if !cacheIsFresh(root, header) {
 		return nil, nil, false
@@ -572,4 +620,73 @@ func LoadArchiveCached(path string) (*glxlib.GLXFile, []string, error) {
 	}
 
 	return archive, duplicates, nil
+}
+
+// fsFileMeta is one fingerprinted file: its key (the archive-relative path,
+// plus the link text for a symlink) and the size and mtime the loader would
+// see. A dangling symlink is recorded with size -1.
+type fsFileMeta struct {
+	rel  string
+	size int64
+	mod  int64
+}
+
+// fingerprintEntry decides whether the .glx entry at path (key is its
+// slash-separated path relative to root) belongs in the fingerprint and, if
+// so, returns its metadata. It applies the loader's exclusions so the
+// fingerprint covers exactly what the loader reads: a symlink whose target
+// lies under a dot-prefixed directory, and on Windows a Git placeholder whose
+// text does, are left out. For a symlink the link text becomes part of the
+// key, so retargeting a link to a file with identical size and mtime, or a
+// target appearing or disappearing, changes the fingerprint.
+func fingerprintEntry(root, path, key string, d fs.DirEntry) (fsFileMeta, bool) {
+	if d.Type()&fs.ModeSymlink != 0 {
+		if symlinkTargetIsExcluded(root, key) {
+			return fsFileMeta{}, false
+		}
+		if target, err := os.Readlink(path); err == nil {
+			key += " -> " + filepath.ToSlash(target)
+		}
+	} else if placeholderExcluded(path, key, d) {
+		return fsFileMeta{}, false
+	}
+	// Stat the path rather than using d.Info(): for a symlinked .glx file
+	// d.Info() describes the link itself, whose size and mtime do not change
+	// when the target is edited, while the loader reads the target. A dangling
+	// link is fingerprinted as such (size -1) rather than failing the walk; the
+	// loader reports the file on its own.
+	info, err := os.Stat(path)
+	if err != nil {
+		return fsFileMeta{rel: key, size: -1, mod: 0}, true
+	}
+
+	return fsFileMeta{rel: key, size: info.Size(), mod: info.ModTime().UnixNano()}, true
+}
+
+// placeholderExcluded reports whether, on Windows, the regular file at path is
+// a Git symlink placeholder whose text points under a dot-prefixed directory —
+// an entry the loader skips (resolveSymlinkPlaceholder) and the fingerprint
+// must skip too. Placeholders are tiny, so only files that small are read; the
+// walk stays stat-only for real content and on other platforms.
+func placeholderExcluded(path, key string, d fs.DirEntry) bool {
+	return placeholderExcludedOn(runtime.GOOS, path, key, d)
+}
+
+// placeholderExcludedOn is placeholderExcluded with the platform made explicit
+// so the Windows branch can be exercised by tests on any host.
+func placeholderExcludedOn(goos, path, key string, d fs.DirEntry) bool {
+	if goos != goosWindows || !d.Type().IsRegular() {
+		return false
+	}
+	info, err := d.Info()
+	if err != nil || info.Size() > maxSymlinkPlaceholderLength {
+		return false
+	}
+	data, err := os.ReadFile(path) // #nosec G304 -- path enumerated by the archive walk
+	if err != nil {
+		return false
+	}
+	target, ok := placeholderTarget(key, data)
+
+	return ok && pathHasDotComponent(target)
 }

@@ -152,7 +152,7 @@ glx-archive-westeros/
 
 ## Using with the CLI
 
-See the [Hands-On CLI Guide](/guides/hands-on-cli-guide) for a walkthrough of every `glx` command using this archive.
+See the [Hands-On CLI Guide](../../guides/hands-on-cli-guide.md) for a walkthrough of every `glx` command using this archive.
 
 ```bash
 # Clone and explore
@@ -173,7 +173,7 @@ glx descendants person-eddard-stark
 
 ## See Also
 
-- [Hands-On CLI Guide](/guides/hands-on-cli-guide) — Step-by-step walkthrough using this archive
-- [Complete Family](/examples/complete-family/) — Smaller example showing all entity types
-- [Temporal Properties](/examples/temporal-properties/) — Detailed patterns for time-changing values
-- [CLI Reference](/cli) — Full command documentation
+- [Hands-On CLI Guide](../../guides/hands-on-cli-guide.md) — Step-by-step walkthrough using this archive
+- [Complete Family](../complete-family/README.md) — Smaller example showing all entity types
+- [Temporal Properties](../temporal-properties/README.md) — Detailed patterns for time-changing values
+- [CLI Reference](../../cli/index.md) — Full command documentation

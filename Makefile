@@ -88,10 +88,10 @@ lint-codeowners: ## Verify every file is matched by a .github/CODEOWNERS rule
 	fi; \
 	echo "CODEOWNERS coverage OK"
 
-fix: ## Run Go 1.26 modernizers on codebase
+fix: ## Run Go 1.27 modernizers on codebase
 	go fix ./...
 
-fix-diff: ## Preview Go 1.26 modernizer changes without applying
+fix-diff: ## Preview Go 1.27 modernizer changes without applying
 	go fix -diff ./...
 
 ## Testing
@@ -176,6 +176,10 @@ test-scripts: ## Unit-test the Node drift-check scripts (spec-schema parser + sc
 ## Example Validation
 validate-examples: build-cli ## Validate all example archives
 	@for dir in docs/examples/*/; do \
+	  if [ -z "$$(find "$$dir" -name '*.glx' -print -quit)" ]; then \
+	    echo "Skipping $$dir: no .glx files (hosted elsewhere?)"; \
+	    continue; \
+	  fi; \
 	  echo "Validating $$dir..."; \
 	  ./bin/glx validate "$$dir" || exit 1; \
 	done
@@ -185,8 +189,14 @@ docs-cli: build-cli ## Regenerate per-command CLI reference under docs/cli/
 	@./bin/glx docs --output ./docs/cli/
 
 ## Release
-release-snapshot: ## Build cross-platform binaries locally (no publish)
-	goreleaser release --snapshot --clean
+# --skip=sign is required, not an optimization: --snapshot implies only
+# --skip=announce,publish,validate, so the `signs:` stanza in .goreleaser.yml
+# would still run here and either fail with "cosign: executable file not found"
+# or block on an interactive keyless OIDC prompt. Release signing is exercised
+# by .github/workflows/release.yml on a real tag push, not by this target.
+# Needs the goreleaser and syft CLIs on PATH (see CONTRIBUTING.md).
+release-snapshot: ## Build cross-platform binaries locally (no publish or signing)
+	goreleaser release --snapshot --clean --skip=sign
 
 ## Changelog
 # changie version pin — bump alongside any .changie.yaml format changes.

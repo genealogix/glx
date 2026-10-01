@@ -18,6 +18,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -31,7 +32,50 @@ func TestRunValidate_SingleValidFile(t *testing.T) {
 	err := validatePaths(streams, []string{"persons/person-robert-thompson.glx"})
 	require.NoError(t, err, "should successfully validate a valid GLX file")
 	require.Contains(t, out.String(), "Cross-reference validation skipped")
-	require.Contains(t, out.String(), "passed structural and semantic validation")
+	// The success line names what was left out: the cross-reference and
+	// place-hierarchy checks are filtered out of this path, so claiming
+	// "structural and semantic validation" overstated it (#1270).
+	require.Contains(t, out.String(), "passed the checks that apply without the rest of the archive")
+}
+
+func TestValidateSingleFilePaths_FileAndDirectory(t *testing.T) {
+	dir := t.TempDir()
+	good := "persons:\n  person-a:\n    properties:\n      name: A\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "a.glx"), []byte(good), 0o644))
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "sub"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "sub", "b.glx"), []byte(good), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "sub", "bad.glx"), []byte("persons: [\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "sub", "notes.txt"), []byte("ignored"), 0o644))
+
+	count, errs := validateSingleFilePaths([]string{filepath.Join(dir, "a.glx")})
+	require.Equal(t, 1, count)
+	require.Empty(t, errs)
+
+	count, errs = validateSingleFilePaths([]string{filepath.Join(dir, "sub")})
+	require.Equal(t, 2, count)
+	require.Len(t, errs, 1)
+	require.Contains(t, errs[0], "Error parsing YAML in "+filepath.Join(dir, "sub", "bad.glx"))
+
+	count, errs = validateSingleFilePaths([]string{filepath.Join(dir, "missing.glx")})
+	require.Equal(t, 0, count)
+	require.Empty(t, errs)
+}
+
+func TestValidateSingleFilePaths_DirectorySymlinkEscape(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation is privilege-gated on Windows")
+	}
+	outside := t.TempDir()
+	secret := filepath.Join(outside, "secret.glx")
+	require.NoError(t, os.WriteFile(secret, []byte("persons: {}\n"), 0o644))
+
+	dir := t.TempDir()
+	require.NoError(t, os.Symlink(secret, filepath.Join(dir, "link.glx")))
+
+	count, errs := validateSingleFilePaths([]string{dir})
+	require.Equal(t, 1, count)
+	require.Len(t, errs, 1, "a symlink escaping the validated directory must be reported, not read")
+	require.Contains(t, errs[0], "Error reading "+filepath.Join(dir, "link.glx"))
 }
 
 func TestRunValidate_ValidDirectory(t *testing.T) {
@@ -52,7 +96,9 @@ func TestRunValidate_MultiplePaths(t *testing.T) {
 	t.Chdir("../docs/examples/basic-family")
 	streams, _, _ := TestIOStreams()
 
-	err := validatePaths(streams, []string{"persons", "relationships"})
+	// Every entity directory is named; vocabularies/ under the shared root is
+	// included automatically, so the selection is a complete archive.
+	err := validatePaths(streams, []string{"persons", "relationships", "events", "places", "sources", "citations", "repositories", "assertions"})
 	require.NoError(t, err, "should successfully validate multiple valid paths")
 }
 
@@ -210,11 +256,13 @@ func TestRunValidate_NonExistentPath(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Chdir(tmpDir)
 
-	streams, out, _ := TestIOStreams()
+	// A typo'd path used to report "0 files validated" and exit 0, a false
+	// green for any CI step that misnamed its archive.
+	streams, _, errOut := TestIOStreams()
 	err := validatePaths(streams, []string{"does-not-exist"})
-	require.NoError(t, err, "non-existent path results in 0 files validated")
-	require.Contains(t, out.String(), "0 files validated",
-		"should report that no files were validated for a non-existent path")
+	require.ErrorIs(t, err, ErrNothingToValidate)
+	require.Contains(t, errOut.String(), "cannot access path")
+	require.Contains(t, errOut.String(), "does-not-exist")
 }
 
 func TestRunValidate_MixedValidAndInvalidFiles(t *testing.T) {
@@ -243,11 +291,11 @@ func TestRunValidate_MixedValidAndInvalidFiles(t *testing.T) {
 
 func TestRunValidate_EmptyDirectory(t *testing.T) {
 	tmpDir := t.TempDir()
-	streams, out, _ := TestIOStreams()
+	streams, _, errOut := TestIOStreams()
 
 	err := validatePaths(streams, []string{tmpDir})
-	require.NoError(t, err, "empty directory should validate successfully")
-	require.Contains(t, out.String(), "Validated 0 file", "should report that no GLX files were validated")
+	require.ErrorIs(t, err, ErrNothingToValidate, "an empty directory has nothing to pass")
+	require.Contains(t, errOut.String(), "No GLX files found")
 }
 
 func TestRunValidate_OnlyNonGLXFiles(t *testing.T) {
@@ -257,10 +305,22 @@ func TestRunValidate_OnlyNonGLXFiles(t *testing.T) {
 	err := os.WriteFile(txtFile, []byte("This is not a GLX file"), 0o644)
 	require.NoError(t, err)
 
-	streams, out, _ := TestIOStreams()
+	streams, _, errOut := TestIOStreams()
 	err = validatePaths(streams, []string{tmpDir})
-	require.NoError(t, err, "directory with no GLX files should validate successfully")
-	require.Contains(t, out.String(), "Validated 0 file", "should report that no GLX files were validated")
+	require.ErrorIs(t, err, ErrNothingToValidate, "a directory with no GLX files has nothing to pass")
+	require.Contains(t, errOut.String(), "No GLX files found")
+}
+
+// A single non-.glx file (notes.txt, a misnamed export) is nothing to
+// validate, not a pass.
+func TestRunValidate_SingleNonGLXFileFails(t *testing.T) {
+	txtFile := filepath.Join(t.TempDir(), "notes.txt")
+	require.NoError(t, os.WriteFile(txtFile, []byte("not a GLX file"), 0o644))
+
+	streams, _, errOut := TestIOStreams()
+	err := validatePaths(streams, []string{txtFile})
+	require.ErrorIs(t, err, ErrNothingToValidate)
+	require.Contains(t, errOut.String(), "No GLX files found")
 }
 
 func TestRunValidate_NestedDirectories(t *testing.T) {
@@ -349,7 +409,9 @@ func TestRunValidate_MediaExternalURLSkipped(t *testing.T) {
 	require.NoError(t, err, "external URL should not trigger file existence check")
 }
 
-func TestRunValidate_YAMLAndYMLExtensions(t *testing.T) {
+// Archive files are .glx; .yaml and .yml are not read. This used to "pass"
+// by validating zero files, which hid that the files were ignored.
+func TestRunValidate_YAMLAndYMLExtensionsAreNotArchiveFiles(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	yamlFile := filepath.Join(tmpDir, "test.yaml")
@@ -370,7 +432,7 @@ func TestRunValidate_YAMLAndYMLExtensions(t *testing.T) {
 
 	streams, _, _ := TestIOStreams()
 	err = validatePaths(streams, []string{tmpDir})
-	require.NoError(t, err, "should successfully validate .yaml and .yml files")
+	require.ErrorIs(t, err, ErrNothingToValidate, ".yaml and .yml files are not validated")
 }
 
 func TestRunValidate_RespectsQuietFlag(t *testing.T) {
