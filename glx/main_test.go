@@ -29,7 +29,7 @@ import (
 func TestRunInit_SingleFile(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	err := runInit(tmpDir, true, 0)
+	err := runInit(tmpDir, initOptions{singleFile: true})
 	require.NoError(t, err)
 
 	// Check that archive.glx was created
@@ -57,7 +57,7 @@ func TestRunInit_SingleFile(t *testing.T) {
 func TestRunInit_MultiFile(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	err := runInit(tmpDir, false, 0)
+	err := runInit(tmpDir, initOptions{})
 	require.NoError(t, err)
 
 	// Check that directories were created — every entity-type directory plus
@@ -103,6 +103,25 @@ func TestRunInit_MultiFile(t *testing.T) {
 	require.NoError(t, err, "README.md should be created")
 }
 
+// runInitCmd is the cobra layer: with no directory argument it initializes the
+// process's current directory, which no runner-level test can observe.
+func TestRunInitCmd_NoArgumentUsesCurrentDirectory(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Chdir(tmpDir)
+
+	// The command's flags are package-level state shared with every other
+	// test in this package.
+	initSingleFile, createTestData, initNoGit = false, 0, true
+	t.Cleanup(func() { initSingleFile, createTestData, initNoGit = false, 0, false })
+
+	require.NoError(t, runInitCmd(nil, nil))
+
+	for _, name := range []string{"persons", "vocabularies", ".gitignore", "README.md"} {
+		_, err := os.Stat(filepath.Join(tmpDir, name))
+		require.NoError(t, err, "%s should be created in the current directory", name)
+	}
+}
+
 func TestRunInit_NonEmptyDirectory(t *testing.T) {
 	tmpDir := t.TempDir()
 
@@ -112,7 +131,7 @@ func TestRunInit_NonEmptyDirectory(t *testing.T) {
 	require.NoError(t, err)
 
 	// Now, try to initialize in the non-empty directory
-	err = runInit(tmpDir, false, 0)
+	err = runInit(tmpDir, initOptions{})
 	require.Error(t, err, "should fail when run in a non-empty directory")
 	if err != nil {
 		assert.Contains(t, err.Error(), "non-empty directory")
@@ -123,7 +142,7 @@ func TestRunInit_WithTestData(t *testing.T) {
 	tmpDir := t.TempDir()
 	numPeople := 5
 
-	err := runInit(tmpDir, false, numPeople)
+	err := runInit(tmpDir, initOptions{numTestData: numPeople})
 	require.NoError(t, err)
 
 	// Check that the person files were created

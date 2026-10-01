@@ -65,6 +65,15 @@ Use GLX to initialize new archives, validate files, and ensure data quality.`,
 	},
 }
 
+// showHelp is the RunE of a parent command that only groups subcommands (add,
+// cache, census). Paired with Args: cobra.NoArgs it makes an unknown
+// subcommand an error: Cobra treats a command without a Run as help-only and
+// returns before validating arguments, so `glx add bogus` used to print help
+// and exit 0, letting a typo in a script pass silently.
+func showHelp(cmd *cobra.Command, _ []string) error {
+	return cmd.Help()
+}
+
 // silentExitError is returned from a Cobra RunE to terminate the process with
 // a specific exit code without printing an error message. The git merge-driver
 // protocol uses the exit code itself to signal "conflicts remain"; an extra
@@ -89,8 +98,7 @@ func (e *silentExitError) Error() string {
 // every runner's returned error funnels through.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		var silent *silentExitError
-		if errors.As(err, &silent) {
+		if silent, ok := errors.AsType[*silentExitError](err); ok {
 			os.Exit(silent.code)
 		}
 		fmt.Fprintln(os.Stderr, sanitizeForTerminal(err.Error()))
@@ -368,6 +376,7 @@ func runExport(_ *cobra.Command, args []string) error {
 var (
 	initSingleFile bool
 	createTestData int
+	initNoGit      bool
 )
 
 var initCmd = &cobra.Command{
@@ -382,7 +391,12 @@ By default, creates a multi-file archive with separate directories for each
 entity type (persons/, events/, places/, etc.) along with standard vocabulary
 files and supporting documentation.
 
-Use --single-file to create a single archive.glx file instead.`,
+Use --single-file to create a single archive.glx file instead.
+
+The new archive directory is made a Git repository (no files staged, no commit
+made) so the generated .gitignore takes effect and the archive is ready for
+version control. An archive created inside an existing repository is left to
+that repository. Use --no-git to skip this entirely.`,
 	Example: `  # Initialize in a new directory
   glx init my-family-archive
 
@@ -390,7 +404,10 @@ Use --single-file to create a single archive.glx file instead.`,
   glx init my-family-archive --single-file
 
   # Initialize with test data in a new directory
-  glx init my-family-archive --create-test-data 10`,
+  glx init my-family-archive --create-test-data 10
+
+  # Initialize without making the directory a Git repository
+  glx init my-family-archive --no-git`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runInitCmd,
 }
@@ -398,6 +415,7 @@ Use --single-file to create a single archive.glx file instead.`,
 func init() {
 	initCmd.Flags().BoolVarP(&initSingleFile, "single-file", "s", false, "create a single-file archive instead of multi-file")
 	initCmd.Flags().IntVarP(&createTestData, "create-test-data", "t", 0, "number of persons to generate test data for")
+	initCmd.Flags().BoolVar(&initNoGit, "no-git", false, "skip initializing a Git repository in the archive directory")
 }
 
 func runInitCmd(_ *cobra.Command, args []string) error {
@@ -408,7 +426,11 @@ func runInitCmd(_ *cobra.Command, args []string) error {
 		targetDir = "."
 	}
 
-	return runInit(targetDir, initSingleFile, createTestData)
+	return runInit(targetDir, initOptions{
+		singleFile:  initSingleFile,
+		numTestData: createTestData,
+		noGit:       initNoGit,
+	})
 }
 
 // ============================================================================
@@ -432,12 +454,19 @@ Performs comprehensive validation including:
 - YAML syntax correctness
 - Required fields presence
 - Entity ID format validation
-- Cross-reference integrity (directories only)
+- Cross-reference integrity (directories and single-file archives)
 - Duplicate ID detection (directories only)
 - Vocabulary validation (if vocabularies/ exists)
 
 Validation behavior:
-- Single file: Validates file structure only, skips cross-reference checks
+- Single file holding a whole archive: full validation, cross-references
+  included. A file counts as a whole archive when it carries its own
+  vocabularies alongside its entities (what glx join writes) or declares every
+  entity collection (what glx init --single-file scaffolds)
+- Single file holding a fragment of a multi-file archive: structure and the
+  semantic checks that stand on their own; cross-reference and place-hierarchy
+  checks are skipped, because the entities those references name live in the
+  fragment's siblings, which are not being validated
 - Directory: Validates all .glx files with full cross-reference validation
 - No arguments: Validates current directory with full cross-reference validation
 - Several paths (directories, .glx files, or a mix): Loaded together as one
@@ -467,8 +496,11 @@ and highlighting unsupported claims. The archive is validated first, so
   # Validate multiple paths (with cross-reference checks)
   glx validate persons/ events/ places/
 
-  # Validate single file (structure only, no cross-reference checks)
+  # Validate a single-file archive (with cross-reference checks)
   glx validate archive.glx
+
+  # Validate one file of a multi-file archive (structure only)
+  glx validate events/event-births.glx
 
   # Generate confidence summary report
   glx validate --report
@@ -1255,6 +1287,8 @@ var censusCmd = &cobra.Command{
 
 Subcommands:
   add    Import a census template into the archive`,
+	Args: cobra.NoArgs,
+	RunE: showHelp,
 }
 
 var (
@@ -1289,6 +1323,7 @@ Use --dry-run to preview what would be generated without writing files.`,
 
   # Verbose output
   glx census add --from 1860-census-lane.yaml --archive my-archive --verbose`,
+	Args: cobra.NoArgs,
 	RunE: runCensusAdd,
 }
 
@@ -1505,6 +1540,12 @@ Record categories:
     on the schedules of the countries their places name
   - Vital: Birth, death, and marriage records
   - Other: Probate, land, military, and church records
+
+A record counts as found only when evidence backs it: a source about the person,
+or an event that is the subject of an assertion citing a source. An event on its
+own is a conclusion, not a record, so it is reported without counting toward the
+score -- an estimated birth date reckoned back from a death entry does not mean a
+birth record exists.
 
 Missing high-priority records are flagged to guide research efforts.
 
@@ -2127,6 +2168,8 @@ shown by 'glx cache status', but do not affect staleness. Only multi-file
 
   # Run a command with auto-build on cache miss
   GLX_CACHE=auto glx summary "Jane Webb"`,
+	Args: cobra.NoArgs,
+	RunE: showHelp,
 }
 
 var cacheBuildCmd = &cobra.Command{

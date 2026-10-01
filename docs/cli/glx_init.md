@@ -20,6 +20,11 @@ files and supporting documentation.
 
 Use --single-file to create a single archive.glx file instead.
 
+The new archive directory is made a Git repository (no files staged, no commit
+made) so the generated .gitignore takes effect and the archive is ready for
+version control. An archive created inside an existing repository is left to
+that repository. Use --no-git to skip this entirely.
+
 ```
 glx init [directory] [flags]
 ```
@@ -35,6 +40,9 @@ glx init [directory] [flags]
 
   # Initialize with test data in a new directory
   glx init my-family-archive --create-test-data 10
+
+  # Initialize without making the directory a Git repository
+  glx init my-family-archive --no-git
 ```
 
 ### Options
@@ -42,6 +50,7 @@ glx init [directory] [flags]
 ```
   -t, --create-test-data int   number of persons to generate test data for
   -h, --help                   help for init
+      --no-git                 skip initializing a Git repository in the archive directory
   -s, --single-file            create a single-file archive instead of multi-file
 ```
 
