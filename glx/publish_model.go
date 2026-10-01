@@ -365,11 +365,11 @@ func buildPersonPage(id string, person *glxlib.Person, archive *glxlib.GLXFile, 
 	birth, death := vitalEvents(id, archive)
 	if birth != nil {
 		page.BirthDate = displayDateOrBlank(string(birth.Date))
-		page.BirthPlace = placeFullName(birth.PlaceID, archive)
+		page.BirthPlace = placeFullNameAt(birth.PlaceID, birth.Date, archive)
 	}
 	if death != nil {
 		page.DeathDate = displayDateOrBlank(string(death.Date))
-		page.DeathPlace = placeFullName(death.PlaceID, archive)
+		page.DeathPlace = placeFullNameAt(death.PlaceID, death.Date, archive)
 	}
 	page.LifeSpan = lifeSpan(birth, death)
 
@@ -695,8 +695,16 @@ func eventYear(date string) string {
 
 // placeFullName builds a hierarchical place name by walking parent places,
 // e.g. "Boston, Massachusetts, United States". Falls back to the place ID when
-// the place has no name, and guards against cyclic parent references.
+// the place has no name, and guards against cyclic parent references. It
+// follows each place's default parent.
 func placeFullName(placeID string, archive *glxlib.GLXFile) string {
+	return placeFullNameAt(placeID, "", archive)
+}
+
+// placeFullNameAt is placeFullName for the hierarchy as it stood at date (an
+// event's date), following at each level the parent that applied then
+// (#225).
+func placeFullNameAt(placeID string, date glxlib.DateString, archive *glxlib.GLXFile) string {
 	if placeID == "" {
 		return ""
 	}
@@ -716,7 +724,7 @@ func placeFullName(placeID string, archive *glxlib.GLXFile) string {
 			name = current
 		}
 		parts = append(parts, name)
-		current = place.ParentID
+		current = place.ParentAt(date)
 	}
 
 	return strings.Join(parts, ", ")

@@ -283,10 +283,7 @@ func updateAllRefs(glx *GLXFile, oldID, newID string) int {
 		if place == nil {
 			continue
 		}
-		if place.ParentID == oldID {
-			place.ParentID = newID
-			count++
-		}
+		count += place.ReplaceParentRef(oldID, newID)
 		count += replaceInProperties(place.Properties, oldID, newID)
 	}
 

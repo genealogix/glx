@@ -195,14 +195,28 @@ type Event struct {
 }
 
 // Place represents a geographical location.
+//
+// The `parent` field is written either as a plain place ID or, when the
+// place's jurisdiction changed over time, as a dated list of
+// {value, date} entries (#225). ParentID always holds the default parent, so
+// date-unaware code can keep reading it; ParentHistory holds the dated list
+// when there is one. See place_parent.go for the resolution rules and the
+// date-aware helpers (ParentAt, ParentIDs).
 type Place struct {
-	Name       string         `yaml:"name"`
-	ParentID   string         `refType:"places"            yaml:"parent,omitempty"`
-	Type       string         `refType:"place_types"       yaml:"type,omitempty"`
-	Latitude   *float64       `yaml:"latitude,omitempty"`
-	Longitude  *float64       `yaml:"longitude,omitempty"`
-	Properties map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (jurisdiction, place_format, etc.)
-	Notes      NoteList       `yaml:"notes,omitempty"`
+	Name string `yaml:"name"`
+	// ParentID is the default parent place. For the plain string form it is
+	// the parent as written. When ParentHistory is non-empty it is derived from
+	// it on load (see DefaultParentOf) and ignored on write: ParentHistory is
+	// then authoritative, so change it through SetParentHistory.
+	ParentID string `refType:"places" yaml:"parent,omitempty"`
+	// ParentHistory is the temporal form of `parent`, in file order. Empty for
+	// a place written with the plain string form.
+	ParentHistory []PlaceParentPeriod `yaml:"-"`
+	Type          string              `refType:"place_types"       yaml:"type,omitempty"`
+	Latitude      *float64            `yaml:"latitude,omitempty"`
+	Longitude     *float64            `yaml:"longitude,omitempty"`
+	Properties    map[string]any      `yaml:"properties,omitempty"` // Vocabulary-defined properties (jurisdiction, place_format, etc.)
+	Notes         NoteList            `yaml:"notes,omitempty"`
 }
 
 // Source represents a source of information.

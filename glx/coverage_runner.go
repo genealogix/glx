@@ -170,7 +170,7 @@ func buildCoverage(personID string, person *glxlib.Person, archive *glxlib.GLXFi
 	var records []coverageRecord
 
 	// National census records, for the countries the person's places name
-	schedules := censusSchedulesForPlaces(coveragePlaceRefs(personEvents), archive)
+	schedules := censusSchedulesForDatedPlaces(coveragePlaceRefs(personEvents), archive)
 	records = append(records, buildCensusRecords(birthYear, deathYear, schedules, personSources, personEvents)...)
 
 	// State census records
@@ -213,8 +213,9 @@ type personSourceInfo struct {
 	Ref       string // source or citation ID
 	Type      string // source type
 	Title     string
-	EventType string // if found via an event
-	PlaceID   string // place reference (events only)
+	EventType string            // if found via an event
+	PlaceID   string            // place reference (events only)
+	Date      glxlib.DateString // event date (events only); resolves temporal place parents
 	Year      int
 	Evidenced bool // events only: an assertion about this event cites a source
 }
@@ -289,6 +290,7 @@ func collectPersonEvents(personID string, archive *glxlib.GLXFile, evidenced map
 					Year:      glxlib.ExtractFirstYear(string(event.Date)),
 					Title:     event.Title,
 					PlaceID:   event.PlaceID,
+					Date:      event.Date,
 					Evidenced: evidenced[eventID],
 				})
 
@@ -302,11 +304,11 @@ func collectPersonEvents(personID string, archive *glxlib.GLXFile, evidenced map
 
 // coveragePlaceRefs returns the place references of a person's events, for
 // resolving which countries' census schedules apply to them.
-func coveragePlaceRefs(events []personSourceInfo) []string {
-	var refs []string
+func coveragePlaceRefs(events []personSourceInfo) []datedPlaceRef {
+	var refs []datedPlaceRef
 	for _, e := range events {
 		if e.PlaceID != "" {
-			refs = append(refs, e.PlaceID)
+			refs = append(refs, datedPlaceRef{placeID: e.PlaceID, date: e.Date})
 		}
 	}
 

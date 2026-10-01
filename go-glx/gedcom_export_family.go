@@ -454,7 +454,7 @@ func exportFamilyEvent(eventID, gedcomTag string, expCtx *ExportContext) *GEDCOM
 	}
 
 	// PLAC
-	placRecords := exportPlaceSubrecords(event.PlaceID, expCtx)
+	placRecords := exportPlaceSubrecords(event.PlaceID, event.Date, expCtx)
 	if placRecords != nil {
 		record.SubRecords = append(record.SubRecords, placRecords...)
 	}
