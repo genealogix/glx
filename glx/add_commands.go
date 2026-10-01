@@ -15,6 +15,8 @@
 package main
 
 import (
+	"os"
+
 	"github.com/spf13/cobra"
 )
 
@@ -35,12 +37,27 @@ Subcommands:
   add assertion      Create an assertion
 
 Every subcommand validates supplied values against the archive's vocabularies
-and entity references before writing. The created entity ID is echoed on its
-own line as the final stdout output so it can be captured with shell
-substitution:
+and entity references before writing. The created entity ID is the only
+thing written to stdout (progress goes to stderr), so it can be captured with
+shell substitution:
 
     person_id=$(glx add person --given Johann --surname Jungk --archive .)
     glx add event --type christening --principal "$person_id" --archive .`,
+	Args: cobra.NoArgs,
+	RunE: showHelp,
+}
+
+// addStreams returns the streams every add subcommand writes through. The
+// created ID goes to stdout (MachineOut) and nothing else does: progress
+// lines go to stderr, so `id=$(glx add …)` captures exactly the ID with or
+// without --quiet. --quiet still silences the progress lines.
+func addStreams() *IOStreams {
+	streams := SystemIOStreams()
+	if !quietOutput {
+		streams.Out = os.Stderr
+	}
+
+	return streams
 }
 
 // addCommonFlags wires the shared flags (archive path, --id, --force, etc.)
@@ -86,11 +103,12 @@ them.`,
 
   # Override the ID explicitly
   glx add person --id person-jungk-johann-peter --given Johann --surname Jungk --archive ./archive`,
+	Args: cobra.NoArgs,
 	RunE: runAddPerson,
 }
 
 func runAddPerson(_ *cobra.Command, _ []string) error {
-	return addPerson(SystemIOStreams(), &addPersonOpts)
+	return addPerson(addStreams(), &addPersonOpts)
 }
 
 // =============================================================================
@@ -118,6 +136,7 @@ var addPlaceCmd = &cobra.Command{
 
   # With coordinates
   glx add place --name "Enkirch" --type town --lat 49.97 --lng 7.13 --archive ./archive`,
+	Args: cobra.NoArgs,
 	RunE: runAddPlace,
 }
 
@@ -129,7 +148,7 @@ func runAddPlace(_ *cobra.Command, _ []string) error {
 		addPlaceOpts.Longitude = &addPlaceLng
 	}
 
-	return addPlace(SystemIOStreams(), &addPlaceOpts)
+	return addPlace(addStreams(), &addPlaceOpts)
 }
 
 // =============================================================================
@@ -157,11 +176,12 @@ var addEventCmd = &cobra.Command{
     --participant person-john:groom \
     --participant person-jane:bride \
     --archive ./archive`,
+	Args: cobra.NoArgs,
 	RunE: runAddEvent,
 }
 
 func runAddEvent(_ *cobra.Command, _ []string) error {
-	return addEvent(SystemIOStreams(), &addEventOpts)
+	return addEvent(addStreams(), &addEventOpts)
 }
 
 // =============================================================================
@@ -183,11 +203,12 @@ repository_types vocabulary.`,
   # Physical archive
   glx add repository --name "Virginia State Library" --type library \
     --address "800 E. Broad St" --city "Richmond" --state "VA" --country "USA" --archive ./archive`,
+	Args: cobra.NoArgs,
 	RunE: runAddRepository,
 }
 
 func runAddRepository(_ *cobra.Command, _ []string) error {
-	return addRepository(SystemIOStreams(), &addRepoOpts)
+	return addRepository(addStreams(), &addRepoOpts)
 }
 
 // =============================================================================
@@ -210,11 +231,12 @@ vocabulary. --repository must reference an existing repository.`,
   # Book with author(s) and date
   glx add source --title "Genealogy of the Smith Family" \
     --type book --author "Jane Smith" --date 1923 --archive ./archive`,
+	Args: cobra.NoArgs,
 	RunE: runAddSource,
 }
 
 func runAddSource(_ *cobra.Command, _ []string) error {
-	return addSource(SystemIOStreams(), &addSourceOpts)
+	return addSource(addStreams(), &addSourceOpts)
 }
 
 // =============================================================================
@@ -246,11 +268,12 @@ familysearch:ark:/61903/1:1:C4H8-2DW2).`,
     --locator "p. 47, dwelling 312" \
     --text-from-source "John Webb, 35, farmer …" \
     --archive ./archive`,
+	Args: cobra.NoArgs,
 	RunE: runAddCitation,
 }
 
 func runAddCitation(_ *cobra.Command, _ []string) error {
-	return addCitation(SystemIOStreams(), &addCitationOpts)
+	return addCitation(addStreams(), &addCitationOpts)
 }
 
 // =============================================================================
@@ -278,11 +301,12 @@ events.`,
     --participant person-john:spouse --participant person-jane:spouse \
     --start-event event-marriage-1850 \
     --archive ./archive`,
+	Args: cobra.NoArgs,
 	RunE: runAddRelationship,
 }
 
 func runAddRelationship(_ *cobra.Command, _ []string) error {
-	return addRelationship(SystemIOStreams(), &addRelOpts)
+	return addRelationship(addStreams(), &addRelOpts)
 }
 
 // =============================================================================
@@ -316,11 +340,12 @@ entities.`,
     --participant person-anna:godparent \
     --citation citation-fs-jungk \
     --archive ./archive`,
+	Args: cobra.NoArgs,
 	RunE: runAddAssertion,
 }
 
 func runAddAssertion(_ *cobra.Command, _ []string) error {
-	return addAssertion(SystemIOStreams(), &addAssertionOpts)
+	return addAssertion(addStreams(), &addAssertionOpts)
 }
 
 // =============================================================================
