@@ -27,6 +27,12 @@ own is a conclusion, not a record, so it is reported without counting toward the
 score -- an estimated birth date reckoned back from a death entry does not mean a
 birth record exists.
 
+Only the person's own records count: an event in which they are the principal
+or subject (or bride, groom, decedent, ...), or a census on which they are a
+member of the household. Events in which they appear in another role -- a
+witness, godparent, legatee, grantor -- are someone else's record; they are
+listed separately under "Appears in" and do not satisfy a category.
+
 Missing high-priority records are flagged to guide research efforts.
 
 The person argument can be an exact entity ID or a name substring.

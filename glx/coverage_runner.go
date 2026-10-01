@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -58,6 +59,20 @@ type coverageResult struct {
 	Records    []coverageRecord `json:"records"`
 	Found      int              `json:"found"`
 	Expected   int              `json:"expected"`
+	// AppearsIn lists events in which the person takes part in a role that
+	// does not make the event their own record (witness, godparent, legatee,
+	// ...). Useful FAN evidence, but not counted toward any category (#1329).
+	AppearsIn []coverageAppearance `json:"appears_in,omitempty"`
+}
+
+// coverageAppearance is one event in which the person appears in someone
+// else's record.
+type coverageAppearance struct {
+	EventID   string `json:"event_id"`
+	EventType string `json:"event_type,omitempty"`
+	Role      string `json:"role,omitempty"`
+	Date      string `json:"date,omitempty"`
+	Label     string `json:"label"` // whose record it is, e.g. "Probate of Caspar Stoehr"
 }
 
 // showCoverage loads an archive and displays source coverage for a person.
@@ -160,7 +175,14 @@ func buildCoverage(personID string, person *glxlib.Person, archive *glxlib.GLXFi
 	// which events an assertion actually backs with a citation or source
 	personSources := collectPersonSources(personID, archive)
 	evidencedEvents := eventsWithEvidence(archive)
-	personEvents := collectPersonEvents(personID, archive, evidencedEvents)
+	participations := collectPersonEvents(personID, archive, evidencedEvents)
+
+	// Only the person's own records satisfy a category: an event in which
+	// they are a witness, godparent or legatee is someone else's record
+	// (#1329). Countries and states still come from every event that puts
+	// the person at its place.
+	personEvents := filterPersonEvents(participations, func(e personSourceInfo) bool { return e.OwnRecord })
+	presentEvents := filterPersonEvents(participations, func(e personSourceInfo) bool { return e.OwnRecord || e.Present })
 
 	// Infer death year from burial event if death_date is not set
 	if deathYear == 0 {
@@ -170,11 +192,11 @@ func buildCoverage(personID string, person *glxlib.Person, archive *glxlib.GLXFi
 	var records []coverageRecord
 
 	// National census records, for the countries the person's places name
-	schedules := censusSchedulesForPlaces(coveragePlaceRefs(personEvents), archive)
+	schedules := censusSchedulesForPlaces(coveragePlaceRefs(presentEvents), archive)
 	records = append(records, buildCensusRecords(birthYear, deathYear, schedules, personSources, personEvents)...)
 
 	// State census records
-	states := collectPersonStates(person, archive, personEvents)
+	states := collectPersonStates(person, archive, presentEvents)
 	records = append(records, buildStateCensusRecords(birthYear, deathYear, states, personSources, personEvents, archive)...)
 
 	// Vital records
@@ -205,6 +227,7 @@ func buildCoverage(personID string, person *glxlib.Person, archive *glxlib.GLXFi
 		Records:    records,
 		Found:      found,
 		Expected:   len(records),
+		AppearsIn:  buildAppearances(participations, archive),
 	}
 }
 
@@ -216,7 +239,10 @@ type personSourceInfo struct {
 	EventType string // if found via an event
 	PlaceID   string // place reference (events only)
 	Year      int
-	Evidenced bool // events only: an assertion about this event cites a source
+	Evidenced bool   // events only: an assertion about this event cites a source
+	Role      string // events only: the person's participant role
+	OwnRecord bool   // events only: the event is the person's own record
+	Present   bool   // events only: the role puts the person at the event's place
 }
 
 // collectPersonSources gathers all sources and citations that reference a person
@@ -270,7 +296,8 @@ func collectPersonSources(personID string, archive *glxlib.GLXFile) []personSour
 }
 
 // collectPersonEvents gathers all events this person participates in, marking
-// each with whether it carries supporting evidence per the evidenced index.
+// each with whether it carries supporting evidence per the evidenced index and
+// with what the person's role makes of it (glxlib.ClassifyParticipation).
 func collectPersonEvents(personID string, archive *glxlib.GLXFile, evidenced map[string]bool) []personSourceInfo {
 	var events []personSourceInfo
 
@@ -278,26 +305,89 @@ func collectPersonEvents(personID string, archive *glxlib.GLXFile, evidenced map
 	// one on every run
 	for _, eventID := range sortedKeys(archive.Events) {
 		event := archive.Events[eventID]
-		if event == nil {
+		participation, role, ok := glxlib.EventParticipation(event, personID, archive.ParticipantRoles)
+		if !ok {
 			continue
 		}
-		for _, p := range event.Participants {
-			if p.Person == personID {
-				events = append(events, personSourceInfo{
-					Ref:       eventID,
-					EventType: event.Type,
-					Year:      glxlib.ExtractFirstYear(string(event.Date)),
-					Title:     event.Title,
-					PlaceID:   event.PlaceID,
-					Evidenced: evidenced[eventID],
-				})
-
-				break
-			}
-		}
+		events = append(events, personSourceInfo{
+			Ref:       eventID,
+			EventType: event.Type,
+			Year:      glxlib.ExtractFirstYear(string(event.Date)),
+			Title:     event.Title,
+			PlaceID:   event.PlaceID,
+			Evidenced: evidenced[eventID],
+			Role:      role,
+			OwnRecord: participation.OwnRecord,
+			Present:   participation.Present,
+		})
 	}
 
 	return events
+}
+
+// filterPersonEvents returns the events that satisfy keep.
+func filterPersonEvents(events []personSourceInfo, keep func(personSourceInfo) bool) []personSourceInfo {
+	var kept []personSourceInfo
+	for _, e := range events {
+		if keep(e) {
+			kept = append(kept, e)
+		}
+	}
+
+	return kept
+}
+
+// buildAppearances lists the events in which the person takes part without
+// the event being their own record, labeled by whose record it is.
+func buildAppearances(events []personSourceInfo, archive *glxlib.GLXFile) []coverageAppearance {
+	var appearances []coverageAppearance
+	for _, e := range events {
+		if e.OwnRecord {
+			continue
+		}
+		event := archive.Events[e.Ref]
+		appearances = append(appearances, coverageAppearance{
+			EventID:   e.Ref,
+			EventType: e.EventType,
+			Role:      e.Role,
+			Date:      string(event.Date),
+			Label:     appearanceLabel(event, archive),
+		})
+	}
+
+	return appearances
+}
+
+// appearanceLabel names whose record an event is: "Probate of Caspar
+// Stoehr" from the participants whose own record it is, else the event's
+// title, else its type.
+func appearanceLabel(event *glxlib.Event, archive *glxlib.GLXFile) string {
+	typeLabel := formatEventTypeLabel(event.Type)
+
+	var names []string
+	for _, p := range event.Participants {
+		if p.Person == "" || !glxlib.ClassifyParticipation(event.Type, p.Role, archive.ParticipantRoles).OwnRecord {
+			continue
+		}
+		name := p.Person
+		if person := archive.Persons[p.Person]; person != nil {
+			if display := glxlib.PersonDisplayName(person); display != "" {
+				name = display
+			}
+		}
+		if !slices.Contains(names, name) {
+			names = append(names, name)
+		}
+	}
+
+	switch {
+	case len(names) > 0:
+		return typeLabel + " of " + strings.Join(names, " and ")
+	case strings.TrimSpace(event.Title) != "":
+		return strings.TrimSpace(event.Title)
+	default:
+		return typeLabel
+	}
 }
 
 // coveragePlaceRefs returns the place references of a person's events, for
@@ -874,6 +964,29 @@ func printCoverageText(result *coverageResult) {
 
 	fmt.Printf("\n  Coverage: %d of %d expected records found (%d%%)\n",
 		result.Found, result.Expected, coveragePercent(result.Found, result.Expected))
+
+	printCoverageAppearances(result.AppearsIn)
+}
+
+// printCoverageAppearances lists the other people's records the person
+// appears in, which the checklist above does not count.
+func printCoverageAppearances(appearances []coverageAppearance) {
+	if len(appearances) == 0 {
+		return
+	}
+
+	fmt.Println("\n  Appears in (other people's records, not counted above):")
+	for _, a := range appearances {
+		line := "    " + a.Label
+		if a.Role != "" {
+			line += " (" + a.Role + ")"
+		}
+		line += " -- " + a.EventID
+		if a.Date != "" {
+			line += ", " + a.Date
+		}
+		fmt.Println(line)
+	}
 }
 
 func coveragePercent(found, expected int) int {

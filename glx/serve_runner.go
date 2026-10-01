@@ -343,40 +343,22 @@ func confidenceRows(a *glxlib.GLXFile) []confidenceRowDTO {
 	return rows
 }
 
-// coverageRows reports how many persons/events/relationships/places are
-// referenced by at least one assertion (same metric as `glx stats`).
+// coverageRows reports how many persons/events/relationships/places the
+// archive's assertions reach as evidence, directly or through the events,
+// relationships, participants, and places they name (the "Evidence coverage"
+// block of `glx stats`, #713).
 func coverageRows(a *glxlib.GLXFile) []coverageRowDTO {
 	if len(a.Assertions) == 0 {
 		return []coverageRowDTO{}
 	}
 
-	persons := map[string]struct{}{}
-	events := map[string]struct{}{}
-	rels := map[string]struct{}{}
-	places := map[string]struct{}{}
-	for _, assertion := range a.Assertions {
-		if assertion == nil {
-			continue
-		}
-		if assertion.Subject.Person != "" {
-			persons[assertion.Subject.Person] = struct{}{}
-		}
-		if assertion.Subject.Event != "" {
-			events[assertion.Subject.Event] = struct{}{}
-		}
-		if assertion.Subject.Relationship != "" {
-			rels[assertion.Subject.Relationship] = struct{}{}
-		}
-		if assertion.Subject.Place != "" {
-			places[assertion.Subject.Place] = struct{}{}
-		}
-	}
+	evidence := glxlib.ComputeAssertionCoverage(a).Evidence
 
 	return []coverageRowDTO{
-		coverageRow("Persons", len(persons), len(a.Persons)),
-		coverageRow("Events", len(events), len(a.Events)),
-		coverageRow("Relationships", len(rels), len(a.Relationships)),
-		coverageRow("Places", len(places), len(a.Places)),
+		coverageRow("Persons", countCovered(evidence.Persons, a.Persons), len(a.Persons)),
+		coverageRow("Events", countCovered(evidence.Events, a.Events), len(a.Events)),
+		coverageRow("Relationships", countCovered(evidence.Relationships, a.Relationships), len(a.Relationships)),
+		coverageRow("Places", countCovered(evidence.Places, a.Places), len(a.Places)),
 	}
 }
 
