@@ -152,6 +152,10 @@ type proofResult struct {
 	Searches     []proofSearch   `json:"searches,omitempty"`
 	Conclusion   string          `json:"conclusion"`
 	Summary      string          `json:"summary,omitempty"`
+
+	// Excluded lists rejected alternatives: for the parentage question, the
+	// candidate parents whose every assertion is disproven (#1327).
+	Excluded []proofExcludedAlternative `json:"alternatives_excluded,omitempty"`
 }
 
 // showProof loads an archive and prints a structured proof summary for a person
@@ -220,6 +224,12 @@ func buildProof(personID string, person *glxlib.Person, topic string, archive *g
 	}
 
 	conflicts := detectProofConflicts(relevant, archive)
+	var excluded []proofExcludedAlternative
+	if topic == topicParentage {
+		var survivors []parentCandidate
+		survivors, excluded = parentageCandidates(personID, archive)
+		conflicts = append(conflicts, parentageConflicts(survivors)...)
+	}
 	gaps := collectProofGaps(personID, person, topic, archive)
 	searches := collectProofSearches(personID, archive)
 
@@ -233,6 +243,7 @@ func buildProof(personID string, person *glxlib.Person, topic string, archive *g
 		Evidence:     evidence,
 		Gaps:         gaps,
 		Conflicts:    conflicts,
+		Excluded:     excluded,
 		Searches:     searches,
 		Conclusion:   conclusion,
 		Summary:      summary,
@@ -982,30 +993,13 @@ func answerFromAssertions(relevant []proofAssertion, archive *glxlib.GLXFile) (s
 	return "Supported by evidence: " + strings.Join(values, ", ") + ".", true
 }
 
-// parentNames returns the display names of a person's parents, drawn from
-// parent-child relationships where the person is the child.
+// parentNames returns the display names of a person's surviving parents:
+// parent-child relationships where the person is the child, leaving out
+// step-parents and candidates the archive has disproven (#1327).
 func parentNames(personID string, archive *glxlib.GLXFile) []string {
-	var names []string
-	seen := make(map[string]bool)
+	survivors, _ := parentageCandidates(personID, archive)
 
-	for _, relID := range sortedKeys(archive.Relationships) {
-		rel := archive.Relationships[relID]
-		if rel == nil || !isParentChildType(rel.Type) {
-			continue
-		}
-		if !hasParticipantRole(personID, glxlib.ParticipantRoleChild, rel.Participants) {
-			continue
-		}
-
-		for _, p := range rel.Participants {
-			if p.Role == glxlib.ParticipantRoleParent && p.Person != "" && !seen[p.Person] {
-				seen[p.Person] = true
-				names = append(names, personName(archive, p.Person))
-			}
-		}
-	}
-
-	return names
+	return candidateNames(survivors)
 }
 
 // spouseNames returns the display names of a person's spouses/partners.
@@ -1034,17 +1028,6 @@ func spouseNames(personID string, archive *glxlib.GLXFile) []string {
 	}
 
 	return names
-}
-
-// hasParticipantRole reports whether the person participates with the given role.
-func hasParticipantRole(personID, role string, participants []glxlib.Participant) bool {
-	for _, p := range participants {
-		if p.Person == personID && p.Role == role {
-			return true
-		}
-	}
-
-	return false
 }
 
 // insufficientSummary builds the summary line for an unproven question.
@@ -1144,6 +1127,13 @@ func printProofText(io *IOStreams, result *proofResult) {
 		io.Println("")
 		for i := range result.Conflicts {
 			printProofConflictText(io, &result.Conflicts[i])
+		}
+	}
+
+	if len(result.Excluded) > 0 {
+		io.Printf("\n  Alternatives Excluded:\n")
+		for i := range result.Excluded {
+			io.Println("    x " + excludedAlternativeLine(&result.Excluded[i]))
 		}
 	}
 
@@ -1334,6 +1324,19 @@ func printProofMarkdown(io *IOStreams, result *proofResult) {
 	printMarkdownGaps(io, result.Gaps)
 	printMarkdownSearches(io, result.Searches)
 	printMarkdownConflicts(io, result.Conflicts)
+	printMarkdownExcluded(io, result.Excluded)
+}
+
+// printMarkdownExcluded renders the excluded-alternatives section as Markdown.
+func printMarkdownExcluded(io *IOStreams, excluded []proofExcludedAlternative) {
+	if len(excluded) == 0 {
+		return
+	}
+	io.Printf("\n## Alternatives Excluded\n\n")
+	for i := range excluded {
+		e := &excluded[i]
+		io.Printf("- %s (`%s`) — all assertions disproven\n", e.Name, e.Relationship)
+	}
 }
 
 // printMarkdownEvidence renders the evidence section as Markdown.
