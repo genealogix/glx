@@ -171,6 +171,13 @@ type ExportContext struct {
 	// Place cache: placeID -> full GEDCOM place string
 	PlaceStrings map[string]string
 
+	// datedPlaceStrings caches place strings resolved at an event date for
+	// places with temporal parents (#225), keyed by placeID + "|" + date.
+	datedPlaceStrings map[string]string
+	// temporalPlaceParents caches whether any place has a temporal parent;
+	// nil until first computed.
+	temporalPlaceParents *bool
+
 	// PersonEvents maps person ID -> event IDs where person is principal
 	PersonEvents map[string][]string
 

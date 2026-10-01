@@ -310,8 +310,8 @@ func newMigrationEntry(date, placeRef, label string, archive *glxlib.GLXFile) mi
 
 	if place, ok := archive.Places[placeRef]; ok && place != nil {
 		entry.PlaceID = placeRef
-		entry.Place = buildCanonicalPath(placeRef, archive.Places)
-		entry.Region = regionForPlace(placeRef, archive.Places)
+		entry.Place = buildCanonicalPathAt(placeRef, glxlib.DateString(date), archive.Places)
+		entry.Region = regionForPlaceAt(placeRef, glxlib.DateString(date), archive.Places)
 	} else {
 		entry.Place = placeRef
 		entry.Region = regionFromFreeform(placeRef)
@@ -336,6 +336,13 @@ var migrationContainerTypes = map[string]bool{
 // Millbrook → Hartford Co. → Wisconsin → United States). Falls back to the
 // topmost named ancestor when the whole chain is containers.
 func regionForPlace(placeID string, places map[string]*glxlib.Place) string {
+	return regionForPlaceAt(placeID, "", places)
+}
+
+// regionForPlaceAt is regionForPlace for the hierarchy as it stood at date,
+// so a county that moved from a territory to a state (#225) is placed in the
+// region it belonged to then.
+func regionForPlaceAt(placeID string, date glxlib.DateString, places map[string]*glxlib.Place) string {
 	var names, types []string
 	visited := make(map[string]bool)
 	current := placeID
@@ -348,7 +355,7 @@ func regionForPlace(placeID string, places map[string]*glxlib.Place) string {
 		}
 		names = append(names, strings.TrimSpace(place.Name))
 		types = append(types, place.Type)
-		current = place.ParentID
+		current = place.ParentAt(date)
 	}
 
 	for i, name := range slices.Backward(names) {

@@ -236,8 +236,16 @@ func canonicalCountry(name string) string {
 // name of the first country-type ancestor, or the empty string when the chain
 // reaches its root without one. Only places explicitly typed `country` count,
 // so a hierarchy that stops at a state or a city resolves to nothing rather
-// than guessing from the root place's name.
+// than guessing from the root place's name. It follows each place's default
+// parent; resolveCountryFromPlaceAt follows the parents valid at a date.
 func resolveCountryFromPlace(placeRef string, archive *glxlib.GLXFile) string {
+	return resolveCountryFromPlaceAt(placeRef, "", archive)
+}
+
+// resolveCountryFromPlaceAt is resolveCountryFromPlace for the hierarchy as
+// it stood at date: a place whose parent changed over time (#225) resolves
+// through the parent that applied then. An empty date uses default parents.
+func resolveCountryFromPlaceAt(placeRef string, date glxlib.DateString, archive *glxlib.GLXFile) string {
 	if placeRef == "" || archive == nil {
 		return ""
 	}
@@ -254,7 +262,7 @@ func resolveCountryFromPlace(placeRef string, archive *glxlib.GLXFile) string {
 		if place.Type == glxlib.PlaceTypeCountry {
 			return place.Name
 		}
-		current = place.ParentID
+		current = place.ParentAt(date)
 	}
 
 	return ""
@@ -271,11 +279,30 @@ func resolveCountryFromPlace(placeRef string, archive *glxlib.GLXFile) string {
 // Mecklenburg is worse than suggesting nothing. Only when no place puts the
 // person in any country at all does censusCountryFallback apply.
 func censusSchedulesForPlaces(placeRefs []string, archive *glxlib.GLXFile) []*censusSchedule {
+	refs := make([]datedPlaceRef, len(placeRefs))
+	for i, ref := range placeRefs {
+		refs[i] = datedPlaceRef{placeID: ref}
+	}
+
+	return censusSchedulesForDatedPlaces(refs, archive)
+}
+
+// datedPlaceRef is a place reference together with the date of the event
+// that names it, so the place's country is resolved through the hierarchy
+// that applied then (#225). An empty date uses the default parents.
+type datedPlaceRef struct {
+	placeID string
+	date    glxlib.DateString
+}
+
+// censusSchedulesForDatedPlaces is censusSchedulesForPlaces for place
+// references that carry their event's date.
+func censusSchedulesForDatedPlaces(placeRefs []datedPlaceRef, archive *glxlib.GLXFile) []*censusSchedule {
 	countries := make(map[string]bool)
 	sawCountry := false
 
 	for _, ref := range placeRefs {
-		name := resolveCountryFromPlace(ref, archive)
+		name := resolveCountryFromPlaceAt(ref.placeID, ref.date, archive)
 		if name == "" {
 			continue
 		}
@@ -352,21 +379,21 @@ func buildPersonPlaceIndex(archive *glxlib.GLXFile) map[string][]string {
 // person. Callers looping over every person should build a
 // buildPersonPlaceIndex once and call censusSchedulesForPlaces instead.
 func censusSchedulesForPerson(archive *glxlib.GLXFile, personID string) []*censusSchedule {
-	var placeRefs []string
+	var placeRefs []datedPlaceRef
 	for _, event := range archive.Events {
 		if event == nil || event.PlaceID == "" {
 			continue
 		}
 		for _, p := range event.Participants {
 			if p.Person == personID {
-				placeRefs = append(placeRefs, event.PlaceID)
+				placeRefs = append(placeRefs, datedPlaceRef{placeID: event.PlaceID, date: event.Date})
 
 				break
 			}
 		}
 	}
 
-	return censusSchedulesForPlaces(placeRefs, archive)
+	return censusSchedulesForDatedPlaces(placeRefs, archive)
 }
 
 // scheduleForCountry returns the schedule for a canonical country name, or
