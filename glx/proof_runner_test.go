@@ -294,6 +294,46 @@ func TestCollectProofSearches(t *testing.T) {
 	assert.Empty(t, collectProofSearches("person-robert", archive))
 }
 
+// An unavailable source is a documented gap, not outstanding work (#1340):
+// its line says so and carries the notes explaining why, while not_searched
+// and requires_visit read as outstanding.
+func TestFormatSearchLine_ResultAnnotations(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		ResearchLogs: map[string]*glxlib.ResearchLog{
+			"log-1": {
+				Subject: &glxlib.EntityRef{Person: "person-lewis"},
+				Searches: []glxlib.Search{
+					{
+						Query:    "Probate Record 1821-1829 p. 83",
+						SourceID: "src-crawford-probate-1821",
+						Result:   glxlib.SearchResultUnavailable,
+						Notes:    glxlib.NoteList{"Volume not located", "courthouse fire 1999"},
+					},
+					{Query: "Deed Book A", Result: glxlib.SearchResultRequiresVisit},
+					{Query: "1830 census", Result: glxlib.SearchResultNotSearched},
+					{Query: "1820 census", Result: glxlib.SearchResultNotFound},
+					{Query: "Lost volume", Result: glxlib.SearchResultUnavailable},
+				},
+			},
+		},
+	}
+
+	searches := collectProofSearches("person-lewis", archive)
+	require.Len(t, searches, 5)
+	assert.Equal(t, "Volume not located; courthouse fire 1999", searches[0].Notes)
+
+	want := []string{
+		"Probate Record 1821-1829 p. 83 @ src-crawford-probate-1821 -> unavailable (documented gap: Volume not located; courthouse fire 1999)",
+		"Deed Book A -> requires_visit (outstanding: on-site or by request)",
+		"1830 census -> not_searched (outstanding)",
+		"1820 census -> not_found",
+		"Lost volume -> unavailable (documented gap)",
+	}
+	for i := range searches {
+		assert.Equal(t, want[i], formatSearchLine(&searches[i]))
+	}
+}
+
 func TestResolveConflict(t *testing.T) {
 	resolved, resolution := resolveConflict([]proofConflictValue{
 		{Value: "1820", Status: "proven"},

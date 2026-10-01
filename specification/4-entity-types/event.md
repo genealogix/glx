@@ -119,6 +119,39 @@ Event types are defined in the archive's `vocabularies/event-types.glx` file. Ea
 - Vocabulary file structure and examples
 - Validation requirements
 
+### Property Records: Probate, Will and Land Transaction
+
+Property records fall under three standard `legal` event types. `probate` and `will` cover inheritance, and `land_transaction` covers the transfer, entry or encumbrance of real property: deeds, land entries, patents, grants and mortgages. For pre-1850 research, land records are often the largest body of evidence for a person.
+
+A `land_transaction` records its kind in the standard `event_subtype` property. The documented subtypes are:
+
+| `event_subtype` | Meaning |
+|-----------------|---------|
+| `deed` | Deed of sale or gift between private parties |
+| `patent` | Patent conveying title from a government to the first private owner |
+| `grant` | Grant of land by a government or proprietor (for example a colonial, headright or bounty-land grant) |
+| `entry` | Land entry or warrant: the claim or purchase that precedes a patent, including instalment payments |
+| `mortgage` | Mortgage or deed of trust encumbering the land |
+| `partition` | Division of land among co-owners or heirs |
+| `quitclaim` | Release of a claim or interest without warranty of title |
+
+The list is a convention, not a closed set: other values are accepted. The participant roles that go with land records are `grantor`, `grantee`, `witness` and `adjoining_owner` (a neighbour named only in the boundary description).
+
+```yaml
+events:
+  event-lewis-little-patent-1818:
+    type: land_transaction
+    date: "1818-06-10"
+    place: place-crawford-county-il
+    participants:
+      - person: person-lewis-little
+        role: grantee
+    properties:
+      event_subtype: patent
+```
+
+GEDCOM has no dedicated land-transaction tag (`PROP` is a possessions attribute, not a transaction), so a `land_transaction` is exported as `EVEN` with a `TYPE`.
+
 ## Usage Patterns
 
 ### Birth Event Example
@@ -255,6 +288,7 @@ Events require at least one participant. GLX is a genealogy format, and every ev
 - All person references must point to existing Person entities
 - Date formats must follow the [date format standard](../2-core-concepts.md#date-format-standard) (invalid formats generate warnings)
 - Participant roles must be from the [participant roles vocabulary](vocabularies.md#participant-roles-vocabulary); an unknown role is an error, like any other structural type field (see [Vocabulary Validation](vocabularies.md#validation-errors-hard-failures))
+- A participant role whose `applies_to` excludes `event` generates a warning (see [Participant Roles - applies_to](vocabularies.md#applies_to-semantics))
 
 ## Confidence and Provenance
 

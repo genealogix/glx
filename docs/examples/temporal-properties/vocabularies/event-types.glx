@@ -159,6 +159,12 @@ event_types:
     category: "legal"
     gedcom: "WILL"
 
+  land_transaction:
+    label: "Land Transaction"
+    description: "Transfer, entry or encumbrance of real property. Record the kind in event_subtype: deed, patent, grant, entry, mortgage, partition or quitclaim"
+    category: "legal"
+    # No dedicated GEDCOM tag (PROP is a possessions attribute, not a transaction); exported as EVEN with TYPE
+
   # Lifecycle Events (continued)
   graduation:
     label: "Graduation"
