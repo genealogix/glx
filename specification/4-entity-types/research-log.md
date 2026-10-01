@@ -211,7 +211,7 @@ ResearchLog tracks individual searches and their outcomes. It is intentionally d
 - **Research investigation** ([#660](https://github.com/genealogix/glx/issues/660)): a higher-level workflow tracker for a research question — leads, hypotheses, next steps. ResearchLog records *what was searched*; Research records *what we are trying to figure out*.
 - **[Study](study.md)** (issue #226, shipped in beta.11): defines the scope of a research project (e.g., a One Place Study). Logs performed within a study are associated by convention (shared `subject`, places, or sources); there is no linking field between the two entities in this revision.
 
-CLI commands for adding and querying logs are tracked separately and are not part of this specification.
+The `glx` CLI creates logs with [`glx add research-log`](../../docs/cli/glx_add_research-log.md) and appends one search at a time with [`glx add search`](../../docs/cli/glx_add_search.md); studies are created with [`glx add study`](../../docs/cli/glx_add_study.md), and both are listed with [`glx query research_logs`](../../docs/cli/glx_query.md) and `glx query studies`. These commands are tooling, not part of this specification.
 
 ## GEDCOM Mapping
 

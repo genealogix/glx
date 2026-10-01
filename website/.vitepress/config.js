@@ -382,6 +382,9 @@ export default defineConfig({
             { text: 'glx add citation', link: '/cli/glx_add_citation' },
             { text: 'glx add relationship', link: '/cli/glx_add_relationship' },
             { text: 'glx add assertion', link: '/cli/glx_add_assertion' },
+            { text: 'glx add research-log', link: '/cli/glx_add_research-log' },
+            { text: 'glx add search', link: '/cli/glx_add_search' },
+            { text: 'glx add study', link: '/cli/glx_add_study' },
             { text: 'glx census', link: '/cli/glx_census' },
             { text: 'glx census add', link: '/cli/glx_census_add' },
             { text: 'glx link', link: '/cli/glx_link' }

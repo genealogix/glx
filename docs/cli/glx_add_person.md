@@ -19,6 +19,9 @@ against the archive's sex_types and gender_types vocabularies. Standard
 vocabularies are loaded automatically for archives that have not customized
 them.
 
+--external-id is repeatable in the form type:value (e.g. wikitree:Little-20642)
+and fills the person's external_ids property.
+
 ```
 glx add person [flags]
 ```
@@ -35,28 +38,33 @@ glx add person [flags]
 
   # Override the ID explicitly
   glx add person --id person-jungk-johann-peter --given Johann --surname Jungk --archive ./archive
+
+  # Record identifiers from other systems
+  glx add person --given Lewis --surname Little \
+    --external-id wikitree:Little-20642 --external-id familysearch:LZX1-ABC --archive ./archive
 ```
 
 ### Options
 
 ```
-  -a, --archive string          Archive path (directory) (default ".")
-      --dry-run                 Print what would be created without writing files
-      --force                   Overwrite an existing entity with the chosen ID
-      --gender string           Self-identified gender (vocabulary key in gender_types)
-      --given string            Given name(s)
-  -h, --help                    help for person
-      --id string               Override the derived entity ID
-      --nickname string         Nickname
-      --note stringArray        Free-text note (repeatable)
-      --occupation string       Occupation (free text)
-      --prefix string           Name prefix (e.g. Dr., Rev.)
-      --residence string        Place ID of residence (must reference an existing place; person_properties.residence is reference_type:places)
-      --sex string              Recorded sex (vocabulary key in sex_types)
-      --skip-validate           Skip whole-archive validation after adding (vocab and reference checks still run)
-      --suffix string           Name suffix (e.g. Jr., III)
-      --surname string          Surname
-      --surname-prefix string   Surname prefix (e.g. de, von)
+  -a, --archive string            Archive path (directory) (default ".")
+      --dry-run                   Print what would be created without writing files
+      --external-id stringArray   External ID in the form type:value, e.g. wikitree:Little-20642 (repeatable)
+      --force                     Overwrite an existing entity with the chosen ID
+      --gender string             Self-identified gender (vocabulary key in gender_types)
+      --given string              Given name(s)
+  -h, --help                      help for person
+      --id string                 Override the derived entity ID
+      --nickname string           Nickname
+      --note stringArray          Free-text note (repeatable)
+      --occupation string         Occupation (free text)
+      --prefix string             Name prefix (e.g. Dr., Rev.)
+      --residence string          Place ID of residence (must reference an existing place; person_properties.residence is reference_type:places)
+      --sex string                Recorded sex (vocabulary key in sex_types)
+      --skip-validate             Skip whole-archive validation after adding (vocab and reference checks still run)
+      --suffix string             Name suffix (e.g. Jr., III)
+      --surname string            Surname
+      --surname-prefix string     Surname prefix (e.g. de, von)
 ```
 
 ### Options inherited from parent commands

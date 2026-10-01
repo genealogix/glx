@@ -95,6 +95,14 @@ var (
 	ErrAddCitationSourceRequired           = errors.New("--source is required")
 	ErrAddCitationDistinguisherRequired    = errors.New("at least one of --url, --locator, --text-from-source, or --id is required (otherwise citation IDs would not be idempotent)")
 	ErrAddRelationshipTypeRequired         = errors.New("--type is required")
+	ErrAddResearchLogDescriptorRequired    = errors.New("at least one of --title, --subject-*, --objective, or --id is required")
+	ErrAddSearchLogRequired                = errors.New("--log is required")
+	ErrAddSearchWhatRequired               = errors.New("a search needs at least one of --source, --repository, --collection, --query, or --citation")
+	ErrAddSearchLogAmbiguous               = errors.New("research log is defined in more than one file")
+	ErrAddStudyTitleRequired               = errors.New("--title is required")
+	ErrAddPropertyFormat                   = errors.New("--property must be in the form key=value")
+	ErrAddPropertyUnknown                  = errors.New("property not defined in the vocabulary")
+	ErrAddPropertyRepeated                 = errors.New("property given more than once but is not multi-value")
 
 	// `glx evidence` errors
 	ErrEvidenceUnknownFormat = errors.New("unknown output format (must be 'text' or 'json')")
