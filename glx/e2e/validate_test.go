@@ -16,8 +16,10 @@ package e2e
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -117,4 +119,32 @@ func TestValidate_EntityFragment_KeepsCrossReferenceSkip(t *testing.T) {
 	assert.Equal(t, 0, res.exitCode, res.stdout+res.stderr)
 	assert.Contains(t, res.stdout, "Cross-reference validation skipped")
 	assert.NotContains(t, res.stderr, "references non-existent")
+}
+
+// The reproduction in #1322: an archive with more than ten errors. Validate
+// used to print a different ten on every run with no way to see the rest;
+// --show-first-errors 0 now lists every one, in the same order each time.
+func TestValidate_ShowFirstErrors(t *testing.T) {
+	archive := copyExample(t, "basic-family")
+	var deeds strings.Builder
+	deeds.WriteString("events:\n")
+	for i := range 12 {
+		fmt.Fprintf(&deeds, "  ev-deed-%02d:\n    type: land_transaction\n    date: \"1831\"\n"+
+			"    participants:\n      - person: person-robert-thompson\n        role: grantor\n", i)
+	}
+	require.NoError(t, os.WriteFile(filepath.Join(archive, "events", "deeds.glx"), []byte(deeds.String()), 0o644))
+
+	first := runGLX(t, archive, "validate")
+	assert.Equal(t, 1, first.exitCode, first.stdout+first.stderr)
+	assert.Contains(t, first.stderr, "Validation failed: 24 error(s)")
+	assert.NotContains(t, first.stderr, "Error loading archive")
+	assert.Contains(t, first.stderr, "... and 14 more errors (use --show-first-errors 0 to list all)")
+
+	again := runGLX(t, archive, "validate")
+	assert.Equal(t, first.stderr, again.stderr, "the truncated list must be the same on every run")
+
+	all := runGLX(t, archive, "validate", "--show-first-errors", "0")
+	assert.Equal(t, 1, all.exitCode, all.stdout+all.stderr)
+	assert.Equal(t, 24, strings.Count(all.stderr, "\n  - "))
+	assert.NotContains(t, all.stderr, "more errors")
 }
