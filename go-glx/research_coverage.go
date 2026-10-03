@@ -84,7 +84,7 @@ func buildCoverage(personID string, person *Person, archive *GLXFile, fallback s
 
 	// National census records, for the countries the person's places name
 	schedules := censusSchedulesForPlaces(coveragePlaceRefs(personEvents), archive, fallback)
-	records := buildCensusRecords(birthYear, deathYear, schedules, personSources, personEvents)
+	records := buildCensusRecords(birthYear, deathYear, schedules, personSources, personEvents, archive)
 
 	// State census records
 	states := collectPersonStates(archive, personEvents)
@@ -231,6 +231,19 @@ func collectPersonEvents(personID string, archive *GLXFile, evidenced map[string
 	return events
 }
 
+// coverageDatedPlaces returns the dated places of a person's events, for
+// working out which state or territory they were in at a census (#1333).
+func coverageDatedPlaces(events []personSourceInfo) []CensusDatedPlace {
+	var places []CensusDatedPlace
+	for _, e := range events {
+		if e.PlaceID != "" && e.Year != 0 {
+			places = append(places, CensusDatedPlace{Year: e.Year, PlaceID: e.PlaceID})
+		}
+	}
+
+	return places
+}
+
 // coveragePlaceRefs returns the place references of a person's events, for
 // resolving which countries' census schedules apply to them.
 func coveragePlaceRefs(events []personSourceInfo) []string {
@@ -308,8 +321,10 @@ func assertionHasEvidence(assertion *Assertion, archive *GLXFile) bool {
 // buildCensusRecords generates expected census records for every supplied
 // schedule, bounded by the person's birth and death years. A person with no
 // applicable schedule — one whose places name a country GLX has no census
-// schedule for — gets no census rows at all (#186).
-func buildCensusRecords(birthYear, deathYear int, schedules []*CensusSchedule, sources, events []personSourceInfo) []CoverageRecord {
+// schedule for — gets no census rows at all (#186). A census lost in every
+// bracketing jurisdiction is omitted unless found, so it does not count as
+// missing (#1333). A nil archive skips the jurisdiction survival check.
+func buildCensusRecords(birthYear, deathYear int, schedules []*CensusSchedule, sources, events []personSourceInfo, archive *GLXFile) []CoverageRecord {
 	if birthYear == 0 {
 		return nil
 	}
@@ -321,6 +336,7 @@ func buildCensusRecords(birthYear, deathYear int, schedules []*CensusSchedule, s
 	}
 
 	var records []CoverageRecord
+	places := coverageDatedPlaces(events)
 
 	for _, schedule := range schedules {
 		for _, year := range schedule.Years {
@@ -330,6 +346,7 @@ func buildCensusRecords(birthYear, deathYear int, schedules []*CensusSchedule, s
 			if year > upperBound {
 				break
 			}
+			survival := schedule.Survival(year, places, archive)
 			// Approximate age at this census year (may be 0 if census year == birth year)
 			age := year - birthYear
 			note := schedule.Notes[year]
@@ -346,8 +363,13 @@ func buildCensusRecords(birthYear, deathYear int, schedules []*CensusSchedule, s
 				rec.SourceRef = ref
 			}
 
+			if survival.Lost && !rec.Found {
+				continue
+			}
+
 			// Census-specific annotations (always added, even when found)
 			rec.Description = appendCensusAnnotation(rec.Description, note, age)
+			rec.Description = appendDescription(rec.Description, survival.Note)
 
 			// An unevidenced census event is named, not counted
 			if !rec.Found {

@@ -55,6 +55,8 @@ type CensusSchedule struct {
 	Years []int
 	// notes are the per-year research annotations, keyed by year.
 	Notes map[int]CensusYearNote
+	// losses records total and partial state/territory losses by census year.
+	losses map[int]map[string]censusJurisdictionLoss
 }
 
 // CoverageLabel renders the coverage-checklist label for one census year,
@@ -101,6 +103,7 @@ var censusSchedulesByCountry = map[string]*CensusSchedule{
 			},
 			1890: {Note: "mostly destroyed (1921 fire)"},
 		},
+		losses: usCensusLosses,
 	},
 	// UK censuses, 1841 onward. The 1801-1831 counts recorded no names,
 	// the 1931 England and Wales returns burned in 1942, and no census was
