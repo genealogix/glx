@@ -443,17 +443,6 @@ func dedupeStrings(ss []string) []string {
 	return result
 }
 
-// hypotheticalConfidence is the set of confidence values that mark a
-// parent-child relationship as "hypothetical" for outlier-severity bumping.
-// "tentative" is the literal spec match; "low" and "disputed" are included
-// because low-confidence or disputed parentage is genealogically equivalent
-// — the link is not established. If false positives surface, narrow this set.
-var hypotheticalConfidence = map[string]bool{
-	"tentative": true,
-	"low":       true,
-	"disputed":  true,
-}
-
 // Severity levels used by the sibling-birthplace-outlier check. Extracted to
 // avoid goconst-flagged string repetition; the global severity vocabulary
 // otherwise lives inline at the AnalysisIssue call sites.
@@ -462,23 +451,22 @@ const (
 	severityHigh   = "high"
 )
 
-// buildRelationshipHypotheticalIndex walks archive.Assertions once and returns
-// a map from relationship ID to true if ANY assertion whose Subject is that
-// relationship has a confidence value in hypotheticalConfidence. The OR-aggregate
-// matches the stated semantic ("any assertion about that relationship triggers
-// hypothetical") and avoids the nondeterminism of picking a single
-// representative confidence under Go's randomized map iteration.
+// buildRelationshipHypotheticalIndex returns a map from relationship ID to
+// true when the relationship is not established: its standing (see
+// glxlib.StandingFromAssertions) is hypothetical (a surviving assertion has
+// low/tentative/disputed confidence or a speculative/unresearched/disputed
+// status, and none is proven) or disproven. Status counts as well as
+// confidence, so a `confidence: high, status: speculative` link is
+// hypothetical too.
 func buildRelationshipHypotheticalIndex(archive *glxlib.GLXFile) map[string]bool {
 	if archive == nil {
 		return nil
 	}
+	standings := glxlib.NewRelationshipStandingIndex(archive)
 	index := make(map[string]bool)
-	for _, a := range archive.Assertions {
-		if a == nil || a.Subject.Type() != glxlib.EntityTypeRelationships {
-			continue
-		}
-		if hypotheticalConfidence[a.Confidence] {
-			index[a.Subject.ID()] = true
+	for relID := range archive.Relationships {
+		if standings.Relationship(relID) != glxlib.RelationshipStandingAccepted {
+			index[relID] = true
 		}
 	}
 

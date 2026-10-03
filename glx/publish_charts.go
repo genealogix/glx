@@ -200,6 +200,15 @@ func buildChartTree(
 		child, childTruncated := buildChartTree(nextID, direction, depth+1, maxGen, archive, idx, path, budget)
 		truncated = truncated || childTruncated
 		if child != nil {
+			edge := [2]string{nextID, personID} // parent, child
+			if direction == chartDescendants {
+				edge = [2]string{personID, nextID}
+			}
+			if idx.hypotheticalEdges[edge] {
+				// Leave room in the box for the hypothetical marker.
+				child.name = truncateRunes(extractPersonName(archive.Persons[nextID]), chartNameMaxRunes-len(hypotheticalMarker)-1) +
+					" " + hypotheticalMarker
+			}
 			node.children = append(node.children, child)
 		}
 	}
