@@ -140,6 +140,13 @@ func printProofText(io *IOStreams, result *proofResult) {
 		}
 	}
 
+	if len(result.Excluded) > 0 {
+		io.Printf("\n  Alternatives Excluded:\n")
+		for i := range result.Excluded {
+			io.Println("    x " + excludedAlternativeLine(&result.Excluded[i]))
+		}
+	}
+
 	io.Printf("\n  Conclusion: %s\n", result.Conclusion)
 	if result.Summary != "" {
 		io.Printf("    %s\n", result.Summary)
@@ -335,6 +342,23 @@ func printProofMarkdown(io *IOStreams, result *proofResult) {
 	printMarkdownGaps(io, result.Gaps)
 	printMarkdownSearches(io, result.Searches)
 	printMarkdownConflicts(io, result.Conflicts)
+	printMarkdownExcluded(io, result.Excluded)
+}
+
+func excludedAlternativeLine(e *proofExcludedAlternative) string {
+	return e.Name + " (" + e.Relationship + ") -- all assertions disproven"
+}
+
+// printMarkdownExcluded renders the excluded-alternatives section as Markdown.
+func printMarkdownExcluded(io *IOStreams, excluded []proofExcludedAlternative) {
+	if len(excluded) == 0 {
+		return
+	}
+	io.Printf("\n## Alternatives Excluded\n\n")
+	for i := range excluded {
+		e := &excluded[i]
+		io.Printf("- %s (`%s`) — all assertions disproven\n", e.Name, e.Relationship)
+	}
 }
 
 // printMarkdownEvidence renders the evidence section as Markdown.
@@ -403,11 +427,12 @@ func printMarkdownConflicts(io *IOStreams, conflicts []proofConflict) {
 }
 
 type (
-	proofSupport       = glxlib.ProofSupport
-	proofEvidence      = glxlib.ProofEvidence
-	proofGap           = glxlib.ProofGap
-	proofConflictValue = glxlib.ConflictValue
-	proofConflict      = glxlib.ConflictGroup
-	proofSearch        = glxlib.ProofSearch
-	proofResult        = glxlib.ProofResult
+	proofSupport             = glxlib.ProofSupport
+	proofEvidence            = glxlib.ProofEvidence
+	proofGap                 = glxlib.ProofGap
+	proofConflictValue       = glxlib.ConflictValue
+	proofConflict            = glxlib.ConflictGroup
+	proofSearch              = glxlib.ProofSearch
+	proofResult              = glxlib.ProofResult
+	proofExcludedAlternative = glxlib.ProofExcludedAlternative
 )
