@@ -393,6 +393,7 @@ export default defineConfig({
             { text: 'glx stats', link: '/cli/glx_stats' },
             { text: 'glx places', link: '/cli/glx_places' },
             { text: 'glx cluster', link: '/cli/glx_cluster' },
+            { text: 'glx households', link: '/cli/glx_households' },
             { text: 'glx analyze', link: '/cli/glx_analyze' },
             { text: 'glx duplicates', link: '/cli/glx_duplicates' },
             { text: 'glx coverage', link: '/cli/glx_coverage' },
