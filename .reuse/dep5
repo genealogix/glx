@@ -111,3 +111,9 @@ License: Apache-2.0
 Comment: Date-string corpus sampled by shape from GEDCOM DATE values, plus
  golden files of the parser's expected output. Bare date strings carry no
  authorship; the sampling and expected outcomes are project test fixtures.
+
+Files: go-glx/testdata/conflict-verdicts.json
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+Comment: Shared conflict-engine behavior fixture, including qualifier cases
+ adapted from Mo Sattler's contribution in PR #1227.

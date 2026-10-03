@@ -27,6 +27,11 @@ Supported research questions:
   marriage    Whom did the person marry?
   identity    Who was the person (name)?
 
+Only definite unresolved conflicts make a conclusion CONFLICTED. Possible
+conflicts are marked "possible — check" and reduce support. Undated temporal
+claims appear separately. Date precision and place hierarchy refinements agree;
+--approximation-years controls the default ±2-year tolerance for approximate dates.
+
 The person argument can be an exact entity ID or a name substring.
 
 ```
@@ -52,10 +57,11 @@ glx proof <person> [flags]
 ### Options
 
 ```
-  -a, --archive string    Archive path (directory or single file) (default ".")
-  -f, --format string     Output format (text, json, markdown)
-  -h, --help              help for proof
-      --question string   Research question (parentage, birth, death, marriage, identity)
+      --approximation-years int   Tolerance in years for ABT, EST and CAL date values (0–10000) (default 2)
+  -a, --archive string            Archive path (directory or single file) (default ".")
+  -f, --format string             Output format (text, json, markdown)
+  -h, --help                      help for proof
+      --question string           Research question (parentage, birth, death, marriage, identity)
 ```
 
 ### Options inherited from parent commands
