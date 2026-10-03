@@ -1222,8 +1222,14 @@ Where "glx analyze" emits a one-line conflict warning and "glx proof" summarizes
 a resolved question, "glx evidence" is for questions still in active research:
 it lays out the conflicting answers so you can weigh them. For each value it
 shows the supporting reports (citation and source), counts them, and reports the
-best confidence; the closing line highlights the best-supported value, or notes
-when the leading values tie.
+best confidence. Time-varying properties show dated history, with undated claims
+in their own section. Best evidence is chosen only among claims whose periods
+could overlap. Disproven claims are excluded. Other properties highlight the
+best-supported value, or note when the leading values tie.
+
+All comparisons use the same rules as analyze, proof and merge-persons: precision
+and place-hierarchy refinements agree; approximate date values use ±2 years by
+default (--approximation-years overrides this). Distinct place IDs stay distinct.
 
 The subject is any entity an assertion can be about — a person, event, place, or
 relationship — matching what "glx add assertion" accepts. That matters because
@@ -1262,8 +1268,13 @@ func init() {
 	evidenceCmd.Flags().StringVar(&evidenceFormat, "format", "text", "Output format: text or json")
 }
 
-func runEvidence(_ *cobra.Command, args []string) error {
-	return showEvidence(SystemIOStreams(), evidenceArchive, args[0], args[1], evidenceFormat)
+func runEvidence(cmd *cobra.Command, args []string) error {
+	opts, err := commandComparisonOptions(cmd)
+	if err != nil {
+		return err
+	}
+
+	return showEvidence(SystemIOStreams(), evidenceArchive, args[0], args[1], evidenceFormat, opts)
 }
 
 // ============================================================================
@@ -1532,10 +1543,10 @@ Record categories:
   - Other: Probate, land, military, and church records
 
 A record counts as found only when evidence backs it: a source about the person,
-or an event that is the subject of an assertion citing a source. An event on its
-own is a conclusion, not a record, so it is reported without counting toward the
-score -- an estimated birth date reckoned back from a death entry does not mean a
-birth record exists.
+or an event whose assertion references a citation, source, or media object.
+An event on its own is a conclusion, not a record, so it is reported without
+counting toward the score -- an estimated birth date reckoned back from a death
+entry does not mean a birth record exists.
 
 Missing high-priority records are flagged to guide research efforts.
 
@@ -1590,11 +1601,18 @@ Analysis categories:
   gaps          Missing data that should be findable (no birth, no parents, etc.)
   evidence      Unsupported or weakly supported claims (no citations, single source)
   consistency   Chronological cross-checks (death before birth, implausible lifespan)
+  conflicts     Definite conflicts, possible overlaps, and known disputes
   suggestions   Research recommendations (census years to search, vital records)
 
 Use --check to run a single category. By default, all categories are analyzed.
 
-Use --format json for machine-readable output.`,
+Conflicts include assertions on the person, their events and relationships,
+and competing dates/places on duplicate birth or death events. Definite conflicts
+are HIGH, possible overlaps MEDIUM, and known disputes LOW. Disproven claims and
+undated temporal values are excluded. Touching periods are history.
+
+Use --approximation-years to change the default ±2-year tolerance for approximate
+date values. Use --format json for machine-readable output.`,
 	Example: `  # Full analysis of current directory
   glx analyze
 
@@ -1618,19 +1636,23 @@ Use --format json for machine-readable output.`,
 
 func init() {
 	analyzeCmd.Flags().StringVarP(&analyzeArchive, "archive", "a", ".", "Archive path (directory or single file)")
-	analyzeCmd.Flags().StringVarP(&analyzeCheck, "check", "c", "", "Run a single analysis category (gaps, evidence, consistency, suggestions)")
+	analyzeCmd.Flags().StringVarP(&analyzeCheck, "check", "c", "", "Run a single analysis category (gaps, evidence, consistency, conflicts, suggestions)")
 	analyzeCmd.Flags().StringVarP(&analyzeFormat, "format", "f", "", "Output format (json for machine-readable)")
 	analyzeCmd.Flags().StringVarP(&analyzePerson, "person", "p", "", "Filter results to a specific person (ID or name)")
 	analyzeCmd.Flags().StringVar(&analyzeCountry, "country", "", censusCountryFlagUsage)
 }
 
-func runAnalyze(_ *cobra.Command, args []string) error {
+func runAnalyze(cmd *cobra.Command, args []string) error {
+	opts, err := commandComparisonOptions(cmd)
+	if err != nil {
+		return err
+	}
 	person := analyzePerson
 	if len(args) == 1 {
 		person = args[0]
 	}
 
-	return showAnalysis(analyzeArchive, person, analyzeCheck, analyzeFormat, analyzeCountry)
+	return showAnalysis(analyzeArchive, person, analyzeCheck, analyzeFormat, analyzeCountry, opts)
 }
 
 // ============================================================================
@@ -1664,6 +1686,11 @@ Supported research questions:
   marriage    Whom did the person marry?
   identity    Who was the person (name)?
 
+Only definite unresolved conflicts make a conclusion CONFLICTED. Possible
+conflicts are marked "possible — check" and reduce support. Undated temporal
+claims appear separately. Date precision and place hierarchy refinements agree;
+--approximation-years controls the default ±2-year tolerance for approximate dates.
+
 The person argument can be an exact entity ID or a name substring.`,
 	Example: `  # Proof summary for a person's parentage
   glx proof person-jane-webb --question parentage
@@ -1687,8 +1714,13 @@ func init() {
 	_ = proofCmd.MarkFlagRequired("question")
 }
 
-func runProof(_ *cobra.Command, args []string) error {
-	return showProof(SystemIOStreams(), proofArchive, args[0], proofQuestion, proofFormat)
+func runProof(cmd *cobra.Command, args []string) error {
+	opts, err := commandComparisonOptions(cmd)
+	if err != nil {
+		return err
+	}
+
+	return showProof(SystemIOStreams(), proofArchive, args[0], proofQuestion, proofFormat, opts)
 }
 
 // ============================================================================
@@ -1940,10 +1972,13 @@ then the drop-id person file is removed.
 
 Property merging:
   - Properties present only on drop are copied verbatim.
-  - Multi-value (list) properties are unioned with deep-equal deduplication.
-  - Single-value conflicts default to keep's value (recorded in the conflict
-    report). Pass --keep-newest or --keep-oldest to resolve dated conflicts
-    by date instead.
+  - Identical values agree silently.
+  - Temporal properties combine non-conflicting dated and undated history,
+    including mixed scalar, structured, and list representations.
+  - Other multi-value lists are unioned with deep-equal deduplication.
+  - Genuine conflicts default to keep's value. --keep-newest or --keep-oldest
+    resolves dated collisions while preserving unrelated history.
+  - Approximate date values use ±2 years; --approximation-years overrides it.
 
 Notes are combined per --notes-strategy (default: append).
 
@@ -1976,8 +2011,13 @@ func init() {
 		"How to combine notes: append | prefer-keep | prefer-drop")
 }
 
-func runMergePersons(_ *cobra.Command, args []string) error {
+func runMergePersons(cmd *cobra.Command, args []string) error {
+	comparison, err := commandComparisonOptions(cmd)
+	if err != nil {
+		return err
+	}
 	opts := glxlib.MergePersonsOptions{
+		Comparison:    comparison,
 		NotesStrategy: glxlib.NotesStrategy(mergePersonsNotesStrategy),
 		KeepNewest:    mergePersonsKeepNewest,
 		KeepOldest:    mergePersonsKeepOldest,
