@@ -31,24 +31,14 @@ import (
 //
 //	go build -ldflags "-X main.version=1.2.3 -X main.commit=abc123 -X main.date=2025-01-01" ./glx
 //
-// GoReleaser sets these automatically. For local builds they default to "dev"/""/"".
+// GoReleaser sets these automatically. For local builds they default to "dev"/""/"",
+// and versionString (version.go) falls back to the module version and VCS stamp
+// Go records in the binary.
 var (
 	version = "dev"
 	commit  = ""
 	date    = ""
 )
-
-func versionString() string {
-	v := version
-	if commit != "" {
-		v += " (" + commit[:min(len(commit), 7)] + ")"
-	}
-	if date != "" {
-		v += " " + date
-	}
-
-	return v
-}
 
 // Root command
 var rootCmd = &cobra.Command{

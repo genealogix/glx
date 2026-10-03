@@ -77,6 +77,10 @@ glx --version
 ```bash
 # Pin the release tag for a reproducible install; bump it when a new release ships
 go install github.com/genealogix/glx/glx@v0.0.0-beta.12
+
+# Or track main for changes not yet in a release. `glx --version` then
+# reports the commit it was built from (a pseudo-version ending in its hash).
+go install github.com/genealogix/glx/glx@main
 ```
 
 ### From Source
@@ -88,6 +92,7 @@ cd glx/glx
 
 # Build the tool
 go build -o glx .
+./glx --version   # e.g. "glx version dev (ea402a5, 2026-10-01T14:46:10Z)": the commit and its time
 
 # Optional: Install to PATH
 go install

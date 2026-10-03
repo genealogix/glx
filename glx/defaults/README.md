@@ -19,6 +19,10 @@ This is a genealogical archive using the GENEALOGIX format.
 ### Media
 - media/ - Photos, documents, and other media files
 
+### Research
+- research_logs/ - Research logs: what was searched, where, and what was found
+- studies/ - Research studies (one-name, one-place, FAN-club) and their scope
+
 ## Getting Started
 
 Use glx commands to work with this archive:
@@ -35,7 +39,7 @@ Each file represents a specific entity (person, event, place, citation, etc.).
 
 ### Standard ID Prefixes
 - person-XXXXXXXX: Person records
-- rel-XXXXXXXX: Relationship records
+- relationship-XXXXXXXX: Relationship records
 - event-XXXXXXXX: Event/Fact records
 - place-XXXXXXXX: Place records
 - assertion-XXXXXXXX: Assertion records
@@ -43,6 +47,8 @@ Each file represents a specific entity (person, event, place, citation, etc.).
 - citation-XXXXXXXX: Citation records
 - repository-XXXXXXXX: Repository records
 - media-XXXXXXXX: Media records
+- research-log-XXXXXXXX: Research log records
+- study-XXXXXXXX: Study records
 
 ## Documentation
 
