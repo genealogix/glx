@@ -50,7 +50,10 @@ type siteModel struct {
 	Persons   []*personPage
 	Sources   []sourceRow
 	Places    []placeRow
-	Search    []searchEntry
+	// PlaceMap is the map drawn above the place index; nil when fewer than
+	// two places carry coordinates.
+	PlaceMap *placeMap
+	Search   []searchEntry
 }
 
 // siteStats holds entity counts for the landing page.
@@ -146,7 +149,9 @@ type placeRow struct {
 	FullName   string // hierarchical "Boston, Massachusetts, United States"
 	Type       string
 	HasCoords  bool
-	MapURL     string // OpenStreetMap link when coordinates are present
+	Lat        float64 // only meaningful when HasCoords
+	Lon        float64 // only meaningful when HasCoords
+	MapURL     string  // OpenStreetMap link when coordinates are present
 	EventCount int
 }
 
@@ -203,6 +208,7 @@ func buildSiteModel(archive *glxlib.GLXFile, opts siteModelOptions) *siteModel {
 	model.Persons = buildPersonPages(archive, idx)
 	model.Sources = buildSourceRows(archive)
 	model.Places = buildPlaceRows(archive, idx)
+	model.PlaceMap = buildPlaceMap(model.Places)
 	model.Search = buildSearchIndex(model)
 
 	return model
@@ -552,6 +558,8 @@ func buildPlaceRows(archive *glxlib.GLXFile, idx *siteIndex) []placeRow {
 		}
 		if place.Latitude != nil && place.Longitude != nil {
 			row.HasCoords = true
+			row.Lat = *place.Latitude
+			row.Lon = *place.Longitude
 			row.MapURL = openStreetMapURL(*place.Latitude, *place.Longitude)
 		}
 		rows = append(rows, row)
