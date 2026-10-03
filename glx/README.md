@@ -171,6 +171,8 @@ glx validate persons/ events/   # several directories are validated as one archi
 
 ## Features
 
+- [Shared conflict detection](../docs/guides/conflict-detection.md) across analysis, proof, evidence and person merges, with dated history and configurable approximate-date tolerance.
+
 - ✅ **Initialize Archives** - Create new single-file or multi-file genealogy archives
 - 📥 **GEDCOM Import** - Import GEDCOM 5.5.1 and 7.0 files (and GEDZIP `.gdz` archives with bundled media) to GLX format
 - 📤 **GEDCOM Export** - Export GLX archives back to GEDCOM 5.5.1 or 7.0 format
