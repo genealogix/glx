@@ -782,6 +782,14 @@ var statsCmd = &cobra.Command{
 Shows entity counts, assertion confidence distribution, and entity coverage
 metrics for quick feedback on archive health.
 
+Coverage is shown two ways. "Direct assertion references" counts entities
+that are an assertion's subject. "Evidence coverage" follows the evidence
+chain: a person is covered when an assertion targets them, names them as a
+participant, or targets an event or relationship they take part in; a place
+is covered when an assertion targets it or names it as a value (an event's
+place, a residence), when a covered event happens there, or when it contains
+such a place.
+
 Accepts either a multi-file directory or a single .glx file.
 If no path is given, uses the current directory.`,
 	Example: `  # Stats for current directory
@@ -1105,6 +1113,14 @@ Observations are sorted chronologically and each change of region is reported
 as a movement (e.g. "Florida → Wisconsin"). Regions compare at the
 state/region level of the place hierarchy, and pre-statehood territories
 match their successor states ("Florida Territory" equals "Florida").
+
+Not every observation counts toward a movement. An event in which the
+person's role does not put them at its place (a grantor or grantee of a deed,
+a legatee or heir of an estate, someone merely mentioned) is shown but not
+counted; an archive can mark its own roles with implies_presence in the
+participant roles vocabulary. A dated residence value wins over event places
+inside its period: an event elsewhere during that period is shown but not
+counted as a move.
 
 With --pattern, searches all persons in the archive for a migration pattern
 instead: a comma-separated list of places that must appear in chronological
@@ -1547,6 +1563,12 @@ or an event whose assertion references a citation, source, or media object.
 An event on its own is a conclusion, not a record, so it is reported without
 counting toward the score -- an estimated birth date reckoned back from a death
 entry does not mean a birth record exists.
+
+Only the person's own records count: an event in which they are the principal
+or subject (or bride, groom, decedent, ...), or a census on which they are a
+member of the household. Events in which they appear in another role -- a
+witness, godparent, legatee, grantor -- are someone else's record; they are
+listed separately under "Appears in" and do not satisfy a category.
 
 Missing high-priority records are flagged to guide research efforts.
 

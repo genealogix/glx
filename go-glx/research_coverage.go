@@ -54,16 +54,28 @@ type CoverageResult struct {
 	Records    []CoverageRecord `json:"records"`
 	Found      int              `json:"found"`
 	Expected   int              `json:"expected"`
+	// AppearsIn lists other people's records the person participates in.
+	AppearsIn []CoverageAppearance `json:"appears_in,omitempty"`
+}
+
+// CoverageAppearance is one event in which the person appears in someone
+// else's record.
+type CoverageAppearance struct {
+	EventID   string `json:"event_id"`
+	EventType string `json:"event_type,omitempty"`
+	Role      string `json:"role,omitempty"`
+	Date      string `json:"date,omitempty"`
+	Label     string `json:"label"` // whose record it is, e.g. "Probate of Caspar Stoehr"
 }
 
 // buildCoverage generates the coverage checklist for a person.
 func buildCoverage(personID string, person *Person, archive *GLXFile, fallback string) *CoverageResult {
 	var birthDate, birthPlace, deathDate, deathPlace string
-	if _, birthEvent := FindPersonEvent(archive, personID, EventTypeBirth); birthEvent != nil {
+	if birthEvent := findCoveragePersonEvent(archive, personID, EventTypeBirth); birthEvent != nil {
 		birthDate = string(birthEvent.Date)
 		birthPlace = birthEvent.PlaceID
 	}
-	if _, deathEvent := FindPersonEvent(archive, personID, EventTypeDeath); deathEvent != nil {
+	if deathEvent := findCoveragePersonEvent(archive, personID, EventTypeDeath); deathEvent != nil {
 		deathDate = string(deathEvent.Date)
 		deathPlace = deathEvent.PlaceID
 	}
@@ -75,7 +87,9 @@ func buildCoverage(personID string, person *Person, archive *GLXFile, fallback s
 	// which events an assertion actually backs with a citation, source or media
 	personSources := collectPersonSources(personID, archive)
 	evidencedEvents := eventsWithEvidence(archive)
-	personEvents := collectPersonEvents(personID, archive, evidencedEvents)
+	participations := collectPersonEvents(personID, archive, evidencedEvents)
+	personEvents := filterPersonEvents(participations, func(e personSourceInfo) bool { return e.OwnRecord })
+	presentEvents := filterPersonEvents(participations, func(e personSourceInfo) bool { return e.Present })
 
 	// Infer death year from burial event if death_date is not set
 	if deathYear == 0 {
@@ -83,11 +97,11 @@ func buildCoverage(personID string, person *Person, archive *GLXFile, fallback s
 	}
 
 	// National census records, for the countries the person's places name
-	schedules := censusSchedulesForPlaces(coveragePlaceRefs(personEvents), archive, fallback)
-	records := buildCensusRecords(birthYear, deathYear, schedules, personSources, personEvents, archive)
+	schedules := censusSchedulesForPlaces(coveragePlaceRefs(presentEvents), archive, fallback)
+	records := buildCensusRecords(birthYear, deathYear, schedules, personSources, personEvents, presentEvents, archive)
 
 	// State census records
-	states := collectPersonStates(archive, personEvents)
+	states := collectPersonStates(archive, presentEvents)
 	records = append(records, buildStateCensusRecords(birthYear, deathYear, states, personSources, personEvents, archive)...)
 
 	// Vital records
@@ -118,6 +132,7 @@ func buildCoverage(personID string, person *Person, archive *GLXFile, fallback s
 		Records:    records,
 		Found:      found,
 		Expected:   len(records),
+		AppearsIn:  buildAppearances(participations, archive),
 	}
 }
 
@@ -131,6 +146,8 @@ type personSourceInfo struct {
 	PlaceID    string // place reference (events only)
 	Year       int
 	Evidenced  bool // events only: an assertion resolves a citation, source or media
+	OwnRecord  bool // events only: the event is the person's own record
+	Present    bool // events only: the role implies presence at the event's place
 }
 
 // collectPersonSources gathers all sources and citations that reference a person
@@ -199,36 +216,98 @@ func sourcesWithMedia(assertion *Assertion, archive *GLXFile) []string {
 }
 
 // collectPersonEvents gathers all events this person participates in, marking
-// each with whether it carries supporting evidence per the evidenced index.
+// each with whether it carries supporting evidence per the evidenced index and
+// with what the person's role makes of it (ClassifyParticipation).
 func collectPersonEvents(personID string, archive *GLXFile, evidenced map[string]bool) []personSourceInfo {
 	var events []personSourceInfo
-	wanted := map[string]bool{personID: true}
 
 	// Sorted so a person with more than one event of a type reports the same
 	// one on every run
 	for _, eventID := range sortedKeys(archive.Events) {
 		event := archive.Events[eventID]
-		if event == nil {
+		participation, role, ok := EventParticipation(event, personID, archive.ParticipantRoles)
+		if !ok {
 			continue
 		}
-		for _, p := range selectedResearchParticipants(event.Participants, wanted, event.Type) {
-			if p.Person == personID {
-				events = append(events, personSourceInfo{
-					Ref:        eventID,
-					EventType:  event.Type,
-					PersonRole: p.Role,
-					Year:       ExtractFirstYear(string(event.Date)),
-					Title:      event.Title,
-					PlaceID:    event.PlaceID,
-					Evidenced:  evidenced[eventID],
-				})
-
-				break
-			}
-		}
+		events = append(events, personSourceInfo{
+			Ref:        eventID,
+			EventType:  event.Type,
+			Year:       ExtractFirstYear(string(event.Date)),
+			Title:      event.Title,
+			PlaceID:    event.PlaceID,
+			Evidenced:  evidenced[eventID],
+			PersonRole: role,
+			OwnRecord:  participation.OwnRecord,
+			Present:    participation.Present,
+		})
 	}
 
 	return events
+}
+
+// filterPersonEvents returns the events that satisfy keep.
+func filterPersonEvents(events []personSourceInfo, keep func(personSourceInfo) bool) []personSourceInfo {
+	var kept []personSourceInfo
+	for _, e := range events {
+		if keep(e) {
+			kept = append(kept, e)
+		}
+	}
+
+	return kept
+}
+
+// buildAppearances lists the events in which the person takes part without
+// the event being their own record, labeled by whose record it is.
+func buildAppearances(events []personSourceInfo, archive *GLXFile) []CoverageAppearance {
+	var appearances []CoverageAppearance
+	for _, e := range events {
+		if e.OwnRecord {
+			continue
+		}
+		event := archive.Events[e.Ref]
+		appearances = append(appearances, CoverageAppearance{
+			EventID:   e.Ref,
+			EventType: e.EventType,
+			Role:      e.PersonRole,
+			Date:      string(event.Date),
+			Label:     appearanceLabel(event, archive),
+		})
+	}
+
+	return appearances
+}
+
+// appearanceLabel names whose record an event is: "Probate of Caspar
+// Stoehr" from the participants whose own record it is, else the event's
+// title, else its type.
+func appearanceLabel(event *Event, archive *GLXFile) string {
+	typeLabel := coverageEventTypeLabel(event.Type)
+
+	var names []string
+	for _, p := range event.Participants {
+		if p.Person == "" || !ClassifyParticipation(event.Type, p.Role, archive.ParticipantRoles).OwnRecord {
+			continue
+		}
+		name := p.Person
+		if person := archive.Persons[p.Person]; person != nil {
+			if display := PersonDisplayName(person); display != "" {
+				name = display
+			}
+		}
+		if !slices.Contains(names, name) {
+			names = append(names, name)
+		}
+	}
+
+	switch {
+	case len(names) > 0:
+		return typeLabel + " of " + strings.Join(names, " and ")
+	case strings.TrimSpace(event.Title) != "":
+		return strings.TrimSpace(event.Title)
+	default:
+		return typeLabel
+	}
 }
 
 // coverageDatedPlaces returns the dated places of a person's events, for
@@ -324,7 +403,7 @@ func assertionHasEvidence(assertion *Assertion, archive *GLXFile) bool {
 // schedule for — gets no census rows at all (#186). A census lost in every
 // bracketing jurisdiction is omitted unless found, so it does not count as
 // missing (#1333). A nil archive skips the jurisdiction survival check.
-func buildCensusRecords(birthYear, deathYear int, schedules []*CensusSchedule, sources, events []personSourceInfo, archive *GLXFile) []CoverageRecord {
+func buildCensusRecords(birthYear, deathYear int, schedules []*CensusSchedule, sources, events, presentEvents []personSourceInfo, archive *GLXFile) []CoverageRecord {
 	if birthYear == 0 {
 		return nil
 	}
@@ -336,7 +415,7 @@ func buildCensusRecords(birthYear, deathYear int, schedules []*CensusSchedule, s
 	}
 
 	var records []CoverageRecord
-	places := coverageDatedPlaces(events)
+	places := coverageDatedPlaces(presentEvents)
 
 	for _, schedule := range schedules {
 		for _, year := range schedule.Years {
@@ -566,29 +645,14 @@ func findMarriageEventID(personID, spouseID string, rel *Relationship, archive *
 		if ev == nil || ev.Type != EventTypeMarriage {
 			continue
 		}
-		if eventHasParticipants(ev, personID, spouseID) {
+		personParticipation, _, hasPerson := EventParticipation(ev, personID, archive.ParticipantRoles)
+		spouseParticipation, _, hasSpouse := EventParticipation(ev, spouseID, archive.ParticipantRoles)
+		if hasPerson && hasSpouse && personParticipation.OwnRecord && spouseParticipation.OwnRecord {
 			return eventID
 		}
 	}
 
 	return ""
-}
-
-// eventHasParticipants reports whether both people participate in the event.
-func eventHasParticipants(event *Event, personID, spouseID string) bool {
-	hasPerson := false
-	hasSpouse := false
-
-	for _, ep := range event.Participants {
-		if ep.Person == personID {
-			hasPerson = true
-		}
-		if ep.Person == spouseID {
-			hasSpouse = true
-		}
-	}
-
-	return hasPerson && hasSpouse
 }
 
 // buildOtherRecords generates records for probate, land, military, church.
@@ -699,23 +763,12 @@ func findUnevidencedEvent(events []personSourceInfo, eventType string) string {
 
 func findEventRef(events []personSourceInfo, eventType string, evidenced bool) string {
 	for _, e := range events {
-		if e.EventType == eventType && e.Evidenced == evidenced && coverageEventRelevant(e.EventType, e.PersonRole) {
+		if e.EventType == eventType && e.Evidenced == evidenced {
 			return e.Ref
 		}
 	}
 
 	return ""
-}
-
-func coverageEventRelevant(kind, role string) bool {
-	if isBirthEventType(kind) || isDeathEventType(kind) {
-		return isVitalPrincipal(kind, role)
-	}
-	if isMarriageEventType(kind) {
-		return isMarriagePrincipal(role)
-	}
-
-	return true
 }
 
 // unevidencedNote describes an event that exists but that nothing backs, so a
@@ -780,7 +833,7 @@ func boolPriority(condition bool, priority string) string {
 func inferDeathYearFromEvents(events []personSourceInfo) int {
 	earliest := 0
 	for _, e := range events {
-		if e.EventType == EventTypeBurial && e.Year > 0 && coverageEventRelevant(e.EventType, e.PersonRole) {
+		if e.EventType == EventTypeBurial && e.Year > 0 {
 			if earliest == 0 || e.Year < earliest {
 				earliest = e.Year
 			}
@@ -856,4 +909,29 @@ func hasFamily(personID string, archive *GLXFile) bool {
 	}
 
 	return false
+}
+
+// findCoveragePersonEvent applies own-record semantics to the coverage lifetime.
+func findCoveragePersonEvent(archive *GLXFile, personID, eventType string) *Event {
+	for _, id := range sortedKeys(archive.Events) {
+		event := archive.Events[id]
+		if event == nil || event.Type != eventType {
+			continue
+		}
+		participation, _, ok := EventParticipation(event, personID, archive.ParticipantRoles)
+		if ok && participation.OwnRecord {
+			return event
+		}
+	}
+
+	return nil
+}
+
+func coverageEventTypeLabel(eventType string) string {
+	if eventType == "" {
+		return "Event"
+	}
+	label := strings.ReplaceAll(eventType, "_", " ")
+
+	return strings.ToUpper(label[:1]) + label[1:]
 }
