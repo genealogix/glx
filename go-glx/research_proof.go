@@ -132,19 +132,28 @@ type ProofSearch struct {
 	Result     string `json:"result,omitempty"`
 }
 
+// ProofExcludedAlternative is a parent candidate whose links have all been
+// disproven. It remains visible apart from the parents identified.
+type ProofExcludedAlternative struct {
+	PersonID     string `json:"person_id"`
+	Name         string `json:"name"`
+	Relationship string `json:"relationship"`
+}
+
 // ProofResult is the full structured proof argument for one research question.
 type ProofResult struct {
-	Undated      []ProofEvidence `json:"undated,omitempty"`
-	PersonID     string          `json:"person_id"`
-	PersonName   string          `json:"person_name"`
-	Question     string          `json:"question"`
-	QuestionText string          `json:"question_text"`
-	Evidence     []ProofEvidence `json:"evidence"`
-	Gaps         []ProofGap      `json:"gaps,omitempty"`
-	Conflicts    []ConflictGroup `json:"conflicts"`
-	Searches     []ProofSearch   `json:"searches,omitempty"`
-	Conclusion   string          `json:"conclusion"`
-	Summary      string          `json:"summary,omitempty"`
+	Excluded     []ProofExcludedAlternative `json:"alternatives_excluded,omitempty"`
+	Undated      []ProofEvidence            `json:"undated,omitempty"`
+	PersonID     string                     `json:"person_id"`
+	PersonName   string                     `json:"person_name"`
+	Question     string                     `json:"question"`
+	QuestionText string                     `json:"question_text"`
+	Evidence     []ProofEvidence            `json:"evidence"`
+	Gaps         []ProofGap                 `json:"gaps,omitempty"`
+	Conflicts    []ConflictGroup            `json:"conflicts"`
+	Searches     []ProofSearch              `json:"searches,omitempty"`
+	Conclusion   string                     `json:"conclusion"`
+	Summary      string                     `json:"summary,omitempty"`
 }
 
 // buildProof assembles the proof argument for a person and research topic.
@@ -155,10 +164,16 @@ func buildProof(personID string, person *Person, topic string, archive *GLXFile,
 	}
 
 	all := collectPersonProofAssertions(archive, personID)
+	var parentLinks []ParentChildLink
+	var standings *RelationshipStandingIndex
+	if topic == topicParentage {
+		standings = NewRelationshipStandingIndex(archive)
+		parentLinks = ParentChildLinks(archive, standings)
+	}
 
 	var relevant []proofAssertion
 	for i := range all {
-		if assertionRelevant(topic, &all[i]) {
+		if assertionRelevant(topic, &all[i]) && (topic != topicParentage || parentageLinkRelevant(&all[i], personID, parentLinks)) {
 			relevant = append(relevant, all[i])
 		}
 	}
@@ -186,10 +201,18 @@ func buildProof(personID string, person *Person, topic string, archive *GLXFile,
 		return a.Timing().Outer.Start < b.Timing().Outer.Start
 	})
 	conflicts := detectProofConflicts(relevant, archive, opts.Comparison)
+	conclusionEvidence := relevant
+	var excluded []ProofExcludedAlternative
+	if topic == topicParentage {
+		var candidates []parentCandidate
+		candidates, excluded = parentageCandidates(personID, archive, parentLinks, standings)
+		conflicts = append(conflicts, parentageConflicts(personID, candidates, archive, opts.Comparison)...)
+		conclusionEvidence = parentageSupport(relevant, personID, parentLinks, standings)
+	}
 	gaps := collectProofGaps(personID, person, topic, archive, opts.Coverage)
 	searches := collectProofSearches(personID, archive)
 
-	conclusion, summary := concludeProof(topic, personID, archive, relevant, conflicts, gaps)
+	conclusion, summary := concludeProof(topic, personID, archive, conclusionEvidence, conflicts, gaps)
 
 	return &ProofResult{
 		PersonID:     personID,
@@ -200,6 +223,7 @@ func buildProof(personID string, person *Person, topic string, archive *GLXFile,
 		Undated:      undated,
 		Gaps:         gaps,
 		Conflicts:    conflicts,
+		Excluded:     excluded,
 		Searches:     searches,
 		Conclusion:   conclusion,
 		Summary:      summary,
@@ -295,7 +319,7 @@ func collectPersonProofAssertions(archive *GLXFile, personID string) []proofAsse
 // Property-name sets for matching legacy direct-on-person assertions to a topic.
 var (
 	parentPropertyNames = map[string]bool{
-		"father": true, "mother": true, ParticipantRoleParent: true, "parents": true,
+		parentageFather: true, parentageMother: true, ParticipantRoleParent: true, "parents": true,
 		"father_name": true, "mother_name": true,
 	}
 )
@@ -332,7 +356,7 @@ func assertionRelevant(topic string, pa *proofAssertion) bool {
 }
 
 func parentageAssertionRelevant(pa *proofAssertion) bool {
-	if researchIsParentChildType(pa.relType) && pa.personRole == ParticipantRoleChild {
+	if IsParentChildRelationshipType(pa.relType) && IsChildSideRole(pa.personRole) {
 		return true
 	}
 	if pa.eventType == EventTypeBirth {
@@ -947,7 +971,7 @@ func participantAnswersQuestion(participant *Participant, topic, personID string
 	}
 	switch topic {
 	case topicParentage:
-		return participant.Role == ParticipantRoleParent
+		return IsParentSideRole(participant.Role) && !IsStepRole(participant.Role)
 	case topicMarriage:
 		return participant.Role == ParticipantRoleSpouse || participant.Role == ParticipantRoleBride || participant.Role == ParticipantRoleGroom
 	default:
@@ -955,27 +979,13 @@ func participantAnswersQuestion(participant *Participant, topic, personID string
 	}
 }
 
-// parentNames returns the display names of a person's parents, drawn from
-// parent-child relationships where the person is the child.
+// parentNames returns surviving, non-step parent names in relationship order.
 func parentNames(personID string, archive *GLXFile) []string {
-	var names []string
-	seen := make(map[string]bool)
-
-	for _, relID := range sortedKeys(archive.Relationships) {
-		rel := archive.Relationships[relID]
-		if rel == nil || !researchIsParentChildType(rel.Type) {
-			continue
-		}
-		if !hasParticipantRole(personID, ParticipantRoleChild, rel.Participants) {
-			continue
-		}
-
-		for _, p := range rel.Participants {
-			if p.Role == ParticipantRoleParent && p.Person != "" && !seen[p.Person] {
-				seen[p.Person] = true
-				names = append(names, personName(archive, p.Person))
-			}
-		}
+	standings := NewRelationshipStandingIndex(archive)
+	candidates, _ := parentageCandidates(personID, archive, ParentChildLinks(archive, standings), standings)
+	names := make([]string, 0, len(candidates))
+	for _, candidate := range candidates {
+		names = append(names, candidate.name)
 	}
 
 	return names
@@ -1007,17 +1017,6 @@ func spouseNames(personID string, archive *GLXFile) []string {
 	}
 
 	return names
-}
-
-// hasParticipantRole reports whether the person participates with the given role.
-func hasParticipantRole(personID, role string, participants []Participant) bool {
-	for _, p := range participants {
-		if p.Person == personID && p.Role == role {
-			return true
-		}
-	}
-
-	return false
 }
 
 // insufficientSummary builds the summary line for an unproven question.
