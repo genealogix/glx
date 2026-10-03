@@ -15,8 +15,10 @@
 package e2e
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -183,4 +185,46 @@ func TestRelationshipStanding_ProofParentage(t *testing.T) {
 	assert.Contains(t, res.stdout, "x John Little (rel-pc-john) -- all assertions disproven")
 	assert.Contains(t, res.stdout, "Parents identified: Johannes Daniel Little.")
 	assert.Contains(t, res.stdout, "Conclusion: POSSIBLE")
+}
+
+func TestRelationshipStanding_ProofFormatsAndConflict(t *testing.T) {
+	dir, path := writeLittleFamily(t)
+	before := snapshotTree(t, dir)
+	for _, format := range []string{"json", "markdown"} {
+		result := runGLX(t, dir, "proof", "person-lewis", "--question", "parentage", "--format", format, "--archive", path)
+		require.Equal(t, 0, result.exitCode, result.stdout+result.stderr)
+		if format == "json" {
+			var proof struct {
+				Conclusion string `json:"conclusion"`
+				Summary    string `json:"summary"`
+				Excluded   []struct {
+					PersonID     string `json:"person_id"`
+					Relationship string `json:"relationship"`
+				} `json:"alternatives_excluded"`
+			}
+			require.NoError(t, json.Unmarshal([]byte(result.stdout), &proof))
+			require.Equal(t, "POSSIBLE", proof.Conclusion)
+			require.Contains(t, proof.Summary, "Parents identified: Johannes Daniel Little.")
+			require.Len(t, proof.Excluded, 2)
+			require.Equal(t, "person-jacob", proof.Excluded[0].PersonID)
+			require.Equal(t, "rel-pc-jacob", proof.Excluded[0].Relationship)
+		} else {
+			require.Contains(t, result.stdout, "## Alternatives Excluded")
+			require.Contains(t, result.stdout, "Jacob Little (`rel-pc-jacob`) — all assertions disproven")
+			require.Contains(t, result.stdout, "**Conclusion:** POSSIBLE")
+		}
+	}
+	after := snapshotTree(t, dir)
+	require.Empty(t, diffTrees(before, after), "proof must not change its input archive")
+	revived := strings.Replace(littleFamilyGLX, "confidence: medium\n    status: disproven", "confidence: medium\n    status: speculative", 1)
+	require.NoError(t, os.WriteFile(path, []byte(revived), 0o644))
+	for _, format := range []string{"text", "markdown", "json"} {
+		result := runGLX(t, dir, "proof", "person-lewis", "--question", "parentage", "--format", format, "--archive", path)
+		require.Equal(t, 0, result.exitCode, result.stdout+result.stderr)
+		require.Contains(t, result.stdout, "CONFLICTED")
+		require.Contains(t, result.stdout, "father (competing parent_child relationships)")
+		require.Contains(t, result.stdout, "Johannes Daniel Little")
+		require.Contains(t, result.stdout, "John Little")
+		require.Contains(t, result.stdout, "Jacob Little")
+	}
 }

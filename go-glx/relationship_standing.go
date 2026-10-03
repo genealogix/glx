@@ -55,9 +55,9 @@ const (
 // "tentative" and "disputed" are legacy confidence tokens that carried the same
 // meaning before disputes moved to `status`.
 var hypotheticalAssertionConfidence = map[string]bool{
-	"low":       true,
-	"tentative": true,
-	"disputed":  true,
+	ConfidenceLevelLow: true,
+	"tentative":        true,
+	"disputed":         true,
 }
 
 // hypotheticalAssertionStatus holds the status values that mark an assertion as

@@ -261,7 +261,7 @@ func TestBuildProof_ParentageExcludesDisproven(t *testing.T) {
 	}
 	archive.Assertions["a-jacob"].Sources = []string{"src"}
 
-	result := buildProof("person-lewis", archive.Persons["person-lewis"], topicParentage, archive)
+	result := mustBuildProof("person-lewis", archive.Persons["person-lewis"], topicParentage, archive)
 	assert.Empty(t, result.Conflicts)
 	assert.Equal(t, []proofExcludedAlternative{{PersonID: "person-jacob", Name: "Jacob Little", Relationship: "rel-pc-jacob"}}, result.Excluded)
 	assert.Equal(t, proofConclusionPossible, result.Conclusion)
@@ -282,7 +282,7 @@ func TestBuildProof_ParentageCompetingFathersConflict(t *testing.T) {
 	// Revive John as a surviving candidate alongside Daniel.
 	archive.Assertions["a-john"].Status = "speculative"
 
-	result := buildProof("person-lewis", archive.Persons["person-lewis"], topicParentage, archive)
+	result := mustBuildProof("person-lewis", archive.Persons["person-lewis"], topicParentage, archive)
 	require.Len(t, result.Conflicts, 1)
 	c := result.Conflicts[0]
 	assert.Equal(t, "father (competing parent_child relationships)", c.Property)
@@ -303,7 +303,7 @@ func TestBuildProof_ParentageAdoptiveFatherIsNoConflict(t *testing.T) {
 		{Person: "person-ned", Role: "adoptive_parent"}, {Person: "person-lewis", Role: "adopted_child"},
 	}}
 
-	result := buildProof("person-lewis", archive.Persons["person-lewis"], topicParentage, archive)
+	result := mustBuildProof("person-lewis", archive.Persons["person-lewis"], topicParentage, archive)
 	assert.Empty(t, result.Conflicts, "an adoptive father does not compete with a birth father")
 	assert.Contains(t, result.Summary, "Ned Neighbor")
 }

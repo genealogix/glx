@@ -531,8 +531,7 @@ func printFamilySection(personID string, archive *glxlib.GLXFile) {
 	}
 	// Two or more surviving birth fathers (or mothers) are alternatives the
 	// research has not yet decided between, not several fathers.
-	survivors, _ := parentageCandidates(personID, archive)
-	competing := competingParents(survivors)
+	competing := fam.competingBirthParents(personID)
 	for _, e := range ownParents {
 		name := withHypotheticalMarker(summaryPersonName(e.PersonID, archive), e.Hypothetical)
 		if competing[e.PersonID] {

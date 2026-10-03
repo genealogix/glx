@@ -344,3 +344,32 @@ func withHypotheticalMarker(name string, hypo bool) string {
 
 	return name
 }
+
+// competingBirthParents identifies unresolved birth-parent alternatives for
+// summary labels. Step, adoptive and foster links do not compete.
+func (f *familyLinks) competingBirthParents(personID string) map[string]bool {
+	bySex := map[string]map[string]bool{}
+	for _, link := range f.parentsOf[personID] {
+		if link.Step || (link.RelationshipType != glxlib.RelationshipTypeParentChild && link.RelationshipType != glxlib.RelationshipTypeBiologicalParentChild) {
+			continue
+		}
+		sex := strings.ToLower(summaryPersonSex(link.ParentID, f.archive))
+		if sex != glxlib.SexMale && sex != glxlib.SexFemale {
+			continue
+		}
+		if bySex[sex] == nil {
+			bySex[sex] = map[string]bool{}
+		}
+		bySex[sex][link.ParentID] = true
+	}
+	competing := map[string]bool{}
+	for _, ids := range bySex {
+		if len(ids) > 1 {
+			for id := range ids {
+				competing[id] = true
+			}
+		}
+	}
+
+	return competing
+}

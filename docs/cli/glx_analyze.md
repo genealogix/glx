@@ -16,11 +16,18 @@ Analysis categories:
   gaps          Missing data that should be findable (no birth, no parents, etc.)
   evidence      Unsupported or weakly supported claims (no citations, single source)
   consistency   Chronological cross-checks (death before birth, implausible lifespan)
+  conflicts     Definite conflicts, possible overlaps, and known disputes
   suggestions   Research recommendations (census years to search, vital records)
 
 Use --check to run a single category. By default, all categories are analyzed.
 
-Use --format json for machine-readable output.
+Conflicts include assertions on the person, their events and relationships,
+and competing dates/places on duplicate birth or death events. Definite conflicts
+are HIGH, possible overlaps MEDIUM, and known disputes LOW. Disproven claims and
+undated temporal values are excluded. Touching periods are history.
+
+Use --approximation-years to change the default ±2-year tolerance for approximate
+date values. Use --format json for machine-readable output.
 
 ```
 glx analyze [person] [flags]
@@ -51,12 +58,13 @@ glx analyze [person] [flags]
 ### Options
 
 ```
-  -a, --archive string   Archive path (directory or single file) (default ".")
-  -c, --check string     Run a single analysis category (gaps, evidence, consistency, suggestions)
-      --country string   Country whose census schedule to assume for persons whose places name no country (default "none", which suggests no census records)
-  -f, --format string    Output format (json for machine-readable)
-  -h, --help             help for analyze
-  -p, --person string    Filter results to a specific person (ID or name)
+      --approximation-years int   Tolerance in years for ABT, EST and CAL date values (0–10000) (default 2)
+  -a, --archive string            Archive path (directory or single file) (default ".")
+  -c, --check string              Run a single analysis category (gaps, evidence, consistency, conflicts, suggestions)
+      --country string            Country whose census schedule to assume for persons whose places name no country (default "none", which suggests no census records)
+  -f, --format string             Output format (json for machine-readable)
+  -h, --help                      help for analyze
+  -p, --person string             Filter results to a specific person (ID or name)
 ```
 
 ### Options inherited from parent commands
