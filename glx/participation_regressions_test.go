@@ -72,6 +72,51 @@ func TestMigrationNilEntitiesAndCycles(t *testing.T) {
 	require.NotPanics(t, func() { collectMigrationEntries("p", archive) })
 }
 
+func TestMigrationResidenceBoundsAndOverlaps(t *testing.T) {
+	bounded := []any{map[string]any{"value": "Home, Indiana", "date": "FROM 1809 TO 1810"}}
+	overlapping := []any{
+		map[string]any{"value": "Home, Indiana", "date": "FROM 1809 TO 1812"},
+		map[string]any{"value": "Away, Illinois", "date": "FROM 1810 TO 1813"},
+	}
+	for _, tt := range []struct {
+		name       string
+		residences []any
+		date       string
+		place      string
+		excluded   bool
+	}{
+		{"start boundary", bounded, "1809-01-01", "Away, Illinois", true},
+		{"end boundary", bounded, "1810-12-31", "Away, Illinois", true},
+		{"after boundary", bounded, "1811-01-01", "Away, Illinois", false},
+		{"overlap agrees first", overlapping, "1811", "Home, Indiana", false},
+		{"overlap agrees second", overlapping, "1811", "Away, Illinois", false},
+		{"overlap agrees neither", overlapping, "1811", "Other, Ohio", true},
+		{"unbounded start", []any{map[string]any{"value": "Home, Indiana", "date": "FROM 1809"}}, "1810", "Away, Illinois", false},
+		{"unbounded end", []any{map[string]any{"value": "Home, Indiana", "date": "TO 1810"}}, "1809", "Away, Illinois", false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			for _, reverse := range []bool{false, true} {
+				residences := append([]any(nil), tt.residences...)
+				if reverse {
+					for i, j := 0, len(residences)-1; i < j; i, j = i+1, j-1 {
+						residences[i], residences[j] = residences[j], residences[i]
+					}
+				}
+				archive := &glxlib.GLXFile{
+					Persons: map[string]*glxlib.Person{"p": {Properties: map[string]any{"residence": residences}}},
+					Events: map[string]*glxlib.Event{"event": {
+						Type: "generic", Title: "Observation", Date: glxlib.DateString(tt.date), PlaceID: tt.place,
+						Participants: []glxlib.Participant{{Person: "p", Role: "principal"}},
+					}},
+				}
+				entries := collectMigrationEntries("p", archive)
+				observation := migrationEntryByLabel(t, entries, "Observation")
+				require.Equal(t, tt.excluded, observation.Excluded, "reversed residence order: %v", reverse)
+			}
+		})
+	}
+}
+
 func TestConfidenceConsumersSkipNullAssertions(t *testing.T) {
 	for _, name := range []string{"all null", "mixed"} {
 		t.Run(name, func(t *testing.T) {
