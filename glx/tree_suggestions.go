@@ -139,9 +139,10 @@ func suggestParentCensusRecords(personID string, person *glxlib.Person, archive 
 
 	// Key census years for finding parents, on the schedules of the countries
 	// this person's places name (#186)
+	datedPlaces := datedPlacesForPerson(archive, personID)
 	for _, schedule := range censusSchedulesForPerson(archive, personID) {
 		suggestions = append(suggestions,
-			scheduleParentCensusSuggestions(schedule, personID, name, placeName, birthYear, existingCensus)...)
+			scheduleParentCensusSuggestions(archive, schedule, personID, name, placeName, birthYear, existingCensus, datedPlaces)...)
 	}
 
 	return suggestions
@@ -151,12 +152,15 @@ func suggestParentCensusRecords(personID string, person *glxlib.Person, archive 
 // that are most worth searching to identify a person's parents: the year that
 // first recorded parents' birthplaces, the years the person was still a child
 // and so enumerated in the parents' household, and the year that first named
-// every individual.
+// every individual. A census whose schedules are lost wherever the person was
+// is skipped (#1333).
 func scheduleParentCensusSuggestions(
+	archive *glxlib.GLXFile,
 	schedule *censusSchedule,
 	personID, name, placeName string,
 	birthYear int,
 	existingCensus map[int]bool,
+	datedPlaces []datedPlace,
 ) []ancestorSuggestion {
 	var suggestions []ancestorSuggestion
 
@@ -165,6 +169,10 @@ func scheduleParentCensusSuggestions(
 			continue
 		}
 		if existingCensus[year] {
+			continue
+		}
+		survival := schedule.Survival(year, datedPlaces, archive)
+		if survival.Lost {
 			continue
 		}
 
@@ -187,6 +195,9 @@ func scheduleParentCensusSuggestions(
 			reason = note.Note + "; may show in parents' household"
 		default:
 			continue // only suggest high-value censuses for ancestor research
+		}
+		if survival.Note != "" {
+			reason += "; " + survival.Note
 		}
 
 		location := ""

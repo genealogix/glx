@@ -62,6 +62,10 @@ func cloneCensusSchedules(schedules []*CensusSchedule) []*CensusSchedule {
 		snapshot := *schedule
 		snapshot.Years = slices.Clone(schedule.Years)
 		snapshot.Notes = maps.Clone(schedule.Notes)
+		snapshot.losses = make(map[int]map[string]censusJurisdictionLoss, len(schedule.losses))
+		for year, losses := range schedule.losses {
+			snapshot.losses[year] = maps.Clone(losses)
+		}
 		out = append(out, &snapshot)
 	}
 
@@ -97,3 +101,25 @@ func PlaceCountry(archive *GLXFile, placeID string) string {
 // CanonicalCountry recognizes a free-text country name without requiring that
 // a census schedule exists. Unrecognized names return empty.
 func CanonicalCountry(name string) string { return canonicalCountry(name) }
+
+// PersonDatedPlaceIndex maps participants to their dated event places. Returned
+// maps and slices are owned by the caller and ordered by event ID.
+func PersonDatedPlaceIndex(archive *GLXFile) (map[string][]CensusDatedPlace, error) {
+	if archive == nil {
+		return nil, ErrNilArchive
+	}
+
+	return buildPersonDatedPlaceIndex(archive), nil
+}
+
+// DatedPlacesForPerson returns the dated places of events naming an exact person ID.
+func DatedPlacesForPerson(archive *GLXFile, personID string) ([]CensusDatedPlace, error) {
+	if archive == nil {
+		return nil, ErrNilArchive
+	}
+	if err := requirePerson(archive, personID, "person"); err != nil {
+		return nil, err
+	}
+
+	return datedPlacesForPerson(archive, personID), nil
+}
