@@ -33,6 +33,9 @@ func TestClassifyParticipation(t *testing.T) {
 	}{
 		{"principal", EventTypeProbate, ParticipantRolePrincipal, own},
 		{"subject", EventTypeBirth, ParticipantRoleSubject, own},
+		{"legacy child at birth", EventTypeBirth, ParticipantRoleChild, own},
+		{"legacy child at baptism", EventTypeBaptism, ParticipantRoleChild, own},
+		{"child at death", EventTypeDeath, ParticipantRoleChild, present},
 		{"unset role", EventTypeDeath, "", own},
 		{"role case and spacing", EventTypeBirth, " Principal ", own},
 		{"bride", EventTypeMarriage, ParticipantRoleBride, own},
@@ -118,4 +121,18 @@ func TestEventParticipation(t *testing.T) {
 
 	_, _, ok = EventParticipation(nil, "person-caspar", nil)
 	assert.False(t, ok)
+}
+
+func TestEventParticipationUnionsIndependentAxes(t *testing.T) {
+	no := false
+	roles := map[string]*VocabularyEntry{"principal": {ImpliesPresence: &no}}
+	for _, participants := range [][]Participant{
+		{{Person: "p", Role: "principal"}, {Person: "p", Role: "witness"}, {Person: "p", Role: "grantor"}},
+		{{Person: "p", Role: "grantor"}, {Person: "p", Role: "witness"}, {Person: "p", Role: "principal"}},
+	} {
+		participation, role, ok := EventParticipation(&Event{Type: EventTypeProbate, Participants: participants}, "p", roles)
+		assert.True(t, ok)
+		assert.Equal(t, Participation{OwnRecord: true, Present: true}, participation)
+		assert.Equal(t, "principal", role)
+	}
 }

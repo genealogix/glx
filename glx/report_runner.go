@@ -87,6 +87,9 @@ func buildConfidenceReport(archive *glxlib.GLXFile) reportData {
 		ByConfidence: make(map[string]int),
 	}
 	for id, assertion := range archive.Assertions {
+		if assertion == nil {
+			continue
+		}
 		report.TotalAssertions++
 
 		// Track confidence levels

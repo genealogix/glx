@@ -14,7 +14,9 @@
 
 package glx
 
-import "strings"
+import (
+	"strings"
+)
 
 // Participation describes what an event participant's role says about the
 // person: whether the event is the person's own record, and whether the role
@@ -43,6 +45,8 @@ func (p Participation) Mentioned() bool {
 	return !p.OwnRecord && !p.Present
 }
 
+const participationRoleDeceased = "deceased"
+
 // ownRecordRoles are roles that make an event the participant's own record
 // whatever the event type. The empty role is the participant default
 // (principal).
@@ -55,7 +59,7 @@ var ownRecordRoles = map[string]bool{
 	ParticipantRoleGodchild:     true, // the person baptized
 	ParticipantRoleAdoptedChild: true,
 	"decedent":                  true,
-	"deceased":                  true,
+	participationRoleDeceased:   true,
 	"testator":                  true, // the will is theirs, signed where they were
 	"testatrix":                 true,
 }
@@ -92,7 +96,7 @@ var nonHouseholdCensusRoles = map[string]bool{
 	ParticipantRoleWitness: true,
 	"enumerator":           true,
 	"neighbor":             true,
-	"neighbour":            true,
+	"neighbour":            true, //nolint:misspell // Preserve the British English role alias.
 	"mentioned":            true,
 }
 
@@ -118,7 +122,7 @@ var nonPresenceRoles = map[string]bool{
 	"debtor":          true,
 	"mentioned":       true,
 	"neighbor":        true,
-	"neighbour":       true,
+	"neighbour":       true, //nolint:misspell // Preserve the British English role alias.
 }
 
 // ClassifyParticipation classifies a participant's role in an event of the
@@ -127,6 +131,7 @@ var nonPresenceRoles = map[string]bool{
 // for that role.
 //
 // Rules, in order:
+//   - child on a birth, baptism or christening (legacy principal role)
 //   - principal, subject, the empty role, bride, groom, godchild,
 //     adopted_child, decedent and testator: own record, present
 //   - spouse, husband or wife on a marriage-type event: own record, present
@@ -143,7 +148,7 @@ func ClassifyParticipation(eventType, role string, roles map[string]*VocabularyE
 
 	var p Participation
 	switch {
-	case ownRecordRoles[role]:
+	case ownRecordRoles[role] || (role == ParticipantRoleChild && isBirthEventType(eventType)):
 		p = Participation{OwnRecord: true, Present: true}
 	case coupleEventTypes[eventType] && coupleRoles[role]:
 		p = Participation{OwnRecord: true, Present: true}

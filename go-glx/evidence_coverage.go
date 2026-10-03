@@ -65,12 +65,21 @@ type AssertionCoverage struct {
 }
 
 // ComputeAssertionCoverage computes the direct and evidence coverage of an
-// archive's assertions. See AssertionCoverage for the rules.
+// archive's assertions. Missing and nil entities are ignored. Standard property
+// definitions are supplied without changing archive or overriding custom
+// definitions, including explicit nil definitions. See AssertionCoverage for
+// the rules.
 func ComputeAssertionCoverage(archive *GLXFile) AssertionCoverage {
 	result := AssertionCoverage{Direct: newEntityCoverage(), Evidence: newEntityCoverage()}
 	if archive == nil {
 		return result
 	}
+
+	prepared, err := researchArchive(archive)
+	if err != nil {
+		return result
+	}
+	archive = prepared
 
 	direct, evidence := result.Direct, result.Evidence
 
@@ -78,10 +87,10 @@ func ComputeAssertionCoverage(archive *GLXFile) AssertionCoverage {
 		if a == nil {
 			continue
 		}
-		markSubject(direct, a.Subject)
-		markSubject(evidence, a.Subject)
+		markSubject(direct, a.Subject, archive)
+		markSubject(evidence, a.Subject, archive)
 
-		if a.Participant != nil && a.Participant.Person != "" {
+		if a.Participant != nil && archive.Persons[a.Participant.Person] != nil {
 			evidence.Persons[a.Participant.Person] = true
 		}
 
@@ -115,11 +124,11 @@ func propagateThroughEvents(evidence EntityCoverage, archive *GLXFile) {
 			continue
 		}
 		for _, p := range event.Participants {
-			if p.Person != "" {
+			if archive.Persons[p.Person] != nil {
 				evidence.Persons[p.Person] = true
 			}
 		}
-		if event.PlaceID != "" {
+		if archive.Places[event.PlaceID] != nil {
 			evidence.Places[event.PlaceID] = true
 		}
 	}
@@ -134,7 +143,7 @@ func propagateThroughRelationships(evidence EntityCoverage, archive *GLXFile) {
 			continue
 		}
 		for _, p := range rel.Participants {
-			if p.Person != "" {
+			if archive.Persons[p.Person] != nil {
 				evidence.Persons[p.Person] = true
 			}
 		}
@@ -142,22 +151,18 @@ func propagateThroughRelationships(evidence EntityCoverage, archive *GLXFile) {
 }
 
 // markSubject records an assertion's subject pointer.
-func markSubject(coverage EntityCoverage, subject EntityRef) {
+func markSubject(coverage EntityCoverage, subject EntityRef, archive *GLXFile) {
 	switch {
-	case subject.Person != "":
+	case archive.Persons[subject.Person] != nil:
 		coverage.Persons[subject.Person] = true
-	case subject.Event != "":
+	case archive.Events[subject.Event] != nil:
 		coverage.Events[subject.Event] = true
-	case subject.Relationship != "":
+	case archive.Relationships[subject.Relationship] != nil:
 		coverage.Relationships[subject.Relationship] = true
-	case subject.Place != "":
+	case archive.Places[subject.Place] != nil:
 		coverage.Places[subject.Place] = true
 	}
 }
-
-// eventPlaceProperty is the property an assertion uses to assert an event's
-// structural place field.
-const eventPlaceProperty = "place"
 
 // markAssertionValue records the entity an assertion's value names, when the
 // asserted property is a place or person reference and the value resolves to
@@ -168,41 +173,20 @@ func markAssertionValue(coverage EntityCoverage, a *Assertion, archive *GLXFile)
 	}
 
 	refType := ""
-	if def := assertionPropertyDefinition(a, archive); def != nil {
+	if def := ConflictProperty(archive, a.Subject, a.Property); def != nil {
 		refType = def.ReferenceType
-	}
-	if refType == "" && a.Subject.Event != "" && a.Property == eventPlaceProperty {
-		refType = EntityTypePlaces.String()
 	}
 
 	switch refType {
 	case EntityTypePlaces.String():
-		if _, ok := archive.Places[a.Value]; ok {
+		if archive.Places[a.Value] != nil {
 			coverage.Places[a.Value] = true
 		}
 	case EntityTypePersons.String():
-		if _, ok := archive.Persons[a.Value]; ok {
+		if archive.Persons[a.Value] != nil {
 			coverage.Persons[a.Value] = true
 		}
 	}
-}
-
-// assertionPropertyDefinition returns the property definition for an
-// assertion's property on its subject's entity type, or nil.
-func assertionPropertyDefinition(a *Assertion, archive *GLXFile) *PropertyDefinition {
-	var defs map[string]*PropertyDefinition
-	switch {
-	case a.Subject.Person != "":
-		defs = archive.PersonProperties
-	case a.Subject.Event != "":
-		defs = archive.EventProperties
-	case a.Subject.Relationship != "":
-		defs = archive.RelationshipProperties
-	case a.Subject.Place != "":
-		defs = archive.PlaceProperties
-	}
-
-	return defs[a.Property]
 }
 
 // markPlaceAncestors adds every ancestor of each covered place, guarding
@@ -219,7 +203,7 @@ func markPlaceAncestors(covered map[string]bool, places map[string]*Place) {
 		for place != nil && place.ParentID != "" && !visited[place.ParentID] {
 			parent := place.ParentID
 			visited[parent] = true
-			if _, ok := places[parent]; !ok {
+			if places[parent] == nil {
 				break
 			}
 			covered[parent] = true

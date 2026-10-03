@@ -572,7 +572,7 @@ func (s *viewerServer) personFamily(id string) familyDTO {
 	fam := familyDTO{
 		Parents:  s.personRefs(parentIDs),
 		Children: s.personRefs(findChildIDs(id, a)),
-		Siblings: s.personRefs(findSiblingIDs(id, parentIDs, a)),
+		Siblings: s.personRefs(findSiblingIDs(id, a)),
 		Spouses:  []personRefDTO{},
 	}
 	for _, sp := range findSpouses(id, a) {
@@ -706,31 +706,18 @@ type treeRelIndex struct {
 }
 
 // buildTreeRelIndex scans the parent-child relationships once and records both
-// directions. It mirrors findParentIDs/findChildIDs: parents keep first-seen
+// directions, leaving out disproven links. It mirrors findParentIDs/findChildIDs: parents keep first-seen
 // order; children are ordered by birth year (then ID) for a stable chart.
 func buildTreeRelIndex(a *glxlib.GLXFile) *treeRelIndex {
 	idx := &treeRelIndex{parents: map[string][]string{}, children: map[string][]string{}}
-	for _, relID := range sortedKeys(a.Relationships) {
-		rel := a.Relationships[relID]
-		if rel == nil || !parentChildRelTypes[strings.ToLower(rel.Type)] {
+	for _, link := range glxlib.ParentChildLinks(a, nil) {
+		// A link the archive has disproven is a rejected alternative, not
+		// family; it stays out of the chart.
+		if link.Standing == glxlib.RelationshipStandingDisproven {
 			continue
 		}
-
-		var parents, children []string
-		for _, p := range rel.Participants {
-			switch strings.ToLower(p.Role) {
-			case glxlib.ParticipantRoleParent:
-				parents = append(parents, p.Person)
-			case glxlib.ParticipantRoleChild:
-				children = append(children, p.Person)
-			}
-		}
-		for _, childID := range children {
-			for _, parentID := range parents {
-				idx.children[parentID] = appendUniqueString(idx.children[parentID], childID)
-				idx.parents[childID] = appendUniqueString(idx.parents[childID], parentID)
-			}
-		}
+		idx.children[link.ParentID] = appendUniqueString(idx.children[link.ParentID], link.ChildID)
+		idx.parents[link.ChildID] = appendUniqueString(idx.parents[link.ChildID], link.ParentID)
 	}
 
 	for parentID := range idx.children {

@@ -210,23 +210,21 @@ func collectMigrationEntries(personID string, archive *glxlib.GLXFile) []migrati
 		}
 		childName, isChildBirth := childBirthOf(event, personID, children)
 
-		switch {
-		case isChildBirth:
-			entries = append(entries, newMigrationEntry(
-				string(event.Date), event.PlaceID, fmt.Sprintf("Birth of child (%s)", childName), archive))
-		default:
-			participation, role, ok := glxlib.EventParticipation(event, personID, archive.ParticipantRoles)
-			if !ok {
-				continue
-			}
-			entry := newMigrationEntry(string(event.Date), event.PlaceID, migrationEventLabel(event), archive)
-			entry.Role = role
-			if !participation.Present {
-				entry.Excluded = true
-				entry.Note = fmt.Sprintf("role %q does not imply presence", role)
-			}
-			entries = append(entries, entry)
+		participation, role, ok := glxlib.EventParticipation(event, personID, archive.ParticipantRoles)
+		if !ok && !isChildBirth {
+			continue
 		}
+		label := migrationEventLabel(event)
+		if isChildBirth {
+			label = fmt.Sprintf("Birth of child (%s)", childName)
+		}
+		entry := newMigrationEntry(string(event.Date), event.PlaceID, label, archive)
+		entry.Role = role
+		if ok && !participation.Present {
+			entry.Excluded = true
+			entry.Note = fmt.Sprintf("role %q does not imply presence", role)
+		}
+		entries = append(entries, entry)
 	}
 
 	// Residence property values (plain string, structured map, or temporal list)
@@ -245,7 +243,7 @@ func collectMigrationEntries(personID string, archive *glxlib.GLXFile) []migrati
 
 // childBirthOf reports whether an event is the birth of one of the person's
 // children, returning the child's display name. A participant other than the
-// person who is in the children map identifies the event.
+// person who is in the children map and owns the record identifies the event.
 func childBirthOf(event *glxlib.Event, personID string, children map[string]string) (string, bool) {
 	if len(children) == 0 || !strings.EqualFold(event.Type, glxlib.EventTypeBirth) {
 		return "", false
@@ -254,7 +252,7 @@ func childBirthOf(event *glxlib.Event, personID string, children map[string]stri
 		if p.Person == personID {
 			continue
 		}
-		if name, ok := children[p.Person]; ok {
+		if name, ok := children[p.Person]; ok && glxlib.ClassifyParticipation(event.Type, p.Role, nil).OwnRecord {
 			return name, true
 		}
 	}
@@ -508,15 +506,19 @@ func normalizeRegionName(name string) string {
 }
 
 // dedupeMigrationEntries removes exact duplicate observations (same date,
-// place, and label), which arise when the same event is reachable both
+// place, label, and role/exclusion semantics), which arise when the same event is reachable both
 // directly and through a relationship.
 func dedupeMigrationEntries(entries []migrationEntry) []migrationEntry {
-	seen := make(map[string]bool)
+	type observationKey struct {
+		date, placeID, place, label, role, note string
+		excluded, location                      bool
+	}
+	seen := make(map[observationKey]bool)
 	result := make([]migrationEntry, 0, len(entries))
 
 	for i := range entries {
 		e := &entries[i]
-		key := e.Date + "\x00" + e.PlaceID + "\x00" + e.Place + "\x00" + e.Label
+		key := observationKey{e.Date, e.PlaceID, e.Place, e.Label, e.Role, e.Note, e.Excluded, e.location}
 		if seen[key] {
 			continue
 		}

@@ -599,11 +599,11 @@ participant_roles:
 
 Tools that reason about a person's records distinguish three kinds of participation:
 
-- **Own record**: the event is a record of this person. `principal`, `subject` (or no role), `bride`, `groom`, `godchild`, `adopted_child`, `decedent` and `testator` on any event; `spouse` (or `husband`/`wife`) on a marriage-type event; and any household role (`subject`, `household_head`, `head`, `wife`, `son`, ...) on a `census` event. `glx coverage` counts only these toward a record category.
+- **Own record**: the event is a record of this person. `principal`, `subject` (or no role), `bride`, `groom`, `godchild`, `adopted_child`, `decedent` and `testator` on any event; the legacy `child` role on a birth, baptism or christening; `spouse` (or `husband`/`wife`) on a marriage-type event; and any household role (`subject`, `household_head`, `head`, `wife`, `son`, ...) on a `census` event. `glx coverage` counts only these toward a record category.
 - **Present**: the person was at the event's place but it is someone else's record (`witness`, `officiant`, `informant`, `godparent`, `parent`, and any role not otherwise listed).
 - **Mentioned**: named without being placed there. Built-in defaults: `grantor`, `grantee`, `adjoining_owner`, `legatee`, `devisee`, `beneficiary`, `heir`, `executor`, `administrator`, `creditor`, `debtor`, `mentioned`, `neighbor`. `glx migrations` shows these events but does not count their place as a movement.
 
-`implies_presence` overrides the present/not-present default for a role, so an archive can classify its own roles.
+Own-record status and presence are independent. `implies_presence` overrides only the present/not-present default for a role, so an archive can classify its own roles without changing whose record the event is.
 
 ### Standard Participant Roles
 

@@ -79,12 +79,20 @@ func printConfidenceDistribution(archive *glxlib.GLXFile) {
 	}
 
 	counts := make(map[string]int)
+	total := 0
 	for _, a := range archive.Assertions {
+		if a == nil {
+			continue
+		}
+		total++
 		level := a.Confidence
 		if level == "" {
 			level = "(unset)"
 		}
 		counts[level]++
+	}
+	if total == 0 {
+		return
 	}
 
 	// Sort levels: standard order first, then custom alphabetically, then (unset) last
@@ -115,7 +123,7 @@ func printConfidenceDistribution(archive *glxlib.GLXFile) {
 
 	fmt.Println("\nAssertion confidence:")
 	for _, level := range levels {
-		pct := float64(counts[level]) / float64(len(archive.Assertions)) * 100
+		pct := float64(counts[level]) / float64(total) * 100
 		fmt.Printf("  %-12s %4d  (%5.1f%%)\n", level, counts[level], pct)
 	}
 }

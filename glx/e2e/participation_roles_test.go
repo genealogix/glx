@@ -15,9 +15,13 @@
 package e2e
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	glxlib "github.com/genealogix/glx/go-glx"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -129,4 +133,59 @@ func TestStatsAndReport_EvidenceCoverage(t *testing.T) {
 	require.Equal(t, 0, report.exitCode, report.stderr)
 	assert.NotContains(t, report.stdout, "Persons (")
 	assert.Contains(t, report.stdout, "Events (1): ev-deed-1810")
+}
+
+func TestStatsAndValidation_NullAssertions(t *testing.T) {
+	dir := t.TempDir()
+	data := "assertions:\n  assertion-null: null\n  assertion-valid:\n    subject: {person: p}\n    confidence: high\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "archive.glx"), []byte(data), 0o600))
+	stats := runGLX(t, dir, "stats", "archive.glx")
+	require.Equal(t, 0, stats.exitCode, stats.stderr)
+	assert.Contains(t, stats.stdout, "100.0%")
+	report := runGLX(t, dir, "validate", "archive.glx", "--report")
+	require.Equal(t, 1, report.exitCode, report.stderr)
+	assert.Contains(t, report.stderr, "got null, want object")
+	assert.NotContains(t, report.stderr, "panic:")
+}
+
+// Coverage and the gaps in proof must use the same role-aware SDK result for
+// single-file and directory loading, including custom presence overrides.
+func TestRoleAwareCoverageSDKCLIParity(t *testing.T) {
+	for _, override := range []bool{false, true} {
+		t.Run(fmtBool(override), func(t *testing.T) {
+			data := roleArchive
+			if override {
+				data = strings.Replace(data, "principal: {label: Principal}", "principal: {label: Principal, implies_presence: false}", 1)
+			}
+			dir := t.TempDir()
+			path := filepath.Join(dir, "archive.glx")
+			require.NoError(t, os.WriteFile(path, []byte(data), 0o600))
+			archive, err := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false}).DeserializeSingleFileBytes([]byte(data))
+			require.NoError(t, err)
+			coverage, err := glxlib.BuildCoverage(archive, "person-lewis", glxlib.CoverageOptions{})
+			require.NoError(t, err)
+			want, err := json.Marshal(coverage)
+			require.NoError(t, err)
+			proof, err := glxlib.BuildProof(archive, "person-lewis", glxlib.QuestionBirth, glxlib.ProofOptions{})
+			require.NoError(t, err)
+			proofJSON, err := json.Marshal(proof)
+			require.NoError(t, err)
+			for _, archivePath := range []string{path, dir} {
+				actual := runGLX(t, dir, "coverage", "person-lewis", "--archive", archivePath, "--json")
+				require.Equal(t, 0, actual.exitCode, actual.stderr)
+				require.JSONEq(t, string(want), actual.stdout)
+				actual = runGLX(t, dir, "proof", "person-lewis", "--question", "birth", "--archive", archivePath, "--format", "json")
+				require.Equal(t, 0, actual.exitCode, actual.stderr)
+				require.JSONEq(t, string(proofJSON), actual.stdout)
+			}
+		})
+	}
+}
+
+func fmtBool(value bool) string {
+	if value {
+		return "override"
+	}
+
+	return "defaults"
 }

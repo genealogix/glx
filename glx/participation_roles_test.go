@@ -124,7 +124,7 @@ func findCoverageRecord(t *testing.T, result *coverageResult, label string) cove
 
 func TestBuildCoverage_OtherPeoplesRecordsDoNotCount(t *testing.T) {
 	archive := lewisLittleArchive()
-	result := buildCoverage("person-lewis", archive.Persons["person-lewis"], archive)
+	result := mustBuildCoverage("person-lewis", archive.Persons["person-lewis"], archive)
 
 	probate := findCoverageRecord(t, result, "Probate/will")
 	assert.False(t, probate.Found, "a legatee's appearance in a father-in-law's probate is not the person's own probate")
@@ -158,7 +158,7 @@ func TestBuildCoverage_OwnProbateStillCounts(t *testing.T) {
 		Sources: []string{"src-estate-files"},
 	}
 
-	result := buildCoverage("person-lewis", archive.Persons["person-lewis"], archive)
+	result := mustBuildCoverage("person-lewis", archive.Persons["person-lewis"], archive)
 
 	probate := findCoverageRecord(t, result, "Probate/will")
 	assert.True(t, probate.Found)
@@ -180,7 +180,7 @@ func TestBuildCoverage_CensusHouseholdRoleCounts(t *testing.T) {
 		Sources: []string{"src-estate-files"},
 	}
 
-	result := buildCoverage("person-lewis", archive.Persons["person-lewis"], archive)
+	result := mustBuildCoverage("person-lewis", archive.Persons["person-lewis"], archive)
 
 	census := findCoverageRecord(t, result, "1820 US Census (age ~55)")
 	assert.True(t, census.Found, "a named household member's census is their own record")
@@ -197,7 +197,7 @@ func TestBuildCoverage_WitnessBurialDoesNotInferDeath(t *testing.T) {
 		},
 	}
 
-	result := buildCoverage("person-lewis", archive.Persons["person-lewis"], archive)
+	result := mustBuildCoverage("person-lewis", archive.Persons["person-lewis"], archive)
 
 	// Someone else's burial must not cap the person's life at 1817
 	findCoverageRecord(t, result, "1820 US Census (age ~55)")
@@ -205,7 +205,7 @@ func TestBuildCoverage_WitnessBurialDoesNotInferDeath(t *testing.T) {
 
 func TestPrintCoverageText_AppearsIn(t *testing.T) {
 	archive := lewisLittleArchive()
-	result := buildCoverage("person-lewis", archive.Persons["person-lewis"], archive)
+	result := mustBuildCoverage("person-lewis", archive.Persons["person-lewis"], archive)
 
 	out := captureStdout(t, func() { printCoverageText(result) })
 
@@ -216,9 +216,9 @@ func TestPrintCoverageText_AppearsIn(t *testing.T) {
 
 func migrationEntryByLabel(t *testing.T, entries []migrationEntry, label string) migrationEntry {
 	t.Helper()
-	for _, e := range entries {
-		if e.Label == label {
-			return e
+	for i := range entries {
+		if entries[i].Label == label {
+			return entries[i]
 		}
 	}
 	t.Fatalf("no migration entry %q in %+v", label, entries)

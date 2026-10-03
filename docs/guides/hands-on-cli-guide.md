@@ -478,7 +478,7 @@ glx summary "Eddard Stark"
   Siblings:         Benjen Stark, Brandon Stark, Lyanna Stark
 
 ── Relationships ─────────────────────────────────
-  Hand Of The King: Robert Baratheon I
+  King:             Robert Baratheon I
   Ward:             Theon Greyjoy
 
 ── Life History ──────────────────────────────────
