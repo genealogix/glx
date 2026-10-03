@@ -22,10 +22,10 @@ Record categories:
   - Other: Probate, land, military, and church records
 
 A record counts as found only when evidence backs it: a source about the person,
-or an event that is the subject of an assertion citing a source. An event on its
-own is a conclusion, not a record, so it is reported without counting toward the
-score -- an estimated birth date reckoned back from a death entry does not mean a
-birth record exists.
+or an event whose assertion references a citation, source, or media object.
+An event on its own is a conclusion, not a record, so it is reported without
+counting toward the score -- an estimated birth date reckoned back from a death
+entry does not mean a birth record exists.
 
 Missing high-priority records are flagged to guide research efforts.
 
