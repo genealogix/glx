@@ -107,7 +107,7 @@ func suggestChildCensusRecords(archive *glxlib.GLXFile) []AnalysisIssue {
 			}
 
 			// Suggest 1880+ censuses for children (lists parents' birthplaces)
-			for _, year := range schedule.years {
+			for _, year := range schedule.Years {
 				if year < childCensusParentBirthplaceYear || year < childBirthYear {
 					continue
 				}
