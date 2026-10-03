@@ -88,13 +88,16 @@ type personPage struct {
 	DeathDate  string
 	DeathPlace string
 	Timeline   []timelineRow
-	Parents    []personLink
-	Spouses    []personLink
-	Children   []personLink
-	Siblings   []personLink
-	Notes      []string
-	Sources    []personSourceRef
-	Media      []*mediaItem
+	// TimelineStrip is the visual timeline drawn above the timeline list; nil
+	// when the person's dated events do not span at least two distinct years.
+	TimelineStrip *timelineStrip
+	Parents       []personLink
+	Spouses       []personLink
+	Children      []personLink
+	Siblings      []personLink
+	Notes         []string
+	Sources       []personSourceRef
+	Media         []*mediaItem
 	// Pedigree and Descendancy are the inline SVG charts drawn on the
 	// profile; either is nil when the person has no relatives in that
 	// direction.
@@ -102,11 +105,14 @@ type personPage struct {
 	Descendancy *personChart
 }
 
-// timelineRow is a single chronological entry on a person page.
+// timelineRow is a single chronological entry on a person page. Year is the
+// entry's first parseable year (0 when the date carries none), which is what
+// the visual timeline strip plots.
 type timelineRow struct {
 	Date    string
 	Label   string
 	Detail  string
+	Year    int
 	Undated bool
 }
 
@@ -374,6 +380,7 @@ func buildPersonPage(id string, person *glxlib.Person, archive *glxlib.GLXFile, 
 	page.LifeSpan = lifeSpan(birth, death)
 
 	page.Timeline = buildTimelineRows(id, archive)
+	page.TimelineStrip = buildTimelineStrip(page.Timeline)
 	page.Parents = personLinks(idx.parents[id], archive, idx.files)
 	page.Spouses = personLinks(idx.spouses[id], archive, idx.files)
 	page.Children = personLinks(idx.children[id], archive, idx.files)
@@ -396,6 +403,7 @@ func buildTimelineRows(personID string, archive *glxlib.GLXFile) []timelineRow {
 			Date:    displayDate(e.Date),
 			Label:   e.Label,
 			Detail:  e.Detail,
+			Year:    glxlib.ExtractFirstYear(e.Date),
 			Undated: e.SortKey == "\xff",
 		})
 	}
@@ -683,14 +691,11 @@ func lifeSpan(birth, death *glxlib.Event) string {
 // or "" if none can be determined.
 func eventYear(date string) string {
 	year := glxlib.ExtractFirstYear(date)
-	switch {
-	case year == 0:
+	if year == 0 {
 		return ""
-	case year < 0:
-		return strconv.Itoa(-year) + " BCE"
 	}
 
-	return strconv.Itoa(year)
+	return displayYear(year)
 }
 
 // placeFullName builds a hierarchical place name by walking parent places,

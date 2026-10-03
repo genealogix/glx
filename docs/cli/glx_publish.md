@@ -13,9 +13,9 @@ Export a GLX archive as a self-contained static HTML site for sharing
 with family who won't install tools or read YAML.
 
 The site includes a person profile page for everyone in the archive (with
-vital facts, a life timeline, pedigree and descendancy charts, linked family
-members, supporting sources, and a media gallery), plus source and place
-indexes and a client-side search.
+vital facts, a life timeline plotted to scale, pedigree and descendancy
+charts, linked family members, supporting sources, and a media gallery), plus
+source and place indexes and a client-side search.
 The output is a plain directory of HTML/CSS/JS with no server, database, or
 build tooling required — open index.html directly with file:// or host it
 anywhere (GitHub Pages, S3, Netlify).
