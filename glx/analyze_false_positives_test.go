@@ -224,6 +224,7 @@ func censusLossArchive(residences map[string]int) *glxlib.GLXFile {
 			"place-nc":       {Name: "North Carolina", Type: glxlib.PlaceTypeState, ParentID: "place-usa"},
 			"place-rowan":    {Name: "Rowan County", Type: glxlib.PlaceTypeCounty, ParentID: "place-nc"},
 			"place-oh":       {Name: "Ohio", Type: glxlib.PlaceTypeState, ParentID: "place-usa"},
+			"place-tn":       {Name: "Tennessee", Type: glxlib.PlaceTypeState, ParentID: "place-usa"},
 			"place-ind":      {Name: "Indiana", Type: placeTypeTerritory, ParentID: "place-usa"},
 		},
 		Events: map[string]*glxlib.Event{
@@ -273,11 +274,11 @@ func TestAnalyzeSuggestions_TerritoryNamedWithoutSuffix(t *testing.T) {
 }
 
 func TestAnalyzeSuggestions_PartialLossKeepsSuggestionWithNote(t *testing.T) {
-	archive := censusLossArchive(map[string]int{"place-oh": 1810})
+	archive := censusLossArchive(map[string]int{"place-tn": 1810})
 
 	found := censusSuggestionFor(suggestCensusSearches(archive), "1810")
-	require.NotNil(t, found, "1810 Ohio survives for some counties")
-	assert.Contains(t, found.Message, "schedules mostly lost for Ohio")
+	require.NotNil(t, found, "1810 Tennessee retains Rutherford County")
+	assert.Contains(t, found.Message, "schedules mostly lost for Tennessee")
 }
 
 func TestAnalyzeSuggestions_MixedJurisdictionsKeepSuggestionWithNote(t *testing.T) {
@@ -329,12 +330,19 @@ func TestCensusSurvival_TotalLossTable(t *testing.T) {
 		{1790, "Virginia", true, ""},
 		{1790, "North Carolina", false, ""},
 		{1800, "Kentucky", true, ""},
-		{1800, "Georgia", false, "schedules mostly lost for Georgia"},
+		{1800, "Georgia", true, ""},
+		{1800, "Northwest Territory", false, "schedules mostly lost for Northwest Territory"},
+		{1800, "Ohio", false, "schedules mostly lost for Ohio"},
 		{1810, "District of Columbia", true, ""},
+		{1810, "Ohio", true, ""},
+		{1810, "Michigan Territory", true, ""},
+		{1810, "Michigan", true, ""},
 		{1810, "Tennessee", false, "schedules mostly lost for Tennessee"},
+		{1810, "Illinois Territory", false, "schedules mostly lost for Illinois Territory"},
 		{1810, "Louisiana", false, ""},
 		{1820, "Arkansas Territory", true, ""},
-		{1820, "Alabama", false, "schedules mostly lost for Alabama"},
+		{1820, "New Jersey", true, ""},
+		{1820, "Alabama", false, ""}, // Unclassified federal survival keeps the suggestion without a factual loss claim.
 		{1830, "Virginia", false, ""},
 	}
 	us := scheduleForCountry(censusSchedulesForPlaces([]string{"place-usa"}, archive), countryUnitedStates)

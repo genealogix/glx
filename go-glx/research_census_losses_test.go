@@ -15,6 +15,7 @@
 package glx
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 
@@ -73,16 +74,41 @@ func TestCensusSurvival_ConservativeBrackets(t *testing.T) {
 }
 
 func TestCensusLosses_PublicCoveragePreservesEvidenceAndDenominator(t *testing.T) {
+	for _, tc := range []struct {
+		year int
+		name string
+	}{
+		{1810, "Indiana Territory"},
+		{1800, "Georgia"},
+		{1810, "Ohio"},
+		{1810, "Michigan Territory"},
+		{1820, "New Jersey"},
+	} {
+		t.Run(strconv.Itoa(tc.year)+" "+tc.name, func(t *testing.T) {
+			testCensusLossCoverage(t, tc.year, tc.name)
+		})
+	}
+}
+
+func testCensusLossCoverage(t *testing.T, year int, jurisdiction string) {
+	t.Helper()
 	archive := censusLossTestArchive()
+	archive.Places["lost"].Name = jurisdiction
+	archive.Places["lost"].Type = PlaceTypeState
+	if strings.HasSuffix(jurisdiction, " Territory") {
+		archive.Places["lost"].Type = placeTypeTerritory
+	}
+	archive.Events["residence"].Date = DateString(strconv.Itoa(year))
+	label := strconv.Itoa(year) + " US Census"
 	baseline, err := BuildCoverage(archive, "p", CoverageOptions{})
 	require.NoError(t, err)
 	for _, rec := range baseline.Records {
-		require.NotContains(t, rec.Label, "1810 US Census")
+		require.NotContains(t, rec.Label, label)
 	}
 	require.Len(t, baseline.Records, baseline.Expected)
 	require.Zero(t, baseline.Found)
 
-	archive.Sources = map[string]*Source{"census": {Type: SourceTypeCensus, Title: "1810 US census", Date: "1810"}}
+	archive.Sources = map[string]*Source{"census": {Type: SourceTypeCensus, Title: label, Date: DateString(strconv.Itoa(year))}}
 	archive.Citations = map[string]*Citation{"search": {SourceID: "census"}}
 	archive.ResearchLogs = map[string]*ResearchLog{"log": {
 		Subject:   &EntityRef{Person: "p"},
@@ -98,7 +124,7 @@ func TestCensusLosses_PublicCoveragePreservesEvidenceAndDenominator(t *testing.T
 	require.Equal(t, "census", proof.Searches[0].Source)
 	require.Equal(t, "not_found", proof.Searches[0].Result)
 	for _, gap := range proof.Gaps {
-		require.NotContains(t, gap.Label, "1810 US Census")
+		require.NotContains(t, gap.Label, label)
 	}
 	require.Equal(t, "search", archive.ResearchLogs["log"].Searches[0].CitationID)
 
@@ -111,7 +137,7 @@ func TestCensusLosses_PublicCoveragePreservesEvidenceAndDenominator(t *testing.T
 	require.Equal(t, 1, found.Found)
 	var census *CoverageRecord
 	for i := range found.Records {
-		if strings.HasPrefix(found.Records[i].Label, "1810 US Census") {
+		if strings.HasPrefix(found.Records[i].Label, label) {
 			census = &found.Records[i]
 		}
 	}

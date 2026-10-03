@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -95,6 +96,75 @@ func TestAncestors_LostTerritoryCensus(t *testing.T) {
 	assert.NotContains(t, res.stdout, "1810 US census")
 	assert.Contains(t, res.stdout, "1820 US census")
 }
+
+func TestCensusLosses_FederalClassifications(t *testing.T) {
+	cases := []struct {
+		year      int
+		name      string
+		placeType string
+		lost      bool
+		partial   bool
+	}{
+		{1800, "Georgia", "state", true, false},
+		{1810, "Ohio", "state", true, false},
+		{1810, "Michigan Territory", "territory", true, false},
+		{1810, "Michigan", "state", true, false},
+		{1820, "New Jersey", "state", true, false},
+		{1800, "Ohio", "state", false, true},
+		{1810, "Tennessee", "state", false, true},
+		{1810, "Illinois Territory", "territory", false, true},
+		// Unknown federal survival keeps the search without claiming partial loss.
+		{1820, "Alabama", "state", false, false},
+	}
+	for _, tc := range cases {
+		t.Run(fmt.Sprintf("%d %s", tc.year, tc.name), func(t *testing.T) {
+			// A child at the target census also exercises ancestor household notes.
+			dir := writeSingleFileArchive(t, fmt.Sprintf(censusClassificationArchive, tc.name, tc.placeType, tc.year-7, tc.year))
+			analyze := runAnalyze(t, dir, "--check", "suggestions")
+			coverage := runGLX(t, dir, "coverage", "person-subject", "--archive", dir)
+			proof := runGLX(t, dir, "proof", "person-subject", "--question", "identity", "--archive", dir)
+			ancestors := runGLX(t, dir, "ancestors", "person-subject", "--archive", dir)
+			for _, res := range []result{coverage, proof, ancestors} {
+				require.Equal(t, 0, res.exitCode, res.stdout+res.stderr)
+			}
+			outputs := []struct {
+				text  string
+				label string
+			}{
+				{analyze, fmt.Sprintf("search %d US census", tc.year)},
+				{coverage.stdout, fmt.Sprintf("%d US Census", tc.year)},
+				{proof.stdout, fmt.Sprintf("%d US Census", tc.year)},
+				{ancestors.stdout, fmt.Sprintf("%d US census", tc.year)},
+			}
+			for _, out := range outputs {
+				if tc.lost {
+					assert.NotContains(t, out.text, out.label)
+				} else {
+					assert.Contains(t, out.text, out.label)
+				}
+				if tc.partial {
+					assert.Contains(t, out.text, "schedules mostly lost for "+tc.name)
+				} else {
+					assert.NotContains(t, out.text, "schedules mostly lost for "+tc.name)
+				}
+			}
+			assert.Contains(t, analyze, "search 1830 US census", "surviving years remain suggested")
+			assert.Contains(t, coverage.stdout, "1830 US Census")
+			assert.Contains(t, proof.stdout, "1830 US Census")
+		})
+	}
+}
+
+const censusClassificationArchive = `places:
+  place-usa: {name: United States, type: country}
+  place-state: {name: %q, type: %s, parent: place-usa}
+persons:
+  person-subject: {properties: {name: {value: Research Subject}}}
+events:
+  ev-birth: {type: birth, date: "%d", place: place-state, participants: [{person: person-subject, role: principal}]}
+  ev-res: {type: residence, date: "%d", place: place-state, participants: [{person: person-subject, role: principal}]}
+  ev-death: {type: death, date: "1840", place: place-state, participants: [{person: person-subject, role: principal}]}
+`
 
 const researchLogArchive = `persons:
   person-lewis:

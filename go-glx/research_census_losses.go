@@ -67,30 +67,38 @@ func jurisdictionLosses(lost, mostlyLost []string) map[string]censusJurisdiction
 	return losses
 }
 
-// usCensusLosses lists the early US federal census schedules lost for a whole
-// state or territory (#1333). Each loss is listed under the name of the
-// territory at the time and under the modern state names whose whole area it
-// covered, because archives record both ("Indiana Territory", or "Indiana"
-// for an 1810 event). Only well-established losses are listed, checked
-// against NARA's "Guide to Genealogical Research in the National Archives"
-// and Szucs and Luebking, "The Source" (census chapters):
+// usCensusLosses records total and extensive partial losses of early US
+// federal census schedules (#1333). Historical territory names and retained
+// modern-state aliases support archives that use either name; the lookup
+// does not reconstruct historical boundaries. Primary record guidance:
 //
 //   - 1790: Delaware, Georgia, Kentucky, New Jersey, Tennessee (Southwest
 //     Territory) and Virginia (with West Virginia) are lost. Virginia's
 //     published "1790 census" is a reconstruction from state enumerations
 //     and tax lists.
-//   - 1800: Indiana Territory (modern Indiana and Illinois), Kentucky,
-//     Mississippi Territory, New Jersey, Tennessee and Virginia are lost.
-//     Georgia and the Northwest Territory (Ohio) survive only in part (a
-//     single county each), so they are noted rather than suppressed.
+//     https://www.archives.gov/research/census/1790
+//   - 1800: Georgia, Kentucky, Mississippi Territory, New Jersey, Tennessee
+//     and Virginia are listed as missing by NARA. Washington County's federal
+//     schedules survive for the Northwest Territory (Ohio); M1804 also
+//     contains a separate 1803 Ohio enumeration. Georgia's surviving 1800
+//     Oglethorpe record is a state census, not a federal census exception.
+//     https://www.archives.gov/research/census/1800
+//     https://www.georgiaarchives.org/research/census_records
 //   - 1810: the District of Columbia, Georgia, Indiana Territory, Mississippi
-//     Territory and New Jersey are lost. Ohio, Tennessee, Illinois Territory
-//     and Michigan Territory survive only for one or a few counties.
-//   - 1820: Arkansas Territory and Missouri are lost; Alabama survives only
-//     for some counties.
+//     Territory, Michigan Territory, New Jersey and Ohio are missing.
+//     Tennessee retains Rutherford County; Illinois Territory retains
+//     Randolph County (NARA provides a later typescript). These are partial
+//     exceptions, unlike Ohio and Michigan Territory.
+//     https://www.archives.gov/research/census/1810
+//   - 1820: Arkansas Territory, Missouri Territory and New Jersey are missing.
+//     Alabama is unclassified: NARA's FAQ lists it neither among surviving
+//     states nor among whole-state losses. That omission establishes neither
+//     survival nor loss; state censuses cannot establish federal survival.
+//     https://www.archives.gov/research/census/1820
 //
 // Losses confined to individual counties in otherwise surviving years are
-// deliberately not listed: the table is keyed by state or territory.
+// deliberately not listed: the table is keyed by state or territory. An
+// absent entry means no established loss here, not proven full survival.
 //
 //nolint:goconst // place names repeated across census years are table data, not shared logic
 var usCensusLosses = map[int]map[string]censusJurisdictionLoss{
@@ -103,25 +111,25 @@ var usCensusLosses = map[int]map[string]censusJurisdictionLoss{
 	),
 	1800: jurisdictionLosses(
 		[]string{
-			"Indiana Territory", "Indiana", "Illinois", "Kentucky",
+			"Georgia", "Indiana Territory", "Indiana", "Illinois", "Kentucky",
 			"Mississippi Territory", censusJurisdictionMississippi, censusJurisdictionNewJersey, "Tennessee",
 			"Virginia", "West Virginia",
 		},
-		[]string{"Georgia", "Northwest Territory", "Ohio"},
+		[]string{"Northwest Territory", "Ohio"},
 	),
 	1810: jurisdictionLosses(
 		[]string{
 			"District of Columbia", "Georgia", "Indiana Territory", "Indiana",
+			"Michigan Territory", "Michigan", "Ohio",
 			"Mississippi Territory", censusJurisdictionMississippi, censusJurisdictionNewJersey,
 		},
 		[]string{
-			"Ohio", "Tennessee", "Illinois Territory", "Illinois",
-			"Michigan Territory", "Michigan",
+			"Tennessee", "Illinois Territory", "Illinois",
 		},
 	),
 	1820: jurisdictionLosses(
-		[]string{"Arkansas Territory", "Arkansas", "Missouri Territory", "Missouri"},
-		[]string{"Alabama"},
+		[]string{"Arkansas Territory", "Arkansas", "Missouri Territory", "Missouri", censusJurisdictionNewJersey},
+		nil,
 	),
 }
 
@@ -225,8 +233,9 @@ func datedPlacesForPerson(archive *GLXFile, personID string) []CensusDatedPlace 
 // against where a person is recorded around that year.
 type CensusYearSurvival struct {
 	// Lost is true when every jurisdiction the person can be placed in
-	// around the year lost its schedules outright. Such a census can never
-	// be found, so it is neither suggested nor counted as missing.
+	// around the year has a documented total loss. A missing census is then
+	// neither suggested nor counted as missing; an already found record is
+	// retained by coverage.
 	Lost bool
 	// Note annotates a census that is partly lost for the person: lost or
 	// mostly lost in some of the jurisdictions they may have been in.
@@ -239,7 +248,7 @@ type CensusYearSurvival struct {
 // census year and the earliest at or after it, which bracket the census.
 // Each of those places is resolved to its state or territory. The census is
 // lost only when all of them are total losses; a place with no state or
-// territory, or one whose schedules survive, keeps the census suggested.
+// territory, or without an established total loss, keeps the census suggested.
 func (s *CensusSchedule) Survival(year int, places []CensusDatedPlace, archive *GLXFile) CensusYearSurvival {
 	if s == nil || archive == nil {
 		return CensusYearSurvival{}
