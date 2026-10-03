@@ -123,8 +123,9 @@ func suggestCensusSearches(archive *glxlib.GLXFile) []AnalysisIssue {
 	addCensusYearFromSources(archive, personCensusYears)
 	personBurialYear := buildBurialYearIndex(archive)
 	personPlaces := buildPersonPlaceIndex(archive)
+	personDatedPlaces := buildPersonDatedPlaceIndex(archive)
 
-	plans := buildCensusSuggestionPlans(archive, personCensusYears, personBurialYear, personPlaces)
+	plans := buildCensusSuggestionPlans(archive, personCensusYears, personBurialYear, personPlaces, personDatedPlaces)
 	parentExtras, suppressed := consolidateParentChildCensus(archive, plans)
 
 	return emitCensusSuggestions(archive, plans, parentExtras, suppressed)
@@ -143,6 +144,10 @@ type censusYearRef struct {
 type censusSuggestionPlan struct {
 	birthYear int
 	missing   []censusYearRef
+	// lossNotes annotates the missing censuses whose schedules are lost
+	// for some of the states or territories the person may have been in
+	// (#1333).
+	lossNotes map[censusYearRef]string
 }
 
 // coveredChild records a minor child whose census suggestion is rolled up
@@ -157,12 +162,15 @@ type coveredChild struct {
 // death is unknown) that are not already represented by a census event or
 // census source for that person. Which censuses those are depends on where
 // the person's places put them: a person whose places name a country with no
-// census schedule gets no plan at all (#186).
+// census schedule gets no plan at all (#186). A census whose schedules are
+// lost for every state or territory the person can be placed in around that
+// year is left out, since it can never be found (#1333).
 func buildCensusSuggestionPlans(
 	archive *glxlib.GLXFile,
 	personCensusYears map[string]map[int]bool,
 	personBurialYear map[string]int,
 	personPlaces map[string][]string,
+	personDatedPlaces map[string][]datedPlace,
 ) map[string]*censusSuggestionPlan {
 	plans := make(map[string]*censusSuggestionPlan)
 	schedulesByCountry := make(map[string]*censusSchedule)
@@ -186,7 +194,7 @@ func buildCensusSuggestionPlans(
 		}
 
 		existing := personCensusYears[id]
-		var missing []censusYearRef
+		plan := &censusSuggestionPlan{birthYear: birthYear, lossNotes: make(map[censusYearRef]string)}
 		for _, schedule := range censusSchedulesForPlaces(personPlaces[id], archive) {
 			// Plan keys share one snapshot per country within this analysis run.
 			if known := schedulesByCountry[schedule.Country]; known != nil {
@@ -194,19 +202,32 @@ func buildCensusSuggestionPlans(
 			} else {
 				schedulesByCountry[schedule.Country] = schedule
 			}
-			for _, censusYear := range schedule.Years {
-				if censusYear < birthYear || censusYear > upperBound || existing[censusYear] {
-					continue
-				}
-				missing = append(missing, censusYearRef{schedule: schedule, year: censusYear})
-			}
+			plan.addMissingCensuses(archive, schedule, upperBound, existing, personDatedPlaces[id])
 		}
-		if len(missing) > 0 {
-			plans[id] = &censusSuggestionPlan{birthYear: birthYear, missing: missing}
+		if len(plan.missing) > 0 {
+			plans[id] = plan
 		}
 	}
 
 	return plans
+}
+
+// addMissingCensuses keeps only searchable census years within a person's life.
+func (plan *censusSuggestionPlan) addMissingCensuses(archive *glxlib.GLXFile, schedule *censusSchedule, upperBound int, existing map[int]bool, places []datedPlace) {
+	for _, year := range schedule.Years {
+		if year < plan.birthYear || year > upperBound || existing[year] {
+			continue
+		}
+		survival := schedule.Survival(year, places, archive)
+		if survival.Lost {
+			continue
+		}
+		ref := censusYearRef{schedule: schedule, year: year}
+		plan.missing = append(plan.missing, ref)
+		if survival.Note != "" {
+			plan.lossNotes[ref] = survival.Note
+		}
+	}
 }
 
 // parentChildBound is the time window of one parent-child relationship
@@ -470,6 +491,9 @@ func emitCensusSuggestions(
 			note := fmt.Sprintf("%s — search %s (alive, no census event)", name, ref.schedule.SuggestionLabel(ref.year))
 			if yearNote := ref.schedule.Notes[ref.year]; yearNote.Note != "" {
 				note += " — " + yearNote.Note
+			}
+			if lossNote := plan.lossNotes[ref]; lossNote != "" {
+				note += " — " + lossNote
 			}
 			if extras := parentExtras[id][ref]; len(extras) > 0 {
 				parts := make([]string, 0, len(extras))

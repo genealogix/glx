@@ -449,6 +449,7 @@ func dedupeStrings(ss []string) []string {
 const (
 	severityMedium = "medium"
 	severityHigh   = "high"
+	severityInfo   = "info"
 )
 
 // buildRelationshipHypotheticalIndex returns a map from relationship ID to
@@ -664,6 +665,25 @@ func buildSiblingOutlierIssue(archive *glxlib.GLXFile, c siblingChildPlace, iter
 	}
 }
 
+// buildLessSpecificBirthplaceIssue reports a child whose birthplace is an
+// ancestor, in the place hierarchy, of the place most siblings were born in.
+// The coarser place agrees with the siblings' — it is the usual shape of a
+// birthplace taken from a later census ("born in North Carolina") — so the
+// issue is an info-level research prompt rather than an inconsistency.
+func buildLessSpecificBirthplaceIssue(archive *glxlib.GLXFile, c siblingChildPlace, majorityPlace string, majorityCount, n int) AnalysisIssue {
+	return AnalysisIssue{
+		Category: "consistency",
+		Severity: severityInfo,
+		Person:   c.childID,
+		Message: fmt.Sprintf("%s — birthplace less specific than siblings': %s, while %d of %d children with recorded birthplaces born in %s",
+			personName(archive, c.childID),
+			resolvePlaceName(c.placeID, archive),
+			majorityCount, n,
+			resolvePlaceName(majorityPlace, archive),
+		),
+	}
+}
+
 // checkSiblingBirthplaceOutlier flags children whose birthplace differs from
 // the strict majority shared by their siblings. Severity is "medium" by
 // default, elevated to "high" when the outlier's parent-child relationship
@@ -674,7 +694,12 @@ func buildSiblingOutlierIssue(archive *glxlib.GLXFile, c siblingChildPlace, iter
 // must share a single PlaceID, before any outliers are flagged. Place
 // comparison is exact PlaceID equality — siblings born in distinct but
 // related places (e.g. different counties of the same state) are treated as
-// outliers.
+// outliers — except along one branch of the place hierarchy (#1324). A
+// birthplace that encloses the majority place (North Carolina against Rowan
+// County, North Carolina) does not contradict it, so it is reported only as
+// an info-level prompt to find a more specific record; a birthplace inside
+// the majority place (Rowan County against North Carolina) is more specific
+// than the siblings' and is not reported at all.
 func checkSiblingBirthplaceOutlier(archive *glxlib.GLXFile) []AnalysisIssue {
 	idx := buildParentChildIndex(archive)
 	relHypo := buildRelationshipHypotheticalIndex(archive)
@@ -712,6 +737,14 @@ func checkSiblingBirthplaceOutlier(archive *glxlib.GLXFile) []AnalysisIssue {
 				continue
 			}
 			emitted[key] = true
+			if placeIsDescendant(c.placeID, majorityPlace, archive) {
+				continue
+			}
+			if placeIsDescendant(majorityPlace, c.placeID, archive) {
+				issues = append(issues, buildLessSpecificBirthplaceIssue(archive, c, majorityPlace, majorityCount, len(withPlace)))
+
+				continue
+			}
 			issues = append(issues, buildSiblingOutlierIssue(archive, c, parentID, majorityPlace, majorityCount, len(withPlace), idx, relHypo))
 		}
 	}
