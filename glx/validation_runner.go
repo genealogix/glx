@@ -929,14 +929,16 @@ func validateMediaFileExistence(archive *glxlib.GLXFile, archiveRoot string) []s
 		if pathHasDotComponent(filepath.Clean(media.URI)) {
 			warnings = append(warnings, fmt.Sprintf(
 				"media[%s]: referenced file is under a dot-prefixed path and is not archive content: %s",
-				mediaID, media.URI))
+				mediaID, media.URI,
+			))
 
 			continue
 		}
 		filePath := filepath.Join(archiveRoot, media.URI)
 		if _, err := os.Stat(filePath); os.IsNotExist(err) {
 			warnings = append(warnings, fmt.Sprintf(
-				"media[%s]: referenced file does not exist: %s", mediaID, media.URI))
+				"media[%s]: referenced file does not exist: %s", mediaID, media.URI,
+			))
 		}
 	}
 
