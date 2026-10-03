@@ -22,10 +22,11 @@ import (
 
 // Command validation errors
 var (
+	ErrInvalidApproximation       = glxlib.ErrInvalidApproximation
 	ErrMissingArguments           = errors.New("missing required argument(s)")
 	ErrTooManyArguments           = errors.New("too many arguments")
 	ErrMediaFileNotFound          = errors.New("file not found")
-	ErrUnknownCensusCountry       = errors.New("unknown census country")
+	ErrUnknownCensusCountry       = glxlib.ErrUnknownCensusCountry
 	ErrValidationWithErrors       = errors.New("validation failed with errors")
 	ErrInvalidFormat              = errors.New("invalid format (must be 'single' or 'multi')")
 	ErrGEDCOMFileNotFound         = errors.New("GEDCOM file not found")

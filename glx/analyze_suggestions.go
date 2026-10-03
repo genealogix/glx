@@ -165,6 +165,7 @@ func buildCensusSuggestionPlans(
 	personPlaces map[string][]string,
 ) map[string]*censusSuggestionPlan {
 	plans := make(map[string]*censusSuggestionPlan)
+	schedulesByCountry := make(map[string]*censusSchedule)
 	for _, id := range sortedPersonIDs(archive.Persons) {
 		if archive.Persons[id] == nil {
 			continue
@@ -187,7 +188,13 @@ func buildCensusSuggestionPlans(
 		existing := personCensusYears[id]
 		var missing []censusYearRef
 		for _, schedule := range censusSchedulesForPlaces(personPlaces[id], archive) {
-			for _, censusYear := range schedule.years {
+			// Plan keys share one snapshot per country within this analysis run.
+			if known := schedulesByCountry[schedule.Country]; known != nil {
+				schedule = known
+			} else {
+				schedulesByCountry[schedule.Country] = schedule
+			}
+			for _, censusYear := range schedule.Years {
 				if censusYear < birthYear || censusYear > upperBound || existing[censusYear] {
 					continue
 				}
@@ -460,9 +467,9 @@ func emitCensusSuggestions(
 			if suppressed[id][ref] {
 				continue
 			}
-			note := fmt.Sprintf("%s — search %s (alive, no census event)", name, ref.schedule.suggestionLabel(ref.year))
-			if yearNote := ref.schedule.notes[ref.year]; yearNote.note != "" {
-				note += " — " + yearNote.note
+			note := fmt.Sprintf("%s — search %s (alive, no census event)", name, ref.schedule.SuggestionLabel(ref.year))
+			if yearNote := ref.schedule.Notes[ref.year]; yearNote.Note != "" {
+				note += " — " + yearNote.Note
 			}
 			if extras := parentExtras[id][ref]; len(extras) > 0 {
 				parts := make([]string, 0, len(extras))
