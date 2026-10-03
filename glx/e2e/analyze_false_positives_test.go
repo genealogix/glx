@@ -17,6 +17,7 @@ package e2e
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -79,6 +80,20 @@ func TestAnalyzeAndCoverage_LostTerritoryCensus(t *testing.T) {
 	require.Equal(t, 0, res.exitCode, res.stdout+res.stderr)
 	assert.NotContains(t, res.stdout, "1810 US Census")
 	assert.Contains(t, res.stdout, "1820 US Census")
+
+	res = runGLX(t, dir, "proof", "person-lewis-little", "--question", "identity", "--archive", dir)
+	require.Equal(t, 0, res.exitCode, res.stdout+res.stderr)
+	assert.NotContains(t, res.stdout, "1810 US Census")
+	assert.Contains(t, res.stdout, "1820 US Census")
+}
+
+func TestAncestors_LostTerritoryCensus(t *testing.T) {
+	// A child in 1810 would otherwise get a parents' household suggestion.
+	dir := writeSingleFileArchive(t, strings.ReplaceAll(lostCensusArchive, "1756", "1803"))
+	res := runGLX(t, dir, "ancestors", "person-lewis-little", "--archive", dir)
+	require.Equal(t, 0, res.exitCode, res.stdout+res.stderr)
+	assert.NotContains(t, res.stdout, "1810 US census")
+	assert.Contains(t, res.stdout, "1820 US census")
 }
 
 const researchLogArchive = `persons:

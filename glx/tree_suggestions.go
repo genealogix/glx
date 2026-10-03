@@ -164,40 +164,40 @@ func scheduleParentCensusSuggestions(
 ) []ancestorSuggestion {
 	var suggestions []ancestorSuggestion
 
-	for _, year := range schedule.years {
+	for _, year := range schedule.Years {
 		if year < birthYear || year > birthYear+maxLifespan {
 			continue
 		}
 		if existingCensus[year] {
 			continue
 		}
-		survival := schedule.survival(year, datedPlaces, archive)
-		if survival.lost {
+		survival := schedule.Survival(year, datedPlaces, archive)
+		if survival.Lost {
 			continue
 		}
 
 		age := year - birthYear
-		note := schedule.notes[year]
+		note := schedule.Notes[year]
 
 		// Focus on censuses most useful for parent research
 		var priority string
 		var reason string
 
 		switch {
-		case note.highPriority:
+		case note.HighPriority:
 			priority = "high"
-			reason = note.note
+			reason = note.Note
 		case age < minorAgeUnder:
 			priority = "high"
 			reason = "likely in parents' household"
-		case note.minorNote != "" && age >= minorAgeUnder && age <= censusPrimeAgeMax:
+		case note.MinorNote != "" && age >= minorAgeUnder && age <= censusPrimeAgeMax:
 			priority = "medium"
-			reason = note.note + "; may show in parents' household"
+			reason = note.Note + "; may show in parents' household"
 		default:
 			continue // only suggest high-value censuses for ancestor research
 		}
-		if survival.note != "" {
-			reason += "; " + survival.note
+		if survival.Note != "" {
+			reason += "; " + survival.Note
 		}
 
 		location := ""
@@ -211,7 +211,7 @@ func scheduleParentCensusSuggestions(
 			Priority: priority,
 			Year:     year,
 			Message: fmt.Sprintf("%s — search %s (age ~%d%s) — %s",
-				name, schedule.suggestionLabel(year), age, location, reason),
+				name, schedule.SuggestionLabel(year), age, location, reason),
 		})
 	}
 

@@ -152,27 +152,26 @@ func licenseOnlyArchive(eventType, date string, viaStartEvent bool) *glxlib.GLXF
 }
 
 func TestAnalyzeGaps_LicenseOnlyMarriageIsInfo(t *testing.T) {
-	cases := []struct {
-		eventType     string
-		viaStartEvent bool
-		wantRecord    string
-	}{
-		{glxlib.EventTypeMarriageLicense, true, "a marriage license"},
-		{glxlib.EventTypeMarriageLicense, false, "a marriage license"},
-		{glxlib.EventTypeMarriageBanns, true, "marriage banns"},
-		{glxlib.EventTypeMarriageContract, false, "a marriage contract"},
-		{glxlib.EventTypeMarriageSettlement, true, "a marriage settlement"},
-	}
-	for _, tc := range cases {
-		t.Run(tc.eventType, func(t *testing.T) {
-			issues := analyzeGaps(licenseOnlyArchive(tc.eventType, "1785-12-17", tc.viaStartEvent))
-			for _, person := range []string{"person-adam", "person-elizabeth"} {
-				assert.Nil(t, findIssueByMessage(issues, person, "no marriage event"))
-				found := findIssueByMessage(issues, person, "known from "+tc.wantRecord+" only")
-				require.NotNil(t, found, "expected license-only info for %s", person)
-				assert.Equal(t, "info", found.Severity)
+	for _, kind := range []string{glxlib.EventTypeMarriageLicense, glxlib.EventTypeMarriageBanns, glxlib.EventTypeMarriageContract, glxlib.EventTypeMarriageSettlement} {
+		for _, viaStart := range []bool{false, true} {
+			for _, placedOnly := range []bool{false, true} {
+				t.Run(kind+"/start="+strconv.FormatBool(viaStart)+"/place="+strconv.FormatBool(placedOnly), func(t *testing.T) {
+					archive := licenseOnlyArchive(kind, "1785-12-17", viaStart)
+					if placedOnly {
+						archive.Events["ev-bond"].Date = ""
+					} else {
+						archive.Events["ev-bond"].PlaceID = ""
+					}
+					issues := analyzeGaps(archive)
+					for _, person := range []string{"person-adam", "person-elizabeth"} {
+						assert.Nil(t, findIssueByMessage(issues, person, "no marriage event"))
+						found := findIssueByMessage(issues, person, "known from "+preliminaryMarriageRecordName(kind)+" only")
+						require.NotNil(t, found)
+						assert.Equal(t, "info", found.Severity)
+					}
+				})
 			}
-		})
+		}
 	}
 }
 
@@ -302,7 +301,7 @@ func TestAnalyzeSuggestions_NoStateKeepsSuggestion(t *testing.T) {
 func TestCoverage_LostCensusNotCountedAsMissing(t *testing.T) {
 	archive := censusLossArchive(map[string]int{"place-dearborn": 1810})
 
-	result := buildCoverage("person-lewis", archive.Persons["person-lewis"], archive)
+	result := mustBuildCoverage("person-lewis", archive.Persons["person-lewis"], archive)
 	for _, rec := range result.Records {
 		assert.NotContains(t, rec.Label, "1810 US Census", "a lost census is not an expected record")
 	}
@@ -310,16 +309,14 @@ func TestCoverage_LostCensusNotCountedAsMissing(t *testing.T) {
 }
 
 func TestCoverage_FoundLostCensusStillShown(t *testing.T) {
-	sources := []personSourceInfo{{Ref: "src-1810", Type: glxlib.SourceTypeCensus, Year: 1810}}
-	events := []personSourceInfo{{PlaceID: "place-dearborn", Year: 1810}}
-	archive := censusLossArchive(nil)
-
-	records := buildCensusRecords(1770, 1830, []*censusSchedule{censusSchedulesByCountry[countryUnitedStates]}, sources, events, archive)
-	assert.True(t, hasRecordLabel(records, "1810 US Census"), "a census the user found anyway keeps its row")
+	archive := censusLossArchive(map[string]int{"place-dearborn": 1810})
+	archive.Sources = map[string]*glxlib.Source{"src-1810": {Type: glxlib.SourceTypeCensus, Date: "1810"}}
+	archive.Assertions = map[string]*glxlib.Assertion{"as-census": {Subject: glxlib.EntityRef{Person: "person-lewis"}, Sources: []string{"src-1810"}}}
+	result := mustBuildCoverage("person-lewis", archive.Persons["person-lewis"], archive)
+	assert.True(t, hasRecordLabel(result.Records, "1810 US Census"), "a census the user found anyway keeps its row")
 }
 
 func TestCensusSurvival_TotalLossTable(t *testing.T) {
-	us := censusSchedulesByCountry[countryUnitedStates]
 	archive := &glxlib.GLXFile{Places: map[string]*glxlib.Place{
 		"place-usa": {Name: "United States", Type: glxlib.PlaceTypeCountry},
 	}}
@@ -340,28 +337,57 @@ func TestCensusSurvival_TotalLossTable(t *testing.T) {
 		{1820, "Alabama", false, "schedules mostly lost for Alabama"},
 		{1830, "Virginia", false, ""},
 	}
+	us := scheduleForCountry(censusSchedulesForPlaces([]string{"place-usa"}, archive), countryUnitedStates)
 	for _, tc := range cases {
 		archive.Places["place-x"] = &glxlib.Place{Name: tc.state, Type: glxlib.PlaceTypeState, ParentID: "place-usa"}
-		got := us.survival(tc.year, []datedPlace{{year: tc.year, placeID: "place-x"}}, archive)
-		assert.Equal(t, tc.wantLost, got.lost, "%d %s lost", tc.year, tc.state)
+		got := us.Survival(tc.year, []datedPlace{{Year: tc.year, PlaceID: "place-x"}}, archive)
+		assert.Equal(t, tc.wantLost, got.Lost, "%d %s lost", tc.year, tc.state)
 		if tc.wantNote != "" {
-			assert.Contains(t, got.note, tc.wantNote, "%d %s note", tc.year, tc.state)
+			assert.Contains(t, got.Note, tc.wantNote, "%d %s note", tc.year, tc.state)
 		} else {
-			assert.Empty(t, got.note, "%d %s note", tc.year, tc.state)
+			assert.Empty(t, got.Note, "%d %s note", tc.year, tc.state)
 		}
 	}
 }
 
 func TestCensusSurvival_OtherCountryPlacesIgnored(t *testing.T) {
-	us := censusSchedulesByCountry[countryUnitedStates]
 	archive := &glxlib.GLXFile{Places: map[string]*glxlib.Place{
 		"place-usa": {Name: "United States", Type: glxlib.PlaceTypeCountry},
 		"place-va":  {Name: "Virginia", Type: glxlib.PlaceTypeState, ParentID: "place-usa"},
 		"place-ie":  {Name: "Ireland", Type: glxlib.PlaceTypeCountry},
 	}}
 
+	us := scheduleForCountry(censusSchedulesForPlaces([]string{"place-usa"}, archive), countryUnitedStates)
 	// The 1790 bracket is Virginia (1785) on one side and Ireland (1790) on
 	// the other; Ireland is outside the US schedule, so Virginia decides.
-	got := us.survival(1790, []datedPlace{{1785, "place-va"}, {1790, "place-ie"}}, archive)
-	assert.True(t, got.lost)
+	got := us.Survival(1790, []datedPlace{{Year: 1785, PlaceID: "place-va"}, {Year: 1790, PlaceID: "place-ie"}}, archive)
+	assert.True(t, got.Lost)
+}
+
+func TestSiblingBirthplace_StandingIntegration(t *testing.T) {
+	archive := hierarchyBirthplaceArchive("place-surry")
+	var relID string
+	for id, rel := range archive.Relationships {
+		for _, p := range rel.Participants {
+			if p.Person == "person-james" && p.Role == "child" {
+				relID = id
+			}
+		}
+	}
+	require.NotEmpty(t, relID)
+	archive.Assertions = map[string]*glxlib.Assertion{
+		"weak":   {Subject: glxlib.EntityRef{Relationship: relID}, Confidence: "low"},
+		"proven": {Subject: glxlib.EntityRef{Relationship: relID}, Status: "proven"},
+	}
+	found := findIssueByMessage(checkSiblingBirthplaceOutlier(archive), "person-james", "born in Surry County")
+	require.NotNil(t, found)
+	require.Equal(t, "medium", found.Severity, "a proven survivor overrides weak standing")
+	delete(archive.Assertions, "proven")
+	found = findIssueByMessage(checkSiblingBirthplaceOutlier(archive), "person-james", "born in Surry County")
+	require.NotNil(t, found)
+	require.Equal(t, "high", found.Severity)
+	archive.Events["event-birth-person-james"].PlaceID = "place-nc"
+	found = findIssueByMessage(checkSiblingBirthplaceOutlier(archive), "person-james", "less specific")
+	require.NotNil(t, found)
+	require.Equal(t, "info", found.Severity, "coarser evidence still agrees despite weak parentage")
 }

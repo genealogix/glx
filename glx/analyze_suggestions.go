@@ -173,6 +173,7 @@ func buildCensusSuggestionPlans(
 	personDatedPlaces map[string][]datedPlace,
 ) map[string]*censusSuggestionPlan {
 	plans := make(map[string]*censusSuggestionPlan)
+	schedulesByCountry := make(map[string]*censusSchedule)
 	for _, id := range sortedPersonIDs(archive.Persons) {
 		if archive.Persons[id] == nil {
 			continue
@@ -193,30 +194,40 @@ func buildCensusSuggestionPlans(
 		}
 
 		existing := personCensusYears[id]
-		var missing []censusYearRef
-		lossNotes := make(map[censusYearRef]string)
+		plan := &censusSuggestionPlan{birthYear: birthYear, lossNotes: make(map[censusYearRef]string)}
 		for _, schedule := range censusSchedulesForPlaces(personPlaces[id], archive) {
-			for _, censusYear := range schedule.years {
-				if censusYear < birthYear || censusYear > upperBound || existing[censusYear] {
-					continue
-				}
-				survival := schedule.survival(censusYear, personDatedPlaces[id], archive)
-				if survival.lost {
-					continue
-				}
-				ref := censusYearRef{schedule: schedule, year: censusYear}
-				missing = append(missing, ref)
-				if survival.note != "" {
-					lossNotes[ref] = survival.note
-				}
+			// Plan keys share one snapshot per country within this analysis run.
+			if known := schedulesByCountry[schedule.Country]; known != nil {
+				schedule = known
+			} else {
+				schedulesByCountry[schedule.Country] = schedule
 			}
+			plan.addMissingCensuses(archive, schedule, upperBound, existing, personDatedPlaces[id])
 		}
-		if len(missing) > 0 {
-			plans[id] = &censusSuggestionPlan{birthYear: birthYear, missing: missing, lossNotes: lossNotes}
+		if len(plan.missing) > 0 {
+			plans[id] = plan
 		}
 	}
 
 	return plans
+}
+
+// addMissingCensuses keeps only searchable census years within a person's life.
+func (plan *censusSuggestionPlan) addMissingCensuses(archive *glxlib.GLXFile, schedule *censusSchedule, upperBound int, existing map[int]bool, places []datedPlace) {
+	for _, year := range schedule.Years {
+		if year < plan.birthYear || year > upperBound || existing[year] {
+			continue
+		}
+		survival := schedule.Survival(year, places, archive)
+		if survival.Lost {
+			continue
+		}
+		ref := censusYearRef{schedule: schedule, year: year}
+		plan.missing = append(plan.missing, ref)
+		if survival.Note != "" {
+			plan.lossNotes[ref] = survival.Note
+		}
+	}
 }
 
 // parentChildBound is the time window of one parent-child relationship
@@ -477,9 +488,9 @@ func emitCensusSuggestions(
 			if suppressed[id][ref] {
 				continue
 			}
-			note := fmt.Sprintf("%s — search %s (alive, no census event)", name, ref.schedule.suggestionLabel(ref.year))
-			if yearNote := ref.schedule.notes[ref.year]; yearNote.note != "" {
-				note += " — " + yearNote.note
+			note := fmt.Sprintf("%s — search %s (alive, no census event)", name, ref.schedule.SuggestionLabel(ref.year))
+			if yearNote := ref.schedule.Notes[ref.year]; yearNote.Note != "" {
+				note += " — " + yearNote.Note
 			}
 			if lossNote := plan.lossNotes[ref]; lossNote != "" {
 				note += " — " + lossNote
