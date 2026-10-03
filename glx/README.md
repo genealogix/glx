@@ -206,6 +206,7 @@ glx validate persons/ events/   # several directories are validated as one archi
 - 🔗 **Link** - Create a FamilySearch citation (and repository/source scaffolding) from an ARK URL, offline
 - ➕ **Add** - Create person, place, event, repository, source, citation, relationship, or assertion entities from CLI flags with vocabulary and reference validation
 - 🔄 **Migrate** - Convert deprecated person properties to birth/death events
+- 🔌 **Plugins** - Discover and run third-party `glx-<name>` executables from PATH (git-style fallback); list with `glx --plugins`
 - 🖥️ **Serve** - Run a local web server with a browser-based read-only viewer (dashboard, person profiles, family tree, sources)
 - ⚡ **Cache** - Build a binary archive cache (`.glx/cache.bin`) so repeated commands skip the YAML parse; transparently used by read commands, with git + filesystem staleness detection
 
