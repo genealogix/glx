@@ -189,13 +189,14 @@ func collectFamilyEvents(personID string, archive *glxlib.GLXFile) []timelineEnt
 type relatedPerson struct {
 	PersonID string // The related person's ID
 	Name     string // Display name
-	Relation string // "spouse", "child", "parent"
+	Relation string // one of the relation* constants
 }
 
 // findRelatedPersons traverses relationships to find family members.
 func findRelatedPersons(personID string, archive *glxlib.GLXFile) []relatedPerson {
 	var related []relatedPerson
 	seen := make(map[string]bool) // Avoid duplicate related persons
+	standings := glxlib.NewRelationshipStandingIndex(archive)
 
 	relIDs := sortedKeys(archive.Relationships)
 	for _, relID := range relIDs {
@@ -232,6 +233,11 @@ func findRelatedPersons(personID string, archive *glxlib.GLXFile) []relatedPerso
 			if relation == "" {
 				continue
 			}
+			// A relationship the archive has disproven is a rejected
+			// alternative; its events don't belong on this timeline.
+			if standings.Link(relID, personID, p.Person) == glxlib.RelationshipStandingDisproven {
+				continue
+			}
 
 			name := "(unknown)"
 			if person, ok := archive.Persons[p.Person]; ok && person != nil {
@@ -250,32 +256,91 @@ func findRelatedPersons(personID string, archive *glxlib.GLXFile) []relatedPerso
 	return related
 }
 
-// inferRelation determines the family relationship label based on relationship type and roles.
+// Relations findRelatedPersons can report, which select the family events a
+// timeline borrows from the related person.
+const (
+	relationSpouse     = "spouse"
+	relationChild      = "child"
+	relationParent     = "parent"
+	relationStepchild  = "stepchild"
+	relationStepparent = "stepparent"
+	relationWard       = "ward"
+	relationGuardian   = "guardian"
+)
+
+// Guardianship participant-role keys. They are matched by key so archives that
+// define them (or a standard vocabulary that adds them) work unchanged.
+const (
+	roleKeyGuardian = "guardian"
+	roleKeyWard     = "ward"
+)
+
+// inferRelation determines how the other participant relates to the target
+// person, from the relationship type and both roles. It returns "" when the
+// roles don't say which way the relationship runs.
 func inferRelation(relType, targetRole, otherRole string) string {
 	switch {
 	case isMarriageType(relType):
-		return "spouse"
+		return relationSpouse
+	case relType == glxlib.RelationshipTypeGuardian:
+		return guardianRelation(targetRole, otherRole)
 	case isParentChildType(relType):
-		switch {
-		case targetRole == glxlib.ParticipantRoleParent:
-			return "child"
-		case targetRole == glxlib.ParticipantRoleChild:
-			return "parent"
-		case otherRole == glxlib.ParticipantRoleParent:
-			return "parent"
-		case otherRole == glxlib.ParticipantRoleChild:
-			return "child"
-		default:
-			// Ambiguous — skip
+		relation := parentChildRelation(targetRole, otherRole)
+		if relation == "" {
 			return ""
 		}
-	case relType == glxlib.RelationshipTypeGuardian:
-		// In standard archives, guardians use the "parent" participant role.
-		if targetRole == glxlib.ParticipantRoleParent {
-			return "child"
+		if relType == glxlib.RelationshipTypeStepParent || glxlib.IsStepRole(targetRole) || glxlib.IsStepRole(otherRole) {
+			if relation == relationChild {
+				return relationStepchild
+			}
+
+			return relationStepparent
 		}
 
-		return "parent"
+		return relation
+	default:
+		return ""
+	}
+}
+
+// parentChildRelation reads a parent-child relationship's roles: the target's
+// own role decides when it is a parent- or child-side role, otherwise the
+// other person's role does, otherwise the direction is ambiguous ("").
+func parentChildRelation(targetRole, otherRole string) string {
+	switch {
+	case glxlib.IsParentSideRole(targetRole):
+		return relationChild
+	case glxlib.IsChildSideRole(targetRole):
+		return relationParent
+	case glxlib.IsParentSideRole(otherRole):
+		return relationParent
+	case glxlib.IsChildSideRole(otherRole):
+		return relationChild
+	default:
+		return ""
+	}
+}
+
+// guardianRelation reads a guardian relationship's roles. guardian/ward are
+// the guardianship roles; parent/child are accepted too, since archives
+// written before guardianship roles existed used them. Any other role pair is
+// ambiguous and yields "" rather than guessing a direction.
+func guardianRelation(targetRole, otherRole string) string {
+	isGuardian := func(role string) bool {
+		return strings.EqualFold(role, roleKeyGuardian) || strings.EqualFold(role, glxlib.ParticipantRoleParent)
+	}
+	isWard := func(role string) bool {
+		return strings.EqualFold(role, roleKeyWard) || strings.EqualFold(role, glxlib.ParticipantRoleChild)
+	}
+	switch {
+	case isGuardian(targetRole):
+		return relationWard
+	case isWard(targetRole):
+		return relationGuardian
+	case isGuardian(otherRole):
+		return relationGuardian
+	case isWard(otherRole):
+		return relationWard
 	default:
 		return ""
 	}
@@ -303,19 +368,35 @@ func relatedPersonTimelineEvents(rel relatedPerson, archive *glxlib.GLXFile) []t
 	// Determine which event types to include based on the relation
 	var includeTypes map[string]string // event type -> label template
 	switch rel.Relation {
-	case "spouse":
+	case relationSpouse:
 		includeTypes = map[string]string{
 			"birth": "Birth of spouse (%s)",
 			"death": "Death of spouse (%s)",
 		}
-	case "child":
+	case relationChild:
 		includeTypes = map[string]string{
 			"birth": "Birth of child (%s)",
 			"death": "Death of child (%s)",
 		}
-	case "parent":
+	case relationParent:
 		includeTypes = map[string]string{
 			"death": "Death of parent (%s)",
+		}
+	case relationStepchild:
+		includeTypes = map[string]string{
+			"death": "Death of stepchild (%s)",
+		}
+	case relationStepparent:
+		includeTypes = map[string]string{
+			"death": "Death of stepparent (%s)",
+		}
+	case relationWard:
+		includeTypes = map[string]string{
+			"death": "Death of ward (%s)",
+		}
+	case relationGuardian:
+		includeTypes = map[string]string{
+			"death": "Death of guardian (%s)",
 		}
 	default:
 		return nil
