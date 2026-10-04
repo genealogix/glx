@@ -21,6 +21,10 @@ Developers can install from source:
 ```bash
 # Pin the release tag for a reproducible install; bump it when a new release ships
 go install github.com/genealogix/glx/glx@v0.0.0-beta.12
+
+# Or track main for changes not yet in a release. `glx --version` then
+# reports the commit it was built from (a pseudo-version ending in its hash).
+go install github.com/genealogix/glx/glx@main
 ```
 
 ## Quick Start
@@ -55,54 +59,62 @@ For a side-by-side look at the GEDCOM-vs-GLX wire formats and the assertion mode
 
 ## CLI Commands
 
-The `glx` CLI groups its commands into archive management, import/export, exploration, data entry, analysis, and shell completion. See the [full CLI reference](https://genealogix.io/cli/commands) for flags, examples, and per-command details.
+The `glx` CLI groups its commands into archive management, import/export, exploration, data entry, analysis, and shell completion. Run `glx --help` for the list your build has, `glx <command> --help` for a command's flags, or see the [CLI reference](docs/cli/index.md) for per-command pages with examples.
 
 ### Archive Management
 
-- `glx init` — initialize a new archive
-- `glx validate` — validate files and cross-references
-- `glx split` — convert a single-file archive to multi-file
-- `glx join` — convert a multi-file archive to single-file
-- `glx merge` — combine two archives with duplicate detection
-- `glx migrate` — migrate an archive to the current format
-- `glx rename` — rename an entity by ID
+- [`glx init`](docs/cli/glx_init.md) — initialize a new archive
+- [`glx validate`](docs/cli/glx_validate.md) — validate files and cross-references
+- [`glx split`](docs/cli/glx_split.md) — convert a single-file archive to multi-file
+- [`glx join`](docs/cli/glx_join.md) — convert a multi-file archive to single-file
+- [`glx merge`](docs/cli/glx_merge.md) — combine two archives with duplicate detection
+- [`glx merge-persons`](docs/cli/glx_merge-persons.md) — merge two person records into one
+- [`glx migrate`](docs/cli/glx_migrate.md) — migrate an archive to the current format
+- [`glx rename`](docs/cli/glx_rename.md) — rename an entity by ID
+- [`glx cache`](docs/cli/glx_cache.md) — build, inspect, or clear the binary archive cache
 
 ### Import & Export
 
-- `glx import` — import a GEDCOM file
-- `glx export` — export to GEDCOM or Schema.org-aligned JSON-LD
+- [`glx import`](docs/cli/glx_import.md) — import a GEDCOM file
+- [`glx export`](docs/cli/glx_export.md) — export to GEDCOM or Schema.org-aligned JSON-LD
+- [`glx publish`](docs/cli/glx_publish.md) — generate a self-contained static HTML site from an archive
 
 ### Exploration
 
-- `glx search` — full-text search across entities
-- `glx query` — filter and list entities
-- `glx vitals` — show birth, death, burial for a person
-- `glx timeline` — chronological events for a person
-- `glx summary` — full person profile with narrative
-- `glx ancestors` — ancestor tree
-- `glx descendants` — descendant tree
-- `glx cite` — formatted citation text
-- `glx path` — shortest relationship path between two people
+- [`glx search`](docs/cli/glx_search.md) — full-text search across entities
+- [`glx query`](docs/cli/glx_query.md) — filter and list entities
+- [`glx vitals`](docs/cli/glx_vitals.md) — show birth, death, burial for a person
+- [`glx timeline`](docs/cli/glx_timeline.md) — chronological events for a person
+- [`glx summary`](docs/cli/glx_summary.md) — full person profile with narrative
+- [`glx ancestors`](docs/cli/glx_ancestors.md) — ancestor tree
+- [`glx descendants`](docs/cli/glx_descendants.md) — descendant tree
+- [`glx cite`](docs/cli/glx_cite.md) — formatted citation text
+- [`glx path`](docs/cli/glx_path.md) — shortest relationship path between two people
+- [`glx serve`](docs/cli/glx_serve.md) — local browser-based read-only archive viewer
 
 ### Data Entry
 
-- `glx census` — census tooling (see subcommands)
-- `glx census add` — generate entities from a census template
-- `glx link` — create a FamilySearch citation from an ARK
+- [`glx census`](docs/cli/glx_census.md) — census tooling (see subcommands)
+- [`glx census add`](docs/cli/glx_census_add.md) — generate entities from a census template
+- [`glx add`](docs/cli/glx_add.md) — create entities (person, place, event, source, citation, repository, relationship, assertion, and more) from flags; `glx add --help` lists every entity type
+- [`glx link`](docs/cli/glx_link.md) — create a FamilySearch citation (and source/repository scaffolding) from an ARK URL
 
 ### Analysis
 
-- `glx stats` — entity-count and confidence dashboard
-- `glx places` — place data quality issues
-- `glx cluster` — FAN-club analysis
-- `glx analyze` — gap, conflict, and suggestion analysis
-- `glx duplicates` — detect duplicate entities
-- `glx coverage` — research coverage report
-- `glx diff` — diff two archives
+- [`glx stats`](docs/cli/glx_stats.md) — entity-count and confidence dashboard
+- [`glx places`](docs/cli/glx_places.md) — place data quality issues
+- [`glx cluster`](docs/cli/glx_cluster.md) — FAN-club analysis
+- [`glx analyze`](docs/cli/glx_analyze.md) — gap, conflict, and suggestion analysis
+- [`glx duplicates`](docs/cli/glx_duplicates.md) — detect duplicate entities
+- [`glx coverage`](docs/cli/glx_coverage.md) — research coverage report
+- [`glx diff`](docs/cli/glx_diff.md) — diff two archives
+- [`glx evidence`](docs/cli/glx_evidence.md) — lay out every assertion for one subject+property side-by-side
+- [`glx proof`](docs/cli/glx_proof.md) — compile a Genealogical Proof Standard summary for a research question
+- [`glx migrations`](docs/cli/glx_migrations.md) — trace a person's geographic movement over time
 
 ### Shell completion
 
-- `glx completion` — generate shell completion scripts (bash, zsh, fish, powershell)
+- [`glx completion`](docs/cli/glx_completion.md) — generate shell completion scripts (bash, zsh, fish, powershell)
 
 ## File Format
 

@@ -102,3 +102,20 @@ func scheduleForCountry(schedules []*censusSchedule, country string) *censusSche
 
 	return nil
 }
+
+// datedPlace is the shared census engine's dated location input.
+type datedPlace = glxlib.CensusDatedPlace
+
+const placeTypeTerritory = "territory"
+
+func buildPersonDatedPlaceIndex(archive *glxlib.GLXFile) map[string][]datedPlace {
+	index, _ := glxlib.PersonDatedPlaceIndex(archive)
+
+	return index
+}
+
+func datedPlacesForPerson(archive *glxlib.GLXFile, personID string) []datedPlace {
+	places, _ := glxlib.DatedPlacesForPerson(archive, personID)
+
+	return places
+}
