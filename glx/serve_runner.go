@@ -344,9 +344,10 @@ func confidenceRows(a *glxlib.GLXFile) []confidenceRowDTO {
 }
 
 // coverageRows reports how many persons/events/relationships/places the
-// archive's assertions reach as evidence, directly or through the events,
+// archive's assertions reach, directly or through the events,
 // relationships, participants, and places they name (the "Evidence coverage"
-// block of `glx stats`, #713).
+// block of `glx stats`, #713). Unsourced and disproven assertions still count;
+// these percentages measure reachability rather than sourcing or proof.
 func coverageRows(a *glxlib.GLXFile) []coverageRowDTO {
 	if len(a.Assertions) == 0 {
 		return []coverageRowDTO{}

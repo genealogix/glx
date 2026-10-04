@@ -20,6 +20,30 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestAssertionCoverageIncludesUnsourcedAndDisprovenAssertions(t *testing.T) {
+	for _, status := range []string{"", "disproven"} {
+		t.Run(status, func(t *testing.T) {
+			archive := &GLXFile{
+				Persons: map[string]*Person{"p": {}},
+				Places: map[string]*Place{
+					"county":  {Name: "County", ParentID: "country"},
+					"country": {Name: "Country"},
+				},
+				Events: map[string]*Event{"event": {PlaceID: "county", Participants: []Participant{{Person: "p", Role: "witness"}}}},
+				Assertions: map[string]*Assertion{"assertion": {
+					Subject: EntityRef{Event: "event"}, Property: "date", Value: "1810", Status: status,
+				}},
+			}
+			coverage := ComputeAssertionCoverage(archive)
+			require.Equal(t, map[string]bool{"event": true}, coverage.Direct.Events)
+			require.Empty(t, coverage.Direct.Persons)
+			require.Empty(t, coverage.Direct.Places)
+			require.Equal(t, map[string]bool{"p": true}, coverage.Evidence.Persons)
+			require.Equal(t, map[string]bool{"county": true, "country": true}, coverage.Evidence.Places)
+		})
+	}
+}
+
 func TestAssertionCoverageMissingEntitiesDoNotPropagate(t *testing.T) {
 	for _, missing := range []string{"missing", "nil"} {
 		t.Run(missing, func(t *testing.T) {

@@ -35,30 +35,31 @@ func newEntityCoverage() EntityCoverage {
 // AssertionCoverage holds two views of which entities the archive's
 // assertions reach.
 //
-// Direct counts only an assertion's subject pointer. Evidence follows the
-// evidence chain the GLX model expects researchers to build, where facts are
-// usually asserted on events and relationships rather than on persons and
-// places:
+// Direct counts only an assertion's subject pointer. Evidence measures
+// assertion reachability through the chain the GLX model expects researchers
+// to build, where facts are usually asserted on events and relationships
+// rather than on persons and places:
 //
 //   - an event or relationship is covered when an assertion targets it; a
 //     relationship is also covered when its start_event or end_event is
 //   - a person is covered when an assertion targets them, names them as
 //     participant.person, or targets an event or relationship they
-//     participate in (any role: a witness on a cited marriage record is
-//     evidenced by that record), or carries them as the value of a
+//     participate in (any role: a witness is reached through an assertion
+//     on the marriage record), or carries them as the value of a
 //     person-reference property
 //   - a place is covered when an assertion targets it, carries it as the
 //     value of a place-reference property (an event's `place`, a person's
 //     `residence`, ...), or it is the place of a covered event; and then every
 //     place on a covered place's parent chain is covered too
 //
-// Parent-chain places count because jurisdictions (county, state, country)
-// are gazetteer scaffolding that locates an evidenced place; no record is
-// ever asserted against "United States" itself, and reporting it as unsourced
-// would be noise.
+// Parent-chain places count as gazetteer scaffolding that locates a reached
+// place. Reaching a county also reaches its state and country ancestors,
+// without requiring independent assertions about those jurisdictions.
 //
-// Any assertion counts, sourced or not; assertions without citations are a
-// separate finding (glx validate --report lists them).
+// Any assertion counts, including unsourced or disproven assertions. Coverage
+// percentages measure reachability, not the proportion sourced or proven;
+// assertions without citations are a separate finding (glx validate --report
+// lists them).
 type AssertionCoverage struct {
 	Direct   EntityCoverage
 	Evidence EntityCoverage

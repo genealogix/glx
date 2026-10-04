@@ -143,7 +143,8 @@ func printEntityCoverage(archive *glxlib.GLXFile) {
 	fmt.Println("\nDirect assertion references (entity is an assertion's subject):")
 	printEntityCoverageRows(coverage.Direct, archive)
 
-	fmt.Println("\nEvidence coverage (subject, participant, or via an asserted event, relationship, or place):")
+	fmt.Println("\nEvidence coverage (assertion reachability):")
+	fmt.Println("  Includes unsourced or disproven assertions and place ancestors; percentages do not measure sourcing or proof.")
 	printEntityCoverageRows(coverage.Evidence, archive)
 }
 

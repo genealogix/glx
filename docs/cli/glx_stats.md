@@ -15,12 +15,14 @@ Shows entity counts, assertion confidence distribution, and entity coverage
 metrics for quick feedback on archive health.
 
 Coverage is shown two ways. "Direct assertion references" counts entities
-that are an assertion's subject. "Evidence coverage" follows the evidence
-chain: a person is covered when an assertion targets them, names them as a
+that are an assertion's subject. "Evidence coverage" measures assertion
+reachability: a person is covered when an assertion targets them, names them as a
 participant, or targets an event or relationship they take part in; a place
 is covered when an assertion targets it or names it as a value (an event's
 place, a residence), when a covered event happens there, or when it contains
-such a place.
+such a place. Every assertion counts, including unsourced or disproven assertions.
+Place ancestors count as gazetteer scaffolding. These percentages measure
+assertion reach, rather than the proportion of entities sourced or proven.
 
 Accepts either a multi-file directory or a single .glx file.
 If no path is given, uses the current directory.

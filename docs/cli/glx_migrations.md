@@ -23,9 +23,11 @@ Not every observation counts toward a movement. An event in which the
 person's role does not put them at its place (a grantor or grantee of a deed,
 a legatee or heir of an estate, someone merely mentioned) is shown but not
 counted; an archive can mark its own roles with implies_presence in the
-participant roles vocabulary. A dated residence value wins over event places
-inside its period: an event elsewhere during that period is shown but not
-counted as a move.
+participant roles vocabulary. A bounded residence value overrides an event
+elsewhere only when the event's whole possible date span fits within that
+residence: the event remains visible but is not counted as a move. Open-ended
+event spans remain included. Dates in different calendars are not compared
+without conversion.
 
 With --pattern, searches all persons in the archive for a migration pattern
 instead: a comma-separated list of places that must appear in chronological

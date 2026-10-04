@@ -118,6 +118,55 @@ func TestMigrations_RemoteDeedIsNotAMove(t *testing.T) {
 	assert.NotContains(t, res.stdout, "Indiana → North Carolina")
 }
 
+func TestMigrations_WholePossibleDateSpan(t *testing.T) {
+	for _, tt := range []struct {
+		date     string
+		excluded bool
+	}{
+		{"BET 1809 AND 1810", true},
+		{"BET 1810 AND 1820", false},
+		{"FROM 1810", false},
+		{"TO 1810", false},
+	} {
+		t.Run(tt.date, func(t *testing.T) {
+			dir := t.TempDir()
+			data := strings.ReplaceAll(roleArchive, "1810-04-03", tt.date)
+			require.NoError(t, os.WriteFile(filepath.Join(dir, "archive.glx"), []byte(data), 0o600))
+			result := runGLX(t, dir, "migrations", "person-lewis", "--archive", "archive.glx", "--format", "json")
+			require.Equal(t, 0, result.exitCode, result.stderr)
+			var report struct {
+				Entries []struct {
+					Role     string `json:"role"`
+					Excluded bool   `json:"excluded"`
+				} `json:"entries"`
+			}
+			require.NoError(t, json.Unmarshal([]byte(result.stdout), &report))
+			found := false
+			for _, entry := range report.Entries {
+				if entry.Role == "witness" {
+					found = true
+					require.Equal(t, tt.excluded, entry.Excluded)
+				}
+			}
+			require.True(t, found, "the observation remains visible")
+			pattern := runGLX(t, dir, "migrations", "--pattern", "Indiana,North Carolina", "--archive", "archive.glx", "--format", "json")
+			require.Equal(t, 0, pattern.exitCode, pattern.stderr)
+			var matches struct {
+				Matches []struct {
+					Person string `json:"person"`
+				} `json:"matches"`
+			}
+			require.NoError(t, json.Unmarshal([]byte(pattern.stdout), &matches))
+			if tt.excluded {
+				require.Empty(t, matches.Matches)
+			} else {
+				require.Len(t, matches.Matches, 1)
+				require.Equal(t, "person-lewis", matches.Matches[0].Person)
+			}
+		})
+	}
+}
+
 // TestStatsAndReport_EvidenceCoverage covers #713.
 func TestStatsAndReport_EvidenceCoverage(t *testing.T) {
 	dir := writeRoleArchive(t)
@@ -126,6 +175,9 @@ func TestStatsAndReport_EvidenceCoverage(t *testing.T) {
 	require.Equal(t, 0, stats.exitCode, stats.stderr)
 	assert.Contains(t, stats.stdout, "Direct assertion references")
 	assert.Contains(t, stats.stdout, "Evidence coverage")
+	assert.Contains(t, stats.stdout, "assertion reachability")
+	assert.Contains(t, stats.stdout, "unsourced or disproven assertions")
+	assert.Contains(t, stats.stdout, "percentages do not measure sourcing or proof")
 	assert.Contains(t, stats.stdout, "Persons         2/2  (100.0%)")
 	assert.Contains(t, stats.stdout, "Places          3/5  (60.0%)")
 

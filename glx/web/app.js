@@ -161,6 +161,8 @@ async function viewDashboard() {
 
   if (data.coverage && data.coverage.length) {
     sections.push(h("h2", null, "Evidence coverage"));
+    sections.push(h("p", { class: "muted" },
+      "Percentages measure assertion reachability, including unsourced or disproven assertions and place ancestors as gazetteer scaffolding. They do not measure sourcing or proof."));
     sections.push(h("div", { class: "panel" },
       data.coverage.map((row) =>
         barRow(row.label, `${row.covered}/${row.total}`, row.percent))));

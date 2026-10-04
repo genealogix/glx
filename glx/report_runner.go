@@ -228,6 +228,7 @@ func printConfidenceReport(report *reportData) {
 	hasUnbacked := len(report.UnbackedPersons) > 0 || len(report.UnbackedEvents) > 0 || len(report.UnbackedRelations) > 0
 	if hasUnbacked {
 		fmt.Println("\nEntities no assertion reaches (directly, as a participant, or via an asserted event or relationship):")
+		fmt.Println("  Assertion reachability includes unsourced or disproven assertions; it does not measure sourcing or proof.")
 		printUnbackedList("Persons", report.UnbackedPersons)
 		printUnbackedList("Events", report.UnbackedEvents)
 		printUnbackedList("Relationships", report.UnbackedRelations)

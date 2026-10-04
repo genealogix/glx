@@ -76,14 +76,15 @@ Direct assertion references (entity is an assertion's subject):
   Relationships   6/822  (0.7%)
   Places          0/107  (0.0%)
 
-Evidence coverage (subject, participant, or via an asserted event, relationship, or place):
+Evidence coverage (assertion reachability):
+  Includes unsourced or disproven assertions and place ancestors; percentages do not measure sourcing or proof.
   Persons         653/792  (82.4%)
   Events          126/986  (12.8%)
   Relationships   6/822  (0.7%)
   Places          44/107  (41.1%)
 ```
 
-This tells you the archive has nearly 800 persons with 1,900+ assertions. The two coverage blocks answer different questions. "Direct assertion references" counts only entities an assertion names as its subject. "Evidence coverage" follows the evidence chain: a person is covered when an assertion names them as a participant or targets an event or relationship they take part in, and a place is covered when an assertion names it as a value (an event's `place`, a `residence`), when an asserted event happens there, or when it contains such a place. Here no assertion targets a place directly, yet 41% of places are reached through asserted events. The remaining gaps in events and places suggest areas for future research.
+This tells you the archive has nearly 800 persons with 1,900+ assertions. The two coverage blocks answer different questions. "Direct assertion references" counts only entities an assertion names as its subject. "Evidence coverage" measures assertion reachability: a person is covered when an assertion names them as a participant or targets an event or relationship they take part in, and a place is covered when an assertion names it as a value (an event's `place`, a `residence`), when an asserted event happens there, or when it contains such a place. Every assertion counts, including unsourced or disproven assertions. Place ancestors count as gazetteer scaffolding, so reaching a county also reaches its state and country without independent assertions about them. These percentages measure assertion reach rather than sourcing or proof. Here no assertion targets a place directly, yet 41% of places are reached through asserted events. The remaining gaps in events and places suggest areas for future research.
 
 ### `glx places` — Analyze place data quality
 

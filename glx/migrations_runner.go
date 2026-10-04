@@ -17,6 +17,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"slices"
 	"sort"
 	"strings"
@@ -308,23 +309,25 @@ func residenceMigrationEntries(raw any, archive *glxlib.GLXFile) []migrationEntr
 	return entries
 }
 
-// residencePeriod is the span of sort keys a dated residence value covers.
+// residencePeriod is the bounded civil-date span a residence value covers.
 type residencePeriod struct {
-	from, to string // inclusive sort-key bounds
-	region   string
-	label    string // the residence's date and place, for notes
+	date   glxdate.Date
+	span   glxdate.Interval
+	region string
+	label  string // the residence's date and place, for notes
 }
 
 // applyResidencePeriods lets a dated residence win over event places inside
-// its period (#1330): an observation whose date falls inside a residence's
-// period, in a region none of the covering residences name, is kept in the
-// timeline but excluded from movement detection. The researcher's explicit
+// its period (#1330): an observation whose whole possible date span fits
+// inside a residence, in a region none of the covering residences name, is
+// kept in the timeline but excluded from movement detection. The researcher's explicit
 // statement of where the person lived outranks the place of a deed signed,
 // an estate settled, or a marriage witnessed on a visit elsewhere.
 //
 // Only bounded periods count (a single date, BET…AND, FROM…TO); an
 // open-ended FROM or a BEF/AFT date says too little about where the period
-// stops.
+// stops. Open-ended event spans remain included, and dates in different
+// calendars are not compared without conversion.
 func applyResidencePeriods(entries []migrationEntry) {
 	var periods []residencePeriod
 	for i := range entries {
@@ -332,8 +335,8 @@ func applyResidencePeriods(entries []migrationEntry) {
 		if !e.location || e.Region == "" {
 			continue
 		}
-		if from, to, ok := boundedDateKeys(e.Date); ok {
-			periods = append(periods, residencePeriod{from: from, to: to, region: e.Region, label: e.Date + " " + e.Place})
+		if date, ok := boundedMigrationDate(e.Date); ok {
+			periods = append(periods, residencePeriod{date: date, span: date.Timing().Outer, region: e.Region, label: e.Date + " " + e.Place})
 		}
 	}
 	if len(periods) == 0 {
@@ -345,59 +348,52 @@ func applyResidencePeriods(entries []migrationEntry) {
 		if e.location || e.Excluded || e.Region == "" || e.sortKey == undatedMigrationSortKey {
 			continue
 		}
-		var conflict *residencePeriod
-		agrees := false
-		for j := range periods {
-			p := &periods[j]
-			if e.sortKey < p.from || e.sortKey > p.to {
-				continue
-			}
-			if strings.EqualFold(p.region, e.Region) {
-				agrees = true
-
-				break
-			}
-			if conflict == nil {
-				conflict = p
-			}
+		date, ok := boundedMigrationDate(e.Date)
+		if !ok {
+			continue
 		}
-		if conflict != nil && !agrees {
+		if conflict := conflictingResidence(periods, e.Region, date); conflict != nil {
 			e.Excluded = true
 			e.Note = "inside residence " + conflict.label
 		}
 	}
 }
 
-// boundedDateKeys returns the inclusive sort-key bounds of a date that names
-// a bounded period. The upper bound is padded so that a finer date inside
-// the last unit ("1810-10-19" inside "TO 1810") still sorts within it.
-func boundedDateKeys(date string) (string, string, bool) {
+// conflictingResidence finds a residence that contains the event's whole
+// possible span, unless a matching residence preserves the agreement veto.
+func conflictingResidence(periods []residencePeriod, region string, date glxdate.Date) *residencePeriod {
+	span := date.Timing().Outer
+	var conflict *residencePeriod
+	for i := range periods {
+		p := &periods[i]
+		if date.Calendar() != p.date.Calendar() || date.CalendarName() != p.date.CalendarName() {
+			continue
+		}
+		sameRegion := strings.EqualFold(p.region, region)
+		// Preserve the existing overlap veto when a matching residence
+		// covers the first possible date, even if it does not cover the end.
+		if sameRegion && p.span.Start <= span.Start && span.Start < p.span.End {
+			return nil
+		}
+		if !sameRegion && p.span.Contains(span) && conflict == nil {
+			conflict = p
+		}
+	}
+
+	return conflict
+}
+
+// boundedMigrationDate parses a date with finite, known possible bounds.
+// Timing retains the written precision of approximate dates; it introduces
+// no additional tolerance. Reversed and open spans cannot establish containment.
+func boundedMigrationDate(date string) (glxdate.Date, bool) {
 	d, err := glxlib.DateString(date).Parse()
-	if err != nil || !d.Valid() || d.Year() == 0 {
-		return "", "", false
+	if err != nil || !d.Valid() {
+		return d, false
 	}
+	bounds := d.Timing()
 
-	if d.IsRange() {
-		if d.IsOpenEnded() || d.IsOpenStart() {
-			return "", "", false
-		}
-		from := dateSortKey(d.Start().String())
-		to := dateSortKey(d.End().String())
-		if from == undatedMigrationSortKey || to == undatedMigrationSortKey {
-			return "", "", false
-		}
-
-		return from, to + "\xff", true
-	}
-
-	switch d.Qualifier() {
-	case glxdate.QualifierBefore, glxdate.QualifierAfter:
-		return "", "", false
-	default:
-		key := dateSortKey(date)
-
-		return key, key + "\xff", true
-	}
+	return d, bounds.Known && !bounds.Reversed && bounds.Outer.Start != math.MinInt && bounds.Outer.End != math.MaxInt && bounds.Outer.Start < bounds.Outer.End
 }
 
 // stringField returns m[key] rendered as a string, or "" when absent. Dates

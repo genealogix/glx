@@ -783,12 +783,14 @@ Shows entity counts, assertion confidence distribution, and entity coverage
 metrics for quick feedback on archive health.
 
 Coverage is shown two ways. "Direct assertion references" counts entities
-that are an assertion's subject. "Evidence coverage" follows the evidence
-chain: a person is covered when an assertion targets them, names them as a
+that are an assertion's subject. "Evidence coverage" measures assertion
+reachability: a person is covered when an assertion targets them, names them as a
 participant, or targets an event or relationship they take part in; a place
 is covered when an assertion targets it or names it as a value (an event's
 place, a residence), when a covered event happens there, or when it contains
-such a place.
+such a place. Every assertion counts, including unsourced or disproven assertions.
+Place ancestors count as gazetteer scaffolding. These percentages measure
+assertion reach, rather than the proportion of entities sourced or proven.
 
 Accepts either a multi-file directory or a single .glx file.
 If no path is given, uses the current directory.`,
@@ -1118,9 +1120,11 @@ Not every observation counts toward a movement. An event in which the
 person's role does not put them at its place (a grantor or grantee of a deed,
 a legatee or heir of an estate, someone merely mentioned) is shown but not
 counted; an archive can mark its own roles with implies_presence in the
-participant roles vocabulary. A dated residence value wins over event places
-inside its period: an event elsewhere during that period is shown but not
-counted as a move.
+participant roles vocabulary. A bounded residence value overrides an event
+elsewhere only when the event's whole possible date span fits within that
+residence: the event remains visible but is not counted as a move. Open-ended
+event spans remain included. Dates in different calendars are not compared
+without conversion.
 
 With --pattern, searches all persons in the archive for a migration pattern
 instead: a comma-separated list of places that must appear in chronological

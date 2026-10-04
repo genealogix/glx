@@ -315,7 +315,7 @@ func TestPrintMigrationReportText_ExcludedNote(t *testing.T) {
 	assert.Contains(t, out.String(), `(Deed) [not counted as a move: role "grantor" does not imply presence]`)
 }
 
-func TestBoundedDateKeys(t *testing.T) {
+func TestBoundedMigrationDate(t *testing.T) {
 	tests := []struct {
 		date   string
 		ok     bool
@@ -334,15 +334,17 @@ func TestBoundedDateKeys(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.date, func(t *testing.T) {
-			from, to, ok := boundedDateKeys(tt.date)
+			date, ok := boundedMigrationDate(tt.date)
 			require.Equal(t, tt.ok, ok)
 			for _, d := range tt.inside {
-				k := dateSortKey(d)
-				assert.True(t, k >= from && k <= to, "%s should be inside %s", d, tt.date)
+				other, bounded := boundedMigrationDate(d)
+				require.True(t, bounded)
+				assert.True(t, date.Timing().Outer.Contains(other.Timing().Outer), "%s should be inside %s", d, tt.date)
 			}
 			for _, d := range tt.out {
-				k := dateSortKey(d)
-				assert.False(t, k >= from && k <= to, "%s should be outside %s", d, tt.date)
+				other, bounded := boundedMigrationDate(d)
+				require.True(t, bounded)
+				assert.False(t, date.Timing().Outer.Contains(other.Timing().Outer), "%s should be outside %s", d, tt.date)
 			}
 		})
 	}

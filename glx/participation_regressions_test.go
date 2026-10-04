@@ -90,6 +90,7 @@ func TestMigrationResidenceBoundsAndOverlaps(t *testing.T) {
 		{"after boundary", bounded, "1811-01-01", "Away, Illinois", false},
 		{"overlap agrees first", overlapping, "1811", "Home, Indiana", false},
 		{"overlap agrees second", overlapping, "1811", "Away, Illinois", false},
+		{"overlap retains first-date agreement", overlapping, "BET 1811 AND 1813", "Home, Indiana", false},
 		{"overlap agrees neither", overlapping, "1811", "Other, Ohio", true},
 		{"unbounded start", []any{map[string]any{"value": "Home, Indiana", "date": "FROM 1809"}}, "1810", "Away, Illinois", false},
 		{"unbounded end", []any{map[string]any{"value": "Home, Indiana", "date": "TO 1810"}}, "1809", "Away, Illinois", false},
@@ -142,6 +143,47 @@ func TestConfidenceConsumersSkipNullAssertions(t *testing.T) {
 				require.Empty(t, report.ByConfidence)
 				require.Empty(t, output)
 			}
+		})
+	}
+}
+
+func TestMigrationResidenceContainsWholeEventSpan(t *testing.T) {
+	for _, tt := range []struct {
+		name, residence, event string
+		excluded               bool
+	}{
+		{"contained range", "FROM 1809 TO 1810", "BET 1809 AND 1810", true},
+		{"wider range", "FROM 1809 TO 1810", "BET 1809 AND 1820", false},
+		{"starts before residence", "FROM 1809 TO 1810", "BET 1808 AND 1810", false},
+		{"open event start", "FROM 1809 TO 1810", "TO 1810", false},
+		{"open event end", "FROM 1809 TO 1810", "FROM 1809", false},
+		{"before event", "FROM 1809 TO 1810", "BEF 1810", false},
+		{"after event", "FROM 1809 TO 1810", "AFT 1809", false},
+		{"whole year within day bounds", "FROM 1810-01-01 TO 1810-12-31", "1810", true},
+		{"whole month within day bounds", "FROM 1810-01-01 TO 1810-01-31", "1810-01", true},
+		{"partial year outside day bounds", "FROM 1809-12-31 TO 1810-01-01", "1810", false},
+		{"partial month outside day bounds", "FROM 1810-01-01 TO 1810-01-30", "1810-01", false},
+		{"reversed event", "FROM 1809 TO 1810", "BET 1810 AND 1809", false},
+		{"reversed residence", "FROM 1810 TO 1809", "1810", false},
+		{"different calendar", "1810", "JULIAN 1810-12-25", false},
+		{"same calendar", "JULIAN 1810", "JULIAN 1810-12-25", true},
+		{"BCE contained", "FROM 100 BCE TO 90 BCE", "BET 99 BCE AND 95 BCE", true},
+		{"approximate written precision", "1810", "ABT 1810", true},
+		{"unknown date", "FROM 1809 TO 1810", "sometime", false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			archive := &glxlib.GLXFile{
+				Persons: map[string]*glxlib.Person{"p": {Properties: map[string]any{
+					"residence": map[string]any{"value": "Home, Indiana", "date": tt.residence},
+				}}},
+				Events: map[string]*glxlib.Event{"event": {
+					Type: "generic", Title: "Observation", Date: glxlib.DateString(tt.event), PlaceID: "Away, Illinois",
+					Participants: []glxlib.Participant{{Person: "p", Role: "principal"}},
+				}},
+			}
+			entries := collectMigrationEntries("p", archive)
+			observation := migrationEntryByLabel(t, entries, "Observation")
+			require.Equal(t, tt.excluded, observation.Excluded)
 		})
 	}
 }
