@@ -1984,6 +1984,7 @@ func runMergeDriverCmd(_ *cobra.Command, args []string) error {
 var (
 	mergePersonsArchive       string
 	mergePersonsDryRun        bool
+	mergePersonsYes           bool
 	mergePersonsKeepNewest    bool
 	mergePersonsKeepOldest    bool
 	mergePersonsNotesStrategy string
@@ -1995,6 +1996,25 @@ var mergePersonsCmd = &cobra.Command{
 	Long: `Consolidate two person entities into one. The keep-id is retained;
 the drop-id's properties, notes, and cross-references are folded into it,
 then the drop-id person file is removed.
+
+Resolved possibly_same_person relationships between these two people are
+removed and listed in the merge summary, including with --dry-run. Other
+relationships are retained and their person references follow the merge.
+Whole assertions depending on a removed relationship are deleted, regardless
+of status or confidence. ResearchLog subjects are cleared while their research
+is retained. Declared relationship-reference properties lose only matching
+whole values; sources, citations, media and unrelated assertions remain.
+
+The preview lists every changed entity, deleted claim and cleared/pruned
+reference, plus changes to current standing, evidence, proof and coverage.
+Deleting claims can change existing interpretations (for example, a relationship
+with no remaining assertions is accepted under the existing fallback rules).
+Recovery requires a recorded pre-merge version; this command does not commit.
+
+After reporting and validation, Apply this merge? [y/N] defaults to cancellation.
+--yes (-y) skips approval but still reports and validates. Noninteractive use
+requires --yes. --dry-run only reports, even with --yes, and never prompts.
+The preview remains visible with --quiet. A changed archive requires a new preview.
 
 Property merging:
   - Properties present only on drop are copied verbatim.
@@ -2010,12 +2030,16 @@ Notes are combined per --notes-strategy (default: append).
 
 This is the natural follow-on to ` + "`glx duplicates`" + `: once you've identified
 that two person records are the same individual, this command consolidates
-them in a single atomic operation.`,
+them. Single-file writes use atomic replacement; multi-file writes retain the
+existing rollback and interrupted-write recovery safeguards.`,
 	Example: `  # Merge person-jungk-1750 into person-juncker-1750
   glx merge-persons person-juncker-1750 person-jungk-1750 --archive ./archive
 
   # Preview the merge
   glx merge-persons person-a person-b --archive ./archive --dry-run
+
+  # Apply without prompting (for scripts)
+  glx merge-persons person-a person-b --archive ./archive --yes
 
   # Resolve dated conflicts by picking the later entry
   glx merge-persons person-a person-b --archive ./archive --keep-newest
@@ -2029,6 +2053,7 @@ them in a single atomic operation.`,
 func init() {
 	mergePersonsCmd.Flags().StringVarP(&mergePersonsArchive, "archive", "a", ".", "Path to GLX archive")
 	mergePersonsCmd.Flags().BoolVar(&mergePersonsDryRun, "dry-run", false, "Show what would change without writing")
+	mergePersonsCmd.Flags().BoolVarP(&mergePersonsYes, "yes", "y", false, "Apply the reported merge without prompting (validation still runs)")
 	mergePersonsCmd.Flags().BoolVar(&mergePersonsKeepNewest, "keep-newest", false,
 		"For conflicting temporal properties, keep the entry with the later date")
 	mergePersonsCmd.Flags().BoolVar(&mergePersonsKeepOldest, "keep-oldest", false,
@@ -2049,7 +2074,7 @@ func runMergePersons(cmd *cobra.Command, args []string) error {
 		KeepOldest:    mergePersonsKeepOldest,
 	}
 
-	return mergePersons(mergePersonsArchive, args[0], args[1], opts, mergePersonsDryRun)
+	return mergePersons(mergePersonsArchive, args[0], args[1], opts, mergePersonsDryRun, mergePersonsYes)
 }
 
 // ============================================================================

@@ -428,6 +428,30 @@ evidence model and [Confidence Levels](vocabularies.md#confidence-levels-vocabul
 for the standard vocabulary. There is no direct GEDCOM mapping (see
 [GEDCOM Mapping](#gedcom-mapping)).
 
+When a researcher chooses to merge these records, `MergePersons` removes every
+binary `possibly_same_person` relationship connecting that pair, in either
+participant order. It deletes whole assertions whose subject, declared
+relationship-reference value, or declared relationship-reference participant
+property depends on a removed relationship, regardless of status or confidence.
+It does not reassign an identification claim to the surviving person's existence
+or edit away a qualifier. Sources, citations, media and unrelated assertions remain.
+
+Research logs whose optional subject is removed lose only that subject; searches,
+negative results, citations, conclusions, status, notes and other research remain.
+Declared relationship-reference properties lose matching whole occurrences,
+including structured fields and dates, while retaining other values and order.
+Ordinary person references follow the survivor; opaque text is not a reference.
+
+These are deletions from the current archive. Existing evidence, standing, proof
+and coverage rules recompute normally; removing a speculative or disproven claim
+can change the resulting interpretation. The merge result reports changed
+entities, complete deleted payloads, cleared/pruned references and consequential
+interpretation changes. History and recovery belong to an actually recorded
+pre-merge version, normally Git; no historical GLX entity or new status is created.
+The pure SDK works without Git. The CLI reports and validates the planned result,
+then defaults to No at its confirmation prompt unless `--yes` (`-y`) is explicit.
+`--dry-run` never prompts or writes, and the CLI does not create Git commits.
+
 ## Participants Format
 
 The `participants` array defines the people involved in the relationship and their roles:

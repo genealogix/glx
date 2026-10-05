@@ -71,12 +71,38 @@ type MergePersonsResult struct {
 	PropertiesMerged int
 	NotesMerged      int
 	Conflicts        []PersonMergeConflict
+	// RemovedRelationships lists resolved possibly_same_person relationship IDs
+	// in sorted order. Their discarded references are not counted in RefsUpdated.
+	RemovedRelationships []string
+	// RemovedAssertions lists whole claims deleted because a typed reference
+	// depends on a removed relationship. Status and confidence do not exempt claims.
+	RemovedAssertions []string
+	// ReferenceChanges reports rewritten, cleared and pruned typed references.
+	ReferenceChanges []MergeReferenceChange
+	// Changes includes every changed entity and the full payload of deletions.
+	Changes []EntityChange
+	// InterpretationChanges compares existing evidence, standing and coverage
+	// semantics before and after the merge. It does not invent researcher statuses.
+	InterpretationChanges []MergeInterpretationChange
 }
 
 // MergePersons consolidates two person entities, retaining keepID and folding
 // dropID's properties, notes, and references into it. The dropID person is
 // removed from the archive after its data has been merged. All cross-references
-// to dropID elsewhere in the archive are rewritten to point at keepID.
+// to dropID elsewhere in the archive are rewritten to point at keepID only
+// when structural fields or property definitions identify a person reference.
+// Opaque metadata, ordinary strings and references to other types are retained.
+// Binary possibly_same_person relationships connecting keepID and dropID are
+// removed and reported in RemovedRelationships before references are rewritten.
+// Other relationships are retained, including candidates involving other people.
+// Whole assertions depending on removed relationships through their subject,
+// vocabulary-typed value or participant properties are deleted regardless of
+// status/confidence. Optional ResearchLog subjects are cleared; the logs and
+// their research remain. Relationship-valued property occurrences are pruned
+// whole, preserving other values/order. Sources, citations and media remain.
+// Deleted conclusions and evidence associations leave the current archive;
+// recovery belongs to the caller's recorded pre-merge version, not this SDK.
+// Existing inference recomputes normally, and the result reports its changes.
 //
 // Property-merge rules:
 //   - Missing properties are copied, and identical values agree silently.
@@ -94,8 +120,12 @@ type MergePersonsResult struct {
 //
 // Missing standard property definitions are supplied without changing the
 // archive vocabulary maps; explicit custom definitions win. Options and person
-// IDs are validated before any mutation. Successful calls mutate the archive,
-// so callers must synchronize against concurrent readers/writers.
+// IDs, the detached outcome's entity references and reporting are checked before
+// mutation. Errors leave the archive untouched. Sparse input archives may keep
+// pre-existing missing targets, but valid inputs gain no dangling references.
+// Successful calls replace archive values with a detached outcome; callers must
+// retrieve entity pointers again and synchronize concurrent readers/writers.
+// The SDK performs no filesystem/Git I/O and never prompts.
 //
 // Notes are combined per opts.NotesStrategy.
 //
@@ -123,6 +153,7 @@ func MergePersons(glx *GLXFile, keepID, dropID string, opts MergePersonsOptions)
 	case NotesStrategyAppend, NotesStrategyPreferKeep, NotesStrategyPreferDrop:
 		// ok
 	default:
+
 		return nil, fmt.Errorf("%w: %q (want append | prefer-keep | prefer-drop)",
 			ErrMergeInvalidNotesStrat, opts.NotesStrategy)
 	}
@@ -134,22 +165,56 @@ func MergePersons(glx *GLXFile, keepID, dropID string, opts MergePersonsOptions)
 		return nil, err
 	}
 
-	keep := glx.Persons[keepID]
-	drop := glx.Persons[dropID]
+	// Prepare a detached outcome. Validation/reporting failures must not leave
+	// the caller with a partly merged archive or mutated property values.
+	planned := cloneMergeArchive(glx)
+	prepared, err = researchArchive(planned)
+	if err != nil {
+		return nil, err
+	}
+	result := &MergePersonsResult{}
+	cleanupResolvedPersonRelationships(planned, prepared, keepID, dropID, result)
+	keep := planned.Persons[keepID]
+	drop := planned.Persons[dropID]
 
 	propsAdded, conflicts := mergePersonProperties(prepared, keep, drop, opts)
 	notesAdded := mergePersonNotes(keep, drop, opts.NotesStrategy)
 
-	delete(glx.Persons, dropID)
-	refsUpdated := updateAllRefs(glx, dropID, keepID)
-	glx.validation = nil
+	delete(planned.Persons, dropID)
+	prepared, err = researchArchive(planned)
+	if err != nil {
+		return nil, err
+	}
+	result.RefsUpdated = rewriteMergedPersonReferences(planned, prepared, dropID, keepID, result)
+	if err := validateMergeReferences(glx, planned); err != nil {
+		return nil, err
+	}
+	result.PropertiesMerged, result.NotesMerged, result.Conflicts = propsAdded, notesAdded, conflicts
+	if err := reportPersonMerge(glx, planned, keepID, dropID, opts.Comparison, result); err != nil {
+		return nil, err
+	}
+	planned.validation = nil
+	*glx = *planned
 
-	return &MergePersonsResult{
-		RefsUpdated:      refsUpdated,
-		PropertiesMerged: propsAdded,
-		NotesMerged:      notesAdded,
-		Conflicts:        conflicts,
-	}, nil
+	return result, nil
+}
+
+// resolvedPersonRelationships finds only binary identity candidates for this
+// pair. Participant roles and ordering do not affect the symmetric relationship.
+func resolvedPersonRelationships(glx *GLXFile, keepID, dropID string) []string {
+	var ids []string
+	for id, relationship := range glx.Relationships {
+		if relationship == nil || relationship.Type != RelationshipTypePossiblySamePerson || len(relationship.Participants) != 2 {
+			continue
+		}
+		first, second := relationship.Participants[0].Person, relationship.Participants[1].Person
+		if (first == keepID && second == dropID) || (first == dropID && second == keepID) {
+			ids = append(ids, id)
+		}
+	}
+	sort.Strings(ids)
+
+	return ids
 }
 
 // requirePerson validates that id exists in glx.Persons. If id exists as a
@@ -363,10 +428,13 @@ func propertyYear(v any) int {
 	}
 	switch d := m[temporalDateField].(type) {
 	case string:
+
 		return ExtractFirstYear(d)
 	case DateString:
+
 		return d.Year()
 	default:
+
 		return 0
 	}
 }
@@ -421,6 +489,7 @@ func mergePersonNotes(keep, drop *Person, strategy NotesStrategy) int {
 
 		return count
 	case NotesStrategyPreferKeep:
+
 		return 0
 	}
 
