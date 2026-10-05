@@ -137,7 +137,7 @@ func TestResearchAPI_PrincipalAndCensusParticipationRemainEvidence(t *testing.T)
 		case "marriage":
 			role, topic, label = "bride", glxlib.QuestionMarriage, ""
 		case "census":
-			role, label = "witness", "1870 US Census"
+			role, label = "household_member", "1870 US Census"
 		}
 		archive := &glxlib.GLXFile{
 			Persons: map[string]*glxlib.Person{"p": {}},
