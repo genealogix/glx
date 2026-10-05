@@ -28,15 +28,47 @@ import (
 type sourResult struct {
 	CitationID string
 	SourceID   string
+	// Bare embedded sources remain private drafts until their caller has added
+	// contextual notes/media. Registered synthetic sources must not be mutated.
+	syntheticSource *Source
+	line            int
+}
+
+func (result *sourResult) bareSource(conv *ConversionContext) *Source {
+	if result.syntheticSource != nil {
+		return result.syntheticSource
+	}
+
+	return conv.GLX.Sources[result.SourceID]
+}
+
+func (result *sourResult) finalizeSource(conv *ConversionContext) {
+	if result.syntheticSource != nil {
+		result.SourceID = registerSyntheticSource(result.syntheticSource, result.line, conv)
+		result.syntheticSource = nil
+	}
 }
 
 // createCitationFromSOUR processes a GEDCOM SOUR subrecord.
 // Returns a sourResult: either a citation ID (if the SOUR has detail) or
 // a bare source ID (if it only references a source with no added value).
+func createCitationFromSOUR(sourRecord *GEDCOMRecord, conv *ConversionContext) (sourResult, error) {
+	result, err := prepareCitationFromSOUR(sourRecord, conv)
+	if err != nil {
+		return sourResult{}, err
+	}
+	result.finalizeSource(conv)
+
+	return result, nil
+}
+
+// prepareCitationFromSOUR leaves a bare embedded source unregistered so callers
+// can enrich its private draft before content-based deduplication.
 //
 //nolint:gocognit,gocyclo // GEDCOM conversion has inherent branching complexity
-func createCitationFromSOUR(sourRecord *GEDCOMRecord, conv *ConversionContext) (sourResult, error) {
+func prepareCitationFromSOUR(sourRecord *GEDCOMRecord, conv *ConversionContext) (sourResult, error) {
 	var sourceID string
+	var syntheticSource *Source
 
 	// Check if it's a reference or embedded source
 	// GEDCOM has two SOURCE_CITATION forms:
@@ -56,7 +88,7 @@ func createCitationFromSOUR(sourRecord *GEDCOMRecord, conv *ConversionContext) (
 		// Per GEDCOM spec: "systems need to create a SOURCE_RECORD format and store
 		// the source description information found in the non-structured source citation
 		// in the title area for the new source record."
-		sourceID = createSyntheticSourceFromEmbeddedCitation(sourRecord, conv)
+		syntheticSource = buildSyntheticSourceFromEmbeddedCitation(sourRecord, conv)
 	}
 
 	// Build citation from SOUR subrecords
@@ -145,7 +177,10 @@ func createCitationFromSOUR(sourRecord *GEDCOMRecord, conv *ConversionContext) (
 	// If the citation adds no value beyond referencing the source, skip creating it
 	// and return the source ID directly so the caller can reference the source.
 	if !citationHasDetail(citation) {
-		return sourResult{SourceID: sourceID}, nil
+		return sourResult{SourceID: sourceID, syntheticSource: syntheticSource, line: sourRecord.Line}, nil
+	}
+	if syntheticSource != nil {
+		citation.SourceID = registerSyntheticSource(syntheticSource, sourRecord.Line, conv)
 	}
 
 	// Store citation
@@ -284,10 +319,7 @@ type evidenceRefs struct {
 // produce citation IDs. SOUR records that only reference a source with no additional
 // detail produce bare source IDs, avoiding meaningless citation entities.
 func extractEvidence(record *GEDCOMRecord, conv *ConversionContext) evidenceRefs {
-	var refs evidenceRefs
-	seenCitations := map[string]bool{}
-	seenSources := map[string]bool{}
-
+	var results []sourResult
 	for _, sub := range record.SubRecords {
 		if sub.Tag == GedcomTagSour {
 			result, err := createCitationFromSOUR(sub, conv)
@@ -295,13 +327,26 @@ func extractEvidence(record *GEDCOMRecord, conv *ConversionContext) evidenceRefs
 				// Error already logged in createCitationFromSOUR, skip
 				continue
 			}
-			if result.CitationID != "" && !seenCitations[result.CitationID] {
-				seenCitations[result.CitationID] = true
-				refs.CitationIDs = append(refs.CitationIDs, result.CitationID)
-			} else if result.SourceID != "" && !seenSources[result.SourceID] {
-				seenSources[result.SourceID] = true
-				refs.SourceIDs = append(refs.SourceIDs, result.SourceID)
-			}
+			results = append(results, result)
+		}
+	}
+
+	return finalizeGEDCOMEvidence(results, conv)
+}
+
+// finalizeGEDCOMEvidence registers finalized drafts and deduplicates bare source refs.
+func finalizeGEDCOMEvidence(results []sourResult, conv *ConversionContext) evidenceRefs {
+	var refs evidenceRefs
+	seenCitations := map[string]bool{}
+	seenSources := map[string]bool{}
+	for _, result := range results {
+		result.finalizeSource(conv)
+		if result.CitationID != "" && !seenCitations[result.CitationID] {
+			seenCitations[result.CitationID] = true
+			refs.CitationIDs = append(refs.CitationIDs, result.CitationID)
+		} else if result.SourceID != "" && !seenSources[result.SourceID] {
+			seenSources[result.SourceID] = true
+			refs.SourceIDs = append(refs.SourceIDs, result.SourceID)
 		}
 	}
 
@@ -394,6 +439,10 @@ func isGEDCOMPointer(value string) bool {
 // create a SOURCE_RECORD with the description as the title. Identical extracted
 // content reuses the first synthetic source within this conversion only.
 func createSyntheticSourceFromEmbeddedCitation(sourRecord *GEDCOMRecord, conv *ConversionContext) string {
+	return registerSyntheticSource(buildSyntheticSourceFromEmbeddedCitation(sourRecord, conv), sourRecord.Line, conv)
+}
+
+func buildSyntheticSourceFromEmbeddedCitation(sourRecord *GEDCOMRecord, conv *ConversionContext) *Source {
 	// Determine the source title
 	var title string
 	if sourRecord.Value != "" {
@@ -443,6 +492,10 @@ func createSyntheticSourceFromEmbeddedCitation(sourRecord *GEDCOMRecord, conv *C
 	syntheticNote := "Source created from embedded GEDCOM citation"
 	source.Notes = append(NoteList{syntheticNote}, source.Notes...)
 
+	return source
+}
+
+func registerSyntheticSource(source *Source, line int, conv *ConversionContext) string {
 	// Only synthetic sources enter this index: distinct GEDCOM SOURCE_RECORDs
 	// retain their XREF identities even when their content happens to match.
 	key := buildSyntheticSourceDedupeKey(source)
@@ -459,12 +512,12 @@ func createSyntheticSourceFromEmbeddedCitation(sourRecord *GEDCOMRecord, conv *C
 	conv.syntheticSourceIDs[key] = sourceID
 	conv.Stats.SourcesCreated++
 
-	conv.Logger.LogInfof("Line %d: Created synthetic source from embedded citation: %s", sourRecord.Line, title)
+	conv.Logger.LogInfof("Line %d: Created synthetic source from embedded citation: %s", line, source.Title)
 
 	return sourceID
 }
 
-// buildSyntheticSourceDedupeKey preserves exact text and ordered note boundaries.
+// buildSyntheticSourceDedupeKey preserves exact text and ordered notes/media.
 // Length prefixes avoid collisions even when content contains delimiters/newlines.
 func buildSyntheticSourceDedupeKey(source *Source) string {
 	var key strings.Builder
@@ -476,8 +529,11 @@ func buildSyntheticSourceDedupeKey(source *Source) string {
 	writePart(source.Title)
 	description, _ := getStringProperty(source.Properties, "description")
 	writePart(description)
-	for _, note := range source.Notes {
-		writePart(note)
+	for _, values := range [][]string{source.Notes, source.Media} {
+		writePart(strconv.Itoa(len(values)))
+		for _, value := range values {
+			writePart(value)
+		}
 	}
 
 	return key.String()

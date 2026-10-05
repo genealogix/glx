@@ -208,3 +208,218 @@ func TestImportEmbeddedSourcesPreservesEvidence(t *testing.T) {
 		})
 	}
 }
+
+func TestImportEmbeddedSourcesPreservesCensusContext(t *testing.T) {
+	for _, version := range []string{"5.5.1", "7.0"} {
+		t.Run(version, func(t *testing.T) {
+			gedcom := `0 HEAD
+1 GEDC
+2 VERS ` + version + `
+0 @M1@ OBJE
+1 FILE census-one.jpg
+0 @M2@ OBJE
+1 FILE census-two.jpg
+0 @I1@ INDI
+1 NAME John /Smith/
+2 SOUR Register
+1 CENS
+2 DATE 1900
+2 PLAC Portland
+2 SOUR Register
+2 SOUR Register
+2 NOTE Boarder
+2 OBJE @M1@
+1 CENS
+2 DATE 1901
+2 PLAC Portland
+2 SOUR Register
+2 NOTE Boarder
+2 OBJE @M1@
+1 CENS
+2 DATE 1910
+2 PLAC Portland
+2 SOUR Register
+2 NOTE Head of household
+2 OBJE @M1@
+1 CENS
+2 DATE 1920
+2 PLAC Portland
+2 SOUR Register
+2 NOTE Boarder
+2 OBJE @M2@
+1 CENS
+2 DATE 1930
+2 PLAC Portland
+2 SOUR Register
+2 NOTE Boarder
+1 DEAT
+2 DATE 1940
+2 SOUR Register
+0 @I2@ INDI
+1 NAME Mary /Smith/
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 CENS
+2 DATE 1950
+2 PLAC Portland
+2 SOUR Register
+2 NOTE Boarder
+2 OBJE @M1@
+0 TRLR
+`
+			archive, result, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+			require.NoError(t, err)
+			require.Empty(t, result.Statistics.Errors)
+			require.Len(t, archive.Sources, 5, "one plain source and four distinct census contexts")
+			assert.Equal(t, len(archive.Sources), result.Statistics.SourcesCreated)
+			assert.Empty(t, archive.Citations, "bare census evidence retains its existing source attachment policy")
+
+			plainID := ""
+			boarderMediaOneID := ""
+			for id, source := range archive.Sources {
+				assert.Equal(t, "Register", source.Title)
+				if len(source.Notes) == 1 {
+					plainID = id
+					assert.Empty(t, source.Media)
+				} else {
+					require.Len(t, source.Notes, 2, "context is attached once")
+					if source.Notes[1] == "Boarder" && len(source.Media) == 1 && source.Media[0] == "media-1" {
+						boarderMediaOneID = id
+					}
+					assert.LessOrEqual(t, len(source.Media), 1, "family census must not attach source media twice")
+				}
+			}
+			require.NotEmpty(t, plainID)
+			require.NotEmpty(t, boarderMediaOneID)
+			residenceRefs := make(map[string]int)
+			for _, assertion := range archive.Assertions {
+				if assertion.Property == PersonPropertyName {
+					assert.Equal(t, []string{plainID}, assertion.Sources, "earlier evidence must not inherit census context")
+				}
+				if assertion.Property == PersonPropertyResidence {
+					require.Len(t, assertion.Sources, 1)
+					residenceRefs[assertion.Sources[0]]++
+				}
+			}
+			assert.Equal(t, 4, residenceRefs[boarderMediaOneID], "two individual censuses and both spouses share identical finalized content")
+			assert.Len(t, residenceRefs, 4)
+			assert.NotContains(t, residenceRefs, plainID)
+			require.Len(t, archive.Events, 1)
+			for _, event := range archive.Events {
+				if event.Type == EventTypeDeath {
+					assert.Equal(t, []string{plainID}, event.Properties[PropertySources], "later evidence must not inherit census context")
+				}
+			}
+		})
+	}
+}
+
+func TestImportEmbeddedCensusSourceWithoutUnusedDraft(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME John /Smith/
+1 CENS
+2 PLAC Portland
+2 SOUR Register
+2 NOTE Boarder
+0 TRLR
+`
+	archive, result, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+	require.Len(t, archive.Sources, 1, "register only the enriched source, not a discarded plain draft")
+	assert.Equal(t, 1, result.Statistics.SourcesCreated)
+	assert.Equal(t, NoteList{"Source created from embedded GEDCOM citation", "Boarder"}, archive.Sources["source-1"].Notes)
+}
+
+func TestImportCensusMixedEvidencePreservesAttachmentPolicy(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @S1@ SOUR
+1 TITL Explicit register
+0 @M1@ OBJE
+1 FILE census.jpg
+0 @I1@ INDI
+1 NAME John /Smith/
+1 CENS
+2 PLAC Portland
+2 SOUR Register
+2 SOUR Register
+3 PAGE Page 1
+2 SOUR @S1@
+2 SOUR @S1@
+2 NOTE Boarder
+2 OBJE @M1@
+0 TRLR
+`
+	archive, result, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+	require.Len(t, archive.Sources, 3, "explicit record, plain citation source, and media-enriched bare source")
+	assert.Equal(t, len(archive.Sources), result.Statistics.SourcesCreated)
+	require.Len(t, archive.Citations, 1)
+	for _, citation := range archive.Citations {
+		assert.Equal(t, NoteList{"Boarder"}, citation.Notes, "census note belongs to citations when any detailed citation exists")
+		assert.Equal(t, []string{"media-1"}, citation.Media)
+		assert.Empty(t, archive.Sources[citation.SourceID].Media)
+	}
+	for _, source := range archive.Sources {
+		assert.NotContains(t, source.Notes, "Boarder", "mixed evidence must not move census notes onto bare sources")
+		assert.LessOrEqual(t, len(source.Media), 1, "repeated explicit XREFs must attach context once")
+	}
+	assert.Equal(t, []string{"media-1"}, archive.Sources["source-1"].Media)
+	require.Len(t, archive.Assertions, 1)
+	for _, assertion := range archive.Assertions {
+		if assertion.Property == PersonPropertyResidence {
+			assert.Len(t, assertion.Sources, 2)
+			assert.Len(t, assertion.Citations, 1)
+		}
+	}
+}
+
+func TestImportEmbeddedSourcesPreservesMediaContext(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @M1@ OBJE
+1 FILE one.jpg
+1 SOUR Register
+1 SOUR Register
+0 @M2@ OBJE
+1 FILE two.jpg
+1 SOUR Register
+0 @I1@ INDI
+1 NAME John /Smith/
+2 SOUR Register
+0 TRLR
+`
+	archive, result, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+	require.Len(t, archive.Sources, 3, "each media context and the plain source remain distinct")
+	assert.Equal(t, len(archive.Sources), result.Statistics.SourcesCreated)
+	mediaRefs := make(map[string]int)
+	plainID := ""
+	for id, source := range archive.Sources {
+		assert.Equal(t, NoteList{"Source created from embedded GEDCOM citation"}, source.Notes)
+		if len(source.Media) == 0 {
+			plainID = id
+		} else {
+			require.Len(t, source.Media, 1)
+			mediaRefs[source.Media[0]]++
+		}
+	}
+	assert.Equal(t, map[string]int{"media-1": 1, "media-2": 1}, mediaRefs)
+	require.NotEmpty(t, plainID)
+	require.Len(t, archive.Assertions, 1)
+	for _, assertion := range archive.Assertions {
+		assert.Equal(t, []string{plainID}, assertion.Sources, "unrelated inline evidence must not inherit media")
+	}
+}
+
+func TestSyntheticSourceKeyKeepsNoteAndMediaSectionsDistinct(t *testing.T) {
+	first := &Source{Title: "Register", Notes: NoteList{"shared"}, Media: []string{"media-1"}}
+	second := &Source{Title: "Register", Notes: NoteList{"shared", "media-1"}}
+	assert.NotEqual(t, buildSyntheticSourceDedupeKey(first), buildSyntheticSourceDedupeKey(second))
+}
