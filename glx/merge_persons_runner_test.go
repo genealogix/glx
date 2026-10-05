@@ -20,6 +20,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -280,11 +281,13 @@ func TestMergePersonsSingleFilePreservesMode(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "archive.glx")
 	require.NoError(t, os.WriteFile(path, []byte("persons:\n  person-keep:\n    notes: keep\n  person-drop:\n    notes: drop\n"), 0o600))
+	originalInfo, err := os.Stat(path)
+	require.NoError(t, err)
 	streams, _, _ := TestIOStreams()
 	require.NoError(t, mergePersonsWithIO(streams, strings.NewReader(""), false, path, "person-keep", "person-drop", glxlib.MergePersonsOptions{}, false, true))
 	info, err := os.Stat(path)
 	require.NoError(t, err)
-	assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+	assert.Equal(t, originalInfo.Mode().Perm(), info.Mode().Perm())
 }
 
 func TestMergePersonsPreservesCustomLayoutAndUnrelatedYAML(t *testing.T) {
@@ -313,6 +316,8 @@ relationships:
       - person: person-drop
       - person: person-keep
 `), 0o600))
+			originalInfo, err := os.Stat(path)
+			require.NoError(t, err)
 			foreign := filepath.Join(filepath.Dir(path), "README.txt")
 			require.NoError(t, os.WriteFile(foreign, []byte("user research"), 0o600))
 			untouched := filepath.Join(dir, "unrelated.glx")
@@ -337,7 +342,7 @@ relationships:
 			assert.Equal(t, "user research", string(data))
 			info, err := os.Stat(path)
 			require.NoError(t, err)
-			assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+			assert.Equal(t, originalInfo.Mode().Perm(), info.Mode().Perm())
 			assert.NoDirExists(t, dir+".bak")
 		})
 	}
@@ -349,17 +354,17 @@ func TestMergePersonsInstallFailureRollsBackOriginalFiles(t *testing.T) {
 	original, err := collectGLXFilesFromDir(dir)
 	require.NoError(t, err)
 	planned := maps.Clone(original)
-	delete(planned, "persons/person-drop.glx")
-	planned["persons/person-keep.glx"] = []byte("persons:\n  person-keep:\n    notes: merged\n")
+	delete(planned, filepath.FromSlash("persons/person-drop.glx"))
+	planned[filepath.FromSlash("persons/person-keep.glx")] = []byte("persons:\n  person-keep:\n    notes: merged\n")
 	failed := false
-	err = installMergeFilesWithRename(dir, original, planned, func(from, to string) error {
+	err = installMergeFilesWithRename(dir, original, planned, func(root *os.Root, from, to string) error {
 		if !failed && strings.Contains(from, ".glx-merge-") {
 			failed = true
 
 			return os.ErrPermission
 		}
 
-		return robustRename(from, to)
+		return robustRenameIn(root, from, to)
 	})
 	require.ErrorIs(t, err, os.ErrPermission)
 	require.True(t, failed, "failure must happen after original files have moved to backup")
@@ -367,6 +372,83 @@ func TestMergePersonsInstallFailureRollsBackOriginalFiles(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, original, actual)
 	assert.NoDirExists(t, dir+".bak")
+}
+
+func TestMergePersonsInstallRejectsDirectorySymlinkRace(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation is privilege-gated on Windows")
+	}
+	dir := t.TempDir()
+	writeMergeFixture(t, dir)
+	original, err := collectGLXFilesFromDir(dir)
+	require.NoError(t, err)
+	planned := maps.Clone(original)
+	planned[filepath.FromSlash("persons/person-keep.glx")] = []byte("persons:\n  person-keep:\n    notes: merged\n")
+	delete(planned, filepath.FromSlash("persons/person-drop.glx"))
+	outside := t.TempDir()
+	untouched := []byte("outside archive")
+	outsideFile := filepath.Join(outside, "person-keep.glx")
+	require.NoError(t, os.WriteFile(outsideFile, untouched, 0o600))
+	replaced := false
+	err = installMergeFilesWithRename(dir, original, planned, func(root *os.Root, from, to string) error {
+		if !replaced && strings.Contains(from, filepath.Join("new", "persons")) {
+			replaced = true
+			require.NoError(t, os.Rename(filepath.Join(dir, "persons"), filepath.Join(dir, "persons-original-directory")))
+			require.NoError(t, os.Symlink(outside, filepath.Join(dir, "persons")))
+		}
+
+		return robustRenameIn(root, from, to)
+	})
+	require.Error(t, err)
+	require.True(t, replaced, "race must happen after all original files have moved")
+	data, err := os.ReadFile(outsideFile)
+	require.NoError(t, err)
+	assert.Equal(t, untouched, data, "installation and rollback must stay inside the archive")
+	assert.NoFileExists(t, filepath.Join(outside, "person-drop.glx"))
+	backup, err := collectGLXFilesFromDir(dir + ".bak")
+	require.NoError(t, err)
+	assert.Equal(t, original[filepath.FromSlash("persons/person-keep.glx")], backup[filepath.FromSlash("persons/person-keep.glx")])
+	assert.Equal(t, original[filepath.FromSlash("persons/person-drop.glx")], backup[filepath.FromSlash("persons/person-drop.glx")])
+	require.ErrorIs(t, removeStaleBackup(dir+".bak"), ErrInterruptedSwap)
+}
+
+func TestMergePersonsStaleBackupPreservesRecoveryData(t *testing.T) {
+	for _, path := range []string{swapInProgressMarker, "README.txt", "persons/.drafts/record.glx", "persons/research.txt", "media/files/record.glx"} {
+		t.Run(path, func(t *testing.T) {
+			parentDir := t.TempDir()
+			name := "archive.bak"
+			file := filepath.Join(parentDir, name, filepath.FromSlash(path))
+			require.NoError(t, os.MkdirAll(filepath.Dir(file), 0o755))
+			require.NoError(t, os.WriteFile(file, []byte("recovery data"), 0o600))
+			parent, err := os.OpenRoot(parentDir)
+			require.NoError(t, err)
+			defer func() { _ = parent.Close() }()
+			require.Error(t, removeStaleMergeBackup(parent, name))
+			data, err := os.ReadFile(file)
+			require.NoError(t, err)
+			assert.Equal(t, "recovery data", string(data))
+		})
+	}
+}
+
+func TestMergePersonsStaleBackupCleanupStaysInOpenedParent(t *testing.T) {
+	container := t.TempDir()
+	parentDir := filepath.Join(container, "parent")
+	backupFile := filepath.Join("archive.bak", "persons", "person.glx")
+	require.NoError(t, os.MkdirAll(filepath.Dir(filepath.Join(parentDir, backupFile)), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(parentDir, backupFile), []byte("stale GLX"), 0o600))
+	parent, err := os.OpenRoot(parentDir)
+	require.NoError(t, err)
+	defer func() { _ = parent.Close() }()
+	moved := filepath.Join(container, "moved-parent")
+	require.NoError(t, os.Rename(parentDir, moved))
+	require.NoError(t, os.MkdirAll(filepath.Dir(filepath.Join(parentDir, backupFile)), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(parentDir, backupFile), []byte("replacement tree"), 0o600))
+	require.NoError(t, removeStaleMergeBackup(parent, "archive.bak"))
+	assert.NoDirExists(t, filepath.Join(moved, "archive.bak"))
+	data, err := os.ReadFile(filepath.Join(parentDir, backupFile))
+	require.NoError(t, err)
+	assert.Equal(t, "replacement tree", string(data))
 }
 
 func TestMergePersonsParticipantCommentsRemainWithTheirOriginalEntries(t *testing.T) {

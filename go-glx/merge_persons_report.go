@@ -30,7 +30,8 @@ import (
 // report (standing, link/<participants>, coverage, evidence/<property>, or
 // proof/<question>). Link reports compare individual participants and pairs.
 // Proof/coverage use default geographic options and the merge's comparison
-// options. Proof reports cover persons reached by removed claims/coverage.
+// options. Reports cover the survivor and subjects/people affected by changed
+// claims, event/relationship participants, and assertion coverage.
 type MergeInterpretationChange struct {
 	EntityType EntityType
 	ID         string
@@ -108,10 +109,9 @@ func reportMergeInterpretations(before, after *GLXFile, keepID, dropID string, c
 			}
 		}
 	})
-	if len(result.RemovedAssertions) == 0 {
-		return nil
-	}
 	affected[keepID] = true
+	collectMergeNeighbors(before, keepID, dropID, affected)
+	collectMergeNeighbors(after, keepID, dropID, affected)
 	if err := reportMergeEvidence(before, after, keepID, dropID, comparison, result, affected); err != nil {
 		return err
 	}
@@ -125,34 +125,114 @@ func reportMergeInterpretations(before, after *GLXFile, keepID, dropID string, c
 	return nil
 }
 
-func reportMergeEvidence(before, after *GLXFile, keepID, dropID string, comparison ComparisonOptions, result *MergePersonsResult, affected map[string]bool) error {
-	seen := make(map[string]bool)
-	for _, id := range result.RemovedAssertions {
-		assertion := before.Assertions[id]
-		collectMergeAffectedPeople(before, assertion, affected)
-		subject := assertion.Subject
-		if subject.Person == dropID {
-			subject.Person = keepID
+func collectMergeNeighbors(archive *GLXFile, keepID, dropID string, affected map[string]bool) {
+	collect := func(subject EntityRef, participants []Participant) {
+		for _, participant := range participants {
+			if participant.Person == keepID || participant.Person == dropID {
+				collectMergeAffectedPeople(archive, &Assertion{Subject: subject}, affected)
+
+				return
+			}
 		}
-		key := string(subject.Type()) + "/" + subject.ID() + "/" + assertion.Property
-		if seen[key] || researchSubjectExists(after, subject) != nil {
+	}
+	for id, event := range archive.Events {
+		if event != nil {
+			collect(EntityRef{Event: id}, event.Participants)
+		}
+	}
+	for id, relationship := range archive.Relationships {
+		if relationship != nil {
+			collect(EntityRef{Relationship: id}, relationship.Participants)
+		}
+	}
+}
+
+func reportMergeEvidence(before, after *GLXFile, keepID, dropID string, comparison ComparisonOptions, result *MergePersonsResult, affected map[string]bool) error {
+	for _, scope := range mergeEvidenceScopes(before, after, keepID, dropID, result.Changes, affected) {
+		if researchSubjectExists(before, scope.subject) != nil || researchSubjectExists(after, scope.subject) != nil {
 			continue
 		}
-		seen[key] = true
-		oldEvidence, err := BuildEvidenceReport(before, assertion.Subject, assertion.Property, comparison)
+		oldEvidence, err := BuildEvidenceReport(before, scope.subject, scope.property, comparison)
 		if err != nil {
 			return err
 		}
-		newEvidence, err := BuildEvidenceReport(after, subject, assertion.Property, comparison)
+		newEvidence, err := BuildEvidenceReport(after, scope.subject, scope.property, comparison)
 		if err != nil {
 			return err
 		}
-		if err := addMergeInterpretation(result, subject.Type(), subject.ID(), "evidence/"+assertion.Property, oldEvidence, newEvidence); err != nil {
+		if err := addMergeInterpretation(result, scope.subject.Type(), scope.subject.ID(), "evidence/"+scope.property, oldEvidence, newEvidence); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+type mergeEvidenceScope struct {
+	subject  EntityRef
+	property string
+}
+
+func mergeEvidenceScopes(before, after *GLXFile, keepID, dropID string, changes []EntityChange, affected map[string]bool) []mergeEvidenceScope {
+	changedSubjects := map[EntityRef]bool{{Person: keepID}: true, {Person: dropID}: true}
+	changedAssertions := make(map[string]bool)
+	for _, change := range changes {
+		if change.EntityType == EntityTypeAssertions {
+			changedAssertions[change.ID] = true
+
+			continue
+		}
+		var subject EntityRef
+		switch change.EntityType {
+		case EntityTypePersons:
+			subject.Person = change.ID
+		case EntityTypeEvents:
+			subject.Event = change.ID
+		case EntityTypeRelationships:
+			subject.Relationship = change.ID
+		case EntityTypePlaces:
+			subject.Place = change.ID
+		default:
+			continue
+		}
+		changedSubjects[subject] = true
+		for _, archive := range []*GLXFile{before, after} {
+			collectMergeAffectedPeople(archive, &Assertion{Subject: subject}, affected)
+		}
+	}
+	scopes := make(map[mergeEvidenceScope]bool)
+	for subject := range changedSubjects {
+		if subject.Person == dropID {
+			subject.Person = keepID
+		}
+		scopes[mergeEvidenceScope{subject: subject}] = true
+	}
+	for _, archive := range []*GLXFile{before, after} {
+		for id, assertion := range archive.Assertions {
+			if assertion == nil {
+				continue
+			}
+			if !changedAssertions[id] && !changedSubjects[assertion.Subject] {
+				continue
+			}
+			collectMergeAffectedPeople(archive, assertion, affected)
+			subject := assertion.Subject
+			if subject.Person == dropID {
+				subject.Person = keepID
+			}
+			scopes[mergeEvidenceScope{subject: subject, property: assertion.Property}] = true
+		}
+	}
+	ordered := make([]mergeEvidenceScope, 0, len(scopes))
+	for scope := range scopes {
+		ordered = append(ordered, scope)
+	}
+	slices.SortFunc(ordered, func(a, b mergeEvidenceScope) int {
+		return strings.Compare(string(a.subject.Type())+"/"+a.subject.ID()+"/"+a.property,
+			string(b.subject.Type())+"/"+b.subject.ID()+"/"+b.property)
+	})
+
+	return ordered
 }
 
 func reportMergeProofs(before, after *GLXFile, dropID string, comparison ComparisonOptions, result *MergePersonsResult, affected map[string]bool) error {

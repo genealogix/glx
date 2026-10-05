@@ -103,7 +103,7 @@ func readMergeFiles(path string, directory bool) (map[string][]byte, error) {
 	if directory {
 		return collectGLXFilesFromDir(path)
 	}
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) // #nosec G304 -- CLI-selected single-file archive; directory archives use the contained walker
 	if err != nil {
 		return nil, err
 	}

@@ -15,12 +15,83 @@
 package glx
 
 import (
+	"encoding/json"
+	"fmt"
 	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestMergePersons_ReportsSurvivingEvidenceWithoutClaimDeletion(t *testing.T) {
+	for _, eventClaim := range []bool{false, true} {
+		t.Run(fmt.Sprintf("event=%t", eventClaim), func(t *testing.T) {
+			archive := newTwoPersonArchive()
+			archive.Sources = map[string]*Source{"s": {Title: "Birth certificate", Type: SourceTypeVitalRecord}}
+			claim := &Assertion{Subject: EntityRef{Person: "person-drop"}, Property: "born_on", Value: "1850", Sources: []string{"s"}, Confidence: ConfidenceLevelHigh, Status: "proven"}
+			if eventClaim {
+				archive.Events = map[string]*Event{"birth": {Type: EventTypeBirth, Date: "1850", Participants: []Participant{{Person: "person-drop", Role: ParticipantRoleSubject}}}}
+				claim.Subject = EntityRef{Event: "birth"}
+				claim.Property = "date"
+			}
+			archive.Assertions = map[string]*Assertion{"claim": claim}
+			require.NoError(t, MergeStandardVocabularies(archive))
+			before := cloneMergeArchive(archive)
+			oldProof, err := BuildProof(before, "person-keep", "birth", ProofOptions{})
+			require.NoError(t, err)
+			result, err := MergePersons(archive, "person-keep", "person-drop", MergePersonsOptions{})
+			require.NoError(t, err)
+			assert.Empty(t, result.RemovedAssertions)
+			assert.Contains(t, archive.Assertions, "claim")
+			newProof, err := BuildProof(archive, "person-keep", "birth", ProofOptions{})
+			require.NoError(t, err)
+			assert.NotEqual(t, oldProof.Conclusion, newProof.Conclusion)
+			assert.Equal(t, proofConclusionProven, newProof.Conclusion)
+			oldJSON, err := json.Marshal(oldProof)
+			require.NoError(t, err)
+			newJSON, err := json.Marshal(newProof)
+			require.NoError(t, err)
+			foundProof, foundEvidence, foundCoverage := false, false, false
+			for _, change := range result.InterpretationChanges {
+				if change.ID == "person-keep" && change.Aspect == "proof/birth" {
+					assert.JSONEq(t, string(oldJSON), change.Before)
+					assert.JSONEq(t, string(newJSON), change.After)
+					foundProof = true
+				}
+				if change.ID == "person-keep" && change.Aspect == "evidence/born_on" {
+					assert.Contains(t, change.Before, `"total_reports":0`)
+					assert.Contains(t, change.After, `"total_reports":1`)
+					foundEvidence = true
+				}
+				if change.ID == "person-keep" && change.Aspect == "coverage" {
+					foundCoverage = true
+				}
+			}
+			assert.True(t, foundProof, "surviving claims can change proof without a deletion")
+			if eventClaim {
+				assert.True(t, foundCoverage, "a transferred sourced event changes the survivor's checklist")
+			} else {
+				assert.True(t, foundEvidence, "survivor evidence must use its own pre-merge baseline")
+			}
+		})
+	}
+}
+
+func TestMergePersons_RemovedDropClaimUsesSurvivorEvidenceBaseline(t *testing.T) {
+	archive := identityEvidenceFixture(t)
+	archive.Assertions = map[string]*Assertion{
+		"a-drop": {Subject: EntityRef{Person: "person-drop"}, Property: "identity_case", Value: "r-resolved", Sources: []string{"s"}},
+		"z-keep": {Subject: EntityRef{Person: "person-keep"}, Property: "identity_case", Value: "r-other", Sources: []string{"s"}},
+	}
+	result, err := MergePersons(archive, "person-keep", "person-drop", MergePersonsOptions{})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"a-drop"}, result.RemovedAssertions)
+	for _, change := range result.InterpretationChanges {
+		assert.False(t, change.ID == "person-keep" && change.Aspect == "evidence/identity_case",
+			"the survivor's evidence is unchanged; the removed person's claim is disclosed by the deletion report")
+	}
+}
 
 func identityEvidenceFixture(t *testing.T) *GLXFile {
 	t.Helper()
