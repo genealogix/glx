@@ -143,6 +143,7 @@ func TestShowStats_OutputContent(t *testing.T) {
 	assert.Less(t, highIdx, unsetIdx, "(unset) should appear after high in output")
 
 	// Verify coverage section
-	assert.Contains(t, output, "Entity coverage")
+	assert.Contains(t, output, "Direct assertion references")
+	assert.Contains(t, output, "Evidence coverage")
 	assert.Contains(t, output, "1/1")
 }

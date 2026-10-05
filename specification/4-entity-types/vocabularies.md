@@ -596,6 +596,17 @@ participant_roles:
 | `description` | No | Detailed description |
 | `applies_to` | No | Array of contexts the role is meant for (`event`, `relationship`). Omitted means all contexts; see [applies_to semantics](#applies_to-semantics) |
 | `gedcom` | No | GEDCOM `ASSO ROLE` tag value emitted/consumed for round-trip (#524) |
+| `implies_presence` | No | Boolean. Whether a person in this role was at the event's place on its date. Set `false` for roles that name a person without placing them there, such as a grantor selling land from another state or an absent legatee. When omitted, tools fall back to a built-in default (see below) |
+
+#### Role semantics in tooling
+
+Tools that reason about a person's records distinguish three kinds of participation:
+
+- **Own record**: the event is a record of this person. `principal`, `subject` (or no role), `bride`, `groom`, `godchild`, `adopted_child`, `decedent` and `testator` on any event; the legacy `child` role on a birth, baptism or christening; `spouse` (or `husband`/`wife`) on a marriage-type event; and any household role (`subject`, `household_head`, `head`, `wife`, `son`, ...) on a `census` event. `glx coverage` counts only these toward a record category.
+- **Present**: the person was at the event's place but it is someone else's record (`witness`, `officiant`, `informant`, `godparent`, `parent`, and any role not otherwise listed).
+- **Mentioned**: named without being placed there. Built-in defaults: `grantor`, `grantee`, `adjoining_owner`, `legatee`, `devisee`, `beneficiary`, `heir`, `executor`, `administrator`, `creditor`, `debtor`, `mentioned`, `neighbor`. `glx migrations` shows these events but does not count their place as a movement.
+
+Own-record status and presence are independent. `implies_presence` overrides only the present/not-present default for a role, so an archive can classify its own roles without changing whose record the event is.
 
 ### applies_to Semantics
 

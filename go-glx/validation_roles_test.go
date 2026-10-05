@@ -46,6 +46,7 @@ func roleContextArchive() *GLXFile {
 			"sibling":   {Label: "Sibling", AppliesTo: []string{RoleContextRelationship}},
 			"guardian":  {Label: "Guardian", AppliesTo: []string{RoleContextEvent, RoleContextRelationship}},
 			"anything":  {Label: "Custom role without applies_to"},
+			"empty":     {Label: "Custom role with empty applies_to", AppliesTo: []string{}},
 		},
 	}
 }
@@ -90,6 +91,7 @@ func TestValidateParticipantRoleContexts(t *testing.T) {
 			"event-1": {Participants: []Participant{
 				{Person: "person-a", Role: "guardian"},
 				{Person: "person-b", Role: "anything"},
+				{Person: "person-b", Role: "empty"},
 				{Person: "person-b"},
 			}},
 		}
@@ -97,6 +99,7 @@ func TestValidateParticipantRoleContexts(t *testing.T) {
 			"rel-1": {Participants: []Participant{
 				{Person: "person-a", Role: "guardian"},
 				{Person: "person-b", Role: "anything"},
+				{Person: "person-b", Role: "empty"},
 			}},
 		}
 
@@ -202,7 +205,7 @@ func TestStandardVocabulariesLandTerritorySearchResults(t *testing.T) {
 
 	assert.Contains(t, archive.EventTypes, EventTypeLandTransaction)
 	assert.Equal(t, "legal", archive.EventTypes[EventTypeLandTransaction].Category)
-	assert.Empty(t, archive.EventTypes[EventTypeLandTransaction].GEDCOM, "land_transaction has no GEDCOM tag; export uses EVEN + TYPE")
+	assert.Empty(t, archive.EventTypes[EventTypeLandTransaction].GEDCOM, "land_transaction has no dedicated GEDCOM tag; export support is tracked in #1320/#1321")
 	assert.Contains(t, archive.PlaceTypes, PlaceTypeTerritory)
 	assert.Contains(t, archive.SearchResultTypes, SearchResultUnavailable)
 	assert.Contains(t, archive.SearchResultTypes, SearchResultRequiresVisit)

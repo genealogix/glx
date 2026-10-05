@@ -78,7 +78,13 @@ jobs:
         # hashFiles) is skipped instead of shipping a truncated file.
         run: |
           go tool -modfile=ci-tools/go.mod govulncheck -format sarif ./... > govulncheck.sarif.tmp
-          mv govulncheck.sarif.tmp govulncheck.sarif
+          # Apply the osv-scanner.toml suppressions to govulncheck's output too, so the
+          # two scanners share one reviewed list. Only module-level ("note") findings
+          # are dropped: if a suppressed advisory ever becomes imported or called, it
+          # is reported regardless. See scripts/filter-govulncheck-sarif.py.
+          python3 scripts/filter-govulncheck-sarif.py osv-scanner.toml < govulncheck.sarif.tmp > govulncheck.sarif.filtered
+          mv govulncheck.sarif.filtered govulncheck.sarif
+          rm govulncheck.sarif.tmp
 
       - name: Upload SARIF to Code Scanning
         if: always() && hashFiles('govulncheck.sarif') != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)

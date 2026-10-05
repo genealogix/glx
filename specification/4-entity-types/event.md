@@ -150,7 +150,7 @@ events:
       event_subtype: patent
 ```
 
-GEDCOM has no dedicated land-transaction tag (`PROP` is a possessions attribute, not a transaction), so a `land_transaction` is exported as `EVEN` with a `TYPE`.
+GEDCOM has no dedicated land-transaction tag (`PROP` is a possessions attribute, not a transaction). Its intended representation is `EVEN` with a `TYPE`, but the current exporter omits `land_transaction` events. Support depends on the unmapped-event fallback ([#1320](https://github.com/genealogix/glx/issues/1320)) and export of participants such as `grantor` and `grantee` ([#1321](https://github.com/genealogix/glx/issues/1321)); neither export change is included in this vocabulary addition.
 
 ## Usage Patterns
 

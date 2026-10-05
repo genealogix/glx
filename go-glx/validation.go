@@ -1017,7 +1017,11 @@ func (glx *GLXFile) validateDateFormat(entityType EntityType, entityID, field, d
 		return // Empty dates are allowed
 	}
 
-	if _, err := glxdate.Parse(dateStr); err != nil {
+	parsed, parseErr := glxdate.Parse(dateStr)
+	if parsed.Timing().Reversed {
+		result.Warnings = append(result.Warnings, ValidationWarning{SourceType: entityType, SourceID: entityID, Field: field, Message: fmt.Sprintf("%s[%s].%s: reversed date range %q (end precedes start)", entityType, entityID, field, dateStr)})
+	}
+	if err := parseErr; err != nil {
 		result.Warnings = append(result.Warnings, ValidationWarning{
 			SourceType: entityType,
 			SourceID:   entityID,
