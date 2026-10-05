@@ -432,6 +432,9 @@ func TestMergePersonsStaleBackupPreservesRecoveryData(t *testing.T) {
 }
 
 func TestMergePersonsStaleBackupCleanupStaysInOpenedParent(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows prevents renaming an opened directory")
+	}
 	container := t.TempDir()
 	parentDir := filepath.Join(container, "parent")
 	backupFile := filepath.Join("archive.bak", "persons", "person.glx")
