@@ -31,7 +31,7 @@ import (
 // proof/<question>). Link reports compare individual participants and pairs.
 // Proof/coverage use default geographic options and the merge's comparison
 // options. Reports cover the survivor and subjects/people affected by changed
-// claims, event/relationship participants, and assertion coverage.
+// claims or their evidence, event/relationship participants, and assertion coverage.
 type MergeInterpretationChange struct {
 	EntityType EntityType
 	ID         string
@@ -175,7 +175,7 @@ type mergeEvidenceScope struct {
 
 func mergeEvidenceScopes(before, after *GLXFile, keepID, dropID string, changes []EntityChange, affected map[string]bool) []mergeEvidenceScope {
 	changedSubjects := map[EntityRef]bool{{Person: keepID}: true, {Person: dropID}: true}
-	changedAssertions := make(map[string]bool)
+	changedAssertions := mergeEvidenceAssertionChanges(before, after, changes)
 	for _, change := range changes {
 		if change.EntityType == EntityTypeAssertions {
 			changedAssertions[change.ID] = true
@@ -233,6 +233,57 @@ func mergeEvidenceScopes(before, after *GLXFile, keepID, dropID string, changes 
 	})
 
 	return ordered
+}
+
+func mergeEvidenceAssertionChanges(before, after *GLXFile, changes []EntityChange) map[string]bool {
+	assertions, sources, citations, media := make(map[string]bool), make(map[string]bool), make(map[string]bool), make(map[string]bool)
+	for _, change := range changes {
+		switch change.EntityType {
+		case EntityTypeAssertions:
+			assertions[change.ID] = true
+		case EntityTypeSources:
+			sources[change.ID] = true
+		case EntityTypeCitations:
+			citations[change.ID] = true
+		case EntityTypeMedia:
+			media[change.ID] = true
+		}
+	}
+	for _, archive := range []*GLXFile{before, after} {
+		for id, assertion := range archive.Assertions {
+			if assertion != nil && mergeAssertionEvidenceChanged(archive, assertion, sources, citations, media) {
+				assertions[id] = true
+			}
+		}
+	}
+
+	return assertions
+}
+
+func mergeAssertionEvidenceChanged(archive *GLXFile, assertion *Assertion, sources, citations, media map[string]bool) bool {
+	for _, id := range assertion.Sources {
+		if sources[id] {
+			return true
+		}
+	}
+	for _, id := range assertion.Citations {
+		if citations[id] {
+			return true
+		}
+		if citation := archive.Citations[id]; citation != nil && sources[citation.SourceID] {
+			return true
+		}
+	}
+	for _, id := range assertion.Media {
+		if media[id] {
+			return true
+		}
+		if item := archive.Media[id]; item != nil && sources[item.Source] {
+			return true
+		}
+	}
+
+	return false
 }
 
 func reportMergeProofs(before, after *GLXFile, dropID string, comparison ComparisonOptions, result *MergePersonsResult, affected map[string]bool) error {

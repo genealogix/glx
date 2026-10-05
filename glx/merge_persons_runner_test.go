@@ -21,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -73,6 +74,171 @@ func writeMergeFixture(t *testing.T, dir string) {
       - person: person-drop
         role: subject
 `), 0o644))
+}
+
+func linkMergeFixtureFile(t *testing.T, path, target string) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		// Git stores symlinks as their target text when core.symlinks is false.
+		require.NoError(t, os.WriteFile(path, []byte(target), 0o644))
+	} else {
+		require.NoError(t, os.Symlink(target, path))
+	}
+}
+
+func TestMergePersonsRunner_RefusesChangedLinkedFilesBeforeApproval(t *testing.T) {
+	for _, person := range []string{"person-keep", "person-drop"} {
+		for _, action := range []struct{ dryRun, yes bool }{{false, false}, {false, true}, {true, true}} {
+			t.Run(person+"/dryRun="+strconv.FormatBool(action.dryRun)+"/yes="+strconv.FormatBool(action.yes), func(t *testing.T) {
+				dir := filepath.Join(t.TempDir(), "archive")
+				writeMergeFixture(t, dir)
+				path := filepath.Join(dir, "persons", person+".glx")
+				target := filepath.Join(dir, "payload.yaml")
+				require.NoError(t, os.Rename(path, target))
+				linkMergeFixtureFile(t, path, "../payload.yaml")
+				original, err := readMergeFiles(dir, true)
+				require.NoError(t, err)
+				payload, err := os.ReadFile(target)
+				require.NoError(t, err)
+				streams, out, errOut := TestIOStreams()
+				err = mergePersonsWithIO(streams, strings.NewReader("yes\n"), true, dir,
+					"person-keep", "person-drop", glxlib.MergePersonsOptions{}, action.dryRun, action.yes)
+				require.ErrorIs(t, err, errMergeLinkedFile)
+				assert.Empty(t, out.String(), "an unexecutable plan must not be offered")
+				assert.Empty(t, errOut.String(), "approval must not be requested")
+				current, err := readMergeFiles(dir, true)
+				require.NoError(t, err)
+				assert.Equal(t, original, current)
+				currentPayload, err := os.ReadFile(target)
+				require.NoError(t, err)
+				assert.Equal(t, payload, currentPayload)
+				assertMergeFixtureLink(t, path, "../payload.yaml")
+				_, err = os.Stat(dir + ".bak")
+				assert.True(t, os.IsNotExist(err))
+				transactions, err := filepath.Glob(filepath.Join(dir, ".glx-merge-*"))
+				require.NoError(t, err)
+				assert.Empty(t, transactions)
+			})
+		}
+	}
+}
+
+func assertMergeFixtureLink(t *testing.T, path, target string) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		data, err := os.ReadFile(path)
+		require.NoError(t, err)
+		assert.Equal(t, target, string(data))
+	} else {
+		actual, err := os.Readlink(path)
+		require.NoError(t, err)
+		assert.Equal(t, target, actual)
+	}
+}
+
+func TestMergePersonsRunner_PreservesUnchangedLinkedFiles(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "archive")
+	writeMergeFixture(t, dir)
+	require.NoError(t, os.Mkdir(filepath.Join(dir, "sources"), 0o755))
+	payload := []byte("sources:\n  source-1:\n    title: Unchanged source\n    type: book\n")
+	target := filepath.Join(dir, "source.yaml")
+	require.NoError(t, os.WriteFile(target, payload, 0o644))
+	path := filepath.Join(dir, "sources", "source-1.glx")
+	linkMergeFixtureFile(t, path, "../source.yaml")
+	streams, _, _ := TestIOStreams()
+	require.NoError(t, mergePersonsWithIO(streams, strings.NewReader(""), false, dir,
+		"person-keep", "person-drop", glxlib.MergePersonsOptions{}, false, true))
+	assertMergeFixtureLink(t, path, "../source.yaml")
+	current, err := os.ReadFile(target)
+	require.NoError(t, err)
+	assert.Equal(t, payload, current)
+	archive, _, err := LoadArchiveWithOptions(dir, false)
+	require.NoError(t, err)
+	assert.Contains(t, archive.Sources, "source-1")
+	assert.NotContains(t, archive.Persons, "person-drop")
+}
+
+func TestMergePersonsRunner_RefusesSingleFileSymlink(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("single-file symlink creation requires Windows privileges")
+	}
+	dir := t.TempDir()
+	payload := []byte("persons:\n  person-keep:\n    notes: keep\n  person-drop:\n    notes: drop\n")
+	target := filepath.Join(dir, "original.yaml")
+	require.NoError(t, os.WriteFile(target, payload, 0o644))
+	path := filepath.Join(dir, "archive.glx")
+	require.NoError(t, os.Symlink("original.yaml", path))
+	streams, out, errOut := TestIOStreams()
+	err := mergePersonsWithIO(streams, strings.NewReader("yes\n"), true, path,
+		"person-keep", "person-drop", glxlib.MergePersonsOptions{}, false, false)
+	require.ErrorIs(t, err, errMergeLinkedFile)
+	assert.Empty(t, out.String())
+	assert.Empty(t, errOut.String())
+	assertMergeFixtureLink(t, path, "original.yaml")
+	current, err := os.ReadFile(target)
+	require.NoError(t, err)
+	assert.Equal(t, payload, current)
+}
+
+func TestMergePersonsSingleFileRejectsEditDuringStaging(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "archive.glx")
+	original := []byte("original archive")
+	changed := []byte("concurrent edit")
+	require.NoError(t, os.WriteFile(path, original, 0o600))
+	info, err := os.Stat(path)
+	require.NoError(t, err)
+	err = atomicWriteStreamChecked(path, info.Mode().Perm(), func(w io.Writer) error {
+		require.NoError(t, os.WriteFile(path, changed, 0o600))
+		_, err := w.Write([]byte("merge plan"))
+
+		return err
+	}, func() error {
+		return verifyMergeSingleFile(path, original, info.Mode())
+	})
+	require.ErrorIs(t, err, errMergePreviewChanged)
+	current, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.Equal(t, changed, current)
+	temporary, err := filepath.Glob(filepath.Join(dir, ".glx-tmp-*"))
+	require.NoError(t, err)
+	assert.Empty(t, temporary)
+}
+
+func TestMergePersonsInstallRestoresLateEditsToMovedOriginals(t *testing.T) {
+	for _, person := range []string{"person-keep", "person-drop"} {
+		t.Run(person, func(t *testing.T) {
+			dir := filepath.Join(t.TempDir(), "archive")
+			writeMergeFixture(t, dir)
+			original, err := collectGLXFilesFromDir(dir)
+			require.NoError(t, err)
+			planned := maps.Clone(original)
+			delete(planned, filepath.FromSlash("persons/person-drop.glx"))
+			planned[filepath.FromSlash("persons/person-keep.glx")] = []byte("persons:\n  person-keep:\n    notes: merged\n")
+			path := filepath.Join("persons", person+".glx")
+			changed := append(bytes.Clone(original[path]), []byte("\n# concurrent edit\n")...)
+			edited := false
+			err = installMergeFilesWithRename(dir, original, planned, func(root *os.Root, from, to string) error {
+				if !edited && from == path {
+					edited = true
+					require.NoError(t, root.WriteFile(path, changed, 0o644))
+				}
+
+				return robustRenameIn(root, from, to)
+			})
+			require.ErrorIs(t, err, errMergePreviewChanged)
+			require.True(t, edited)
+			expected := maps.Clone(original)
+			expected[path] = changed
+			current, err := collectGLXFilesFromDir(dir)
+			require.NoError(t, err)
+			assert.Equal(t, expected, current, "rollback must preserve the unpreviewed inode, including a deletion path")
+			assert.NoDirExists(t, dir+".bak")
+			transactions, err := filepath.Glob(filepath.Join(dir, ".glx-merge-*"))
+			require.NoError(t, err)
+			assert.Empty(t, transactions)
+		})
+	}
 }
 
 func TestMergePersonsRunner_DiskRoundTrip(t *testing.T) {

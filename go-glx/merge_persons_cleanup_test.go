@@ -93,6 +93,45 @@ func TestMergePersons_RemovedDropClaimUsesSurvivorEvidenceBaseline(t *testing.T)
 	}
 }
 
+func TestMergePersons_ReportsChangedCitationProofForUnrelatedPerson(t *testing.T) {
+	archive := newTwoPersonArchive()
+	archive.Persons["person-third"] = &Person{}
+	archive.Relationships = map[string]*Relationship{
+		"r-resolved": {Type: RelationshipTypePossiblySamePerson, Participants: []Participant{{Person: "person-keep"}, {Person: "person-drop"}}},
+	}
+	archive.Sources = map[string]*Source{"s": {Title: "Birth certificate", Type: SourceTypeVitalRecord}}
+	archive.Citations = map[string]*Citation{"c": {SourceID: "s", Properties: map[string]any{"locator": "r-resolved"}}}
+	archive.CitationProperties = map[string]*PropertyDefinition{"locator": {Label: "Locator", ReferenceType: "relationships"}}
+	archive.Assertions = map[string]*Assertion{
+		"third-birth": {Subject: EntityRef{Person: "person-third"}, Property: "born_on", Value: "1850", Citations: []string{"c"}, Confidence: ConfidenceLevelHigh, Status: "proven"},
+	}
+	require.NoError(t, MergeStandardVocabularies(archive))
+	before := cloneMergeArchive(archive)
+	oldProof, err := BuildProof(before, "person-third", "birth", ProofOptions{})
+	require.NoError(t, err)
+	oldJSON, err := json.Marshal(oldProof)
+	require.NoError(t, err)
+	assert.Contains(t, string(oldJSON), `"locator":"r-resolved"`)
+	result, err := MergePersons(archive, "person-keep", "person-drop", MergePersonsOptions{})
+	require.NoError(t, err)
+	assert.Empty(t, result.RemovedAssertions)
+	assert.Equal(t, before.Assertions["third-birth"], archive.Assertions["third-birth"])
+	newProof, err := BuildProof(archive, "person-third", "birth", ProofOptions{})
+	require.NoError(t, err)
+	newJSON, err := json.Marshal(newProof)
+	require.NoError(t, err)
+	assert.NotContains(t, string(newJSON), `"locator"`)
+	found := false
+	for _, change := range result.InterpretationChanges {
+		if change.ID == "person-third" && change.Aspect == "proof/birth" {
+			assert.JSONEq(t, string(oldJSON), change.Before)
+			assert.JSONEq(t, string(newJSON), change.After)
+			found = true
+		}
+	}
+	assert.True(t, found, "proof support changes must appear even when the person and claim are unchanged")
+}
+
 func identityEvidenceFixture(t *testing.T) *GLXFile {
 	t.Helper()
 	archive := newTwoPersonArchive()

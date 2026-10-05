@@ -2015,6 +2015,10 @@ After reporting and validation, Apply this merge? [y/N] defaults to cancellation
 --yes (-y) skips approval but still reports and validates. Noninteractive use
 requires --yes. --dry-run only reports, even with --yes, and never prompts.
 The preview remains visible with --quiet. A changed archive requires a new preview.
+Merges refuse changes to linked GLX files (including Windows Git
+symlink placeholders) before approval, preserving the link and its target.
+Unchanged linked files in directory archives are retained. Run with exclusive
+archive write access; this command does not coordinate concurrent external writers.
 
 Property merging:
   - Properties present only on drop are copied verbatim.

@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"slices"
 	"strings"
 )
@@ -105,7 +106,7 @@ func installMergeFilesWithRename(directory string, original, planned map[string]
 			_ = parent.RemoveAll(backupName)
 		}
 	}
-	backedUp, err = moveMergeOriginals(archive, transaction, paths, rename)
+	backedUp, err = moveMergeOriginals(archive, transaction, paths, original, rename)
 	if err != nil {
 		rollback()
 
@@ -125,7 +126,7 @@ func installMergeFilesWithRename(directory string, original, planned map[string]
 	return nil
 }
 
-func moveMergeOriginals(archive *os.Root, transaction string, paths []string, rename func(*os.Root, string, string) error) ([]string, error) {
+func moveMergeOriginals(archive *os.Root, transaction string, paths []string, original map[string][]byte, rename func(*os.Root, string, string) error) ([]string, error) {
 	var moved []string
 	for _, path := range paths {
 		target := filepath.Join(transaction, "original", path)
@@ -136,6 +137,13 @@ func moveMergeOriginals(archive *os.Root, transaction string, paths []string, re
 			return moved, fmt.Errorf("backing up %s: %w", path, err)
 		}
 		moved = append(moved, path)
+		data, err := archive.ReadFile(target)
+		if err != nil {
+			return moved, fmt.Errorf("verifying moved original %s: %w", path, err)
+		}
+		if !bytes.Equal(data, original[path]) {
+			return moved, errMergePreviewChanged
+		}
 	}
 
 	return moved, nil
@@ -240,12 +248,12 @@ func stageMergeFiles(archive *os.Root, transaction string, original, planned map
 			continue
 		}
 		paths = append(paths, path)
-		if !exists {
-			continue
-		}
-		info, err := archive.Stat(path)
+		info, err := regularMergeFileInfo(archive, path)
 		if err != nil {
 			return nil, err
+		}
+		if !exists {
+			continue
 		}
 		target := filepath.Join(transaction, "new", path)
 		if err := archive.MkdirAll(filepath.Dir(target), dirPermissions); err != nil {
@@ -258,6 +266,47 @@ func stageMergeFiles(archive *os.Root, transaction string, original, planned map
 	slices.Sort(paths)
 
 	return paths, nil
+}
+
+func validateMergeFileLinks(directory string, original, planned map[string][]byte) error {
+	archive, err := os.OpenRoot(directory)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = archive.Close() }()
+	for path, data := range original {
+		if next, exists := planned[path]; exists && bytes.Equal(data, next) {
+			continue
+		}
+		if _, err := regularMergeFileInfo(archive, path); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func regularMergeFileInfo(archive *os.Root, path string) (os.FileInfo, error) {
+	info, err := archive.Lstat(path)
+	if err != nil {
+		return nil, err
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		return nil, fmt.Errorf("%w: %s", errMergeLinkedFile, path)
+	}
+	if runtime.GOOS == "windows" {
+		data, err := archive.ReadFile(path)
+		if err != nil {
+			return nil, err
+		}
+		if target, ok := placeholderTarget(filepath.ToSlash(path), data); ok {
+			if _, err := archive.ReadFile(target); err == nil && !pathHasDotComponent(target) {
+				return nil, fmt.Errorf("%w: %s", errMergeLinkedFile, path)
+			}
+		}
+	}
+
+	return info, nil
 }
 
 func copyMergeBackup(archive, backup *os.Root, transaction string, paths []string, original map[string][]byte) error {

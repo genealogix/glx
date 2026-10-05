@@ -16,6 +16,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -32,6 +33,7 @@ var (
 	errMergeConfirmationRequired = errors.New("noninteractive merge requires --yes (-y); use --dry-run to preview")
 	errMergePreviewChanged       = errors.New("archive changed after the merge preview; run merge-persons again")
 	errMergeRoundtrip            = errors.New("serialized merge differs from the preview")
+	errMergeLinkedFile           = errors.New("merge cannot change a linked GLX file; its link and target are preserved")
 )
 
 func mergePersons(archivePath, keepID, dropID string, opts glxlib.MergePersonsOptions, dryRun, yes bool) error {
@@ -59,6 +61,13 @@ func mergePersonsWithIO(streams *IOStreams, input io.Reader, interactive bool, a
 	}
 	files, err := prepareMergeFiles(original, archive, result, keepID, dropID, info.IsDir())
 	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		if err := validateMergeFileLinks(archivePath, original, files); err != nil {
+			return err
+		}
+	} else if err := verifyMergeSingleFile(archivePath, original[""], info.Mode()); err != nil {
 		return err
 	}
 	// An informed approval must remain visible even with --quiet.
@@ -93,10 +102,35 @@ func mergePersonsWithIO(streams *IOStreams, input io.Reader, interactive bool, a
 		return errMergePreviewChanged
 	}
 	if !info.IsDir() {
-		return atomicWriteFile(archivePath, files[""], info.Mode().Perm())
+		return atomicWriteStreamChecked(archivePath, info.Mode().Perm(), func(w io.Writer) error {
+			_, err := w.Write(files[""])
+
+			return err
+		}, func() error {
+			return verifyMergeSingleFile(archivePath, original[""], info.Mode())
+		})
 	}
 
 	return installMergeFiles(archivePath, original, files)
+}
+
+func verifyMergeSingleFile(path string, expected []byte, mode os.FileMode) error {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return err
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		return errMergeLinkedFile
+	}
+	data, err := os.ReadFile(path) // #nosec G304 -- CLI-selected single-file archive, checked before atomic replacement
+	if err != nil {
+		return err
+	}
+	if info.Mode() != mode || !bytes.Equal(expected, data) {
+		return errMergePreviewChanged
+	}
+
+	return nil
 }
 
 func readMergeFiles(path string, directory bool) (map[string][]byte, error) {
