@@ -391,10 +391,9 @@ func isGEDCOMPointer(value string) bool {
 
 // createSyntheticSourceFromEmbeddedCitation creates a Source entity from an embedded citation
 // This follows the GEDCOM spec recommendation: when encountering embedded citations,
-// create a SOURCE_RECORD with the description as the title.
+// create a SOURCE_RECORD with the description as the title. Identical extracted
+// content reuses the first synthetic source within this conversion only.
 func createSyntheticSourceFromEmbeddedCitation(sourRecord *GEDCOMRecord, conv *ConversionContext) string {
-	sourceID := generateSourceID(conv)
-
 	// Determine the source title
 	var title string
 	if sourRecord.Value != "" {
@@ -444,11 +443,42 @@ func createSyntheticSourceFromEmbeddedCitation(sourRecord *GEDCOMRecord, conv *C
 	syntheticNote := "Source created from embedded GEDCOM citation"
 	source.Notes = append(NoteList{syntheticNote}, source.Notes...)
 
+	// Only synthetic sources enter this index: distinct GEDCOM SOURCE_RECORDs
+	// retain their XREF identities even when their content happens to match.
+	key := buildSyntheticSourceDedupeKey(source)
+	if sourceID, exists := conv.syntheticSourceIDs[key]; exists {
+		return sourceID
+	}
+	if conv.syntheticSourceIDs == nil {
+		conv.syntheticSourceIDs = make(map[string]string)
+	}
+
 	// Store the source
+	sourceID := generateSourceID(conv)
 	conv.GLX.Sources[sourceID] = source
+	conv.syntheticSourceIDs[key] = sourceID
 	conv.Stats.SourcesCreated++
 
 	conv.Logger.LogInfof("Line %d: Created synthetic source from embedded citation: %s", sourRecord.Line, title)
 
 	return sourceID
+}
+
+// buildSyntheticSourceDedupeKey preserves exact text and ordered note boundaries.
+// Length prefixes avoid collisions even when content contains delimiters/newlines.
+func buildSyntheticSourceDedupeKey(source *Source) string {
+	var key strings.Builder
+	writePart := func(value string) {
+		key.WriteString(strconv.Itoa(len(value)))
+		key.WriteByte(':')
+		key.WriteString(value)
+	}
+	writePart(source.Title)
+	description, _ := getStringProperty(source.Properties, "description")
+	writePart(description)
+	for _, note := range source.Notes {
+		writePart(note)
+	}
+
+	return key.String()
 }
