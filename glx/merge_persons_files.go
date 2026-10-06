@@ -291,6 +291,7 @@ func patchMergeMapping(out, original, desired, fallback *yaml.Node, path string,
 }
 
 func patchMergeSequence(out, original, desired, fallback *yaml.Node, path string, context mergeNodeContext) {
+	usedOriginal, usedFallback := make(map[*yaml.Node]bool), make(map[*yaml.Node]bool)
 	for i, child := range desired.Content {
 		var previous *yaml.Node
 		// MergePersons preserves participant membership/order. A person ID
@@ -298,17 +299,25 @@ func patchMergeSequence(out, original, desired, fallback *yaml.Node, path string
 		switch {
 		case path == "participants" && original != nil && original.Kind == yaml.SequenceNode && len(original.Content) == len(desired.Content):
 			previous = original.Content[i]
-		case original != nil && original.Kind == yaml.SequenceNode && i < len(original.Content) && equalMergeNodes(original.Content[i], child):
+		case original != nil && original.Kind == yaml.SequenceNode && i < len(original.Content) && !usedOriginal[original.Content[i]] && equalMergeNodes(original.Content[i], child):
 			previous = original.Content[i]
 		default:
-			previous = matchingMergeNode(original, child)
+			previous = matchingMergeNode(original, child, usedOriginal)
 		}
-		alternative := matchingMergeNode(fallback, child)
+		alternative := matchingMergeNode(fallback, child, usedFallback)
 		// Unioned values beyond keep's original sequence come from drop.
 		// Rewriting B to A can make them equal to an existing keep value;
 		// retain drop's occurrence comments rather than reusing keep's node.
 		if original != nil && original.Kind == yaml.SequenceNode && i >= len(original.Content) && alternative != nil {
 			previous = nil
+		}
+		// Consume only contributing occurrences. An equal original wins
+		// without using a fallback that may belong to a later unioned value.
+		if previous != nil && (equalMergeNodes(previous, child) || !equalMergeNodes(alternative, child)) {
+			usedOriginal[previous] = true
+		}
+		if alternative != nil && !equalMergeNodes(previous, child) {
+			usedFallback[alternative] = true
 		}
 		out.Content[i] = patchMergeNode(previous, child, alternative, fmt.Sprintf("%s[%d]", path, i), context)
 	}
@@ -334,22 +343,22 @@ func contributingMergeNodes(original, fallback *yaml.Node) *yaml.Node {
 	return out
 }
 
-func matchingMergeNode(container, desired *yaml.Node) *yaml.Node {
-	if container == nil {
+func matchingMergeNode(container, desired *yaml.Node, used map[*yaml.Node]bool) *yaml.Node {
+	if container == nil || used[container] {
 		return nil
 	}
 	if container.Kind != yaml.SequenceNode {
 		return container
 	}
 	for _, child := range container.Content {
-		if equalMergeNodes(child, desired) {
+		if !used[child] && equalMergeNodes(child, desired) {
 			return child
 		}
 	}
 	// A refined/combined structured value can still reuse its original scalar
 	// spellings and comments through the recursive mapping edit.
 	for _, child := range container.Content {
-		if equalMergeNodes(mergeMappingValue(child, "value"), mergeMappingValue(desired, "value")) {
+		if !used[child] && equalMergeNodes(mergeMappingValue(child, "value"), mergeMappingValue(desired, "value")) {
 			return child
 		}
 	}

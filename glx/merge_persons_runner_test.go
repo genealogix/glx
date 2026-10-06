@@ -21,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -695,4 +696,47 @@ person_properties:
 	require.NoError(t, err)
 	assert.Contains(t, string(data), "person-keep # keep occurrence")
 	assert.Contains(t, string(data), "person-keep # drop occurrence")
+}
+
+func TestMergePersonsPrunedRelationshipListsKeepDuplicateOccurrenceComments(t *testing.T) {
+	for _, removedIndex := range []int{0, 1, 2} {
+		t.Run(strconv.Itoa(removedIndex), func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "archive.glx")
+			entries := []string{"        - r-other # first occurrence\n", "        - r-other # second occurrence\n"}
+			entries = slices.Insert(entries, removedIndex, "        - r-resolved # removed occurrence\n")
+			data := `persons:
+  person-keep: {}
+  person-drop: {}
+  person-third:
+    properties:
+      identity_links:
+` + strings.Join(entries, "") + `person_properties:
+  identity_links:
+    label: Identity links
+    reference_type: relationships
+    multi_value: true
+relationships:
+  r-resolved:
+    type: possibly_same_person
+    participants:
+      - person: person-keep
+      - person: person-drop
+  r-other:
+    type: associate
+    participants:
+      - person: person-keep
+      - person: person-third
+`
+			require.NoError(t, os.WriteFile(path, []byte(data), 0o600))
+			streams, _, _ := TestIOStreams()
+			require.NoError(t, mergePersonsWithIO(streams, strings.NewReader(""), false, path,
+				"person-keep", "person-drop", glxlib.MergePersonsOptions{}, false, true))
+			current, err := os.ReadFile(path)
+			require.NoError(t, err)
+			assert.Equal(t, 1, strings.Count(string(current), "# first occurrence"))
+			assert.Equal(t, 1, strings.Count(string(current), "# second occurrence"))
+			assert.NotContains(t, string(current), "# removed occurrence")
+			assert.Less(t, bytes.Index(current, []byte("# first occurrence")), bytes.Index(current, []byte("# second occurrence")))
+		})
+	}
 }

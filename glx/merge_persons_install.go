@@ -262,6 +262,9 @@ func stageMergeFiles(archive *os.Root, transaction string, original, planned map
 		if err := archive.WriteFile(target, next, info.Mode().Perm()); err != nil {
 			return nil, err
 		}
+		if err := archive.Chmod(target, info.Mode().Perm()); err != nil {
+			return nil, err
+		}
 	}
 	slices.Sort(paths)
 
@@ -336,6 +339,11 @@ func writeDurableMergeFile(root *os.Root, path string, data []byte, mode os.File
 		return err
 	}
 	if _, err := file.Write(data); err != nil {
+		_ = file.Close()
+
+		return err
+	}
+	if err := file.Chmod(mode); err != nil {
 		_ = file.Close()
 
 		return err
