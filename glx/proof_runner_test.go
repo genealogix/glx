@@ -25,6 +25,22 @@ import (
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
+func TestFormatSearchLine_ResultAnnotations(t *testing.T) {
+	cases := []struct {
+		search proofSearch
+		want   string
+	}{
+		{proofSearch{Query: "Lost probate volume", Result: glxlib.SearchResultUnavailable, Notes: "courthouse fire 1999"}, "Lost probate volume -> unavailable (documented gap: courthouse fire 1999)"},
+		{proofSearch{Query: "Lost volume", Result: glxlib.SearchResultUnavailable}, "Lost volume -> unavailable (documented gap)"},
+		{proofSearch{Query: "Deed Book A", Result: glxlib.SearchResultRequiresVisit}, "Deed Book A -> requires_visit (outstanding: on-site or by request)"},
+		{proofSearch{Query: "1830 census", Result: glxlib.SearchResultNotSearched}, "1830 census -> not_searched (outstanding)"},
+		{proofSearch{Query: "1820 census", Result: glxlib.SearchResultNotFound}, "1820 census -> not_found"},
+	}
+	for _, tc := range cases {
+		assert.Equal(t, tc.want, formatSearchLine(&tc.search))
+	}
+}
+
 // exampleArchive is the maintained assertion-workflow example, used for
 // end-to-end tests of the I/O wrapper and format dispatch.
 const exampleArchive = "../docs/examples/assertion-workflow/archive.glx"

@@ -319,9 +319,29 @@ func formatSearchLine(s *proofSearch) string {
 	if s.Result != "" {
 		b.WriteString(" -> ")
 		b.WriteString(s.Result)
+		b.WriteString(searchResultAnnotation(s))
 	}
 
 	return b.String()
+}
+
+// searchResultAnnotation distinguishes outstanding work from a documented
+// source gap, carrying the search notes that explain an unavailable source.
+func searchResultAnnotation(s *proofSearch) string {
+	switch s.Result {
+	case glxlib.SearchResultNotSearched:
+		return " (outstanding)"
+	case glxlib.SearchResultRequiresVisit:
+		return " (outstanding: on-site or by request)"
+	case glxlib.SearchResultUnavailable:
+		if s.Notes != "" {
+			return " (documented gap: " + s.Notes + ")"
+		}
+
+		return " (documented gap)"
+	default:
+		return ""
+	}
 }
 
 // printProofMarkdown renders the proof result as Markdown.

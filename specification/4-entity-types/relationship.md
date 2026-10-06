@@ -514,6 +514,7 @@ Participant roles (spouse, parent, child, etc.) are defined in the archive's `vo
 - `participants` array must contain at least 2 participants
 - All person references must point to existing Person entities
 - Participant roles must be from the [participant roles vocabulary](vocabularies.md#participant-roles-vocabulary); an unknown role is an error, like any other structural type field (see [Vocabulary Validation](vocabularies.md#validation-errors-hard-failures))
+- A participant role whose `applies_to` excludes `relationship` generates a warning (see [Participant Roles - applies_to](vocabularies.md#applies_to-semantics))
 - If `start_event` or `end_event` is specified, it must reference an existing Event entity
 - If both `start_event` and `end_event` are specified and both reference events with known dates, the start event's date should precede the end event's date. Reversed ordering generates a warning (not an error) because fuzzy dates and data-entry errors are common; relationships where either date is missing or unparseable are not checked
 - A boundary should be recorded once: specifying both `start_event` and the `started_on` property (or both `end_event` and `ended_on`) generates a warning, with a more specific warning when the two dates disagree on the year. It is a warning rather than an error so that archives mid-migration still validate; boundaries whose event reference is unresolvable or whose dates have no parseable year are not checked

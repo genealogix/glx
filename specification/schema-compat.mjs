@@ -36,11 +36,15 @@ const { validateSchemaCompatibility } = require("json-schema-diff-validator");
 // are data names, not schema keywords, so renaming must not recurse into them
 // (a property literally named "$defs" stays "$defs"). Keyword values that are
 // plain data (enum, const, required, …) are copied verbatim for the same reason.
+// The tool also treats changed descriptions as breaking. Descriptions annotate
+// schemas without affecting validation, so omit them at schema nodes only;
+// properties named "description" and descriptions inside enum/const stay data.
 const MAP_VALUED_KEYWORDS = new Set([
   "properties",
   "patternProperties",
   "definitions",
   "$defs",
+  "dependencies",
   "dependentSchemas",
 ]);
 const DATA_VALUED_KEYWORDS = new Set(["enum", "const", "required", "examples", "default"]);
@@ -55,7 +59,7 @@ export function normalizeDialect(node, isSchema = true) {
       out[key] = normalizeDialect(value, true);
       continue;
     }
-    if (key === "$schema") continue; // dialect declaration, not a constraint
+    if (key === "$schema" || key === "description") continue; // not constraints
     if (key === "$ref" && typeof value === "string") {
       out[key] = value.split("#/$defs/").join("#/definitions/");
       continue;
