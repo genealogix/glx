@@ -54,7 +54,7 @@ research_logs:
 A ResearchLog answers four questions that a `notes` field cannot:
 
 1. **What did we already search?** Avoid repeating a fruitless query in the next session.
-2. **Where are the gaps?** A list of `not_searched` plans surfaces the next concrete steps.
+2. **Where are the gaps?** A list of `not_searched` and `requires_visit` plans surfaces the next concrete steps, while `unavailable` records the gaps that cannot be closed.
 3. **What is the negative evidence?** "Source X searched, target absent" is a genealogical conclusion, not a non-result.
 4. **How exhaustive was the search?** A reviewer can audit how many distinct sources were checked.
 
@@ -67,6 +67,10 @@ Each `Search` records one query and its outcome. The standard outcomes are:
 - `inconclusive` — a candidate record was located but cannot be confirmed
 - `partial` — some relevant information was located, but the objective was not fully met
 - `not_searched` — search is planned but has not yet been performed (use to record outstanding work alongside completed searches)
+- `requires_visit` — the source exists but can only be searched on site or by request; outstanding work, but not something that can be done from a desk
+- `unavailable` — the source was sought but cannot be searched because it does not survive, is restricted, or is not accessible; say why in `notes`
+
+`unavailable` is the opposite of `not_searched`: the search was attempted and the gap is permanent (a burned courthouse, a lost volume, a closed record series). Tools that build a to-do list from a log treat `not_searched` and `requires_visit` as outstanding work and `unavailable` as a documented gap; `glx proof` labels each accordingly in its reasonably-exhaustive-search section.
 
 **See [Vocabularies - Search Result Types](vocabularies.md#search-result-types-vocabulary)** for the full vocabulary.
 
