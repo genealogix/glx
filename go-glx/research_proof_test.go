@@ -15,6 +15,7 @@
 package glx
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -280,6 +281,33 @@ func TestCollectProofSearches(t *testing.T) {
 
 	// A person with no research log has no searches.
 	assert.Empty(t, collectProofSearches("person-robert", archive))
+}
+
+func TestBuildProof_SearchNotes(t *testing.T) {
+	archive := newTestArchiveForProof()
+	archive.ResearchLogs["log-jane"].Searches = []Search{
+		{Query: "Lost probate volume", Result: SearchResultUnavailable, Notes: NoteList{"Volume not located", "courthouse fire 1999"}},
+		{Query: "Deed Book A", Result: SearchResultRequiresVisit, Notes: NoteList{"Contact the clerk"}},
+		{Query: "1830 census", Result: SearchResultNotSearched},
+	}
+
+	result, err := BuildProof(archive, "person-jane", QuestionIdentity, ProofOptions{})
+	require.NoError(t, err)
+	require.Len(t, result.Searches, 3)
+	assert.Equal(t, "Volume not located; courthouse fire 1999", result.Searches[0].Notes)
+	assert.Equal(t, "Contact the clerk", result.Searches[1].Notes)
+	assert.Empty(t, result.Searches[2].Notes)
+	assert.Equal(t, NoteList{"Volume not located", "courthouse fire 1999"}, archive.ResearchLogs["log-jane"].Searches[0].Notes)
+
+	data, err := json.Marshal(result)
+	require.NoError(t, err)
+	var document struct {
+		Searches []map[string]any `json:"searches"`
+	}
+	require.NoError(t, json.Unmarshal(data, &document))
+	require.Len(t, document.Searches, 3)
+	assert.Equal(t, "Volume not located; courthouse fire 1999", document.Searches[0]["notes"])
+	assert.NotContains(t, document.Searches[2], "notes")
 }
 
 func TestResolveConflict(t *testing.T) {

@@ -51,6 +51,7 @@ func (glx *GLXFile) Validate() *ValidationResult {
 
 	// Phase 4: Validate structural constraints
 	glx.validatePlaceHierarchyCycles(result)
+	glx.validateParticipantRoleContexts(result)
 
 	// Phase 5: Validate entity-level field formats
 	glx.validateEntityFieldFormats(result)
