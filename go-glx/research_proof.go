@@ -130,6 +130,7 @@ type ProofSearch struct {
 	Repository string `json:"repository,omitempty"`
 	Source     string `json:"source,omitempty"`
 	Result     string `json:"result,omitempty"`
+	Notes      string `json:"notes,omitempty"`
 }
 
 // ProofExcludedAlternative is a parent candidate whose links have all been
@@ -725,6 +726,7 @@ func collectProofSearches(personID string, archive *GLXFile) []ProofSearch {
 				Repository: s.RepositoryID,
 				Source:     s.SourceID,
 				Result:     s.Result,
+				Notes:      strings.Join(s.Notes, "; "),
 			})
 		}
 	}
