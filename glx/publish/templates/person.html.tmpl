@@ -64,13 +64,17 @@
   </section>
   {{end}}
 
-  {{if or .Parents .Spouses .Children .Siblings}}
+  {{if or .Parents .StepParents .Spouses .Children .StepChildren .Siblings .HalfSiblings .StepSiblings}}
   <section>
     <h2>Family</h2>
-    {{if .Parents}}<div class="fam-group"><h3>Parents</h3><ul>{{range .Parents}}<li><a href="{{.File}}">{{.Name}}</a>{{if .Dates}} <span class="muted">({{.Dates}})</span>{{end}}</li>{{end}}</ul></div>{{end}}
-    {{if .Spouses}}<div class="fam-group"><h3>Spouses &amp; partners</h3><ul>{{range .Spouses}}<li><a href="{{.File}}">{{.Name}}</a>{{if .Dates}} <span class="muted">({{.Dates}})</span>{{end}}</li>{{end}}</ul></div>{{end}}
-    {{if .Children}}<div class="fam-group"><h3>Children</h3><ul>{{range .Children}}<li><a href="{{.File}}">{{.Name}}</a>{{if .Dates}} <span class="muted">({{.Dates}})</span>{{end}}</li>{{end}}</ul></div>{{end}}
-    {{if .Siblings}}<div class="fam-group"><h3>Siblings</h3><ul>{{range .Siblings}}<li><a href="{{.File}}">{{.Name}}</a>{{if .Dates}} <span class="muted">({{.Dates}})</span>{{end}}</li>{{end}}</ul></div>{{end}}
+    {{if .Parents}}<div class="fam-group"><h3>Parents</h3>{{template "famlinks" .Parents}}</div>{{end}}
+    {{if .StepParents}}<div class="fam-group"><h3>Step-parents</h3>{{template "famlinks" .StepParents}}</div>{{end}}
+    {{if .Spouses}}<div class="fam-group"><h3>Spouses &amp; partners</h3>{{template "famlinks" .Spouses}}</div>{{end}}
+    {{if .Children}}<div class="fam-group"><h3>Children</h3>{{template "famlinks" .Children}}</div>{{end}}
+    {{if .StepChildren}}<div class="fam-group"><h3>Stepchildren</h3>{{template "famlinks" .StepChildren}}</div>{{end}}
+    {{if .Siblings}}<div class="fam-group"><h3>Siblings</h3>{{template "famlinks" .Siblings}}</div>{{end}}
+    {{if .HalfSiblings}}<div class="fam-group"><h3>Half-siblings</h3>{{template "famlinks" .HalfSiblings}}</div>{{end}}
+    {{if .StepSiblings}}<div class="fam-group"><h3>Step-siblings</h3>{{template "famlinks" .StepSiblings}}</div>{{end}}
   </section>
   {{end}}
 
@@ -100,6 +104,8 @@
 </article>
 {{end}}
 {{end}}
+
+{{define "famlinks"}}<ul>{{range .}}<li><a href="{{.File}}">{{.Name}}</a>{{if .Hypothetical}} <span class="muted" title="Hypothetical relationship: the archive records it only as a hypothesis">(?)</span>{{end}}{{if .Dates}} <span class="muted">({{.Dates}})</span>{{end}}</li>{{end}}</ul>{{end}}
 
 {{define "chart"}}
 <figure class="chart chart-{{.Direction}}">

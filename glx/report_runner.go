@@ -67,9 +67,9 @@ type reportData struct {
 	ByConfidence      map[string]int     // confidence level -> count
 	NoConfidence      []assertionSummary // assertions with no confidence set
 	NoCitations       []assertionSummary // assertions with no citations
-	UnbackedPersons   []string           // person IDs with no assertions
-	UnbackedEvents    []string           // event IDs with no assertions
-	UnbackedRelations []string           // relationship IDs with no assertions
+	UnbackedPersons   []string           // person IDs no assertion reaches (see glxlib.AssertionCoverage)
+	UnbackedEvents    []string           // event IDs no assertion targets
+	UnbackedRelations []string           // relationship IDs no assertion reaches
 	ConfidenceOrder   []string           // ordered confidence levels for display
 }
 
@@ -86,9 +86,10 @@ func buildConfidenceReport(archive *glxlib.GLXFile) reportData {
 	report := reportData{
 		ByConfidence: make(map[string]int),
 	}
-	assertedSubjects := make(map[glxlib.EntityType]map[string]bool)
-
 	for id, assertion := range archive.Assertions {
+		if assertion == nil {
+			continue
+		}
 		report.TotalAssertions++
 
 		// Track confidence levels
@@ -103,22 +104,14 @@ func buildConfidenceReport(archive *glxlib.GLXFile) reportData {
 		if len(assertion.Citations) == 0 {
 			report.NoCitations = append(report.NoCitations, summarizeAssertion(id, assertion))
 		}
-
-		// Track which entities have assertions
-		subjectType := assertion.Subject.Type()
-		subjectID := assertion.Subject.ID()
-		if subjectType != "" && subjectID != "" {
-			if assertedSubjects[subjectType] == nil {
-				assertedSubjects[subjectType] = make(map[string]bool)
-			}
-			assertedSubjects[subjectType][subjectID] = true
-		}
 	}
 
-	// Find entities with no assertions
-	report.UnbackedPersons = findUnbacked(archive.Persons, assertedSubjects[glxlib.EntityTypePersons])
-	report.UnbackedEvents = findUnbacked(archive.Events, assertedSubjects[glxlib.EntityTypeEvents])
-	report.UnbackedRelations = findUnbacked(archive.Relationships, assertedSubjects[glxlib.EntityTypeRelationships])
+	// Find entities no assertion reaches, directly or through the events,
+	// relationships and participants assertions name (#713)
+	evidence := glxlib.ComputeAssertionCoverage(archive).Evidence
+	report.UnbackedPersons = findUnbacked(archive.Persons, evidence.Persons)
+	report.UnbackedEvents = findUnbacked(archive.Events, evidence.Events)
+	report.UnbackedRelations = findUnbacked(archive.Relationships, evidence.Relationships)
 
 	// Build ordered confidence levels: known levels first, then custom, then (unset)
 	report.ConfidenceOrder = buildConfidenceOrder(report.ByConfidence)
@@ -147,7 +140,7 @@ func summarizeAssertion(id string, a *glxlib.Assertion) assertionSummary {
 	return s
 }
 
-// findUnbacked returns IDs of entities that have no assertions referencing them.
+// findUnbacked returns IDs of entities outside the covered set.
 func findUnbacked[V any](entities map[string]V, asserted map[string]bool) []string {
 	var unbacked []string
 	for id := range entities {
@@ -234,7 +227,8 @@ func printConfidenceReport(report *reportData) {
 	// Unbacked entities
 	hasUnbacked := len(report.UnbackedPersons) > 0 || len(report.UnbackedEvents) > 0 || len(report.UnbackedRelations) > 0
 	if hasUnbacked {
-		fmt.Println("\nEntities with no assertions:")
+		fmt.Println("\nEntities no assertion reaches (directly, as a participant, or via an asserted event or relationship):")
+		fmt.Println("  Assertion reachability includes unsourced or disproven assertions; it does not measure sourcing or proof.")
 		printUnbackedList("Persons", report.UnbackedPersons)
 		printUnbackedList("Events", report.UnbackedEvents)
 		printUnbackedList("Relationships", report.UnbackedRelations)

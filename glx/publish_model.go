@@ -70,6 +70,9 @@ type personLink struct {
 	File  string // unique HTML filename of the target page (collision-safe)
 	Name  string
 	Dates string // e.g. "1850–1920", "b. c. 1850", or "" when unknown; see formatLifeSpan
+	// Hypothetical marks a relative linked only by a relationship the
+	// archive records as a hypothesis; the page shows it with "(?)".
+	Hypothetical bool
 }
 
 // personPage is the presentation model for a single person profile page.
@@ -100,6 +103,13 @@ type personPage struct {
 	// direction.
 	Pedigree    *personChart
 	Descendancy *personChart
+
+	// Step-relatives and half-siblings are listed apart from the plain
+	// family groups (#1331).
+	StepParents  []personLink
+	StepChildren []personLink
+	HalfSiblings []personLink
+	StepSiblings []personLink
 }
 
 // timelineRow is a single chronological entry on a person page.
@@ -217,10 +227,21 @@ func buildStats(archive *glxlib.GLXFile) siteStats {
 
 // siteIndex holds derived lookups computed once and shared across page builds.
 type siteIndex struct {
-	archive  *glxlib.GLXFile
+	archive *glxlib.GLXFile
+	// family is the parent-child graph with disproven links set aside and
+	// step/hypothetical links flagged; the family groups read it.
+	family *familyLinks
+	// parents and children hold birth-family (non-step, non-disproven)
+	// links only; the pedigree and descendancy charts walk them.
 	parents  map[string][]string // child ID -> parent IDs
 	children map[string][]string // parent ID -> child IDs
-	spouses  map[string][]string // person ID -> spouse IDs
+	// hypotheticalEdges marks parent → child edges known only as a hypothesis.
+	hypotheticalEdges map[[2]string]bool
+	spouses           map[string][]string // person ID -> spouse IDs
+	// hypotheticalSpouses marks spouse pairs known only as a hypothesis.
+	hypotheticalSpouses map[[2]string]bool
+	// standings classifies each relationship's support in the archive.
+	standings *glxlib.RelationshipStandingIndex
 	// assertionsByPerson maps a person ID to assertions that reference the
 	// person as subject or as the asserted participant.
 	assertionsByPerson map[string][]*glxlib.Assertion
@@ -234,20 +255,26 @@ type siteIndex struct {
 
 // newSiteIndex precomputes relationship, assertion, place, and filename lookups.
 func newSiteIndex(archive *glxlib.GLXFile) *siteIndex {
+	family := newFamilyLinks(archive)
 	idx := &siteIndex{
-		archive:            archive,
-		parents:            map[string][]string{},
-		children:           map[string][]string{},
-		spouses:            map[string][]string{},
-		assertionsByPerson: map[string][]*glxlib.Assertion{},
-		eventsByPlace:      map[string]int{},
-		files:              assignPersonFiles(sortedKeys(archive.Persons)),
+		archive:             archive,
+		family:              family,
+		standings:           family.standings,
+		parents:             map[string][]string{},
+		children:            map[string][]string{},
+		hypotheticalEdges:   map[[2]string]bool{},
+		spouses:             map[string][]string{},
+		hypotheticalSpouses: map[[2]string]bool{},
+		assertionsByPerson:  map[string][]*glxlib.Assertion{},
+		eventsByPlace:       map[string]int{},
+		files:               assignPersonFiles(sortedKeys(archive.Persons)),
 	}
 
 	for _, relID := range sortedKeys(archive.Relationships) {
 		rel := archive.Relationships[relID]
-		idx.indexRelationship(rel)
+		idx.indexRelationship(relID, rel)
 	}
+	idx.indexParentChild()
 
 	for _, aID := range sortedKeys(archive.Assertions) {
 		a := archive.Assertions[aID]
@@ -264,38 +291,53 @@ func newSiteIndex(archive *glxlib.GLXFile) *siteIndex {
 	return idx
 }
 
-// indexRelationship records parent/child and spouse edges for one relationship.
-func (idx *siteIndex) indexRelationship(rel *glxlib.Relationship) {
-	switch {
-	case isParentChildType(rel.Type):
-		var parentIDs, childIDs []string
-		for _, p := range rel.Participants {
-			switch p.Role {
-			case glxlib.ParticipantRoleParent:
-				parentIDs = append(parentIDs, p.Person)
-			case glxlib.ParticipantRoleChild:
-				childIDs = append(childIDs, p.Person)
-			}
+// indexParentChild records the birth-family edges the charts walk: surviving,
+// non-step parent-child links, so a disproven candidate father or a
+// step-parent is never drawn as an ancestor. An edge is hypothetical only when
+// no accepted link backs it.
+func (idx *siteIndex) indexParentChild() {
+	accepted := map[[2]string]bool{}
+	for _, link := range idx.family.surviving {
+		if link.Step {
+			continue
 		}
-		for _, c := range childIDs {
-			for _, par := range parentIDs {
-				idx.parents[c] = appendUnique(idx.parents[c], par)
-				idx.children[par] = appendUnique(idx.children[par], c)
-			}
+		edge := [2]string{link.ParentID, link.ChildID}
+		idx.parents[link.ChildID] = appendUnique(idx.parents[link.ChildID], link.ParentID)
+		idx.children[link.ParentID] = appendUnique(idx.children[link.ParentID], link.ChildID)
+		if link.Standing == glxlib.RelationshipStandingAccepted {
+			accepted[edge] = true
+			delete(idx.hypotheticalEdges, edge)
+		} else if !accepted[edge] {
+			idx.hypotheticalEdges[edge] = true
 		}
-	case isMarriageType(rel.Type):
-		var people []string
-		for _, p := range rel.Participants {
-			if p.Person != "" {
-				people = append(people, p.Person)
-			}
+	}
+}
+
+// indexRelationship records spouse edges for one relationship, leaving out
+// unions the archive has disproven and flagging hypothetical ones.
+func (idx *siteIndex) indexRelationship(relID string, rel *glxlib.Relationship) {
+	if !isMarriageType(rel.Type) {
+		return
+	}
+	var people []string
+	for _, p := range rel.Participants {
+		if p.Person != "" {
+			people = append(people, p.Person)
 		}
-		for _, a := range people {
-			for _, b := range people {
-				if a != b {
-					idx.spouses[a] = appendUnique(idx.spouses[a], b)
-				}
+	}
+	for _, a := range people {
+		for _, b := range people {
+			if a == b {
+				continue
 			}
+			standing := idx.standings.Link(relID, a, b)
+			if standing == glxlib.RelationshipStandingDisproven {
+				continue
+			}
+			if standing == glxlib.RelationshipStandingHypothetical {
+				idx.hypotheticalSpouses[[2]string{a, b}] = true
+			}
+			idx.spouses[a] = appendUnique(idx.spouses[a], b)
 		}
 	}
 }
@@ -374,10 +416,7 @@ func buildPersonPage(id string, person *glxlib.Person, archive *glxlib.GLXFile, 
 	page.LifeSpan = lifeSpan(birth, death)
 
 	page.Timeline = buildTimelineRows(id, archive)
-	page.Parents = personLinks(idx.parents[id], archive, idx.files)
-	page.Spouses = personLinks(idx.spouses[id], archive, idx.files)
-	page.Children = personLinks(idx.children[id], archive, idx.files)
-	page.Siblings = personLinks(siblingIDs(id, idx), archive, idx.files)
+	buildFamilyGroups(page, id, archive, idx)
 	page.Sources = buildPersonSources(id, archive, idx)
 	page.Media = buildPersonMedia(id, archive, idx)
 	page.Pedigree = buildPersonChart(id, chartAncestors, archive, idx)
@@ -630,20 +669,59 @@ func personLinks(ids []string, archive *glxlib.GLXFile, files map[string]string)
 	return links
 }
 
-// siblingIDs returns the other children of this person's parents, excluding self.
-func siblingIDs(personID string, idx *siteIndex) []string {
-	var out []string
-	seen := map[string]bool{personID: true}
-	for _, parentID := range idx.parents[personID] {
-		for _, childID := range idx.children[parentID] {
-			if !seen[childID] {
-				seen[childID] = true
-				out = append(out, childID)
-			}
-		}
+// buildFamilyGroups fills a page's family groups from the shared family graph:
+// parents and children apart from step-parents and stepchildren, and siblings
+// apart from half- and step-siblings. Disproven links are already gone;
+// hypothetical relatives are flagged for the "(?)" marker.
+func buildFamilyGroups(page *personPage, id string, archive *glxlib.GLXFile, idx *siteIndex) {
+	ownParents, stepParents := splitStep(idx.family.parents(id))
+	ownChildren, stepChildren := splitStep(idx.family.children(id))
+	page.Parents = familyEdgeLinks(ownParents, archive, idx)
+	page.StepParents = familyEdgeLinks(stepParents, archive, idx)
+	page.Children = familyEdgeLinks(ownChildren, archive, idx)
+	page.StepChildren = familyEdgeLinks(stepChildren, archive, idx)
+
+	page.Spouses = personLinks(idx.spouses[id], archive, idx.files)
+	for i := range page.Spouses {
+		page.Spouses[i].Hypothetical = idx.hypotheticalSpouses[[2]string{id, page.Spouses[i].ID}]
 	}
 
-	return out
+	hypo := map[string]bool{}
+	var full, half, step []string
+	for _, sib := range idx.family.siblings(id) {
+		hypo[sib.PersonID] = sib.Hypothetical
+		switch sib.Kind {
+		case siblingKindHalf:
+			half = append(half, sib.PersonID)
+		case siblingKindStep:
+			step = append(step, sib.PersonID)
+		default:
+			full = append(full, sib.PersonID)
+		}
+	}
+	page.Siblings = flagHypothetical(personLinks(full, archive, idx.files), hypo)
+	page.HalfSiblings = flagHypothetical(personLinks(half, archive, idx.files), hypo)
+	page.StepSiblings = flagHypothetical(personLinks(step, archive, idx.files), hypo)
+}
+
+// familyEdgeLinks resolves family edges to navigation links (sorted by name,
+// as personLinks sorts them), carrying each edge's hypothetical flag.
+func familyEdgeLinks(edges []familyEdge, archive *glxlib.GLXFile, idx *siteIndex) []personLink {
+	hypo := make(map[string]bool, len(edges))
+	for _, e := range edges {
+		hypo[e.PersonID] = e.Hypothetical
+	}
+
+	return flagHypothetical(personLinks(edgeIDs(edges), archive, idx.files), hypo)
+}
+
+// flagHypothetical sets each link's Hypothetical flag from hypo, keyed by ID.
+func flagHypothetical(links []personLink, hypo map[string]bool) []personLink {
+	for i := range links {
+		links[i].Hypothetical = hypo[links[i].ID]
+	}
+
+	return links
 }
 
 // vitalEvents returns the person's birth and death events, if present. It uses

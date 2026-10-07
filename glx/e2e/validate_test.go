@@ -118,3 +118,26 @@ func TestValidate_EntityFragment_KeepsCrossReferenceSkip(t *testing.T) {
 	assert.Contains(t, res.stdout, "Cross-reference validation skipped")
 	assert.NotContains(t, res.stderr, "references non-existent")
 }
+
+// A participant role used in a context its applies_to excludes is a warning,
+// not an error (#499): the archive still validates, and the warning names the
+// role and the context.
+func TestValidate_WarnsOnRoleOutsideAppliesTo(t *testing.T) {
+	archive := copyExample(t, "basic-family")
+	rel := `relationships:
+  rel-possibly-same:
+    type: possibly_same_person
+    participants:
+      - person: person-alice-thompson
+        role: subject
+      - person: person-mary-thompson
+        role: subject
+`
+	require.NoError(t, os.WriteFile(filepath.Join(archive, "relationships", "rel-possibly-same.glx"), []byte(rel), 0o644))
+
+	res := runGLX(t, archive, "validate", ".")
+
+	require.Equal(t, 0, res.exitCode, res.stdout+res.stderr)
+	assert.Contains(t, res.stderr, "relationships[rel-possibly-same].participants[0].role: role 'subject' is used on a relationship, but its applies_to is [event]")
+	assert.Contains(t, res.stdout, "Archive is valid")
+}

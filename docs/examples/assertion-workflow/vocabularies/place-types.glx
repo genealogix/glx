@@ -13,6 +13,11 @@ place_types:
     description: "State, province, or region"
     category: "administrative"
 
+  territory:
+    label: "Territory"
+    description: "Organised territory or dependency below country level that is not (or not yet) a state or province, such as Indiana Territory or the Northwest Territories. Tooling treats it as state-level"
+    category: "administrative"
+
   county:
     label: "County"
     description: "County or similar administrative division"
