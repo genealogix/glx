@@ -23,29 +23,23 @@ import (
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
-// treeParentChildRelTypes is the set of relationship types that represent
-// parent-child connections for tree traversal.
-var treeParentChildRelTypes = map[string]bool{
-	"parent_child":            true,
-	"biological_parent_child": true,
-	"adoptive_parent_child":   true,
-	"foster_parent_child":     true,
-	"step_parent":             true,
-}
-
 // treeNode represents a person in the ancestor/descendant tree.
 type treeNode struct {
-	PersonID string
-	Name     string
-	Dates    string // "(1850 – 1920)" or similar
-	RelType  string // relationship type connecting to parent/child
-	Children []*treeNode
+	PersonID     string
+	Name         string
+	Dates        string // "(1850 – 1920)" or similar
+	RelType      string // relationship type connecting to parent/child
+	Step         bool   // connected to parent/child through a step link
+	Hypothetical bool   // the connecting relationship is only a hypothesis
+	Children     []*treeNode
 }
 
-// treeRelPerson holds a person ID and the relationship type connecting them.
+// treeRelPerson holds a person ID and the relationship connecting them.
 type treeRelPerson struct {
-	personID string
-	relType  string
+	personID     string
+	relType      string
+	step         bool
+	hypothetical bool
 }
 
 // treeContext holds the archive and prebuilt adjacency indexes for efficient
@@ -66,34 +60,15 @@ func newTreeContext(archive *glxlib.GLXFile) *treeContext {
 }
 
 // buildParentIndex scans all relationships once and returns a map from
-// child ID to their parents.
+// child ID to their parents. Links the archive has disproven are left out.
 func buildParentIndex(archive *glxlib.GLXFile) map[string][]treeRelPerson {
 	index := make(map[string][]treeRelPerson)
 
-	for _, rel := range archive.Relationships {
-		if !treeParentChildRelTypes[rel.Type] {
+	for _, link := range glxlib.ParentChildLinks(archive, nil) {
+		if link.Standing == glxlib.RelationshipStandingDisproven {
 			continue
 		}
-
-		var parentIDs []string
-		var childIDs []string
-		for _, p := range rel.Participants {
-			switch p.Role {
-			case "parent":
-				parentIDs = append(parentIDs, p.Person)
-			case "child":
-				childIDs = append(childIDs, p.Person)
-			}
-		}
-
-		for _, childID := range childIDs {
-			for _, parentID := range parentIDs {
-				index[childID] = append(index[childID], treeRelPerson{
-					personID: parentID,
-					relType:  rel.Type,
-				})
-			}
-		}
+		index[link.ChildID] = append(index[link.ChildID], treeRelPersonFromLink(&link, link.ParentID))
 	}
 
 	for id := range index {
@@ -104,34 +79,15 @@ func buildParentIndex(archive *glxlib.GLXFile) map[string][]treeRelPerson {
 }
 
 // buildChildIndex scans all relationships once and returns a map from
-// parent ID to their children.
+// parent ID to their children. Links the archive has disproven are left out.
 func buildChildIndex(archive *glxlib.GLXFile) map[string][]treeRelPerson {
 	index := make(map[string][]treeRelPerson)
 
-	for _, rel := range archive.Relationships {
-		if !treeParentChildRelTypes[rel.Type] {
+	for _, link := range glxlib.ParentChildLinks(archive, nil) {
+		if link.Standing == glxlib.RelationshipStandingDisproven {
 			continue
 		}
-
-		var parentIDs []string
-		var childIDs []string
-		for _, p := range rel.Participants {
-			switch p.Role {
-			case "parent":
-				parentIDs = append(parentIDs, p.Person)
-			case "child":
-				childIDs = append(childIDs, p.Person)
-			}
-		}
-
-		for _, parentID := range parentIDs {
-			for _, childID := range childIDs {
-				index[parentID] = append(index[parentID], treeRelPerson{
-					personID: childID,
-					relType:  rel.Type,
-				})
-			}
-		}
+		index[link.ParentID] = append(index[link.ParentID], treeRelPersonFromLink(&link, link.ChildID))
 	}
 
 	for id := range index {
@@ -139,6 +95,17 @@ func buildChildIndex(archive *glxlib.GLXFile) map[string][]treeRelPerson {
 	}
 
 	return index
+}
+
+// treeRelPersonFromLink converts a parent-child link into the tree's edge
+// record for the person at the far end.
+func treeRelPersonFromLink(link *glxlib.ParentChildLink, personID string) treeRelPerson {
+	return treeRelPerson{
+		personID:     personID,
+		relType:      link.RelationshipType,
+		step:         link.Step,
+		hypothetical: link.Standing == glxlib.RelationshipStandingHypothetical,
+	}
 }
 
 // findParents returns the parents of a person using the prebuilt index.
@@ -238,6 +205,8 @@ func buildAncestorTree(tc *treeContext, personID string, maxGen, depth int, visi
 	for _, p := range parents {
 		child := buildAncestorTree(tc, p.personID, maxGen, depth+1, visited)
 		child.RelType = p.relType
+		child.Step = p.step
+		child.Hypothetical = p.hypothetical
 		node.Children = append(node.Children, child)
 	}
 
@@ -265,6 +234,8 @@ func buildDescendantTree(tc *treeContext, personID string, maxGen, depth int, vi
 	for _, c := range children {
 		child := buildDescendantTree(tc, c.personID, maxGen, depth+1, visited)
 		child.RelType = c.relType
+		child.Step = c.step
+		child.Hypothetical = c.hypothetical
 		node.Children = append(node.Children, child)
 	}
 
@@ -329,8 +300,14 @@ func printTree(node *treeNode, prefix string, isRoot bool) {
 		}
 
 		label := formatNodeLabel(child)
-		if child.RelType != "" && child.RelType != "parent_child" {
+		switch {
+		case child.Step:
+			label += "  [" + formatRelType(glxlib.RelationshipTypeStepParent) + "]"
+		case child.RelType != "" && child.RelType != glxlib.RelationshipTypeParentChild:
 			label += fmt.Sprintf("  [%s]", formatRelType(child.RelType))
+		}
+		if child.Hypothetical {
+			label += "  " + hypotheticalMarker
 		}
 
 		fmt.Printf("%s%s%s\n", prefix, connector, label)

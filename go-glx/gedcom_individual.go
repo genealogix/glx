@@ -680,7 +680,7 @@ func extractCensusData(censRecord *GEDCOMRecord, conv *ConversionContext) census
 		case GedcomTagNote:
 			noteText = extractNoteText(sub, conv)
 		case GedcomTagSour:
-			// Handled by extractEvidence below
+			// Prepared below after census context has been extracted
 		case GedcomTagObje:
 			if mediaID := resolveOBJE(sub, conv); mediaID != "" {
 				mediaIDs = append(mediaIDs, mediaID)
@@ -692,27 +692,46 @@ func extractCensusData(censRecord *GEDCOMRecord, conv *ConversionContext) census
 		}
 	}
 
-	// Extract evidence from any SOUR sub-records
-	refs := extractEvidence(censRecord, conv)
+	// Prepare bare embedded sources as private drafts. Census notes and media
+	// are part of their final identity and must be added before registration.
+	var results []sourResult
+	hasCitations := false
+	for _, sub := range censRecord.SubRecords {
+		if sub.Tag != GedcomTagSour {
+			continue
+		}
+		result, err := prepareCitationFromSOUR(sub, conv)
+		if err != nil {
+			continue
+		}
+		results = append(results, result)
+		hasCitations = hasCitations || result.CitationID != ""
+	}
 
 	// When SOUR sub-records exist but we also have a NOTE, attach the note
 	// to existing citations so it's not silently lost (#30).
 	// If only bare source references exist (no citations), attach to sources.
-	if refs.hasEvidence() && noteText != "" {
-		if len(refs.CitationIDs) > 0 {
-			for _, citID := range refs.CitationIDs {
-				if cit, ok := conv.GLX.Citations[citID]; ok {
-					cit.Notes = append(cit.Notes, noteText)
-				}
-			}
-		} else if len(refs.SourceIDs) > 0 {
-			for _, srcID := range refs.SourceIDs {
-				if src, ok := conv.GLX.Sources[srcID]; ok {
-					src.Notes = append(src.Notes, noteText)
-				}
+	seenExplicitSources := make(map[string]bool)
+	for _, result := range results {
+		if hasCitations && noteText != "" {
+			if cit, ok := conv.GLX.Citations[result.CitationID]; ok {
+				cit.Notes = append(cit.Notes, noteText)
 			}
 		}
+		if source := result.bareSource(conv); source != nil {
+			if result.SourceID != "" {
+				if seenExplicitSources[result.SourceID] {
+					continue
+				}
+				seenExplicitSources[result.SourceID] = true
+			}
+			if !hasCitations && noteText != "" {
+				source.Notes = append(source.Notes, noteText)
+			}
+			source.Media = append(source.Media, mediaIDs...)
+		}
 	}
+	refs := finalizeGEDCOMEvidence(results, conv)
 
 	// If no SOUR sub-records, create a synthetic census source
 	if !refs.hasEvidence() {
@@ -749,6 +768,7 @@ func extractCensusData(censRecord *GEDCOMRecord, conv *ConversionContext) census
 
 			refs.CitationIDs = []string{citationID}
 		} else {
+			source.Media = append(source.Media, mediaIDs...)
 			refs.SourceIDs = []string{sourceID}
 		}
 	}
@@ -764,16 +784,12 @@ func extractCensusData(censRecord *GEDCOMRecord, conv *ConversionContext) census
 // applyCensusData applies extracted census data to a person: sets temporal
 // residence property and creates assertions backed by citations.
 func applyCensusData(personID string, person *Person, data *censusData, conv *ConversionContext) {
-	// Attach media to census citations and sources
+	// Bare source media is attached during extraction, before deduplication.
+	// Attach citation media here.
 	if len(data.mediaIDs) > 0 {
 		for _, citID := range data.evidence.CitationIDs {
 			if cit, ok := conv.GLX.Citations[citID]; ok {
 				cit.Media = append(cit.Media, data.mediaIDs...)
-			}
-		}
-		for _, srcID := range data.evidence.SourceIDs {
-			if src, ok := conv.GLX.Sources[srcID]; ok {
-				src.Media = append(src.Media, data.mediaIDs...)
 			}
 		}
 	}

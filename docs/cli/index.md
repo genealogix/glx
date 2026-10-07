@@ -43,7 +43,7 @@ For installation instructions, see [`glx/README.md`](../../glx/README.md). For a
 
 - [`glx census`](glx_census.md) — census tooling (see subcommands)
 - [`glx census add`](glx_census_add.md) — generate entities from a census template
-- [`glx add`](glx_add.md) — create person, place, event, source, citation, relationship, or assertion entities from flags
+- [`glx add`](glx_add.md) — create entities (person, place, event, source, citation, repository, relationship, assertion, and more) from flags; `glx add --help` lists every entity type
 - [`glx link`](glx_link.md) — create a FamilySearch citation (and source/repository scaffolding) from an ARK URL
 
 ### Analysis
