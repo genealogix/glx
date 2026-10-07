@@ -132,8 +132,7 @@ func checkFile(path string) string {
 		// means the file parsed fine but a field has the wrong shape (`custom`
 		// as a string or a list), which is a fragment-authoring mistake;
 		// anything else is a genuine syntax error.
-		var typeErr *yaml.TypeError
-		if errors.As(err, &typeErr) {
+		if _, ok := errors.AsType[*yaml.TypeError](err); ok {
 			return fmt.Sprintf("changelog fragment has a field of the wrong shape "+
 				"('custom' must be a map of fields, e.g. Issue: \"#123\"): %v", err)
 		}

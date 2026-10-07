@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**`glx analyze` no longer reports research-log citations as orphaned** — The orphaned-citation check counted only assertions, so the citation of every documented negative search ("searched, not found") was flagged as clutter. Citations referenced by a research log''s `searches[].citation` or log-level `citations` now count as referenced, and the orphaned-source check likewise counts `searches[].source`, a study''s `sources` and a media item''s `source`.'
+time: '2026-10-07T00:00:17Z'
+custom:
+  Issue: '#1323'

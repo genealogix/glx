@@ -1,0 +1,5 @@
+kind: Added
+body: '**`land_transaction` event type** — A standard `legal` event type for deeds, land entries, patents, grants and mortgages, with a documented `event_subtype` list (`deed`, `patent`, `grant`, `entry`, `mortgage`, `partition`, `quitclaim`) in `event.md`. No dedicated GEDCOM tag; intended `EVEN` + `TYPE` export remains tracked separately in #1320/#1321.'
+time: '2026-10-07T00:00:02Z'
+custom:
+  Issue: '#1334'
