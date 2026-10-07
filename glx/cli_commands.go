@@ -29,24 +29,14 @@ import (
 //
 //	go build -ldflags "-X main.version=1.2.3 -X main.commit=abc123 -X main.date=2025-01-01" ./glx
 //
-// GoReleaser sets these automatically. For local builds they default to "dev"/""/"".
+// GoReleaser sets these automatically. For local builds they default to "dev"/""/"",
+// and versionString (version.go) falls back to the module version and VCS stamp
+// Go records in the binary.
 var (
 	version = "dev"
 	commit  = ""
 	date    = ""
 )
-
-func versionString() string {
-	v := version
-	if commit != "" {
-		v += " (" + commit[:min(len(commit), 7)] + ")"
-	}
-	if date != "" {
-		v += " " + date
-	}
-
-	return v
-}
 
 // Root command
 var rootCmd = &cobra.Command{
@@ -63,6 +53,15 @@ Use GLX to initialize new archives, validate files, and ensure data quality.`,
 	PersistentPreRun: func(cmd *cobra.Command, _ []string) {
 		cmd.SilenceUsage = true
 	},
+}
+
+// showHelp is the RunE of a parent command that only groups subcommands (add,
+// cache, census). Paired with Args: cobra.NoArgs it makes an unknown
+// subcommand an error: Cobra treats a command without a Run as help-only and
+// returns before validating arguments, so `glx add bogus` used to print help
+// and exit 0, letting a typo in a script pass silently.
+func showHelp(cmd *cobra.Command, _ []string) error {
+	return cmd.Help()
 }
 
 // silentExitError is returned from a Cobra RunE to terminate the process with
@@ -89,8 +88,7 @@ func (e *silentExitError) Error() string {
 // every runner's returned error funnels through.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		var silent *silentExitError
-		if errors.As(err, &silent) {
+		if silent, ok := errors.AsType[*silentExitError](err); ok {
 			os.Exit(silent.code)
 		}
 		fmt.Fprintln(os.Stderr, sanitizeForTerminal(err.Error()))
@@ -368,6 +366,7 @@ func runExport(_ *cobra.Command, args []string) error {
 var (
 	initSingleFile bool
 	createTestData int
+	initNoGit      bool
 )
 
 var initCmd = &cobra.Command{
@@ -382,7 +381,12 @@ By default, creates a multi-file archive with separate directories for each
 entity type (persons/, events/, places/, etc.) along with standard vocabulary
 files and supporting documentation.
 
-Use --single-file to create a single archive.glx file instead.`,
+Use --single-file to create a single archive.glx file instead.
+
+The new archive directory is made a Git repository (no files staged, no commit
+made) so the generated .gitignore takes effect and the archive is ready for
+version control. An archive created inside an existing repository is left to
+that repository. Use --no-git to skip this entirely.`,
 	Example: `  # Initialize in a new directory
   glx init my-family-archive
 
@@ -390,7 +394,10 @@ Use --single-file to create a single archive.glx file instead.`,
   glx init my-family-archive --single-file
 
   # Initialize with test data in a new directory
-  glx init my-family-archive --create-test-data 10`,
+  glx init my-family-archive --create-test-data 10
+
+  # Initialize without making the directory a Git repository
+  glx init my-family-archive --no-git`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runInitCmd,
 }
@@ -398,6 +405,7 @@ Use --single-file to create a single archive.glx file instead.`,
 func init() {
 	initCmd.Flags().BoolVarP(&initSingleFile, "single-file", "s", false, "create a single-file archive instead of multi-file")
 	initCmd.Flags().IntVarP(&createTestData, "create-test-data", "t", 0, "number of persons to generate test data for")
+	initCmd.Flags().BoolVar(&initNoGit, "no-git", false, "skip initializing a Git repository in the archive directory")
 }
 
 func runInitCmd(_ *cobra.Command, args []string) error {
@@ -408,7 +416,11 @@ func runInitCmd(_ *cobra.Command, args []string) error {
 		targetDir = "."
 	}
 
-	return runInit(targetDir, initSingleFile, createTestData)
+	return runInit(targetDir, initOptions{
+		singleFile:  initSingleFile,
+		numTestData: createTestData,
+		noGit:       initNoGit,
+	})
 }
 
 // ============================================================================
@@ -432,12 +444,19 @@ Performs comprehensive validation including:
 - YAML syntax correctness
 - Required fields presence
 - Entity ID format validation
-- Cross-reference integrity (directories only)
+- Cross-reference integrity (directories and single-file archives)
 - Duplicate ID detection (directories only)
 - Vocabulary validation (if vocabularies/ exists)
 
 Validation behavior:
-- Single file: Validates file structure only, skips cross-reference checks
+- Single file holding a whole archive: full validation, cross-references
+  included. A file counts as a whole archive when it carries its own
+  vocabularies alongside its entities (what glx join writes) or declares every
+  entity collection (what glx init --single-file scaffolds)
+- Single file holding a fragment of a multi-file archive: structure and the
+  semantic checks that stand on their own; cross-reference and place-hierarchy
+  checks are skipped, because the entities those references name live in the
+  fragment's siblings, which are not being validated
 - Directory: Validates all .glx files with full cross-reference validation
 - No arguments: Validates current directory with full cross-reference validation
 - Several paths (directories, .glx files, or a mix): Loaded together as one
@@ -467,8 +486,11 @@ and highlighting unsupported claims. The archive is validated first, so
   # Validate multiple paths (with cross-reference checks)
   glx validate persons/ events/ places/
 
-  # Validate single file (structure only, no cross-reference checks)
+  # Validate a single-file archive (with cross-reference checks)
   glx validate archive.glx
+
+  # Validate one file of a multi-file archive (structure only)
+  glx validate events/event-births.glx
 
   # Generate confidence summary report
   glx validate --report
@@ -759,6 +781,16 @@ var statsCmd = &cobra.Command{
 
 Shows entity counts, assertion confidence distribution, and entity coverage
 metrics for quick feedback on archive health.
+
+Coverage is shown two ways. "Direct assertion references" counts entities
+that are an assertion's subject. "Evidence coverage" measures assertion
+reachability: a person is covered when an assertion targets them, names them as a
+participant, or targets an event or relationship they take part in; a place
+is covered when an assertion targets it or names it as a value (an event's
+place, a residence), when a covered event happens there, or when it contains
+such a place. Every assertion counts, including unsourced or disproven assertions.
+Place ancestors count as gazetteer scaffolding. These percentages measure
+assertion reach, rather than the proportion of entities sourced or proven.
 
 Accepts either a multi-file directory or a single .glx file.
 If no path is given, uses the current directory.`,
@@ -1085,6 +1117,16 @@ as a movement (e.g. "Florida → Wisconsin"). Regions compare at the
 state/region level of the place hierarchy, and pre-statehood territories
 match their successor states ("Florida Territory" equals "Florida").
 
+Not every observation counts toward a movement. An event in which the
+person's role does not put them at its place (a grantor or grantee of a deed,
+a legatee or heir of an estate, someone merely mentioned) is shown but not
+counted; an archive can mark its own roles with implies_presence in the
+participant roles vocabulary. A bounded residence value overrides an event
+elsewhere only when the event's whole possible date span fits within that
+residence: the event remains visible but is not counted as a move. Open-ended
+event spans remain included. Dates in different calendars are not compared
+without conversion.
+
 With --pattern, searches all persons in the archive for a migration pattern
 instead: a comma-separated list of places that must appear in chronological
 order in a person's region sequence. Knowing who else made the same move
@@ -1201,8 +1243,14 @@ Where "glx analyze" emits a one-line conflict warning and "glx proof" summarizes
 a resolved question, "glx evidence" is for questions still in active research:
 it lays out the conflicting answers so you can weigh them. For each value it
 shows the supporting reports (citation and source), counts them, and reports the
-best confidence; the closing line highlights the best-supported value, or notes
-when the leading values tie.
+best confidence. Time-varying properties show dated history, with undated claims
+in their own section. Best evidence is chosen only among claims whose periods
+could overlap. Disproven claims are excluded. Other properties highlight the
+best-supported value, or note when the leading values tie.
+
+All comparisons use the same rules as analyze, proof and merge-persons: precision
+and place-hierarchy refinements agree; approximate date values use ±2 years by
+default (--approximation-years overrides this). Distinct place IDs stay distinct.
 
 The subject is any entity an assertion can be about — a person, event, place, or
 relationship — matching what "glx add assertion" accepts. That matters because
@@ -1241,8 +1289,13 @@ func init() {
 	evidenceCmd.Flags().StringVar(&evidenceFormat, "format", "text", "Output format: text or json")
 }
 
-func runEvidence(_ *cobra.Command, args []string) error {
-	return showEvidence(SystemIOStreams(), evidenceArchive, args[0], args[1], evidenceFormat)
+func runEvidence(cmd *cobra.Command, args []string) error {
+	opts, err := commandComparisonOptions(cmd)
+	if err != nil {
+		return err
+	}
+
+	return showEvidence(SystemIOStreams(), evidenceArchive, args[0], args[1], evidenceFormat, opts)
 }
 
 // ============================================================================
@@ -1256,6 +1309,8 @@ var censusCmd = &cobra.Command{
 
 Subcommands:
   add    Import a census template into the archive`,
+	Args: cobra.NoArgs,
+	RunE: showHelp,
 }
 
 var (
@@ -1290,6 +1345,7 @@ Use --dry-run to preview what would be generated without writing files.`,
 
   # Verbose output
   glx census add --from 1860-census-lane.yaml --archive my-archive --verbose`,
+	Args: cobra.NoArgs,
 	RunE: runCensusAdd,
 }
 
@@ -1507,6 +1563,18 @@ Record categories:
   - Vital: Birth, death, and marriage records
   - Other: Probate, land, military, and church records
 
+A record counts as found only when evidence backs it: a source about the person,
+or an event whose assertion references a citation, source, or media object.
+An event on its own is a conclusion, not a record, so it is reported without
+counting toward the score -- an estimated birth date reckoned back from a death
+entry does not mean a birth record exists.
+
+Only the person's own records count: an event in which they are the principal
+or subject (or bride, groom, decedent, ...), or a census on which they are a
+member of the household. Events in which they appear in another role -- a
+witness, godparent, legatee, grantor -- are someone else's record; they are
+listed separately under "Appears in" and do not satisfy a category.
+
 Missing high-priority records are flagged to guide research efforts.
 
 The person argument can be an exact entity ID or a name substring.`,
@@ -1560,11 +1628,18 @@ Analysis categories:
   gaps          Missing data that should be findable (no birth, no parents, etc.)
   evidence      Unsupported or weakly supported claims (no citations, single source)
   consistency   Chronological cross-checks (death before birth, implausible lifespan)
+  conflicts     Definite conflicts, possible overlaps, and known disputes
   suggestions   Research recommendations (census years to search, vital records)
 
 Use --check to run a single category. By default, all categories are analyzed.
 
-Use --format json for machine-readable output.`,
+Conflicts include assertions on the person, their events and relationships,
+and competing dates/places on duplicate birth or death events. Definite conflicts
+are HIGH, possible overlaps MEDIUM, and known disputes LOW. Disproven claims and
+undated temporal values are excluded. Touching periods are history.
+
+Use --approximation-years to change the default ±2-year tolerance for approximate
+date values. Use --format json for machine-readable output.`,
 	Example: `  # Full analysis of current directory
   glx analyze
 
@@ -1588,19 +1663,23 @@ Use --format json for machine-readable output.`,
 
 func init() {
 	analyzeCmd.Flags().StringVarP(&analyzeArchive, "archive", "a", ".", "Archive path (directory or single file)")
-	analyzeCmd.Flags().StringVarP(&analyzeCheck, "check", "c", "", "Run a single analysis category (gaps, evidence, consistency, suggestions)")
+	analyzeCmd.Flags().StringVarP(&analyzeCheck, "check", "c", "", "Run a single analysis category (gaps, evidence, consistency, conflicts, suggestions)")
 	analyzeCmd.Flags().StringVarP(&analyzeFormat, "format", "f", "", "Output format (json for machine-readable)")
 	analyzeCmd.Flags().StringVarP(&analyzePerson, "person", "p", "", "Filter results to a specific person (ID or name)")
 	analyzeCmd.Flags().StringVar(&analyzeCountry, "country", "", censusCountryFlagUsage)
 }
 
-func runAnalyze(_ *cobra.Command, args []string) error {
+func runAnalyze(cmd *cobra.Command, args []string) error {
+	opts, err := commandComparisonOptions(cmd)
+	if err != nil {
+		return err
+	}
 	person := analyzePerson
 	if len(args) == 1 {
 		person = args[0]
 	}
 
-	return showAnalysis(analyzeArchive, person, analyzeCheck, analyzeFormat, analyzeCountry)
+	return showAnalysis(analyzeArchive, person, analyzeCheck, analyzeFormat, analyzeCountry, opts)
 }
 
 // ============================================================================
@@ -1634,6 +1713,11 @@ Supported research questions:
   marriage    Whom did the person marry?
   identity    Who was the person (name)?
 
+Only definite unresolved conflicts make a conclusion CONFLICTED. Possible
+conflicts are marked "possible — check" and reduce support. Undated temporal
+claims appear separately. Date precision and place hierarchy refinements agree;
+--approximation-years controls the default ±2-year tolerance for approximate dates.
+
 The person argument can be an exact entity ID or a name substring.`,
 	Example: `  # Proof summary for a person's parentage
   glx proof person-jane-webb --question parentage
@@ -1657,8 +1741,13 @@ func init() {
 	_ = proofCmd.MarkFlagRequired("question")
 }
 
-func runProof(_ *cobra.Command, args []string) error {
-	return showProof(SystemIOStreams(), proofArchive, args[0], proofQuestion, proofFormat)
+func runProof(cmd *cobra.Command, args []string) error {
+	opts, err := commandComparisonOptions(cmd)
+	if err != nil {
+		return err
+	}
+
+	return showProof(SystemIOStreams(), proofArchive, args[0], proofQuestion, proofFormat, opts)
 }
 
 // ============================================================================
@@ -1910,10 +1999,13 @@ then the drop-id person file is removed.
 
 Property merging:
   - Properties present only on drop are copied verbatim.
-  - Multi-value (list) properties are unioned with deep-equal deduplication.
-  - Single-value conflicts default to keep's value (recorded in the conflict
-    report). Pass --keep-newest or --keep-oldest to resolve dated conflicts
-    by date instead.
+  - Identical values agree silently.
+  - Temporal properties combine non-conflicting dated and undated history,
+    including mixed scalar, structured, and list representations.
+  - Other multi-value lists are unioned with deep-equal deduplication.
+  - Genuine conflicts default to keep's value. --keep-newest or --keep-oldest
+    resolves dated collisions while preserving unrelated history.
+  - Approximate date values use ±2 years; --approximation-years overrides it.
 
 Notes are combined per --notes-strategy (default: append).
 
@@ -1946,8 +2038,13 @@ func init() {
 		"How to combine notes: append | prefer-keep | prefer-drop")
 }
 
-func runMergePersons(_ *cobra.Command, args []string) error {
+func runMergePersons(cmd *cobra.Command, args []string) error {
+	comparison, err := commandComparisonOptions(cmd)
+	if err != nil {
+		return err
+	}
 	opts := glxlib.MergePersonsOptions{
+		Comparison:    comparison,
 		NotesStrategy: glxlib.NotesStrategy(mergePersonsNotesStrategy),
 		KeepNewest:    mergePersonsKeepNewest,
 		KeepOldest:    mergePersonsKeepOldest,
@@ -2128,6 +2225,8 @@ shown by 'glx cache status', but do not affect staleness. Only multi-file
 
   # Run a command with auto-build on cache miss
   GLX_CACHE=auto glx summary "Jane Webb"`,
+	Args: cobra.NoArgs,
+	RunE: showHelp,
 }
 
 var cacheBuildCmd = &cobra.Command{

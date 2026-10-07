@@ -29,10 +29,12 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -94,13 +96,31 @@ type result struct {
 func runGLX(t *testing.T, workDir string, args ...string) result {
 	t.Helper()
 
+	return runGLXWithEnv(t, nil, workDir, args...)
+}
+
+// runGLXWithEnv is runGLX with extra environment assignments ("KEY=value")
+// applied on top of the inherited environment, e.g. GLX_CACHE=auto or TZ.
+func runGLXWithEnv(t *testing.T, extraEnv []string, workDir string, args ...string) result {
+	t.Helper()
+
 	cmd := exec.CommandContext(t.Context(), glxBinary, args...) //nolint:gosec // args come from the test, not user input
 	cmd.Dir = workDir
 	// Pin the cache mode. Without this the subprocess inherits whatever
 	// GLX_CACHE the developer or CI runner happens to export, so the same test
 	// exercises the cached loader on one machine and the uncached one on
-	// another. Tests that want the cache set it explicitly.
-	cmd.Env = envWithout(os.Environ(), "GLX_CACHE")
+	// another. Tests that want the cache set it explicitly via extraEnv.
+	//
+	// Each extraEnv key is removed from the inherited environment first:
+	// os/exec keeps the first of duplicate assignments, so an inherited TZ=UTC
+	// would otherwise silently win over a test's TZ=Pacific/Kiritimati.
+	env := envWithout(os.Environ(), "GLX_CACHE")
+	for _, kv := range extraEnv {
+		name, _, _ := strings.Cut(kv, "=")
+		env = envWithout(env, name)
+	}
+	env = append(env, extraEnv...)
+	cmd.Env = env
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -124,11 +144,12 @@ func runGLX(t *testing.T, workDir string, args ...string) result {
 }
 
 // envWithout returns env with every assignment to the named variable removed.
+// Windows environment names are case-insensitive, so the match is too there.
 func envWithout(env []string, name string) []string {
 	prefix := name + "="
 	out := make([]string, 0, len(env))
 	for _, kv := range env {
-		if strings.HasPrefix(kv, prefix) {
+		if strings.HasPrefix(kv, prefix) || (runtime.GOOS == "windows" && len(kv) >= len(prefix) && strings.EqualFold(kv[:len(prefix)], prefix)) {
 			continue
 		}
 		out = append(out, kv)
@@ -232,6 +253,13 @@ func snapshotTree(t *testing.T, root string) map[string][]byte {
 	return files
 }
 
+// treePaths returns the sorted relative paths of every regular file under root.
+func treePaths(t *testing.T, root string) []string {
+	t.Helper()
+
+	return slices.Sorted(maps.Keys(snapshotTree(t, root)))
+}
+
 // treeDiff classifies the differences between two snapshots.
 type treeDiff struct {
 	changed []string
@@ -262,6 +290,51 @@ func diffTrees(before, after map[string][]byte) treeDiff {
 	sort.Strings(d.removed)
 
 	return d
+}
+
+// assertTreeUnchanged asserts that no file under root was changed, created,
+// or removed since before was taken.
+func assertTreeUnchanged(t *testing.T, before map[string][]byte, root string) {
+	t.Helper()
+	diff := diffTrees(before, snapshotTree(t, root))
+	assert.Empty(t, diff.changed, "files changed")
+	assert.Empty(t, diff.created, "files created")
+	assert.Empty(t, diff.removed, "files removed")
+}
+
+// statDir returns path's FileInfo for a later assertSameDirectory.
+func statDir(t *testing.T, path string) os.FileInfo {
+	t.Helper()
+	info, err := os.Stat(path)
+	require.NoError(t, err)
+	require.True(t, info.IsDir(), "%s is not a directory", path)
+
+	return info
+}
+
+// assertSameDirectory asserts that path is still the directory captured in
+// before. A command that swaps the archive directory for a new one leaves a
+// shell sitting in it on a deleted inode (#1192); the path still resolves, so
+// only an identity check catches it.
+func assertSameDirectory(t *testing.T, before os.FileInfo, path string) {
+	t.Helper()
+	after, err := os.Stat(path)
+	require.NoError(t, err)
+	assert.True(t, os.SameFile(before, after), "%s was replaced by a new directory (#1192)", path)
+}
+
+// assertArchiveValid runs `glx validate` on archive and asserts it passes.
+func assertArchiveValid(t *testing.T, archive string) {
+	t.Helper()
+	res := runGLX(t, archive, "validate", ".")
+	assert.Equal(t, 0, res.exitCode, "archive no longer validates:\n%s%s", res.stdout, res.stderr)
+}
+
+// assertExitWithStderr asserts res failed and its stderr mentions want.
+func assertExitWithStderr(t *testing.T, res result, want string) {
+	t.Helper()
+	assert.NotEqual(t, 0, res.exitCode, "expected a non-zero exit")
+	assert.Contains(t, res.stderr, want)
 }
 
 func TestCopyTreeFollowingSymlinks_DirectorySymlink(t *testing.T) {

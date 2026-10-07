@@ -135,7 +135,7 @@ func TestCensusSchedulesForPlaces(t *testing.T) {
 	t.Run("recognized country", func(t *testing.T) {
 		schedules := censusSchedulesForPlaces([]string{"place-boston"}, archive)
 		require.Len(t, schedules, 1)
-		assert.Equal(t, countryUnitedStates, schedules[0].country)
+		assert.Equal(t, countryUnitedStates, schedules[0].Country)
 	})
 
 	t.Run("unrecognized country suggests nothing", func(t *testing.T) {
@@ -146,21 +146,20 @@ func TestCensusSchedulesForPlaces(t *testing.T) {
 	t.Run("places spanning two countries get both", func(t *testing.T) {
 		schedules := censusSchedulesForPlaces([]string{"place-bath", "place-boston"}, archive)
 		require.Len(t, schedules, 2)
-		assert.Equal(t, countryUnitedKingdom, schedules[0].country, "schedules are ordered by country name")
-		assert.Equal(t, countryUnitedStates, schedules[1].country)
+		assert.Equal(t, countryUnitedKingdom, schedules[0].Country, "schedules are ordered by country name")
+		assert.Equal(t, countryUnitedStates, schedules[1].Country)
 	})
 
-	t.Run("no country at all falls back", func(t *testing.T) {
-		schedules := censusSchedulesForPlaces([]string{"place-untyped"}, archive)
-		require.Len(t, schedules, 1)
-		assert.Equal(t, countryUnitedStates, schedules[0].country)
+	t.Run("no country at all suggests nothing", func(t *testing.T) {
+		assert.Empty(t, censusSchedulesForPlaces([]string{"place-untyped"}, archive),
+			"an archive that names no country should not be guessed at")
 	})
 
-	t.Run("fallback is configurable", func(t *testing.T) {
+	t.Run("fallback is opt-in", func(t *testing.T) {
 		setCensusFallback(t, countryUnitedKingdom)
 		schedules := censusSchedulesForPlaces(nil, archive)
 		require.Len(t, schedules, 1)
-		assert.Equal(t, countryUnitedKingdom, schedules[0].country)
+		assert.Equal(t, countryUnitedKingdom, schedules[0].Country)
 	})
 
 	t.Run("fallback can be disabled", func(t *testing.T) {
@@ -173,6 +172,14 @@ func TestCensusSchedulesForPlaces(t *testing.T) {
 		assert.Empty(t, censusSchedulesForPlaces([]string{"place-liepen"}, archive),
 			"the archive says where the person was; the fallback is only for when it does not")
 	})
+}
+
+// TestCensusCountryFallbackDefaultsToNone guards the shipped default: with no
+// --country flag, an archive that names no country draws no census
+// suggestions rather than being assumed to be American (#186).
+func TestCensusCountryFallbackDefaultsToNone(t *testing.T) {
+	assert.Empty(t, censusCountryFallback,
+		"the default fallback must stay off; --country is how a caller opts in")
 }
 
 func TestParseCensusCountry(t *testing.T) {
@@ -225,7 +232,7 @@ func TestAllCensusYears_IsSortedAndDeduplicated(t *testing.T) {
 func TestCoverage_NonUSPersonHasNoCensusRows(t *testing.T) {
 	archive := mecklenburgArchive()
 
-	result := buildCoverage("person-hollnagel", archive.Persons["person-hollnagel"], archive)
+	result := mustBuildCoverage("person-hollnagel", archive.Persons["person-hollnagel"], archive)
 
 	for _, record := range result.Records {
 		assert.NotEqual(t, "census", record.Category,

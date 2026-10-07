@@ -29,6 +29,8 @@ This package provides:
   - Serialization to single-file and multi-file GLX formats
   - Archive validation with reference integrity checking
   - Standard vocabulary management
+  - Conflict analysis, evidence histories, proof reports and source coverage
+  - Person merging with temporal-history preservation
 
 # Quick Start
 
@@ -116,6 +118,26 @@ responsible for performing the actual file I/O.
 resolve), vocabulary compliance (types and roles exist in vocabularies), and
 structural rules (required fields, participant counts). Results are cached and
 invalidated by [GLXFile.InvalidateCache].
+
+# Research workflows
+
+[AnalyzeConflicts], [PersonConflicts], [BuildEvidenceReport], [BuildProof], and
+[BuildCoverage] accept in-memory archives and return deterministic, owned report
+values. They supply missing standard vocabulary definitions without mutating
+caller data. Custom property definitions override standards. [CollectPersonFacts]
+exposes the recorded and synthetic claims used by person-level comparisons.
+
+[ComparisonOptions.Validate] rejects invalid approximation widths consistently
+with the CLI. The zero value uses ±2 years; a pointer to zero disables widening.
+[CompareFacts] exposes pairwise verdicts, and [EvaluateFacts] additionally exposes
+selected/surviving indices and resolution. Low-level calls use the property
+semantics explicitly supplied by the caller. Reports retain raw fact provenance
+alongside display labels, so applications can render their own output.
+
+[MergePersons] mutates only after validating arguments and uses the same property
+defaults. [MergeStandardVocabularies] explicitly fills defaults in-place while
+preserving custom definitions. Read APIs may share an archive concurrently only
+while no caller mutates it or its option values.
 
 # I/O Boundary
 
