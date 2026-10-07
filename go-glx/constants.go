@@ -49,6 +49,7 @@ const (
 	EventTypeOrdination         = "ordination"
 	EventTypeProbate            = "probate"
 	EventTypeWill               = "will"
+	EventTypeLandTransaction    = "land_transaction" // Deed, patent, grant, entry, mortgage, etc.; kind in event_subtype
 	EventTypeLegalSeparation    = "legal_separation"
 	EventTypeTaxation           = "taxation"
 	EventTypeVoterRegistration  = "voter_registration"
@@ -116,6 +117,30 @@ const (
 	ParticipantRoleAssociate      = "associate"
 	ParticipantRoleHouseholdHead  = "household_head"
 	ParticipantRoleBoarder        = "boarder"
+
+	ParticipantRoleEnumerator         = "enumerator"
+	ParticipantRoleAttendingPhysician = "attending_physician"
+	ParticipantRoleRegistrar          = "registrar"
+	ParticipantRoleBondsman           = "bondsman"
+	ParticipantRoleTestator           = "testator"
+	ParticipantRoleExecutor           = "executor"
+	ParticipantRoleLegatee            = "legatee"
+	ParticipantRoleBeneficiary        = "beneficiary"
+	ParticipantRoleGrantor            = "grantor"
+	ParticipantRoleGrantee            = "grantee"
+	ParticipantRoleAdjoiningOwner     = "adjoining_owner"
+	ParticipantRoleGuardian           = "guardian"
+	ParticipantRoleWard               = "ward"
+	ParticipantRoleFosterParent       = "foster_parent"
+	ParticipantRoleFosterChild        = "foster_child"
+	ParticipantRoleStepParent         = "step_parent"
+	ParticipantRoleStepChild          = "step_child"
+)
+
+// Participant role contexts - values of a participant role's applies_to list.
+const (
+	RoleContextEvent        = "event"
+	RoleContextRelationship = "relationship"
 )
 
 // Standard Person Property Names - commonly used properties on Person entities
@@ -406,6 +431,12 @@ const (
 	SearchResultInconclusive = "inconclusive"
 	SearchResultPartial      = "partial"
 	SearchResultNotSearched  = "not_searched"
+	// SearchResultUnavailable records a source that was sought but does not
+	// survive, is restricted, or is not accessible: a documented, permanent gap.
+	SearchResultUnavailable = "unavailable"
+	// SearchResultRequiresVisit records a source that exists but can only be
+	// searched on site or by request: outstanding work of a different kind.
+	SearchResultRequiresVisit = "requires_visit"
 )
 
 // Standard Research Log Status Types - from research-log-status-types.glx vocabulary.
@@ -684,6 +715,7 @@ const (
 	PlaceTypeHospital     = "hospital"
 	PlaceTypeCounty       = "county"
 	PlaceTypeState        = "state"
+	PlaceTypeTerritory    = "territory" // State-level: treat like PlaceTypeState wherever state is special-cased
 	PlaceTypeCity         = "city"
 	PlaceTypeCountry      = "country"
 	PlaceTypeLocality     = "locality"

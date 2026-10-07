@@ -27,8 +27,9 @@ import (
 )
 
 // writeArchiveWithDeedErrors writes a multi-file archive holding n events that
-// each carry two dangling vocabulary references (event type and role), so the
-// archive fails validation with 2n errors (#1322).
+// each carry two dangling vocabulary references (an event type and a role that
+// no vocabulary defines, standard or otherwise), so the archive fails
+// validation with 2n errors (#1322).
 func writeArchiveWithDeedErrors(t *testing.T, n int) string {
 	t.Helper()
 	dir := t.TempDir()
@@ -37,8 +38,8 @@ func writeArchiveWithDeedErrors(t *testing.T, n int) string {
 	var b strings.Builder
 	b.WriteString("events:\n")
 	for i := range n {
-		fmt.Fprintf(&b, "  ev-deed-%02d:\n    type: land_transaction\n    date: \"1831\"\n"+
-			"    participants:\n      - person: person-a\n        role: grantor\n", i)
+		fmt.Fprintf(&b, "  ev-deed-%02d:\n    type: not_a_standard_type\n    date: \"1831\"\n"+
+			"    participants:\n      - person: person-a\n        role: not_a_standard_role\n", i)
 	}
 	writeSkipTestFile(t, filepath.Join(dir, "events", "deeds.glx"), b.String())
 

@@ -124,13 +124,15 @@ func TestValidate_EntityFragment_KeepsCrossReferenceSkip(t *testing.T) {
 // The reproduction in #1322: an archive with more than ten errors. Validate
 // used to print a different ten on every run with no way to see the rest;
 // --show-first-errors 0 now lists every one, in the same order each time.
+// Each deed uses an event type and a role that no vocabulary defines, so it
+// carries exactly two errors.
 func TestValidate_ShowFirstErrors(t *testing.T) {
 	archive := copyExample(t, "basic-family")
 	var deeds strings.Builder
 	deeds.WriteString("events:\n")
 	for i := range 12 {
-		fmt.Fprintf(&deeds, "  ev-deed-%02d:\n    type: land_transaction\n    date: \"1831\"\n"+
-			"    participants:\n      - person: person-robert-thompson\n        role: grantor\n", i)
+		fmt.Fprintf(&deeds, "  ev-deed-%02d:\n    type: not_a_standard_type\n    date: \"1831\"\n"+
+			"    participants:\n      - person: person-robert-thompson\n        role: not_a_standard_role\n", i)
 	}
 	require.NoError(t, os.WriteFile(filepath.Join(archive, "events", "deeds.glx"), []byte(deeds.String()), 0o644))
 
@@ -147,4 +149,27 @@ func TestValidate_ShowFirstErrors(t *testing.T) {
 	assert.Equal(t, 1, all.exitCode, all.stdout+all.stderr)
 	assert.Equal(t, 24, strings.Count(all.stderr, "\n  - "))
 	assert.NotContains(t, all.stderr, "more errors")
+}
+
+// A participant role used in a context its applies_to excludes is a warning,
+// not an error (#499): the archive still validates, and the warning names the
+// role and the context.
+func TestValidate_WarnsOnRoleOutsideAppliesTo(t *testing.T) {
+	archive := copyExample(t, "basic-family")
+	rel := `relationships:
+  rel-possibly-same:
+    type: possibly_same_person
+    participants:
+      - person: person-alice-thompson
+        role: subject
+      - person: person-mary-thompson
+        role: subject
+`
+	require.NoError(t, os.WriteFile(filepath.Join(archive, "relationships", "rel-possibly-same.glx"), []byte(rel), 0o644))
+
+	res := runGLX(t, archive, "validate", ".")
+
+	require.Equal(t, 0, res.exitCode, res.stdout+res.stderr)
+	assert.Contains(t, res.stderr, "relationships[rel-possibly-same].participants[0].role: role 'subject' is used on a relationship, but its applies_to is [event]")
+	assert.Contains(t, res.stdout, "Archive is valid")
 }
