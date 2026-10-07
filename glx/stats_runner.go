@@ -79,12 +79,20 @@ func printConfidenceDistribution(archive *glxlib.GLXFile) {
 	}
 
 	counts := make(map[string]int)
+	total := 0
 	for _, a := range archive.Assertions {
+		if a == nil {
+			continue
+		}
+		total++
 		level := a.Confidence
 		if level == "" {
 			level = "(unset)"
 		}
 		counts[level]++
+	}
+	if total == 0 {
+		return
 	}
 
 	// Sort levels: standard order first, then custom alphabetically, then (unset) last
@@ -115,43 +123,51 @@ func printConfidenceDistribution(archive *glxlib.GLXFile) {
 
 	fmt.Println("\nAssertion confidence:")
 	for _, level := range levels {
-		pct := float64(counts[level]) / float64(len(archive.Assertions)) * 100
+		pct := float64(counts[level]) / float64(total) * 100
 		fmt.Printf("  %-12s %4d  (%5.1f%%)\n", level, counts[level], pct)
 	}
 }
 
 // printEntityCoverage shows how many persons, events, relationships, and places
-// are referenced by at least one assertion.
+// the archive's assertions reach, in two views (#713): the direct assertion
+// subjects, and the evidence coverage that follows assertions through the
+// events, relationships, participants, and place values they name. See
+// glxlib.AssertionCoverage for the rules.
 func printEntityCoverage(archive *glxlib.GLXFile) {
 	if len(archive.Assertions) == 0 {
 		return
 	}
 
-	coveredPersons := make(map[string]struct{})
-	coveredEvents := make(map[string]struct{})
-	coveredRelationships := make(map[string]struct{})
-	coveredPlaces := make(map[string]struct{})
+	coverage := glxlib.ComputeAssertionCoverage(archive)
 
-	for _, a := range archive.Assertions {
-		if a.Subject.Person != "" {
-			coveredPersons[a.Subject.Person] = struct{}{}
-		}
-		if a.Subject.Event != "" {
-			coveredEvents[a.Subject.Event] = struct{}{}
-		}
-		if a.Subject.Relationship != "" {
-			coveredRelationships[a.Subject.Relationship] = struct{}{}
-		}
-		if a.Subject.Place != "" {
-			coveredPlaces[a.Subject.Place] = struct{}{}
+	fmt.Println("\nDirect assertion references (entity is an assertion's subject):")
+	printEntityCoverageRows(coverage.Direct, archive)
+
+	fmt.Println("\nEvidence coverage (assertion reachability):")
+	fmt.Println("  Includes unsourced or disproven assertions and place ancestors; percentages do not measure sourcing or proof.")
+	printEntityCoverageRows(coverage.Evidence, archive)
+}
+
+// printEntityCoverageRows prints the four coverage rows for one view.
+func printEntityCoverageRows(coverage glxlib.EntityCoverage, archive *glxlib.GLXFile) {
+	printCoverageRow("Persons", countCovered(coverage.Persons, archive.Persons), len(archive.Persons))
+	printCoverageRow("Events", countCovered(coverage.Events, archive.Events), len(archive.Events))
+	printCoverageRow("Relationships", countCovered(coverage.Relationships, archive.Relationships), len(archive.Relationships))
+	printCoverageRow("Places", countCovered(coverage.Places, archive.Places), len(archive.Places))
+}
+
+// countCovered counts the entities of one type that are in the covered set.
+// An assertion pointing at a missing entity is a reference error, not
+// coverage, so only IDs present in the archive count.
+func countCovered[V any](covered map[string]bool, entities map[string]V) int {
+	n := 0
+	for id := range entities {
+		if covered[id] {
+			n++
 		}
 	}
 
-	fmt.Println("\nEntity coverage (referenced by assertions):")
-	printCoverageRow("Persons", len(coveredPersons), len(archive.Persons))
-	printCoverageRow("Events", len(coveredEvents), len(archive.Events))
-	printCoverageRow("Relationships", len(coveredRelationships), len(archive.Relationships))
-	printCoverageRow("Places", len(coveredPlaces), len(archive.Places))
+	return n
 }
 
 // printCoverageRow prints a single coverage line with percentage.

@@ -436,7 +436,7 @@ A single query performed during a research investigation, embedded as a sub-enti
 
 ### Search Result
 
-Outcome of a [Search](#search) within a [ResearchLog](#researchlog). One of: `found`, `not_found`, `inconclusive`, `partial`, `not_searched`. Backed by the standard `search_result_types` vocabulary.
+Outcome of a [Search](#search) within a [ResearchLog](#researchlog). One of: `found`, `not_found`, `inconclusive`, `partial`, `not_searched`, `unavailable`, `requires_visit`. Backed by the standard `search_result_types` vocabulary.
 
 > **See Also:** [ResearchLog Entity](4-entity-types/research-log.md)
 

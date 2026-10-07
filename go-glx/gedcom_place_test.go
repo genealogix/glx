@@ -37,6 +37,8 @@ func TestInferPlaceTypeKeywords(t *testing.T) {
 		{"hospital", "General Hospital", 0, PlaceTypeHospital},
 		{"county", "Tarrant County", 1, PlaceTypeCounty},
 		{"province", "Ontario Province", 2, PlaceTypeState},
+		{"territory", "Indiana Territory", 2, PlaceTypeTerritory},
+		{"territories", "Northwest Territories", 2, PlaceTypeTerritory},
 
 		// Institutions added for issue #540
 		{"workhouse", "Bakewell Union Workhouse", 0, PlaceTypeWorkhouse},
@@ -118,7 +120,7 @@ func TestInferredPlaceTypesAreStandard(t *testing.T) {
 
 	inferred := []string{
 		PlaceTypeCemetery, PlaceTypeChurch, PlaceTypeHospital, PlaceTypeCounty,
-		PlaceTypeState, PlaceTypeCity, PlaceTypeCountry, PlaceTypeLocality,
+		PlaceTypeState, PlaceTypeTerritory, PlaceTypeCity, PlaceTypeCountry, PlaceTypeLocality,
 		PlaceTypeVillage, PlaceTypeEstate, PlaceTypeFarm, PlaceTypePlantation,
 		PlaceTypeReservation, PlaceTypeWorkhouse, PlaceTypePoorhouse,
 		PlaceTypeAsylum, PlaceTypePrison, PlaceTypeMilitaryBase, PlaceTypeSchool,

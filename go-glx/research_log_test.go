@@ -254,12 +254,14 @@ func TestResearchLogStandardVocabulariesLoaded(t *testing.T) {
 	glx := &GLXFile{}
 	require.NoError(t, LoadStandardVocabulariesIntoGLX(glx))
 
-	assert.Len(t, glx.SearchResultTypes, 5, "expected 5 standard search result types")
+	assert.Len(t, glx.SearchResultTypes, 7, "expected 7 standard search result types")
 	assert.Contains(t, glx.SearchResultTypes, SearchResultFound)
 	assert.Contains(t, glx.SearchResultTypes, SearchResultNotFound)
 	assert.Contains(t, glx.SearchResultTypes, SearchResultInconclusive)
 	assert.Contains(t, glx.SearchResultTypes, SearchResultPartial)
 	assert.Contains(t, glx.SearchResultTypes, SearchResultNotSearched)
+	assert.Contains(t, glx.SearchResultTypes, SearchResultUnavailable)
+	assert.Contains(t, glx.SearchResultTypes, SearchResultRequiresVisit)
 
 	assert.Len(t, glx.ResearchLogStatusTypes, 4, "expected 4 standard research log statuses")
 	assert.Contains(t, glx.ResearchLogStatusTypes, ResearchLogStatusOpen)

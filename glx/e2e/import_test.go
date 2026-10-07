@@ -15,6 +15,8 @@
 package e2e
 
 import (
+	"archive/zip"
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -23,6 +25,44 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestImport_EmbeddedSourceDeduplication(t *testing.T) {
+	// Repeated Ancestry-style facts should share a placeholder, while every
+	// citation and event is still serialized and the import summary stays honest.
+	for _, extension := range []string{"ged", "gdz"} {
+		t.Run(extension, func(t *testing.T) {
+			work := t.TempDir()
+			gedcom := "0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @S1@ SOUR\n1 TITL Real register\n0 @I1@ INDI\n1 NAME John /Smith/\n" +
+				strings.Repeat("1 BIRT\n2 DATE 1 JAN 1850\n2 SOUR\n3 PAGE Entry 1\n", 100) + "0 TRLR\n"
+			data := []byte(gedcom)
+			if extension == "gdz" {
+				var bundle bytes.Buffer
+				writer := zip.NewWriter(&bundle)
+				entry, err := writer.Create("gedcom.ged")
+				require.NoError(t, err)
+				_, err = entry.Write(data)
+				require.NoError(t, err)
+				require.NoError(t, writer.Close())
+				data = bundle.Bytes()
+			}
+			src := filepath.Join(work, "inline."+extension)
+			require.NoError(t, os.WriteFile(src, data, 0o600))
+
+			res := runGLX(t, work, "import", src, "-o", "archive")
+			require.Equal(t, 0, res.exitCode, res.stderr)
+			assert.Regexp(t, `(?m)^\s*Sources:\s+2\s*$`, res.stdout)
+			for collection, count := range map[string]int{"sources": 2, "events": 100} {
+				files, err := filepath.Glob(filepath.Join(work, "archive", collection, "*.glx"))
+				require.NoError(t, err)
+				assert.Len(t, files, count, collection)
+			}
+			citations, err := filepath.Glob(filepath.Join(work, "archive", "citations", "*.glx"))
+			require.NoError(t, err)
+			assert.GreaterOrEqual(t, len(citations), 100, "every inline occurrence must retain citation detail")
+			assertArchiveValid(t, filepath.Join(work, "archive"))
+		})
+	}
+}
 
 // gedcomFixture returns the path of a file under glx/testdata/gedcom.
 func gedcomFixture(t *testing.T, rel string) string {
