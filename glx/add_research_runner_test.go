@@ -44,18 +44,18 @@ func writeAddTestFile(t *testing.T, dir, rel, content string) {
 func TestAddResearchLog_HappyPath(t *testing.T) {
 	dir := initArchiveDir(t)
 	io, out, _ := TestIOStreams()
-	if err := addPerson(io, &addPersonOptions{addCommonOptions: addCommonOptions{ArchivePath: dir}, Given: "Lewis", Surname: "Little"}); err != nil {
+	if err := addPerson(io, &addPersonOptions{ArchivePath: dir, Given: "Lewis", Surname: "Little"}); err != nil {
 		t.Fatalf("setup person: %v", err)
 	}
 	out.Reset()
 
 	err := addResearchLog(io, &addResearchLogOptions{
-		addCommonOptions: addCommonOptions{ArchivePath: dir, Notes: []string{"start with probate"}},
-		SubjectPerson:    "person-lewis-little",
-		Objective:        "Verify the reported 1826 intestate death",
-		Status:           "in_progress",
-		Date:             "2026-09-17",
-		Researcher:       "I. Schepp",
+		ArchivePath: dir, Notes: []string{"start with probate"},
+		SubjectPerson: "person-lewis-little",
+		Objective:     "Verify the reported 1826 intestate death",
+		Status:        "in_progress",
+		Date:          "2026-09-17",
+		Researcher:    "I. Schepp",
 	})
 	if err != nil {
 		t.Fatalf("addResearchLog: %v", err)
@@ -88,7 +88,7 @@ func TestAddResearchLog_IDDerivation(t *testing.T) {
 	}{
 		{"title wins", addResearchLogOptions{Title: "1860 Census", Objective: "find them"}, "research-log-1860-census"},
 		{"objective when nothing else", addResearchLogOptions{Objective: "Find Jane Webb"}, "research-log-find-jane-webb"},
-		{"explicit id", addResearchLogOptions{addCommonOptions: addCommonOptions{OverrideID: "rl-death"}}, "rl-death"},
+		{"explicit id", addResearchLogOptions{OverrideID: "rl-death"}, "rl-death"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -145,9 +145,9 @@ func TestAddSearch_AppendsAndRollsUpCitation(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	mustAdd(addSource(io, &addSourceOptions{addCommonOptions: addCommonOptions{ArchivePath: dir}, Title: "Find a Grave"}))
-	mustAdd(addCitation(io, &addCitationOptions{addCommonOptions: addCommonOptions{ArchivePath: dir, OverrideID: "citation-fag"}, Source: "source-find-a-grave"}))
-	mustAdd(addResearchLog(io, &addResearchLogOptions{addCommonOptions: addCommonOptions{ArchivePath: dir, OverrideID: "rl-death"}}))
+	mustAdd(addSource(io, &addSourceOptions{ArchivePath: dir, Title: "Find a Grave"}))
+	mustAdd(addCitation(io, &addCitationOptions{ArchivePath: dir, OverrideID: "citation-fag", Source: "source-find-a-grave"}))
+	mustAdd(addResearchLog(io, &addResearchLogOptions{ArchivePath: dir, OverrideID: "rl-death"}))
 	out.Reset()
 
 	mustAdd(addSearch(io, &addSearchOptions{
@@ -249,17 +249,17 @@ func TestAddSearch_AcceptsArchiveDefinedResult(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	extra := "\n  requires_visit:\n    label: \"Requires Visit\"\n    description: \"Only available on site.\"\n"
+	extra := "\n  archive_only:\n    label: \"Archive Only\"\n    description: \"A value only this archive defines.\"\n"
 	if err := os.WriteFile(path, append(data, []byte(extra)...), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	writeAddTestFile(t, dir, "research_logs/rl-x.glx", "research_logs:\n  rl-x:\n    objective: x\n")
 
 	io, _, _ := TestIOStreams()
-	if err := addSearch(io, &addSearchOptions{ArchivePath: dir, Log: "rl-x", Collection: "Parish chest", Result: "requires_visit"}); err != nil {
+	if err := addSearch(io, &addSearchOptions{ArchivePath: dir, Log: "rl-x", Collection: "Parish chest", Result: "archive_only"}); err != nil {
 		t.Fatalf("addSearch with archive-defined result: %v", err)
 	}
-	if got := readBackArchive(t, dir).ResearchLogs["rl-x"].Searches[0].Result; got != "requires_visit" {
+	if got := readBackArchive(t, dir).ResearchLogs["rl-x"].Searches[0].Result; got != "archive_only" {
 		t.Errorf("result: got %q", got)
 	}
 }
@@ -352,18 +352,18 @@ func TestDetectYAMLIndent(t *testing.T) {
 func TestAddStudy_HappyPath(t *testing.T) {
 	dir := initArchiveDir(t)
 	io, out, _ := TestIOStreams()
-	if err := addPlace(io, &addPlaceOptions{addCommonOptions: addCommonOptions{ArchivePath: dir}, Name: "Rowan NC"}); err != nil {
+	if err := addPlace(io, &addPlaceOptions{ArchivePath: dir, Name: "Rowan NC"}); err != nil {
 		t.Fatal(err)
 	}
 	out.Reset()
 
 	err := addStudy(io, &addStudyOptions{
-		addCommonOptions: addCommonOptions{ArchivePath: dir},
-		Title:            "Parents of Lewis Little",
-		Type:             "brick_wall",
-		Status:           "active",
-		DateRange:        "FROM 1750 TO 1822",
-		Places:           []string{"place-rowan-nc"},
+		ArchivePath: dir,
+		Title:       "Parents of Lewis Little",
+		Type:        "brick_wall",
+		Status:      "active",
+		DateRange:   "FROM 1750 TO 1822",
+		Places:      []string{"place-rowan-nc"},
 	})
 	if err != nil {
 		t.Fatalf("addStudy: %v", err)
@@ -414,13 +414,13 @@ func TestAddSource_PropertyFlags(t *testing.T) {
 	dir := initArchiveDir(t)
 	io, _, _ := TestIOStreams()
 	err := addSource(io, &addSourceOptions{
-		addCommonOptions: addCommonOptions{ArchivePath: dir},
-		Title:            "Find a Grave",
-		URL:              "https://www.findagrave.com",
-		PublicationInfo:  "Find a Grave, 1995-",
-		CallNumber:       "FG-1",
-		SourceNature:     "derivative",
-		InformationType:  "secondary",
+		ArchivePath:     dir,
+		Title:           "Find a Grave",
+		URL:             "https://www.findagrave.com",
+		PublicationInfo: "Find a Grave, 1995-",
+		CallNumber:      "FG-1",
+		SourceNature:    "derivative",
+		InformationType: "secondary",
 	})
 	if err != nil {
 		t.Fatalf("addSource: %v", err)
@@ -451,9 +451,9 @@ func TestAddPerson_ExternalIDs(t *testing.T) {
 	dir := initArchiveDir(t)
 	io, _, _ := TestIOStreams()
 	err := addPerson(io, &addPersonOptions{
-		addCommonOptions: addCommonOptions{ArchivePath: dir},
-		Given:            "Lewis",
-		ExternalIDs:      []string{"wikitree:Little-20642", "familysearch:ark:/61903/1:1:X"},
+		ArchivePath: dir,
+		Given:       "Lewis",
+		ExternalIDs: []string{"wikitree:Little-20642", "familysearch:ark:/61903/1:1:X"},
 	})
 	if err != nil {
 		t.Fatalf("addPerson: %v", err)
@@ -472,7 +472,7 @@ func TestAddPerson_ExternalIDs(t *testing.T) {
 		t.Errorf("value split on the first colon only: %#v", second)
 	}
 
-	if err := addPerson(io, &addPersonOptions{addCommonOptions: addCommonOptions{ArchivePath: dir}, Given: "X", ExternalIDs: []string{"novalue"}}); !errors.Is(err, ErrAddExternalIDFormat) {
+	if err := addPerson(io, &addPersonOptions{ArchivePath: dir, Given: "X", ExternalIDs: []string{"novalue"}}); !errors.Is(err, ErrAddExternalIDFormat) {
 		t.Errorf("malformed --external-id: got %v", err)
 	}
 }
@@ -481,10 +481,10 @@ func TestAddEvent_PropertyFlags(t *testing.T) {
 	dir := initArchiveDir(t)
 	io, _, _ := TestIOStreams()
 	err := addEvent(io, &addEventOptions{
-		addCommonOptions: addCommonOptions{ArchivePath: dir},
-		Type:             "death",
-		Date:             "1826",
-		Properties:       []string{"event_subtype=intestate", "description=Died at home, aged 60=ish"},
+		ArchivePath: dir,
+		Type:        "death",
+		Date:        "1826",
+		Properties:  []string{"event_subtype=intestate", "description=Died at home, aged 60=ish"},
 	})
 	if err != nil {
 		t.Fatalf("addEvent: %v", err)
@@ -556,7 +556,7 @@ func TestAddResearch_CobraWrappersDelegateCleanly(t *testing.T) {
 		addStudyOpts = addStudyOptions{}
 	})
 
-	addResearchLogOpts = addResearchLogOptions{addCommonOptions: addCommonOptions{ArchivePath: dir, OverrideID: "rl-wrap"}}
+	addResearchLogOpts = addResearchLogOptions{ArchivePath: dir, OverrideID: "rl-wrap"}
 	if err := runAddResearchLog(nil, nil); err != nil {
 		t.Fatalf("runAddResearchLog: %v", err)
 	}
@@ -564,7 +564,7 @@ func TestAddResearch_CobraWrappersDelegateCleanly(t *testing.T) {
 	if err := runAddSearch(nil, nil); err != nil {
 		t.Fatalf("runAddSearch: %v", err)
 	}
-	addStudyOpts = addStudyOptions{addCommonOptions: addCommonOptions{ArchivePath: dir}, Title: "Wrapper Study"}
+	addStudyOpts = addStudyOptions{ArchivePath: dir, Title: "Wrapper Study"}
 	if err := runAddStudy(nil, nil); err != nil {
 		t.Fatalf("runAddStudy: %v", err)
 	}
