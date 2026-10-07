@@ -1,6 +1,11 @@
 # Standard Participant Roles
 # This file defines the standard roles that people play in events and relationships.
 # Archives can extend this with custom roles by adding additional entries.
+#
+# applies_to lists the contexts a role is meant for ("event", "relationship", or
+# both). Every standard role declares it explicitly. A custom role that omits
+# applies_to is treated as applicable to every context. `glx validate` emits a
+# warning (not an error) when a role is used in a context its applies_to excludes.
 
 participant_roles:
   # Event Roles
@@ -21,25 +26,25 @@ participant_roles:
     description: "Person who witnessed the event"
     applies_to:
       - event
-  
+
   officiant:
     label: "Officiant"
     description: "Person who officiated the ceremony"
     applies_to:
       - event
-  
+
   informant:
     label: "Informant"
     description: "Person providing information"
     applies_to:
       - event
-  
+
   groom:
     label: "Groom"
     description: "Male marriage participant"
     applies_to:
       - event
-  
+
   bride:
     label: "Bride"
     description: "Female marriage participant"
@@ -51,42 +56,93 @@ participant_roles:
     description: "Member of a census household other than its head, who is the event's principal. Set the participant property 'named: false' when the schedule counts the person only as a tick mark in an age bracket rather than naming them (US 1790-1840 and similar head-only enumerations)."
     applies_to:
       - event
-  
-  # Relationship Roles
+
+  enumerator:
+    label: "Enumerator"
+    description: "Census taker who recorded the household"
+    applies_to:
+      - event
+
+  attending_physician:
+    label: "Attending Physician"
+    description: "Physician or other medical attendant named on a birth or death record"
+    applies_to:
+      - event
+
+  registrar:
+    label: "Registrar"
+    description: "Official who registered or filed a vital or civil record"
+    applies_to:
+      - event
+
+  bondsman:
+    label: "Bondsman"
+    description: "Surety on a bond, such as a marriage, guardian, administration or executor's bond"
+    applies_to:
+      - event
+
+  testator:
+    label: "Testator"
+    description: "Person whose will is being made, proved or executed"
+    applies_to:
+      - event
+
+  executor:
+    label: "Executor"
+    description: "Executor or administrator of an estate"
+    applies_to:
+      - event
+
+  legatee:
+    label: "Legatee"
+    description: "Person named in a will to receive a bequest. Prefer this over 'beneficiary' when the record is a will"
+    applies_to:
+      - event
+
+  beneficiary:
+    label: "Beneficiary"
+    description: "Person receiving property or benefit other than a bequest under a will, such as an heir in an intestate estate division, an insurance or pension beneficiary, or the beneficiary of a trust"
+    applies_to:
+      - event
+
+  grantor:
+    label: "Grantor"
+    description: "Party conveying land or property, such as the seller in a deed or the government issuing a patent or grant"
+    applies_to:
+      - event
+
+  grantee:
+    label: "Grantee"
+    description: "Party receiving land or property in a deed, entry, patent or grant"
+    applies_to:
+      - event
+
+  adjoining_owner:
+    label: "Adjoining Owner"
+    description: "Neighbouring landowner named only in a land record's boundary description"
+    applies_to:
+      - event
+
+  # Event and Relationship Roles
   spouse:
     label: "Spouse"
-    description: "Marriage partner"
+    description: "Marriage partner: a party to a marriage relationship, or a spouse named in an event such as a marriage, divorce or census entry"
     applies_to:
-      - relationship
-  
-  parent:
-    label: "Parent"
-    description: "Parent in parent-child relationship"
-    applies_to:
-      - relationship
-  
-  child:
-    label: "Child"
-    description: "Child in parent-child relationship"
-    applies_to:
-      - relationship
-  
-  adoptive_parent:
-    label: "Adoptive Parent"
-    description: "Adoptive parent in adoption relationship"
-    applies_to:
+      - event
       - relationship
 
-  adopted_child:
-    label: "Adopted Child"
-    description: "Adopted child in adoption relationship"
+  parent:
+    label: "Parent"
+    description: "Parent in a parent-child relationship, or a parent named in an event such as a birth or baptism record"
     applies_to:
+      - event
       - relationship
-  
-  sibling:
-    label: "Sibling"
-    description: "Brother or sister"
+
+  child:
+    label: "Child"
+    description: "Child in a parent-child relationship, or a child named in an event such as a census entry or an estate division"
     applies_to:
+      - event
       - relationship
 
   godparent:
@@ -101,6 +157,77 @@ participant_roles:
     description: "Person sponsored by a godparent (in baptism/christening events, or in godparent relationships)"
     applies_to:
       - event
+      - relationship
+
+  guardian:
+    label: "Guardian"
+    description: "Legal guardian, in a guardianship relationship or a guardianship event such as a guardian's bond or appointment"
+    applies_to:
+      - event
+      - relationship
+
+  ward:
+    label: "Ward"
+    description: "Person under legal guardianship, in a guardianship relationship or a guardianship event"
+    applies_to:
+      - event
+      - relationship
+
+  household_head:
+    label: "Household Head"
+    description: "Head of a household: the head named in a census or other household enumeration event, or the householder in a boarder relationship"
+    applies_to:
+      - event
+      - relationship
+
+  boarder:
+    label: "Boarder"
+    description: "Boarder, lodger, ward, or servant in a household, in a boarder relationship or as enumerated in a census event"
+    applies_to:
+      - event
+      - relationship
+
+  # Relationship Roles
+  adoptive_parent:
+    label: "Adoptive Parent"
+    description: "Adoptive parent in adoption relationship"
+    applies_to:
+      - relationship
+
+  adopted_child:
+    label: "Adopted Child"
+    description: "Adopted child in adoption relationship"
+    applies_to:
+      - relationship
+
+  foster_parent:
+    label: "Foster Parent"
+    description: "Foster parent in a foster parent-child relationship"
+    applies_to:
+      - relationship
+
+  foster_child:
+    label: "Foster Child"
+    description: "Foster child in a foster parent-child relationship"
+    applies_to:
+      - relationship
+
+  step_parent:
+    label: "Step-Parent"
+    description: "Step-parent (spouse of a child's parent) in a step-parent relationship"
+    applies_to:
+      - relationship
+
+  step_child:
+    label: "Step-Child"
+    description: "Step-child in a step-parent relationship"
+    applies_to:
+      - relationship
+
+  sibling:
+    label: "Sibling"
+    description: "Brother or sister"
+    applies_to:
       - relationship
 
   enslaver:
@@ -120,16 +247,3 @@ participant_roles:
     description: "Person in an associate (FAN — friend, colleague, community member) relationship"
     applies_to:
       - relationship
-
-  household_head:
-    label: "Household Head"
-    description: "Head of household in a boarder relationship"
-    applies_to:
-      - relationship
-
-  boarder:
-    label: "Boarder"
-    description: "Boarder, lodger, ward, or servant in a household"
-    applies_to:
-      - relationship
-

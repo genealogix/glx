@@ -55,29 +55,36 @@ glx stats
 
 ```text
 Entity counts:
-  Persons:       791
-  Events:        961
+  Persons:       792
+  Events:        986
   Relationships: 822
-  Places:        108
-  Sources:       9
-  Citations:     247
+  Places:        107
+  Sources:       11
+  Citations:     269
   Repositories:  4
   Media:         0
-  Assertions:    1808
+  Assertions:    1929
 
 Assertion confidence:
-  high         1406  ( 77.8%)
-  medium        365  ( 20.2%)
-  low            37  (  2.0%)
+  high         1509  ( 78.2%)
+  medium        381  ( 19.8%)
+  low            39  (  2.0%)
 
-Entity coverage (referenced by assertions):
-  Persons         623/791  (78.8%)
-  Events          55/961  (5.7%)
+Direct assertion references (entity is an assertion's subject):
+  Persons         631/792  (79.7%)
+  Events          126/986  (12.8%)
   Relationships   6/822  (0.7%)
-  Places          0/108  (0.0%)
+  Places          0/107  (0.0%)
+
+Evidence coverage (assertion reachability):
+  Includes unsourced or disproven assertions and place ancestors; percentages do not measure sourcing or proof.
+  Persons         653/792  (82.4%)
+  Events          126/986  (12.8%)
+  Relationships   6/822  (0.7%)
+  Places          44/107  (41.1%)
 ```
 
-This tells you the archive has nearly 800 persons with 1,800+ assertions, and that 78% of persons are backed by at least one assertion. The coverage gaps in events and places suggest areas for future research.
+This tells you the archive has nearly 800 persons with 1,900+ assertions. The two coverage blocks answer different questions. "Direct assertion references" counts only entities an assertion names as its subject. "Evidence coverage" measures assertion reachability: a person is covered when an assertion names them as a participant or targets an event or relationship they take part in, and a place is covered when an assertion names it as a value (an event's `place`, a `residence`), when an asserted event happens there, or when it contains such a place. Every assertion counts, including unsourced or disproven assertions. Place ancestors count as gazetteer scaffolding, so reaching a county also reaches its state and country without independent assertions about them. These percentages measure assertion reach rather than sourcing or proof. Here no assertion targets a place directly, yet 41% of places are reached through asserted events. The remaining gaps in events and places suggest areas for future research.
 
 ### `glx places` — Analyze place data quality
 

@@ -45,7 +45,7 @@ Standard vocabularies provide:
 
 ### Event Types
 
-Defines lifecycle events (birth, death, marriage, adoption), religious events (baptism, confirmation, bar/bat mitzvah), legal events (annulment, probate, will), and migration events (immigration, emigration, naturalization).
+Defines lifecycle events (birth, death, marriage, adoption), religious events (baptism, confirmation, bar/bat mitzvah), legal events (annulment, probate, will, land_transaction), and migration events (immigration, emigration, naturalization).
 
 <YamlFile
   :content="vocabularies['event-types']"
@@ -175,7 +175,7 @@ Defines controlled values for the `gender` person property — self-identified g
 
 ### Search Result Types
 
-Defines the outcome of each search recorded in a [research log](../4-entity-types/research-log.md) (found, not found, inconclusive, partial, not searched). Negative evidence (`not_found`) is a first-class outcome, supporting a "reasonably exhaustive search" per the Genealogical Proof Standard.
+Defines the outcome of each search recorded in a [research log](../4-entity-types/research-log.md) (found, not found, inconclusive, partial, not searched, unavailable, requires visit). Negative evidence (`not_found`) is a first-class outcome, supporting a "reasonably exhaustive search" per the Genealogical Proof Standard.
 
 <YamlFile
   :content="vocabularies['search-result-types']"
