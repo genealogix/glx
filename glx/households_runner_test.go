@@ -265,7 +265,7 @@ func TestUnnamedHouseholdMemberCountsAsCensusFound(t *testing.T) {
 	}
 	require.Positive(t, maryIssues, "other census years are still suggested, so the check above is not vacuous")
 
-	result := buildCoverage("person-mary", archive.Persons["person-mary"], archive)
+	result := mustBuildCoverage("person-mary", archive.Persons["person-mary"], archive)
 	found := false
 	for _, r := range result.Records {
 		if r.Category == "census" && strings.HasPrefix(r.Label, "1820") {
