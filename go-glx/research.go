@@ -77,8 +77,9 @@ func BuildProof(archive *GLXFile, personID, question string, opts ProofOptions) 
 
 // BuildCoverage returns the complete source-coverage checklist for an exact
 // person ID, without mutating archive. The result has no references to its maps.
-// Vital and church event records require the person's principal role; census
-// records allow ordinary participation. Media-linked sources are recognized.
+// Only the person's own event records satisfy checklist categories; other
+// participations are returned in AppearsIn. Presence independently determines
+// applicable census jurisdictions. Media-linked sources are recognized.
 func BuildCoverage(archive *GLXFile, personID string, opts CoverageOptions) (*CoverageResult, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, err

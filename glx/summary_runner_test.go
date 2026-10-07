@@ -482,14 +482,13 @@ func TestFindParentIDs_None(t *testing.T) {
 func TestFindSiblingIDs(t *testing.T) {
 	archive := newTestArchive()
 
-	parentIDs := []string{"person-john", "person-jane"}
-	siblings := findSiblingIDs("person-child", parentIDs, archive)
+	siblings := findSiblingIDs("person-child", archive)
 	require.Len(t, siblings, 1)
 	assert.Equal(t, "person-child2", siblings[0])
 }
 
 func TestFindSiblingIDs_NoParents(t *testing.T) {
-	siblings := findSiblingIDs("person-john", nil, newTestArchive())
+	siblings := findSiblingIDs("person-john", newTestArchive())
 	assert.Empty(t, siblings)
 }
 

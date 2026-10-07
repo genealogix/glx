@@ -163,7 +163,7 @@ func isVitalPrincipal(eventType, role string) bool {
 		return true
 	case ParticipantRoleChild:
 		return isBirthEventType(eventType)
-	case "deceased":
+	case participationRoleDeceased:
 		return isDeathEventType(eventType)
 	default:
 		return false

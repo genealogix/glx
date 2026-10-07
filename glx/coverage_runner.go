@@ -195,6 +195,28 @@ func printCoverageText(result *coverageResult) {
 
 	fmt.Printf("\n  Coverage: %d of %d expected records found (%d%%)\n",
 		result.Found, result.Expected, coveragePercent(result.Found, result.Expected))
+	printCoverageAppearances(result.AppearsIn)
+}
+
+// printCoverageAppearances lists the other people's records the person
+// appears in, which the checklist above does not count.
+func printCoverageAppearances(appearances []coverageAppearance) {
+	if len(appearances) == 0 {
+		return
+	}
+
+	fmt.Println("\n  Appears in (other people's records, not counted above):")
+	for _, a := range appearances {
+		line := "    " + a.Label
+		if a.Role != "" {
+			line += " (" + a.Role + ")"
+		}
+		line += " -- " + a.EventID
+		if a.Date != "" {
+			line += ", " + a.Date
+		}
+		fmt.Println(line)
+	}
 }
 
 func coveragePercent(found, expected int) int {
@@ -217,6 +239,7 @@ func printCoverageJSON(result *coverageResult) error {
 }
 
 type (
-	coverageRecord = glxlib.CoverageRecord
-	coverageResult = glxlib.CoverageResult
+	coverageRecord     = glxlib.CoverageRecord
+	coverageResult     = glxlib.CoverageResult
+	coverageAppearance = glxlib.CoverageAppearance
 )

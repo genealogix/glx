@@ -67,19 +67,3 @@ func analyzeConflictsWithOptions(archive *glxlib.GLXFile, opts glxlib.Comparison
 
 	return issues, nil
 }
-
-// confidenceRank returns a numeric rank for confidence levels (lower = higher confidence).
-func confidenceRank(c string) int {
-	switch strings.ToLower(c) {
-	case "high":
-		return 0
-	case "medium-high":
-		return 1
-	case "medium":
-		return 2
-	case "low":
-		return 3
-	default:
-		return 4
-	}
-}

@@ -17,12 +17,14 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"slices"
 	"sort"
 	"strings"
 	"unicode/utf8"
 
 	glxlib "github.com/genealogix/glx/go-glx"
+	"github.com/genealogix/glx/go-glx/glxdate"
 )
 
 // undatedMigrationSortKey is the sort key dateSortKey assigns to entries
@@ -53,8 +55,18 @@ type migrationEntry struct {
 	Place   string `json:"place"`              // canonical hierarchy path, or the freeform value verbatim
 	Region  string `json:"region,omitempty"`   // normalized region used for movement detection
 	Label   string `json:"label"`              // what kind of observation this is (e.g. "Birth", "1860 US Census")
+	Role    string `json:"role,omitempty"`     // the person's participant role, for event observations
 
-	sortKey string // chronological sort key; not serialized
+	// Excluded marks an observation shown in the timeline but left out of
+	// movement detection, with Note saying why: the person's role does not
+	// put them at the place (a grantor selling land from another state, an
+	// absent legatee), or a dated residence covering the date places them
+	// elsewhere (#1330).
+	Excluded bool   `json:"excluded,omitempty"`
+	Note     string `json:"note,omitempty"`
+
+	sortKey  string // chronological sort key; not serialized
+	location bool   // a residence value: an explicit statement of where the person lived
 }
 
 // migrationMovement is a detected change of region between two consecutive
@@ -199,13 +211,21 @@ func collectMigrationEntries(personID string, archive *glxlib.GLXFile) []migrati
 		}
 		childName, isChildBirth := childBirthOf(event, personID, children)
 
-		switch {
-		case isChildBirth:
-			entries = append(entries, newMigrationEntry(
-				string(event.Date), event.PlaceID, fmt.Sprintf("Birth of child (%s)", childName), archive))
-		case timelineIsParticipant(personID, event):
-			entries = append(entries, newMigrationEntry(string(event.Date), event.PlaceID, migrationEventLabel(event), archive))
+		participation, role, ok := glxlib.EventParticipation(event, personID, archive.ParticipantRoles)
+		if !ok && !isChildBirth {
+			continue
 		}
+		label := migrationEventLabel(event)
+		if isChildBirth {
+			label = fmt.Sprintf("Birth of child (%s)", childName)
+		}
+		entry := newMigrationEntry(string(event.Date), event.PlaceID, label, archive)
+		entry.Role = role
+		if ok && !participation.Present {
+			entry.Excluded = true
+			entry.Note = fmt.Sprintf("role %q does not imply presence", role)
+		}
+		entries = append(entries, entry)
 	}
 
 	// Residence property values (plain string, structured map, or temporal list)
@@ -213,6 +233,7 @@ func collectMigrationEntries(personID string, archive *glxlib.GLXFile) []migrati
 		entries = append(entries, residenceMigrationEntries(person.Properties[glxlib.PersonPropertyResidence], archive)...)
 	}
 
+	applyResidencePeriods(entries)
 	entries = dedupeMigrationEntries(entries)
 	sort.SliceStable(entries, func(i, j int) bool {
 		return entries[i].sortKey < entries[j].sortKey
@@ -223,7 +244,7 @@ func collectMigrationEntries(personID string, archive *glxlib.GLXFile) []migrati
 
 // childBirthOf reports whether an event is the birth of one of the person's
 // children, returning the child's display name. A participant other than the
-// person who is in the children map identifies the event.
+// person who is in the children map and owns the record identifies the event.
 func childBirthOf(event *glxlib.Event, personID string, children map[string]string) (string, bool) {
 	if len(children) == 0 || !strings.EqualFold(event.Type, glxlib.EventTypeBirth) {
 		return "", false
@@ -232,7 +253,7 @@ func childBirthOf(event *glxlib.Event, personID string, children map[string]stri
 		if p.Person == personID {
 			continue
 		}
-		if name, ok := children[p.Person]; ok {
+		if name, ok := children[p.Person]; ok && glxlib.ClassifyParticipation(event.Type, p.Role, nil).OwnRecord {
 			return name, true
 		}
 	}
@@ -264,7 +285,9 @@ func residenceMigrationEntries(raw any, archive *glxlib.GLXFile) []migrationEntr
 		if value == "" {
 			return
 		}
-		entries = append(entries, newMigrationEntry(date, value, "Residence", archive))
+		entry := newMigrationEntry(date, value, "Residence", archive)
+		entry.location = true
+		entries = append(entries, entry)
 	}
 
 	switch v := raw.(type) {
@@ -284,6 +307,93 @@ func residenceMigrationEntries(raw any, archive *glxlib.GLXFile) []migrationEntr
 	}
 
 	return entries
+}
+
+// residencePeriod is the bounded civil-date span a residence value covers.
+type residencePeriod struct {
+	date   glxdate.Date
+	span   glxdate.Interval
+	region string
+	label  string // the residence's date and place, for notes
+}
+
+// applyResidencePeriods lets a dated residence win over event places inside
+// its period (#1330): an observation whose whole possible date span fits
+// inside a residence, in a region none of the covering residences name, is
+// kept in the timeline but excluded from movement detection. The researcher's explicit
+// statement of where the person lived outranks the place of a deed signed,
+// an estate settled, or a marriage witnessed on a visit elsewhere.
+//
+// Only bounded periods count (a single date, BET…AND, FROM…TO); an
+// open-ended FROM or a BEF/AFT date says too little about where the period
+// stops. Open-ended event spans remain included, and dates in different
+// calendars are not compared without conversion.
+func applyResidencePeriods(entries []migrationEntry) {
+	var periods []residencePeriod
+	for i := range entries {
+		e := &entries[i]
+		if !e.location || e.Region == "" {
+			continue
+		}
+		if date, ok := boundedMigrationDate(e.Date); ok {
+			periods = append(periods, residencePeriod{date: date, span: date.Timing().Outer, region: e.Region, label: e.Date + " " + e.Place})
+		}
+	}
+	if len(periods) == 0 {
+		return
+	}
+
+	for i := range entries {
+		e := &entries[i]
+		if e.location || e.Excluded || e.Region == "" || e.sortKey == undatedMigrationSortKey {
+			continue
+		}
+		date, ok := boundedMigrationDate(e.Date)
+		if !ok {
+			continue
+		}
+		if conflict := conflictingResidence(periods, e.Region, date); conflict != nil {
+			e.Excluded = true
+			e.Note = "inside residence " + conflict.label
+		}
+	}
+}
+
+// conflictingResidence finds a residence that contains the event's whole
+// possible span, unless a matching residence preserves the agreement veto.
+func conflictingResidence(periods []residencePeriod, region string, date glxdate.Date) *residencePeriod {
+	span := date.Timing().Outer
+	var conflict *residencePeriod
+	for i := range periods {
+		p := &periods[i]
+		if date.Calendar() != p.date.Calendar() || date.CalendarName() != p.date.CalendarName() {
+			continue
+		}
+		sameRegion := strings.EqualFold(p.region, region)
+		// Preserve the existing overlap veto when a matching residence
+		// covers the first possible date, even if it does not cover the end.
+		if sameRegion && p.span.Start <= span.Start && span.Start < p.span.End {
+			return nil
+		}
+		if !sameRegion && p.span.Contains(span) && conflict == nil {
+			conflict = p
+		}
+	}
+
+	return conflict
+}
+
+// boundedMigrationDate parses a date with finite, known possible bounds.
+// Timing retains the written precision of approximate dates; it introduces
+// no additional tolerance. Reversed and open spans cannot establish containment.
+func boundedMigrationDate(date string) (glxdate.Date, bool) {
+	d, err := glxlib.DateString(date).Parse()
+	if err != nil || !d.Valid() {
+		return d, false
+	}
+	bounds := d.Timing()
+
+	return d, bounds.Known && !bounds.Reversed && bounds.Outer.Start != math.MinInt && bounds.Outer.End != math.MaxInt && bounds.Outer.Start < bounds.Outer.End
 }
 
 // stringField returns m[key] rendered as a string, or "" when absent. Dates
@@ -392,19 +502,24 @@ func normalizeRegionName(name string) string {
 }
 
 // dedupeMigrationEntries removes exact duplicate observations (same date,
-// place, and label), which arise when the same event is reachable both
+// place, label, and role/exclusion semantics), which arise when the same event is reachable both
 // directly and through a relationship.
 func dedupeMigrationEntries(entries []migrationEntry) []migrationEntry {
-	seen := make(map[string]bool)
+	type observationKey struct {
+		date, placeID, place, label, role, note string
+		excluded, location                      bool
+	}
+	seen := make(map[observationKey]bool)
 	result := make([]migrationEntry, 0, len(entries))
 
-	for _, e := range entries {
-		key := e.Date + "\x00" + e.PlaceID + "\x00" + e.Place + "\x00" + e.Label
+	for i := range entries {
+		e := &entries[i]
+		key := observationKey{e.Date, e.PlaceID, e.Place, e.Label, e.Role, e.Note, e.Excluded, e.location}
 		if seen[key] {
 			continue
 		}
 		seen[key] = true
-		result = append(result, e)
+		result = append(result, *e)
 	}
 
 	return result
@@ -419,7 +534,7 @@ func computeMovements(entries []migrationEntry) []migrationMovement {
 
 	for i := range entries {
 		entry := &entries[i]
-		if entry.sortKey == undatedMigrationSortKey || entry.Region == "" {
+		if entry.sortKey == undatedMigrationSortKey || entry.Region == "" || entry.Excluded {
 			continue
 		}
 		if prev != nil && !strings.EqualFold(prev.Region, entry.Region) {
@@ -483,8 +598,9 @@ func matchMigrationPattern(archive *glxlib.GLXFile, terms []string) migrationPat
 func migrationStops(entries []migrationEntry) []migrationStop {
 	var stops []migrationStop
 
-	for _, e := range entries {
-		if e.sortKey == undatedMigrationSortKey || e.Region == "" {
+	for i := range entries {
+		e := &entries[i]
+		if e.sortKey == undatedMigrationSortKey || e.Region == "" || e.Excluded {
 			continue
 		}
 		if len(stops) > 0 && strings.EqualFold(stops[len(stops)-1].Region, e.Region) {
@@ -564,7 +680,8 @@ func printMigrationReportText(io *IOStreams, report *migrationReport) {
 	}
 
 	placeWidth := 0
-	for _, e := range report.Entries {
+	for i := range report.Entries {
+		e := &report.Entries[i]
 		if n := utf8.RuneCountInString(e.Place); n > placeWidth {
 			placeWidth = n
 		}
@@ -574,20 +691,22 @@ func printMigrationReportText(io *IOStreams, report *migrationReport) {
 	}
 
 	var undated []migrationEntry
-	for _, e := range report.Entries {
+	for i := range report.Entries {
+		e := &report.Entries[i]
 		if e.sortKey == undatedMigrationSortKey {
-			undated = append(undated, e)
+			undated = append(undated, *e)
 
 			continue
 		}
-		io.Printf("  %-18s  %s  (%s)\n", displayDate(e.Date), padPlaceColumn(e.Place, placeWidth), e.Label)
+		io.Println(formatMigrationEntryLine(e, placeWidth))
 	}
 
 	if len(undated) > 0 {
 		io.Println("")
 		io.Println("  Undated:")
-		for _, e := range undated {
-			io.Printf("  %-18s  %s  (%s)\n", displayDate(e.Date), padPlaceColumn(e.Place, placeWidth), e.Label)
+		for i := range undated {
+			e := &undated[i]
+			io.Println(formatMigrationEntryLine(e, placeWidth))
 		}
 	}
 
@@ -600,6 +719,17 @@ func printMigrationReportText(io *IOStreams, report *migrationReport) {
 	}
 
 	io.Println("")
+}
+
+// formatMigrationEntryLine renders one timeline row. An observation left out
+// of movement detection carries the reason after its label.
+func formatMigrationEntryLine(e *migrationEntry, placeWidth int) string {
+	line := fmt.Sprintf("  %-18s  %s  (%s)", displayDate(e.Date), padPlaceColumn(e.Place, placeWidth), e.Label)
+	if e.Excluded {
+		line += " [not counted as a move: " + e.Note + "]"
+	}
+
+	return line
 }
 
 // padPlaceColumn truncates a place string to migrationsPlaceColumnCap runes
