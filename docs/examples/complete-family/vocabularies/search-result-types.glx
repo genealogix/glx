@@ -24,3 +24,11 @@ search_result_types:
   not_searched:
     label: "Not Searched"
     description: "Search is planned but has not yet been performed. Use to record outstanding work alongside completed searches."
+
+  unavailable:
+    label: "Unavailable"
+    description: "The source was sought but cannot be searched: it does not survive, is restricted, or is not accessible. A documented, permanent gap rather than outstanding work; use notes to say why."
+
+  requires_visit:
+    label: "Requires Visit"
+    description: "The source exists but can only be searched on site or by request (not online or remotely). Outstanding work, but of a different kind from not_searched."

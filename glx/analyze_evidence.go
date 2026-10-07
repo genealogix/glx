@@ -127,7 +127,11 @@ func checkSingleSourcePersons(archive *glxlib.GLXFile) []AnalysisIssue {
 	return issues
 }
 
-// checkOrphanedCitations finds citations not referenced by any assertion.
+// checkOrphanedCitations finds citations nothing refers to. A citation is
+// referenced when an assertion cites it, or when a research log records it —
+// as a search's citation or in the log's own citations list. A negative
+// search ("searched, not found") has no assertion to hang its citation on, so
+// the research log is the only thing that can reference it (#1323).
 func checkOrphanedCitations(archive *glxlib.GLXFile) []AnalysisIssue {
 	if len(archive.Citations) == 0 {
 		return nil
@@ -142,6 +146,19 @@ func checkOrphanedCitations(archive *glxlib.GLXFile) []AnalysisIssue {
 			referenced[citID] = true
 		}
 	}
+	for _, log := range archive.ResearchLogs {
+		if log == nil {
+			continue
+		}
+		for _, citID := range log.Citations {
+			referenced[citID] = true
+		}
+		for i := range log.Searches {
+			if citID := log.Searches[i].CitationID; citID != "" {
+				referenced[citID] = true
+			}
+		}
+	}
 
 	var issues []AnalysisIssue
 	ids := sortedCitationIDs(archive.Citations)
@@ -154,14 +171,17 @@ func checkOrphanedCitations(archive *glxlib.GLXFile) []AnalysisIssue {
 			Category: "evidence",
 			Severity: "info",
 			Entity:   id,
-			Message:  "Orphaned citation — not referenced by any assertion",
+			Message:  "Orphaned citation — not referenced by any assertion or research log",
 		})
 	}
 
 	return issues
 }
 
-// checkOrphanedSources finds sources not referenced by any citation or assertion.
+// checkOrphanedSources finds sources nothing refers to. A source is
+// referenced by a citation, an assertion, a media item it is the source of, a
+// research-log search that examined it, or a study that declares it in scope
+// (#1323).
 func checkOrphanedSources(archive *glxlib.GLXFile) []AnalysisIssue {
 	if len(archive.Sources) == 0 {
 		return nil
@@ -189,6 +209,35 @@ func checkOrphanedSources(archive *glxlib.GLXFile) []AnalysisIssue {
 		}
 	}
 
+	// Sources searched in research logs
+	for _, log := range archive.ResearchLogs {
+		if log == nil {
+			continue
+		}
+		for i := range log.Searches {
+			if sourceID := log.Searches[i].SourceID; sourceID != "" {
+				referenced[sourceID] = true
+			}
+		}
+	}
+
+	// Sources in a study's scope
+	for _, study := range archive.Studies {
+		if study == nil {
+			continue
+		}
+		for _, sourceID := range study.Sources {
+			referenced[sourceID] = true
+		}
+	}
+
+	// Sources a media item was taken from
+	for _, media := range archive.Media {
+		if media != nil && media.Source != "" {
+			referenced[media.Source] = true
+		}
+	}
+
 	var issues []AnalysisIssue
 	ids := sortedSourceIDs(archive.Sources)
 	for _, id := range ids {
@@ -200,7 +249,7 @@ func checkOrphanedSources(archive *glxlib.GLXFile) []AnalysisIssue {
 			Category: "evidence",
 			Severity: "info",
 			Entity:   id,
-			Message:  "Orphaned source — not referenced by any citation or assertion",
+			Message:  "Orphaned source — not referenced by any citation, assertion, media, research log or study",
 		})
 	}
 
