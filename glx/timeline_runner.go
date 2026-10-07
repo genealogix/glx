@@ -201,7 +201,7 @@ func findRelatedPersons(personID string, archive *glxlib.GLXFile) []relatedPerso
 	relIDs := sortedKeys(archive.Relationships)
 	for _, relID := range relIDs {
 		rel := archive.Relationships[relID]
-		if !familyRelationshipTypes[rel.Type] {
+		if rel == nil || !familyRelationshipTypes[rel.Type] {
 			continue
 		}
 

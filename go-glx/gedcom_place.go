@@ -244,6 +244,7 @@ var placeTypeKeywords = []struct {
 	{PlaceTypeFarm, []string{"farm"}},
 	{PlaceTypeVillage, []string{"village", "dorf"}},
 	{PlaceTypeCounty, []string{"county"}},
+	{PlaceTypeTerritory, []string{"territory", "territories"}},
 	{PlaceTypeState, []string{"province", "state"}},
 }
 
