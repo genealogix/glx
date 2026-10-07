@@ -506,6 +506,7 @@ func mergeOneEvent(entityType EntityType, id string, base, ours, theirs *Event) 
 // opaqueOrConflict merges a structured field (an event's household tally or
 // neighbor list) as one opaque value: a change on one side wins, identical
 // changes agree, and differing changes on both sides conflict with ours kept.
+//
 //nolint:ireturn // T is a type parameter, not a returned interface.
 func opaqueOrConflict[T any](path string, base, ours, theirs T, conflicts []Merge3Conflict) (T, []Merge3Conflict) {
 	switch {
