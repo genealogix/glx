@@ -39,13 +39,16 @@ type spouseInfo struct {
 	RelType       string
 	MarriageDate  string
 	MarriagePlace string
+	Hypothetical  bool // the archive records the union only as a hypothesis
 }
 
 // otherRelInfo holds a non-family relationship for display.
 type otherRelInfo struct {
-	RelType   string
-	OtherName string
-	OtherID   string
+	RelType      string
+	Label        string // how the other participant relates to the person (see otherRelationshipLabel)
+	OtherName    string
+	OtherID      string
+	Hypothetical bool // the archive records the relationship only as a hypothesis
 }
 
 // parentChildRelTypes maps relationship types that represent parent-child connections.
@@ -502,7 +505,7 @@ func printFamilySection(personID string, archive *glxlib.GLXFile) {
 		fmt.Printf("  %-18s%s\n", "Spouse:", "(none)")
 	}
 	for _, sp := range spouses {
-		detail := sp.PersonName
+		detail := withHypotheticalMarker(sp.PersonName, sp.Hypothetical)
 		var parts []string
 		if sp.MarriageDate != "" {
 			parts = append(parts, sp.MarriageDate)
@@ -516,46 +519,78 @@ func printFamilySection(personID string, archive *glxlib.GLXFile) {
 		fmt.Printf("  %-18s%s\n", "Spouse:", detail)
 	}
 
-	// Parents
-	parentIDs := findParentIDs(personID, archive)
-	if len(parentIDs) == 0 {
+	fam := newFamilyLinks(archive)
+
+	// Parents, then step-parents. Disproven parents are left out of the
+	// family and named on an "Excluded" line so the rejected alternatives
+	// stay visible; hypothetical parents carry the "(?)" marker.
+	ownParents, stepParents := splitStep(fam.parents(personID))
+	if len(ownParents) == 0 {
 		fmt.Printf("  %-18s%s\n", "Father:", "(unknown)")
 		fmt.Printf("  %-18s%s\n", "Mother:", "(unknown)")
-	} else {
-		for _, pid := range parentIDs {
-			parent, ok := archive.Persons[pid]
-			label := "Parent"
-			name := pid
-			if ok {
-				name = extractPersonName(parent)
-				switch strings.ToLower(personSex(parent)) {
-				case glxlib.SexMale:
-					label = "Father"
-				case glxlib.SexFemale:
-					label = "Mother"
-				}
-			}
-			fmt.Printf("  %-18s%s\n", label+":", name)
+	}
+	// Two or more surviving birth fathers (or mothers) are alternatives the
+	// research has not yet decided between, not several fathers.
+	competing := fam.competingBirthParents(personID)
+	for _, e := range ownParents {
+		name := withHypotheticalMarker(summaryPersonName(e.PersonID, archive), e.Hypothetical)
+		if competing[e.PersonID] {
+			name += "  (alternative)"
 		}
+		fmt.Printf("  %-18s%s\n", parentLabel(summaryPersonSex(e.PersonID, archive))+":", name)
+	}
+	for _, e := range stepParents {
+		fmt.Printf("  %-18s%s\n", stepParentLabel(summaryPersonSex(e.PersonID, archive))+":", withHypotheticalMarker(summaryPersonName(e.PersonID, archive), e.Hypothetical))
+	}
+	if excluded := fam.excludedParents(personID); len(excluded) > 0 {
+		names := make([]string, 0, len(excluded))
+		for _, id := range excluded {
+			names = append(names, summaryPersonName(id, archive))
+		}
+		fmt.Printf("  %-18s%s\n", "Excluded:", strings.Join(names, ", ")+"  (disproven parent)")
 	}
 
-	// Siblings
-	siblingIDs := findSiblingIDs(personID, parentIDs, archive)
-	if len(siblingIDs) == 0 {
+	// Siblings, kept apart from half- and step-siblings.
+	siblings := fam.siblings(personID)
+	if len(siblings) == 0 {
 		fmt.Printf("  %-18s%s\n", "Siblings:", "(none found)")
-	} else {
-		var sibNames []string
-		for _, sid := range siblingIDs {
-			if sib, ok := archive.Persons[sid]; ok && sib != nil {
-				sibNames = append(sibNames, extractPersonName(sib))
-			} else {
-				sibNames = append(sibNames, sid)
+	}
+	for _, group := range []struct{ kind, label string }{
+		{siblingKindFull, "Siblings:"},
+		{siblingKindHalf, "Half-siblings:"},
+		{siblingKindStep, "Step-siblings:"},
+	} {
+		var names []string
+		for _, sib := range siblings {
+			if sib.Kind == group.kind {
+				names = append(names, withHypotheticalMarker(summaryPersonName(sib.PersonID, archive), sib.Hypothetical))
 			}
 		}
-		fmt.Printf("  %-18s%s\n", "Siblings:", strings.Join(sibNames, ", "))
+		if len(names) > 0 {
+			fmt.Printf("  %-18s%s\n", group.label, strings.Join(names, ", "))
+		}
 	}
 
 	fmt.Println()
+}
+
+// summaryPersonName returns a person's display name, or the ID when the
+// person is missing from the archive.
+func summaryPersonName(personID string, archive *glxlib.GLXFile) string {
+	if p, ok := archive.Persons[personID]; ok && p != nil {
+		return extractPersonName(p)
+	}
+
+	return personID
+}
+
+// summaryPersonSex returns a person's recorded sex, or "" when unknown.
+func summaryPersonSex(personID string, archive *glxlib.GLXFile) string {
+	if p, ok := archive.Persons[personID]; ok && p != nil {
+		return personSex(p)
+	}
+
+	return ""
 }
 
 // printOtherRelationshipsSection prints non-family relationships.
@@ -567,8 +602,7 @@ func printOtherRelationshipsSection(personID string, archive *glxlib.GLXFile) {
 
 	fmt.Println(sectionHeader("Relationships"))
 	for _, r := range rels {
-		label := snakeCaseToTitle(r.RelType)
-		fmt.Printf("  %-18s%s\n", label+":", r.OtherName)
+		fmt.Printf("  %-18s%s\n", r.Label+":", withHypotheticalMarker(r.OtherName, r.Hypothetical))
 	}
 	fmt.Println()
 }
@@ -595,6 +629,7 @@ func printLifeHistorySection(personID string, person *glxlib.Person, archive *gl
 func findSpouses(personID string, archive *glxlib.GLXFile) []spouseInfo {
 	var spouses []spouseInfo
 	seen := map[string]bool{}
+	standings := glxlib.NewRelationshipStandingIndex(archive)
 
 	ids := sortedKeys(archive.Relationships)
 	for _, relID := range ids {
@@ -611,32 +646,14 @@ func findSpouses(personID string, archive *glxlib.GLXFile) []spouseInfo {
 			if p.Person == personID || p.Person == "" || seen[p.Person] {
 				continue
 			}
+			standing := standings.Link(relID, personID, p.Person)
+			if standing == glxlib.RelationshipStandingDisproven {
+				continue
+			}
 			seen[p.Person] = true
 
-			info := spouseInfo{
-				PersonID: p.Person,
-				RelType:  rel.Type,
-			}
-
-			if sp, ok := archive.Persons[p.Person]; ok && sp != nil {
-				info.PersonName = extractPersonName(sp)
-			} else {
-				info.PersonName = p.Person
-			}
-
-			// Get marriage date/place from start_event
-			if rel.StartEvent != "" {
-				if ev, ok := archive.Events[rel.StartEvent]; ok && ev != nil {
-					info.MarriageDate = string(ev.Date)
-					info.MarriagePlace = resolvePlaceName(ev.PlaceID, archive)
-				}
-			}
-
-			// If no start_event, search for a marriage event with both participants
-			if info.MarriageDate == "" {
-				info.MarriageDate, info.MarriagePlace = findMarriageEvent(personID, p.Person, archive)
-			}
-
+			info := relationshipSpouse(personID, p.Person, rel, archive)
+			info.Hypothetical = standing == glxlib.RelationshipStandingHypothetical
 			spouses = append(spouses, info)
 		}
 	}
@@ -654,6 +671,32 @@ func findSpouses(personID string, archive *glxlib.GLXFile) []spouseInfo {
 	})
 
 	return spouses
+}
+
+// relationshipSpouse builds the spouse entry for spouseID in a union
+// relationship of personID, dating it from the relationship's start_event or,
+// failing that, a marriage event naming both.
+func relationshipSpouse(personID, spouseID string, rel *glxlib.Relationship, archive *glxlib.GLXFile) spouseInfo {
+	info := spouseInfo{
+		PersonID:   spouseID,
+		RelType:    rel.Type,
+		PersonName: summaryPersonName(spouseID, archive),
+	}
+
+	// Get marriage date/place from start_event
+	if rel.StartEvent != "" {
+		if ev, ok := archive.Events[rel.StartEvent]; ok && ev != nil {
+			info.MarriageDate = string(ev.Date)
+			info.MarriagePlace = resolvePlaceName(ev.PlaceID, archive)
+		}
+	}
+
+	// If no start_event, search for a marriage event with both participants
+	if info.MarriageDate == "" {
+		info.MarriageDate, info.MarriagePlace = findMarriageEvent(personID, spouseID, archive)
+	}
+
+	return info
 }
 
 // findEventOnlySpouses derives spouses from marriage events the person takes
@@ -727,95 +770,16 @@ func findMarriageEvent(personA, personB string, archive *glxlib.GLXFile) (date, 
 	return "", ""
 }
 
-// findParentIDs finds parent person IDs for a given person.
+// findParentIDs finds the IDs of a person's parents (including step-parents),
+// leaving out parents recorded only in disproven relationships.
 func findParentIDs(personID string, archive *glxlib.GLXFile) []string {
-	var parents []string
-	seen := map[string]bool{}
-
-	ids := sortedKeys(archive.Relationships)
-	for _, relID := range ids {
-		rel := archive.Relationships[relID]
-		if rel == nil || !parentChildRelTypes[strings.ToLower(rel.Type)] {
-			continue
-		}
-
-		isChild := false
-		for _, p := range rel.Participants {
-			if p.Person == personID && strings.EqualFold(p.Role, "child") {
-				isChild = true
-
-				break
-			}
-		}
-		if !isChild {
-			continue
-		}
-
-		for _, p := range rel.Participants {
-			if strings.EqualFold(p.Role, "parent") && !seen[p.Person] {
-				parents = append(parents, p.Person)
-				seen[p.Person] = true
-			}
-		}
-	}
-
-	return parents
+	return edgeIDs(newFamilyLinks(archive).parents(personID))
 }
 
-// findChildIDs finds child person IDs for a given person, sorted by birth year.
+// findChildIDs finds the IDs of a person's children (including stepchildren),
+// sorted by birth year, leaving out disproven links.
 func findChildIDs(personID string, archive *glxlib.GLXFile) []string {
-	children := map[string]bool{}
-
-	ids := sortedKeys(archive.Relationships)
-	for _, relID := range ids {
-		rel := archive.Relationships[relID]
-		if rel == nil || !parentChildRelTypes[strings.ToLower(rel.Type)] {
-			continue
-		}
-
-		isParent := false
-		for _, p := range rel.Participants {
-			if p.Person == personID && strings.EqualFold(p.Role, "parent") {
-				isParent = true
-
-				break
-			}
-		}
-		if !isParent {
-			continue
-		}
-
-		for _, p := range rel.Participants {
-			if strings.EqualFold(p.Role, "child") && !children[p.Person] {
-				children[p.Person] = true
-			}
-		}
-	}
-
-	result := make([]string, 0, len(children))
-	for id := range children {
-		result = append(result, id)
-	}
-
-	// Sort by birth year, then by ID for stability
-	sort.Slice(result, func(i, j int) bool {
-		yi := birthYear(archive, result[i])
-		yj := birthYear(archive, result[j])
-		if yi != yj {
-			if yi == 0 {
-				return false
-			}
-			if yj == 0 {
-				return true
-			}
-
-			return yi < yj
-		}
-
-		return result[i] < result[j]
-	})
-
-	return result
+	return edgeIDs(newFamilyLinks(archive).children(personID))
 }
 
 // birthYear returns the birth year for a person by looking up their birth event.
@@ -829,77 +793,31 @@ func birthYear(archive *glxlib.GLXFile, personID string) int {
 	return glxlib.ExtractFirstYear(string(event.Date))
 }
 
-// findSiblingIDs finds siblings by looking for other children of the same parents.
-func findSiblingIDs(personID string, parentIDs []string, archive *glxlib.GLXFile) []string {
-	siblings := map[string]bool{}
-
-	// Infer siblings from shared parent-child relationships
-	if len(parentIDs) > 0 {
-		parentSet := map[string]bool{}
-		for _, pid := range parentIDs {
-			parentSet[pid] = true
-		}
-
-		ids := sortedKeys(archive.Relationships)
-		for _, relID := range ids {
-			rel := archive.Relationships[relID]
-			if rel == nil || !parentChildRelTypes[strings.ToLower(rel.Type)] || strings.EqualFold(rel.Type, "sibling") {
-				continue
-			}
-
-			hasKnownParent := false
-			for _, p := range rel.Participants {
-				if strings.EqualFold(p.Role, "parent") && parentSet[p.Person] {
-					hasKnownParent = true
-
-					break
-				}
-			}
-			if !hasKnownParent {
-				continue
-			}
-
-			for _, p := range rel.Participants {
-				if p.Person != personID && strings.EqualFold(p.Role, "child") {
-					siblings[p.Person] = true
-				}
-			}
-		}
+// findSiblingIDs finds a person's siblings of every kind (full, half, and
+// step), sorted by ID, through surviving parent-child links and explicit
+// sibling relationships.
+func findSiblingIDs(personID string, archive *glxlib.GLXFile) []string {
+	sibs := newFamilyLinks(archive).siblings(personID)
+	ids := make([]string, 0, len(sibs))
+	for _, s := range sibs {
+		ids = append(ids, s.PersonID)
 	}
 
-	// Also include explicit sibling relationships
-	ids := sortedKeys(archive.Relationships)
-	for _, relID := range ids {
-		rel := archive.Relationships[relID]
-		if rel == nil || !strings.EqualFold(rel.Type, "sibling") {
-			continue
-		}
-		if !hasParticipant(personID, rel.Participants) {
-			continue
-		}
-		for _, p := range rel.Participants {
-			if p.Person != personID {
-				siblings[p.Person] = true
-			}
-		}
-	}
-
-	result := make([]string, 0, len(siblings))
-	for id := range siblings {
-		result = append(result, id)
-	}
-	sort.Strings(result)
-
-	return result
+	return ids
 }
 
 // findOtherRelationships finds non-family relationships involving a person.
+// Disproven relationships are left out; hypothetical ones are flagged.
 func findOtherRelationships(personID string, archive *glxlib.GLXFile) []otherRelInfo {
 	var rels []otherRelInfo
+	standings := glxlib.NewRelationshipStandingIndex(archive)
 
 	ids := sortedKeys(archive.Relationships)
 	for _, relID := range ids {
 		rel := archive.Relationships[relID]
+		if rel == nil {
+			continue
+		}
 		relType := strings.ToLower(rel.Type)
 
 		if parentChildRelTypes[relType] || marriageRelTypes[relType] {
@@ -910,23 +828,67 @@ func findOtherRelationships(personID string, archive *glxlib.GLXFile) []otherRel
 			continue
 		}
 
+		myRole := ""
+		for _, p := range rel.Participants {
+			if p.Person == personID {
+				myRole = p.Role
+
+				break
+			}
+		}
+
 		for _, p := range rel.Participants {
 			if p.Person == personID {
 				continue
 			}
-			name := p.Person
-			if sp, ok := archive.Persons[p.Person]; ok && sp != nil {
-				name = extractPersonName(sp)
+			standing := standings.Link(relID, personID, p.Person)
+			if standing == glxlib.RelationshipStandingDisproven {
+				continue
 			}
 			rels = append(rels, otherRelInfo{
-				RelType:   rel.Type,
-				OtherName: name,
-				OtherID:   p.Person,
+				RelType:      rel.Type,
+				Label:        otherRelationshipLabel(rel.Type, myRole, p.Role, archive),
+				OtherName:    summaryPersonName(p.Person, archive),
+				OtherID:      p.Person,
+				Hypothetical: standing == glxlib.RelationshipStandingHypothetical,
 			})
 		}
 	}
 
 	return rels
+}
+
+// otherRelationshipLabel labels the other participant of a relationship from
+// the person's point of view. When the two hold different roles the other
+// person's role names them (a godparent's line reads "Godchild: Adam", a
+// guardian's "Ward: Rachel"); when the roles match or either is missing, the
+// relationship is symmetric and its type is the label ("Neighbor", "Associate").
+func otherRelationshipLabel(relType, myRole, otherRole string, archive *glxlib.GLXFile) string {
+	if otherRole == "" || myRole == "" || strings.EqualFold(myRole, otherRole) {
+		return snakeCaseToTitle(relType)
+	}
+	// Archives written before guardian/ward roles existed record a guardianship
+	// with the parent/child roles; name those by what they mean here.
+	if strings.EqualFold(relType, glxlib.RelationshipTypeGuardian) {
+		switch strings.ToLower(otherRole) {
+		case glxlib.ParticipantRoleParent:
+			return "Guardian"
+		case glxlib.ParticipantRoleChild:
+			return "Ward"
+		}
+	}
+
+	return vocabLabel(archive.ParticipantRoles, otherRole)
+}
+
+// vocabLabel returns a vocabulary entry's label, falling back to the
+// title-cased key when the entry or its label is missing.
+func vocabLabel(vocab map[string]*glxlib.VocabularyEntry, key string) string {
+	if entry, ok := vocab[key]; ok && entry != nil && entry.Label != "" {
+		return entry.Label
+	}
+
+	return snakeCaseToTitle(key)
 }
 
 // ============================================================================
@@ -1070,20 +1032,9 @@ func generateLifeHistory(personID string, person *glxlib.Person, archive *glxlib
 		sentences = append(sentences, s+".")
 	}
 
-	// Parents
-	parentIDs := findParentIDs(personID, archive)
-	if len(parentIDs) > 0 {
-		var parentNames []string
-		for _, pid := range parentIDs {
-			if p, ok := archive.Persons[pid]; ok && p != nil {
-				parentNames = append(parentNames, extractPersonName(p))
-			}
-		}
-		if len(parentNames) > 0 {
-			s := subject + " was the child of " + joinNames(parentNames)
-			sentences = append(sentences, s+".")
-		}
-	}
+	fam := newFamilyLinks(archive)
+
+	sentences = append(sentences, parentSentences(personID, subject, possessive, fam, archive)...)
 
 	// Marriages
 	spouses := findSpouses(personID, archive)
@@ -1098,30 +1049,8 @@ func generateLifeHistory(personID string, person *glxlib.Person, archive *glxlib
 		sentences = append(sentences, s+".")
 	}
 
-	// Children
-	childIDs := findChildIDs(personID, archive)
-	if len(childIDs) > 0 {
-		var childNames []string
-		for _, cid := range childIDs {
-			if child, ok := archive.Persons[cid]; ok && child != nil {
-				name := extractPersonName(child)
-				// Use given name only for brevity
-				if parts := strings.Fields(name); len(parts) > 0 {
-					childNames = append(childNames, parts[0])
-				} else {
-					childNames = append(childNames, name)
-				}
-			}
-		}
-		if len(childNames) > 0 {
-			count := numberWord(len(childNames))
-			childWord := "children"
-			if len(childNames) == 1 {
-				childWord = "child"
-			}
-			s := fmt.Sprintf("%s had %s %s: %s", subject, count, childWord, joinNames(childNames))
-			sentences = append(sentences, s+".")
-		}
+	if c := childrenSentence(personID, subject, fam, archive); c != "" {
+		sentences = append(sentences, c)
 	}
 
 	// Notable events (first of each type)
@@ -1139,8 +1068,7 @@ func generateLifeHistory(personID string, person *glxlib.Person, archive *glxlib
 		if evPlace != "" {
 			s += " in " + evPlace
 		}
-		// Capitalize the first letter of possessive
-		s = strings.ToUpper(s[:1]) + s[1:]
+		s = capitalize(s)
 		sentences = append(sentences, s+".")
 	}
 
@@ -1158,6 +1086,142 @@ func generateLifeHistory(personID string, person *glxlib.Person, archive *glxlib
 	}
 
 	return strings.Join(sentences, " ")
+}
+
+// parentSentences narrates a person's parents, then step-parents
+// ("She was the child of A and B. Her stepfather was C."). Hypothetical
+// parents keep the "(?)" marker; disproven ones are already gone.
+func parentSentences(personID, subject, possessive string, fam *familyLinks, archive *glxlib.GLXFile) []string {
+	var sentences []string
+	ownParents, stepParents := splitStep(fam.parents(personID))
+	if names := narrativeNames(ownParents, archive, false); len(names) > 0 {
+		sentences = append(sentences, subject+" was the child of "+joinNames(names)+".")
+	}
+	if names := narrativeNames(stepParents, archive, false); len(names) > 0 {
+		label := "stepparents"
+		verb := "were"
+		if len(names) == 1 {
+			label = strings.ToLower(stepParentLabel(summaryPersonSex(stepParents[0].PersonID, archive)))
+			verb = "was"
+		}
+		sentences = append(sentences, capitalize(possessive)+" "+label+" "+verb+" "+joinNames(names)+".")
+	}
+
+	return sentences
+}
+
+// childrenSentence narrates a person's children, then stepchildren ("He had
+// six children: ..., and two stepdaughters, Peggy and Rachel Call."), or
+// returns "" when there are neither.
+func childrenSentence(personID, subject string, fam *familyLinks, archive *glxlib.GLXFile) string {
+	ownChildren, stepChildren := splitStep(fam.children(personID))
+	var parts []string
+	if names := narrativeNames(ownChildren, archive, true); len(names) > 0 {
+		childWord := "children"
+		if len(names) == 1 {
+			childWord = "child"
+		}
+		parts = append(parts, fmt.Sprintf("%s %s: %s", numberWord(len(names)), childWord, joinNames(names)))
+	}
+	if len(stepChildren) > 0 {
+		parts = append(parts, fmt.Sprintf("%s %s, %s",
+			numberWord(len(stepChildren)), stepChildWord(stepChildren, archive), joinStepChildNames(stepChildren, archive)))
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+
+	return subject + " had " + strings.Join(parts, ", and ") + "."
+}
+
+// narrativeNames returns the display names of the edges' people, skipping
+// people missing from the archive, with the "(?)" marker on hypothetical ones.
+// givenOnly shortens each name to its first word (used for a person's own
+// children, who share the family's surname).
+func narrativeNames(edges []familyEdge, archive *glxlib.GLXFile, givenOnly bool) []string {
+	var names []string
+	for _, e := range edges {
+		p, ok := archive.Persons[e.PersonID]
+		if !ok || p == nil {
+			continue
+		}
+		name := extractPersonName(p)
+		if parts := strings.Fields(name); givenOnly && len(parts) > 0 {
+			name = parts[0]
+		}
+		if e.Hypothetical {
+			name += " " + hypotheticalMarker
+		}
+		names = append(names, name)
+	}
+
+	return names
+}
+
+// stepChildWord returns "stepson(s)", "stepdaughter(s)", or "stepchild(ren)"
+// depending on the stepchildren's recorded sexes.
+func stepChildWord(edges []familyEdge, archive *glxlib.GLXFile) string {
+	sexes := map[string]bool{}
+	for _, e := range edges {
+		sexes[strings.ToLower(summaryPersonSex(e.PersonID, archive))] = true
+	}
+	plural := len(edges) != 1
+	switch {
+	case len(sexes) == 1 && sexes[glxlib.SexMale]:
+		if plural {
+			return "stepsons"
+		}
+
+		return "stepson"
+	case len(sexes) == 1 && sexes[glxlib.SexFemale]:
+		if plural {
+			return "stepdaughters"
+		}
+
+		return "stepdaughter"
+	case plural:
+		return "stepchildren"
+	default:
+		return "stepchild"
+	}
+}
+
+// joinStepChildNames joins stepchildren's names for the narrative. They often
+// carry another surname, so names are kept whole; when every name ends in the
+// same surname it is written once ("Peggy and Rachel Call").
+func joinStepChildNames(edges []familyEdge, archive *glxlib.GLXFile) string {
+	names := narrativeNames(edges, archive, false)
+	if len(names) < 2 {
+		return joinNames(names)
+	}
+
+	surname := ""
+	given := make([]string, 0, len(names))
+	for _, n := range names {
+		parts := strings.Fields(n)
+		if len(parts) < 2 || strings.HasSuffix(n, hypotheticalMarker) {
+			return joinNames(names)
+		}
+		last := parts[len(parts)-1]
+		if surname == "" {
+			surname = last
+		} else if last != surname {
+			return joinNames(names)
+		}
+		given = append(given, strings.Join(parts[:len(parts)-1], " "))
+	}
+
+	return joinNames(given) + " " + surname
+}
+
+// capitalize upper-cases the first letter of s.
+func capitalize(s string) string {
+	if s == "" {
+		return s
+	}
+	r, size := utf8.DecodeRuneInString(s)
+
+	return strings.ToUpper(string(r)) + s[size:]
 }
 
 // findEventDatePlace returns the date and place for the first event of a given type.

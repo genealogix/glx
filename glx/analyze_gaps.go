@@ -53,7 +53,20 @@ func analyzeGaps(archive *glxlib.GLXFile) []AnalysisIssue {
 		// Check each spouse relationship for a corresponding marriage event
 		for _, sp := range spouseRels[id] {
 			pairKey := marriagePairKey(id, sp.spouseID)
-			if !marriagePairs[pairKey] {
+			evidence := marriagePairs[pairKey]
+			switch {
+			case evidence.ceremony:
+				// A dated or placed marriage: nothing to report.
+			case evidence.preliminaryType != "":
+				spouseName := personName(archive, sp.spouseID)
+				issues = append(issues, AnalysisIssue{
+					Category: "gap",
+					Severity: severityInfo,
+					Person:   id,
+					Message: fmt.Sprintf("%s — marriage to %s known from %s only; search for a minister's return or marriage register entry",
+						name, spouseName, preliminaryMarriageRecordName(evidence.preliminaryType)),
+				})
+			default:
 				spouseName := personName(archive, sp.spouseID)
 				issues = append(issues, AnalysisIssue{
 					Category: "gap",
@@ -116,26 +129,84 @@ func buildSpouseRelIndex(archive *glxlib.GLXFile) map[string][]spouseRef {
 	return index
 }
 
-// buildMarriagePairIndex returns a set of (personA, personB) pairs that share a
-// marriage event with a date or place. Also checks relationship start_event refs.
-func buildMarriagePairIndex(archive *glxlib.GLXFile) map[string]bool {
-	index := make(map[string]bool)
+// preliminaryMarriageTypes are the marriage-family event types that record a
+// step towards a marriage rather than the ceremony itself: a license or bond,
+// banns, a contract, a settlement. For colonial and early-republic marriages
+// one of these is often the only surviving record, so a dated or placed one
+// is evidence that the couple married, though not of the wedding (#1338).
+var preliminaryMarriageTypes = map[string]bool{
+	glxlib.EventTypeMarriageLicense:    true,
+	glxlib.EventTypeMarriageBanns:      true,
+	glxlib.EventTypeMarriageContract:   true,
+	glxlib.EventTypeMarriageSettlement: true,
+}
 
-	// From marriage events
-	for _, event := range archive.Events {
-		if event == nil || event.Type != glxlib.EventTypeMarriage {
-			continue
-		}
-		if event.Date == "" && event.PlaceID == "" {
-			continue
-		}
-		for i, p := range event.Participants {
-			for j, q := range event.Participants {
-				if i != j && p.Person != "" && q.Person != "" {
-					index[marriagePairKey(p.Person, q.Person)] = true
-				}
+// preliminaryMarriageRecordName renders a preliminary marriage event type as
+// the record it names in prose, e.g. "a marriage license".
+func preliminaryMarriageRecordName(eventType string) string {
+	switch eventType {
+	case glxlib.EventTypeMarriageBanns:
+		return "marriage banns"
+	case glxlib.EventTypeMarriageContract:
+		return "a marriage contract"
+	case glxlib.EventTypeMarriageSettlement:
+		return "a marriage settlement"
+	default:
+		return "a marriage license"
+	}
+}
+
+// marriageEvidence records what a couple's marriage is known from.
+type marriageEvidence struct {
+	// ceremony is true when a dated or placed marriage event links the pair.
+	ceremony bool
+	// preliminaryType is the type of a dated or placed license, banns,
+	// contract or settlement linking the pair, when there is one. When the
+	// pair has several, the lexically smallest type is kept so the message is
+	// deterministic.
+	preliminaryType string
+}
+
+// recordMarriageEvidence notes that the event links every pair of the given
+// participants, if the event is a dated or placed marriage-family event.
+func recordMarriageEvidence(index map[string]marriageEvidence, event *glxlib.Event, participants []glxlib.Participant) {
+	if event == nil || (event.Date == "" && event.PlaceID == "") {
+		return
+	}
+	isCeremony := event.Type == glxlib.EventTypeMarriage
+	if !isCeremony && !preliminaryMarriageTypes[event.Type] {
+		return
+	}
+	for i, p := range participants {
+		for j, q := range participants {
+			if i == j || p.Person == "" || q.Person == "" {
+				continue
 			}
+			key := marriagePairKey(p.Person, q.Person)
+			evidence := index[key]
+			if isCeremony {
+				evidence.ceremony = true
+			} else if evidence.preliminaryType == "" || event.Type < evidence.preliminaryType {
+				evidence.preliminaryType = event.Type
+			}
+			index[key] = evidence
 		}
+	}
+}
+
+// buildMarriagePairIndex returns, for each (personA, personB) pair, what their
+// marriage is known from: a shared dated or placed marriage event, or a
+// license, banns, contract or settlement (#1338). Also follows couple
+// relationships' start_event refs, whose participants are the relationship's.
+func buildMarriagePairIndex(archive *glxlib.GLXFile) map[string]marriageEvidence {
+	index := make(map[string]marriageEvidence)
+
+	// From events the couple both participate in
+	for _, event := range archive.Events {
+		if event == nil {
+			continue
+		}
+		recordMarriageEvidence(index, event, event.Participants)
 	}
 
 	// From relationship start_event refs
@@ -146,20 +217,7 @@ func buildMarriagePairIndex(archive *glxlib.GLXFile) map[string]bool {
 		if !glxlib.IsCoupleRelationshipType(rel.Type) {
 			continue
 		}
-		ev, ok := archive.Events[rel.StartEvent]
-		if !ok || ev == nil || ev.Type != glxlib.EventTypeMarriage {
-			continue
-		}
-		if ev.Date == "" && ev.PlaceID == "" {
-			continue
-		}
-		for i, p := range rel.Participants {
-			for j, q := range rel.Participants {
-				if i != j && p.Person != "" && q.Person != "" {
-					index[marriagePairKey(p.Person, q.Person)] = true
-				}
-			}
-		}
+		recordMarriageEvidence(index, archive.Events[rel.StartEvent], rel.Participants)
 	}
 
 	return index

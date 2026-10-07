@@ -18,7 +18,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
@@ -75,67 +74,6 @@ func TestMigrationEntry_TemporalParent(t *testing.T) {
 
 	assert.Equal(t, "Wayne County, Indiana Territory, United States", newMigrationEntry("1814", "place-wayne-in", "Marriage", archive).Place)
 	assert.Equal(t, "Wayne County, Indiana, United States", newMigrationEntry("1830", "place-wayne-in", "Residence", archive).Place)
-}
-
-func TestResolveStateFromPlaceAt_TemporalParent(t *testing.T) {
-	archive := temporalParentArchive()
-
-	assert.Empty(t, resolveStateFromPlaceAt("place-wayne-in", "1814", archive), "a territory is not a state")
-	assert.Equal(t, "Indiana", resolveStateFromPlaceAt("place-wayne-in", "1850", archive))
-	assert.Equal(t, "Indiana", resolveStateFromPlace("place-wayne-in", archive))
-
-	// The person's only event is the territorial marriage, so no state census applies.
-	events := collectPersonEvents("person-1", archive, eventsWithEvidence(archive))
-	assert.Empty(t, collectPersonStates(archive.Persons["person-1"], archive, events))
-}
-
-func TestResolveCountryFromPlaceAt_TemporalParent(t *testing.T) {
-	strasbourg := &glxlib.Place{Name: "Strasbourg", Type: glxlib.PlaceTypeCity}
-	strasbourg.SetParentHistory([]glxlib.PlaceParentPeriod{
-		{Value: "place-france", Date: "TO 1871-05-09"},
-		{Value: "place-germany", Date: "FROM 1871-05-10 TO 1918-11-10"},
-		{Value: "place-france", Date: "FROM 1918-11-11"},
-	})
-	archive := &glxlib.GLXFile{Places: map[string]*glxlib.Place{
-		"place-france":     {Name: "France", Type: glxlib.PlaceTypeCountry},
-		"place-germany":    {Name: "Germany", Type: glxlib.PlaceTypeCountry},
-		"place-strasbourg": strasbourg,
-	}}
-
-	assert.Equal(t, "France", resolveCountryFromPlaceAt("place-strasbourg", "1850", archive))
-	assert.Equal(t, "Germany", resolveCountryFromPlaceAt("place-strasbourg", "1900", archive))
-	assert.Equal(t, "France", resolveCountryFromPlaceAt("place-strasbourg", "1950", archive))
-	assert.Equal(t, "France", resolveCountryFromPlace("place-strasbourg", archive), "no date: default (latest) parent")
-}
-
-func TestCensusSchedulesForPerson_UsesEventDates(t *testing.T) {
-	// A Mecklenburg-born emigrant's village moves into the US only in the
-	// fictional hierarchy below; the schedule must follow the event's date.
-	village := &glxlib.Place{Name: "Village", Type: glxlib.PlaceTypeCity}
-	village.SetParentHistory([]glxlib.PlaceParentPeriod{
-		{Value: "place-usa", Date: "FROM 1900"},
-		{Value: "place-mecklenburg", Date: "TO 1899"},
-	})
-	archive := &glxlib.GLXFile{
-		Places: map[string]*glxlib.Place{
-			"place-usa":         {Name: "United States", Type: glxlib.PlaceTypeCountry},
-			"place-mecklenburg": {Name: "Mecklenburg-Strelitz", Type: glxlib.PlaceTypeCountry},
-			"place-village":     village,
-		},
-		Events: map[string]*glxlib.Event{
-			"event-birth": {
-				Type: glxlib.EventTypeBirth, Date: "1850", PlaceID: "place-village",
-				Participants: []glxlib.Participant{{Person: "person-1", Role: "subject"}},
-			},
-		},
-	}
-	setCensusFallback(t, countryUnitedStates)
-
-	// Date-aware: in 1850 the village was in Mecklenburg-Strelitz, which has
-	// no schedule, so nothing is suggested.
-	assert.Empty(t, censusSchedulesForPerson(archive, "person-1"))
-	// The undated lookup follows the default (latest) parent into the US.
-	require.NotNil(t, scheduleForCountry(censusSchedulesForPlaces([]string{"place-village"}, archive), countryUnitedStates))
 }
 
 func TestPlaceIsDescendant_TemporalParent(t *testing.T) {

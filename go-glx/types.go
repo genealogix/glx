@@ -459,6 +459,11 @@ type VocabularyEntry struct {
 	// above lower ones. Pointer type so a legitimate `rank: 0` is distinguishable
 	// from an unset field; nil pointers are elided from YAML output.
 	Rank *int `yaml:"rank,omitempty"`
+	// ImpliesPresence is an optional flag on participant roles saying whether
+	// a person in this role was at the event's place (e.g. false for a
+	// grantor who sold land from another state). Unset leaves the decision to
+	// the built-in default for the role; see ClassifyParticipation.
+	ImpliesPresence *bool `yaml:"implies_presence,omitempty"`
 }
 
 // PropertyDefinition defines a property that can be used on entities.
