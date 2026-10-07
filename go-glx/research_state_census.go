@@ -12,15 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package glx
 
 import (
 	"fmt"
 	"sort"
 	"strconv"
 	"strings"
-
-	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 // stateCensusYears maps US state names to their known state census years.
@@ -47,7 +45,7 @@ var stateCensusYears = map[string][]int{
 
 // resolveStateFromPlace walks the place hierarchy to find the US state name.
 // Returns the empty string if no state-type ancestor is found.
-func resolveStateFromPlace(placeRef string, archive *glxlib.GLXFile) string {
+func resolveStateFromPlace(placeRef string, archive *GLXFile) string {
 	if placeRef == "" || archive == nil {
 		return ""
 	}
@@ -61,7 +59,7 @@ func resolveStateFromPlace(placeRef string, archive *glxlib.GLXFile) string {
 		if !ok || place == nil {
 			return ""
 		}
-		if place.Type == glxlib.PlaceTypeState {
+		if place.Type == PlaceTypeState {
 			return place.Name
 		}
 		current = place.ParentID
@@ -75,7 +73,7 @@ func resolveStateFromPlace(placeRef string, archive *glxlib.GLXFile) string {
 func placeRefsFromProperty(v any) []string {
 	refs := make(map[string]struct{})
 	collectPlaceRefsFromProperty(v, refs)
-	var result []string
+	result := make([]string, 0, len(refs))
 	for ref := range refs {
 		result = append(result, ref)
 	}
@@ -85,7 +83,7 @@ func placeRefsFromProperty(v any) []string {
 
 // collectPersonStates returns the unique US state names associated with a person
 // via birthplace, death place, and event places.
-func collectPersonStates(person *glxlib.Person, archive *glxlib.GLXFile, events []personSourceInfo) []string {
+func collectPersonStates(archive *GLXFile, events []personSourceInfo) []string {
 	stateSet := make(map[string]bool)
 
 	// Check event places (includes birth and death events)
@@ -98,7 +96,7 @@ func collectPersonStates(person *glxlib.Person, archive *glxlib.GLXFile, events 
 		}
 	}
 
-	var states []string
+	states := make([]string, 0, len(stateSet))
 	for s := range stateSet {
 		states = append(states, s)
 	}
@@ -110,7 +108,7 @@ func collectPersonStates(person *glxlib.Person, archive *glxlib.GLXFile, events 
 // buildStateCensusRecords generates expected state census records based on
 // the person's associated states and birth/death years. The archive parameter
 // is used for place-based matching of events; pass nil if not available.
-func buildStateCensusRecords(birthYear, deathYear int, states []string, sources, events []personSourceInfo, archive *glxlib.GLXFile) []coverageRecord {
+func buildStateCensusRecords(birthYear, deathYear int, states []string, sources, events []personSourceInfo, archive *GLXFile) []CoverageRecord {
 	if birthYear == 0 {
 		return nil
 	}
@@ -120,7 +118,7 @@ func buildStateCensusRecords(birthYear, deathYear int, states []string, sources,
 		upperBound = birthYear + maxLifespan
 	}
 
-	var records []coverageRecord
+	var records []CoverageRecord
 
 	for _, state := range states {
 		years, ok := stateCensusYears[state]
@@ -134,7 +132,7 @@ func buildStateCensusRecords(birthYear, deathYear int, states []string, sources,
 			age := year - birthYear
 			label := fmt.Sprintf("%d %s State Census (age ~%d)", year, state, age)
 
-			rec := coverageRecord{
+			rec := CoverageRecord{
 				Category: coverageCategoryCensus,
 				Label:    label,
 			}
@@ -184,12 +182,12 @@ func isAlpha(b byte) bool {
 
 // findStateCensusMatch checks if a state census for a given year and state
 // exists in events or sources. Requires a state-specific signal to avoid
-// confusing state and federal censuses on overlapping years: the title must
+// confusing state and federal censuses on overlapping Years: the title must
 // mention the state name, or the event's place must resolve to the target state.
-func findStateCensusMatch(year int, state string, sources, events []personSourceInfo, archive *glxlib.GLXFile) string {
+func findStateCensusMatch(year int, state string, sources, events []personSourceInfo, archive *GLXFile) string {
 	// Check events — require census type + year + evidence + state-specific signal
 	for _, e := range events {
-		if e.EventType != glxlib.EventTypeCensus || e.Year != year || !e.Evidenced {
+		if e.EventType != EventTypeCensus || e.Year != year || !e.Evidenced {
 			continue
 		}
 		// Title must mention this specific state
@@ -206,7 +204,7 @@ func findStateCensusMatch(year int, state string, sources, events []personSource
 
 	// Check sources — require census type + year + state-specific signal
 	for _, s := range sources {
-		if s.Type != glxlib.SourceTypeCensus {
+		if s.Type != SourceTypeCensus {
 			continue
 		}
 		// Title must mention this specific state (not just generic "state census")

@@ -36,13 +36,17 @@
             "type": "string",
             "enum": ["event", "relationship"]
           },
-          "minItems": 1,
+          "minItems": 0,
           "uniqueItems": true,
-          "description": "Contexts in which this role can be used (event, relationship, or both). When present, must contain at least one value. When omitted, the role is treated as applicable to all contexts."
+          "description": "Contexts in which this role can be used (event, relationship, or both). When omitted or empty, the role is treated as applicable to all contexts."
         },
         "gedcom": {
           "type": "string",
           "description": "Corresponding GEDCOM RELA value for import/export mapping"
+        },
+        "implies_presence": {
+          "type": "boolean",
+          "description": "Whether a person in this role was at the event's place on its date. false for roles that name a person without placing them there (e.g. a grantor selling land from another state, an absent legatee); tools such as glx migrations then do not count the event's place as a residence. When omitted, tools apply a built-in default for the role."
         }
       }
     }

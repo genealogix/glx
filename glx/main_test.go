@@ -99,8 +99,15 @@ func TestRunInit_MultiFile(t *testing.T) {
 
 	// Check that README.md was created
 	readmePath := filepath.Join(tmpDir, "README.md")
-	_, err = os.Stat(readmePath)
+	readme, err := os.ReadFile(readmePath)
 	require.NoError(t, err, "README.md should be created")
+
+	// The README describes every directory init creates and every ID prefix,
+	// research_logs/ and studies/ included (#1339).
+	for _, et := range glxlib.AllEntityTypes {
+		assert.Contains(t, string(readme), "- "+et.String()+"/ - ", "README.md should describe %s/", et)
+		assert.Contains(t, string(readme), "- "+et.IDPrefix()+"XXXXXXXX: ", "README.md should list the %s ID prefix", et.IDPrefix())
+	}
 }
 
 // runInitCmd is the cobra layer: with no directory argument it initializes the

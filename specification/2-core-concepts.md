@@ -60,7 +60,7 @@ When you create an archive with `glx init` or `glx import`, standard vocabulary 
 | `information-types.glx` | Primary, secondary, indeterminate (Evidence Explained information classification) |
 | `study-types.glx` | One Place Study, One Name Study, family reconstruction, brick wall, etc. |
 | `study-statuses.glx` | Active, paused, completed, abandoned |
-| `search-result-types.glx` | found, not_found, inconclusive, partial, not_searched |
+| `search-result-types.glx` | found, not_found, inconclusive, partial, not_searched, unavailable, requires_visit |
 | `research-log-status-types.glx` | open, in_progress, complete, blocked |
 | `lead-statuses.glx` | active, eliminated, confirmed (research-log leads) |
 | `person-properties.glx` | Person properties (name, occupation, etc.) |
