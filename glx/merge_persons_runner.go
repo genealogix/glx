@@ -15,66 +15,205 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
+	"errors"
 	"fmt"
+	"io"
 	"os"
+	"reflect"
+	"strings"
+
+	"golang.org/x/term"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
-// mergePersons performs the merge: load archive, fold drop into keep, save.
-// Conflicts are reported on stderr and do not abort the merge — the safe
-// default keeps keep's value, and the user explicitly named which person to
-// retain.
-func mergePersons(archivePath, keepID, dropID string, opts glxlib.MergePersonsOptions, dryRun bool) error {
+var (
+	errMergeConfirmationRequired = errors.New("noninteractive merge requires --yes (-y); use --dry-run to preview")
+	errMergePreviewChanged       = errors.New("archive changed after the merge preview; run merge-persons again")
+	errMergeRoundtrip            = errors.New("serialized merge differs from the preview")
+	errMergeLinkedFile           = errors.New("merge cannot change a linked GLX file; its link and target are preserved")
+)
+
+func mergePersons(archivePath, keepID, dropID string, opts glxlib.MergePersonsOptions, dryRun, yes bool) error {
+	return mergePersonsWithIO(SystemIOStreams(), os.Stdin, term.IsTerminal(int(os.Stdin.Fd())), archivePath, keepID, dropID, opts, dryRun, yes)
+}
+
+// Approval belongs to the CLI, not to the pure SDK. The detached merge and
+// verified output are prepared once; approval installs that exact result.
+func mergePersonsWithIO(streams *IOStreams, input io.Reader, interactive bool, archivePath, keepID, dropID string, opts glxlib.MergePersonsOptions, dryRun, yes bool) error {
 	info, err := os.Stat(archivePath)
 	if err != nil {
 		return fmt.Errorf("cannot access path: %w", err)
 	}
-
-	var archive *glxlib.GLXFile
-	isDir := info.IsDir()
-
-	if isDir {
-		loaded, duplicates, loadErr := LoadArchiveWithOptions(archivePath, false)
-		if loadErr != nil {
-			return fmt.Errorf("failed to load archive: %w", loadErr)
-		}
-		for _, d := range duplicates {
-			fmt.Fprintf(os.Stderr, "Warning: %s\n", d)
-		}
-		archive = loaded
-	} else {
-		loaded, loadErr := readSingleFileArchive(archivePath, false)
-		if loadErr != nil {
-			return loadErr
-		}
-		archive = loaded
+	original, err := readMergeFiles(archivePath, info.IsDir())
+	if err != nil {
+		return err
 	}
-
+	archive, err := loadMergeFiles(archivePath, original, info.IsDir())
+	if err != nil {
+		return err
+	}
 	result, err := glxlib.MergePersons(archive, keepID, dropID, opts)
 	if err != nil {
 		return err
 	}
-
-	fmt.Printf("Merging %s ← %s\n", keepID, dropID)
-	fmt.Printf("  Properties merged:    %d\n", result.PropertiesMerged)
-	fmt.Printf("  Notes merged:         %d\n", result.NotesMerged)
-	fmt.Printf("  References rewritten: %d\n", result.RefsUpdated)
-
-	for _, c := range result.Conflicts {
-		fmt.Fprintf(os.Stderr, "  Conflict on %q: keep=%v drop=%v (%s; %s)\n",
-			c.Property, glxlib.FormatPropertyValue(c.KeepValue), glxlib.FormatPropertyValue(c.DropValue), c.Resolution, c.Verdict)
+	files, err := prepareMergeFiles(original, archive, result, keepID, dropID, info.IsDir())
+	if err != nil {
+		return err
 	}
-
+	if info.IsDir() {
+		if err := validateMergeFileLinks(archivePath, original, files); err != nil {
+			return err
+		}
+	} else if err := verifyMergeSingleFile(archivePath, original[""], info.Mode()); err != nil {
+		return err
+	}
+	// An informed approval must remain visible even with --quiet.
+	reportStreams := *streams
+	if quietOutput {
+		reportStreams.Out = streams.ErrOut
+	}
+	printPersonMerge(&reportStreams, keepID, dropID, result)
 	if dryRun {
-		fmt.Println("\n(dry run — no files written)")
+		reportStreams.Println("(dry run — no files written)")
 
 		return nil
 	}
+	approved, err := confirmPersonMerge(streams, input, interactive, yes)
+	if err != nil {
+		return err
+	}
+	if !approved {
+		reportStreams.Println("Merge canceled; no files written.")
 
-	if isDir {
-		return safeWriteMultiFileArchive(archivePath, archive)
+		return nil
+	}
+	current, err := readMergeFiles(archivePath, info.IsDir())
+	if err != nil {
+		return err
+	}
+	currentInfo, err := os.Stat(archivePath)
+	if err != nil {
+		return err
+	}
+	if !reflect.DeepEqual(original, current) || currentInfo.Mode() != info.Mode() {
+		return errMergePreviewChanged
+	}
+	if !info.IsDir() {
+		return atomicWriteStreamChecked(archivePath, info.Mode().Perm(), func(w io.Writer) error {
+			_, err := w.Write(files[""])
+
+			return err
+		}, func() error {
+			return verifyMergeSingleFile(archivePath, original[""], info.Mode())
+		})
 	}
 
-	return writeSingleFileArchive(archivePath, archive, false)
+	return installMergeFiles(archivePath, original, files)
+}
+
+func verifyMergeSingleFile(path string, expected []byte, mode os.FileMode) error {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return err
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		return errMergeLinkedFile
+	}
+	data, err := os.ReadFile(path) // #nosec G304 -- CLI-selected single-file archive, checked before atomic replacement
+	if err != nil {
+		return err
+	}
+	if info.Mode() != mode || !bytes.Equal(expected, data) {
+		return errMergePreviewChanged
+	}
+
+	return nil
+}
+
+func readMergeFiles(path string, directory bool) (map[string][]byte, error) {
+	if directory {
+		return collectGLXFilesFromDir(path)
+	}
+	data, err := os.ReadFile(path) // #nosec G304 -- CLI-selected single-file archive; directory archives use the contained walker
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string][]byte{"": data}, nil
+}
+
+func loadMergeFiles(path string, files map[string][]byte, directory bool) (*glxlib.GLXFile, error) {
+	if directory {
+		archive, duplicates, err := loadArchiveFromFiles(path, files, false)
+		if err != nil {
+			return nil, err
+		}
+		if len(duplicates) != 0 {
+			return nil, fmt.Errorf("%w: %s", glxlib.ErrValidationFailed, strings.Join(duplicates, "; "))
+		}
+
+		return archive, nil
+	}
+	archive, err := createSerializer(false, false, "").DeserializeSingleFileBytes(files[""])
+	if err != nil {
+		return nil, err
+	}
+	if err := mergeStandardVocabularies(archive); err != nil {
+		return nil, err
+	}
+
+	return archive, nil
+}
+
+func confirmPersonMerge(streams *IOStreams, input io.Reader, interactive, yes bool) (bool, error) {
+	if yes {
+		return true, nil
+	}
+	if !interactive {
+		return false, errMergeConfirmationRequired
+	}
+	fmt.Fprint(streams.ErrOut, "Apply this merge? [y/N] ")
+	answer, err := bufio.NewReader(input).ReadString('\n')
+	if errors.Is(err, io.EOF) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("reading merge confirmation: %w", err)
+	}
+	answer = strings.ToLower(strings.TrimSpace(answer))
+
+	return answer == "y" || answer == "yes", nil
+}
+
+func printPersonMerge(streams *IOStreams, keepID, dropID string, result *glxlib.MergePersonsResult) {
+	streams.Printf("Merging %s ← %s\n", keepID, dropID)
+	streams.Printf("  Properties merged:    %d\n  Notes merged:         %d\n  References rewritten: %d\n", result.PropertiesMerged, result.NotesMerged, result.RefsUpdated)
+	for _, id := range result.RemovedRelationships {
+		streams.Printf("  Relationship removed: %s (possibly_same_person)\n", id)
+	}
+	for _, id := range result.RemovedAssertions {
+		streams.Printf("  Assertion removed: %s (depends on a removed relationship)\n", id)
+	}
+	for _, reference := range result.ReferenceChanges {
+		streams.Printf("  Reference %s: %s[%s].%s: %v → %v\n", reference.Action, reference.EntityType, reference.ID, reference.Path, reference.OldValue, reference.NewValue)
+	}
+	for _, conflict := range result.Conflicts {
+		streams.Printf("  Conflict on %q: keep=%v drop=%v (%s; %s)\n", conflict.Property, glxlib.FormatPropertyValue(conflict.KeepValue), glxlib.FormatPropertyValue(conflict.DropValue), conflict.Resolution, conflict.Verdict)
+	}
+	for _, change := range result.Changes {
+		streams.Printf("  %s %s[%s]\n", change.Kind, change.EntityType, change.ID)
+		for _, field := range change.Fields {
+			streams.Printf("    %s: %s → %s\n", field.Path, field.OldValue, field.NewValue)
+		}
+	}
+	for _, change := range result.InterpretationChanges {
+		streams.Printf("  Interpretation %s[%s] %s: %s → %s\n", change.EntityType, change.ID, change.Aspect, change.Before, change.After)
+	}
+	if len(result.RemovedAssertions) != 0 {
+		streams.Println("Deleted claims no longer influence current evidence, proof or coverage; existing inference rules recompute normally.")
+	}
+	streams.Println("Recovery requires a recorded pre-merge version. This command does not create a Git commit.")
 }
