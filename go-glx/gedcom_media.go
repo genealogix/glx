@@ -51,9 +51,9 @@ func convertMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) error {
 	// Handle SOUR subrecords (only for top-level OBJE records)
 	for _, sub := range objeRecord.SubRecords {
 		if sub.Tag == GedcomTagSour {
-			result, err := createCitationFromSOUR(sub, conv)
+			result, err := prepareCitationFromSOUR(sub, conv)
 			if err != nil {
-				// Error already logged in createCitationFromSOUR, skip
+				// Error already logged in prepareCitationFromSOUR, skip
 				continue
 			}
 			if result.CitationID != "" {
@@ -61,13 +61,12 @@ func convertMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) error {
 					citation.Media = append(citation.Media, mediaID)
 				}
 			}
-			// For bare source references on media, link the media to the source
-			// (the source already exists, media can reference it via its own media field)
-			if result.SourceID != "" {
-				if source, ok := conv.GLX.Sources[result.SourceID]; ok {
-					source.Media = append(source.Media, mediaID)
-				}
+			// Finalize private synthetic drafts only after attaching contextual
+			// media, so this record cannot modify another record's shared source.
+			if source := result.bareSource(conv); source != nil {
+				source.Media = append(source.Media, mediaID)
 			}
+			result.finalizeSource(conv)
 		}
 	}
 

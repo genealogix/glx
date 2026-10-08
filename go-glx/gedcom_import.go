@@ -298,7 +298,8 @@ type ConversionContext struct {
 	PlaceIDMap      map[string]string
 
 	// Content-based deduplication maps (name/content -> GLX ID)
-	RepositoryNameMap map[string]string // repository name -> GLX ID
+	RepositoryNameMap  map[string]string // repository name -> GLX ID
+	syntheticSourceIDs map[string]string // finalized embedded source content -> GLX ID
 
 	// Family structure mapping (FAM XRef -> parent IDs)
 	FamilyParentsMap map[string][]string
