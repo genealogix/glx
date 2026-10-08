@@ -899,7 +899,8 @@ func exportPersonSourceRefs(personID string, person *Person, expCtx *ExportConte
 //
 // Assertions about different properties of one event routinely cite the same
 // page — a birth date and a birth place both read off one register entry — so
-// identical references are collapsed by (source XREF, PAGE) and emitted once.
+// identical exported references are emitted once. Distinct citation details
+// survive even when their source and PAGE match.
 func exportEventEvidenceRefs(eventID string, event *Event, expCtx *ExportContext, record *GEDCOMRecord) {
 	refs := eventSourceRefs(event, expCtx)
 	refs = append(refs, eventAssertionSourceRefs(eventID, expCtx)...)
@@ -974,20 +975,11 @@ func eventAssertionSourceRefs(eventID string, expCtx *ExportContext) []*GEDCOMRe
 	return records
 }
 
-// sourceRefKey identifies a SOUR subrecord by the source it points at and the
-// PAGE that narrows it, so two references to the same page of the same source
-// compare equal.
+// sourceRefKey identifies the complete exported SOUR structure. Including all
+// subrecords preserves citation notes, media and other details when the source
+// and PAGE alone would compare equal, including citations without a PAGE.
 func sourceRefKey(sour *GEDCOMRecord) string {
-	page := ""
-	for _, sub := range sour.SubRecords {
-		if sub.Tag == GedcomTagPage {
-			page = sub.Value
-
-			break
-		}
-	}
-
-	return sour.Value + "\x00" + page
+	return string(serializeGEDCOMRecords([]*GEDCOMRecord{sour}))
 }
 
 // exportCitationAsSOUR creates a GEDCOM SOUR sub-record from a GLX Citation,

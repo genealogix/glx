@@ -3316,6 +3316,37 @@ func TestExportPersonEvent_EventSubjectAssertionDedupesSharedPage(t *testing.T) 
 		"two assertions citing one page should emit a single SOUR")
 }
 
+func TestExportPersonEvent_EventSubjectAssertionKeepsDistinctCitationDetails(t *testing.T) {
+	expCtx := eventAssertionExportContext(map[string]*Assertion{
+		"assertion-date": {
+			Subject:   EntityRef{Event: "event-birth-john"},
+			Property:  "date",
+			Citations: []string{"citation-parish"},
+		},
+		"assertion-place": {
+			Subject:   EntityRef{Event: "event-birth-john"},
+			Property:  "place",
+			Citations: []string{"citation-parish-other"},
+		},
+	})
+	expCtx.GLX.Citations["citation-parish"].Notes = NoteList{"Date transcription"}
+	expCtx.GLX.Citations["citation-parish"].Media = []string{"media-date"}
+	expCtx.GLX.Citations["citation-parish-other"] = &Citation{
+		SourceID:   "source-parish",
+		Properties: map[string]any{"locator": "Entry 145, Page 23"},
+		Notes:      NoteList{"Place transcription"},
+		Media:      []string{"media-place"},
+	}
+	expCtx.MediaXRefMap = map[string]string{"media-date": "@M1@", "media-place": "@M2@"}
+
+	record := exportPersonEvent("event-birth-john", expCtx.GLX.Events["event-birth-john"], expCtx)
+	require.NotNil(t, record)
+	assert.Len(t, sourRefs(record), 2, "same-page assertions with distinct evidence need separate SOUR records")
+	gedcom := string(serializeGEDCOMRecords([]*GEDCOMRecord{record}))
+	assert.Contains(t, gedcom, "2 NOTE Date transcription\n2 OBJE @M1@")
+	assert.Contains(t, gedcom, "2 NOTE Place transcription\n2 OBJE @M2@")
+}
+
 func TestExportPersonEvent_EventSubjectAssertionKeepsDistinctPages(t *testing.T) {
 	// Same source, different pages: both references survive.
 	expCtx := eventAssertionExportContext(map[string]*Assertion{
