@@ -595,7 +595,7 @@ participant_roles:
 | `label` | Yes | Human-readable label |
 | `description` | No | Detailed description |
 | `applies_to` | No | Array of contexts the role is meant for (`event`, `relationship`). Omitted means all contexts; see [applies_to semantics](#applies_to-semantics) |
-| `gedcom` | No | GEDCOM `ASSO ROLE` tag value emitted/consumed for round-trip (#524) |
+| `gedcom` | No | GEDCOM 7.0 `ASSO.ROLE` enumeration value (e.g., `WITN`, `CLERGY`) emitted on export, overriding the built-in mapping (#524). Roles without one export as `ROLE OTHER` with a `PHRASE` naming the role |
 | `implies_presence` | No | Boolean. Whether a person in this role was at the event's place on its date. Set `false` for roles that name a person without placing them there, such as a grantor selling land from another state or an absent legatee. When omitted, tools fall back to a built-in default (see below) |
 
 #### Role semantics in tooling
