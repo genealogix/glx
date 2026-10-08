@@ -103,7 +103,7 @@ func collectionForEntityType(flag string) (string, bool) {
 // and structurally validates it against its entity-type schema, without any
 // archive/cross-ref context. It exists so drift tooling can pipe a bare snippet
 // in (issue #910) instead of the mktemp/cat/rm temp-file dance.
-func validateStdinEntity(streams *IOStreams, entityType string, args []string, in io.Reader) error {
+func validateStdinEntity(streams *IOStreams, entityType string, args []string, in io.Reader, showFirstErrors int) error {
 	if len(args) > 0 {
 		return errStdinPathArgs
 	}
@@ -126,9 +126,7 @@ func validateStdinEntity(streams *IOStreams, entityType string, args []string, i
 	}
 	if len(issues) > 0 {
 		streams.Errorf("Found %d structural error(s) in the %s entity:\n", len(issues), entityType)
-		for _, issue := range issues {
-			streams.Errorf("- %s\n", issue)
-		}
+		printErrorList(streams, "- ", issues, showFirstErrors)
 
 		return ErrStructuralValidationFailed
 	}
@@ -318,6 +316,8 @@ func validatePathsShowing(streams *IOStreams, args []string, showFirstErrors int
 	var allErrors, allWarnings []string
 
 	if len(duplicates) > 0 {
+		// Duplicate conflicts are collected separately from Validate's findings.
+		slices.Sort(duplicates)
 		allErrors = append(allErrors, duplicates...)
 	}
 
@@ -523,6 +523,12 @@ func reportArchiveValidation(streams *IOStreams, fileCount int, allErrors, allWa
 // such as unreadable files, malformed YAML or schema failures, really did stop
 // the archive from loading and keeps the "Error loading archive:" header.
 func reportArchiveLoadError(streams *IOStreams, err error, showFirstErrors int) {
+	if fileErrors, ok := errors.AsType[*archiveFilesValidationError](err); ok {
+		streams.Errorf("Error loading archive: %s\n", fileErrors.format(showFirstErrors))
+
+		return
+	}
+
 	var structured *glxlib.StructuredValidationError
 	if !errors.As(err, &structured) || len(structured.Errors) == 0 {
 		streams.Errorf("Error loading archive: %v\n", err)

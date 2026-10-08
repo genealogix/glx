@@ -172,3 +172,23 @@ func TestPrintErrorList(t *testing.T) {
 		})
 	}
 }
+
+func TestStructuralIssuesStableIncludingPropertyNames(t *testing.T) {
+	data := []byte("persons:\n  person-a:\n    zeta: 1\n    alpha: 2\n    beta: 3\n  bad_id: {}\nevents:\n  event-b: {}\n  event-a: {}\n")
+	var first []string
+	for i := range 30 {
+		doc, err := ParseYAMLFile(data)
+		require.NoError(t, err)
+		issues := ValidateGLXFileStructure(doc)
+		require.NotEmpty(t, issues)
+		if i == 0 {
+			first = issues
+		} else {
+			assert.Equal(t, first, issues)
+		}
+	}
+	assert.Contains(t, strings.Join(first, "\n"), "additional properties 'alpha', 'beta', 'zeta' not allowed")
+	assert.Contains(t, first[0], "/events/event-a")
+	assert.Contains(t, first[1], "/events/event-b")
+	assert.Contains(t, first[len(first)-1], "invalid entity ID")
+}

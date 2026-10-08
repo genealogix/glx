@@ -45,6 +45,9 @@ that point into them. A dot-prefixed .glx file named explicitly on the command
 line is validated. An
 archive whose own root directory is dot-named is still validated normally.
 
+Use --show-first-errors N to limit each error list in any validation mode,
+including --stdin (default 10, 0 for all). Warnings are always listed in full.
+
 Use --report to generate a confidence summary showing assertion coverage
 and highlighting unsupported claims. The archive is validated first, so
 --report fails on an archive that plain validate rejects.

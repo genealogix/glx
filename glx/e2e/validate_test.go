@@ -173,3 +173,109 @@ func TestValidate_WarnsOnRoleOutsideAppliesTo(t *testing.T) {
 	assert.Contains(t, res.stderr, "relationships[rel-possibly-same].participants[0].role: role 'subject' is used on a relationship, but its applies_to is [event]")
 	assert.Contains(t, res.stdout, "Archive is valid")
 }
+
+// These are collected outside GLXFile.Validate: structural schema errors and
+// duplicate conflicts must be sorted before the new default cap hides any.
+func TestValidate_StructuralErrorsStableLimits(t *testing.T) {
+	work := t.TempDir()
+	var events strings.Builder
+	events.WriteString("events:\n")
+	for i := range 18 {
+		fmt.Fprintf(&events, "  event-%02d: {}\n", i)
+	}
+	fragment := filepath.Join(work, "fragment.glx")
+	whole := filepath.Join(work, "whole.glx")
+	archive := filepath.Join(work, "archive")
+	require.NoError(t, os.Mkdir(archive, 0o755))
+	require.NoError(t, os.WriteFile(fragment, []byte(events.String()), 0o644))
+	require.NoError(t, os.WriteFile(whole, []byte(events.String()+"event_types: {}\n"), 0o644))
+	// Split the schema failures over two files to verify a global issue cap,
+	// including when the prefix crosses a file boundary.
+	for _, part := range []string{"a", "b"} {
+		var content strings.Builder
+		content.WriteString("events:\n")
+		for i := range 9 {
+			fmt.Fprintf(&content, "  event-%s-%02d: {}\n", part, i)
+		}
+		require.NoError(t, os.WriteFile(filepath.Join(archive, part+".glx"), []byte(content.String()), 0o644))
+	}
+	for _, target := range []string{fragment, whole, archive} {
+		t.Run(filepath.Base(target), func(t *testing.T) {
+			checkValidationLimits(t, work, []string{target}, "", 18)
+		})
+	}
+}
+
+func TestValidate_DuplicateErrorsStableLimits(t *testing.T) {
+	archive := t.TempDir()
+	for _, file := range []string{"a", "b"} {
+		var content strings.Builder
+		content.WriteString("persons:\n")
+		for i := range 18 {
+			fmt.Fprintf(&content, "  person-%02d:\n    properties:\n      primary_name: %s\n", i, file)
+		}
+		require.NoError(t, os.WriteFile(filepath.Join(archive, file+".glx"), []byte(content.String()), 0o644))
+	}
+	checkValidationLimits(t, archive, nil, "", 18)
+	res := runGLX(t, archive, "validate", "--show-first-errors", "3")
+	assert.Contains(t, res.stderr, "conflict persons ID: person-00")
+	assert.Contains(t, res.stderr, "conflict persons ID: person-02")
+	assert.NotContains(t, res.stderr, "conflict persons ID: person-03")
+}
+
+func TestValidate_StdinErrorsStableLimits(t *testing.T) {
+	var input strings.Builder
+	input.WriteString("type: birth\nparticipants:\n")
+	for range 18 {
+		input.WriteString("  - person: 123\n")
+	}
+	checkValidationLimits(t, t.TempDir(), []string{"--stdin", "--entity-type", "event"}, input.String(), 18)
+}
+
+func checkValidationLimits(t *testing.T, work string, args []string, input string, total int) {
+	t.Helper()
+	cases := []struct {
+		name  string
+		flags []string
+		shown int
+	}{
+		{"default", nil, 10},
+		{"three", []string{"--show-first-errors", "3"}, 3},
+		{"all", []string{"--show-first-errors", "0"}, total},
+		{"equal", []string{"--show-first-errors", "18"}, total},
+		{"above", []string{"--show-first-errors", "99"}, total},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			command := append([]string{"validate"}, args...)
+			command = append(command, tc.flags...)
+			var first string
+			for i := range 5 {
+				var res result
+				if input == "" {
+					res = runGLX(t, work, command...)
+				} else {
+					res = runGLXWithStdin(t, work, input, command...)
+				}
+				require.Equal(t, 1, res.exitCode, res.stdout+res.stderr)
+				var lines []string
+				for line := range strings.SplitSeq(res.stderr, "\n") {
+					if strings.HasPrefix(line, "- ") || strings.HasPrefix(line, "  - ") {
+						lines = append(lines, line)
+					}
+				}
+				assert.Len(t, lines, tc.shown)
+				if tc.shown < total {
+					assert.Contains(t, res.stderr, fmt.Sprintf("... and %d more errors (use --show-first-errors 0 to list all)", total-tc.shown))
+				} else {
+					assert.NotContains(t, res.stderr, "more errors")
+				}
+				if i == 0 {
+					first = res.stderr
+				} else {
+					assert.Equal(t, first, res.stderr, "the displayed prefix must be stable across processes")
+				}
+			}
+		})
+	}
+}
