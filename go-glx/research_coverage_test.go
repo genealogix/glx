@@ -234,7 +234,7 @@ func TestBuildCoverage_NoDates(t *testing.T) {
 func TestCollectPersonEvents(t *testing.T) {
 	archive := newTestArchiveForCoverage()
 
-	events := collectPersonEvents("person-john", archive, eventsWithEvidence(archive))
+	events := collectPersonEvents("person-john", archive, eventsWithEvidence(archive), nil)
 
 	// Should find birth, death, census-1850, census-1860, marriage
 	assert.GreaterOrEqual(t, len(events), 5)
@@ -571,7 +571,7 @@ func TestCollectPersonStates_FromBirthplace(t *testing.T) {
 	}
 
 	// Pass the birth event info so collectPersonStates can find the state
-	events := collectPersonEvents("person-wi", archive, eventsWithEvidence(archive))
+	events := collectPersonEvents("person-wi", archive, eventsWithEvidence(archive), nil)
 	states := collectPersonStates(archive, events)
 	assert.Contains(t, states, "Wisconsin")
 }
@@ -605,7 +605,7 @@ func TestCollectPersonStates_FromEventPlace(t *testing.T) {
 		Assertions:    map[string]*Assertion{},
 	}
 
-	events := collectPersonEvents("person-1", archive, eventsWithEvidence(archive))
+	events := collectPersonEvents("person-1", archive, eventsWithEvidence(archive), nil)
 	states := collectPersonStates(archive, events)
 	assert.Contains(t, states, "Wisconsin")
 }
@@ -756,7 +756,7 @@ func TestCollectPersonStates_FromBirthEvent(t *testing.T) {
 		Assertions:    map[string]*Assertion{},
 	}
 
-	events := collectPersonEvents("person-1", archive, eventsWithEvidence(archive))
+	events := collectPersonEvents("person-1", archive, eventsWithEvidence(archive), nil)
 	states := collectPersonStates(archive, events)
 	assert.Contains(t, states, "Wisconsin")
 }
@@ -1182,6 +1182,86 @@ func TestEventsWithEvidence_MixedAssertionsOnOneEvent(t *testing.T) {
 	for range 20 {
 		assert.True(t, eventsWithEvidence(archive)["event-1"])
 	}
+}
+
+func TestEventsWithEvidence_HypotheticalAssertionIsOnlyAnEstimate(t *testing.T) {
+	// #1369: a cited assertion that is itself a hypothesis (or disproven)
+	// does not make its event a record found.
+	archive := &GLXFile{
+		Sources:   map[string]*Source{"source-1": {Type: SourceTypeChurchRegister}},
+		Citations: map[string]*Citation{"citation-marriage": {SourceID: "source-1"}},
+		Assertions: map[string]*Assertion{
+			"assertion-low": {
+				Subject: EntityRef{Event: "event-low"}, Citations: []string{"citation-marriage"},
+				Confidence: ConfidenceLevelLow,
+			},
+			"assertion-speculative": {
+				Subject: EntityRef{Event: "event-speculative"}, Citations: []string{"citation-marriage"},
+				Confidence: ConfidenceLevelHigh, Status: "speculative",
+			},
+			"assertion-low-proven": {
+				Subject: EntityRef{Event: "event-proven"}, Citations: []string{"citation-marriage"},
+				Confidence: ConfidenceLevelLow, Status: "proven",
+			},
+			"assertion-disproven": {
+				Subject: EntityRef{Event: "event-disproven"}, Citations: []string{"citation-marriage"},
+				Confidence: ConfidenceLevelHigh, Status: "disproven",
+			},
+			"assertion-weak": {
+				Subject: EntityRef{Event: "event-mixed"}, Citations: []string{"citation-marriage"},
+				Confidence: ConfidenceLevelLow,
+			},
+			"assertion-firm": {
+				Subject: EntityRef{Event: "event-mixed"}, Citations: []string{"citation-marriage"},
+				Confidence: ConfidenceLevelHigh,
+			},
+		},
+	}
+
+	evidenced := eventsWithEvidence(archive)
+	estimated := eventsWithOnlyWeakEvidence(archive, evidenced)
+
+	assert.Equal(t, map[string]bool{"event-proven": true, "event-mixed": true}, evidenced,
+		"only firm assertions evidence an event; a proven status overrides low confidence")
+	assert.Equal(t, map[string]bool{"event-low": true, "event-speculative": true}, estimated,
+		"a disproven assertion is neither evidence nor an estimate")
+}
+
+func TestBuildCoverage_EstimatedBirthIsNotABirthRecord(t *testing.T) {
+	// #1369: a birth estimated from the marriage, carried by a low/speculative
+	// assertion citing the marriage entry.
+	archive := &GLXFile{
+		Persons: map[string]*Person{
+			"person-jg": {Properties: map[string]any{PersonPropertyName: "Johann Georg Schöpff"}},
+		},
+		Events: map[string]*Event{
+			"event-birth": {
+				Type: EventTypeBirth, Date: "ABT 1621",
+				Participants: []Participant{{Person: "person-jg", Role: "subject"}},
+			},
+		},
+		Sources:   map[string]*Source{"source-kb": {Type: SourceTypeChurchRegister, Title: "Kirchenbuch 1"}},
+		Citations: map[string]*Citation{"citation-marriage": {SourceID: "source-kb"}},
+		Assertions: map[string]*Assertion{
+			"assertion-birth": {
+				Subject: EntityRef{Event: "event-birth"}, Property: "date", Value: "ABT 1621",
+				Citations: []string{"citation-marriage"}, Confidence: ConfidenceLevelLow, Status: "speculative",
+			},
+		},
+	}
+
+	result := buildCoverage("person-jg", archive.Persons["person-jg"], archive, "")
+
+	var birth *CoverageRecord
+	for i := range result.Records {
+		if result.Records[i].Label == "Birth record" {
+			birth = &result.Records[i]
+		}
+	}
+	require.NotNil(t, birth)
+	assert.False(t, birth.Found)
+	assert.Empty(t, birth.SourceRef)
+	assert.Contains(t, birth.Description, "event-birth is recorded only as an estimate")
 }
 
 func TestBuildCoverage_JSONReportsUnevidencedEventAsNotFound(t *testing.T) {
