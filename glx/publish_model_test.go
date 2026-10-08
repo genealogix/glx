@@ -357,6 +357,11 @@ func TestLifeSpan(t *testing.T) {
 		{"birth only", "1850-06-01", "", "b. 1850"},
 		{"death only", "", "1920", "d. 1920"},
 		{"neither", "", "", ""},
+		// #1328: ranges and qualifiers survive, with a spaced separator.
+		{"ranges", "BET 1756 AND 1774", "BET 1826-05-16 AND 1830", "1756/1774 – 1826/1830"},
+		{"about birth", "ABT 1765", "1830", "c. 1765 – 1830"},
+		{"range birth only", "BET 1756 AND 1770", "", "b. 1756/1770"},
+		{"before death only", "", "BEF 1860", "d. bef. 1860"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -371,21 +376,6 @@ func TestLifeSpan(t *testing.T) {
 				t.Errorf("lifeSpan(%q,%q) = %q, want %q", tc.birth, tc.death, got, tc.want)
 			}
 		})
-	}
-}
-
-func TestEventYear(t *testing.T) {
-	cases := map[string]string{
-		"1850":       "1850",
-		"1850-03-22": "1850",
-		"ABT 1850":   "1850",
-		"":           "",
-		"unknown":    "",
-	}
-	for in, want := range cases {
-		if got := eventYear(in); got != want {
-			t.Errorf("eventYear(%q) = %q, want %q", in, got, want)
-		}
 	}
 }
 
