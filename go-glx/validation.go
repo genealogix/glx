@@ -15,9 +15,11 @@
 package glx
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -25,6 +27,8 @@ import (
 )
 
 // Validate performs a comprehensive validation of the archive's cross-references.
+// Errors and warnings come back sorted by source entity type, then source ID,
+// then message, so the result is identical from run to run.
 // The result is cached; subsequent calls will return the same result unless
 // InvalidateCache is called.
 func (glx *GLXFile) Validate() *ValidationResult {
@@ -59,10 +63,35 @@ func (glx *GLXFile) Validate() *ValidationResult {
 	// Phase 6: Temporal consistency checks
 	glx.validateTemporalConsistency(result)
 
+	// The checks above walk entity maps, whose iteration order Go randomizes,
+	// so put the findings in a stable order: every caller then shows the same
+	// list run to run, and a truncated list is the same prefix each time.
+	sortValidationFindings(result)
+
 	result.validated = true
 	glx.validation = result
 
 	return result
+}
+
+// sortValidationFindings orders errors and warnings by source entity type,
+// then source ID, then message. The sort is stable, so findings that tie on
+// all three keep the order the checks produced them in.
+func sortValidationFindings(result *ValidationResult) {
+	slices.SortStableFunc(result.Errors, func(a, b ValidationError) int {
+		return cmp.Or(
+			cmp.Compare(a.SourceType, b.SourceType),
+			cmp.Compare(a.SourceID, b.SourceID),
+			cmp.Compare(a.Message, b.Message),
+		)
+	})
+	slices.SortStableFunc(result.Warnings, func(a, b ValidationWarning) int {
+		return cmp.Or(
+			cmp.Compare(a.SourceType, b.SourceType),
+			cmp.Compare(a.SourceID, b.SourceID),
+			cmp.Compare(a.Message, b.Message),
+		)
+	})
 }
 
 // InvalidateCache clears the cached validation results.

@@ -281,8 +281,29 @@ const (
 
 // GEDCOM Tags - Associations
 const (
-	GedcomTagAsso = "ASSO" // Association (links person to event/individual with role)
-	GedcomTagRole = "ROLE" // Role in association
+	GedcomTagAsso   = "ASSO"   // Association (links person to event/individual with role)
+	GedcomTagRole   = "ROLE"   // Role in association (GEDCOM 7.0)
+	GedcomTagRela   = "RELA"   // Relation to the associated person (GEDCOM 5.5.1)
+	GedcomTagPhrase = "PHRASE" // Free-text phrase qualifying an enumerated value (GEDCOM 7.0)
+)
+
+// GEDCOM 7.0 ROLE enumeration values (g7:enumset-ROLE)
+const (
+	GedcomRoleChil       = "CHIL"
+	GedcomRoleClergy     = "CLERGY"
+	GedcomRoleFath       = "FATH"
+	GedcomRoleFriend     = "FRIEND"
+	GedcomRoleGodp       = "GODP"
+	GedcomRoleHusb       = "HUSB"
+	GedcomRoleMoth       = "MOTH"
+	GedcomRoleMultiple   = "MULTIPLE"
+	GedcomRoleNghbr      = "NGHBR"
+	GedcomRoleOfficiator = "OFFICIATOR"
+	GedcomRoleOther      = "OTHER"
+	GedcomRoleParent     = "PARENT"
+	GedcomRoleSpou       = "SPOU"
+	GedcomRoleWife       = "WIFE"
+	GedcomRoleWitn       = "WITN"
 )
 
 // gedcomRoleToGLX maps GEDCOM ROLE enumeration values to GLX participant roles.
@@ -290,17 +311,17 @@ const (
 // Roles without a vocabulary match (NGHBR, FRIEND, MULTIPLE) are stored in
 // participant notes instead of the role field to avoid validation errors.
 var gedcomRoleToGLX = map[string]string{
-	"WITN":       ParticipantRoleWitness,
-	"OFFICIATOR": ParticipantRoleOfficiant,
-	"CLERGY":     ParticipantRoleOfficiant,
-	"GODP":       ParticipantRoleGodparent,
-	"CHIL":       ParticipantRoleChild,
-	"FATH":       ParticipantRoleParent,
-	"MOTH":       ParticipantRoleParent,
-	"HUSB":       ParticipantRoleSpouse,
-	"WIFE":       ParticipantRoleSpouse,
-	"PARENT":     ParticipantRoleParent,
-	"SPOU":       ParticipantRoleSpouse,
+	GedcomRoleWitn:       ParticipantRoleWitness,
+	GedcomRoleOfficiator: ParticipantRoleOfficiant,
+	GedcomRoleClergy:     ParticipantRoleOfficiant,
+	GedcomRoleGodp:       ParticipantRoleGodparent,
+	GedcomRoleChil:       ParticipantRoleChild,
+	GedcomRoleFath:       ParticipantRoleParent,
+	GedcomRoleMoth:       ParticipantRoleParent,
+	GedcomRoleHusb:       ParticipantRoleSpouse,
+	GedcomRoleWife:       ParticipantRoleSpouse,
+	GedcomRoleParent:     ParticipantRoleParent,
+	GedcomRoleSpou:       ParticipantRoleSpouse,
 }
 
 // GEDCOM Tags - Family Events

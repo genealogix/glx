@@ -87,19 +87,30 @@ func printResearchLogSummary(id, personID string, log *glxlib.ResearchLog) {
 		return
 	}
 	var open []*glxlib.ResearchLead
-	closed := map[string]int{}
+	byStatus := map[string]int{}
 	for i := range log.Leads {
 		lead := &log.Leads[i]
+		status := lead.Status
+		if status == "" {
+			status = "unspecified"
+		}
+		byStatus[status]++
 		if lead.IsOpen() {
 			open = append(open, lead)
-		} else {
-			closed[lead.Status]++
 		}
 	}
-	counts := []string{fmt.Sprintf("%d active", len(open))}
-	for _, status := range []string{glxlib.LeadStatusConfirmed, glxlib.LeadStatusEliminated} {
-		if closed[status] > 0 {
-			counts = append(counts, fmt.Sprintf("%d %s", closed[status], status))
+	statuses := []string{glxlib.LeadStatusActive, glxlib.LeadStatusConfirmed, glxlib.LeadStatusEliminated}
+	var customStatuses []string
+	for status := range byStatus {
+		if !slices.Contains(statuses, status) {
+			customStatuses = append(customStatuses, status)
+		}
+	}
+	slices.Sort(customStatuses)
+	var counts []string
+	for _, status := range append(statuses, customStatuses...) {
+		if byStatus[status] > 0 {
+			counts = append(counts, fmt.Sprintf("%d %s", byStatus[status], status))
 		}
 	}
 	fmt.Printf("    %-14s%s\n", "Leads:", strings.Join(counts, ", "))
@@ -118,6 +129,9 @@ func formatOpenLead(lead *glxlib.ResearchLead) string {
 		text = "(undescribed lead)"
 	}
 	var details []string
+	if lead.Status != "" && lead.Status != glxlib.LeadStatusActive {
+		details = append(details, lead.Status)
+	}
 	if lead.Confidence != "" {
 		details = append(details, lead.Confidence+" confidence")
 	}

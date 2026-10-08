@@ -25,7 +25,8 @@ Sections displayed:
   - Relationships: godparent, neighbor, household, employment, etc.
   - Life History: auto-generated biographical narrative
   - Research: research logs about the person (as subject or as a lead
-    candidate) with objective, status, planned searches, and active leads
+    candidate) with objective, status, planned searches, and open leads
+    with their recorded statuses
 
 ```
 glx summary <person> [flags]

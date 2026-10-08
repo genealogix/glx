@@ -173,6 +173,59 @@ func TestRenameEntity_ResearchLeadRefs(t *testing.T) {
 	assert.Equal(t, []string{"person-new"}, glx.ResearchLogs["rl-1"].Leads[1].Persons)
 }
 
+func TestMergePersons_ResearchLeadCandidatesRemainUnique(t *testing.T) {
+	cases := []struct {
+		name    string
+		persons []string
+		want    []string
+		refs    int
+	}{
+		{"keep first", []string{"keep", "drop"}, []string{"keep"}, 1},
+		{"drop first", []string{"drop", "keep"}, []string{"keep"}, 1},
+		{"separated candidates", []string{"drop", "other", "keep"}, []string{"keep", "other"}, 1},
+		{"drop only", []string{"other", "drop"}, []string{"other", "keep"}, 1},
+		{"unaffected", []string{"other", "keep"}, []string{"other", "keep"}, 0},
+		{"nil", nil, nil, 0},
+		{"empty", []string{}, []string{}, 0},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			archive := &GLXFile{
+				Persons: map[string]*Person{"keep": {}, "drop": {}, "other": {}},
+				ResearchLogs: map[string]*ResearchLog{"log": {Leads: []ResearchLead{
+					{Persons: tc.persons, EvidenceFor: []string{"drop"}, EvidenceAgainst: []string{"keep"}},
+				}}},
+			}
+			require.Empty(t, archive.Validate().Errors)
+			result, err := MergePersons(archive, "keep", "drop", MergePersonsOptions{})
+			require.NoError(t, err)
+			lead := archive.ResearchLogs["log"].Leads[0]
+			assert.Equal(t, tc.want, lead.Persons)
+			assert.Equal(t, tc.refs, result.RefsUpdated)
+			assert.Equal(t, []string{"drop"}, lead.EvidenceFor)
+			assert.Equal(t, []string{"keep"}, lead.EvidenceAgainst)
+			assert.NotContains(t, archive.Persons, "drop")
+			require.Empty(t, archive.Validate().Errors)
+		})
+	}
+}
+
+func TestMergePersons_ResearchLeadSharedCandidateSlices(t *testing.T) {
+	persons := []string{"keep", "drop"}
+	archive := &GLXFile{
+		Persons: map[string]*Person{"keep": {}, "drop": {}},
+		ResearchLogs: map[string]*ResearchLog{"log": {Leads: []ResearchLead{
+			{Persons: persons}, {Persons: persons},
+		}}},
+	}
+	result, err := MergePersons(archive, "keep", "drop", MergePersonsOptions{})
+	require.NoError(t, err)
+	assert.Equal(t, 2, result.RefsUpdated)
+	for _, lead := range archive.ResearchLogs["log"].Leads {
+		assert.Equal(t, []string{"keep"}, lead.Persons)
+	}
+}
+
 func TestThreeWayMerge_ResearchLog_Leads(t *testing.T) {
 	base := &GLXFile{ResearchLogs: map[string]*ResearchLog{
 		"rl1": {Leads: []ResearchLead{{Description: "A", Status: LeadStatusActive}}},

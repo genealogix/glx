@@ -170,10 +170,32 @@ func TestQueryResearchLogs_FlagsAccepted(t *testing.T) {
 // like directory archives do; before #660 search_result_types and
 // research_log_status_types were missing, so a self-contained file using a
 // standard search result or log status failed validation.
-func TestMergeStandardVocabularies_ResearchLogVocabularies(t *testing.T) {
+func TestMergeStandardVocabularies_LeadStatuses(t *testing.T) {
 	archive := &glxlib.GLXFile{}
 	require.NoError(t, mergeStandardVocabularies(archive))
 	assert.Contains(t, archive.SearchResultTypes, glxlib.SearchResultNotSearched)
 	assert.Contains(t, archive.ResearchLogStatusTypes, glxlib.ResearchLogStatusInProgress)
 	assert.Contains(t, archive.LeadStatuses, glxlib.LeadStatusEliminated)
+}
+
+func TestPrintResearchSection_PreservesLeadStatuses(t *testing.T) {
+	archive := newResearchTestArchive()
+	archive.ResearchLogs["research-log-mary-parents"].Leads = []glxlib.ResearchLead{
+		{Description: "On hold", Status: "parked", Confidence: "low", NextSteps: []string{"Wait for access"}},
+		{Description: "Still investigating", Status: glxlib.LeadStatusActive},
+		{Description: "Awaiting records", Status: "blocked"},
+		{Description: "No status yet"},
+		{Description: "Ruled out", Status: glxlib.LeadStatusEliminated},
+		{Description: "Proven", Status: glxlib.LeadStatusConfirmed},
+	}
+	output := captureStdout(t, func() {
+		printResearchSection("person-mary", archive)
+	})
+	assert.Contains(t, output, "1 active, 1 confirmed, 1 eliminated, 1 blocked, 1 parked, 1 unspecified")
+	assert.Contains(t, output, "On hold (parked; low confidence; next: Wait for access)")
+	assert.Contains(t, output, "Awaiting records (blocked)")
+	assert.Contains(t, output, "No status yet")
+	assert.NotContains(t, output, "4 active")
+	assert.NotContains(t, output, "Ruled out")
+	assert.NotContains(t, output, "Proven")
 }

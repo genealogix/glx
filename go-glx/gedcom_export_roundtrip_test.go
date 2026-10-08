@@ -28,6 +28,103 @@ import (
 // Verifies data preservation through the full cycle.
 // ============================================================================
 
+func TestRoundtrip_EventCitationDetailsPreserved(t *testing.T) {
+	const citationA = "2 SOUR @S1@\n3 PAGE Page 42\n3 NOTE Citation A\n3 OBJE @M1@\n"
+	cases := []struct {
+		name      string
+		refs      string
+		wantNotes []string
+		wantMedia []string
+	}{
+		{
+			name:      "bare source and unpaged citation",
+			refs:      "2 SOUR @S1@\n2 SOUR @S1@\n3 NOTE Citation B\n3 OBJE @M2@\n",
+			wantNotes: []string{"Citation B"},
+			wantMedia: []string{"media/files/second.jpg"},
+		},
+		{
+			name:      "same page with different notes and media",
+			refs:      citationA + "2 SOUR @S1@\n3 PAGE Page 42\n3 NOTE Citation B\n3 OBJE @M2@\n",
+			wantNotes: []string{"Citation A", "Citation B"},
+			wantMedia: []string{"media/files/first.jpg", "media/files/second.jpg"},
+		},
+		{
+			name:      "same page with different notes",
+			refs:      citationA + "2 SOUR @S1@\n3 PAGE Page 42\n3 NOTE Citation B\n3 OBJE @M1@\n",
+			wantNotes: []string{"Citation A", "Citation B"},
+			wantMedia: []string{"media/files/first.jpg", "media/files/first.jpg"},
+		},
+		{
+			name:      "same page with different media",
+			refs:      citationA + "2 SOUR @S1@\n3 PAGE Page 42\n3 NOTE Citation A\n3 OBJE @M2@\n",
+			wantNotes: []string{"Citation A", "Citation A"},
+			wantMedia: []string{"media/files/first.jpg", "media/files/second.jpg"},
+		},
+		{
+			name:      "identical citations",
+			refs:      citationA + citationA,
+			wantNotes: []string{"Citation A"},
+			wantMedia: []string{"media/files/first.jpg"},
+		},
+	}
+	for _, version := range []GEDCOMVersion{GEDCOM551, GEDCOM70} {
+		for _, tag := range []string{GedcomTagBirt, GedcomTagDeat, GedcomTagMarr, GedcomTagDiv} {
+			for _, tc := range cases {
+				t.Run(fmt.Sprintf("%d/%s/%s", version, tag, tc.name), func(t *testing.T) {
+					// Use a normal import to construct the archive, including the
+					// event-entity evidence on family events with no assertions.
+					gedcom := `0 HEAD
+1 SOUR TEST
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @S1@ SOUR
+1 TITL Parish register
+0 @M1@ OBJE
+1 FILE first.jpg
+2 FORM jpg
+0 @M2@ OBJE
+1 FILE second.jpg
+2 FORM jpg
+0 @I1@ INDI
+1 NAME John /Smith/
+`
+					if tag == GedcomTagMarr || tag == GedcomTagDiv {
+						gedcom += "1 FAMS @F1@\n0 @I2@ INDI\n1 NAME Jane /Smith/\n1 FAMS @F1@\n0 @F1@ FAM\n1 HUSB @I1@\n1 WIFE @I2@\n"
+					}
+					gedcom += "1 " + tag + "\n2 DATE 15 JAN 1850\n" + tc.refs + "0 TRLR\n"
+					archive, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+					require.NoError(t, err)
+					exported, _, err := ExportGEDCOM(archive, version, nil)
+					require.NoError(t, err)
+					assert.Equal(t, len(tc.wantMedia), strings.Count(string(exported), "\n3 OBJE "),
+						"every distinct citation must retain its media association")
+
+					roundtripped, _, err := ImportGEDCOM(strings.NewReader(string(exported)), nil)
+					require.NoError(t, err)
+					require.Len(t, roundtripped.Events, 1)
+					var notes, mediaURIs []string
+					for _, event := range roundtripped.Events {
+						for _, citationID := range extractStringList(event.Properties[PropertyCitations]) {
+							citation := roundtripped.Citations[citationID]
+							require.NotNil(t, citation)
+							notes = append(notes, citation.Notes...)
+							for _, mediaID := range citation.Media {
+								media := roundtripped.Media[mediaID]
+								require.NotNil(t, media)
+								mediaURIs = append(mediaURIs, media.URI)
+							}
+						}
+					}
+					assert.ElementsMatch(t, tc.wantNotes, notes, "citation notes must survive the round trip")
+					assert.ElementsMatch(t, tc.wantMedia, mediaURIs, "citation media links must survive the round trip")
+				})
+			}
+		}
+	}
+}
+
 // TestRoundtrip_MinimalFamily tests a simple family roundtrip
 func TestRoundtrip_MinimalFamily(t *testing.T) {
 	gedcom := `0 HEAD

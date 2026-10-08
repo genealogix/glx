@@ -240,7 +240,7 @@ research_logs:
           - "No daughter of the right age in the 1840 or 1850 census"
 ```
 
-`glx query research_logs --subject person-mary-green` lists the logs about Mary (as subject) and, because leads name candidate persons, `--subject person-john-h-green` finds this log too. `glx summary` shows a Research section for a person with each log's objective, status, outstanding `not_searched` searches, and active leads.
+`glx query research_logs --subject person-mary-green` lists the logs about Mary (as subject) and, because leads name candidate persons, `--subject person-john-h-green` finds this log too. `glx summary` shows a Research section for a person with each log's objective, status, outstanding `not_searched` searches, and open leads. Lead counts retain each recorded status, including archive-defined values; a lead without a status is counted as `unspecified`.
 
 ### Linking to citations
 
@@ -288,7 +288,9 @@ ResearchLog records both *what was searched* (`searches`) and *what we are tryin
 - **Research investigation** ([#660](https://github.com/genealogix/glx/issues/660)) originally proposed a separate Research entity for leads, hypotheses, and next steps. Because ResearchLog already carried the subject, objective, status, conclusions, and searches that entity needed, the proposal was folded into ResearchLog as `leads` instead of adding a new entity type. Candidate matching for unknown parentage ([#183](https://github.com/genealogix/glx/issues/183)) is modelled the same way: one lead per candidate, with evidence for and against.
 - **[Study](study.md)** (issue #226, shipped in beta.11): defines the scope of a research project (e.g., a One Place Study). Logs performed within a study are associated by convention (shared `subject`, places, or sources); there is no linking field between the two entities in this revision.
 
-CLI support (`glx query research_logs --subject`, the Research section of `glx summary`) is described in the [CLI reference](../../docs/cli/glx_query.md); it is not part of this specification.
+The `glx` CLI creates logs with [`glx add research-log`](../../docs/cli/glx_add_research-log.md) and appends one search at a time with [`glx add search`](../../docs/cli/glx_add_search.md); studies are created with [`glx add study`](../../docs/cli/glx_add_study.md), and both are listed with [`glx query research_logs`](../../docs/cli/glx_query.md) and `glx query studies`. These commands are tooling, not part of this specification.
+
+`glx query research_logs --subject` finds a person's logs as subject or as a lead candidate, and [`glx summary`](../../docs/cli/glx_summary.md) displays their Research section.
 
 ## GEDCOM Mapping
 

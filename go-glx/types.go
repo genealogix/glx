@@ -125,10 +125,11 @@ type ValidationResult struct {
 	// Example: "persons" -> {"occupation" -> PropertyDefinition{...}}
 	PropertyVocabs map[string]map[string]*PropertyDefinition
 
-	// Errors is a slice of hard validation failures.
+	// Errors is a slice of hard validation failures, sorted by source entity
+	// type, then source ID, then message.
 	Errors []ValidationError
 
-	// Warnings is a slice of soft validation issues.
+	// Warnings is a slice of soft validation issues, in the same order as Errors.
 	Warnings []ValidationWarning
 
 	validated bool // Internal flag to check if validation has been run.

@@ -382,6 +382,7 @@ type personListItemDTO struct {
 	Sex       string `json:"sex,omitempty"`
 	BirthYear int    `json:"birthYear,omitempty"`
 	DeathYear int    `json:"deathYear,omitempty"`
+	Lifespan  string `json:"lifespan,omitempty"`
 }
 
 func (s *viewerServer) handlePersons(w http.ResponseWriter, _ *http.Request) {
@@ -390,6 +391,7 @@ func (s *viewerServer) handlePersons(w http.ResponseWriter, _ *http.Request) {
 	for _, id := range sortedKeys(a.Persons) {
 		person := a.Persons[id]
 		birth, death := s.personVitalYears(id)
+		lifespan := s.personLifespan(id)
 		// person may be nil for a malformed archive entry (e.g. `person-x: null`);
 		// extractPersonName already tolerates nil, so only the property read needs
 		// guarding.
@@ -403,6 +405,7 @@ func (s *viewerServer) handlePersons(w http.ResponseWriter, _ *http.Request) {
 			Sex:       sex,
 			BirthYear: birth,
 			DeathYear: death,
+			Lifespan:  lifespan,
 		})
 	}
 
@@ -450,6 +453,7 @@ type personRefDTO struct {
 	Name      string `json:"name"`
 	BirthYear int    `json:"birthYear,omitempty"`
 	DeathYear int    `json:"deathYear,omitempty"`
+	Lifespan  string `json:"lifespan,omitempty"`
 	Detail    string `json:"detail,omitempty"`
 }
 
@@ -604,7 +608,7 @@ func (s *viewerServer) personRef(id string) personRefDTO {
 		name = extractPersonName(person)
 	}
 
-	return personRefDTO{ID: id, Name: name, BirthYear: birth, DeathYear: death}
+	return personRefDTO{ID: id, Name: name, BirthYear: birth, DeathYear: death, Lifespan: s.personLifespan(id)}
 }
 
 // personAssertions returns assertions whose subject is this person, with their
@@ -669,6 +673,7 @@ type treeNodeDTO struct {
 	Name      string         `json:"name"`
 	BirthYear int            `json:"birthYear,omitempty"`
 	DeathYear int            `json:"deathYear,omitempty"`
+	Lifespan  string         `json:"lifespan,omitempty"`
 	Sex       string         `json:"sex,omitempty"`
 	Children  []*treeNodeDTO `json:"children,omitempty"`
 }
@@ -767,7 +772,7 @@ func (s *viewerServer) buildTree(idx *treeRelIndex, id, direction string, depth,
 		name = extractPersonName(person)
 		sex = propertyString(person.Properties, glxlib.PersonPropertySex)
 	}
-	node := &treeNodeDTO{ID: id, Name: name, BirthYear: birth, DeathYear: death, Sex: sex}
+	node := &treeNodeDTO{ID: id, Name: name, BirthYear: birth, DeathYear: death, Lifespan: s.personLifespan(id), Sex: sex}
 
 	// depth is 0-based and the root counts as the first generation, so a request
 	// for maxGen generations renders nodes at depths 0..maxGen-1. Stopping at
@@ -939,10 +944,13 @@ func participantRole(personID string, participants []glxlib.Participant) string 
 	return roleAbsent
 }
 
-// vitalYears holds a person's birth and death years (0 when unknown).
+// vitalYears holds a person's birth and death years (0 when unknown) and the
+// raw birth and death dates the display lifespan is built from.
 type vitalYears struct {
-	birth int
-	death int
+	birth     int
+	death     int
+	birthDate string
+	deathDate string
 }
 
 // personVitalYears returns the person's birth and death years (0 when unknown).
@@ -955,6 +963,16 @@ func (s *viewerServer) personVitalYears(personID string) (birth, death int) {
 	vy := s.vitalIndex[personID]
 
 	return vy.birth, vy.death
+}
+
+// personLifespan returns the person's one-line display lifespan, keeping date
+// qualifiers and ranges ("c. 1765 – 1830", "1756/1774 – 1826/1830"; #1328).
+// The numeric years from personVitalYears stay in the API for sorting.
+func (s *viewerServer) personLifespan(personID string) string {
+	s.vitalOnce.Do(func() { s.vitalIndex = buildVitalYearIndex(s.archive) })
+	vy := s.vitalIndex[personID]
+
+	return formatLifeSpan(vy.birthDate, vy.deathDate)
 }
 
 // buildVitalYearIndex makes a single pass over the archive's events and records,
@@ -988,9 +1006,11 @@ func buildVitalYearIndex(a *glxlib.GLXFile) map[string]vitalYears {
 			switch {
 			case isBirth && !haveBirth[p.Person]:
 				vy.birth = glxlib.ExtractFirstYear(string(event.Date))
+				vy.birthDate = string(event.Date)
 				haveBirth[p.Person] = true
 			case isDeath && !haveDeath[p.Person]:
 				vy.death = glxlib.ExtractFirstYear(string(event.Date))
+				vy.deathDate = string(event.Date)
 				haveDeath[p.Person] = true
 			}
 			idx[p.Person] = vy
