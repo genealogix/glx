@@ -45,6 +45,9 @@ that point into them. A dot-prefixed .glx file named explicitly on the command
 line is validated. An
 archive whose own root directory is dot-named is still validated normally.
 
+Use --show-first-errors N to limit each error list in any validation mode,
+including --stdin (default 10, 0 for all). Warnings are always listed in full.
+
 Use --report to generate a confidence summary showing assertion coverage
 and highlighting unsupported claims. The archive is validated first, so
 --report fails on an archive that plain validate rejects.
@@ -79,10 +82,11 @@ glx validate [paths...] [flags]
 ### Options
 
 ```
-      --entity-type string   Entity or vocabulary type for --stdin — an entity singular (person, event, place, source, citation, repository, media, relationship, assertion, research-log, study) or a vocabulary collection key (e.g. event_types, place_types, confidence_levels, participant_roles)
-  -h, --help                 help for validate
-      --report               Generate confidence summary report
-      --stdin                Read one entity as YAML on stdin and validate it against its entity-type schema (no path args)
+      --entity-type string      Entity or vocabulary type for --stdin — an entity singular (person, event, place, source, citation, repository, media, relationship, assertion, research-log, study) or a vocabulary collection key (e.g. event_types, place_types, confidence_levels, participant_roles)
+  -h, --help                    help for validate
+      --report                  Generate confidence summary report
+      --show-first-errors int   Number of validation errors to show (0 for all) (default 10)
+      --stdin                   Read one entity as YAML on stdin and validate it against its entity-type schema (no path args)
 ```
 
 ### Options inherited from parent commands

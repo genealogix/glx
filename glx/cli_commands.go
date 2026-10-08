@@ -432,6 +432,7 @@ var (
 	validateReport          bool
 	validateStdin           bool
 	validateEntityType      string
+	validateShowFirstErrors int
 	errReportTooManyArgs    = errors.New("--report accepts at most one path argument")
 	errStdinReportExclusive = errors.New("--stdin and --report are mutually exclusive")
 )
@@ -475,6 +476,9 @@ that point into them. A dot-prefixed .glx file named explicitly on the command
 line is validated. An
 archive whose own root directory is dot-named is still validated normally.
 
+Use --show-first-errors N to limit each error list in any validation mode,
+including --stdin (default 10, 0 for all). Warnings are always listed in full.
+
 Use --report to generate a confidence summary showing assertion coverage
 and highlighting unsupported claims. The archive is validated first, so
 --report fails on an archive that plain validate rejects.`,
@@ -501,6 +505,7 @@ and highlighting unsupported claims. The archive is validated first, so
 
 func init() {
 	validateCmd.Flags().BoolVar(&validateReport, "report", false, "Generate confidence summary report")
+	validateCmd.Flags().IntVar(&validateShowFirstErrors, "show-first-errors", defaultShowFirstErrors, "Number of validation errors to show (0 for all)")
 	validateCmd.Flags().BoolVar(&validateStdin, "stdin", false,
 		"Read one entity as YAML on stdin and validate it against its entity-type schema (no path args)")
 	validateCmd.Flags().StringVar(&validateEntityType, "entity-type", "",
@@ -515,13 +520,13 @@ func runValidate(_ *cobra.Command, args []string) error {
 		return errStdinReportExclusive
 	}
 	if validateStdin {
-		return validateStdinEntity(SystemIOStreams(), validateEntityType, args, os.Stdin)
+		return validateStdinEntity(SystemIOStreams(), validateEntityType, args, os.Stdin, validateShowFirstErrors)
 	}
 	if validateReport {
-		return validateAndReport(SystemIOStreams(), args)
+		return validateAndReport(SystemIOStreams(), args, validateShowFirstErrors)
 	}
 
-	return validatePaths(SystemIOStreams(), args)
+	return validatePathsShowing(SystemIOStreams(), args, validateShowFirstErrors)
 }
 
 // ============================================================================
