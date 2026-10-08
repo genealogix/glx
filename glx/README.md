@@ -204,7 +204,8 @@ glx validate persons/ events/   # several directories are validated as one archi
 - ⚖️ **Evidence** - Lay out every assertion for one subject+property (person, event, place, or relationship) side-by-side, grouped by value, to weigh conflicting evidence
 - 📋 **Census Import** - Generate GLX entities from structured census templates with person matching, assertions, and dry-run preview
 - 🔗 **Link** - Create a FamilySearch citation (and repository/source scaffolding) from an ARK URL, offline
-- ➕ **Add** - Create person, place, event, repository, source, citation, relationship, or assertion entities from CLI flags with vocabulary and reference validation
+- ➕ **Add** - Create person, place, event, repository, source, citation, relationship, assertion, research log, or study entities from CLI flags with vocabulary and reference validation
+- 🧾 **Research Logging** - Append searches, including negative results, to a research log one at a time with `glx add search`
 - 🔄 **Migrate** - Convert deprecated person properties to birth/death events
 - 🖥️ **Serve** - Run a local web server with a browser-based read-only viewer (dashboard, person profiles, family tree, sources)
 - ⚡ **Cache** - Build a binary archive cache (`.glx/cache.bin`) so repeated commands skip the YAML parse; transparently used by read commands, with git + filesystem staleness detection
