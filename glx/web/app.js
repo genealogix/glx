@@ -464,7 +464,7 @@ function treeNode(node, w, hh) {
   if (years) g.appendChild(svgText(years, 12, 35, "tn-years", w - 20));
 
   const title = document.createElementNS(SVG_NS, "title");
-  title.textContent = node.name || node.id;
+  title.textContent = [node.name || node.id, years].filter(Boolean).join("\n");
   g.appendChild(title);
 
   return g;

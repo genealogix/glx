@@ -248,22 +248,35 @@ Most events map directly to GEDCOM tags:
 | `baptism` | INDI.BAPM/CHR | Baptism or christening |
 | `burial` | INDI.BURI | Burial |
 
+An event type whose vocabulary entry has no `gedcom` tag (for example `taxation`, `voter_registration`, or an archive-defined type) exports as a generic `EVEN` whose `TYPE` is the type's label, followed by `: <subtype>` when the event has an `event_subtype`. Import reads that `TYPE` back into the original event type.
+
 **Note:** GEDCOM attributes like OCCU (occupation) and RELI (religion) are imported as temporal properties on Person entities, not events. RESI is imported either as a temporal residence property on the Person entity (when a `PLAC` is present) or, when no `PLAC` is present (e.g., bare `RESI Y` or `RESI` with only `DATE`/`TYPE`), as a separate Event entity whose `type` field is `residence`.
 
 ### Multi-Participant Events
 
-For events with multiple participants, GLX uses the ASSO (Associate) tag pattern:
+An individual event is written under the record of each `principal` (or `subject`) participant. An event with no principal is written under its household participants (`household_head`, `boarder`), such as a census entered with only the head of household. A couple's event is written under their `FAM`.
+
+In GEDCOM 7.0, every other participant becomes an `ASSO` under the event with a `ROLE`: `WITN`, `GODP`, `OFFICIATOR`, `CHIL`, `FATH`/`MOTH`/`PARENT`, `HUSB`/`WIFE`/`SPOU`, or `OTHER` with a `PHRASE` naming the role. A `gedcom` value on the role's vocabulary entry that is a ROLE enumeration value takes precedence:
 
 ```text
-0 FAM
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
 1 MARR
 2 DATE 10 MAY 1875
 2 PLAC Leeds, Yorkshire, England
-1 ASSO person-witness1
-2 RELA Witness
-1 ASSO person-vicar
-2 RELA Officiant
+2 ASSO @I3@
+3 ROLE WITN
+2 ASSO @I4@
+3 ROLE OTHER
+4 PHRASE Informant
 ```
+
+GEDCOM 5.5.1 permits `ASSO` only directly under `INDI`, not under an event or `FAM`. Export therefore writes each association on the event's principal or household host; for a family event it writes it on each known spouse. `RELA` carries the participant's role label, and `NOTE` carries participant notes and descriptive event context (type, GEDCOM tag, archive event ID, date, place and subjects). A role label longer than 5.5.1's 25-character `RELA` limit, or containing a line break, is preserved in a note with `RELA Participant`.
+
+This 5.5.1 representation uses standard structures for interoperability. Its event link is descriptive text, and importing it does not reconstruct the event's participants. Use GEDCOM 7.0 when structured event associations and participant-role round trips are needed.
+
+An event that no record can carry, such as one whose only participant is a witness, is named in the export warnings.
 
 ## Participant Roles
 
