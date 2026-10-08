@@ -493,8 +493,8 @@ func exportFamilyEvent(eventID, gedcomTag string, expCtx *ExportContext) *GEDCOM
 		record.SubRecords = append(record.SubRecords, propRec)
 	}
 
-	// SOUR references from event sources and citations
-	exportEventSourceRefs(event, expCtx, record)
+	// SOUR references from event sources, citations and event-subject assertions
+	exportEventEvidenceRefs(eventID, event, expCtx, record)
 
 	return record
 }
