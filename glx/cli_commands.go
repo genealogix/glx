@@ -1433,9 +1433,10 @@ func runCluster(_ *cobra.Command, args []string) error {
 // ============================================================================
 
 var (
-	pathArchive string
-	pathMaxHops int
-	pathJSON    bool
+	pathArchive      string
+	pathMaxHops      int
+	pathAcceptedOnly bool
+	pathJSON         bool
 )
 
 var pathCmd = &cobra.Command{
@@ -1450,6 +1451,13 @@ godparent, neighbor, etc.) to find the shortest connection.
 Each hop shows the relationship type and the destination person's role.
 Use --max-hops to limit search depth (default 10).
 
+A relationship whose assertions are all disproven is a rejected alternative
+and is never followed. A hop along a relationship recorded only as a
+hypothesis (low confidence, or a speculative, unresearched, or disputed
+status, with no proven assertion) is marked "(?)", and among equally short
+paths the one with the fewest such hops is shown. Use --accepted-only to
+follow no hypothetical relationships at all.
+
 Person arguments can be exact entity IDs or name substrings.`,
 	Example: `  # Find path between two persons by ID
   glx path person-mary-lane person-louenza-mortimer
@@ -1459,6 +1467,9 @@ Person arguments can be exact entity IDs or name substrings.`,
 
   # Limit search depth
   glx path "Mary Lane" "John Smith" --max-hops 5
+
+  # Follow no relationship recorded only as a hypothesis
+  glx path "Mary Lane" "John Smith" --accepted-only
 
   # JSON output
   glx path "Mary Lane" "John Smith" --json
@@ -1472,11 +1483,12 @@ Person arguments can be exact entity IDs or name substrings.`,
 func init() {
 	pathCmd.Flags().StringVarP(&pathArchive, "archive", "a", ".", "Archive path (directory or single file)")
 	pathCmd.Flags().IntVar(&pathMaxHops, "max-hops", 10, "Maximum number of hops to search")
+	pathCmd.Flags().BoolVar(&pathAcceptedOnly, "accepted-only", false, "Follow only relationships not recorded as a hypothesis")
 	pathCmd.Flags().BoolVar(&pathJSON, "json", false, "Output as JSON")
 }
 
 func runPath(_ *cobra.Command, args []string) error {
-	return showPath(pathArchive, args[0], args[1], pathMaxHops, pathJSON)
+	return showPath(pathArchive, args[0], args[1], pathMaxHops, pathAcceptedOnly, pathJSON)
 }
 
 // ============================================================================
