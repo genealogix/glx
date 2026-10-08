@@ -70,6 +70,9 @@ func ExportGEDCOM(glx *GLXFile, version GEDCOMVersion, logWriter io.Writer) ([]b
 	// Build assertion lookup index (person ID + property -> assertions)
 	buildPersonPropertyAssertionsIndex(expCtx)
 
+	// Build assertion lookup index (event ID + property -> assertions)
+	buildEventPropertyAssertionsIndex(expCtx)
+
 	// Reconstruct families from relationships (before building records)
 	reconstructFamilies(expCtx)
 
@@ -123,6 +126,17 @@ func ExportGEDCOM(glx *GLXFile, version GEDCOMVersion, logWriter io.Writer) ([]b
 		record := exportFamily(family, expCtx)
 		records = append(records, record)
 		expCtx.Stats.FamiliesExported++
+	}
+
+	// 5.5.1 permits ASSO only on INDI. Family events contribute associations
+	// to each known spouse, so attach them after both record kinds are built.
+	for _, record := range records {
+		if record.Tag == GedcomTagIndi {
+			associations := expCtx.personAssociations551[record.XRef]
+			for _, key := range sortedKeys(associations) {
+				record.SubRecords = append(record.SubRecords, associations[key])
+			}
+		}
 	}
 
 	// Name every event no INDI or FAM record carried (#1320, #1321)
@@ -183,6 +197,10 @@ type ExportContext struct {
 	// so reportUnexportedEvents can name the events no record carried.
 	familyEventsExported map[string]bool
 
+	// 5.5.1 person-level associations, keyed by owner XREF and event/structure.
+	// Event context is descriptive NOTE text, not a structured event link.
+	personAssociations551 map[string]map[string]*GEDCOMRecord
+
 	// Reconstructed family records
 	Families      []*ExportFamily
 	FamilyXRefMap map[string]string // relationship ID -> family XREF
@@ -194,6 +212,10 @@ type ExportContext struct {
 	// PersonPropertyAssertions maps personID -> property -> assertions
 	// Used to export SOUR on NAME, OCCU, RESI, etc. from assertion evidence
 	PersonPropertyAssertions map[string]map[string][]*Assertion
+
+	// EventPropertyAssertions maps eventID -> property -> assertions
+	// Used to export SOUR on BIRT, DEAT, MARR, etc. from assertion evidence
+	EventPropertyAssertions map[string]map[string][]*Assertion
 
 	Stats ExportStatistics
 }

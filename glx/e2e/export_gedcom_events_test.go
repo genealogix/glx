@@ -133,3 +133,49 @@ func TestExport_GEDCOMParentsEventsAndAssociations(t *testing.T) {
 	assert.Contains(t, res.stdout, "[events ev-deed-witnessed] event has no principal or household participant (roles: witness)")
 	assert.NotContains(t, gedcomRecord(t, ged, "@I1@"), "WILL")
 }
+
+func TestExport_OverlappingParentFamilies(t *testing.T) {
+	for _, version := range []string{"551", "70"} {
+		t.Run(version, func(t *testing.T) {
+			dir := t.TempDir()
+			fixture, err := os.ReadFile(filepath.Join("..", "testdata", "valid", "overlapping-parent-families.glx"))
+			require.NoError(t, err)
+			require.NoError(t, os.WriteFile(filepath.Join(dir, "archive.glx"), fixture, 0o600))
+			validation := runGLX(t, dir, "validate", "archive.glx")
+			require.Equal(t, 0, validation.exitCode, validation.stdout+validation.stderr)
+			res := runGLX(t, dir, "export", "archive.glx", "-f", version, "-o", "out.ged")
+			require.Equal(t, 0, res.exitCode, res.stdout+res.stderr)
+			data, err := os.ReadFile(filepath.Join(dir, "out.ged"))
+			require.NoError(t, err)
+			ged := strings.ReplaceAll(string(data), "\r\n", "\n")
+			assert.NotContains(t, gedcomRecord(t, ged, "@F1@"), "CHIL", "unrelated spouse must not become a parent")
+			assert.Contains(t, gedcomRecord(t, ged, "@F2@"), "1 CHIL @I1@")
+			assert.Contains(t, gedcomRecord(t, ged, "@F3@"), "1 CHIL @I1@")
+			assert.Contains(t, gedcomRecord(t, ged, "@I1@"), "1 FAMC @F2@\n1 FAMC @F3@")
+		})
+	}
+}
+
+func TestExport_GEDCOM551UsesStandardAssociations(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "archive.glx"), []byte(exportEventsArchive), 0o600))
+	res := runGLX(t, dir, "export", "archive.glx", "-f", "551", "-o", "out.ged")
+	require.Equal(t, 0, res.exitCode, res.stdout+res.stderr)
+	data, err := os.ReadFile(filepath.Join(dir, "out.ged"))
+	require.NoError(t, err)
+	ged := strings.ReplaceAll(string(data), "\r\n", "\n")
+	assert.Contains(t, gedcomRecord(t, ged, "@I2@"), "1 ASSO @I5@\n2 RELA Witness\n2 NOTE Event: Will (WILL; ev-will-1808); date: 1808-12-19")
+	assert.Contains(t, gedcomRecord(t, ged, "@I4@"), "1 ASSO @I2@\n2 RELA Godparent\n2 NOTE Event: Baptism (BAPM; ev-bapt-1789); date: 1789-10-11")
+	var root string
+	for line := range strings.SplitSeq(ged, "\n") {
+		if strings.HasPrefix(line, "0 ") {
+			root = line
+		}
+		if strings.Contains(line, " ASSO ") {
+			assert.True(t, strings.HasSuffix(root, " INDI"), "ASSO must belong to INDI: %s", root)
+			assert.True(t, strings.HasPrefix(line, "1 ASSO "), "ASSO must be person-level: %s", line)
+		}
+	}
+	assert.NotContains(t, ged, "_ASSO")
+	assert.NotContains(t, ged, " ROLE ")
+}

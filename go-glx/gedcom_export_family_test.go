@@ -1789,3 +1789,63 @@ func TestExportGEDCOM_TwoParentRelationshipChildInRightFAM(t *testing.T) {
 			"0 @F1@ FAM\n1 HUSB @I1@\n1 WIFE @I2@\n0 @F2@ FAM\n1 HUSB @I4@\n1 WIFE @I2@\n1 CHIL @I3@\n")
 	}
 }
+
+func TestExportGEDCOM_OverlappingParentSetsKeepSharedParent(t *testing.T) {
+	for _, tc := range gedcomVersions {
+		t.Run(tc.name, func(t *testing.T) {
+			glx := newEventExportArchive(t, map[string][2]string{
+				"person-child": {"Child One", "unknown"}, "person-father": {"Father One", "male"},
+				"person-mother": {"Mother One", "female"}, "person-other": {"Other One", "female"},
+				"person-step": {"Step One", "male"},
+			})
+			glx.Relationships = map[string]*Relationship{
+				"rel-marriage-a-unrelated": marriageOf("person-step", "person-other"),
+				"rel-marriage-b-birth":     marriageOf("person-father", "person-mother"),
+				"rel-marriage-c-step":      marriageOf("person-step", "person-mother"),
+				"rel-pc-both": parentChildOf(RelationshipTypeParentChild,
+					[]string{"person-father", "person-mother"}, []string{"person-child"}),
+				"rel-pc-mother": parentChildOf(RelationshipTypeParentChild,
+					[]string{"person-mother"}, []string{"person-child"}),
+				"rel-pc-step": parentChildOf(RelationshipTypeParentChild,
+					[]string{"person-step"}, []string{"person-child"}),
+			}
+			require.Empty(t, glx.Validate().Errors)
+			ged, result := exportGEDCOMString(t, glx, tc.version)
+			assert.Empty(t, result.Statistics.Warnings)
+			assert.Empty(t, gedcomSubstructures(ged, "@F1@", "CHIL"), "unrelated spouse must not become a parent")
+			assert.Equal(t, []string{"1 CHIL @I1@"}, gedcomSubstructures(ged, "@F2@", "CHIL"))
+			assert.Equal(t, []string{"1 CHIL @I1@"}, gedcomSubstructures(ged, "@F3@", "CHIL"))
+			assert.Equal(t, []string{"1 FAMC @F2@", "1 FAMC @F3@"}, gedcomSubstructures(ged, "@I1@", "FAMC"))
+		})
+	}
+}
+
+func TestExportGEDCOM_OverlappingParentSetsPreservePedigree(t *testing.T) {
+	for _, tc := range gedcomVersions {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, pedigree := range []struct{ name, explicitType, want string }{
+				{"inherited", RelationshipTypeParentChild, "birth"},
+				{"explicit", RelationshipTypeAdoptiveParentChild, "adopted"},
+			} {
+				t.Run(pedigree.name, func(t *testing.T) {
+					glx := newEventExportArchive(t, map[string][2]string{
+						"person-child": {"Child One", "unknown"}, "person-father": {"Father One", "male"},
+						"person-mother": {"Mother One", "female"},
+					})
+					glx.Relationships = map[string]*Relationship{
+						"rel-marriage": marriageOf("person-father", "person-mother"),
+						"rel-pc-both": parentChildOf(pedigree.explicitType,
+							[]string{"person-father", "person-mother"}, []string{"person-child"}),
+						"rel-pc-father": parentChildOf(RelationshipTypeBiologicalParentChild,
+							[]string{"person-father"}, []string{"person-child"}),
+						"rel-pc-mother": parentChildOf(RelationshipTypeBiologicalParentChild,
+							[]string{"person-mother"}, []string{"person-child"}),
+					}
+					ged, _ := exportGEDCOMString(t, glx, tc.version)
+					assert.Equal(t, []string{"1 FAMC @F1@\n2 PEDI " + pedigree.want}, gedcomSubstructures(ged, "@I1@", "FAMC"))
+					assert.Equal(t, []string{"1 CHIL @I1@"}, gedcomSubstructures(ged, "@F1@", "CHIL"))
+				})
+			}
+		})
+	}
+}

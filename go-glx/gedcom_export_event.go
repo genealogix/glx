@@ -19,6 +19,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"unicode/utf8"
 )
 
 // householdRoles are the participant roles that place a person in a census
@@ -142,12 +143,18 @@ func vocabularyLabel(vocabulary map[string]*VocabularyEntry, key string) string 
 // without being the subject of the record it is written under, such as a
 // witness, godparent or informant.
 //
-// GEDCOM 7.0 writes ASSO @Ix@ with a ROLE from its enumeration, or ROLE OTHER
-// with a PHRASE naming the role. GEDCOM 5.5.1 writes ASSO @Ix@ with a RELA
-// naming the role. Participant notes become NOTE under the ASSO. GEDCOM 5.5.1
-// defines ASSO only at INDI level; the event-level ASSO follows GEDCOM 5.5.5
-// and 7.0 practice, and is what glx import reads back.
+// GEDCOM 7.0 writes ASSO @Ix@ with ROLE (and PHRASE for OTHER). GEDCOM
+// 5.5.1 has no event-level ASSO; queueGEDCOM551EventAssociations puts its
+// associations on INDI instead, with descriptive event context in NOTE.
 func exportEventAssociations(event *Event, skip func(Participant) bool, expCtx *ExportContext) []*GEDCOMRecord {
+	if expCtx.Version == GEDCOM551 {
+		return nil
+	}
+
+	return eventAssociationRecords(event, skip, expCtx)
+}
+
+func eventAssociationRecords(event *Event, skip func(Participant) bool, expCtx *ExportContext) []*GEDCOMRecord {
 	var records []*GEDCOMRecord
 	for _, p := range event.Participants {
 		if p.Person == "" || skip(p) {
@@ -171,10 +178,21 @@ func exportEventAssociations(event *Event, skip func(Participant) bool, expCtx *
 			}
 			asso.SubRecords = append(asso.SubRecords, role)
 		} else {
+			label := vocabularyLabel(expCtx.GLX.ParticipantRoles, p.Role)
+			// RELA is one line of at most 25 characters in 5.5.1, with no
+			// CONT/CONC children. Preserve longer or multiline labels in NOTE.
+			relation := label
+			if strings.TrimSpace(relation) == "" || utf8.RuneCountInString(relation) > 25 || strings.ContainsAny(relation, "\r\n") {
+				relation = "Participant"
+			}
 			asso.SubRecords = append(asso.SubRecords, &GEDCOMRecord{
 				Tag:   GedcomTagRela,
-				Value: vocabularyLabel(expCtx.GLX.ParticipantRoles, p.Role),
+				Value: relation,
 			})
+			if relation != label {
+				noteLabel := strings.ReplaceAll(strings.ReplaceAll(label, "\r\n", "\n"), "\r", "\n")
+				asso.SubRecords = append(asso.SubRecords, &GEDCOMRecord{Tag: GedcomTagNote, Value: "Event role: " + noteLabel})
+			}
 		}
 		for _, note := range p.Notes {
 			asso.SubRecords = append(asso.SubRecords, &GEDCOMRecord{Tag: GedcomTagNote, Value: note})
@@ -184,6 +202,62 @@ func exportEventAssociations(event *Event, skip func(Participant) bool, expCtx *
 	}
 
 	return records
+}
+
+// queueGEDCOM551EventAssociations projects event participants onto the event
+// hosts' INDI records. Notes identify the event without inventing a standard
+// event link that 5.5.1 cannot represent. Repeated exports of the same event
+// retain distinct participant notes and collapse only identical structures.
+func queueGEDCOM551EventAssociations(eventID string, event *Event, gedcomTag string, hostIDs []string,
+	skip func(Participant) bool, expCtx *ExportContext,
+) {
+	if expCtx.Version != GEDCOM551 {
+		return
+	}
+	associations := eventAssociationRecords(event, skip, expCtx)
+	if len(associations) == 0 {
+		return
+	}
+
+	context := gedcom551EventContext(eventID, event, gedcomTag, hostIDs, expCtx)
+	for _, association := range associations {
+		association.SubRecords = append(association.SubRecords, &GEDCOMRecord{Tag: GedcomTagNote, Value: context})
+		key := eventID + "\x00" + string(serializeGEDCOMRecords([]*GEDCOMRecord{association}))
+		for _, personID := range hostIDs {
+			xref := expCtx.PersonXRefMap[personID]
+			if xref == "" || xref == association.Value {
+				continue
+			}
+			if expCtx.personAssociations551 == nil {
+				expCtx.personAssociations551 = make(map[string]map[string]*GEDCOMRecord)
+			}
+			if expCtx.personAssociations551[xref] == nil {
+				expCtx.personAssociations551[xref] = make(map[string]*GEDCOMRecord)
+			}
+			expCtx.personAssociations551[xref][key] = association
+		}
+	}
+}
+
+func gedcom551EventContext(eventID string, event *Event, gedcomTag string, hostIDs []string, expCtx *ExportContext) string {
+	context := "Event: " + vocabularyLabel(expCtx.GLX.EventTypes, event.Type) + " (" + gedcomTag + "; " + eventID + ")"
+	if event.Date != "" {
+		context += "; date: " + string(event.Date)
+	}
+	if place := expCtx.PlaceStrings[event.PlaceID]; place != "" {
+		context += "; place: " + place
+	}
+	var names []string
+	for _, personID := range hostIDs {
+		if person := expCtx.GLX.Persons[personID]; person != nil {
+			names = append(names, PersonDisplayName(person))
+		}
+	}
+	if len(names) > 0 {
+		context += "; subjects: " + strings.Join(names, ", ")
+	}
+
+	return context
 }
 
 // gedcomAssociationRole maps a participant's role to a GEDCOM 7.0 ROLE value:

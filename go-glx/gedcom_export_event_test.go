@@ -17,6 +17,7 @@ package glx
 import (
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -280,6 +281,25 @@ func TestImportGEDCOM_EVENWithFreeTextTypeStaysGeneric(t *testing.T) {
 	assert.ElementsMatch(t, []string{"Militia muster", "Note: not a vocabulary label"}, subtypes)
 }
 
+func TestImportGEDCOM_ASSOPhrasePreservesDeclaredRole(t *testing.T) {
+	for _, role := range []string{GedcomRoleNghbr, GedcomRoleFriend, GedcomRoleMultiple} {
+		t.Run(role, func(t *testing.T) {
+			ged := "0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n1 NAME A //\n" +
+				"1 BIRT\n2 ASSO @I2@\n3 ROLE " + role + "\n4 PHRASE Informant\n" +
+				"0 @I2@ INDI\n1 NAME B //\n0 TRLR\n"
+			imported, _, err := ImportGEDCOM(strings.NewReader(ged), nil)
+			require.NoError(t, err)
+			require.Len(t, imported.Events, 1)
+			for _, event := range imported.Events {
+				require.Len(t, event.Participants, 2)
+				associate := event.Participants[1]
+				assert.Equal(t, ParticipantRoleWitness, associate.Role)
+				assert.Equal(t, NoteList{"GEDCOM ROLE: " + role, "Role: Informant"}, associate.Notes)
+			}
+		})
+	}
+}
+
 // newAssociationArchive is the #1321 reproduction: a census entered with only
 // a household head, a will with a witness, and a baptism with a godparent and
 // an informant.
@@ -347,20 +367,161 @@ func TestExportGEDCOM_EventParticipantsExportAsASSO70(t *testing.T) {
 	assert.Empty(t, result.Statistics.Warnings)
 }
 
-// GEDCOM 5.5.1 has no ROLE; the association's relation is a RELA naming the
-// role.
+// GEDCOM 5.5.1 associations belong to INDI, with event context in notes.
 func TestExportGEDCOM_EventParticipantsExportAsASSO551(t *testing.T) {
 	ged, _ := exportGEDCOMString(t, newAssociationArchive(t), GEDCOM551)
 
-	assert.Equal(t, []string{strings.Join([]string{
-		"1 BAPM",
-		"2 DATE 11 OCT 1789",
-		"2 ASSO @I3@",
-		"3 RELA Godparent",
-		"2 ASSO @I2@",
-		"3 RELA Informant",
-	}, "\n")}, gedcomSubstructures(ged, "@I1@", "BAPM"))
-	assert.NotContains(t, ged, "ROLE")
+	assert.Equal(t, []string{"1 BAPM\n2 DATE 11 OCT 1789"}, gedcomSubstructures(ged, "@I1@", "BAPM"))
+	assert.ElementsMatch(t, []string{
+		"1 ASSO @I3@\n2 RELA Godparent\n2 NOTE Event: Baptism (BAPM; ev-bapt-1789); date: 1789-10-11; subjects: Adam Little",
+		"1 ASSO @I2@\n2 RELA Informant\n2 NOTE Event: Baptism (BAPM; ev-bapt-1789); date: 1789-10-11; subjects: Adam Little",
+	}, gedcomSubstructures(ged, "@I1@", GedcomTagAsso))
+	assert.Equal(t, []string{
+		"1 ASSO @I3@\n2 RELA Witness\n2 NOTE Signed with his mark\n2 NOTE Event: Will (WILL; ev-will-1808); date: 1808-12-19; subjects: Caspar Stoehr",
+	}, gedcomSubstructures(ged, "@I2@", GedcomTagAsso))
+	assert.Empty(t, gedcomSubstructures(ged, "@I3@", "WILL"))
+	assertGEDCOM551AssociationPlacement(t, ged)
+}
+
+// The permissive GLX importer cannot verify standard placement. Check the
+// exported hierarchy against 5.5.1 INDI/ASSOCIATION_STRUCTURE instead.
+func assertGEDCOM551AssociationPlacement(t *testing.T, ged string) {
+	t.Helper()
+
+	records, version, _, err := parseGEDCOM(strings.NewReader(ged), NewImportLogger(nil))
+	require.NoError(t, err)
+	require.Equal(t, GEDCOM551, version)
+	var visit func(*GEDCOMRecord, string, int)
+	visit = func(record *GEDCOMRecord, rootTag string, depth int) {
+		assert.NotEqual(t, "_ASSO", record.Tag)
+		assert.NotEqual(t, GedcomTagRole, record.Tag)
+		if record.Tag == GedcomTagAsso {
+			assert.Equal(t, GedcomTagIndi, rootTag, "ASSO must belong to INDI")
+			assert.Equal(t, 1, depth, "ASSO must be directly under INDI")
+			var relations []string
+			for _, sub := range record.SubRecords {
+				if sub.Tag == GedcomTagRela {
+					assert.Empty(t, sub.SubRecords, "RELA has no CONT/CONC children in 5.5.1")
+					relations = append(relations, sub.Value)
+				}
+			}
+			require.Len(t, relations, 1)
+			assert.NotEmpty(t, relations[0])
+			assert.LessOrEqual(t, utf8.RuneCountInString(relations[0]), 25)
+		}
+		for _, sub := range record.SubRecords {
+			visit(sub, rootTag, depth+1)
+		}
+	}
+	for _, record := range records {
+		visit(record, record.Tag, 0)
+	}
+}
+
+func TestExportGEDCOM_FamilyAssociations551UseEachKnownSpouse(t *testing.T) {
+	for _, tc := range []struct{ name, eventType, link, tag string }{
+		{"start", EventTypeMarriage, "start", GedcomTagMarr},
+		{"end", EventTypeDivorce, "end", GedcomTagDiv},
+		{"other", "legal_separation", "", GedcomTagEven},
+		{"single-spouse", EventTypeMarriage, "start", GedcomTagMarr},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			glx := newEventExportArchive(t, map[string][2]string{
+				"person-a": {"A One", "male"}, "person-b": {"B One", "female"},
+				"person-w": {"Witness One", "unknown"},
+			})
+			glx.Places["place-town"] = &Place{Name: "Town"}
+			spouses := []Participant{{Person: "person-a", Role: ParticipantRoleSpouse}}
+			owners := []string{"@I1@"}
+			if tc.name != "single-spouse" {
+				spouses = append(spouses, Participant{Person: "person-b", Role: ParticipantRoleSpouse})
+				owners = append(owners, "@I2@")
+			}
+			glx.Relationships["rel-marriage"] = &Relationship{Type: RelationshipTypeMarriage, Participants: spouses}
+			switch tc.link {
+			case "start":
+				glx.Relationships["rel-marriage"].StartEvent = "ev-family"
+			case "end":
+				glx.Relationships["rel-marriage"].EndEvent = "ev-family"
+			}
+			glx.Events["ev-family"] = &Event{
+				Type: tc.eventType, Date: "1900", PlaceID: "place-town",
+				Participants: append(append([]Participant(nil), spouses...), Participant{
+					Person: "person-w", Role: ParticipantRoleWitness, Notes: NoteList{"Signed register"},
+				}),
+			}
+			require.Empty(t, glx.Validate().Errors)
+			ged, _ := exportGEDCOMString(t, glx, GEDCOM551)
+			for _, owner := range owners {
+				associations := gedcomSubstructures(ged, owner, GedcomTagAsso)
+				require.Len(t, associations, 1)
+				assert.Contains(t, associations[0], "1 ASSO @I3@\n2 RELA Witness\n2 NOTE Signed register")
+				assert.Contains(t, associations[0], "("+tc.tag+"; ev-family); date: 1900; place: Town; subjects: A One")
+			}
+			assert.NotContains(t, strings.Join(gedcomSubstructures(ged, "@F1@", tc.tag), "\n"), "ASSO")
+			assert.Empty(t, gedcomSubstructures(ged, "@I3@", GedcomTagAsso))
+			assertGEDCOM551AssociationPlacement(t, ged)
+		})
+	}
+}
+
+func TestExportGEDCOM_Associations551KeepDistinctEventsAndNotes(t *testing.T) {
+	glx := newEventExportArchive(t, map[string][2]string{
+		"person-a": {"A One", "unknown"}, "person-b": {"B One", "unknown"},
+		"person-w": {"Witness One", "unknown"},
+	})
+	glx.ParticipantRoles["custom_role"] = &VocabularyEntry{Label: "Archive-defined role with a long name", AppliesTo: []string{RoleContextEvent}}
+	for _, eventID := range []string{"ev-a", "ev-b"} {
+		glx.Events[eventID] = &Event{
+			Type: "taxation", Date: "1900",
+			Participants: []Participant{
+				{Person: "person-a", Role: ParticipantRolePrincipal},
+				{Person: "person-b", Role: ParticipantRolePrincipal},
+				{Person: "person-w", Role: "custom_role", Notes: NoteList{"First detail"}},
+				{Person: "person-w", Role: "custom_role", Notes: NoteList{"Second detail"}},
+			},
+		}
+	}
+	require.Empty(t, glx.Validate().Errors)
+	require.Empty(t, glx.Validate().Warnings)
+	ged, _ := exportGEDCOMString(t, glx, GEDCOM551)
+	for _, owner := range []string{"@I1@", "@I2@"} {
+		associations := gedcomSubstructures(ged, owner, GedcomTagAsso)
+		require.Len(t, associations, 4)
+		text := strings.Join(associations, "\n")
+		assert.Equal(t, 4, strings.Count(text, "2 RELA Participant"))
+		assert.Equal(t, 4, strings.Count(text, "2 NOTE Event role: Archive-defined role with a long name"))
+		assert.Equal(t, 2, strings.Count(text, "2 NOTE First detail"))
+		assert.Equal(t, 2, strings.Count(text, "2 NOTE Second detail"))
+		assert.Equal(t, 2, strings.Count(text, "; ev-a)"))
+		assert.Equal(t, 2, strings.Count(text, "; ev-b)"))
+	}
+	assertGEDCOM551AssociationPlacement(t, ged)
+}
+
+func TestExportGEDCOM_Associations551MultilineRoleUsesNote(t *testing.T) {
+	for name, separator := range map[string]string{"LF": "\n", "CR": "\r", "CRLF": "\r\n"} {
+		t.Run(name, func(t *testing.T) {
+			glx := newEventExportArchive(t, map[string][2]string{
+				"person-a": {"A One", "unknown"}, "person-w": {"Witness One", "unknown"},
+			})
+			glx.ParticipantRoles["parish_clerk"] = &VocabularyEntry{Label: "Parish" + separator + "Clerk", AppliesTo: []string{RoleContextEvent}}
+			glx.Events["ev-tax"] = &Event{
+				Type: "taxation",
+				Participants: []Participant{
+					{Person: "person-a", Role: ParticipantRolePrincipal},
+					{Person: "person-w", Role: "parish_clerk"},
+				},
+			}
+			require.Empty(t, glx.Validate().Errors)
+			require.Empty(t, glx.Validate().Warnings)
+			ged, _ := exportGEDCOMString(t, glx, GEDCOM551)
+			associations := gedcomSubstructures(ged, "@I1@", GedcomTagAsso)
+			require.Len(t, associations, 1)
+			assert.Contains(t, associations[0], "2 RELA Participant\n2 NOTE Event role: Parish\n3 CONT Clerk")
+			assertGEDCOM551AssociationPlacement(t, ged)
+		})
+	}
 }
 
 // Parent and spouse roles narrow to FATH/MOTH and HUSB/WIFE by recorded sex,
@@ -508,35 +669,105 @@ func TestExportGEDCOM_ReportsEventsNotExported(t *testing.T) {
 	assert.Empty(t, exportWarningMessages(result, "ev-exported"))
 }
 
-// Exporting associations and importing them back restores each participant's
-// role, including roles outside the GEDCOM enumeration (#1321).
-func TestRoundtrip_EventAssociations(t *testing.T) {
+// GEDCOM 7.0's structured event associations restore participant roles.
+// 5.5.1 projects associations to people and keeps event context in notes;
+// its standard structures cannot provide a lossless event-participant roundtrip.
+func TestRoundtrip_EventAssociations70(t *testing.T) {
+	data, _, err := ExportGEDCOM(newAssociationArchive(t), GEDCOM70, nil)
+	require.NoError(t, err)
+	imported, _, err := ImportGEDCOM(strings.NewReader(string(data)), nil)
+	require.NoError(t, err)
+
+	roles := make(map[string][]string) // event type -> sorted "name:role"
+	for _, event := range imported.Events {
+		for _, p := range event.Participants {
+			roles[event.Type] = append(roles[event.Type],
+				PersonDisplayName(imported.Persons[p.Person])+":"+p.Role)
+		}
+	}
+	assert.ElementsMatch(t, []string{
+		"Adam Little:principal", "Lewis Little:godparent", "Caspar Stoehr:informant",
+	}, roles["baptism"])
+	assert.ElementsMatch(t, []string{
+		"Caspar Stoehr:principal", "Lewis Little:witness",
+	}, roles["will"])
+
+	for _, event := range imported.Events {
+		for _, p := range event.Participants {
+			assert.NotContains(t, strings.Join(p.Notes, "\n"), "GEDCOM ",
+				"a vocabulary role must not fall back to a note")
+		}
+	}
+}
+
+// The #1282 correction must survive the new generic-event and association
+// paths: a bare source cannot suppress a detailed no-PAGE citation, and
+// same-page citations with different notes/media remain distinct.
+func TestExportGEDCOM_EventEvidenceKeepsDistinctDetailsWithAssociations(t *testing.T) {
 	for _, tc := range gedcomVersions {
 		t.Run(tc.name, func(t *testing.T) {
-			data, _, err := ExportGEDCOM(newAssociationArchive(t), tc.version, nil)
-			require.NoError(t, err)
-			imported, _, err := ImportGEDCOM(strings.NewReader(string(data)), nil)
-			require.NoError(t, err)
-
-			roles := make(map[string][]string) // event type -> sorted "name:role"
-			for _, event := range imported.Events {
-				for _, p := range event.Participants {
-					roles[event.Type] = append(roles[event.Type],
-						PersonDisplayName(imported.Persons[p.Person])+":"+p.Role)
+			glx := newEventExportArchive(t, map[string][2]string{
+				"person-a": {"A One", "male"}, "person-b": {"B One", "female"},
+				"person-w": {"Witness One", "unknown"},
+			})
+			glx.Sources["source-register"] = &Source{Title: "Register"}
+			glx.Places["place-town"] = &Place{Name: "Town"}
+			glx.Media = map[string]*Media{
+				"media-date":  {URI: "date.jpg", MimeType: "image/jpeg"},
+				"media-place": {URI: "place.jpg", MimeType: "image/jpeg"},
+			}
+			glx.Citations = map[string]*Citation{
+				"citation-date": {
+					SourceID: "source-register", Properties: map[string]any{"locator": "p. 4"},
+					Notes: NoteList{"Date transcription"}, Media: []string{"media-date"},
+				},
+				"citation-place": {
+					SourceID: "source-register", Properties: map[string]any{"locator": "p. 4"},
+					Notes: NoteList{"Place transcription"}, Media: []string{"media-place"},
+				},
+				"citation-unpaged": {SourceID: "source-register", Notes: NoteList{"Unpaged detail"}},
+			}
+			glx.Assertions = make(map[string]*Assertion)
+			for _, eventID := range []string{"event-tax", "event-marriage"} {
+				eventType := "taxation"
+				participants := []Participant{
+					{Person: "person-a", Role: ParticipantRolePrincipal},
+					{Person: "person-w", Role: ParticipantRoleWitness},
+				}
+				if eventID == "event-marriage" {
+					eventType = EventTypeMarriage
+					participants = []Participant{
+						{Person: "person-a", Role: ParticipantRoleSpouse},
+						{Person: "person-b", Role: ParticipantRoleSpouse},
+						{Person: "person-w", Role: ParticipantRoleWitness},
+					}
+				}
+				glx.Events[eventID] = &Event{
+					Type: eventType, Date: "1900", Participants: participants,
+					Properties: map[string]any{PropertySources: []string{"source-register"}, PropertyCitations: []string{"citation-date"}},
+				}
+				glx.Assertions[eventID+"-date"] = &Assertion{
+					Subject: EntityRef{Event: eventID}, Property: "date", Value: "1900",
+					Sources: []string{"source-register"}, Citations: []string{"citation-date", "citation-place", "citation-unpaged"},
+				}
+				glx.Assertions[eventID+"-place"] = &Assertion{
+					Subject: EntityRef{Event: eventID}, Property: "place", Value: "place-town",
+					Citations: []string{"citation-date"},
 				}
 			}
-			assert.ElementsMatch(t, []string{
-				"Adam Little:principal", "Lewis Little:godparent", "Caspar Stoehr:informant",
-			}, roles["baptism"])
-			assert.ElementsMatch(t, []string{
-				"Caspar Stoehr:principal", "Lewis Little:witness",
-			}, roles["will"])
-
-			for _, event := range imported.Events {
-				for _, p := range event.Participants {
-					assert.NotContains(t, strings.Join(p.Notes, "\n"), "GEDCOM ",
-						"a vocabulary role must not fall back to a note")
-				}
+			glx.Relationships["rel-marriage"] = marriageOf("person-a", "person-b")
+			glx.Relationships["rel-marriage"].StartEvent = "event-marriage"
+			require.Empty(t, glx.Validate().Errors)
+			ged, _ := exportGEDCOMString(t, glx, tc.version)
+			for _, structure := range []struct{ xref, tag string }{{"@I1@", GedcomTagEven}, {"@F1@", GedcomTagMarr}} {
+				blocks := gedcomSubstructures(ged, structure.xref, structure.tag)
+				require.Len(t, blocks, 1)
+				block := blocks[0]
+				assert.Equal(t, 4, strings.Count(block, "2 SOUR @S1@"))
+				assert.Equal(t, 2, strings.Count(block, "3 PAGE p. 4"))
+				assert.Contains(t, block, "3 NOTE Date transcription\n3 OBJE @O1@")
+				assert.Contains(t, block, "3 NOTE Place transcription\n3 OBJE @O2@")
+				assert.Contains(t, block, "2 SOUR @S1@\n3 NOTE Unpaged detail")
 			}
 		})
 	}

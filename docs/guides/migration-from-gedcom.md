@@ -178,7 +178,7 @@ Relative file paths in the GEDCOM are resolved from the directory containing the
 | `GRAD` | `graduation` | |
 | `RETI` | `retirement` | |
 | `EVEN` | `event` | `TYPE` → `event_subtype`. A `TYPE` naming an event type with no tag of its own (`Taxation`, `Voter Registration`, or `<label>: <subtype>`) restores that type, which is how GLX exports those types |
-| `ASSO` (under an event) | participant | `ROLE` (7.0) or `RELA` (5.5.1) → participant role; `ROLE OTHER` with a `PHRASE`, or a `RELA`, naming a vocabulary role restores that role |
+| `ASSO` (under an event) | participant | `ROLE` (7.0), or `RELA` in legacy 5.5.1 event extensions, → participant role; `ROLE OTHER` with a `PHRASE`, or a `RELA`, naming a vocabulary role restores that role. Other declared `ROLE` values retain their meaning in notes when no vocabulary role maps them |
 
 #### Properties
 
@@ -552,8 +552,11 @@ Most differences are handled transparently by the importer, but it helps to know
 | **Negative assertions** | Not supported | `NO` tag (e.g., `NO BIRT`) |
 | **Crop coordinates** | Not supported | `CROP` tag on media |
 | **Extension schemas** | Convention only (`_` prefix) | `SCHMA` tag with URI definitions |
+| **Event associations on export** | Standard INDI-level `ASSO` + `RELA`; event context in `NOTE` | Event-level `ASSO` + `ROLE` |
 | **Binary data** | `BLOB` tag (deprecated) | Not supported |
 | **Void pointers** | Not used | `@VOID@` for embedded structures |
+
+GEDCOM 5.5.1 exports associations between people using standard person-level structures. Family-event associations appear on each known spouse, with event type, archive event ID, date, place and subjects in notes. These notes describe the event link; the importer does not reconstruct event participants from person-level associations. Choose GEDCOM 7.0 to round-trip structured event associations and participant roles.
 
 ## See Also
 

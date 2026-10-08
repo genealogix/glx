@@ -970,9 +970,10 @@ func convertASSORole(roleRecord *GEDCOMRecord, fallback string, conv *Conversion
 	role := fallback
 	var notes []string
 	glxRole, mapped := gedcomRoleToGLX[strings.ToUpper(roleRecord.Value)]
-	if !mapped && len(phrases) == 1 {
-		// ROLE OTHER (or another unmapped value) whose PHRASE names a
-		// vocabulary role, as glx export writes it (#1321)
+	if strings.EqualFold(roleRecord.Value, GedcomRoleOther) && len(phrases) == 1 {
+		// Only OTHER delegates its meaning to PHRASE. Other valid enums
+		// (NGHBR, FRIEND, MULTIPLE) must retain their declared role even when
+		// the phrase happens to name a vocabulary role.
 		if glxRole, mapped = lookupLabelIndex(conv.GEDCOMIndex.ParticipantRoles, phrases[0]); mapped {
 			phrases = nil
 		}

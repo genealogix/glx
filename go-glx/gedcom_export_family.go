@@ -122,11 +122,13 @@ func reconstructFamilies(expCtx *ExportContext) {
 		// Build person-to-family reverse maps
 		if family.HusbandID != "" {
 			expCtx.PersonSpouseFamilies[family.HusbandID] = append(
-				expCtx.PersonSpouseFamilies[family.HusbandID], xref)
+				expCtx.PersonSpouseFamilies[family.HusbandID], xref,
+			)
 		}
 		if family.WifeID != "" {
 			expCtx.PersonSpouseFamilies[family.WifeID] = append(
-				expCtx.PersonSpouseFamilies[family.WifeID], xref)
+				expCtx.PersonSpouseFamilies[family.WifeID], xref,
+			)
 		}
 		for _, childID := range family.ChildIDs {
 			pedi := family.ChildPedigrees[childID]
@@ -134,7 +136,8 @@ func reconstructFamilies(expCtx *ExportContext) {
 				expCtx.PersonChildFamilies[childID], childFamilyRef{
 					FamilyXRef: xref,
 					Pedigree:   pedi,
-				})
+				},
+			)
 		}
 	}
 }
@@ -183,7 +186,7 @@ func exportFamily(family *ExportFamily, expCtx *ExportContext) *GEDCOMRecord {
 		if ok {
 			// MARR from start_event
 			if rel.StartEvent != "" {
-				marrRecord := exportFamilyEvent(rel.StartEvent, GedcomTagMarr, expCtx)
+				marrRecord := exportFamilyEvent(rel.StartEvent, GedcomTagMarr, expCtx, family.HusbandID, family.WifeID)
 				if marrRecord != nil {
 					record.SubRecords = append(record.SubRecords, marrRecord)
 				}
@@ -191,7 +194,7 @@ func exportFamily(family *ExportFamily, expCtx *ExportContext) *GEDCOMRecord {
 
 			// DIV from end_event
 			if rel.EndEvent != "" {
-				divRecord := exportFamilyEvent(rel.EndEvent, GedcomTagDiv, expCtx)
+				divRecord := exportFamilyEvent(rel.EndEvent, GedcomTagDiv, expCtx, family.HusbandID, family.WifeID)
 				if divRecord != nil {
 					record.SubRecords = append(record.SubRecords, divRecord)
 				}
@@ -283,7 +286,7 @@ func formatCountProperty(value any) string {
 
 // exportFamilyEvent creates a family event subrecord (MARR, DIV, etc.)
 // from a GLX event ID, using the given GEDCOM tag.
-func exportFamilyEvent(eventID, gedcomTag string, expCtx *ExportContext) *GEDCOMRecord {
+func exportFamilyEvent(eventID, gedcomTag string, expCtx *ExportContext, hostIDs ...string) *GEDCOMRecord {
 	event, ok := expCtx.GLX.Events[eventID]
 	if !ok {
 		return nil
@@ -317,6 +320,9 @@ func exportFamilyEvent(eventID, gedcomTag string, expCtx *ExportContext) *GEDCOM
 	record.SubRecords = append(record.SubRecords, exportEventAssociations(event, func(p Participant) bool {
 		return isFamilyEventMemberRole(p.Role)
 	}, expCtx)...)
+	queueGEDCOM551EventAssociations(eventID, event, gedcomTag, hostIDs, func(p Participant) bool {
+		return isFamilyEventMemberRole(p.Role)
+	}, expCtx)
 
 	// NOTE — emit one NOTE subrecord per note in the NoteList to preserve
 	// note boundaries through roundtrip. Fall back to Properties map.
@@ -356,8 +362,8 @@ func exportFamilyEvent(eventID, gedcomTag string, expCtx *ExportContext) *GEDCOM
 		record.SubRecords = append(record.SubRecords, propRec)
 	}
 
-	// SOUR references from event sources and citations
-	exportEventSourceRefs(event, expCtx, record)
+	// SOUR references from event sources, citations and event-subject assertions
+	exportEventEvidenceRefs(eventID, event, expCtx, record)
 
 	return record
 }
@@ -410,7 +416,7 @@ func findFamilyEvents(husbandID, wifeID, startEventID, endEventID string, expCtx
 		}
 
 		// Reuse exportFamilyEvent to get full sub-record export (DATE, PLAC, NOTE, SOUR, properties)
-		famEventRecord := exportFamilyEvent(eventID, gedcomTag, expCtx)
+		famEventRecord := exportFamilyEvent(eventID, gedcomTag, expCtx, husbandID, wifeID)
 		if famEventRecord != nil {
 			records = append(records, famEventRecord)
 		}
@@ -561,16 +567,17 @@ func extractParentChildIDs(rel *Relationship) (parentIDs, childIDs []string) {
 // one-parent relationships name (the shape GEDCOM import produces, one
 // relationship per FAM spouse).
 type childParentSet struct {
-	parents  []string
-	pedi     string
-	explicit bool
+	parents         []string
+	pedi            string
+	explicit        bool
+	parentPedigrees map[string]string // one-parent relationships, before grouping
 }
 
 // collectChildParentSets groups the parent-child relationships by child.
 // Each child gets one explicit set per distinct parent set of its
-// multi-parent relationships, plus at most one set holding the parents of its
-// one-parent relationships that no explicit set already covers. Relationships
-// missing a parent or a child are reported as export warnings.
+// multi-parent relationships, plus at most one set holding all parents of its
+// one-parent relationships. Shared parents remain available for pair matching.
+// Relationships missing a parent or a child are reported as export warnings.
 func collectChildParentSets(expCtx *ExportContext, relIDs []string) map[string][]*childParentSet {
 	sets := make(map[string][]*childParentSet)
 	explicitByKey := make(map[string]*childParentSet)
@@ -615,20 +622,30 @@ func collectChildParentSets(expCtx *ExportContext, relIDs []string) map[string][
 		}
 	}
 
-	// One-parent relationships of a parent an explicit set already names add
-	// nothing; the remaining parents form the child's one-parent set.
+	// Retain shared parents: a singleton mother may also pair with a
+	// stepfather even when an explicit set already names her with the father.
+	// Fold known singleton pedigree into otherwise unspecified explicit sets.
 	for childID, single := range singleSets {
-		single.parents = slices.DeleteFunc(single.parents, func(parentID string) bool {
-			return slices.ContainsFunc(sets[childID], func(set *childParentSet) bool {
-				return slices.Contains(set.parents, parentID)
-			})
-		})
-		if len(single.parents) > 0 {
-			sets[childID] = append(sets[childID], single)
+		for _, explicit := range sets[childID] {
+			inheritSingleParentPedigree(explicit, single)
 		}
+		sets[childID] = append(sets[childID], single)
 	}
 
 	return sets
+}
+
+func inheritSingleParentPedigree(explicit, single *childParentSet) {
+	if explicit.pedi != "" {
+		return
+	}
+	for _, parentID := range explicit.parents {
+		if pedi := single.parentPedigrees[parentID]; pedi != "" {
+			explicit.pedi = pedi
+
+			return
+		}
+	}
 }
 
 // addSingleParent adds the parent of a one-parent relationship to the child's
@@ -636,7 +653,7 @@ func collectChildParentSets(expCtx *ExportContext, relIDs []string) map[string][
 func addSingleParent(singleSets map[string]*childParentSet, childID, parentID, pedi string) {
 	set := singleSets[childID]
 	if set == nil {
-		set = &childParentSet{}
+		set = &childParentSet{parentPedigrees: make(map[string]string)}
 		singleSets[childID] = set
 	}
 	if !slices.Contains(set.parents, parentID) {
@@ -644,6 +661,9 @@ func addSingleParent(singleSets map[string]*childParentSet, childID, parentID, p
 	}
 	if set.pedi == "" {
 		set.pedi = pedi
+	}
+	if set.parentPedigrees[parentID] == "" {
+		set.parentPedigrees[parentID] = pedi
 	}
 }
 
@@ -697,20 +717,50 @@ func attachChildrenToFamilies(expCtx *ExportContext, relIDs []string,
 				matched = []int{idx}
 				warnExtraParents(childID, set, expCtx)
 			default:
+				// Pair matching above needs every singleton edge. Only after it
+				// fails can edges already carried by an explicit family be
+				// omitted from fallback, avoiding an unrelated extra family.
+				set = uncoveredSingleParentSet(set, childSets[childID])
+				if len(set.parents) == 0 {
+					continue
+				}
 				matched = singleParentFallbackFamily(set, expCtx, parentToFamilies, familiesWithPairedChildren)
 			}
 
-			for _, familyIdx := range matched {
-				family := expCtx.Families[familyIdx]
-				if !containsString(family.ChildIDs, childID) {
-					family.ChildIDs = append(family.ChildIDs, childID)
-				}
-				if set.pedi != "" {
-					family.ChildPedigrees[childID] = set.pedi
-				}
-			}
+			assignChildToFamilies(childID, set, matched, expCtx)
 		}
 	}
+}
+
+func assignChildToFamilies(childID string, set *childParentSet, matched []int, expCtx *ExportContext) {
+	for _, familyIdx := range matched {
+		family := expCtx.Families[familyIdx]
+		if !containsString(family.ChildIDs, childID) {
+			family.ChildIDs = append(family.ChildIDs, childID)
+		}
+		if set.pedi != "" && (set.explicit || family.ChildPedigrees[childID] == "") {
+			family.ChildPedigrees[childID] = set.pedi
+		}
+	}
+}
+
+// uncoveredSingleParentSet removes only redundant fallback edges, retaining
+// pedigree from the remaining parents rather than from an excluded parent.
+func uncoveredSingleParentSet(single *childParentSet, sets []*childParentSet) *childParentSet {
+	remainder := &childParentSet{}
+	for _, parentID := range single.parents {
+		if slices.ContainsFunc(sets, func(set *childParentSet) bool {
+			return set.explicit && slices.Contains(set.parents, parentID)
+		}) {
+			continue
+		}
+		remainder.parents = append(remainder.parents, parentID)
+		if remainder.pedi == "" {
+			remainder.pedi = single.parentPedigrees[parentID]
+		}
+	}
+
+	return remainder
 }
 
 // warnExtraParents reports a parent set of more than two parents that no
