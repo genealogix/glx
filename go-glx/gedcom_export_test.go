@@ -369,7 +369,10 @@ func TestBuildExportIndex(t *testing.T) {
 	assert.Equal(t, "BIRT", index.EventTypes["birth"])
 	assert.Equal(t, "DEAT", index.EventTypes["death"])
 	assert.Equal(t, "MARR", index.EventTypes["marriage"])
-	assert.Empty(t, index.EventTypes["custom"]) // no mapping
+	// A type with no tag of its own exports as the generic EVEN (#1320)
+	assert.Equal(t, "EVEN", index.EventTypes["custom"])
+	assert.True(t, index.GenericEventTypes["custom"])
+	assert.False(t, index.GenericEventTypes["birth"])
 
 	// Relationship types
 	assert.Equal(t, "MARR", index.RelationshipTypes["marriage"])
