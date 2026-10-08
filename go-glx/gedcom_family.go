@@ -333,6 +333,13 @@ func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, con
 		}
 	}
 
+	// EVEN + TYPE naming a vocabulary event type that has no tag of its own
+	// restores that type (#1320)
+	if eventRecord.Tag == GedcomTagEven {
+		resolveGenericEventType(event, conv.GEDCOMIndex)
+		eventType = event.Type
+	}
+
 	// Add participants for both spouses
 	var participants []Participant
 	if husbandID != "" {
