@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 
@@ -102,7 +103,7 @@ func collectionForEntityType(flag string) (string, bool) {
 // and structurally validates it against its entity-type schema, without any
 // archive/cross-ref context. It exists so drift tooling can pipe a bare snippet
 // in (issue #910) instead of the mktemp/cat/rm temp-file dance.
-func validateStdinEntity(streams *IOStreams, entityType string, args []string, in io.Reader) error {
+func validateStdinEntity(streams *IOStreams, entityType string, args []string, in io.Reader, showFirstErrors int) error {
 	if len(args) > 0 {
 		return errStdinPathArgs
 	}
@@ -125,9 +126,7 @@ func validateStdinEntity(streams *IOStreams, entityType string, args []string, i
 	}
 	if len(issues) > 0 {
 		streams.Errorf("Found %d structural error(s) in the %s entity:\n", len(issues), entityType)
-		for _, issue := range issues {
-			streams.Errorf("- %s\n", issue)
-		}
+		printErrorList(streams, "- ", issues, showFirstErrors)
 
 		return ErrStructuralValidationFailed
 	}
@@ -177,11 +176,19 @@ func validateSnippetInCollection(collection string, data []byte) ([]string, erro
 	return ValidateGLXFileStructure(doc), nil
 }
 
-// validatePaths performs comprehensive validation on the specified paths.
-// Output goes to the provided IOStreams (stdout for results, stderr for errors).
-//
-//nolint:gocognit,gocyclo // path-validation orchestration has many branches
+// validatePaths performs comprehensive validation on the specified paths,
+// listing at most defaultShowFirstErrors errors. Output goes to the provided
+// IOStreams (stdout for results, stderr for errors).
 func validatePaths(streams *IOStreams, args []string) error {
+	return validatePathsShowing(streams, args, defaultShowFirstErrors)
+}
+
+// validatePathsShowing is validatePaths with the number of errors to list
+// spelled out: showFirstErrors > 0 caps each error list at that many entries
+// and says how many were left out; 0 lists every error (--show-first-errors).
+//
+//nolint:gocyclo // path-validation orchestration has many branches
+func validatePathsShowing(streams *IOStreams, args []string, showFirstErrors int) error {
 	paths := args
 	if len(paths) == 0 {
 		paths = []string{"."}
@@ -212,7 +219,7 @@ func validatePaths(streams *IOStreams, args []string) error {
 				// A file that carries a whole archive — what `glx join`
 				// writes — has no siblings its references could resolve in,
 				// so there is nothing to defer to and everything to check.
-				return validateSelfContainedArchive(streams, paths[0])
+				return validateSelfContainedArchive(streams, paths[0], showFirstErrors)
 			}
 		}
 	} else {
@@ -243,9 +250,7 @@ func validatePaths(streams *IOStreams, args []string) error {
 		}
 		if len(structErrors) > 0 {
 			streams.Errorf("Found %d structural errors in %d files:\n", len(structErrors), fileCount)
-			for _, err := range structErrors {
-				streams.Errorf("- %s\n", err)
-			}
+			printErrorList(streams, "- ", structErrors, showFirstErrors)
 
 			return ErrStructuralValidationFailed
 		}
@@ -266,9 +271,7 @@ func validatePaths(streams *IOStreams, args []string) error {
 
 		if len(semanticErrors) > 0 {
 			streams.Errorf("Found %d errors:\n", len(semanticErrors))
-			for _, issue := range semanticErrors {
-				streams.Errorf("- ❌ %s\n", issue)
-			}
+			printErrorList(streams, "- ❌ ", semanticErrors, showFirstErrors)
 
 			return ErrValidationFailed
 		}
@@ -290,8 +293,7 @@ func validatePaths(streams *IOStreams, args []string) error {
 	// is whatever the loader read, by definition.
 	files, err := collectGLXFilesFromPaths(archiveRoot, paths)
 	if err != nil {
-		formatted := formatValidationError(err, defaultShowFirstErrors)
-		streams.Errorf("Error loading archive: %v\n", formatted)
+		reportArchiveLoadError(streams, err, showFirstErrors)
 
 		return ErrStructuralValidationFailed
 	}
@@ -306,8 +308,7 @@ func validatePaths(streams *IOStreams, args []string) error {
 
 	archive, duplicates, err := loadArchiveFromFiles(archiveRoot, files, true)
 	if err != nil {
-		formatted := formatValidationError(err, defaultShowFirstErrors)
-		streams.Errorf("Error loading archive: %v\n", formatted)
+		reportArchiveLoadError(streams, err, showFirstErrors)
 
 		return ErrStructuralValidationFailed
 	}
@@ -315,6 +316,8 @@ func validatePaths(streams *IOStreams, args []string) error {
 	var allErrors, allWarnings []string
 
 	if len(duplicates) > 0 {
+		// Duplicate conflicts are collected separately from Validate's findings.
+		slices.Sort(duplicates)
 		allErrors = append(allErrors, duplicates...)
 	}
 
@@ -330,7 +333,7 @@ func validatePaths(streams *IOStreams, args []string) error {
 	// Check media file existence on disk
 	allWarnings = append(allWarnings, validateMediaFileExistence(archive, archiveRoot)...)
 
-	return reportArchiveValidation(streams, fileCount, allErrors, allWarnings)
+	return reportArchiveValidation(streams, fileCount, allErrors, allWarnings, showFirstErrors)
 }
 
 // entityCollectionKeys returns the set of top-level GLXFile yaml keys that hold
@@ -441,20 +444,18 @@ func isSelfContainedArchiveFile(path string) bool {
 // semantic and cross-reference — on a single file that carries a whole archive.
 // It is the file-shaped counterpart of the directory pass in validatePaths:
 // same checks, same reporting, one file instead of a tree.
-func validateSelfContainedArchive(streams *IOStreams, path string) error {
+func validateSelfContainedArchive(streams *IOStreams, path string, showFirstErrors int) error {
 	fileCount, structErrors := validateSingleFilePaths([]string{path})
 	if len(structErrors) > 0 {
 		streams.Errorf("Found %d structural errors in %d files:\n", len(structErrors), fileCount)
-		for _, err := range structErrors {
-			streams.Errorf("- %s\n", err)
-		}
+		printErrorList(streams, "- ", structErrors, showFirstErrors)
 
 		return ErrStructuralValidationFailed
 	}
 
 	archive, err := readSingleFileArchive(path, false)
 	if err != nil {
-		streams.Errorf("Error loading archive: %v\n", formatValidationError(err, defaultShowFirstErrors))
+		reportArchiveLoadError(streams, err, showFirstErrors)
 
 		return ErrStructuralValidationFailed
 	}
@@ -482,7 +483,7 @@ func validateSelfContainedArchive(streams *IOStreams, path string) error {
 	// directory holding the file, which is that archive's root.
 	allWarnings = append(allWarnings, validateMediaFileExistence(archive, filepath.Dir(path))...)
 
-	return reportArchiveValidation(streams, fileCount, allErrors, allWarnings)
+	return reportArchiveValidation(streams, fileCount, allErrors, allWarnings, showFirstErrors)
 }
 
 // reportArchiveValidation prints the outcome of a whole-archive validation pass
@@ -490,8 +491,9 @@ func validateSelfContainedArchive(streams *IOStreams, path string) error {
 // command exits with. Shared by the directory pass and the single-file-archive
 // pass so the two report an archive the same way. Both callers have already
 // refused a target with no GLX files (ErrNothingToValidate), so fileCount is
-// never zero here.
-func reportArchiveValidation(streams *IOStreams, fileCount int, allErrors, allWarnings []string) error {
+// never zero here. At most showFirstErrors errors are listed (0 lists all);
+// warnings are always listed in full.
+func reportArchiveValidation(streams *IOStreams, fileCount int, allErrors, allWarnings []string, showFirstErrors int) error {
 	streams.Printf("Validated %d files.\n", fileCount)
 
 	if len(allWarnings) > 0 {
@@ -503,9 +505,7 @@ func reportArchiveValidation(streams *IOStreams, fileCount int, allErrors, allWa
 
 	if len(allErrors) > 0 {
 		streams.Errorf("Found %d errors:\n", len(allErrors))
-		for _, err := range allErrors {
-			streams.Errorf("- ❌ %s\n", err)
-		}
+		printErrorList(streams, "- ❌ ", allErrors, showFirstErrors)
 
 		return ErrValidationFailed
 	}
@@ -513,6 +513,52 @@ func reportArchiveValidation(streams *IOStreams, fileCount int, allErrors, allWa
 	streams.Println("✅ Archive is valid.")
 
 	return nil
+}
+
+// reportArchiveLoadError prints why an archive could not be loaded for
+// validation. Cross-reference failures the deserializer found arrive as a
+// StructuredValidationError: those are the validation result, not a loading
+// problem, so they are headed "Validation failed:" and listed (capped at
+// showFirstErrors, 0 for all) in the library's stable order. Anything else,
+// such as unreadable files, malformed YAML or schema failures, really did stop
+// the archive from loading and keeps the "Error loading archive:" header.
+func reportArchiveLoadError(streams *IOStreams, err error, showFirstErrors int) {
+	if fileErrors, ok := errors.AsType[*archiveFilesValidationError](err); ok {
+		streams.Errorf("Error loading archive: %s\n", fileErrors.format(showFirstErrors))
+
+		return
+	}
+
+	var structured *glxlib.StructuredValidationError
+	if !errors.As(err, &structured) || len(structured.Errors) == 0 {
+		streams.Errorf("Error loading archive: %v\n", err)
+
+		return
+	}
+
+	messages := make([]string, len(structured.Errors))
+	for i, ve := range structured.Errors {
+		messages[i] = ve.Message
+	}
+	streams.Errorf("Validation failed: %d error(s)\n", len(messages))
+	printErrorList(streams, "  - ", messages, showFirstErrors)
+}
+
+// printErrorList writes one line per error, each starting with bullet. When
+// showFirstErrors is positive and there are more errors than that, only the
+// first showFirstErrors are written, followed by a line counting the rest and
+// naming the flag that shows them; 0 writes every error.
+func printErrorList(streams *IOStreams, bullet string, errs []string, showFirstErrors int) {
+	shown := errs
+	if showFirstErrors > 0 && len(errs) > showFirstErrors {
+		shown = errs[:showFirstErrors]
+	}
+	for _, msg := range shown {
+		streams.Errorf("%s%s\n", bullet, msg)
+	}
+	if hidden := len(errs) - len(shown); hidden > 0 {
+		streams.Errorf("  ... and %d more errors (use --show-first-errors 0 to list all)\n", hidden)
+	}
 }
 
 // validateSingleFilePaths runs structural validation on individual files
@@ -579,7 +625,7 @@ func validateSingleFilePaths(paths []string) (int, []string) {
 // rejects: duplicate entity IDs, missing required properties, broken
 // references. A CI step written with --report was permanently green. The
 // report is a summary of a valid archive, so validation has to gate it.
-func validateAndReport(streams *IOStreams, args []string) error {
+func validateAndReport(streams *IOStreams, args []string, showFirstErrors int) error {
 	if len(args) > 1 {
 		return errReportTooManyArgs
 	}
@@ -588,7 +634,7 @@ func validateAndReport(streams *IOStreams, args []string) error {
 		path = args[0]
 	}
 
-	if err := validatePaths(streams, args); err != nil {
+	if err := validatePathsShowing(streams, args, showFirstErrors); err != nil {
 		return err
 	}
 
@@ -941,6 +987,9 @@ func validateMediaFileExistence(archive *glxlib.GLXFile, archiveRoot string) []s
 			))
 		}
 	}
+	// archive.Media is a map: sort so the warnings come out in the same order
+	// on every run, as the library's own findings do.
+	slices.Sort(warnings)
 
 	return warnings
 }
