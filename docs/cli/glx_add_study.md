@@ -15,7 +15,8 @@ A study declares the scope of a research project: a one-place or one-name
 study, a family reconstruction, a brick wall. --title is required. --type and
 --status are validated against the study_types and study_statuses
 vocabularies. --place and --source are repeatable and must reference existing
-entities. --date-range is a GLX date string, usually "FROM YYYY TO YYYY".
+entities; repeated IDs are included once, in the order first supplied.
+--date-range is a GLX date string, usually "FROM YYYY TO YYYY".
 
 ```
 glx add study [flags]

@@ -95,7 +95,7 @@ func addResearchLog(io *IOStreams, opts *addResearchLogOptions) error {
 		Researcher:  strings.TrimSpace(opts.Researcher),
 		Objective:   strings.TrimSpace(opts.Objective),
 		Status:      opts.Status,
-		Citations:   copyStrings(opts.Citations),
+		Citations:   dedupeStrings(opts.Citations),
 		Conclusions: strings.TrimSpace(opts.Conclusions),
 	}
 	if len(opts.Notes) > 0 {
@@ -313,10 +313,6 @@ func planAddSearchWrite(files map[string][]byte, logID string, search *glxlib.Se
 	)
 	for _, relPath := range relPaths {
 		data := files[relPath]
-		// Cheap pre-filter: a file that never mentions the ID cannot define it.
-		if !strings.Contains(string(data), logID) {
-			continue
-		}
 		frag, err := serializer.DeserializeSingleFileBytes(data)
 		if err != nil {
 			return fileOp{}, fmt.Errorf("failed to parse %s: %w", relPath, err)
@@ -338,14 +334,14 @@ func planAddSearchWrite(files map[string][]byte, logID string, search *glxlib.Se
 	current := fragment.ResearchLogs[logID]
 	rollUpCitation := search.CitationID != "" && !slices.Contains(current.Citations, search.CitationID)
 	want := withSearch(current, search)
-	if newData, ok := appendSearchPreservingLayout(serializer, oldData, logID, search, rollUpCitation, want); ok {
+	fragment.ResearchLogs[logID] = want
+	if newData, ok := appendSearchPreservingLayout(serializer, oldData, logID, search, rollUpCitation, fragment); ok {
 		return fileOp{relPath: found[0], oldData: oldData, newData: newData}, nil
 	}
 
 	// The file has a shape the node-level edit does not handle (anchors,
 	// flow style, ...): fall back to re-serializing the fragment, as
 	// `glx rename` does for the files it touches.
-	fragment.ResearchLogs[logID] = want
 	newData, err := serializer.SerializeSingleFileBytes(fragment)
 	if err != nil {
 		return fileOp{}, fmt.Errorf("failed to serialize %s: %w", found[0], err)
@@ -357,9 +353,10 @@ func planAddSearchWrite(files map[string][]byte, logID string, search *glxlib.Se
 // appendSearchPreservingLayout appends the search (and its citation roll-up)
 // to the log at the YAML node level, so the rest of the file keeps its
 // quoting, key order, comments and indentation and the diff is just the new
-// lines. The result is re-read and compared with want; any surprise reports
+// lines. The result is re-read and compared with the whole expected fragment,
+// including other entities an alias could affect; any surprise reports
 // ok=false so the caller falls back to a plain re-serialization.
-func appendSearchPreservingLayout(serializer *glxlib.DefaultSerializer, data []byte, logID string, search *glxlib.Search, rollUpCitation bool, want *glxlib.ResearchLog) ([]byte, bool) {
+func appendSearchPreservingLayout(serializer *glxlib.DefaultSerializer, data []byte, logID string, search *glxlib.Search, rollUpCitation bool, want *glxlib.GLXFile) ([]byte, bool) {
 	var doc yaml.Node
 	if err := yaml.Unmarshal(data, &doc); err != nil || doc.Kind != yaml.DocumentNode || len(doc.Content) != 1 {
 		return nil, false
@@ -399,7 +396,7 @@ func appendSearchPreservingLayout(serializer *glxlib.DefaultSerializer, data []b
 	}
 
 	check, err := serializer.DeserializeSingleFileBytes(out)
-	if err != nil || !reflect.DeepEqual(check.ResearchLogs[logID], want) {
+	if err != nil || !reflect.DeepEqual(check, want) {
 		return nil, false
 	}
 
@@ -510,8 +507,8 @@ func addStudy(io *IOStreams, opts *addStudyOptions) error {
 		Type:      opts.Type,
 		Status:    opts.Status,
 		DateRange: glxlib.DateString(opts.DateRange),
-		Places:    copyStrings(opts.Places),
-		Sources:   copyStrings(opts.Sources),
+		Places:    dedupeStrings(opts.Places),
+		Sources:   dedupeStrings(opts.Sources),
 	}
 	if len(opts.Notes) > 0 {
 		study.Notes = glxlib.NoteList(opts.Notes)

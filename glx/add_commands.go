@@ -393,7 +393,8 @@ once, then append searches to it with "glx add search".
 At most one of --subject-person, --subject-event, --subject-relationship,
 --subject-place may be given. --status is validated against the
 research_log_status_types vocabulary. The derived ID is "research-log-" plus
-the --title, else the subject, else the --objective; --id overrides it.`,
+the --title, else the subject, else the --objective; --id overrides it.
+Repeated --citation IDs are included once, in the order first supplied.`,
 	Example: `  # Open a log about a person
   glx add research-log --id rl-death --subject-person person-lewis-little \
     --objective "Verify the reported 1826 intestate death" --status in_progress \
@@ -466,7 +467,8 @@ A study declares the scope of a research project: a one-place or one-name
 study, a family reconstruction, a brick wall. --title is required. --type and
 --status are validated against the study_types and study_statuses
 vocabularies. --place and --source are repeatable and must reference existing
-entities. --date-range is a GLX date string, usually "FROM YYYY TO YYYY".`,
+entities; repeated IDs are included once, in the order first supplied.
+--date-range is a GLX date string, usually "FROM YYYY TO YYYY".`,
 	Example: `  # Brick-wall study
   glx add study --id study-lewis-little-parentage --type brick_wall --status active \
     --title "Parents of Lewis Little" --place place-rowan-nc \

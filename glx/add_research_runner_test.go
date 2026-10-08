@@ -19,6 +19,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -237,6 +238,88 @@ func TestAddSearch_FallsBackToSerializerForFlowStyle(t *testing.T) {
 	log := readBackArchive(t, dir).ResearchLogs["rl-flow"]
 	if len(log.Searches) != 2 || log.Searches[0].Query != "a" || log.Searches[1].Query != "b" {
 		t.Errorf("searches after fallback: %+v", log.Searches)
+	}
+}
+
+// An alias must not turn one append into changes to other logs or entities.
+func TestAddSearch_SharedAnchorsOnlyUpdateTarget(t *testing.T) {
+	cases := map[string]string{
+		"searches": `research_logs:
+  rl-a:
+    searches: &shared
+      - query: initial
+  rl-b:
+    searches: *shared
+`,
+		"log mapping": `research_logs:
+  rl-a: &shared
+    searches:
+      - query: initial
+  rl-b: *shared
+`,
+		"citations shared with assertion": `research_logs:
+  rl-a:
+    citations: &shared
+      - citation-old
+assertions:
+  assertion-a:
+    subject:
+      person: person-a
+    citations: *shared
+`,
+	}
+	for name, content := range cases {
+		t.Run(name, func(t *testing.T) {
+			serializer := createSerializer(false, true, "  ")
+			before, err := serializer.DeserializeSingleFileBytes([]byte(content))
+			if err != nil {
+				t.Fatal(err)
+			}
+			op, err := planAddSearchWrite(map[string][]byte{"shared.glx": []byte(content)}, "rl-a",
+				&glxlib.Search{Query: "only target", CitationID: "citation-new"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			after, err := serializer.DeserializeSingleFileBytes(op.newData)
+			if err != nil {
+				t.Fatal(err)
+			}
+			log := after.ResearchLogs["rl-a"]
+			if len(log.Searches) != len(before.ResearchLogs["rl-a"].Searches)+1 ||
+				log.Searches[len(log.Searches)-1].Query != "only target" {
+				t.Errorf("target search was not appended: %+v", log.Searches)
+			}
+			if log.Citations[len(log.Citations)-1] != "citation-new" {
+				t.Errorf("target citation was not rolled up: %v", log.Citations)
+			}
+			if !reflect.DeepEqual(after.ResearchLogs["rl-b"], before.ResearchLogs["rl-b"]) {
+				t.Errorf("unrelated log changed: %+v", after.ResearchLogs["rl-b"])
+			}
+			if !reflect.DeepEqual(after.Assertions, before.Assertions) {
+				t.Errorf("unrelated assertions changed: %+v", after.Assertions)
+			}
+		})
+	}
+}
+
+func TestAddSearch_FindsEscapedIDAndRejectsEscapedDuplicate(t *testing.T) {
+	const escaped = "research_logs:\n  \"\\x72l-x\":\n    objective: x\n"
+	files := map[string][]byte{"escaped.glx": []byte(escaped)}
+	op, err := planAddSearchWrite(files, "rl-x", &glxlib.Search{Query: "new"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	serializer := createSerializer(false, true, "  ")
+	fragment, err := serializer.DeserializeSingleFileBytes(op.newData)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := fragment.ResearchLogs["rl-x"].Searches; len(got) != 1 || got[0].Query != "new" {
+		t.Errorf("escaped log append: %+v", got)
+	}
+	files["literal.glx"] = []byte("research_logs:\n  rl-x:\n    objective: another\n")
+	if _, err := planAddSearchWrite(files, "rl-x", &glxlib.Search{Query: "new"}); !errors.Is(err, ErrAddSearchLogAmbiguous) {
+		t.Errorf("escaped duplicate: got %v, want ErrAddSearchLogAmbiguous", err)
 	}
 }
 

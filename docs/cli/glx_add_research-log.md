@@ -19,6 +19,7 @@ At most one of --subject-person, --subject-event, --subject-relationship,
 --subject-place may be given. --status is validated against the
 research_log_status_types vocabulary. The derived ID is "research-log-" plus
 the --title, else the subject, else the --objective; --id overrides it.
+Repeated --citation IDs are included once, in the order first supplied.
 
 ```
 glx add research-log [flags]

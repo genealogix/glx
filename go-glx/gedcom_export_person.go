@@ -16,6 +16,7 @@ package glx
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -46,8 +47,10 @@ var skipPersonProperties = map[string]bool{
 }
 
 // buildPersonEventsIndex scans all events and builds a map from person ID
-// to the event IDs where that person is the event's subject (role principal,
-// subject, or unset — see isSubjectRole).
+// to the event IDs that person's INDI record carries: those where the person
+// is the event's subject (role principal, subject, or unset — see
+// isSubjectRole), or, for an event with no subject, holds a household role
+// (see eventHostIDs). The event's other participants are written as ASSO.
 // This avoids scanning all events for each person during export.
 func buildPersonEventsIndex(expCtx *ExportContext) {
 	expCtx.PersonEvents = make(map[string][]string)
@@ -59,11 +62,8 @@ func buildPersonEventsIndex(expCtx *ExportContext) {
 		if event == nil {
 			continue
 		}
-		for _, participant := range event.Participants {
-			if participant.Person != "" && isSubjectRole(participant.Role) {
-				expCtx.PersonEvents[participant.Person] = append(
-					expCtx.PersonEvents[participant.Person], eventID)
-			}
+		for _, personID := range eventHostIDs(event) {
+			expCtx.PersonEvents[personID] = append(expCtx.PersonEvents[personID], eventID)
 		}
 	}
 }
@@ -87,17 +87,59 @@ func buildPersonPropertyAssertionsIndex(expCtx *ExportContext) {
 			expCtx.PersonPropertyAssertions[personID] = make(map[string][]*Assertion)
 		}
 		expCtx.PersonPropertyAssertions[personID][assertion.Property] = append(
-			expCtx.PersonPropertyAssertions[personID][assertion.Property], assertion)
+			expCtx.PersonPropertyAssertions[personID][assertion.Property], assertion,
+		)
+	}
+}
+
+// buildEventPropertyAssertionsIndex builds a lookup from (eventID, property) to
+// assertions. This is used to export SOUR on BIRT, DEAT, MARR, and other event
+// records whose date, place or other detail is evidenced by an assertion with
+// `subject.event` rather than `subject.person`.
+//
+// Assertion IDs are visited in sorted order so the SOUR subrecords an event
+// receives are ordered deterministically.
+func buildEventPropertyAssertionsIndex(expCtx *ExportContext) {
+	expCtx.EventPropertyAssertions = make(map[string]map[string][]*Assertion)
+
+	for _, assertionID := range sortedKeys(expCtx.GLX.Assertions) {
+		assertion := expCtx.GLX.Assertions[assertionID]
+		if assertion == nil {
+			continue
+		}
+
+		eventID := assertion.Subject.Event
+		if eventID == "" || assertion.Property == "" {
+			continue
+		}
+		if len(assertion.Sources) == 0 && len(assertion.Citations) == 0 {
+			continue
+		}
+
+		if _, ok := expCtx.EventPropertyAssertions[eventID]; !ok {
+			expCtx.EventPropertyAssertions[eventID] = make(map[string][]*Assertion)
+		}
+		expCtx.EventPropertyAssertions[eventID][assertion.Property] = append(
+			expCtx.EventPropertyAssertions[eventID][assertion.Property], assertion,
+		)
 	}
 }
 
 // exportAssertionSourceRefs adds SOUR subrecords from assertion sources and citations.
 func exportAssertionSourceRefs(assertions []*Assertion, expCtx *ExportContext, record *GEDCOMRecord) {
+	record.SubRecords = append(record.SubRecords, assertionSourceRefs(assertions, expCtx)...)
+}
+
+// assertionSourceRefs builds the SOUR subrecords carried by a set of assertions,
+// from their direct sources first and then their citations.
+func assertionSourceRefs(assertions []*Assertion, expCtx *ExportContext) []*GEDCOMRecord {
+	var records []*GEDCOMRecord
+
 	for _, assertion := range assertions {
 		// Direct sources
 		for _, sourceID := range assertion.Sources {
 			if sourceXRef := expCtx.SourceXRefMap[sourceID]; sourceXRef != "" {
-				record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
+				records = append(records, &GEDCOMRecord{
 					Tag:   GedcomTagSour,
 					Value: sourceXRef,
 				})
@@ -112,10 +154,12 @@ func exportAssertionSourceRefs(assertions []*Assertion, expCtx *ExportContext, r
 			}
 
 			if sourceXRef := expCtx.SourceXRefMap[citation.SourceID]; sourceXRef != "" {
-				record.SubRecords = append(record.SubRecords, exportCitationAsSOUR(citation, sourceXRef, expCtx))
+				records = append(records, exportCitationAsSOUR(citation, sourceXRef, expCtx))
 			}
 		}
 	}
+
+	return records
 }
 
 // exportPerson converts a GLX Person to a GEDCOM INDI record.
@@ -160,9 +204,13 @@ func exportPerson(personID string, person *Person, expCtx *ExportContext) *GEDCO
 			if event == nil {
 				continue
 			}
-			eventRecord := exportPersonEvent(event, expCtx)
+			eventRecord := exportPersonEvent(eventID, event, expCtx)
 			if eventRecord != nil {
 				record.SubRecords = append(record.SubRecords, eventRecord)
+				hosts := eventHostIDs(event)
+				queueGEDCOM551EventAssociations(eventID, event, eventRecord.Tag, []string{personID}, func(p Participant) bool {
+					return slices.Contains(hosts, p.Person)
+				}, expCtx)
 				expCtx.Stats.EventsProcessed++
 			}
 		}
@@ -479,7 +527,7 @@ func normalizeGEDCOMSex(value string, expCtx *ExportContext) string {
 
 // exportPersonEvent converts a GLX Event to a GEDCOM event subrecord of INDI.
 // Returns nil if the event type has no GEDCOM mapping.
-func exportPersonEvent(event *Event, expCtx *ExportContext) *GEDCOMRecord {
+func exportPersonEvent(eventID string, event *Event, expCtx *ExportContext) *GEDCOMRecord {
 	gedcomTag, ok := expCtx.ExportIndex.EventTypes[event.Type]
 	if !ok || gedcomTag == "" {
 		return nil
@@ -488,6 +536,13 @@ func exportPersonEvent(event *Event, expCtx *ExportContext) *GEDCOMRecord {
 	record := &GEDCOMRecord{
 		Tag:        gedcomTag,
 		SubRecords: []*GEDCOMRecord{},
+	}
+
+	// TYPE naming an event type that has no GEDCOM tag of its own, which
+	// exports as a generic EVEN (#1320)
+	genericType := genericEventTypeRecord(event, expCtx)
+	if genericType != nil {
+		record.SubRecords = append(record.SubRecords, genericType)
 	}
 
 	// DATE
@@ -507,8 +562,21 @@ func exportPersonEvent(event *Event, expCtx *ExportContext) *GEDCOMRecord {
 		record.SubRecords = append(record.SubRecords, placRecords...)
 	}
 
-	// Event properties (AGE, CAUS, TYPE)
-	record.SubRecords = append(record.SubRecords, exportEventPropertySubrecords(event, expCtx)...)
+	// Event properties (AGE, CAUS, TYPE). A generic EVEN's TYPE above already
+	// carries the event subtype.
+	for _, propRec := range exportEventPropertySubrecords(event, expCtx) {
+		if genericType != nil && propRec.Tag == GedcomTagType {
+			continue
+		}
+		record.SubRecords = append(record.SubRecords, propRec)
+	}
+
+	// ASSO for the participants the record is not written under: witnesses,
+	// godparents, informants and other roles (#1321)
+	hosts := eventHostIDs(event)
+	record.SubRecords = append(record.SubRecords, exportEventAssociations(event, func(p Participant) bool {
+		return slices.Contains(hosts, p.Person)
+	}, expCtx)...)
 
 	// NOTE - emit one NOTE subrecord per note
 	for _, note := range event.Notes {
@@ -526,8 +594,8 @@ func exportPersonEvent(event *Event, expCtx *ExportContext) *GEDCOMRecord {
 		}
 	}
 
-	// SOUR references from event sources and citations
-	exportEventSourceRefs(event, expCtx, record)
+	// SOUR references from event sources, citations and event-subject assertions
+	exportEventEvidenceRefs(eventID, event, expCtx, record)
 
 	return record
 }
@@ -848,14 +916,42 @@ func exportPersonSourceRefs(personID string, person *Person, expCtx *ExportConte
 	}
 }
 
-// exportEventSourceRefs adds SOUR references for sources and citations attached to an event.
-func exportEventSourceRefs(event *Event, expCtx *ExportContext, record *GEDCOMRecord) {
+// exportEventEvidenceRefs adds the SOUR subrecords for an event record: first
+// the sources and citations attached to the event itself, then those carried by
+// event-subject assertions (`subject.event`) about the event's date, place or
+// other properties. GEDCOM allows SOUR under an event structure, so evidence
+// for a birth date belongs under BIRT rather than on the enclosing INDI.
+//
+// Assertions about different properties of one event routinely cite the same
+// page — a birth date and a birth place both read off one register entry — so
+// identical exported references are emitted once. Distinct citation details
+// survive even when their source and PAGE match.
+func exportEventEvidenceRefs(eventID string, event *Event, expCtx *ExportContext, record *GEDCOMRecord) {
+	refs := eventSourceRefs(event, expCtx)
+	refs = append(refs, eventAssertionSourceRefs(eventID, expCtx)...)
+
+	seen := make(map[string]bool, len(refs))
+	for _, sour := range refs {
+		key := sourceRefKey(sour)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		record.SubRecords = append(record.SubRecords, sour)
+	}
+}
+
+// eventSourceRefs builds the SOUR subrecords for sources and citations attached
+// to the event entity itself.
+func eventSourceRefs(event *Event, expCtx *ExportContext) []*GEDCOMRecord {
+	var records []*GEDCOMRecord
+
 	// Direct sources
 	if sourcesVal, ok := event.Properties[PropertySources]; ok {
 		sourceIDs := extractStringList(sourcesVal)
 		for _, sourceID := range sourceIDs {
 			if sourceXRef := expCtx.SourceXRefMap[sourceID]; sourceXRef != "" {
-				record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
+				records = append(records, &GEDCOMRecord{
 					Tag:   GedcomTagSour,
 					Value: sourceXRef,
 				})
@@ -873,10 +969,42 @@ func exportEventSourceRefs(event *Event, expCtx *ExportContext, record *GEDCOMRe
 			}
 
 			if sourceXRef := expCtx.SourceXRefMap[citation.SourceID]; sourceXRef != "" {
-				record.SubRecords = append(record.SubRecords, exportCitationAsSOUR(citation, sourceXRef, expCtx))
+				records = append(records, exportCitationAsSOUR(citation, sourceXRef, expCtx))
 			}
 		}
 	}
+
+	return records
+}
+
+// eventAssertionSourceRefs builds the SOUR subrecords carried by the assertions
+// whose subject is this event, visiting properties in sorted order so output is
+// deterministic.
+func eventAssertionSourceRefs(eventID string, expCtx *ExportContext) []*GEDCOMRecord {
+	propertyAssertions, ok := expCtx.EventPropertyAssertions[eventID]
+	if !ok {
+		return nil
+	}
+
+	properties := make([]string, 0, len(propertyAssertions))
+	for property := range propertyAssertions {
+		properties = append(properties, property)
+	}
+	sort.Strings(properties)
+
+	var records []*GEDCOMRecord
+	for _, property := range properties {
+		records = append(records, assertionSourceRefs(propertyAssertions[property], expCtx)...)
+	}
+
+	return records
+}
+
+// sourceRefKey identifies the complete exported SOUR structure. Including all
+// subrecords preserves citation notes, media and other details when the source
+// and PAGE alone would compare equal, including citations without a PAGE.
+func sourceRefKey(sour *GEDCOMRecord) string {
+	return string(serializeGEDCOMRecords([]*GEDCOMRecord{sour}))
 }
 
 // exportCitationAsSOUR creates a GEDCOM SOUR sub-record from a GLX Citation,

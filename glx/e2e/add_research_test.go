@@ -22,6 +22,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
+
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 // The research-log workflow from issue #1336: create a log, append searches
@@ -180,4 +183,71 @@ func TestAddResearch_SourcePersonEventPropertyFlags(t *testing.T) {
 
 	bad := runGLX(t, archive, "add", "event", "--type", "death", "--property", "bogus=1")
 	assertExitWithStderr(t, bad, `event_properties "bogus"`)
+}
+
+func TestAddResearch_SearchDoesNotChangeAliasedLog(t *testing.T) {
+	archive := copyExample(t, "complete-family")
+	path := filepath.Join(archive, "shared.glx")
+	content := `research_logs:
+  rl-a:
+    searches: &searches
+      - query: initial
+    citations: &citations
+      - citation-john-birth
+  rl-b:
+    searches: *searches
+    citations: *citations
+`
+	require.NoError(t, os.WriteFile(path, []byte(content), 0o644))
+	assertArchiveValid(t, archive)
+	before := snapshotTree(t, archive)
+
+	res := runGLX(t, archive, "add", "search", "--log", "rl-a", "--query", "only target",
+		"--citation", "citation-census-john")
+	require.Equal(t, 0, res.exitCode, res.stderr)
+	assert.Equal(t, "rl-a\n", res.stdout)
+	diff := diffTrees(before, snapshotTree(t, archive))
+	assert.Equal(t, []string{"shared.glx"}, diff.changed)
+	assert.Empty(t, diff.created)
+	assert.Empty(t, diff.removed)
+
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	var fragment glxlib.GLXFile
+	require.NoError(t, yaml.Unmarshal(data, &fragment))
+	assert.Len(t, fragment.ResearchLogs["rl-a"].Searches, 2)
+	assert.Equal(t, []string{"citation-john-birth", "citation-census-john"}, fragment.ResearchLogs["rl-a"].Citations)
+	assert.Equal(t, []glxlib.Search{{Query: "initial"}}, fragment.ResearchLogs["rl-b"].Searches)
+	assert.Equal(t, []string{"citation-john-birth"}, fragment.ResearchLogs["rl-b"].Citations)
+	assertArchiveValid(t, archive)
+}
+
+func TestAddResearch_RepeatedReferencesKeepFirstOrderAndStayValid(t *testing.T) {
+	archive := copyExample(t, "complete-family")
+	logRes := runGLX(t, archive, "add", "research-log", "--title", "Repeated citations",
+		"--citation", "citation-john-birth", "--citation", "citation-census-john", "--citation", "citation-john-birth")
+	require.Equal(t, 0, logRes.exitCode, logRes.stderr)
+	assert.Equal(t, "research-log-repeated-citations\n", logRes.stdout)
+
+	studyRes := runGLX(t, archive, "add", "study", "--title", "Repeated scope",
+		"--place", "place-yorkshire", "--place", "place-leeds", "--place", "place-yorkshire",
+		"--source", "source-parish-leeds", "--source", "source-census-1851", "--source", "source-parish-leeds")
+	require.Equal(t, 0, studyRes.exitCode, studyRes.stderr)
+	assert.Equal(t, "study-repeated-scope\n", studyRes.stdout)
+
+	read := func(relPath string) *glxlib.GLXFile {
+		t.Helper()
+		data, err := os.ReadFile(filepath.Join(archive, filepath.FromSlash(relPath)))
+		require.NoError(t, err)
+		var fragment glxlib.GLXFile
+		require.NoError(t, yaml.Unmarshal(data, &fragment))
+
+		return &fragment
+	}
+	log := read("research_logs/research-log-repeated-citations.glx").ResearchLogs["research-log-repeated-citations"]
+	assert.Equal(t, []string{"citation-john-birth", "citation-census-john"}, log.Citations)
+	study := read("studies/study-repeated-scope.glx").Studies["study-repeated-scope"]
+	assert.Equal(t, []string{"place-yorkshire", "place-leeds"}, study.Places)
+	assert.Equal(t, []string{"source-parish-leeds", "source-census-1851"}, study.Sources)
+	assertArchiveValid(t, archive)
 }
