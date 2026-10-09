@@ -175,6 +175,40 @@ func TestServePersonsListSortedWithYears(t *testing.T) {
 	assert.Equal(t, "male", grandpa.Sex)
 }
 
+// TestServeLifespanKeepsDateRanges checks that the display lifespan keeps a
+// range and a qualifier instead of collapsing them to their first year, while
+// the numeric years stay available for sorting (#1328).
+func TestServeLifespanKeepsDateRanges(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-lewis": {Properties: map[string]any{"name": "Lewis Little"}},
+			"person-ann":   {Properties: map[string]any{"name": "Ann Little"}},
+		},
+		Events: map[string]*glxlib.Event{
+			"ev-birth-lewis": {Type: "birth", Date: "BET 1756 AND 1774", Participants: []glxlib.Participant{{Person: "person-lewis", Role: "principal"}}},
+			"ev-death-lewis": {Type: "death", Date: "BET 1826-05-16 AND 1830", Participants: []glxlib.Participant{{Person: "person-lewis", Role: "principal"}}},
+			"ev-birth-ann":   {Type: "birth", Date: "ABT 1765", Participants: []glxlib.Participant{{Person: "person-ann", Role: "principal"}}},
+		},
+	}
+	sub, err := fs.Sub(webAssets, "web")
+	require.NoError(t, err)
+	srv := &viewerServer{archive: archive, archivePath: "test-archive", assets: sub}
+
+	var got struct {
+		Persons []personListItemDTO `json:"persons"`
+	}
+	rec := doServeRequest(t, srv, "/api/persons", &got)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	byID := map[string]personListItemDTO{}
+	for _, p := range got.Persons {
+		byID[p.ID] = p
+	}
+	assert.Equal(t, "1756/1774 – 1826/1830", byID["person-lewis"].Lifespan)
+	assert.Equal(t, 1756, byID["person-lewis"].BirthYear)
+	assert.Equal(t, "b. c. 1765", byID["person-ann"].Lifespan)
+}
+
 func TestServePersonDetail(t *testing.T) {
 	srv := newServeTestServer(t)
 	var got personDetailDTO

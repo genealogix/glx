@@ -14,12 +14,14 @@ club analysis — the primary methodology for breaking genealogical brickwalls.
 
 Cross-references the archive to find people connected to the target through:
 - Census households: people enumerated in the same census events
+- Census neighbors: households recorded as page neighbors on a census event
+  (the event's neighbors list), when the neighbor is linked to a person
 - Shared events: co-participants in marriages, baptisms, land records, etc.
 - Place overlap: people associated with the same places in the same time period
 
 Associates are ranked by connection strength: census household links (3 points),
-shared event links (2 points), and place overlap links (1 point). Multiple
-connections compound for higher scores.
+census neighbor and shared event links (2 points), and place overlap links
+(1 point). Multiple connections compound for higher scores.
 
 The person argument can be an exact entity ID (e.g., person-d-lane) or a
 name to search for (e.g., "Mary Green"). If the name matches multiple

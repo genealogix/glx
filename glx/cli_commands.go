@@ -162,6 +162,7 @@ func init() {
 	rootCmd.AddCommand(evidenceCmd)
 	rootCmd.AddCommand(censusCmd)
 	rootCmd.AddCommand(clusterCmd)
+	rootCmd.AddCommand(householdsCmd)
 	rootCmd.AddCommand(pathCmd)
 	rootCmd.AddCommand(duplicatesCmd)
 	rootCmd.AddCommand(coverageCmd)
@@ -1340,6 +1341,14 @@ The template format uses a simple YAML structure describing the census
 year, location, household members, and citation details. Members can
 reference existing persons by ID or by name (matched against the archive).
 
+Head-only schedules (US 1790-1840 and similar) are supported: list the
+tick-mark columns under household.tally (sex, age_from, age_to, count,
+status), and add any known household member the schedule counts but does
+not name with named: false. Such members get role household_member and a
+low-confidence residence assertion, and are treated as found in that census
+by analyze, coverage, and households. household.neighbors records nearby
+households on the page (name, person, position, page, line).
+
 Use --dry-run to preview what would be generated without writing files.`,
 	Example: `  # Import a census template
   glx census add --from 1860-census-lane.yaml --archive my-archive
@@ -1369,6 +1378,84 @@ func runCensusAdd(_ *cobra.Command, _ []string) error {
 }
 
 // ============================================================================
+// Households Command (census household reconstruction)
+// ============================================================================
+
+var (
+	householdsArchive   string
+	householdsPlace     string
+	householdsYear      int
+	householdsNeighbors bool
+	householdsFormat    string
+)
+
+var householdsCmd = &cobra.Command{
+	Use:   "households [person]",
+	Short: "Reconstruct census households",
+	Long: `Reconstruct census households from the archive. Every census event is one
+household: the people enumerated in it, with their role, relationship to the
+head, and age at the census (participant property age_at_event).
+
+Members are listed head first, then by age, oldest first. The head is the
+participant whose relationship_to_head is "head", otherwise the first named
+participant in a principal/subject role. Members a head-only schedule counts
+without naming (participant property named: false) are marked "counted, not
+named", and the event's household tally (the tick-mark columns of 1790-1840
+style schedules) is printed under the members.
+
+With a person, lists each census household that person appears in. With
+--place, lists every census household at that place or any place inside it;
+combine with --year to look at a single enumeration. --neighbors adds the
+households recorded as page neighbors on each census event.
+
+The person argument can be an exact entity ID or a name to search for.`,
+	Example: `  # Every census household a person appears in
+  glx households person-robert-webb
+
+  # One census year only
+  glx households person-robert-webb --year 1860
+
+  # Every household enumerated at a place in 1860
+  glx households --place place-millbrook-hartford --year 1860
+
+  # Include page neighbors, for FAN research
+  glx households person-abram-baker --neighbors
+
+  # Machine-readable output
+  glx households person-robert-webb --format json`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runHouseholds,
+}
+
+func init() {
+	householdsCmd.Flags().StringVarP(&householdsArchive, "archive", "a", ".", "Archive path (directory or single file)")
+	householdsCmd.Flags().StringVar(&householdsPlace, "place", "", "Only households at this place ID (includes descendant places)")
+	householdsCmd.Flags().IntVar(&householdsYear, "year", 0, "Only households from this census year")
+	householdsCmd.Flags().BoolVar(&householdsNeighbors, "neighbors", false, "Show the page neighbors recorded on each census event")
+	householdsCmd.Flags().StringVar(&householdsFormat, "format", "text", "Output format: text or json")
+}
+
+func runHouseholds(_ *cobra.Command, args []string) error {
+	return householdsFromArgs(SystemIOStreams(), args)
+}
+
+// householdsFromArgs maps the positional person argument and flags onto
+// showHouseholds.
+func householdsFromArgs(io *IOStreams, args []string) error {
+	opts := householdsOptions{
+		PlaceID:   householdsPlace,
+		Year:      householdsYear,
+		Neighbors: householdsNeighbors,
+		Format:    householdsFormat,
+	}
+	if len(args) > 0 {
+		opts.PersonQuery = args[0]
+	}
+
+	return showHouseholds(io, householdsArchive, opts)
+}
+
+// ============================================================================
 // Cluster Command (FAN Club Analysis)
 // ============================================================================
 
@@ -1388,12 +1475,14 @@ club analysis — the primary methodology for breaking genealogical brickwalls.
 
 Cross-references the archive to find people connected to the target through:
 - Census households: people enumerated in the same census events
+- Census neighbors: households recorded as page neighbors on a census event
+  (the event's neighbors list), when the neighbor is linked to a person
 - Shared events: co-participants in marriages, baptisms, land records, etc.
 - Place overlap: people associated with the same places in the same time period
 
 Associates are ranked by connection strength: census household links (3 points),
-shared event links (2 points), and place overlap links (1 point). Multiple
-connections compound for higher scores.
+census neighbor and shared event links (2 points), and place overlap links
+(1 point). Multiple connections compound for higher scores.
 
 The person argument can be an exact entity ID (e.g., person-d-lane) or a
 name to search for (e.g., "Mary Green"). If the name matches multiple

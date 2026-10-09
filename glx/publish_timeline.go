@@ -17,7 +17,6 @@ package main
 import (
 	"fmt"
 	"math"
-	"strconv"
 )
 
 // Timeline strip geometry, in user units. The strip is drawn at this fixed
@@ -225,14 +224,4 @@ func stripDotTitle(row timelineRow) string {
 	}
 
 	return title
-}
-
-// displayYear renders a plotted year the way the rest of the site does, with
-// negative years shown as BCE.
-func displayYear(year int) string {
-	if year < 0 {
-		return strconv.Itoa(-year) + " BCE"
-	}
-
-	return strconv.Itoa(year)
 }
