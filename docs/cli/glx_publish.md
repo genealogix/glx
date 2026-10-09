@@ -16,7 +16,7 @@ The site includes a person profile page for everyone in the archive (with
 vital facts, a life timeline plotted to scale, pedigree and descendancy
 charts, linked family members, supporting sources, and a media gallery), plus
 source and place indexes and a client-side search.
-The timeline strip is shown when dated events span distinct years in one
+The timeline strip is shown when parsed dates span distinct years in one
 recorded calendar; mixed-calendar events remain in the chronological list.
 The output is a plain directory of HTML/CSS/JS with no server, database, or
 build tooling required — open index.html directly with file:// or host it

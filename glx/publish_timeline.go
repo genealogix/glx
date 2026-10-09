@@ -93,8 +93,8 @@ type stripDot struct {
 // numbers, so a mixed-calendar timeline keeps only the complete list.
 func buildTimelineStrip(rows []timelineRow) *timelineStrip {
 	first, last, distinct := stripYearRange(rows)
-	calendar, comparable := stripCalendar(rows)
-	if distinct < stripMinDistinct || !comparable {
+	calendar, sameCalendar := stripCalendar(rows)
+	if distinct < stripMinDistinct || !sameCalendar {
 		return nil
 	}
 
@@ -121,7 +121,7 @@ func buildTimelineStrip(rows []timelineRow) *timelineStrip {
 			X:     stripX(row.Year, first, last),
 			Y:     stripDotY,
 			R:     stripDotR,
-			Title: stripDotTitle(row),
+			Title: stripDotTitle(&row),
 		})
 	}
 
@@ -131,11 +131,14 @@ func buildTimelineStrip(rows []timelineRow) *timelineStrip {
 // stripCalendar reports the shared recorded calendar of plottable rows.
 // Undated rows do not determine the scale. Extension calendar prefixes retain
 // their identity rather than being collapsed into one "other" calendar.
-func stripCalendar(rows []timelineRow) (calendar string, comparable bool) {
+func stripCalendar(rows []timelineRow) (calendar string, sameCalendar bool) {
 	seen := false
 	for _, row := range rows {
 		if row.Year == 0 {
 			continue
+		}
+		if row.Unparsed {
+			return "", false
 		}
 		if seen && row.Calendar != calendar {
 			return "", false
@@ -253,7 +256,7 @@ func stripTickYears(first, last int) []int {
 }
 
 // stripDotTitle is the tooltip for one plotted event.
-func stripDotTitle(row timelineRow) string {
+func stripDotTitle(row *timelineRow) string {
 	title := row.Date
 	if title == "" {
 		title = displayYear(row.Year)

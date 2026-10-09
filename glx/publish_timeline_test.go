@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	glxlib "github.com/genealogix/glx/go-glx"
+	"github.com/genealogix/glx/go-glx/glxdate"
 )
 
 // yearRows builds timeline rows for the given years, labeled by year.
@@ -113,7 +114,7 @@ func TestStripTicks_WideSpanStaysWithinTheLabelBudget(t *testing.T) {
 }
 
 func TestStripDotTitle_NamesTheEventInFull(t *testing.T) {
-	title := stripDotTitle(timelineRow{
+	title := stripDotTitle(&timelineRow{
 		Date:   "January 15, 1850",
 		Label:  "Birth",
 		Detail: "Boston, Massachusetts",
@@ -188,6 +189,7 @@ func timelineDateArchive(dates ...string) *glxlib.GLXFile {
 			Participants: []glxlib.Participant{{Person: "person-calendar", Role: "subject"}},
 		}
 	}
+
 	return archive
 }
 
@@ -280,4 +282,28 @@ func TestStripTicks_NegativeYearsRoundTowardTheNextTick(t *testing.T) {
 		}
 	}
 	t.Fatalf("first round year after 44 BCE was skipped: %+v", ticks)
+}
+
+func TestBuildTimelineStrip_PreservedMixedCalendarRangeHasNoSharedScale(t *testing.T) {
+	// GEDCOM import deliberately preserves a range with independently recorded
+	// endpoint calendars instead of silently converting either endpoint.
+	raw := glxdate.FromGEDCOM("BET @#DHEBREW@ 15 TSH 5765 AND @#DGREGORIAN@ 2010")
+	model := buildSiteModel(timelineDateArchive("2000", raw, "2010"), siteModelOptions{})
+	person := model.Persons[0]
+	if person.TimelineStrip != nil {
+		t.Fatalf("unparsed calendar range shares a Gregorian scale: %s", person.TimelineStrip.Label)
+	}
+	found := false
+	for _, row := range person.Timeline {
+		if row.Date != raw {
+			continue
+		}
+		found = true
+		if row.Year != 5765 || !row.Unparsed {
+			t.Errorf("preserved range should retain its recovered year without trusting the scale: %+v", row)
+		}
+	}
+	if !found {
+		t.Fatalf("full timeline list lost preserved range %q", raw)
+	}
 }

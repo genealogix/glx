@@ -125,6 +125,8 @@ type timelineRow struct {
 	Detail   string
 	Year     int
 	Calendar string
+	// Unparsed means the recovered year has no reliable calendar/scale.
+	Unparsed bool
 	Undated  bool
 }
 
@@ -442,13 +444,14 @@ func buildTimelineRows(personID string, archive *glxlib.GLXFile) []timelineRow {
 	for _, e := range entries {
 		// Parsing preserves a recoverable year and calendar even when the
 		// archive carries a date whose remaining text cannot be interpreted.
-		date, _ := glxlib.DateString(e.Date).Parse()
+		date, err := glxlib.DateString(e.Date).Parse()
 		rows = append(rows, timelineRow{
 			Date:     displayDate(e.Date),
 			Label:    e.Label,
 			Detail:   e.Detail,
 			Year:     date.Year(),
 			Calendar: date.CalendarName(),
+			Unparsed: err != nil,
 			Undated:  e.SortKey == "\xff",
 		})
 	}
