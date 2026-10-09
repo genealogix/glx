@@ -1148,3 +1148,54 @@ func TestLoadArchiveForSummary_SingleFileReadError(t *testing.T) {
 	_, err := loadArchiveForSummary(bad)
 	require.Error(t, err)
 }
+
+// Only the couple of a marriage event are each other's spouses. The bride's
+// father (role parent) is not a spouse of either, and has none himself; a
+// husband named as spouse on his wife's death did not die that day (#1362).
+func TestSummary_MarriageEventNonCoupleParticipants(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"p-groom":  {Properties: map[string]any{"name": "Johann Groom", "sex": "male"}},
+			"p-bride":  {Properties: map[string]any{"name": "Anna Bride", "sex": "female"}},
+			"p-father": {Properties: map[string]any{"name": "Woerner Bride", "sex": "male"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{},
+		Events: map[string]*glxlib.Event{
+			"ev-marr": {
+				Type: "marriage", Date: "1644-02-26",
+				Participants: []glxlib.Participant{
+					{Person: "p-groom", Role: "groom"},
+					{Person: "p-bride", Role: "bride"},
+					{Person: "p-father", Role: "parent"},
+				},
+			},
+			"ev-death-bride": {
+				Type: "death", Date: "1688-05-04",
+				Participants: []glxlib.Participant{
+					{Person: "p-bride", Role: "principal"},
+					{Person: "p-groom", Role: "spouse"},
+				},
+			},
+			"ev-death-groom": {
+				Type: "death", Date: "1689-12-27",
+				Participants: []glxlib.Participant{{Person: "p-groom", Role: "principal"}},
+			},
+		},
+		Places: map[string]*glxlib.Place{},
+	}
+
+	spouses := findSpouses("p-groom", archive)
+	require.Len(t, spouses, 1)
+	assert.Equal(t, "p-bride", spouses[0].PersonID)
+	assert.Equal(t, "1644-02-26", spouses[0].MarriageDate)
+	assert.Empty(t, findSpouses("p-father", archive))
+
+	date, _ := findMarriageEvent("p-groom", "p-father", archive)
+	assert.Empty(t, date)
+
+	history := generateLifeHistory("p-groom", archive.Persons["p-groom"], archive)
+	assert.Contains(t, history, "He married Anna Bride on February 26, 1644.")
+	assert.NotContains(t, history, "Woerner")
+	assert.Contains(t, history, "He died on December 27, 1689.")
+	assert.NotContains(t, history, "1688")
+}

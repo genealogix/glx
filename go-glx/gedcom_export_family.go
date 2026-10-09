@@ -329,7 +329,7 @@ func exportFamilyEvent(eventID, gedcomTag string, expCtx *ExportContext, hostIDs
 	record.SubRecords = append(record.SubRecords, exportEventAssociations(event, func(p Participant) bool {
 		return isFamilyEventMemberRole(p.Role)
 	}, expCtx)...)
-	queueGEDCOM551EventAssociations(eventID, event, gedcomTag, hostIDs, func(p Participant) bool {
+	queueGEDCOM551EventAssociations(eventID, event, gedcomTag, hostIDs, hostIDs, func(p Participant) bool {
 		return isFamilyEventMemberRole(p.Role)
 	}, expCtx)
 
