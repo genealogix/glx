@@ -57,6 +57,7 @@ const mapFrameWidth = mapWidth - mapInsetLeft - mapInsetRight
 const (
 	maxLatitude    = 90
 	maxLongitude   = 180
+	longitudeTurn  = 2 * maxLongitude
 	degreesPerPi   = 180
 	minLonScale    = 0.05 // never let a polar box collapse to zero width
 	labelBaselineY = 15   // longitude labels sit this far below the frame
@@ -79,7 +80,7 @@ const mapPadFraction = 0.12
 // mapGraticuleSteps are the degree intervals the latitude/longitude grid may
 // use, smallest first; the first one that yields at most mapMaxGridLines lines
 // on the wider axis wins.
-var mapGraticuleSteps = []float64{0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 20, 30, 45}
+var mapGraticuleSteps = []float64{0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 20, 30, 45, 90}
 
 // mapMaxGridLines bounds the grid lines drawn per axis, and degreeMaxDecimals
 // the precision of their degree labels — the finest step in
@@ -118,20 +119,20 @@ type placeMap struct {
 
 // mapFrame is the plotted area's border box.
 type mapFrame struct {
-	X int
-	Y int
-	W int
-	H int
+	X float64
+	Y float64
+	W float64
+	H float64
 }
 
 // mapGridLine is one graticule line with its degree label.
 type mapGridLine struct {
-	X1    int
-	Y1    int
-	X2    int
-	Y2    int
-	TextX int
-	TextY int
+	X1    float64
+	Y1    float64
+	X2    float64
+	Y2    float64
+	TextX float64
+	TextY float64
 	Label string
 	// Anchor is the SVG text-anchor for the label: parallels label at the
 	// left edge, meridians centered under the bottom edge.
@@ -150,7 +151,8 @@ type mapMarker struct {
 	Title  string // tooltip: full place name and event count
 }
 
-// geoBox is a latitude/longitude bounding box in degrees.
+// geoBox is a latitude/longitude bounding box in degrees. Longitude is
+// unwrapped, so a box across the date line may extend beyond 180 degrees.
 type geoBox struct {
 	MinLat float64
 	MaxLat float64
@@ -171,7 +173,7 @@ func buildPlaceMap(rows []placeRow) *placeMap {
 		Label:   fmt.Sprintf("Map of %d located place(s) in this archive", len(located)),
 		Width:   mapWidth,
 		Height:  height + mapInsetTop + mapInsetBottom,
-		Frame:   mapFrame{X: mapInsetLeft, Y: mapInsetTop, W: mapFrameWidth, H: height},
+		Frame:   fittedMapFrame(box, height),
 		Located: len(located),
 		Total:   len(rows),
 	}
@@ -205,13 +207,12 @@ func locatedRows(rows []placeRow) []placeRow {
 // boundingBox is the padded latitude/longitude box covering every located
 // place, widened to at least mapMinSpanDegrees on each axis.
 func boundingBox(rows []placeRow) geoBox {
-	box := geoBox{MinLat: rows[0].Lat, MaxLat: rows[0].Lat, MinLon: rows[0].Lon, MaxLon: rows[0].Lon}
+	minLon, maxLon := longitudeBounds(rows)
+	box := geoBox{MinLat: rows[0].Lat, MaxLat: rows[0].Lat, MinLon: minLon, MaxLon: maxLon}
 	for i := range rows[1:] {
 		row := &rows[i+1]
 		box.MinLat = math.Min(box.MinLat, row.Lat)
 		box.MaxLat = math.Max(box.MaxLat, row.Lat)
-		box.MinLon = math.Min(box.MinLon, row.Lon)
-		box.MaxLon = math.Max(box.MaxLon, row.Lon)
 	}
 
 	box = growBox(box, mapPadFraction)
@@ -225,31 +226,69 @@ func boundingBox(rows []placeRow) geoBox {
 	return box
 }
 
+// longitudeBounds cuts the longitude circle at its largest empty gap. The
+// remaining interval is the smallest one covering the places, including a
+// cluster across the date line. Equal gaps prefer the ordinary numeric range.
+func longitudeBounds(rows []placeRow) (minLon, maxLon float64) {
+	lons := make([]float64, len(rows))
+	for i := range rows {
+		lons[i] = normalizeLongitude(rows[i].Lon)
+	}
+	sort.Float64s(lons)
+
+	gap := longitudeTurn + lons[0] - lons[len(lons)-1]
+	start := 0
+	for i := range lons[:len(lons)-1] {
+		if nextGap := lons[i+1] - lons[i]; nextGap > gap {
+			gap = nextGap
+			start = i + 1
+		}
+	}
+
+	minLon = lons[start]
+
+	return minLon, minLon + longitudeTurn - gap
+}
+
+// normalizeLongitude gives equivalent longitudes one canonical WGS84 value,
+// in [-180, 180). In particular, -180 and +180 name the same meridian.
+func normalizeLongitude(lon float64) float64 {
+	lon = math.Mod(lon+maxLongitude, longitudeTurn)
+	if lon < 0 {
+		lon += longitudeTurn
+	}
+
+	return lon - maxLongitude
+}
+
 // growBox expands a box by a fraction of its own span on every side.
 func growBox(box geoBox, fraction float64) geoBox {
 	return padLon(padLat(box, (box.MaxLat-box.MinLat)*fraction), (box.MaxLon-box.MinLon)*fraction)
 }
 
 func padLat(box geoBox, by float64) geoBox {
-	box.MinLat = math.Max(-maxLatitude, box.MinLat-by)
-	box.MaxLat = math.Min(maxLatitude, box.MaxLat+by)
+	span := math.Min(box.MaxLat-box.MinLat+2*by, 2*maxLatitude)
+	// Move padding lost at one pole to the other side before reducing the span.
+	box.MinLat = math.Max(-maxLatitude, math.Min(box.MinLat-by, maxLatitude-span))
+	box.MaxLat = box.MinLat + span
 
 	return box
 }
 
 func padLon(box geoBox, by float64) geoBox {
-	box.MinLon = math.Max(-maxLongitude, box.MinLon-by)
-	box.MaxLon = math.Min(maxLongitude, box.MaxLon+by)
+	span := math.Min(box.MaxLon-box.MinLon+2*by, longitudeTurn)
+	middle := (box.MinLon + box.MaxLon) / 2
+	box.MinLon = middle - span/2
+	box.MaxLon = middle + span/2
 
 	return box
 }
 
 // fitBox picks the plotted area's height for the box's own shape (bounded, so
 // neither a world map nor a single valley takes over the page), then widens the
-// box on one axis so its shape matches that area exactly — which is what keeps
-// the projection undistorted. Longitude degrees are narrower than latitude
-// degrees away from the equator, so the comparison is made in cosine-corrected
-// units, the same correction the projection itself applies.
+// box on one axis toward that area's shape. Geographic limits may stop the
+// expansion or move the middle latitude; fittedMapFrame then letterboxes the
+// final box to preserve its scale at that latitude.
 func fitBox(box geoBox, frameW float64) (fitted geoBox, frameH int) {
 	frameH = clampInt(int(math.Round(frameW*box.aspect())), mapMinHeight, mapMaxHeight)
 
@@ -264,6 +303,22 @@ func fitBox(box geoBox, frameW float64) (fitted geoBox, frameH int) {
 	}
 
 	return box, frameH
+}
+
+// fittedMapFrame fits the final geographic box inside the allocated area with
+// one scale for latitude and cosine-corrected longitude. Fractional frame
+// coordinates avoid stretching a polar or whole-world view to rounded pixels.
+func fittedMapFrame(box geoBox, height int) mapFrame {
+	geoW, geoH := box.correctedWidth(), box.MaxLat-box.MinLat
+	scale := math.Min(mapFrameWidth/geoW, float64(height)/geoH)
+	w, h := math.Min(mapFrameWidth, geoW*scale), math.Min(float64(height), geoH*scale)
+
+	return mapFrame{
+		X: mapInsetLeft + (mapFrameWidth-w)/2,
+		Y: mapInsetTop + (float64(height)-h)/2,
+		W: w,
+		H: h,
+	}
 }
 
 // aspect is the box's height-to-width ratio in corrected units.
@@ -288,13 +343,21 @@ func (b geoBox) lonScale() float64 {
 	return math.Max(math.Cos((b.MinLat+b.MaxLat)/2*math.Pi/degreesPerPi), minLonScale)
 }
 
-// project maps a coordinate onto the frame. North is up, so latitude counts
-// down from the frame's top edge.
+// project maps a coordinate with unwrapped longitude onto the frame. North
+// is up, so latitude counts down from the frame's top edge.
 func (b geoBox) project(lat, lon float64, frame mapFrame) (x, y float64) {
-	x = float64(frame.X) + (lon-b.MinLon)/(b.MaxLon-b.MinLon)*float64(frame.W)
-	y = float64(frame.Y) + (b.MaxLat-lat)/(b.MaxLat-b.MinLat)*float64(frame.H)
+	x = frame.X + (lon-b.MinLon)/(b.MaxLon-b.MinLon)*frame.W
+	y = frame.Y + (b.MaxLat-lat)/(b.MaxLat-b.MinLat)*frame.H
 
 	return x, y
+}
+
+// unwrapLongitude selects the equivalent longitude closest to the box's
+// center. Grid lines already carry unwrapped longitudes and need no conversion.
+func (b geoBox) unwrapLongitude(lon float64) float64 {
+	middle := (b.MinLon + b.MaxLon) / 2
+
+	return middle + normalizeLongitude(lon-middle)
 }
 
 // buildGraticule lays out the latitude and longitude grid lines that fall
@@ -306,9 +369,9 @@ func buildGraticule(box geoBox, frame mapFrame) []mapGridLine {
 	for _, lat := range roundValues(box.MinLat, box.MaxLat, latStep) {
 		_, y := box.project(lat, box.MinLon, frame)
 		lines = append(lines, mapGridLine{
-			X1: frame.X, Y1: int(math.Round(y)),
-			X2: frame.X + frame.W, Y2: int(math.Round(y)),
-			TextX: frame.X - 4, TextY: int(math.Round(y)) + 4,
+			X1: frame.X, Y1: y,
+			X2: frame.X + frame.W, Y2: y,
+			TextX: frame.X - 4, TextY: y + 4,
 			Label: formatLatitude(lat, latStep), Anchor: "end",
 		})
 	}
@@ -317,9 +380,9 @@ func buildGraticule(box geoBox, frame mapFrame) []mapGridLine {
 	for _, lon := range roundValues(box.MinLon, box.MaxLon, lonStep) {
 		x, _ := box.project(box.MinLat, lon, frame)
 		lines = append(lines, mapGridLine{
-			X1: int(math.Round(x)), Y1: frame.Y,
-			X2: int(math.Round(x)), Y2: frame.Y + frame.H,
-			TextX: int(math.Round(x)), TextY: frame.Y + frame.H + labelBaselineY,
+			X1: x, Y1: frame.Y,
+			X2: x, Y2: frame.Y + frame.H,
+			TextX: x, TextY: frame.Y + frame.H + labelBaselineY,
 			Label: formatLongitude(lon, lonStep), Anchor: "middle",
 		})
 	}
@@ -358,7 +421,7 @@ func buildMarkers(rows []placeRow, box geoBox, frame mapFrame) []mapMarker {
 	placed := make([]labelBox, 0, mapLabelMax)
 	for i := range rows {
 		row := &rows[i]
-		x, y := box.project(row.Lat, row.Lon, frame)
+		x, y := box.project(row.Lat, box.unwrapLongitude(row.Lon), frame)
 		marker := mapMarker{
 			CX:    x,
 			CY:    y,
@@ -423,7 +486,7 @@ func labelBoxFor(text string, x, y float64) labelBox {
 }
 
 func (l labelBox) fitsIn(frame mapFrame) bool {
-	return l.X+l.W <= float64(frame.X+frame.W) && l.Y >= float64(frame.Y)
+	return l.X+l.W <= frame.X+frame.W && l.Y >= frame.Y
 }
 
 func (l labelBox) overlapsAny(others []labelBox) bool {
@@ -444,7 +507,7 @@ func formatLatitude(lat, step float64) string {
 
 // formatLongitude renders a meridian's label, e.g. "71°W".
 func formatLongitude(lon, step float64) string {
-	return formatDegrees(lon, step, "E", "W")
+	return formatDegrees(normalizeLongitude(lon), step, "E", "W")
 }
 
 // formatDegrees renders a signed degree value with the hemisphere letter,

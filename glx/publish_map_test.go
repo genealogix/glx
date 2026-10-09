@@ -134,7 +134,7 @@ func TestBuildPlaceMap_KeepsTheProjectionUndistorted(t *testing.T) {
 		t.Errorf("longitude renders at %.2f units/degree, want ~%.2f (latitude scale × cos 60°)", perLon, want)
 	}
 	if pm.Frame.H < mapMinHeight || pm.Frame.H > mapMaxHeight {
-		t.Errorf("frame height %d outside the %d–%d bounds", pm.Frame.H, mapMinHeight, mapMaxHeight)
+		t.Errorf("frame height %g outside the %d–%d bounds", pm.Frame.H, mapMinHeight, mapMaxHeight)
 	}
 }
 
@@ -150,6 +150,191 @@ func TestBoundingBox_WidensATightCluster(t *testing.T) {
 	}
 	if span := box.MaxLon - box.MinLon; span < mapMinSpanDegrees {
 		t.Errorf("longitude span %.4f°, want at least %.2f°", span, mapMinSpanDegrees)
+	}
+}
+
+func TestBuildPlaceMap_FitsAcrossTheDateLine(t *testing.T) {
+	rows := []placeRow{
+		locatedRow("West Fiji", -16, 179.5, 2),
+		locatedRow("East Fiji", -16, -179.5, 1),
+	}
+	box := boundingBox(rows)
+	if got, want := box.MaxLon-box.MinLon, 1.24; math.Abs(got-want) > degreeEpsilon {
+		t.Fatalf("longitude span = %.2f°, want %.2f° for places one degree apart", got, want)
+	}
+	pm := buildPlaceMap(rows)
+	west, east := markerNamed(pm, "West Fiji"), markerNamed(pm, "East Fiji")
+	if west.CX >= east.CX {
+		t.Fatal("crossing the date line eastward should preserve marker order")
+	}
+	// The one-degree gap covers 1/1.24 of the padded regional frame, just as
+	// it would for a cluster away from the date line.
+	if got, want := (east.CX-west.CX)/pm.Frame.W, 1/1.24; math.Abs(got-want) > degreeEpsilon {
+		t.Errorf("marker gap/frame width = %.4f, want %.4f", got, want)
+	}
+}
+
+func TestLongitudeBounds_UsesTheSmallestCircularInterval(t *testing.T) {
+	cases := []struct {
+		name string
+		lons []float64
+		span float64
+	}{
+		{"ordinary Atlantic", []float64{-71.06, -1.55}, 69.51},
+		{"crosses date line", []float64{-179.5, 179.5}, 1},
+		{"same meridian aliases", []float64{-180, 180, -180}, 0},
+		{"cluster with date line aliases", []float64{179, -180, 180, -179}, 2},
+		{"equal gaps", []float64{-120, 0, 120}, 240},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			rows := make([]placeRow, len(tc.lons))
+			for i, lon := range tc.lons {
+				rows[i] = locatedRow("Place", 0, lon, 1)
+			}
+			minLon, maxLon := longitudeBounds(rows)
+			if got := maxLon - minLon; math.Abs(got-tc.span) > degreeEpsilon {
+				t.Errorf("span = %g°, want %g°", got, tc.span)
+			}
+			box := boundingBox(rows)
+			for _, lon := range tc.lons {
+				if unwrapped := box.unwrapLongitude(lon); unwrapped < box.MinLon || unwrapped > box.MaxLon {
+					t.Errorf("longitude %g° unwraps outside %+v", lon, box)
+				}
+			}
+		})
+	}
+}
+
+func TestBuildPlaceMap_DateLineAliasesCoincide(t *testing.T) {
+	pm := buildPlaceMap([]placeRow{
+		locatedRow("Negative", 10, -180, 1),
+		locatedRow("Positive", 10, 180, 1),
+	})
+	negative, positive := markerNamed(pm, "Negative"), markerNamed(pm, "Positive")
+	if math.IsNaN(negative.CX) || math.IsNaN(negative.CY) || math.IsInf(negative.CX, 0) || math.IsInf(negative.CY, 0) {
+		t.Fatalf("coincident points must have a finite projection: %+v", negative)
+	}
+	if negative.CX != positive.CX || negative.CY != positive.CY {
+		t.Errorf("±180° name the same location: %+v versus %+v", negative, positive)
+	}
+}
+
+func TestBuildPlaceMap_PreservesScaleNearGeographicBounds(t *testing.T) {
+	cases := []struct {
+		name string
+		rows []placeRow
+	}{
+		{"Atlantic control", []placeRow{locatedRow("Boston", 42.36, -71.06, 1), locatedRow("Leeds", 53.8, -1.55, 1)}},
+		{"Anchorage-Honolulu", []placeRow{locatedRow("Anchorage", 61.2181, -149.9003, 1), locatedRow("Honolulu", 21.3099, -157.8581, 1)}},
+		{"north pole", []placeRow{locatedRow("Pole", 90, 180, 1), locatedRow("North", 89.9, -179.9, 1)}},
+		{"south pole", []placeRow{locatedRow("Pole", -90, -180, 1), locatedRow("South", -89.9, 179.9, 1)}},
+		{"wide polar view", []placeRow{locatedRow("West", 80, -135, 1), locatedRow("Middle", 85, -45, 1), locatedRow("East", 90, 45, 1), locatedRow("Far east", 89, 135, 1)}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			box, height := fitBox(boundingBox(tc.rows), mapFrameWidth)
+			pm := buildPlaceMap(tc.rows)
+			assertMapReferenceScale(t, box, pm.Frame)
+			if height < mapMinHeight || height > mapMaxHeight {
+				t.Errorf("allocated height = %d, outside map limits", height)
+			}
+			if box.MinLat < -maxLatitude || box.MaxLat > maxLatitude || box.MaxLon-box.MinLon > longitudeTurn {
+				t.Errorf("geographic range outside limits: %+v", box)
+			}
+			for _, marker := range pm.Markers {
+				if marker.CX < pm.Frame.X-degreeEpsilon || marker.CX > pm.Frame.X+pm.Frame.W+degreeEpsilon ||
+					marker.CY < pm.Frame.Y-degreeEpsilon || marker.CY > pm.Frame.Y+pm.Frame.H+degreeEpsilon {
+					t.Errorf("marker %+v outside frame %+v", marker, pm.Frame)
+				}
+			}
+		})
+	}
+}
+
+func TestFitBox_LetterboxesAWorldViewAtThePole(t *testing.T) {
+	box, height := fitBox(geoBox{MinLat: 89, MaxLat: 90, MinLon: -180, MaxLon: 180}, mapFrameWidth)
+	frame := fittedMapFrame(box, height)
+	assertMapReferenceScale(t, box, frame)
+	if frame.H >= float64(height) || frame.Y <= mapInsetTop {
+		t.Errorf("polar world view should letterbox inside its height, got %+v in %d", frame, height)
+	}
+	if box.MinLat < -maxLatitude || box.MaxLat > maxLatitude {
+		t.Errorf("latitude padding must stay valid: %+v", box)
+	}
+	// Every grid line remains within the plot and the full circle gets no more
+	// than the configured number of meridians.
+	meridians := 0
+	for _, line := range buildGraticule(box, frame) {
+		if line.Anchor == "middle" {
+			meridians++
+			if line.X1 < frame.X || line.X1 > frame.X+frame.W {
+				t.Errorf("meridian outside frame: %+v", line)
+			}
+		}
+	}
+	if meridians > mapMaxGridLines {
+		t.Errorf("world view has %d meridians, limit %d", meridians, mapMaxGridLines)
+	}
+}
+
+func TestFitBox_FullWorldKeepsEveryCoordinateInFrame(t *testing.T) {
+	box, height := fitBox(geoBox{MinLat: -90, MaxLat: 90, MinLon: -180, MaxLon: 180}, mapFrameWidth)
+	frame := fittedMapFrame(box, height)
+	assertMapReferenceScale(t, box, frame)
+	for _, lat := range []float64{-90, 0, 90} {
+		for _, lon := range []float64{-180, 0, 180} {
+			x, y := box.project(lat, box.unwrapLongitude(lon), frame)
+			if x < frame.X || x > frame.X+frame.W || y < frame.Y || y > frame.Y+frame.H {
+				t.Errorf("(%g, %g) projects outside full world frame: (%g, %g)", lat, lon, x, y)
+			}
+		}
+	}
+}
+
+func TestPadLat_PreservesSpanAtEitherPole(t *testing.T) {
+	for _, box := range []geoBox{{MinLat: 90, MaxLat: 90}, {MinLat: -90, MaxLat: -90}} {
+		padded := padLat(box, mapMinSpanDegrees/2)
+		if got := padded.MaxLat - padded.MinLat; got != mapMinSpanDegrees {
+			t.Errorf("padded polar span = %g°, want %g°", got, mapMinSpanDegrees)
+		}
+		if padded.MinLat > box.MinLat || padded.MaxLat < box.MaxLat || padded.MinLat < -maxLatitude || padded.MaxLat > maxLatitude {
+			t.Errorf("padding lost the place or exceeded a pole: %+v -> %+v", box, padded)
+		}
+	}
+}
+
+func assertMapReferenceScale(t *testing.T, box geoBox, frame mapFrame) {
+	t.Helper()
+	latScale := frame.H / (box.MaxLat - box.MinLat)
+	lonScale := frame.W / (box.MaxLon - box.MinLon)
+	if got, want := lonScale/latScale, box.lonScale(); math.Abs(got-want) > degreeEpsilon {
+		t.Errorf("longitude/latitude scale = %g, want cosine correction %g", got, want)
+	}
+	if frame.X < mapInsetLeft-degreeEpsilon || frame.X+frame.W > mapWidth-mapInsetRight+degreeEpsilon ||
+		frame.Y < mapInsetTop-degreeEpsilon || frame.H > mapMaxHeight+degreeEpsilon {
+		t.Errorf("fitted frame outside allocated area: %+v", frame)
+	}
+}
+
+func TestBuildGraticule_NormalizesUnwrappedLongitudeLabels(t *testing.T) {
+	box := geoBox{MinLat: -16.2, MaxLat: -15.8, MinLon: 179.4, MaxLon: 180.6}
+	frame := fittedMapFrame(box, mapMinHeight)
+	var labels []string
+	previousX := math.Inf(-1)
+	for _, line := range buildGraticule(box, frame) {
+		if line.Anchor != "middle" {
+			continue
+		}
+		if line.X1 <= previousX {
+			t.Errorf("unwrapped meridians must advance across the frame: %+v", line)
+		}
+		previousX = line.X1
+		labels = append(labels, line.Label)
+	}
+	want := "179.5°E 179.75°E 180°W 179.75°W 179.5°W"
+	if got := strings.Join(labels, " "); got != want {
+		t.Errorf("longitude labels = %q, want %q", got, want)
 	}
 }
 
