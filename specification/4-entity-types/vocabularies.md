@@ -769,9 +769,9 @@ See [ResearchLog Entity - Status lifecycle](research-log.md#status-lifecycle) fo
 
 **Default file**: `vocabularies/lead-statuses.glx`
 
-**Used By**: [ResearchLog Entity](research-log.md#leads-competing-hypotheses) (each lead's `status`)
+**Used By**: [ResearchLog Entity](research-log.md#researchlead) (each lead's `status`)
 
-**Purpose**: Records whether a lead (a competing hypothesis inside a research log) is still being pursued, has been ruled out, or has been proven.
+**Purpose**: Records whether a lead (a competing hypothesis inside a research log) is still being pursued, has been ruled out, or has been confirmed. A lead status is research workflow state: changing it never changes the assertions the lead references.
 
 **Standard Templates**: See [Standard Vocabularies - Lead Statuses](../5-standard-vocabularies/#lead-statuses) for the complete default vocabulary.
 
@@ -789,7 +789,7 @@ lead_statuses:
 
   confirmed:
     label: "Confirmed"
-    description: "Hypothesis has been proven; the conclusion belongs in assertions and relationships."
+    description: "The research has settled on this hypothesis. Setting this status changes no assertion; record the conclusion in assertions and relationships separately."
 ```
 
 ### Fields
@@ -801,7 +801,7 @@ lead_statuses:
 
 ### Standard Lead Statuses
 
-See [ResearchLog Entity - Leads](research-log.md#leads-competing-hypotheses) for guidance on recording and eliminating leads.
+See [ResearchLog Entity - Leads](research-log.md#researchlead) for guidance on recording and eliminating leads.
 
 ---
 

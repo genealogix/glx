@@ -201,7 +201,7 @@ Defines the lifecycle status of a [research log](../4-entity-types/research-log.
 
 ### Lead Statuses
 
-Defines the status of a lead, a competing hypothesis inside a [research log](../4-entity-types/research-log.md#leads-competing-hypotheses) (active, eliminated, confirmed).
+Defines the status of a lead, a competing hypothesis inside a [research log](../4-entity-types/research-log.md#researchlead) (active, eliminated, confirmed).
 
 <YamlFile
   :content="vocabularies['lead-statuses']"

@@ -45,7 +45,7 @@ research_logs:
 
 - Entity ID is the map key (`research-log-1860-census-jane-webb`)
 - IDs can be descriptive or random, 1-64 alphanumeric/hyphens
-- Searches and leads are embedded inside the log; they are not standalone entities
+- A log embeds two component types, each specified in its own section below: [Search](#search), one search attempt, and [ResearchLead](#researchlead), one competing hypothesis. Neither is a standalone entity: they have no IDs and cannot be referenced from elsewhere in the archive
 
 ## Core Concepts
 
@@ -58,22 +58,6 @@ A ResearchLog answers four questions that a `notes` field cannot:
 3. **What is the negative evidence?** "Source X searched, target absent" is a genealogical conclusion, not a non-result.
 4. **How exhaustive was the search?** A reviewer can audit how many distinct sources were checked.
 
-### Search results
-
-Each `Search` records one query and its outcome. The standard outcomes are:
-
-- `found` — the target was located in the source
-- `not_found` — the source was searched and the target was not present (negative evidence)
-- `inconclusive` — a candidate record was located but cannot be confirmed
-- `partial` — some relevant information was located, but the objective was not fully met
-- `not_searched` — search is planned but has not yet been performed (use to record outstanding work alongside completed searches)
-- `requires_visit` — the source exists but can only be searched on site or by request; outstanding work, but not something that can be done from a desk
-- `unavailable` — the source was sought but cannot be searched because it does not survive, is restricted, or is not accessible; say why in `notes`
-
-`unavailable` is the opposite of `not_searched`: the search was attempted and the gap is permanent (a burned courthouse, a lost volume, a closed record series). Tools that build a to-do list from a log treat `not_searched` and `requires_visit` as outstanding work and `unavailable` as a documented gap; `glx proof` labels each accordingly in its reasonably-exhaustive-search section.
-
-**See [Vocabularies - Search Result Types](vocabularies.md#search-result-types-vocabulary)** for the full vocabulary.
-
 ### Status lifecycle
 
 `status` tracks where the investigation stands:
@@ -84,22 +68,6 @@ Each `Search` records one query and its outcome. The standard outcomes are:
 - `blocked` — cannot proceed (waiting on access, missing records, etc.)
 
 **See [Vocabularies - Research Log Status Types](vocabularies.md#research-log-status-types-vocabulary).**
-
-### Leads: competing hypotheses
-
-Searches record *what was searched*; leads record *what we are trying to figure out*. A brick-wall question such as "who were Mary Green's parents?" usually has several candidate answers at once. Each candidate is a **lead**: a description, optional references to the candidate persons, the evidence for and against it, a confidence, and the next steps for pursuing it. Researchers eliminate leads one by one until one is confirmed.
-
-A lead's `status` is one of:
-
-- `active`: still being pursued; the evidence neither rules it in nor out yet
-- `eliminated`: ruled out by contradicting evidence (keep it, with `evidence_against`, so the elimination is documented and nobody re-investigates it)
-- `confirmed`: proven
-
-**See [Vocabularies - Lead Statuses](vocabularies.md#lead-statuses-vocabulary).**
-
-A lead is research workflow state, not a conclusion. When a lead is confirmed, record the conclusion where it belongs in the archive: a [Relationship](relationship.md) or property value backed by an [Assertion](assertion.md) with citations. A lead can point at those assertions through its `assertions` list, so the hypothesis and the evidence-backed claim stay linked. A speculative candidate parent can likewise be modelled early as a `parent_child` relationship with a low-confidence assertion, referenced from the lead and marked `disproven` if the lead is eliminated.
-
-`evidence_for` and `evidence_against` are free-text summaries, since much brick-wall reasoning ("daughter of the right age in the 1840 census", "father born in England") is an inference over several records rather than a single citation. Use the lead's `citations` and `assertions` lists to point at the structured evidence those summaries rest on.
 
 ## Fields
 
@@ -121,16 +89,36 @@ A log with only an entity ID is a valid, minimal placeholder; `objective` and a 
 | `researcher` | string | Name or identifier of the researcher |
 | `objective` | string | Research question or goal |
 | `status` | string | Lifecycle status (validated against `research_log_status_types` vocabulary) |
-| `searches` | array | List of `Search` entries — one per search attempt |
-| `leads` | array | List of `ResearchLead` entries — competing hypotheses under investigation |
+| `searches` | array | List of [Search](#search) entries, one per search attempt |
+| `leads` | array | List of [ResearchLead](#researchlead) entries, the research alternatives under investigation |
 | `citations` | array | Citations produced by this log (denormalized from per-search refs) |
 | `conclusions` | string | Summary of findings |
 | `properties` | object | Vocabulary-extensible metadata. There is no research-log property vocabulary in this revision, so keys are not validated and unknown keys do not produce warnings |
 | `notes` | string \| string[] | Free-form notes about the log |
 
-### Search entry fields
+## Search
 
-Each entry in `searches` is a structured record of one search attempt:
+A **Search** is one entry in a log's `searches` list. It records *what was searched*: one query against one repository, source, or collection, when it was run, and what came of it, including nothing. A search that found nothing is negative evidence, and recording it is what lets the log show a reasonably exhaustive search.
+
+### Search results
+
+A search's `result` records its outcome. The standard outcomes are:
+
+- `found` — the target was located in the source
+- `not_found` — the source was searched and the target was not present (negative evidence)
+- `inconclusive` — a candidate record was located but cannot be confirmed
+- `partial` — some relevant information was located, but the objective was not fully met
+- `not_searched` — search is planned but has not yet been performed (use to record outstanding work alongside completed searches)
+- `requires_visit` — the source exists but can only be searched on site or by request; outstanding work, but not something that can be done from a desk
+- `unavailable` — the source was sought but cannot be searched because it does not survive, is restricted, or is not accessible; say why in `notes`
+
+`unavailable` is the opposite of `not_searched`: the search was attempted and the gap is permanent (a burned courthouse, a lost volume, a closed record series). Tools that build a to-do list from a log treat `not_searched` and `requires_visit` as outstanding work and `unavailable` as a documented gap; `glx proof` labels each accordingly in its reasonably-exhaustive-search section.
+
+**See [Vocabularies - Search Result Types](vocabularies.md#search-result-types-vocabulary)** for the full vocabulary.
+
+### Search fields
+
+All fields are optional.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -143,22 +131,60 @@ Each entry in `searches` is a structured record of one search attempt:
 | `citation` | string | Reference to the Citation produced when result is `found` |
 | `notes` | string \| string[] | Free-form notes about this attempt |
 
-### Lead entry fields
+### Search validation
 
-Each entry in `leads` is one hypothesis under investigation. All fields are optional, though `description` is strongly recommended.
+- `repository`, `source`, and `citation` if present must reference existing Repository, Source, and Citation entities
+- `result` if present must be from the [search result types vocabulary](vocabularies.md#search-result-types-vocabulary)
+
+## ResearchLead
+
+A **ResearchLead** is one entry in a log's `leads` list. Where searches record *what was searched*, leads record *what we are trying to figure out*. A brick-wall question such as "who were Mary Green's parents?" usually has several candidate answers at once, and each candidate is a lead: a description, optional references to the candidate persons, the evidence for and against it, and the next steps for pursuing it. Researchers eliminate leads one by one until one is confirmed.
+
+Leads track **research alternatives**. They are workflow state that says which possibilities are still open, not conclusions about the people in the archive.
+
+### Lead statuses
+
+A lead's `status` is one of:
+
+- `active`: still being pursued; the evidence neither rules it in nor out yet
+- `eliminated`: ruled out by contradicting evidence (keep it, with `evidence_against`, so the elimination is documented and nobody re-investigates it)
+- `confirmed`: the research has settled on this alternative
+
+**See [Vocabularies - Lead Statuses](vocabularies.md#lead-statuses-vocabulary).** Archives can add their own values, such as `parked`.
+
+### Leads and assertions
+
+Conclusions live in [Assertions](assertion.md), not in leads. The two are kept deliberately separate:
+
+- **Resolving a lead does not change any assertion.** Setting a lead's `status` to `confirmed`, `eliminated`, or any other value leaves every assertion in its `assertions` list exactly as it was, and editing an assertion leaves the lead unchanged. Tools do not update one from the other.
+- **The `assertions` list is a cross-reference, not a binding.** It records which assertions model the hypothesis, so a reader can move between the research question and the claims it bears on.
+- **Recording the outcome is a separate step.** When a lead is confirmed, write the conclusion where it belongs in the archive: a [Relationship](relationship.md) or property value backed by an Assertion with citations. When a lead is eliminated, a speculative assertion that modelled it (for example a low-confidence `parent_child` claim for a candidate father) is updated on its own, usually to `status: disproven`.
+- **Leads carry no confidence of their own.** How strongly the evidence supports a candidate is the `confidence` of the assertion that models it; where the research on that candidate stands is the lead's `status`. A second confidence on the lead would be a second answer to the assertion's question, free to drift from it.
+
+### Evidence for and against
+
+`evidence_for` and `evidence_against` are free-text summaries, since much brick-wall reasoning ("daughter of the right age in the 1840 census", "father born in England") is an inference over several records rather than a single citation. Use the lead's `citations` and `assertions` lists to point at the structured evidence those summaries rest on.
+
+### Lead fields
+
+All fields are optional, though `description` is strongly recommended.
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `description` | string | Brief description of the hypothesis (e.g., "John H. Green of Wheeling, VA") |
 | `persons` | string[] | References to candidate Person entities the lead is about |
-| `status` | string | `active`, `eliminated`, or `confirmed` (validated against `lead_statuses` vocabulary) |
-| `confidence` | string | Researcher's confidence in the hypothesis (validated against `confidence_levels` vocabulary) |
+| `status` | string | Where the research on this alternative stands: `active`, `eliminated`, or `confirmed` (validated against `lead_statuses` vocabulary) |
 | `evidence_for` | string[] | Free-text summaries of evidence supporting the hypothesis |
 | `evidence_against` | string[] | Free-text summaries of evidence contradicting the hypothesis |
 | `citations` | string[] | References to Citations that bear on the lead |
-| `assertions` | string[] | References to Assertions that model the hypothesis (e.g., a speculative `parent_child` claim) |
+| `assertions` | string[] | Cross-references to Assertions that model the hypothesis (e.g., a speculative `parent_child` claim). Informational only; see [Leads and assertions](#leads-and-assertions) |
 | `next_steps` | string[] | Actionable next steps for pursuing the lead |
 | `notes` | string \| string[] | Free-form notes about the lead |
+
+### Lead validation
+
+- `persons`, `citations`, and `assertions` entries must reference existing Person, Citation, and Assertion entities
+- `status` if present must be from the [lead statuses vocabulary](vocabularies.md#lead-statuses-vocabulary)
 
 ## Usage Patterns
 
@@ -224,7 +250,6 @@ research_logs:
       - description: "John H. Green of Wheeling, VA"
         persons: [person-john-h-green]
         status: active
-        confidence: medium
         evidence_for:
           - "Daughter aged 5-10 in the 1840 census"
           - "Wheeling is Daniel Lane's birthplace"
@@ -235,7 +260,6 @@ research_logs:
       - description: "Luther Green of Springwater, NY"
         persons: [person-luther-green]
         status: eliminated
-        confidence: low
         evidence_against:
           - "No daughter of the right age in the 1840 or 1850 census"
 ```
@@ -275,10 +299,8 @@ research_logs/
 
 - `subject` if present must reference an existing entity of the type indicated (Person, Event, Relationship, or Place)
 - `status` if present must be from the [research log status types vocabulary](vocabularies.md#research-log-status-types-vocabulary)
-- Each search's `repository`, `source`, and `citation` if present must reference existing entities
-- Each search's `result` if present must be from the [search result types vocabulary](vocabularies.md#search-result-types-vocabulary)
-- Each lead's `persons`, `citations`, and `assertions` entries must reference existing Person, Citation, and Assertion entities
-- Each lead's `status` if present must be from the [lead statuses vocabulary](vocabularies.md#lead-statuses-vocabulary), and its `confidence` if present from the [confidence levels vocabulary](vocabularies.md#confidence-levels-vocabulary)
+- Each entry in `searches` must satisfy [Search validation](#search-validation)
+- Each entry in `leads` must satisfy [Lead validation](#lead-validation)
 - `citations` entries must reference existing Citation entities
 
 ## Related Issues

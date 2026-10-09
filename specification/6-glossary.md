@@ -238,9 +238,9 @@ Standard vocabulary (`information_types`) backing the `information_type` source 
 
 ### Lead
 
-A competing hypothesis under investigation inside a [ResearchLog](#researchlog), such as one candidate father in a brick-wall search. Records a description, optional candidate persons, evidence for and against, a confidence, next steps, and a status (`active`, `eliminated`, `confirmed`) from the standard `lead_statuses` vocabulary.
+A competing hypothesis under investigation inside a [ResearchLog](#researchlog), such as one candidate father in a brick-wall search. Records a description, optional candidate persons, evidence for and against, next steps, and a status (`active`, `eliminated`, `confirmed`) from the standard `lead_statuses` vocabulary.
 
-> **See Also:** [ResearchLog Entity - Leads](4-entity-types/research-log.md#leads-competing-hypotheses), [Lead Statuses Vocabulary](4-entity-types/vocabularies.md#lead-statuses-vocabulary)
+> **See Also:** [ResearchLog Entity - Leads](4-entity-types/research-log.md#researchlead), [Lead Statuses Vocabulary](4-entity-types/vocabularies.md#lead-statuses-vocabulary)
 
 ### Legal Statuses
 

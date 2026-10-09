@@ -14,4 +14,4 @@ lead_statuses:
 
   confirmed:
     label: "Confirmed"
-    description: "Hypothesis has been proven; the conclusion belongs in assertions and relationships."
+    description: "The research has settled on this hypothesis. Setting this status changes no assertion; record the conclusion in assertions and relationships separately."
