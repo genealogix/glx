@@ -61,7 +61,7 @@ func TestResolveStateFromPlaceAt_TemporalParent(t *testing.T) {
 	assert.Equal(t, "Indiana", resolveStateFromPlace("place-wayne-in", archive))
 
 	// The person's only event is the territorial marriage, so no state census applies.
-	events := collectPersonEvents("person-1", archive, eventsWithEvidence(archive))
+	events := collectPersonEvents("person-1", archive, eventsWithEvidence(archive), nil)
 	assert.Empty(t, collectPersonStates(archive, events))
 }
 

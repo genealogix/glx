@@ -117,6 +117,10 @@ const (
 	ParticipantRoleAssociate      = "associate"
 	ParticipantRoleHouseholdHead  = "household_head"
 	ParticipantRoleBoarder        = "boarder"
+	// ParticipantRoleHouseholdMember is a census household member other than
+	// the head, named on the schedule or (with participant property
+	// named: false) counted only as a tick mark (#1332).
+	ParticipantRoleHouseholdMember = "household_member"
 
 	ParticipantRoleEnumerator         = "enumerator"
 	ParticipantRoleAttendingPhysician = "attending_physician"
@@ -142,6 +146,27 @@ const (
 	RoleContextEvent        = "event"
 	RoleContextRelationship = "relationship"
 )
+
+// Participant-level event properties used by census households (#1332, #119).
+const (
+	// ParticipantPropertyAgeAtEvent is the participant's age as recorded.
+	ParticipantPropertyAgeAtEvent = "age_at_event"
+	// ParticipantPropertyNamed is false when the source counts the person in
+	// the household without naming them (a tick mark in an age bracket).
+	ParticipantPropertyNamed = "named"
+	// ParticipantPropertyRelationshipToHead is the participant's relationship
+	// to the head of household as recorded (head, wife, son, boarder...).
+	ParticipantPropertyRelationshipToHead = "relationship_to_head"
+)
+
+// IsUnnamedParticipant reports whether a participant was counted in the
+// event's household without being named in the source (participant property
+// named: false). Absent or any other value means named.
+func IsUnnamedParticipant(p Participant) bool {
+	v, ok := p.Properties[ParticipantPropertyNamed].(bool)
+
+	return ok && !v
+}
 
 // Standard Person Property Names - commonly used properties on Person entities
 const (
@@ -281,8 +306,29 @@ const (
 
 // GEDCOM Tags - Associations
 const (
-	GedcomTagAsso = "ASSO" // Association (links person to event/individual with role)
-	GedcomTagRole = "ROLE" // Role in association
+	GedcomTagAsso   = "ASSO"   // Association (links person to event/individual with role)
+	GedcomTagRole   = "ROLE"   // Role in association (GEDCOM 7.0)
+	GedcomTagRela   = "RELA"   // Relation to the associated person (GEDCOM 5.5.1)
+	GedcomTagPhrase = "PHRASE" // Free-text phrase qualifying an enumerated value (GEDCOM 7.0)
+)
+
+// GEDCOM 7.0 ROLE enumeration values (g7:enumset-ROLE)
+const (
+	GedcomRoleChil       = "CHIL"
+	GedcomRoleClergy     = "CLERGY"
+	GedcomRoleFath       = "FATH"
+	GedcomRoleFriend     = "FRIEND"
+	GedcomRoleGodp       = "GODP"
+	GedcomRoleHusb       = "HUSB"
+	GedcomRoleMoth       = "MOTH"
+	GedcomRoleMultiple   = "MULTIPLE"
+	GedcomRoleNghbr      = "NGHBR"
+	GedcomRoleOfficiator = "OFFICIATOR"
+	GedcomRoleOther      = "OTHER"
+	GedcomRoleParent     = "PARENT"
+	GedcomRoleSpou       = "SPOU"
+	GedcomRoleWife       = "WIFE"
+	GedcomRoleWitn       = "WITN"
 )
 
 // gedcomRoleToGLX maps GEDCOM ROLE enumeration values to GLX participant roles.
@@ -290,17 +336,17 @@ const (
 // Roles without a vocabulary match (NGHBR, FRIEND, MULTIPLE) are stored in
 // participant notes instead of the role field to avoid validation errors.
 var gedcomRoleToGLX = map[string]string{
-	"WITN":       ParticipantRoleWitness,
-	"OFFICIATOR": ParticipantRoleOfficiant,
-	"CLERGY":     ParticipantRoleOfficiant,
-	"GODP":       ParticipantRoleGodparent,
-	"CHIL":       ParticipantRoleChild,
-	"FATH":       ParticipantRoleParent,
-	"MOTH":       ParticipantRoleParent,
-	"HUSB":       ParticipantRoleSpouse,
-	"WIFE":       ParticipantRoleSpouse,
-	"PARENT":     ParticipantRoleParent,
-	"SPOU":       ParticipantRoleSpouse,
+	GedcomRoleWitn:       ParticipantRoleWitness,
+	GedcomRoleOfficiator: ParticipantRoleOfficiant,
+	GedcomRoleClergy:     ParticipantRoleOfficiant,
+	GedcomRoleGodp:       ParticipantRoleGodparent,
+	GedcomRoleChil:       ParticipantRoleChild,
+	GedcomRoleFath:       ParticipantRoleParent,
+	GedcomRoleMoth:       ParticipantRoleParent,
+	GedcomRoleHusb:       ParticipantRoleSpouse,
+	GedcomRoleWife:       ParticipantRoleSpouse,
+	GedcomRoleParent:     ParticipantRoleParent,
+	GedcomRoleSpou:       ParticipantRoleSpouse,
 }
 
 // GEDCOM Tags - Family Events

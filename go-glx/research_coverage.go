@@ -83,11 +83,13 @@ func buildCoverage(personID string, person *Person, archive *GLXFile, fallback s
 	birthYear := ExtractFirstYear(birthDate)
 	deathYear := deathYearUpperBound(deathDate)
 
-	// Build indexes: what sources/citations/events reference this person, and
-	// which events an assertion actually backs with a citation, source or media
+	// Build indexes: what sources/citations/events reference this person,
+	// which events an assertion firmly backs with a citation, source or media,
+	// and which are backed only by low-confidence or speculative assertions
 	personSources := collectPersonSources(personID, archive)
 	evidencedEvents := eventsWithEvidence(archive)
-	participations := collectPersonEvents(personID, archive, evidencedEvents)
+	estimatedEvents := eventsWithOnlyWeakEvidence(archive, evidencedEvents)
+	participations := collectPersonEvents(personID, archive, evidencedEvents, estimatedEvents)
 	personEvents := filterPersonEvents(participations, func(e personSourceInfo) bool { return e.OwnRecord })
 	presentEvents := filterPersonEvents(participations, func(e personSourceInfo) bool { return e.Present })
 
@@ -105,7 +107,7 @@ func buildCoverage(personID string, person *Person, archive *GLXFile, fallback s
 	records = append(records, buildStateCensusRecords(birthYear, deathYear, states, personSources, personEvents, archive)...)
 
 	// Vital records
-	records = append(records, buildVitalRecords(personID, archive, personSources, personEvents, evidencedEvents)...)
+	records = append(records, buildVitalRecords(personID, archive, personSources, personEvents, evidencedEvents, estimatedEvents)...)
 
 	// Other record types — probate is high priority when person has an explicit death
 	// date (not just inferred from burial) and known family
@@ -146,7 +148,8 @@ type personSourceInfo struct {
 	PlaceID    string     // place reference (events only)
 	Date       DateString // event date (events only); resolves temporal place parents
 	Year       int
-	Evidenced  bool // events only: an assertion resolves a citation, source or media
+	Evidenced  bool // events only: a firm assertion resolves a citation, source or media
+	Estimated  bool // events only: only hypothetical assertions resolve any evidence
 	OwnRecord  bool // events only: the event is the person's own record
 	Present    bool // events only: the role implies presence at the event's place
 }
@@ -217,9 +220,10 @@ func sourcesWithMedia(assertion *Assertion, archive *GLXFile) []string {
 }
 
 // collectPersonEvents gathers all events this person participates in, marking
-// each with whether it carries supporting evidence per the evidenced index and
-// with what the person's role makes of it (ClassifyParticipation).
-func collectPersonEvents(personID string, archive *GLXFile, evidenced map[string]bool) []personSourceInfo {
+// each with whether it carries supporting evidence per the evidenced index (or
+// only the weak evidence of the estimated index) and with what the person's
+// role makes of it (ClassifyParticipation).
+func collectPersonEvents(personID string, archive *GLXFile, evidenced, estimated map[string]bool) []personSourceInfo {
 	var events []personSourceInfo
 
 	// Sorted so a person with more than one event of a type reports the same
@@ -238,6 +242,7 @@ func collectPersonEvents(personID string, archive *GLXFile, evidenced map[string
 			PlaceID:    event.PlaceID,
 			Date:       event.Date,
 			Evidenced:  evidenced[eventID],
+			Estimated:  estimated[eventID],
 			PersonRole: role,
 			OwnRecord:  participation.OwnRecord,
 			Present:    participation.Present,
@@ -348,13 +353,17 @@ const (
 
 // eventsWithEvidence returns the set of event IDs backed by evidence: those
 // that are the subject of an assertion resolving at least one citation or
-// source or media object.
+// source or media object, and that the assertion does not itself mark as a
+// hypothesis (AssertionIsHypothetical) or as disproven.
 //
 // An event carries no citations or sources of its own — under the GLX evidence
 // model the event is a conclusion, and what supports it is the assertion
 // pointing at it. An event with no such assertion is therefore an unsupported
 // claim (an estimate reckoned from a relative's record, a placeholder, a
-// GEDCOM import), which coverage must not count as a record found.
+// GEDCOM import), which coverage must not count as a record found. So is an
+// event whose only support is a low-confidence or speculative assertion: an
+// estimated birth reckoned from a marriage entry cites that marriage, not a
+// birth record (#1369).
 func eventsWithEvidence(archive *GLXFile) map[string]bool {
 	evidenced := make(map[string]bool)
 
@@ -366,12 +375,41 @@ func eventsWithEvidence(archive *GLXFile) map[string]bool {
 		if eventID == "" || evidenced[eventID] {
 			continue
 		}
-		if assertionHasEvidence(assertion, archive) {
+		if assertionIsFirm(assertion) && assertionHasEvidence(assertion, archive) {
 			evidenced[eventID] = true
 		}
 	}
 
 	return evidenced
+}
+
+// eventsWithOnlyWeakEvidence returns the events, outside evidenced, that a
+// hypothetical (low-confidence, speculative, unresearched or disputed)
+// assertion backs with a citation, source or media object. Coverage names them
+// as estimates rather than counting them as records found.
+func eventsWithOnlyWeakEvidence(archive *GLXFile, evidenced map[string]bool) map[string]bool {
+	estimated := make(map[string]bool)
+
+	for _, assertion := range archive.Assertions {
+		if assertion == nil {
+			continue
+		}
+		eventID := assertion.Subject.Event
+		if eventID == "" || evidenced[eventID] || estimated[eventID] {
+			continue
+		}
+		if AssertionIsHypothetical(assertion) && assertionHasEvidence(assertion, archive) {
+			estimated[eventID] = true
+		}
+	}
+
+	return estimated
+}
+
+// assertionIsFirm reports whether an assertion states a conclusion: it is
+// neither disproven nor recorded as a hypothesis.
+func assertionIsFirm(assertion *Assertion) bool {
+	return !AssertionIsDisproven(assertion) && !AssertionIsHypothetical(assertion)
 }
 
 // assertionHasEvidence reports whether an assertion resolves at least one
@@ -454,7 +492,7 @@ func buildCensusRecords(birthYear, deathYear int, schedules []*CensusSchedule, s
 
 			// An unevidenced census event is named, not counted
 			if !rec.Found {
-				rec.Description = appendDescription(rec.Description, unevidencedNote(findUnevidencedCensus(year, events)))
+				rec.Description = appendDescription(rec.Description, unevidencedEventNote(events, findUnevidencedCensus(year, events)))
 			}
 
 			setCensusPriority(&rec, note, age)
@@ -515,8 +553,8 @@ func findUnevidencedCensus(year int, events []personSourceInfo) string {
 }
 
 // buildVitalRecords generates expected vital records.
-func buildVitalRecords(personID string, archive *GLXFile, sources, events []personSourceInfo, evidenced map[string]bool) []CoverageRecord {
-	marriageRecords := buildMarriageRecords(personID, archive, evidenced)
+func buildVitalRecords(personID string, archive *GLXFile, sources, events []personSourceInfo, evidenced, estimated map[string]bool) []CoverageRecord {
+	marriageRecords := buildMarriageRecords(personID, archive, evidenced, estimated)
 	records := make([]CoverageRecord, 0, 2+len(marriageRecords))
 
 	records = append(records,
@@ -551,7 +589,7 @@ func buildVitalRecord(label, missingPriority, eventType, titleKeyword string, so
 			rec.SourceRef = sourceRef
 		}
 	} else {
-		rec.Description = unevidencedNote(findUnevidencedEvent(events, eventType))
+		rec.Description = unevidencedEventNote(events, findUnevidencedEvent(events, eventType))
 	}
 
 	return rec
@@ -560,7 +598,7 @@ func buildVitalRecord(label, missingPriority, eventType, titleKeyword string, so
 // buildMarriageRecords checks for marriage events linked to spouse
 // relationships. As with birth and death, the marriage event has to carry
 // evidence before it counts as the marriage record.
-func buildMarriageRecords(personID string, archive *GLXFile, evidenced map[string]bool) []CoverageRecord {
+func buildMarriageRecords(personID string, archive *GLXFile, evidenced, estimated map[string]bool) []CoverageRecord {
 	var records []CoverageRecord
 
 	// Find spouse relationships
@@ -590,7 +628,7 @@ func buildMarriageRecords(personID string, archive *GLXFile, evidenced map[strin
 		if found {
 			rec.SourceRef = ref
 		} else {
-			rec.Description = unevidencedNote(ref)
+			rec.Description = unevidencedNote(ref, estimated[ref])
 		}
 		records = append(records, rec)
 	}
@@ -685,7 +723,7 @@ func buildOtherRecords(sources, events []personSourceInfo, probateHighPriority b
 			rec.Priority = severityHigh
 			rec.Description = "often names heirs (children) and surviving spouse"
 		}
-		rec.Description = appendDescription(rec.Description, unevidencedNote(firstNonEmpty(
+		rec.Description = appendDescription(rec.Description, unevidencedEventNote(events, firstNonEmpty(
 			findUnevidencedEvent(events, EventTypeProbate),
 			findUnevidencedEvent(events, EventTypeWill),
 		)))
@@ -727,7 +765,7 @@ func buildOtherRecords(sources, events []personSourceInfo, probateHighPriority b
 			churchRec.SourceRef = findSourceRef(sources, SourceTypeChurchRegister)
 		}
 	} else {
-		churchRec.Description = unevidencedNote(firstNonEmpty(
+		churchRec.Description = unevidencedEventNote(events, firstNonEmpty(
 			findUnevidencedEvent(events, EventTypeBaptism),
 			findUnevidencedEvent(events, EventTypeChristening),
 		))
@@ -773,15 +811,31 @@ func findEventRef(events []personSourceInfo, eventType string, evidenced bool) s
 	return ""
 }
 
-// unevidencedNote describes an event that exists but that nothing backs, so a
-// reader can tell an absent record apart from one whose event is recorded as a
-// conclusion only.
-func unevidencedNote(ref string) string {
+// unevidencedNote describes an event that exists but that nothing firmly backs,
+// so a reader can tell an absent record apart from one whose event is recorded
+// as a conclusion only, or as an estimate whose only evidence is a
+// low-confidence or speculative assertion.
+func unevidencedNote(ref string, estimated bool) string {
 	if ref == "" {
 		return ""
 	}
+	if estimated {
+		return ref + " is recorded only as an estimate: its evidence is low-confidence or speculative"
+	}
 
 	return ref + " is recorded, but no citation, source or media backs it"
+}
+
+// unevidencedEventNote is unevidencedNote for one of the person's events,
+// looked up by ID in events.
+func unevidencedEventNote(events []personSourceInfo, ref string) string {
+	for _, e := range events {
+		if e.Ref == ref {
+			return unevidencedNote(ref, e.Estimated)
+		}
+	}
+
+	return unevidencedNote(ref, false)
 }
 
 func hasSourceType(sources []personSourceInfo, sourceType, titleKeyword string) bool {

@@ -385,7 +385,7 @@ media:
   record: {uri: record.jpg, title: Birth register scan}
 assertions:
   legacy: {subject: {person: p}, property: born_on, value: "1850", confidence: high}
-  event: {subject: {event: birth}, property: date, value: "1900", confidence: low, media: [record]}
+  event: {subject: {event: birth}, property: date, value: "1900", confidence: medium, media: [record]}
   parent-claim: {subject: {relationship: family}, participant: {person: parent, role: parent}, confidence: high}
   literal-claim: {subject: {person: literal}, property: name, value: paris, confidence: high}
 `), 0o600))

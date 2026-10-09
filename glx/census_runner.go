@@ -163,6 +163,17 @@ func validateCensusRefs(result *glxlib.CensusResult, existing *glxlib.GLXFile) e
 				}
 			}
 		}
+		// Event neighbor -> Person references (#180)
+		for _, n := range evt.Neighbors {
+			if n.Person == "" {
+				continue
+			}
+			if _, ok := result.Persons[n.Person]; !ok {
+				if existing.Persons == nil || existing.Persons[n.Person] == nil {
+					return fmt.Errorf("%w: event %s neighbor %s", ErrCensusNeighborUnknownPerson, id, n.Person)
+				}
+			}
+		}
 	}
 
 	// Assertion -> Person, Citation, and Place references

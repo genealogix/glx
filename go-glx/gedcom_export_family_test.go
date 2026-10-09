@@ -1594,3 +1594,355 @@ func TestReconstructFamilies_MultipleSingleSpouseMarriages(t *testing.T) {
 	assert.True(t, allChildren["person-child-b"],
 		"child-b should be placed in a family")
 }
+
+// ============================================================================
+// Multi-parent and multi-child parent_child relationships (#1319)
+// ============================================================================
+
+// reconstructFamiliesFor runs reconstructFamilies over persons (ID -> sex) and
+// relationships and returns each family as "HUSB+WIFE: child,child".
+func reconstructFamiliesFor(t *testing.T, persons map[string]string,
+	relationships map[string]*Relationship,
+) ([]string, *ExportContext) {
+	t.Helper()
+
+	glx := &GLXFile{
+		Persons:       make(map[string]*Person),
+		Relationships: relationships,
+		Events:        make(map[string]*Event),
+	}
+	for id, sex := range persons {
+		glx.Persons[id] = &Person{Properties: map[string]any{PersonPropertySex: sex}}
+	}
+	expCtx := &ExportContext{
+		GLX:         glx,
+		ExportIndex: &ExportIndex{EventTypes: map[string]string{}, RelationshipTypes: map[string]string{}},
+	}
+
+	reconstructFamilies(expCtx)
+
+	families := make([]string, 0, len(expCtx.Families))
+	for _, family := range expCtx.Families {
+		families = append(families, family.HusbandID+"+"+family.WifeID+": "+strings.Join(family.ChildIDs, ","))
+	}
+
+	return families, expCtx
+}
+
+func marriageOf(husbandID, wifeID string) *Relationship {
+	return &Relationship{
+		Type: RelationshipTypeMarriage,
+		Participants: []Participant{
+			{Person: husbandID, Role: ParticipantRoleSpouse},
+			{Person: wifeID, Role: ParticipantRoleSpouse},
+		},
+	}
+}
+
+func parentChildOf(relType string, parentIDs, childIDs []string) *Relationship {
+	rel := &Relationship{Type: relType}
+	for _, id := range parentIDs {
+		rel.Participants = append(rel.Participants, Participant{Person: id, Role: ParticipantRoleParent})
+	}
+	for _, id := range childIDs {
+		rel.Participants = append(rel.Participants, Participant{Person: id, Role: ParticipantRoleChild})
+	}
+
+	return rel
+}
+
+// The #1319 reproduction: a widow's child by her second husband, recorded as
+// one parent_child relationship naming both parents, used to land in her first
+// marriage under the wrong father.
+func TestReconstructFamilies_TwoParentRelationshipMatchesCouplesFamily(t *testing.T) {
+	families, _ := reconstructFamiliesFor(t,
+		map[string]string{
+			"person-adam": "male", "person-lewis": "male",
+			"person-elizabeth": "female", "person-jasper": "male",
+		},
+		map[string]*Relationship{
+			"rel-marr-a-call":   marriageOf("person-adam", "person-elizabeth"),
+			"rel-marr-b-little": marriageOf("person-lewis", "person-elizabeth"),
+			"rel-pc-jasper": parentChildOf(RelationshipTypeParentChild,
+				[]string{"person-lewis", "person-elizabeth"}, []string{"person-jasper"}),
+		})
+
+	assert.Equal(t, []string{
+		"person-adam+person-elizabeth: ",
+		"person-lewis+person-elizabeth: person-jasper",
+	}, families)
+}
+
+// One relationship naming several children attaches all of them, with the
+// relationship's pedigree.
+func TestReconstructFamilies_MultiChildRelationshipAttachesEveryChild(t *testing.T) {
+	families, expCtx := reconstructFamiliesFor(t,
+		map[string]string{"person-f": "male", "person-m": "female", "person-c1": "", "person-c2": ""},
+		map[string]*Relationship{
+			"rel-marriage": marriageOf("person-f", "person-m"),
+			"rel-pc": parentChildOf(RelationshipTypeBiologicalParentChild,
+				[]string{"person-f", "person-m"}, []string{"person-c1", "person-c2"}),
+		})
+
+	assert.Equal(t, []string{"person-f+person-m: person-c1,person-c2"}, families)
+	assert.Equal(t, "birth", expCtx.Families[0].ChildPedigrees["person-c2"])
+}
+
+// A parent set with no marriage of its own gets a FAM synthesized for that
+// couple, shared by their children, rather than reusing either parent's
+// unrelated marriage. Caspar is no longer dropped from his child's family.
+func TestReconstructFamilies_UnmatchedParentSetSynthesizesCoupleFamily(t *testing.T) {
+	families, _ := reconstructFamiliesFor(t,
+		map[string]string{
+			"person-caspar": "male", "person-catharina": "female", "person-other-wife": "female",
+			"person-elizabeth": "female", "person-anna": "female",
+		},
+		map[string]*Relationship{
+			"rel-marr-other": marriageOf("person-caspar", "person-other-wife"),
+			"rel-pc-elizabeth": parentChildOf(RelationshipTypeParentChild,
+				[]string{"person-catharina", "person-caspar"}, []string{"person-elizabeth"}),
+			"rel-pc-anna": parentChildOf(RelationshipTypeParentChild,
+				[]string{"person-caspar", "person-catharina"}, []string{"person-anna"}),
+		})
+
+	assert.Equal(t, []string{
+		"person-caspar+person-other-wife: ",
+		"person-caspar+person-catharina: person-anna,person-elizabeth",
+	}, families)
+}
+
+// Alternative parent sets for one child each produce their own family rather
+// than collapsing into one FAM holding a single parent.
+func TestReconstructFamilies_AlternativeParentSetsStaySeparate(t *testing.T) {
+	families, _ := reconstructFamiliesFor(t,
+		map[string]string{
+			"person-f1": "male", "person-m1": "female",
+			"person-f2": "male", "person-m2": "female", "person-child": "",
+		},
+		map[string]*Relationship{
+			"rel-marr-1": marriageOf("person-f1", "person-m1"),
+			"rel-pc-a": parentChildOf(RelationshipTypeBiologicalParentChild,
+				[]string{"person-f1", "person-m1"}, []string{"person-child"}),
+			"rel-pc-b": parentChildOf(RelationshipTypeAdoptiveParentChild,
+				[]string{"person-f2", "person-m2"}, []string{"person-child"}),
+		})
+
+	assert.Equal(t, []string{
+		"person-f1+person-m1: person-child",
+		"person-f2+person-m2: person-child",
+	}, families)
+}
+
+// A one-parent relationship that repeats a parent a two-parent relationship
+// already names adds nothing; one-parent relationships per parent (the shape
+// GEDCOM import produces) still pair up as before.
+func TestReconstructFamilies_MixedOneAndTwoParentRelationships(t *testing.T) {
+	families, _ := reconstructFamiliesFor(t,
+		map[string]string{
+			"person-f": "male", "person-m": "female", "person-other": "female",
+			"person-c1": "", "person-c2": "",
+		},
+		map[string]*Relationship{
+			"rel-marr-1": marriageOf("person-f", "person-other"),
+			"rel-marr-2": marriageOf("person-f", "person-m"),
+			"rel-pc-both": parentChildOf(RelationshipTypeParentChild,
+				[]string{"person-f", "person-m"}, []string{"person-c1"}),
+			"rel-pc-father": parentChildOf(RelationshipTypeParentChild,
+				[]string{"person-f"}, []string{"person-c1"}),
+			"rel-pc-c2-father": parentChildOf(RelationshipTypeParentChild,
+				[]string{"person-f"}, []string{"person-c2"}),
+			"rel-pc-c2-mother": parentChildOf(RelationshipTypeParentChild,
+				[]string{"person-m"}, []string{"person-c2"}),
+		})
+
+	assert.Equal(t, []string{
+		"person-f+person-other: ",
+		"person-f+person-m: person-c1,person-c2",
+	}, families)
+}
+
+// The issue's end-to-end shape: the exported GEDCOM files the child under the
+// right FAM in both versions.
+func TestExportGEDCOM_TwoParentRelationshipChildInRightFAM(t *testing.T) {
+	for _, version := range []GEDCOMVersion{GEDCOM551, GEDCOM70} {
+		glx := &GLXFile{
+			Persons: map[string]*Person{
+				"person-adam":      {Properties: map[string]any{PersonPropertySex: "male"}},
+				"person-elizabeth": {Properties: map[string]any{PersonPropertySex: "female"}},
+				"person-jasper":    {Properties: map[string]any{PersonPropertySex: "male"}},
+				"person-lewis":     {Properties: map[string]any{PersonPropertySex: "male"}},
+			},
+			Relationships: map[string]*Relationship{
+				"rel-marr-a-call":   marriageOf("person-adam", "person-elizabeth"),
+				"rel-marr-b-little": marriageOf("person-lewis", "person-elizabeth"),
+				"rel-pc-jasper": parentChildOf(RelationshipTypeParentChild,
+					[]string{"person-lewis", "person-elizabeth"}, []string{"person-jasper"}),
+			},
+		}
+
+		data, _, err := ExportGEDCOM(glx, version, nil)
+		require.NoError(t, err)
+		ged := strings.ReplaceAll(string(data), "\r\n", "\n")
+
+		// @I1@ Adam, @I2@ Elizabeth, @I3@ Jasper, @I4@ Lewis
+		assert.Contains(t, ged,
+			"0 @F1@ FAM\n1 HUSB @I1@\n1 WIFE @I2@\n0 @F2@ FAM\n1 HUSB @I4@\n1 WIFE @I2@\n1 CHIL @I3@\n")
+	}
+}
+
+func TestExportGEDCOM_OverlappingParentSetsKeepSharedParent(t *testing.T) {
+	for _, tc := range gedcomVersions {
+		t.Run(tc.name, func(t *testing.T) {
+			glx := newEventExportArchive(t, map[string][2]string{
+				"person-child": {"Child One", "unknown"}, "person-father": {"Father One", "male"},
+				"person-mother": {"Mother One", "female"}, "person-other": {"Other One", "female"},
+				"person-step": {"Step One", "male"},
+			})
+			glx.Relationships = map[string]*Relationship{
+				"rel-marriage-a-unrelated": marriageOf("person-step", "person-other"),
+				"rel-marriage-b-birth":     marriageOf("person-father", "person-mother"),
+				"rel-marriage-c-step":      marriageOf("person-step", "person-mother"),
+				"rel-pc-both": parentChildOf(RelationshipTypeParentChild,
+					[]string{"person-father", "person-mother"}, []string{"person-child"}),
+				"rel-pc-mother": parentChildOf(RelationshipTypeParentChild,
+					[]string{"person-mother"}, []string{"person-child"}),
+				"rel-pc-step": parentChildOf(RelationshipTypeParentChild,
+					[]string{"person-step"}, []string{"person-child"}),
+			}
+			require.Empty(t, glx.Validate().Errors)
+			ged, result := exportGEDCOMString(t, glx, tc.version)
+			assert.Empty(t, result.Statistics.Warnings)
+			assert.Empty(t, gedcomSubstructures(ged, "@F1@", "CHIL"), "unrelated spouse must not become a parent")
+			assert.Equal(t, []string{"1 CHIL @I1@"}, gedcomSubstructures(ged, "@F2@", "CHIL"))
+			assert.Equal(t, []string{"1 CHIL @I1@"}, gedcomSubstructures(ged, "@F3@", "CHIL"))
+			assert.Equal(t, []string{"1 FAMC @F2@", "1 FAMC @F3@"}, gedcomSubstructures(ged, "@I1@", "FAMC"))
+		})
+	}
+}
+
+func TestExportGEDCOM_OverlappingParentSetsPreservePedigree(t *testing.T) {
+	for _, tc := range gedcomVersions {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, pedigree := range []struct{ name, explicitType, want string }{
+				{"inherited", RelationshipTypeParentChild, "birth"},
+				{"explicit", RelationshipTypeAdoptiveParentChild, "adopted"},
+			} {
+				t.Run(pedigree.name, func(t *testing.T) {
+					glx := newEventExportArchive(t, map[string][2]string{
+						"person-child": {"Child One", "unknown"}, "person-father": {"Father One", "male"},
+						"person-mother": {"Mother One", "female"},
+					})
+					glx.Relationships = map[string]*Relationship{
+						"rel-marriage": marriageOf("person-father", "person-mother"),
+						"rel-pc-both": parentChildOf(pedigree.explicitType,
+							[]string{"person-father", "person-mother"}, []string{"person-child"}),
+						"rel-pc-father": parentChildOf(RelationshipTypeBiologicalParentChild,
+							[]string{"person-father"}, []string{"person-child"}),
+						"rel-pc-mother": parentChildOf(RelationshipTypeBiologicalParentChild,
+							[]string{"person-mother"}, []string{"person-child"}),
+					}
+					ged, _ := exportGEDCOMString(t, glx, tc.version)
+					assert.Equal(t, []string{"1 FAMC @F1@\n2 PEDI " + pedigree.want}, gedcomSubstructures(ged, "@I1@", "FAMC"))
+					assert.Equal(t, []string{"1 CHIL @I1@"}, gedcomSubstructures(ged, "@F1@", "CHIL"))
+				})
+			}
+		})
+	}
+}
+
+func TestExportGEDCOM_DisprovenParentNotRestoredByMarriageFallback(t *testing.T) {
+	for _, version := range gedcomVersions {
+		for _, tc := range []struct {
+			name, rejected, survivingTag, survivingXRef, absentTag string
+			separateRelationships                                  bool
+		}{
+			{"two-parent-rejected-father", "person-father", "WIFE", "@I3@", "HUSB", false},
+			{"two-parent-rejected-mother", "person-mother", "HUSB", "@I2@", "WIFE", false},
+			{"separate-rejected-father", "person-father", "WIFE", "@I3@", "HUSB", true},
+			{"separate-rejected-mother", "person-mother", "HUSB", "@I2@", "WIFE", true},
+		} {
+			t.Run(version.name+"/"+tc.name, func(t *testing.T) {
+				glx := newEventExportArchive(t, map[string][2]string{
+					"person-child":  {"Child One", "unknown"},
+					"person-father": {"Father One", "male"}, "person-mother": {"Mother One", "female"},
+				})
+				glx.Relationships = map[string]*Relationship{
+					"rel-marriage": marriageOf("person-father", "person-mother"),
+					"rel-pc": parentChildOf(RelationshipTypeBiologicalParentChild,
+						[]string{"person-father", "person-mother"}, []string{"person-child"}),
+				}
+				if tc.separateRelationships {
+					glx.Relationships["rel-pc"] = parentChildOf(RelationshipTypeBiologicalParentChild,
+						[]string{tc.rejected}, []string{"person-child"})
+					surviving := "person-mother"
+					if tc.rejected == surviving {
+						surviving = "person-father"
+					}
+					glx.Relationships["rel-pc-surviving"] = parentChildOf(RelationshipTypeBiologicalParentChild,
+						[]string{surviving}, []string{"person-child"})
+				}
+				glx.Sources["source-proof"] = &Source{Title: "Parentage investigation"}
+				glx.Assertions = map[string]*Assertion{
+					"assertion-rejected": {
+						Subject:     EntityRef{Relationship: "rel-pc"},
+						Participant: &Participant{Person: tc.rejected, Role: ParticipantRoleParent},
+						Sources:     []string{"source-proof"}, Confidence: ConfidenceLevelHigh, Status: "disproven",
+					},
+				}
+				require.Empty(t, glx.Validate().Errors)
+				ged, result := exportGEDCOMString(t, glx, version.version)
+
+				// Keep the accepted marriage, but file the child under only the
+				// surviving parent, with the original birth pedigree.
+				assert.Equal(t, []string{"1 HUSB @I2@"}, gedcomSubstructures(ged, "@F1@", "HUSB"))
+				assert.Equal(t, []string{"1 WIFE @I3@"}, gedcomSubstructures(ged, "@F1@", "WIFE"))
+				assert.Empty(t, gedcomSubstructures(ged, "@F1@", "CHIL"))
+				assert.Equal(t, []string{"1 FAMC @F2@\n2 PEDI birth"}, gedcomSubstructures(ged, "@I1@", "FAMC"))
+				assert.Equal(t, []string{"1 " + tc.survivingTag + " " + tc.survivingXRef},
+					gedcomSubstructures(ged, "@F2@", tc.survivingTag))
+				assert.Empty(t, gedcomSubstructures(ged, "@F2@", tc.absentTag))
+				assert.Equal(t, []string{"1 CHIL @I1@"}, gedcomSubstructures(ged, "@F2@", "CHIL"))
+				require.Len(t, result.Statistics.Warnings, 1)
+				assert.Equal(t, "parent "+tc.rejected+" of person-child is disproven; link not exported",
+					result.Statistics.Warnings[0].Message)
+			})
+		}
+	}
+}
+
+func TestExportGEDCOM_DisprovenParentFallbackKeepsEligibleFamily(t *testing.T) {
+	for _, version := range gedcomVersions {
+		t.Run(version.name, func(t *testing.T) {
+			glx := newEventExportArchive(t, map[string][2]string{
+				"person-child": {"Child One", "unknown"}, "person-father": {"Father One", "male"},
+				"person-mother": {"Mother One", "female"}, "person-other": {"Other One", "male"},
+			})
+			glx.Relationships = map[string]*Relationship{
+				"rel-marriage-a-rejected": marriageOf("person-father", "person-mother"),
+				"rel-marriage-b-eligible": marriageOf("person-other", "person-mother"),
+				"rel-pc-rejected": parentChildOf(RelationshipTypeBiologicalParentChild,
+					[]string{"person-father"}, []string{"person-child"}),
+				"rel-pc-mother": parentChildOf(RelationshipTypeBiologicalParentChild,
+					[]string{"person-mother"}, []string{"person-child"}),
+			}
+			glx.Sources["source-proof"] = &Source{Title: "Parentage investigation"}
+			glx.Assertions = map[string]*Assertion{
+				"assertion-rejected": {
+					Subject: EntityRef{Relationship: "rel-pc-rejected"},
+					Sources: []string{"source-proof"}, Confidence: ConfidenceLevelHigh, Status: "disproven",
+				},
+			}
+			require.Empty(t, glx.Validate().Errors)
+			ged, result := exportGEDCOMString(t, glx, version.version)
+
+			// Only the explicitly rejected spouse is excluded from fallback;
+			// another eligible marriage keeps the existing selection policy.
+			assert.Empty(t, gedcomSubstructures(ged, "@F1@", "CHIL"))
+			assert.Equal(t, []string{"1 FAMC @F2@\n2 PEDI birth"}, gedcomSubstructures(ged, "@I1@", "FAMC"))
+			assert.Equal(t, []string{"1 CHIL @I1@"}, gedcomSubstructures(ged, "@F2@", "CHIL"))
+			assert.Equal(t, []string{"1 HUSB @I4@"}, gedcomSubstructures(ged, "@F2@", "HUSB"))
+			assert.Equal(t, []string{"1 WIFE @I3@"}, gedcomSubstructures(ged, "@F2@", "WIFE"))
+			assert.Equal(t, 2, result.Statistics.FamiliesExported)
+		})
+	}
+}
