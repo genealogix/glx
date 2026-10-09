@@ -15,9 +15,13 @@
 package main
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	glxlib "github.com/genealogix/glx/go-glx"
+	"github.com/genealogix/glx/go-glx/glxdate"
 )
 
 // yearRows builds timeline rows for the given years, labeled by year.
@@ -110,7 +114,7 @@ func TestStripTicks_WideSpanStaysWithinTheLabelBudget(t *testing.T) {
 }
 
 func TestStripDotTitle_NamesTheEventInFull(t *testing.T) {
-	title := stripDotTitle(timelineRow{
+	title := stripDotTitle(&timelineRow{
 		Date:   "January 15, 1850",
 		Label:  "Birth",
 		Detail: "Boston, Massachusetts",
@@ -169,5 +173,137 @@ func TestRenderSite_DrawsTheTimelineStrip(t *testing.T) {
 	living := readFile(t, filepath.Join(out, "persons", "person-living-soul.html"))
 	if strings.Contains(living, `<figure class="strip">`) {
 		t.Error("a person with no dated events should not get a proportional strip")
+	}
+}
+
+// timelineDateArchive stages recorded date strings through the production
+// model, including their calendar identity and the unchanged timeline list.
+func timelineDateArchive(dates ...string) *glxlib.GLXFile {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{"person-calendar": {Properties: map[string]any{"name": "Calendar fixture"}}},
+		Events:  map[string]*glxlib.Event{},
+	}
+	for i, raw := range dates {
+		archive.Events[fmt.Sprintf("event-%d", i)] = &glxlib.Event{
+			Type: "residence", Date: glxlib.DateString(raw),
+			Participants: []glxlib.Participant{{Person: "person-calendar", Role: "subject"}},
+		}
+	}
+
+	return archive
+}
+
+func TestRenderSite_MixedCalendarsKeepTheListWithoutASharedScale(t *testing.T) {
+	cases := map[string][]string{
+		"French Republican and Gregorian": {"FRENCH_R 1 VEND 0012", "1820"},
+		"Hebrew and Gregorian":            {"2000", "HEBREW 15 TSH 5765", "2010"},
+		"Julian and Gregorian":            {"JULIAN 1800", "1810"},
+		"distinct extension calendars":    {"_ROMAN 100", "_OTHER 120"},
+	}
+	for name, dates := range cases {
+		t.Run(name, func(t *testing.T) {
+			model := buildSiteModel(timelineDateArchive(dates...), siteModelOptions{})
+			person := model.Persons[0]
+			if person.TimelineStrip != nil {
+				t.Fatalf("incomparable calendar years share a scale: %s", person.TimelineStrip.Label)
+			}
+			if len(person.Timeline) != len(dates) {
+				t.Fatalf("calendar suppression removed events from the list: got %d, want %d", len(person.Timeline), len(dates))
+			}
+			out := t.TempDir()
+			if err := renderSite(model, out); err != nil {
+				t.Fatal(err)
+			}
+			body := readFile(t, filepath.Join(out, "persons", "person-calendar.html"))
+			if strings.Contains(body, `class="strip-svg"`) {
+				t.Error("mixed-calendar page renders a shared strip")
+			}
+			for _, raw := range dates {
+				if !strings.Contains(body, displayDate(raw)) {
+					t.Errorf("timeline lost recorded date %q", raw)
+				}
+			}
+		})
+	}
+}
+
+func TestBuildTimelineStrip_IdentifiesAHomogeneousCalendar(t *testing.T) {
+	for name, dates := range map[string][]string{
+		"JULIAN":   {"JULIAN 1800", "JULIAN 1810"},
+		"HEBREW":   {"HEBREW 15 TSH 5765", "HEBREW 15 TSH 5775"},
+		"FRENCH_R": {"FRENCH_R 1 VEND 0002", "FRENCH_R 1 VEND 0012"},
+		"_ROMAN":   {"_ROMAN 100", "_ROMAN 110"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			rows := buildTimelineRows("person-calendar", timelineDateArchive(dates...))
+			// A yearless row has no scale to compare, even with a different calendar.
+			rows = append(rows, timelineRow{Calendar: "OTHER", Undated: true})
+			strip := buildTimelineStrip(rows)
+			if strip == nil {
+				t.Fatal("a shared recorded calendar should render")
+			}
+			if !strings.Contains(strip.Label, name+" calendar") {
+				t.Errorf("calendar missing from accessible label %q", strip.Label)
+			}
+			if len(strip.Dots) != 2 {
+				t.Fatalf("got %d dots, want two dated rows", len(strip.Dots))
+			}
+			if rows[0].Calendar != name || rows[1].Calendar != name {
+				t.Errorf("rows did not preserve %s: %+v", name, rows)
+			}
+		})
+	}
+}
+
+func TestBuildTimelineStrip_CivilEraYearsHaveEqualSpacing(t *testing.T) {
+	strip := buildTimelineStrip(yearRows(-2, -1, 1, 2))
+	if strip == nil || len(strip.Dots) != 4 {
+		t.Fatal("expected four dated points")
+	}
+	firstGap := strip.Dots[1].X - strip.Dots[0].X
+	for i := 2; i < len(strip.Dots); i++ {
+		gap := strip.Dots[i].X - strip.Dots[i-1].X
+		if gap < firstGap-1 || gap > firstGap+1 {
+			t.Errorf("adjacent civil years have unequal distances: first gap=%d, gap %d=%d", firstGap, i, gap)
+		}
+	}
+	for _, tick := range strip.Ticks {
+		if tick.Label == "0" || tick.Label == "" {
+			t.Errorf("civil axis contains a year-zero tick: %+v", tick)
+		}
+	}
+}
+
+func TestStripTicks_NegativeYearsRoundTowardTheNextTick(t *testing.T) {
+	ticks := stripTicks(-44, -2)
+	for _, tick := range ticks {
+		if tick.Label == "40 BCE" {
+			return
+		}
+	}
+	t.Fatalf("first round year after 44 BCE was skipped: %+v", ticks)
+}
+
+func TestBuildTimelineStrip_PreservedMixedCalendarRangeHasNoSharedScale(t *testing.T) {
+	// GEDCOM import deliberately preserves a range with independently recorded
+	// endpoint calendars instead of silently converting either endpoint.
+	raw := glxdate.FromGEDCOM("BET @#DHEBREW@ 15 TSH 5765 AND @#DGREGORIAN@ 2010")
+	model := buildSiteModel(timelineDateArchive("2000", raw, "2010"), siteModelOptions{})
+	person := model.Persons[0]
+	if person.TimelineStrip != nil {
+		t.Fatalf("unparsed calendar range shares a Gregorian scale: %s", person.TimelineStrip.Label)
+	}
+	found := false
+	for _, row := range person.Timeline {
+		if row.Date != raw {
+			continue
+		}
+		found = true
+		if row.Year != 5765 || !row.Unparsed {
+			t.Errorf("preserved range should retain its recovered year without trusting the scale: %+v", row)
+		}
+	}
+	if !found {
+		t.Fatalf("full timeline list lost preserved range %q", raw)
 	}
 }

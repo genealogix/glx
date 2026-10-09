@@ -72,7 +72,7 @@ type personLink struct {
 	ID    string
 	File  string // unique HTML filename of the target page (collision-safe)
 	Name  string
-	Dates string // e.g. "1850–1920", "b. 1850", or "" when unknown
+	Dates string // e.g. "1850–1920", "b. c. 1850", or "" when unknown; see formatLifeSpan
 	// Hypothetical marks a relative linked only by a relationship the
 	// archive records as a hypothesis; the page shows it with "(?)".
 	Hypothetical bool
@@ -87,7 +87,7 @@ type personPage struct {
 	AltNames   []string
 	Sex        string
 	Gender     string
-	LifeSpan   string // "1850–1920", "b. 1850", "d. 1920", or ""
+	LifeSpan   string // "1850–1920", "1756/1774 – 1826/1830", "b. c. 1850", or ""; see formatLifeSpan
 	Living     bool
 	BirthDate  string
 	BirthPlace string
@@ -120,13 +120,17 @@ type personPage struct {
 
 // timelineRow is a single chronological entry on a person page. Year is the
 // entry's first parseable year (0 when the date carries none), which is what
-// the visual timeline strip plots.
+// the visual timeline strip plots. Calendar preserves the recorded calendar
+// prefix (empty for Gregorian), so unrelated year systems do not share a scale.
 type timelineRow struct {
-	Date    string
-	Label   string
-	Detail  string
-	Year    int
-	Undated bool
+	Date     string
+	Label    string
+	Detail   string
+	Year     int
+	Calendar string
+	// Unparsed means the recovered year has no reliable calendar/scale.
+	Unparsed bool
+	Undated  bool
 }
 
 // personSourceRef is a source/citation supporting a person, resolved to
@@ -444,12 +448,17 @@ func buildTimelineRows(personID string, archive *glxlib.GLXFile) []timelineRow {
 	entries := collectTimelineEntries(personID, archive, true)
 	rows := make([]timelineRow, 0, len(entries))
 	for _, e := range entries {
+		// Parsing preserves a recoverable year and calendar even when the
+		// archive carries a date whose remaining text cannot be interpreted.
+		date, err := glxlib.DateString(e.Date).Parse()
 		rows = append(rows, timelineRow{
-			Date:    displayDate(e.Date),
-			Label:   e.Label,
-			Detail:  e.Detail,
-			Year:    glxlib.ExtractFirstYear(e.Date),
-			Undated: e.SortKey == "\xff",
+			Date:     displayDate(e.Date),
+			Label:    e.Label,
+			Detail:   e.Detail,
+			Year:     date.Year(),
+			Calendar: date.CalendarName(),
+			Unparsed: err != nil,
+			Undated:  e.SortKey == "\xff",
 		})
 	}
 
@@ -752,36 +761,19 @@ func vitalEvents(personID string, archive *glxlib.GLXFile) (birth, death *glxlib
 	return birth, death
 }
 
-// lifeSpan renders a compact life span from birth/death events.
+// lifeSpan renders a compact life span from birth/death events, keeping date
+// qualifiers and ranges ("c. 1765 – 1830", "1756/1774 – 1826/1830"); see
+// formatLifeSpan.
 func lifeSpan(birth, death *glxlib.Event) string {
 	var b, d string
 	if birth != nil {
-		b = eventYear(string(birth.Date))
+		b = string(birth.Date)
 	}
 	if death != nil {
-		d = eventYear(string(death.Date))
-	}
-	switch {
-	case b != "" && d != "":
-		return b + "–" + d
-	case b != "":
-		return "b. " + b
-	case d != "":
-		return "d. " + d
-	default:
-		return ""
-	}
-}
-
-// eventYear extracts the year of a GLX date for display ("1850", "44 BCE"),
-// or "" if none can be determined.
-func eventYear(date string) string {
-	year := glxlib.ExtractFirstYear(date)
-	if year == 0 {
-		return ""
+		d = string(death.Date)
 	}
 
-	return displayYear(year)
+	return formatLifeSpan(b, d)
 }
 
 // placeFullName builds a hierarchical place name by walking parent places,

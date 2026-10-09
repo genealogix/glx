@@ -612,7 +612,7 @@ When you hit a brickwall, the FAN (Friends, Associates, Neighbors) club techniqu
 glx cluster person-eddard-stark
 ```
 
-Associates are scored by how they connect: census co-residence is worth 3 points, shared event participation 2 points, and place overlap 1 point. The stronger the connection, the higher the score.
+Associates are scored by how they connect: census co-residence is worth 3 points, a census page neighbor or shared event participation 2 points, and place overlap 1 point. The stronger the connection, the higher the score. Page neighbors come from the `neighbors` list on census events (see `glx households` under Adding Census Records below); only neighbors linked to a person can be scored.
 
 Narrow the results to a specific place and time period:
 
@@ -631,6 +631,34 @@ glx cluster person-eddard-stark --json
 ::: tip
 The FAN club technique is most powerful when combined with `glx timeline` and `glx query assertions`. Find the associates, then check the timeline and evidence chains to understand *how* they were connected.
 :::
+
+## Logging Research
+
+### `glx add research-log`, `glx add search`, `glx add study` — Record searches as you go
+
+A [research log](../../specification/4-entity-types/research-log.md) records every search you make, including the ones that found nothing. That negative evidence is what shows a "reasonably exhaustive search", and it stops you repeating a fruitless query next session. Open a log once, then append one search per lookup:
+
+```bash
+# Open a log about a person
+glx add research-log --id rl-jon-snow-mother --subject-person person-jon-snow \
+  --objective "Identify Jon Snow's mother" --status in_progress
+
+# Append searches as you make them
+glx add search --log rl-jon-snow-mother --collection "Winterfell household rolls" \
+  --query "Snow, 280-284" --result not_found --date 2026-09-17
+
+glx add search --log rl-jon-snow-mother --collection "Tower of Joy accounts" \
+  --result not_searched --note "Next session"
+```
+
+Each `add search` validates `--result` against the archive's `search_result_types` vocabulary, checks that `--source`, `--repository` and `--citation` exist, and rewrites only the log's own file. A `--citation` is also rolled up into the log's `citations` list.
+
+A [study](../../specification/4-entity-types/study.md) sets the scope of a larger project:
+
+```bash
+glx add study --title "Stark household, 260-300 AC" --type family_reconstruction \
+  --status active --place place-winterfell --date-range "FROM 260 TO 300"
+```
 
 ## Adding Census Records
 
@@ -709,8 +737,68 @@ The generated assertions include:
 Each assertion cites the census citation, building a proper evidence chain from source to conclusion.
 
 ::: tip
-Use the `fan.notes` field to record neighbors — the FAN (Friends, Associates, Neighbors) club technique pairs well with `glx cluster` for brickwall research.
+Use `household.neighbors` to record the households enumerated next to this one (`name`, optional `person`, `position` such as `previous_household`, `page`, `line`). They are written to the census event's `neighbors` list, shown by `glx households --neighbors`, and counted by `glx cluster` when linked to a person. The older free-text `fan.notes` field still works and becomes an event note.
 :::
+
+#### Head-only schedules (1790–1840)
+
+Before 1850 the US census named only the head of household; everyone else is a tick mark in an age-and-sex column. Record the columns under `household.tally`, and add any household member you have identified with a tick mark with `named: false`:
+
+```yaml
+census:
+  year: 1820
+  type: federal
+  location:
+    place_id: place-wythe-county-va
+  household:
+    members:
+      - name: "James Little"
+        person_id: person-james-little
+        role: principal
+      - name: "Elizabeth Starr"
+        person_id: person-elizabeth-starr
+        named: false
+      - name: "Mary Little"
+        person_id: person-mary-little
+        named: false
+    tally:
+      - { sex: male, age_from: 45, count: 1, status: free white }
+      - { sex: female, age_from: 45, count: 1, status: free white }
+      - { sex: female, age_from: 10, age_to: 15, count: 2, status: free white }
+      - { count: 1, status: engaged in agriculture }
+```
+
+Bracket bounds are inclusive: "of 10 and under 16" is `age_from: 10, age_to: 15`; leave out `age_from` for "under N" and `age_to` for "N and upwards". The first member must be named. A `named: false` member gets role `household_member` and only a low-confidence residence assertion, since the schedule states nothing about them individually (age, birthplace, occupation, and properties are rejected for such a member; the bracket goes in the tally). They count as found in that census: `glx analyze` stops suggesting it and `glx coverage` ticks it.
+
+### `glx households` — Reconstruct census households
+
+`households` shows each census household a person appears in, head first and the rest by age:
+
+```bash
+glx households person-mary-little
+```
+
+```text
+Households for Mary Little (person-mary-little):
+
+  1820 Census — Little Household — Wythe County, Virginia  [event-1820-census-little]
+    James Little (person-james-little) — head
+    Elizabeth Starr (person-elizabeth-starr) — household member, counted, not named
+    Mary Little (person-mary-little) — household member, counted, not named
+    Tally (as enumerated):
+      1 male 45+ (free white)
+      1 female 45+ (free white)
+      2 female 10–15 (free white)
+      1 engaged in agriculture
+```
+
+List every household enumerated at a place (including places inside it) in one year, add the page neighbors, or get JSON:
+
+```bash
+glx households --place place-wythe-county-va --year 1820
+glx households person-mary-little --neighbors
+glx households person-mary-little --format json
+```
 
 ## Format Conversion
 

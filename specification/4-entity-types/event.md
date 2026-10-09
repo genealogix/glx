@@ -67,6 +67,8 @@ Domain-specific events can be added via vocabularies:
 | `title` | string | Short label for the event (e.g., "1860 Census — Webb Household"). Distinct from `properties.description`, which is a longer narrative |
 | `date` | string | Date or date range (see [Date Format](../2-core-concepts.md#date-format-standard)) |
 | `place` | string | Reference to Place entity |
+| `household` | object | Census events only: the household's composition as enumerated (tick-mark tally rows). See [Census Households](#census-households) |
+| `neighbors` | array | Census events only: households enumerated nearby on the page. See [Census Page Neighbors](#census-page-neighbors) |
 | `properties` | object | Vocabulary-defined properties |
 | `notes` | string \| string[] | Free-form notes |
 
@@ -220,6 +222,101 @@ events:
 
 Participant-level properties use the same vocabulary as event properties (`event-properties.glx`) and are validated against it. This avoids needing separate events for each person in a shared event like a census enumeration.
 
+A participant may also carry `relationship_to_head` (head, wife, son, boarder...), the column recorded by the US census from 1880 and by many other national censuses. Tools such as `glx households` list the participant whose `relationship_to_head` is `head` first; without it, the first named participant in a `principal`/`subject` role is taken as the head.
+
+### Census Households
+
+Before 1850 the US federal census, like many state and colonial censuses, named only the head of household. Everyone else is a tick mark in an age-and-sex column. Two things record such a schedule without overstating it:
+
+1. The event's `household.tally` holds the tick-mark columns as enumerated, one row per column.
+2. A person the researcher identifies with one of the tick marks is attached as a participant with role `household_member` and the participant property `named: false`. The record does not name them; the identification is the researcher's inference, and its evidence belongs in assertions like any other conclusion.
+
+```yaml
+events:
+  event-1820-census-little:
+    title: "1820 Census — Little Household"
+    type: census
+    date: "1820"
+    place: place-wythe-county-va
+    participants:
+      - person: person-james-little
+        role: principal
+      - person: person-elizabeth-starr
+        role: household_member
+        properties:
+          named: false
+      - person: person-mary-little
+        role: household_member
+        properties:
+          named: false
+    household:
+      tally:
+        - sex: male
+          age_from: 45
+          count: 1
+          status: free white
+        - sex: female
+          age_from: 45
+          count: 1
+          status: free white
+        - sex: female
+          age_from: 10
+          age_to: 15
+          count: 2
+          status: free white
+        - count: 1
+          status: engaged in agriculture
+```
+
+#### Tally Row Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `count` | integer | Yes | Number of persons tallied in the column (at least 1) |
+| `sex` | string | No | Sex of the persons counted, a `sex_types` vocabulary key (unknown keys are a warning) |
+| `age_from` | integer | No | Lower bound of the age bracket, inclusive. Omit for "under N" |
+| `age_to` | integer | No | Upper bound of the age bracket, inclusive. Omit for "N and upwards". The 1800 column "of 10 and under 16" is `age_from: 10`, `age_to: 15` |
+| `status` | string | No | Free-text column status: `free white`, `free colored`, `enslaved`, `foreigner not naturalized`, `engaged in agriculture`... A row with only a status counts persons in that column regardless of age and sex |
+| `notes` | string \| string[] | No | Notes about the row |
+
+The head is normally counted in the population tally too. Only mutually exclusive population columns that together cover the whole household can be summed to obtain household size. Other columns can overlap those counts: in the example above, the demographic rows count four people, while the `engaged in agriculture` row counts one person who can also be included in those demographic rows. Summing all five marks would overcount the household. Brackets are free integers: GLX does not yet validate them against each census's column headings.
+
+Tooling treats a `named: false` participant as present in the census: `glx analyze` does not suggest searching that census for them, `glx coverage` ticks the census row, and `glx households` lists them as "counted, not named".
+
+### Census Page Neighbors
+
+FAN (Friends, Associates, Neighbors) research records the households enumerated next to the person of interest. `neighbors` lists them without requiring a Person entity for each:
+
+```yaml
+events:
+  event-1850-census-baker:
+    type: census
+    date: "1850"
+    place: place-brooklyn-sauk-wi
+    participants:
+      - person: person-abram-baker
+        role: principal
+    neighbors:
+      - name: "Henry Jeffries"
+        person: person-henry-jeffries
+        position: previous_household
+        page: "12"
+        line: "3"
+      - name: "James M Clark"
+        position: next_household
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | One of `name`/`person` | Head of the neighboring household as written on the page |
+| `person` | string | One of `name`/`person` | Reference to a Person entity, when the neighbor is in the archive |
+| `position` | string | No | Position relative to this household. Suggested values: `previous_household`, `next_household`, `same_page`, `previous_page`, `next_page` |
+| `page` | string | No | Census page or sheet of the neighbor |
+| `line` | string | No | Line number on the page |
+| `notes` | string \| string[] | No | Notes about the neighbor |
+
+`glx households --neighbors` shows them, and `glx cluster` counts a neighbor linked to a person as an associate.
+
 ## File Organization
 
 **Note:** File organization is flexible. Entities can be in any .glx file with any directory structure. The example below shows one-entity-per-file organization, which is recommended for collaborative projects (better git diffs) but not required.
@@ -301,6 +398,8 @@ Events require at least one participant. GLX is a genealogy format, and every ev
 - All person references must point to existing Person entities
 - Date formats must follow the [date format standard](../2-core-concepts.md#date-format-standard) (invalid formats generate warnings)
 - Participant roles must be from the [participant roles vocabulary](vocabularies.md#participant-roles-vocabulary); an unknown role is an error, like any other structural type field (see [Vocabulary Validation](vocabularies.md#validation-errors-hard-failures))
+- Household tally rows need a `count` of at least 1, non-negative ages, and `age_from` no greater than `age_to` (errors). A row with no sex, age bracket, or status, an unknown `sex`, more `named: false` participants than the tally counts, and `household`/`neighbors` on a non-census event are warnings
+- Each neighbor needs a `name` or a `person`, and a `person` must reference an existing Person entity
 - A participant role whose `applies_to` excludes `event` generates a warning (see [Participant Roles - applies_to](vocabularies.md#applies_to-semantics))
 
 ## Confidence and Provenance

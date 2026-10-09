@@ -27,6 +27,10 @@ var (
 	ErrCensusYearRequired            = errors.New("census.year is required")
 	ErrCensusLocationRequired        = errors.New("census.location.place or census.location.place_id is required")
 	ErrCensusHouseholdMembersMissing = errors.New("census.household.members is required (at least one member)")
+	ErrCensusTallyRowInvalid         = errors.New("invalid census.household.tally row")
+	ErrCensusNeighborUnidentified    = errors.New("census.household.neighbors entry needs a name or person")
+	ErrCensusUnnamedHead             = errors.New("census.household.members[0] is the head of household and must be named (named: false is for tick-mark members)")
+	ErrCensusUnnamedMemberFacts      = errors.New("a named: false member cannot set facts a tick-mark entry does not record; use the household tally for the age bracket")
 )
 
 // CensusTemplate represents a census record template for generating GLX entities.
@@ -76,6 +80,12 @@ type CensusHousehold struct {
 	Title   string                  `yaml:"title,omitempty"` // Event title (auto-generated if omitted)
 	Notes   string                  `yaml:"notes,omitempty"`
 	Members []CensusHouseholdMember `yaml:"members"`
+	// Tally holds the tick-mark columns of a head-only schedule (US
+	// 1790–1840 and similar); copied to the event's household.tally (#1332).
+	Tally []HouseholdTallyRow `yaml:"tally,omitempty"`
+	// Neighbors lists nearby households on the page; copied to the event's
+	// neighbors (#180).
+	Neighbors []EventNeighbor `yaml:"neighbors,omitempty"`
 }
 
 // CensusHouseholdMember represents one person on the census schedule.
@@ -90,6 +100,17 @@ type CensusHouseholdMember struct {
 	Occupation   string         `yaml:"occupation,omitempty"`
 	Notes        string         `yaml:"notes,omitempty"`
 	Properties   map[string]any `yaml:"properties,omitempty"` // Additional assertions (race, education, etc.)
+	// Named is false for a member the schedule counts only as a tick mark
+	// (head-only censuses). Such a member defaults to role household_member,
+	// carries participant property named: false, and gets no assertions for
+	// facts the record does not state about them (#1332).
+	Named *bool `yaml:"named,omitempty"`
+}
+
+// isUnnamed reports whether the template marks the member as counted but not
+// named on the schedule.
+func (m *CensusHouseholdMember) isUnnamed() bool {
+	return m.Named != nil && !*m.Named
 }
 
 // CensusFAN holds FAN (Friends, Associates, Neighbors) notes.
@@ -194,6 +215,51 @@ func validateCensusTemplate(template *CensusTemplate) error {
 		if strings.TrimSpace(m.Name) == "" {
 			return fmt.Errorf("census.household.members[%d].name is required", i)
 		}
+		if err := validateUnnamedMember(i, m); err != nil {
+			return err
+		}
+	}
+	for i, row := range c.Household.Tally {
+		if problems := tallyRowProblems(&row); len(problems) > 0 {
+			return fmt.Errorf("%w: census.household.tally[%d]: %s", ErrCensusTallyRowInvalid, i, strings.Join(problems, "; "))
+		}
+	}
+	for i, n := range c.Household.Neighbors {
+		if strings.TrimSpace(n.Name) == "" && n.Person == "" {
+			return fmt.Errorf("%w: census.household.neighbors[%d]", ErrCensusNeighborUnidentified, i)
+		}
+	}
+
+	return nil
+}
+
+// validateUnnamedMember rejects a counted-but-unnamed member who is listed
+// first (the first member is the named head) or who carries facts that only a
+// named entry on the schedule could state. Sex is allowed: it comes from the
+// tally column and is used only when creating a new person.
+func validateUnnamedMember(i int, m *CensusHouseholdMember) error {
+	if !m.isUnnamed() {
+		return nil
+	}
+	if i == 0 {
+		return ErrCensusUnnamedHead
+	}
+	var stated []string
+	if m.Age != nil {
+		stated = append(stated, "age")
+	}
+	if m.Birthplace != "" || m.BirthplaceID != "" {
+		stated = append(stated, "birthplace")
+	}
+	if m.Occupation != "" {
+		stated = append(stated, "occupation")
+	}
+	if len(m.Properties) > 0 {
+		stated = append(stated, "properties")
+	}
+	if len(stated) > 0 {
+		return fmt.Errorf("%w: census.household.members[%d] (%s) sets %s",
+			ErrCensusUnnamedMemberFacts, i, m.Name, strings.Join(stated, ", "))
 	}
 
 	return nil
@@ -373,6 +439,9 @@ func resolveCensusPersons(census *CensusData, existing *GLXFile, result *CensusR
 		role := member.Role
 		if role == "" {
 			role = ParticipantRoleSubject
+			if member.isUnnamed() {
+				role = ParticipantRoleHouseholdMember
+			}
 		}
 
 		var memberNotes NoteList
@@ -389,7 +458,10 @@ func resolveCensusPersons(census *CensusData, existing *GLXFile, result *CensusR
 		// (it carries GEDCOM AGE values such as "3y 2m"), so an int here
 		// makes every census-generated archive validate with warnings.
 		if member.Age != nil {
-			p.Properties = map[string]any{"age_at_event": strconv.Itoa(*member.Age)}
+			p.Properties = map[string]any{ParticipantPropertyAgeAtEvent: strconv.Itoa(*member.Age)}
+		}
+		if member.isUnnamed() {
+			p.Properties = map[string]any{ParticipantPropertyNamed: false}
 		}
 
 		participants = append(participants, p)
@@ -482,6 +554,13 @@ func buildCensusEvent(census *CensusData, placeID string, participants []Partici
 		Notes:        eventNotes,
 	}
 
+	if len(census.Household.Tally) > 0 {
+		event.Household = &Household{Tally: census.Household.Tally}
+	}
+	if len(census.Household.Neighbors) > 0 {
+		event.Neighbors = census.Household.Neighbors
+	}
+
 	// Append FAN notes
 	if census.FAN != nil && census.FAN.Notes != "" {
 		event.Notes = append(event.Notes, "FAN — "+census.FAN.Notes)
@@ -503,6 +582,24 @@ func generateCensusAssertions(census *CensusData, resolvedIDs []string, placeID,
 		// Use personID slug (not name slug) for assertion IDs to avoid
 		// collisions when multiple members share the same name.
 		pidSlug := Slugify(personID)
+
+		// A tick-mark member is not named, so the record states nothing about
+		// them individually. Their presence in the household is the
+		// researcher's identification of the mark, asserted at low confidence.
+		if member.isUnnamed() {
+			assertionID := uniqueAssertionID(fmt.Sprintf("%s%s-residence-%s", EntityIDPrefixAssertion, pidSlug, yearStr), existing, result)
+			result.Assertions[assertionID] = &Assertion{
+				Subject:    EntityRef{Person: personID},
+				Property:   PersonPropertyResidence,
+				Value:      placeID,
+				Date:       DateString(yearStr),
+				Citations:  []string{citationID},
+				Confidence: ConfidenceLevelLow,
+				Notes:      NoteList{fmt.Sprintf("Counted, not named, in the %d census household of %s; identifying this person with a tick mark is an inference.", census.Year, census.Household.Members[0].Name)},
+			}
+
+			continue
+		}
 
 		// Birth year from age — assertion targets the birth event
 		if member.Age != nil {
