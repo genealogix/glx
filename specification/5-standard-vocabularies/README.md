@@ -199,6 +199,19 @@ Defines the lifecycle status of a [research log](../4-entity-types/research-log.
 
 ---
 
+### Lead Statuses
+
+Defines the status of a lead, a competing hypothesis inside a [research log](../4-entity-types/research-log.md#researchlead) (active, eliminated, confirmed).
+
+<YamlFile
+  :content="vocabularies['lead-statuses']"
+  title="vocabularies/lead-statuses.glx"
+/>
+
+**View Source:** [lead-statuses.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/lead-statuses.glx) | **See Also:** [ResearchLog Entity Documentation](../4-entity-types/research-log.md) | [Vocabularies Specification](../4-entity-types/vocabularies.md#lead-statuses-vocabulary)
+
+---
+
 ### Study Types
 
 Defines classifications for research-project Study entities (one place study, one name study, family reconstruction, descendancy/ancestry studies, brick-wall investigations).

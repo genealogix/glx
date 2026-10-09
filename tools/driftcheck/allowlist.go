@@ -123,8 +123,8 @@ func symbolMatches(e *allowlistEntry, f *finding) bool {
 // splitSymbol divides "Type.Field" into ("Type", "Field"). A bare symbol
 // returns ("", symbol).
 func splitSymbol(symbol string) (owner, name string) {
-	if i := strings.LastIndex(symbol, "."); i >= 0 {
-		return symbol[:i], symbol[i+1:]
+	if before, after, found := strings.CutLast(symbol, "."); found {
+		return before, after
 	}
 
 	return "", symbol

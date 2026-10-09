@@ -128,10 +128,25 @@ jobs:
         # not a `go install ...@vX.Y.Z` line in a `run:` block. The weekly
         # gosec-pin-currency.yml workflow is what keeps the pin from rotting —
         # deliberately a separate workflow, see the header comment.
+        #
+        # TEMPORARY (securego/gosec#1771): every gosec release up to v2.29.0 is
+        # built against golang.org/x/tools <= v0.49.0, whose export-data reader
+        # stops at version 4. Go 1.27.2 writes version 5, so a plain install
+        # type-checks nothing ("export data version 5 is greater than maximum
+        # supported version 4") and exits 1. Until a gosec release carries
+        # x/tools >= v0.50.0, build the pinned gosec in a throwaway module with
+        # x/tools raised to v0.50.0, then return to the one-line
+        # `go install ...@${v}`. Keep GOSEC_XTOOLS in sync with the Makefile.
+        env:
+          GOSEC_XTOOLS: v0.50.0
         run: |
           v="$(tr -d '[:space:]' < .gosec-version)"
           printf '%s' "$v" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$' || { echo "invalid .gosec-version: $v (expected vMAJOR.MINOR.PATCH)" >&2; exit 1; }
-          go install "github.com/securego/gosec/v2/cmd/gosec@${v}"
+          build="$(mktemp -d)"
+          cd "$build"
+          go mod init gosec-build
+          go get "github.com/securego/gosec/v2/cmd/gosec@${v}" "golang.org/x/tools@${GOSEC_XTOOLS}"
+          go install github.com/securego/gosec/v2/cmd/gosec
 
       - name: Run gosec
         # Staged write + guarded upload, adapted from govulncheck above

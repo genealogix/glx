@@ -12,7 +12,8 @@ Query entities in a GLX archive
 Filter and list entities from a GENEALOGIX archive.
 
 Supported entity types: persons, events, assertions, sources,
-relationships, places, citations, repositories, media.
+relationships, places, citations, repositories, media, research_logs,
+studies.
 
 Filters vary by entity type:
   persons:       --name, --born-before, --born-after, --birthplace
@@ -22,6 +23,8 @@ Filters vary by entity type:
   relationships: --type
   places:        --name
   repositories:  --name
+  research_logs: --status, --subject (the log's subject or a lead's
+                 candidate person, by ID or name substring)
 
 All entity types support --archive to specify the archive path.
 
@@ -50,6 +53,9 @@ glx query <entity-type> [flags]
   # Find persons by name in a specific archive
   glx query persons --name "Smith" --archive my-archive
 
+  # Find research logs about a person (as subject or as a lead candidate)
+  glx query research_logs --subject person-mary-green
+
   # List all sources
   glx query sources
 ```
@@ -69,8 +75,8 @@ glx query <entity-type> [flags]
       --name string         Filter by name (substring match, case-insensitive)
       --phonetic            Use phonetic (Soundex) matching for --name
       --source string       Filter assertions by source ID (direct or via citation)
-      --status string       Filter assertions by status
-      --subject string      Filter assertions by subject entity ID or person name substring
+      --status string       Filter assertions or research logs by status
+      --subject string      Filter assertions or research logs by subject entity ID or person name substring
       --type string         Filter by type (event type, relationship type, etc.)
 ```
 
