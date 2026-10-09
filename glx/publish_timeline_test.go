@@ -198,6 +198,7 @@ func TestRenderSite_MixedCalendarsKeepTheListWithoutASharedScale(t *testing.T) {
 		"French Republican and Gregorian": {"FRENCH_R 1 VEND 0012", "1820"},
 		"Hebrew and Gregorian":            {"2000", "HEBREW 15 TSH 5765", "2010"},
 		"Julian and Gregorian":            {"JULIAN 1800", "1810"},
+		"Julian changeover (#1374)":       {"JULIAN 1643-02-20", "1643-03-01", "1644"},
 		"distinct extension calendars":    {"_ROMAN 100", "_OTHER 120"},
 	}
 	for name, dates := range cases {

@@ -1849,3 +1849,100 @@ func TestExportGEDCOM_OverlappingParentSetsPreservePedigree(t *testing.T) {
 		})
 	}
 }
+
+func TestExportGEDCOM_DisprovenParentNotRestoredByMarriageFallback(t *testing.T) {
+	for _, version := range gedcomVersions {
+		for _, tc := range []struct {
+			name, rejected, survivingTag, survivingXRef, absentTag string
+			separateRelationships                                  bool
+		}{
+			{"two-parent-rejected-father", "person-father", "WIFE", "@I3@", "HUSB", false},
+			{"two-parent-rejected-mother", "person-mother", "HUSB", "@I2@", "WIFE", false},
+			{"separate-rejected-father", "person-father", "WIFE", "@I3@", "HUSB", true},
+			{"separate-rejected-mother", "person-mother", "HUSB", "@I2@", "WIFE", true},
+		} {
+			t.Run(version.name+"/"+tc.name, func(t *testing.T) {
+				glx := newEventExportArchive(t, map[string][2]string{
+					"person-child":  {"Child One", "unknown"},
+					"person-father": {"Father One", "male"}, "person-mother": {"Mother One", "female"},
+				})
+				glx.Relationships = map[string]*Relationship{
+					"rel-marriage": marriageOf("person-father", "person-mother"),
+					"rel-pc": parentChildOf(RelationshipTypeBiologicalParentChild,
+						[]string{"person-father", "person-mother"}, []string{"person-child"}),
+				}
+				if tc.separateRelationships {
+					glx.Relationships["rel-pc"] = parentChildOf(RelationshipTypeBiologicalParentChild,
+						[]string{tc.rejected}, []string{"person-child"})
+					surviving := "person-mother"
+					if tc.rejected == surviving {
+						surviving = "person-father"
+					}
+					glx.Relationships["rel-pc-surviving"] = parentChildOf(RelationshipTypeBiologicalParentChild,
+						[]string{surviving}, []string{"person-child"})
+				}
+				glx.Sources["source-proof"] = &Source{Title: "Parentage investigation"}
+				glx.Assertions = map[string]*Assertion{
+					"assertion-rejected": {
+						Subject:     EntityRef{Relationship: "rel-pc"},
+						Participant: &Participant{Person: tc.rejected, Role: ParticipantRoleParent},
+						Sources:     []string{"source-proof"}, Confidence: ConfidenceLevelHigh, Status: "disproven",
+					},
+				}
+				require.Empty(t, glx.Validate().Errors)
+				ged, result := exportGEDCOMString(t, glx, version.version)
+
+				// Keep the accepted marriage, but file the child under only the
+				// surviving parent, with the original birth pedigree.
+				assert.Equal(t, []string{"1 HUSB @I2@"}, gedcomSubstructures(ged, "@F1@", "HUSB"))
+				assert.Equal(t, []string{"1 WIFE @I3@"}, gedcomSubstructures(ged, "@F1@", "WIFE"))
+				assert.Empty(t, gedcomSubstructures(ged, "@F1@", "CHIL"))
+				assert.Equal(t, []string{"1 FAMC @F2@\n2 PEDI birth"}, gedcomSubstructures(ged, "@I1@", "FAMC"))
+				assert.Equal(t, []string{"1 " + tc.survivingTag + " " + tc.survivingXRef},
+					gedcomSubstructures(ged, "@F2@", tc.survivingTag))
+				assert.Empty(t, gedcomSubstructures(ged, "@F2@", tc.absentTag))
+				assert.Equal(t, []string{"1 CHIL @I1@"}, gedcomSubstructures(ged, "@F2@", "CHIL"))
+				require.Len(t, result.Statistics.Warnings, 1)
+				assert.Equal(t, "parent "+tc.rejected+" of person-child is disproven; link not exported",
+					result.Statistics.Warnings[0].Message)
+			})
+		}
+	}
+}
+
+func TestExportGEDCOM_DisprovenParentFallbackKeepsEligibleFamily(t *testing.T) {
+	for _, version := range gedcomVersions {
+		t.Run(version.name, func(t *testing.T) {
+			glx := newEventExportArchive(t, map[string][2]string{
+				"person-child": {"Child One", "unknown"}, "person-father": {"Father One", "male"},
+				"person-mother": {"Mother One", "female"}, "person-other": {"Other One", "male"},
+			})
+			glx.Relationships = map[string]*Relationship{
+				"rel-marriage-a-rejected": marriageOf("person-father", "person-mother"),
+				"rel-marriage-b-eligible": marriageOf("person-other", "person-mother"),
+				"rel-pc-rejected": parentChildOf(RelationshipTypeBiologicalParentChild,
+					[]string{"person-father"}, []string{"person-child"}),
+				"rel-pc-mother": parentChildOf(RelationshipTypeBiologicalParentChild,
+					[]string{"person-mother"}, []string{"person-child"}),
+			}
+			glx.Sources["source-proof"] = &Source{Title: "Parentage investigation"}
+			glx.Assertions = map[string]*Assertion{
+				"assertion-rejected": {
+					Subject: EntityRef{Relationship: "rel-pc-rejected"},
+					Sources: []string{"source-proof"}, Confidence: ConfidenceLevelHigh, Status: "disproven",
+				},
+			}
+			require.Empty(t, glx.Validate().Errors)
+			ged, result := exportGEDCOMString(t, glx, version.version)
+
+			// Only the explicitly rejected spouse is excluded from fallback;
+			// another eligible marriage keeps the existing selection policy.
+			assert.Empty(t, gedcomSubstructures(ged, "@F1@", "CHIL"))
+			assert.Equal(t, []string{"1 FAMC @F2@\n2 PEDI birth"}, gedcomSubstructures(ged, "@I1@", "FAMC"))
+			assert.Equal(t, []string{"1 CHIL @I1@"}, gedcomSubstructures(ged, "@F2@", "CHIL"))
+			assert.Equal(t, []string{"1 HUSB @I4@"}, gedcomSubstructures(ged, "@F2@", "HUSB"))
+			assert.Equal(t, []string{"1 WIFE @I3@"}, gedcomSubstructures(ged, "@F2@", "WIFE"))
+			assert.Equal(t, 2, result.Statistics.FamiliesExported)
+		})
+	}
+}

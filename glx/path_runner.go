@@ -31,15 +31,20 @@ type pathHop struct {
 	RelationshipID string `json:"relationship_id,omitempty"`
 	RelType        string `json:"relationship_type,omitempty"`
 	Role           string `json:"role,omitempty"`
+	// Hypothetical is true when the hop to the next person follows a
+	// relationship the archive records only as a hypothesis.
+	Hypothetical bool `json:"hypothetical,omitempty"`
 }
 
 // pathResult holds the full path output.
 type pathResult struct {
-	From    string    `json:"from"`
-	To      string    `json:"to"`
-	Hops    int       `json:"hops"`
-	Path    []pathHop `json:"path"`
-	Message string    `json:"message,omitempty"`
+	From string `json:"from"`
+	To   string `json:"to"`
+	Hops int    `json:"hops"`
+	// HypotheticalHops counts the hops that follow a hypothetical relationship.
+	HypotheticalHops int       `json:"hypothetical_hops,omitempty"`
+	Path             []pathHop `json:"path"`
+	Message          string    `json:"message,omitempty"`
 }
 
 // pathEdge represents an adjacency in the relationship graph.
@@ -48,10 +53,12 @@ type pathEdge struct {
 	RelationshipID string
 	RelType        string
 	Role           string // role of the source person in the relationship
+	Hypothetical   bool   // the link is recorded only as a hypothesis
 }
 
 // showPath loads an archive and finds the shortest path between two persons.
-func showPath(archivePath, fromQuery, toQuery string, maxHops int, jsonOutput bool) error {
+// With acceptedOnly, relationships recorded only as hypotheses are not followed.
+func showPath(archivePath, fromQuery, toQuery string, maxHops int, acceptedOnly, jsonOutput bool) error {
 	if maxHops < 1 {
 		return fmt.Errorf("--max-hops must be at least 1, got %d", maxHops)
 	}
@@ -76,6 +83,9 @@ func showPath(archivePath, fromQuery, toQuery string, maxHops int, jsonOutput bo
 	}
 
 	adj := buildPathAdjacency(archive)
+	if acceptedOnly {
+		adj = acceptedPathAdjacency(adj)
+	}
 	path := bfsPath(fromID, toID, adj, maxHops)
 
 	result := buildPathResult(fromID, toID, path, archive)
@@ -152,8 +162,13 @@ func resolvePersonForPath(archive *glxlib.GLXFile, query string) (string, error)
 // Each person maps to a list of edges representing who they're connected to.
 // Uses O(k²) pairwise edges per relationship, which is efficient for genealogy
 // archives where relationships typically have 2-3 participants.
+//
+// A link the archive has disproven (see glxlib.RelationshipStandingIndex.Link)
+// is a recorded, rejected alternative and gets no edge; a hypothetical link
+// gets an edge flagged Hypothetical.
 func buildPathAdjacency(archive *glxlib.GLXFile) map[string][]pathEdge {
 	adj := make(map[string][]pathEdge)
+	standings := glxlib.NewRelationshipStandingIndex(archive)
 
 	relIDs := sortedKeys(archive.Relationships)
 	for _, relID := range relIDs {
@@ -171,11 +186,16 @@ func buildPathAdjacency(archive *glxlib.GLXFile) map[string][]pathEdge {
 				if i == j || pj.Person == "" {
 					continue
 				}
+				standing := standings.Link(relID, pi.Person, pj.Person)
+				if standing == glxlib.RelationshipStandingDisproven {
+					continue
+				}
 				adj[pi.Person] = append(adj[pi.Person], pathEdge{
 					PersonID:       pj.Person,
 					RelationshipID: relID,
 					RelType:        rel.Type,
 					Role:           pi.Role,
+					Hypothetical:   standing == glxlib.RelationshipStandingHypothetical,
 				})
 			}
 		}
@@ -184,54 +204,82 @@ func buildPathAdjacency(archive *glxlib.GLXFile) map[string][]pathEdge {
 	return adj
 }
 
+// acceptedPathAdjacency returns adj without its hypothetical edges, for
+// `glx path --accepted-only`.
+func acceptedPathAdjacency(adj map[string][]pathEdge) map[string][]pathEdge {
+	out := make(map[string][]pathEdge, len(adj))
+	for personID, edges := range adj {
+		for _, e := range edges {
+			if !e.Hypothetical {
+				out[personID] = append(out[personID], e)
+			}
+		}
+	}
+
+	return out
+}
+
 // bfsNode tracks the BFS frontier with back-pointers to reconstruct the path.
 type bfsNode struct {
 	PersonID string
 	Edge     *pathEdge // nil for the start node
 	Parent   *bfsNode
 	Depth    int
+	// Hypothetical counts the hypothetical edges between the start and here.
+	Hypothetical int
 }
 
-// bfsPath performs BFS from start to goal, returning the path as a slice of
-// (personID, edge) pairs. Returns nil if no path found within maxHops.
+// bfsPath performs a breadth-first search from start to goal, one layer at a
+// time, returning the path as a slice of (personID, edge) pairs, or nil if no
+// path is found within maxHops. Among the shortest paths it returns one with
+// the fewest hypothetical edges, so a hypothesis is never followed where an
+// equally short accepted route exists; other ties go to adjacency order.
 func bfsPath(startID, goalID string, adj map[string][]pathEdge, maxHops int) []*bfsNode {
 	if startID == goalID {
 		return nil
 	}
 
-	visited := map[string]bool{startID: true}
-	queue := []*bfsNode{{PersonID: startID}}
-	head := 0
+	reached := map[string]*bfsNode{startID: {PersonID: startID}}
+	frontier := []*bfsNode{reached[startID]}
 
-	for head < len(queue) {
-		current := queue[head]
-		queue[head] = nil // allow GC of dequeued nodes
-		head++
+	for depth := 0; depth < maxHops && len(frontier) > 0; depth++ {
+		var next []*bfsNode
+		for _, current := range frontier {
+			for _, edge := range adj[current.PersonID] {
+				hypo := current.Hypothetical
+				if edge.Hypothetical {
+					hypo++
+				}
 
-		if current.Depth >= maxHops {
-			continue
+				if seen, ok := reached[edge.PersonID]; ok {
+					// A person first reached in this layer has not been
+					// expanded yet, so a less hypothetical route to it can
+					// still replace the one recorded.
+					if seen.Depth == depth+1 && hypo < seen.Hypothetical {
+						edgeCopy := edge
+						seen.Edge, seen.Parent, seen.Hypothetical = &edgeCopy, current, hypo
+					}
+
+					continue
+				}
+
+				edgeCopy := edge
+				node := &bfsNode{
+					PersonID:     edge.PersonID,
+					Edge:         &edgeCopy,
+					Parent:       current,
+					Depth:        depth + 1,
+					Hypothetical: hypo,
+				}
+				reached[edge.PersonID] = node
+				next = append(next, node)
+			}
 		}
 
-		for _, edge := range adj[current.PersonID] {
-			if visited[edge.PersonID] {
-				continue
-			}
-
-			edgeCopy := edge
-			next := &bfsNode{
-				PersonID: edge.PersonID,
-				Edge:     &edgeCopy,
-				Parent:   current,
-				Depth:    current.Depth + 1,
-			}
-
-			if edge.PersonID == goalID {
-				return reconstructPath(next)
-			}
-
-			visited[edge.PersonID] = true
-			queue = append(queue, next)
+		if goal, ok := reached[goalID]; ok {
+			return reconstructPath(goal)
 		}
+		frontier = next
 	}
 
 	return nil
@@ -279,6 +327,10 @@ func buildPathResult(fromID, toID string, path []*bfsNode, archive *glxlib.GLXFi
 			hop.RelationshipID = path[i+1].Edge.RelationshipID
 			hop.RelType = path[i+1].Edge.RelType
 			hop.Role = path[i+1].Edge.Role
+			hop.Hypothetical = path[i+1].Edge.Hypothetical
+			if hop.Hypothetical {
+				result.HypotheticalHops++
+			}
 		}
 		result.Path = append(result.Path, hop)
 	}
@@ -314,9 +366,14 @@ func printPathText(result *pathResult) {
 	for _, hop := range result.Path {
 		fmt.Printf("  %s (%s)\n", hop.PersonName, hop.PersonID)
 		if hop.RelType != "" {
-			relLabel := formatRelLabel(hop.RelType, hop.Role)
+			relLabel := withHypotheticalMarker(formatRelLabel(hop.RelType, hop.Role), hop.Hypothetical)
 			fmt.Printf("    - %s ->\n", relLabel)
 		}
+	}
+
+	if result.HypotheticalHops > 0 {
+		fmt.Printf("\n  %s %d of %d hop(s) follow a relationship recorded only as a hypothesis.\n",
+			hypotheticalMarker, result.HypotheticalHops, result.Hops)
 	}
 
 	fmt.Println()
