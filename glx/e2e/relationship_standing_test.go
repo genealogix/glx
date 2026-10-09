@@ -228,3 +228,90 @@ func TestRelationshipStanding_ProofFormatsAndConflict(t *testing.T) {
 		require.Contains(t, result.stdout, "Jacob Little")
 	}
 }
+
+// path never follows a disproven parent, marks a hop along a hypothetical one,
+// and with --accepted-only follows no hypothesis at all (#208).
+func TestRelationshipStanding_Path(t *testing.T) {
+	dir, path := writeLittleFamily(t)
+
+	rejected := runGLX(t, dir, "path", "person-lewis", "person-jacob", "--archive", path)
+	require.Equal(t, 0, rejected.exitCode, rejected.stdout+rejected.stderr)
+	assert.Contains(t, rejected.stdout, "No path found")
+
+	hypo := runGLX(t, dir, "path", "person-adam", "person-daniel", "--archive", path)
+	require.Equal(t, 0, hypo.exitCode, hypo.stdout+hypo.stderr)
+	assert.Contains(t, hypo.stdout, "2 hop(s)")
+	assert.Contains(t, hypo.stdout, "child in parent child  (?) ->")
+	assert.Contains(t, hypo.stdout, "1 of 2 hop(s) follow a relationship recorded only as a hypothesis")
+
+	accepted := runGLX(t, dir, "path", "person-adam", "person-daniel", "--accepted-only", "--archive", path)
+	require.Equal(t, 0, accepted.exitCode, accepted.stdout+accepted.stderr)
+	assert.Contains(t, accepted.stdout, "No path found")
+
+	asJSON := runGLX(t, dir, "path", "person-adam", "person-daniel", "--json", "--archive", path)
+	require.Equal(t, 0, asJSON.exitCode, asJSON.stdout+asJSON.stderr)
+	var result struct {
+		HypotheticalHops int `json:"hypothetical_hops"`
+		Path             []struct {
+			PersonID     string `json:"person_id"`
+			Hypothetical bool   `json:"hypothetical"`
+		} `json:"path"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(asJSON.stdout), &result))
+	assert.Equal(t, 1, result.HypotheticalHops)
+	require.Len(t, result.Path, 3)
+	assert.False(t, result.Path[0].Hypothetical)
+	assert.True(t, result.Path[1].Hypothetical, "Lewis to his hypothetical father")
+}
+
+// exportGEDCOMRecords exports archive (a file in dir) to GEDCOM 7.0 and
+// returns the combined command output and the file's level-0 records.
+func exportGEDCOMRecords(t *testing.T, dir, archive string) (string, []string) {
+	t.Helper()
+	res := runGLX(t, dir, "export", archive, "-f", "70", "-o", "out.ged")
+	require.Equal(t, 0, res.exitCode, res.stdout+res.stderr)
+	data, err := os.ReadFile(filepath.Join(dir, "out.ged"))
+	require.NoError(t, err)
+
+	return res.stdout + res.stderr, strings.Split(strings.ReplaceAll(string(data), "\r\n", "\n"), "\n0 ")
+}
+
+// GEDCOM export leaves out a disproven father rather than writing him as a
+// parent, keeps the hypothetical one, and says what it dropped (#208).
+func TestRelationshipStanding_GEDCOMExport(t *testing.T) {
+	// A child whose only recorded father is disproven gets no family at all.
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "only.glx"), []byte(`persons:
+  person-lewis: {properties: {name: {value: "Lewis Little"}, sex: male}}
+  person-jacob: {properties: {name: {value: "Jacob Little"}, sex: male}}
+sources:
+  src-land-entry: {title: Land entry book 1778}
+relationships:
+  rel-pc-jacob:
+    type: parent_child
+    participants: [{person: person-jacob, role: parent}, {person: person-lewis, role: child}]
+assertions:
+  a-jacob:
+    subject: {relationship: rel-pc-jacob}
+    sources: [src-land-entry]
+    confidence: high
+    status: disproven
+`), 0o644))
+	output, records := exportGEDCOMRecords(t, dir, "only.glx")
+	assert.Contains(t, output, "parent person-jacob of person-lewis is disproven; link not exported")
+	for _, r := range records {
+		assert.NotContains(t, r, " FAM\n", "a disproven parent-child link is not a family")
+	}
+
+	// Among competing fathers, the hypothetical one is still exported.
+	dir, _ = writeLittleFamily(t)
+	output, records = exportGEDCOMRecords(t, dir, "little.glx")
+	assert.Contains(t, output, "parent person-john of person-lewis is disproven")
+	var daniel string
+	for _, r := range records {
+		if strings.Contains(r, " INDI\n") && strings.Contains(r, "Johannes Daniel") {
+			daniel = r
+		}
+	}
+	assert.Contains(t, daniel, "1 FAMS")
+}
