@@ -328,13 +328,18 @@ func redactAndScrubEvents(archive *GLXFile, living, fullyRedactedEvents map[stri
 			event.PlaceID = ""
 			event.Notes = nil
 			event.Properties = nil
+			event.Household = nil
+			event.Neighbors = nil
 			scrubLivingParticipants(event.Participants, living)
 			redacted++
 
 			continue
 		}
+		neighborScrubbed := scrubLivingNeighbors(event.Neighbors, living)
 		if participantsIncludeLivingPerson(event.Participants, living) {
 			scrubLivingParticipants(event.Participants, living)
+			scrubbed++
+		} else if neighborScrubbed {
 			scrubbed++
 		}
 	}
@@ -399,6 +404,25 @@ func scrubLivingParticipants(participants []Participant, living map[string]bool)
 			participants[i].Notes = nil
 		}
 	}
+}
+
+// scrubLivingNeighbors replaces the name of every census neighbor linked to a
+// living person with the redacted "Living" placeholder and clears its notes,
+// page, and line (#180). The person reference is kept, like a living
+// participant's, so the link survives. Reports whether anything was scrubbed.
+func scrubLivingNeighbors(neighbors []EventNeighbor, living map[string]bool) bool {
+	scrubbed := false
+	for i := range neighbors {
+		if neighbors[i].Person != "" && living[neighbors[i].Person] {
+			neighbors[i].Name = "Living"
+			neighbors[i].Notes = nil
+			neighbors[i].Page = ""
+			neighbors[i].Line = ""
+			scrubbed = true
+		}
+	}
+
+	return scrubbed
 }
 
 // eventHasLivingSubject reports whether any participant of the event acts in a
