@@ -142,10 +142,20 @@ ci-tools-tidy-check: ## Verify ci-tools/go.mod and ci-tools/go.sum are tidy
 vulncheck: ## Run govulncheck against the Go vulnerability DB (pinned via ci-tools/go.mod)
 	go tool -modfile=ci-tools/go.mod govulncheck ./...
 
+# TEMPORARY (securego/gosec#1771): gosec releases up to v2.29.0 cannot read Go
+# 1.27.2's export data, so the pinned gosec is built in a throwaway module with
+# golang.org/x/tools raised to GOSEC_XTOOLS. Keep it in sync with security.yml, and
+# return to `go run ...@$$v` once a gosec release carries x/tools >= v0.50.0.
+GOSEC_XTOOLS ?= v0.50.0
+
 gosec: ## Run gosec static security analysis (pinned via .gosec-version)
 	@v="$$(tr -d '[:space:]' < .gosec-version)"; \
 	printf '%s' "$$v" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$$' || { echo "invalid .gosec-version: $$v (expected vMAJOR.MINOR.PATCH)" >&2; exit 1; }; \
-	go run "github.com/securego/gosec/v2/cmd/gosec@$$v" -quiet ./...
+	build="$$(mktemp -d)"; trap 'rm -rf "$$build"' EXIT; \
+	( cd "$$build" && go mod init gosec-build >/dev/null 2>&1 && \
+	  go get "github.com/securego/gosec/v2/cmd/gosec@$$v" "golang.org/x/tools@$(GOSEC_XTOOLS)" >/dev/null 2>&1 && \
+	  GOOS="$$(go env GOHOSTOS)" GOARCH="$$(go env GOHOSTARCH)" go build -o "$$build/gosec" github.com/securego/gosec/v2/cmd/gosec ) || { echo "building gosec $$v failed" >&2; exit 1; }; \
+	"$$build/gosec" -quiet ./...
 
 ## Licensing
 # go-licenses is intentionally NOT in ci-tools/go.mod — its tree pulls

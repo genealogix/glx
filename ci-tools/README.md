@@ -42,6 +42,12 @@ inherited by anyone importing `github.com/genealogix/glx/go-glx` as a library.
   workflow rather than a job in `security.yml` on purpose — `security.yml` is the
   Code Scanning setup for gosec and govulncheck, and any failing job in it marks
   both tools as "reporting errors" on the tool status page (#1145).
+  **Temporarily** (securego/gosec#1771), CI and `make gosec` build the pinned
+  gosec in a throwaway module with `golang.org/x/tools` raised to `v0.50.0`:
+  gosec releases up to v2.29.0 cannot read the export data Go 1.27.2 writes. That
+  module's `go.mod` is never committed, so the tree above stays out of
+  `dependency-review`. Drop the override once a gosec release carries
+  `x/tools` >= v0.50.0.
 - **go-licenses** stays on a version-pinned
   `go install github.com/google/go-licenses/v2@v2.0.1` in
   `.github/workflows/license-compliance.yml` (and a matching `go run` in
