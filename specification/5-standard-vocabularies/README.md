@@ -317,6 +317,8 @@ Defines standard and custom properties for event entities.
 **Standard Properties Include:**
 
 - `age_at_event` - Age of the person at the time of the event (GEDCOM: AGE)
+- `named` - Participant-level: `false` when the source counts the participant without naming them (head-only census tick marks)
+- `relationship_to_head` - Participant-level: relationship to the head of household as recorded
 - `cause` - Cause of the event, e.g., cause of death (GEDCOM: CAUS)
 - `event_subtype` - Further classification of the event type (GEDCOM: TYPE)
 - `description` - Event description

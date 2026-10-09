@@ -286,12 +286,125 @@ func TestPathPersonName(t *testing.T) {
 	assert.Equal(t, "unknown-id", pathPersonName(archive, "unknown-id"))
 }
 
+// newStandingArchiveForPath builds the shape of #208's Schöpff case: a man
+// linked to a supposed kinsman only by a low-confidence, unresearched
+// `relative` relationship, that kinsman's son, and a rejected father whose
+// only assertion is disproven. With withAcceptedRoute the son is also two
+// accepted hops away, through a godchild who is his sibling.
+//
+//	start ── relative (hypothetical) ── kinsman ── parent_child ── son
+//	start ── godparent ── godchild ── sibling ── son
+//	rejected ── parent_child (disproven) ── start
+func newStandingArchiveForPath(withAcceptedRoute bool) *glxlib.GLXFile {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"p-start":    {Properties: map[string]any{"name": "Johann Georg"}},
+			"p-kinsman":  {Properties: map[string]any{"name": "Johann"}},
+			"p-son":      {Properties: map[string]any{"name": "Peter"}},
+			"p-rejected": {Properties: map[string]any{"name": "Jacob"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-a-relative": {
+				Type: "relative",
+				Participants: []glxlib.Participant{
+					{Person: "p-start", Role: "associate"},
+					{Person: "p-kinsman", Role: "associate"},
+				},
+			},
+			"rel-b-kinsman-son": {
+				Type: "parent_child",
+				Participants: []glxlib.Participant{
+					{Person: "p-kinsman", Role: "parent"},
+					{Person: "p-son", Role: "child"},
+				},
+			},
+			"rel-c-rejected": {
+				Type: "parent_child",
+				Participants: []glxlib.Participant{
+					{Person: "p-rejected", Role: "parent"},
+					{Person: "p-start", Role: "child"},
+				},
+			},
+		},
+		Assertions: map[string]*glxlib.Assertion{
+			"a-relative": {
+				Subject:    glxlib.EntityRef{Relationship: "rel-a-relative"},
+				Confidence: "low",
+				Status:     "unresearched",
+			},
+			"a-rejected": {
+				Subject:    glxlib.EntityRef{Relationship: "rel-c-rejected"},
+				Confidence: "high",
+				Status:     "disproven",
+			},
+		},
+	}
+	if withAcceptedRoute {
+		archive.Persons["p-godchild"] = &glxlib.Person{Properties: map[string]any{"name": "Anna"}}
+		archive.Relationships["rel-x-godparent"] = &glxlib.Relationship{
+			Type: "godparent",
+			Participants: []glxlib.Participant{
+				{Person: "p-start", Role: "godparent"},
+				{Person: "p-godchild", Role: "godchild"},
+			},
+		}
+		archive.Relationships["rel-y-sibling"] = &glxlib.Relationship{
+			Type: "sibling",
+			Participants: []glxlib.Participant{
+				{Person: "p-godchild", Role: "sibling"},
+				{Person: "p-son", Role: "sibling"},
+			},
+		}
+	}
+
+	return archive
+}
+
+func TestBuildPathAdjacency_DropsDisprovenLinks(t *testing.T) {
+	adj := buildPathAdjacency(newStandingArchiveForPath(false))
+
+	assert.Empty(t, adj["p-rejected"], "a disproven parent is a rejected alternative, not a link")
+	for _, e := range adj["p-start"] {
+		assert.NotEqual(t, "p-rejected", e.PersonID)
+	}
+	assert.Nil(t, bfsPath("p-start", "p-rejected", adj, 10))
+}
+
+func TestBfsPath_MarksHypotheticalHop(t *testing.T) {
+	archive := newStandingArchiveForPath(false)
+	path := bfsPath("p-start", "p-son", buildPathAdjacency(archive), 10)
+	require.Len(t, path, 3)
+
+	result := buildPathResult("p-start", "p-son", path, archive)
+	assert.True(t, result.Path[0].Hypothetical, "the relative hop is a hypothesis")
+	assert.False(t, result.Path[1].Hypothetical, "the parent_child hop has no assertion against it")
+	assert.Equal(t, 1, result.HypotheticalHops)
+}
+
+func TestBfsPath_PrefersAcceptedRouteOfEqualLength(t *testing.T) {
+	// Both routes are two hops, and the hypothetical one sorts first by
+	// relationship ID, so plain BFS order would take it.
+	archive := newStandingArchiveForPath(true)
+	path := bfsPath("p-start", "p-son", buildPathAdjacency(archive), 10)
+	require.Len(t, path, 3)
+
+	result := buildPathResult("p-start", "p-son", path, archive)
+	assert.Equal(t, "p-godchild", result.Path[1].PersonID)
+	assert.Zero(t, result.HypotheticalHops)
+}
+
+func TestBfsPath_AcceptedOnlySkipsHypotheses(t *testing.T) {
+	adj := acceptedPathAdjacency(buildPathAdjacency(newStandingArchiveForPath(false)))
+
+	assert.Nil(t, bfsPath("p-start", "p-son", adj, 10), "the only route runs through a hypothesis")
+}
+
 // Integration tests using the complete-family example archive.
 
 func TestShowPath_CompleteFamily(t *testing.T) {
 	// Jane is child of John; should find 1-hop path
 	output := capturePathStdout(t, func() {
-		err := showPath("../docs/examples/complete-family", "person-jane-smith-1876", "person-john-smith-1850", 10, false)
+		err := showPath("../docs/examples/complete-family", "person-jane-smith-1876", "person-john-smith-1850", 10, false, false)
 		require.NoError(t, err)
 	})
 
@@ -302,7 +415,7 @@ func TestShowPath_CompleteFamily(t *testing.T) {
 
 func TestShowPath_CompleteFamily_JSON(t *testing.T) {
 	output := capturePathStdout(t, func() {
-		err := showPath("../docs/examples/complete-family", "person-jane-smith-1876", "person-mary-brown-1852", 10, true)
+		err := showPath("../docs/examples/complete-family", "person-jane-smith-1876", "person-mary-brown-1852", 10, false, true)
 		require.NoError(t, err)
 	})
 
@@ -315,7 +428,7 @@ func TestShowPath_CompleteFamily_JSON(t *testing.T) {
 
 func TestShowPath_CompleteFamily_ViaMarriage(t *testing.T) {
 	output := capturePathStdout(t, func() {
-		err := showPath("../docs/examples/complete-family", "person-john-smith-1850", "person-mary-brown-1852", 10, false)
+		err := showPath("../docs/examples/complete-family", "person-john-smith-1850", "person-mary-brown-1852", 10, false, false)
 		require.NoError(t, err)
 	})
 
@@ -325,29 +438,29 @@ func TestShowPath_CompleteFamily_ViaMarriage(t *testing.T) {
 }
 
 func TestShowPath_PersonNotFound(t *testing.T) {
-	err := showPath("../docs/examples/complete-family", "person-nonexistent", "person-john-smith-1850", 10, false)
+	err := showPath("../docs/examples/complete-family", "person-nonexistent", "person-john-smith-1850", 10, false, false)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no person found")
 }
 
 func TestShowPath_ArchiveNotFound(t *testing.T) {
-	err := showPath("/nonexistent/path", "a", "b", 10, false)
+	err := showPath("/nonexistent/path", "a", "b", 10, false, false)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "cannot access path")
 }
 
 func TestShowPath_SamePerson(t *testing.T) {
-	err := showPath("../docs/examples/complete-family", "person-john-smith-1850", "person-john-smith-1850", 10, false)
+	err := showPath("../docs/examples/complete-family", "person-john-smith-1850", "person-john-smith-1850", 10, false, false)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "same person")
 }
 
 func TestShowPath_InvalidMaxHops(t *testing.T) {
-	err := showPath("../docs/examples/complete-family", "person-john-smith-1850", "person-jane-smith-1876", 0, false)
+	err := showPath("../docs/examples/complete-family", "person-john-smith-1850", "person-jane-smith-1876", 0, false, false)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "--max-hops must be at least 1")
 
-	err = showPath("../docs/examples/complete-family", "person-john-smith-1850", "person-jane-smith-1876", -5, false)
+	err = showPath("../docs/examples/complete-family", "person-john-smith-1850", "person-jane-smith-1876", -5, false, false)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "--max-hops must be at least 1")
 }

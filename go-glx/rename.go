@@ -250,6 +250,12 @@ func updateAllRefs(glx *GLXFile, oldID, newID string) int {
 			}
 			count += replaceInProperties(ev.Participants[i].Properties, oldID, newID)
 		}
+		for i := range ev.Neighbors {
+			if ev.Neighbors[i].Person == oldID {
+				ev.Neighbors[i].Person = newID
+				count++
+			}
+		}
 		if ev.PlaceID == oldID {
 			ev.PlaceID = newID
 			count++

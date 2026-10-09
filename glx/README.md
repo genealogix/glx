@@ -182,7 +182,7 @@ glx validate persons/ events/   # several directories are validated as one archi
 - 📥 **GEDCOM Import** - Import GEDCOM 5.5.1 and 7.0 files (and GEDZIP `.gdz` archives with bundled media) to GLX format
 - 📤 **GEDCOM Export** - Export GLX archives back to GEDCOM 5.5.1 or 7.0 format
 - 🌐 **JSON-LD Export** - Export GLX archives as Schema.org-aligned JSON-LD for linked-data interop
-- 🌐 **Publish** - Generate a self-contained static HTML site (person profiles, timelines, pedigree/descendancy charts, family links, source/place indexes, client-side search) for sharing with non-technical family
+- 🌐 **Publish** - Generate a self-contained static HTML site (person profiles, timelines, pedigree/descendancy charts, family links, source/place indexes with a map of located places, client-side search) for sharing with non-technical family
 - 🔍 **Validate Files** - Structural and referential integrity validation
 - 🔄 **Split/Join** - Convert between single-file and multi-file formats
 - 🔀 **Merge** - Combine two GLX archives with duplicate detection and dry-run support
@@ -197,12 +197,13 @@ glx validate persons/ events/   # several directories are validated as one archi
 - 📝 **Summary** - Comprehensive person profile with auto-generated life history narrative
 - 🌳 **Ancestors/Descendants** - Display ancestor and descendant trees with box-drawing characters
 - 📎 **Cite** - Generate formatted citation text from structured citation data
-- 🔗 **Cluster** - FAN club analysis identifying associates through census, events, and place overlap
+- 🔗 **Cluster** - FAN club analysis identifying associates through census households, census page neighbors, events, and place overlap
+- 🏠 **Households** - Reconstruct census households for a person or a place and year, head first, with head-only tick-mark tallies and page neighbors
 - 🔗 **Path** - Find the shortest relationship path between two people using BFS
 - 🔬 **Analyze** - Research gap analysis: evidence gaps, quality issues, chronological inconsistencies, and suggestions
 - ⚖️ **Proof** - Compile evidence for a research question into a structured proof summary following the Genealogical Proof Standard (GPS)
 - ⚖️ **Evidence** - Lay out every assertion for one subject+property (person, event, place, or relationship) side-by-side, grouped by value, to weigh conflicting evidence
-- 📋 **Census Import** - Generate GLX entities from structured census templates with person matching, assertions, and dry-run preview
+- 📋 **Census Import** - Generate GLX entities from structured census templates with person matching, assertions, head-only (1790–1840) tally schedules, page neighbors, and dry-run preview
 - 🔗 **Link** - Create a FamilySearch citation (and repository/source scaffolding) from an ARK URL, offline
 - ➕ **Add** - Create person, place, event, repository, source, citation, relationship, assertion, research log, or study entities from CLI flags with vocabulary and reference validation
 - 🧾 **Research Logging** - Append searches, including negative results, to a research log one at a time with `glx add search`

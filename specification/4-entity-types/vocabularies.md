@@ -1076,6 +1076,8 @@ Event properties are generally less common than person properties, since most ev
 - `event_subtype` - Further classification of the event type (GEDCOM: TYPE)
 - `marriage_type` - Free-text `MARR TYPE` value preserved on import (civil, religious, common law, …)
 - `name_as_recorded` - **Participant-level only**: set under `event.participants[].properties`, not `event.properties`. The participant's name as written in the source (structured, with name fields)
+- `named` - **Participant-level only**: boolean; `false` when the source counts the participant without naming them (a tick mark in a head-only census household). See [Census Households](event.md#census-households)
+- `relationship_to_head` - **Participant-level only**: relationship to the head of household as written in the source (head, wife, son, boarder...)
 - `description` - Event description
 
 **Note:** Event timing and location are handled by the `date` and `place` fields directly on the event, not as properties. The `notes` field is a standard entity field available on all entity types, not a property.

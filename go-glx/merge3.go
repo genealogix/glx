@@ -496,11 +496,36 @@ func mergeOneEvent(entityType EntityType, id string, base, ours, theirs *Event) 
 	merged.Date, conflicts = dateOrConflict(prefix+".date", base.Date, ours.Date, theirs.Date, conflicts)
 
 	merged.Participants, conflicts = participantsOrConflict(prefix+".participants", base.Participants, ours.Participants, theirs.Participants, conflicts)
+	merged.Household, conflicts = opaqueOrConflict(prefix+".household", base.Household, ours.Household, theirs.Household, conflicts)
+	merged.Neighbors, conflicts = opaqueOrConflict(prefix+".neighbors", base.Neighbors, ours.Neighbors, theirs.Neighbors, conflicts)
 
 	merged.Properties, conflicts = merge3Properties(prefix+".properties", base.Properties, ours.Properties, theirs.Properties, conflicts)
 	merged.Notes = merge3NoteList(base.Notes, ours.Notes, theirs.Notes)
 
 	return merged, conflicts
+}
+
+// opaqueOrConflict merges a structured field (an event's household tally or
+// neighbor list) as one opaque value: a change on one side wins, identical
+// changes agree, and differing changes on both sides conflict with ours kept.
+//
+//nolint:ireturn // T is a type parameter, not a returned interface.
+func opaqueOrConflict[T any](path string, base, ours, theirs T, conflicts []Merge3Conflict) (T, []Merge3Conflict) {
+	switch {
+	case reflect.DeepEqual(base, ours):
+		return theirs, conflicts
+	case reflect.DeepEqual(base, theirs), reflect.DeepEqual(ours, theirs):
+		return ours, conflicts
+	}
+
+	conflicts = append(conflicts, Merge3Conflict{
+		Path:        path,
+		BaseValue:   base,
+		OursValue:   ours,
+		TheirsValue: theirs,
+	})
+
+	return ours, conflicts
 }
 
 func mergeOnePlace(entityType EntityType, id string, base, ours, theirs *Place) (*Place, []Merge3Conflict) {

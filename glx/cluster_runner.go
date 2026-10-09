@@ -25,6 +25,14 @@ import (
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
+// Associate link types, in display order.
+const (
+	linkCensusHousehold    = "census_household"
+	linkCensusNeighbor     = "census_neighbor"
+	linkEventCoparticipant = "event_coparticipant"
+	linkPlaceOverlap       = "place_overlap"
+)
+
 // associate represents a person connected to the target through shared context.
 type associate struct {
 	PersonID   string          `json:"person_id"`
@@ -35,7 +43,7 @@ type associate struct {
 
 // associateLink describes one connection between the target and an associate.
 type associateLink struct {
-	Type    string `json:"type"` // "census_household", "event_coparticipant", "place_overlap"
+	Type    string `json:"type"` // linkCensusHousehold, linkCensusNeighbor, linkEventCoparticipant, linkPlaceOverlap
 	EventID string `json:"event_id,omitempty"`
 	PlaceID string `json:"place_id,omitempty"`
 	Label   string `json:"label"`
@@ -146,10 +154,13 @@ func buildCluster(personID string, archive *glxlib.GLXFile, filterPlace string, 
 	// 1. Census household connections
 	collectCensusLinks(personID, archive, linkMap, filterPlace, beforeYear, afterYear)
 
-	// 2. Event co-participant connections (non-census)
+	// 2. Census page neighbors (#180)
+	collectCensusNeighborLinks(personID, archive, linkMap, filterPlace, beforeYear, afterYear)
+
+	// 3. Event co-participant connections (non-census)
 	collectEventLinks(personID, archive, linkMap, filterPlace, beforeYear, afterYear)
 
-	// 3. Place overlap connections
+	// 4. Place overlap connections
 	collectPlaceLinks(personID, archive, linkMap, filterPlace, beforeYear, afterYear)
 
 	// Convert to sorted associate list
@@ -199,7 +210,7 @@ func collectCensusLinks(personID string, archive *glxlib.GLXFile, linkMap map[st
 				continue
 			}
 			linkMap[p.Person] = append(linkMap[p.Person], associateLink{
-				Type:    "census_household",
+				Type:    linkCensusHousehold,
 				EventID: eventID,
 				PlaceID: event.PlaceID,
 				Label:   label,
@@ -208,6 +219,99 @@ func collectCensusLinks(personID string, archive *glxlib.GLXFile, linkMap map[st
 			})
 		}
 	}
+}
+
+// collectCensusNeighborLinks links the target to households recorded as their
+// census page neighbors (#180), in both directions: a neighbor listed on a
+// census event the target is enumerated in, and the head of any census event
+// that lists the target as its neighbor. Only neighbors linked to a Person
+// entity can be scored; name-only neighbors are shown by glx households.
+func collectCensusNeighborLinks(personID string, archive *glxlib.GLXFile, linkMap map[string][]associateLink, filterPlace string, beforeYear, afterYear int) {
+	for _, eventID := range sortedKeys(archive.Events) {
+		event := archive.Events[eventID]
+		if event == nil || event.Type != glxlib.EventTypeCensus || len(event.Neighbors) == 0 {
+			continue
+		}
+		year := extractDateYear(string(event.Date))
+		if !yearInRange(year, beforeYear, afterYear) {
+			continue
+		}
+		if filterPlace != "" && event.PlaceID != filterPlace && !placeIsDescendant(event.PlaceID, filterPlace, archive) {
+			continue
+		}
+
+		label := censusEventLabel(event, year)
+		link := func(otherID, position string) {
+			if otherID == "" || otherID == personID {
+				return
+			}
+			linkMap[otherID] = append(linkMap[otherID], associateLink{
+				Type:    linkCensusNeighbor,
+				EventID: eventID,
+				PlaceID: event.PlaceID,
+				Label:   label,
+				Role:    position,
+				Year:    year,
+			})
+		}
+
+		if censusHasHouseholdMember(personID, event) {
+			for _, n := range event.Neighbors {
+				link(n.Person, neighborPositionLabel(n.Position))
+			}
+
+			continue
+		}
+		for _, n := range event.Neighbors {
+			if n.Person != personID {
+				continue
+			}
+			// The position is recorded relative to the event's household;
+			// seen from the target's side it runs the other way.
+			if head := censusHeadIndex(event); head >= 0 {
+				link(event.Participants[head].Person, neighborPositionLabel(invertNeighborPosition(n.Position)))
+			}
+
+			break
+		}
+	}
+}
+
+// censusEventLabel is the display label for a census event: its title, or
+// "<year> Census" when untitled.
+func censusEventLabel(event *glxlib.Event, year int) string {
+	if event.Title != "" {
+		return event.Title
+	}
+	if year == 0 {
+		return "Census"
+	}
+
+	return fmt.Sprintf("%d Census", year)
+}
+
+// invertNeighborPosition turns a position recorded from one household's side
+// into the other's: previous becomes next and vice versa. Other positions
+// (same_page, free text) are symmetric and returned unchanged.
+func invertNeighborPosition(position string) string {
+	switch {
+	case strings.HasPrefix(position, "previous_"):
+		return "next_" + strings.TrimPrefix(position, "previous_")
+	case strings.HasPrefix(position, "next_"):
+		return "previous_" + strings.TrimPrefix(position, "next_")
+	}
+
+	return position
+}
+
+// neighborPositionLabel renders a neighbor position such as
+// "previous_household" as "neighbor (previous household)".
+func neighborPositionLabel(position string) string {
+	if position == "" {
+		return "neighbor"
+	}
+
+	return "neighbor (" + strings.ReplaceAll(position, "_", " ") + ")"
 }
 
 // collectEventLinks finds people co-participating in non-census events.
@@ -252,7 +356,7 @@ func collectEventLinks(personID string, archive *glxlib.GLXFile, linkMap map[str
 				continue
 			}
 			linkMap[p.Person] = append(linkMap[p.Person], associateLink{
-				Type:    "event_coparticipant",
+				Type:    linkEventCoparticipant,
 				EventID: eventID,
 				PlaceID: event.PlaceID,
 				Label:   label,
@@ -325,7 +429,7 @@ func collectPlaceLinks(personID string, archive *glxlib.GLXFile, linkMap map[str
 				yearRange := formatYearRange(filteredOtherYears)
 
 				linkMap[otherID] = append(linkMap[otherID], associateLink{
-					Type:    "place_overlap",
+					Type:    linkPlaceOverlap,
 					PlaceID: placeID,
 					Label:   fmt.Sprintf("Same place: %s (%s)", placeName, yearRange),
 				})
@@ -436,7 +540,7 @@ func yearsOverlap(a, b []int) bool {
 // at the given place, to avoid redundant place_overlap entries.
 func hasEventLinkAtPlace(personID, placeID string, linkMap map[string][]associateLink) bool {
 	for _, link := range linkMap[personID] {
-		if (link.Type == "census_household" || link.Type == "event_coparticipant") && link.PlaceID == placeID {
+		if (link.Type == linkCensusHousehold || link.Type == linkCensusNeighbor || link.Type == linkEventCoparticipant) && link.PlaceID == placeID {
 			return true
 		}
 	}
@@ -481,11 +585,11 @@ func computeScore(links []associateLink) int {
 	score := 0
 	for _, link := range links {
 		switch link.Type {
-		case "census_household":
+		case linkCensusHousehold:
 			score += 3
-		case "event_coparticipant":
+		case linkCensusNeighbor, linkEventCoparticipant:
 			score += 2
-		case "place_overlap":
+		case linkPlaceOverlap:
 			score += 1
 		}
 	}
@@ -580,9 +684,10 @@ func printClusterText(result *clusterResult) {
 		label string
 	}
 	groups := []groupEntry{
-		{"census_household", "Census Households"},
-		{"event_coparticipant", "Shared Events"},
-		{"place_overlap", "Same Place, Same Period"},
+		{linkCensusHousehold, "Census Households"},
+		{linkCensusNeighbor, "Census Neighbors"},
+		{linkEventCoparticipant, "Shared Events"},
+		{linkPlaceOverlap, "Same Place, Same Period"},
 	}
 
 	for _, group := range groups {
