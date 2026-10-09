@@ -595,7 +595,7 @@ participant_roles:
 | `label` | Yes | Human-readable label |
 | `description` | No | Detailed description |
 | `applies_to` | No | Array of contexts the role is meant for (`event`, `relationship`). Omitted means all contexts; see [applies_to semantics](#applies_to-semantics) |
-| `gedcom` | No | GEDCOM `ASSO ROLE` tag value emitted/consumed for round-trip (#524) |
+| `gedcom` | No | GEDCOM 7.0 `ASSO.ROLE` enumeration value (e.g., `WITN`, `CLERGY`) emitted on export, overriding the built-in mapping (#524). Roles without one export as `ROLE OTHER` with a `PHRASE` naming the role |
 | `implies_presence` | No | Boolean. Whether a person in this role was at the event's place on its date. Set `false` for roles that name a person without placing them there, such as a grantor selling land from another state or an absent legatee. When omitted, tools fall back to a built-in default (see below) |
 
 #### Role semantics in tooling
@@ -1035,6 +1035,8 @@ Event properties are generally less common than person properties, since most ev
 - `event_subtype` - Further classification of the event type (GEDCOM: TYPE)
 - `marriage_type` - Free-text `MARR TYPE` value preserved on import (civil, religious, common law, …)
 - `name_as_recorded` - **Participant-level only**: set under `event.participants[].properties`, not `event.properties`. The participant's name as written in the source (structured, with name fields)
+- `named` - **Participant-level only**: boolean; `false` when the source counts the participant without naming them (a tick mark in a head-only census household). See [Census Households](event.md#census-households)
+- `relationship_to_head` - **Participant-level only**: relationship to the head of household as written in the source (head, wife, son, boarder...)
 - `description` - Event description
 
 **Note:** Event timing and location are handled by the `date` and `place` fields directly on the event, not as properties. The `notes` field is a standard entity field available on all entity types, not a property.

@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**GEDCOM export files a two-parent child under the right family** — A `parent_child` relationship naming both parents was exported as a link to its last parent only, so the child of a widow''s second marriage landed in her first marriage under the wrong father, and the other parent was dropped. Export now uses every parent and every child of the relationship, matches the couple''s FAM, and synthesizes a FAM for a parent set with no marriage of its own instead of reusing an unrelated one. Overlapping explicit and single-parent relationships retain shared parents through family matching and preserve known pedigree values'
+time: '2026-10-09T00:00:19Z'
+custom:
+  Issue: '#1319, #1352'

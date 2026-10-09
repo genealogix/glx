@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**Published timelines keep calendar scales comparable** — Mixed recorded calendars and dates that cannot be parsed reliably retain their chronological list without a shared proportional strip; homogeneous non-Gregorian strips identify their calendar. BCE/CE plotting skips civil year zero and preserves equal spacing between adjacent years. Main’s qualified lifespan formatting and shared year helper are retained.'
+time: '2026-10-09T00:00:09Z'
+custom:
+  Issue: '#1266'
