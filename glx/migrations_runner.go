@@ -359,10 +359,10 @@ func residenceMigrationEntries(raw any, archive *glxlib.GLXFile) []migrationEntr
 
 // residencePeriod is the bounded civil-date span a residence value covers.
 type residencePeriod struct {
-	date   glxdate.Date
-	span   glxdate.Interval
-	path   []string
-	label  string // the residence's date and place, for notes
+	date  glxdate.Date
+	span  glxdate.Interval
+	path  []string
+	label string // the residence's date and place, for notes
 }
 
 // applyResidencePeriods lets a dated residence win over event places inside

@@ -1120,15 +1120,19 @@ place observation: events they participated in (birth, census, marriage, ...),
 their children's birth events (a child's birthplace is evidence of the
 parent's residence), and residence property values.
 
-Observations are sorted chronologically and each change of region is reported
-as a movement (e.g. "Florida → Wisconsin"). Regions compare at the
-state/region level of the place hierarchy, and pre-statehood territories
-match their successor states ("Florida Territory" equals "Florida").
+Observations are sorted chronologically and each change of place is reported
+as a movement, named at the highest level of the place hierarchy where the
+two places differ: "Florida → Wisconsin" between two states, "Niederkleen →
+Pohl-Göns" between two villages of one district. A place and a place inside
+it (a state and one of its towns) are not a move. Country and continent
+levels are skipped, and pre-statehood territories match their successor
+states ("Florida Territory" equals "Florida").
 
 Not every observation counts toward a movement. An event in which the
 person's role does not put them at its place (a grantor or grantee of a deed,
 a legatee or heir of an estate, someone merely mentioned) is shown but not
-counted; an archive can mark its own roles with implies_presence in the
+counted, and so is a parent named on a child's death or burial, which places
+the child rather than the parent's household; an archive can mark its own roles with implies_presence in the
 participant roles vocabulary. A bounded residence value overrides an event
 elsewhere only when the event's whole possible date span fits within that
 residence: the event remains visible but is not counted as a move. Open-ended
@@ -1137,7 +1141,7 @@ without conversion.
 
 With --pattern, searches all persons in the archive for a migration pattern
 instead: a comma-separated list of places that must appear in chronological
-order in a person's region sequence. Knowing who else made the same move
+order in a person's sequence of places. Knowing who else made the same move
 narrows the search for a person's family.
 
 The person argument can be an exact entity ID (e.g., person-jane-webb) or a
