@@ -117,13 +117,15 @@ type personPage struct {
 
 // timelineRow is a single chronological entry on a person page. Year is the
 // entry's first parseable year (0 when the date carries none), which is what
-// the visual timeline strip plots.
+// the visual timeline strip plots. Calendar preserves the recorded calendar
+// prefix (empty for Gregorian), so unrelated year systems do not share a scale.
 type timelineRow struct {
-	Date    string
-	Label   string
-	Detail  string
-	Year    int
-	Undated bool
+	Date     string
+	Label    string
+	Detail   string
+	Year     int
+	Calendar string
+	Undated  bool
 }
 
 // personSourceRef is a source/citation supporting a person, resolved to
@@ -438,12 +440,16 @@ func buildTimelineRows(personID string, archive *glxlib.GLXFile) []timelineRow {
 	entries := collectTimelineEntries(personID, archive, true)
 	rows := make([]timelineRow, 0, len(entries))
 	for _, e := range entries {
+		// Parsing preserves a recoverable year and calendar even when the
+		// archive carries a date whose remaining text cannot be interpreted.
+		date, _ := glxlib.DateString(e.Date).Parse()
 		rows = append(rows, timelineRow{
-			Date:    displayDate(e.Date),
-			Label:   e.Label,
-			Detail:  e.Detail,
-			Year:    glxlib.ExtractFirstYear(e.Date),
-			Undated: e.SortKey == "\xff",
+			Date:     displayDate(e.Date),
+			Label:    e.Label,
+			Detail:   e.Detail,
+			Year:     date.Year(),
+			Calendar: date.CalendarName(),
+			Undated:  e.SortKey == "\xff",
 		})
 	}
 

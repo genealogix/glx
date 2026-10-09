@@ -89,10 +89,12 @@ type stripDot struct {
 // buildTimelineStrip lays out the visual timeline for a person's rows, or
 // returns nil when there is nothing meaningful to plot — no dated rows, or
 // every row in the same year, where a proportional strip would say nothing the
-// list below it does not.
+// list below it does not. Different recorded calendars have incomparable year
+// numbers, so a mixed-calendar timeline keeps only the complete list.
 func buildTimelineStrip(rows []timelineRow) *timelineStrip {
 	first, last, distinct := stripYearRange(rows)
-	if distinct < stripMinDistinct {
+	calendar, comparable := stripCalendar(rows)
+	if distinct < stripMinDistinct || !comparable {
 		return nil
 	}
 
@@ -104,6 +106,9 @@ func buildTimelineStrip(rows []timelineRow) *timelineStrip {
 		BarY:   stripBarY,
 		BarW:   stripWidth - stripInsetLeft - stripInsetRight,
 		BarH:   stripBarH,
+	}
+	if calendar != "" {
+		strip.Label += " (" + calendar + " calendar)"
 	}
 
 	strip.Ticks = stripTicks(first, last)
@@ -121,6 +126,25 @@ func buildTimelineStrip(rows []timelineRow) *timelineStrip {
 	}
 
 	return strip
+}
+
+// stripCalendar reports the shared recorded calendar of plottable rows.
+// Undated rows do not determine the scale. Extension calendar prefixes retain
+// their identity rather than being collapsed into one "other" calendar.
+func stripCalendar(rows []timelineRow) (calendar string, comparable bool) {
+	seen := false
+	for _, row := range rows {
+		if row.Year == 0 {
+			continue
+		}
+		if seen && row.Calendar != calendar {
+			return "", false
+		}
+		calendar = row.Calendar
+		seen = true
+	}
+
+	return calendar, true
 }
 
 // stripYearRange reports the earliest and latest plotted year and how many
@@ -147,9 +171,20 @@ func stripYearRange(rows []timelineRow) (first, last, distinct int) {
 // unit. first and last are known to differ, because a single-year range never
 // produces a strip.
 func stripX(year, first, last int) int {
-	offset := float64(year-first) / float64(last-first) * float64(stripWidthInner())
+	offset := float64(stripYearOrdinal(year)-stripYearOrdinal(first)) /
+		float64(stripYearOrdinal(last)-stripYearOrdinal(first)) * float64(stripWidthInner())
 
 	return stripInsetLeft + int(math.Round(offset))
+}
+
+// stripYearOrdinal maps civil years to a continuous scale: 1 BCE immediately
+// precedes 1 CE, without a civil year zero between them.
+func stripYearOrdinal(year int) int {
+	if year < 0 {
+		return year + 1
+	}
+
+	return year
 }
 
 // stripWidthInner is the drawable width of the bar.
@@ -194,7 +229,7 @@ func stripTicks(first, last int) []stripTick {
 func stripTickYears(first, last int) []int {
 	step := stripTickSteps[len(stripTickSteps)-1]
 	for _, candidate := range stripTickSteps {
-		if (last-first)/candidate+1 <= stripMaxTicks {
+		if (stripYearOrdinal(last)-stripYearOrdinal(first))/candidate+1 <= stripMaxTicks {
 			step = candidate
 
 			break
@@ -203,7 +238,14 @@ func stripTickYears(first, last int) []int {
 
 	var years []int
 	// Round the first labeled year up to the next multiple of the step.
-	for year := (first/step)*step + step; year < last; year += step {
+	firstTick := (first / step) * step
+	if firstTick <= first {
+		firstTick += step
+	}
+	for year := firstTick; year < last; year += step {
+		if year == 0 {
+			continue
+		}
 		years = append(years, year)
 	}
 
