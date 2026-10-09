@@ -1,5 +1,28 @@
 {{define "content"}}
 <h1>Places</h1>
+{{with .PlaceMap}}
+<figure class="placemap">
+  <svg class="placemap-svg" width="{{.Width}}" height="{{.Height}}" viewBox="0 0 {{.Width}} {{.Height}}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="{{.Label}}">
+    <title>{{.Label}}</title>
+    <rect class="placemap-frame" x="{{.Frame.X}}" y="{{.Frame.Y}}" width="{{.Frame.W}}" height="{{.Frame.H}}"></rect>
+    <g class="placemap-grid">
+      {{range .Grid}}
+      <line x1="{{.X1}}" y1="{{.Y1}}" x2="{{.X2}}" y2="{{.Y2}}"></line>
+      <text x="{{.TextX}}" y="{{.TextY}}" text-anchor="{{.Anchor}}">{{.Label}}</text>
+      {{end}}
+    </g>
+    <g class="placemap-markers">
+      {{range .Markers}}
+      <a href="{{.Href}}">
+        <circle cx="{{.CX}}" cy="{{.CY}}" r="{{.R}}"><title>{{.Title}}</title></circle>
+        {{if .Label}}<text x="{{.LabelX}}" y="{{.LabelY}}">{{.Label}}</text>{{end}}
+      </a>
+      {{end}}
+    </g>
+  </svg>
+  <figcaption class="muted">{{.Located}} of {{.Total}} place(s) in this archive carry coordinates. Marker size reflects how many events happened there; select a marker to jump to its row.</figcaption>
+</figure>
+{{end}}
 {{if .Places}}
 <table class="index-table">
   <thead><tr><th>Place</th><th>Type</th><th>Events</th><th>Map</th></tr></thead>
