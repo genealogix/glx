@@ -1392,6 +1392,38 @@ func TestDeduplicateFilename(t *testing.T) {
 	}
 }
 
+func TestDeduplicateFilename_OccupiedSuffixes(t *testing.T) {
+	tests := []struct {
+		name  string
+		input []string
+		want  []string
+	}{
+		{"natural suffix before generated", []string{"photo.jpg", "photo-2.jpg", "photo.jpg", "photo.jpg"}, []string{"photo.jpg", "photo-2.jpg", "photo-3.jpg", "photo-4.jpg"}},
+		{"natural suffix first", []string{"photo-2.jpg", "photo.jpg", "photo.jpg"}, []string{"photo-2.jpg", "photo.jpg", "photo-3.jpg"}},
+		{"generated suffix before natural", []string{"photo.jpg", "photo.jpg", "photo-2.jpg", "photo.jpg"}, []string{"photo.jpg", "photo-2.jpg", "photo-2-2.jpg", "photo-3.jpg"}},
+		{"multiple occupied suffixes", []string{"photo.jpg", "photo-2.jpg", "photo-3.jpg", "photo.jpg", "photo.jpg"}, []string{"photo.jpg", "photo-2.jpg", "photo-3.jpg", "photo-4.jpg", "photo-5.jpg"}},
+		{"nested suffix collision", []string{"photo-2.jpg", "photo-2-2.jpg", "photo-2.jpg"}, []string{"photo-2.jpg", "photo-2-2.jpg", "photo-2-3.jpg"}},
+		{"no extension", []string{"README", "README-2", "README"}, []string{"README", "README-2", "README-3"}},
+		{"multiple dots", []string{"archive.tar.gz", "archive.tar-2.gz", "archive.tar.gz"}, []string{"archive.tar.gz", "archive.tar-2.gz", "archive.tar-3.gz"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			usedNames := make(map[string]int)
+			seen := make(map[string]bool)
+			for i, input := range tt.input {
+				got := deduplicateFilename(input, usedNames)
+				if got != tt.want[i] {
+					t.Errorf("allocation %d for %q: got %q, want %q", i, input, got, tt.want[i])
+				}
+				if seen[got] {
+					t.Errorf("allocation %d reused %q", i, got)
+				}
+				seen[got] = true
+			}
+		})
+	}
+}
+
 func TestMediaImport_FileSourceTracking(t *testing.T) {
 	// Test that relative FILE paths produce MediaFileSource entries
 	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n" +
