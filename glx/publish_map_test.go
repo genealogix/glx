@@ -233,7 +233,7 @@ func TestBuildPlaceMap_PreservesScaleNearGeographicBounds(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			box, height := fitBox(boundingBox(tc.rows), mapFrameWidth)
+			box, height := fitBox(boundingBox(tc.rows))
 			pm := buildPlaceMap(tc.rows)
 			assertMapReferenceScale(t, box, pm.Frame)
 			if height < mapMinHeight || height > mapMaxHeight {
@@ -253,7 +253,7 @@ func TestBuildPlaceMap_PreservesScaleNearGeographicBounds(t *testing.T) {
 }
 
 func TestFitBox_LetterboxesAWorldViewAtThePole(t *testing.T) {
-	box, height := fitBox(geoBox{MinLat: 89, MaxLat: 90, MinLon: -180, MaxLon: 180}, mapFrameWidth)
+	box, height := fitBox(geoBox{MinLat: 89, MaxLat: 90, MinLon: -180, MaxLon: 180})
 	frame := fittedMapFrame(box, height)
 	assertMapReferenceScale(t, box, frame)
 	if frame.H >= float64(height) || frame.Y <= mapInsetTop {
@@ -279,7 +279,7 @@ func TestFitBox_LetterboxesAWorldViewAtThePole(t *testing.T) {
 }
 
 func TestFitBox_FullWorldKeepsEveryCoordinateInFrame(t *testing.T) {
-	box, height := fitBox(geoBox{MinLat: -90, MaxLat: 90, MinLon: -180, MaxLon: 180}, mapFrameWidth)
+	box, height := fitBox(geoBox{MinLat: -90, MaxLat: 90, MinLon: -180, MaxLon: 180})
 	frame := fittedMapFrame(box, height)
 	assertMapReferenceScale(t, box, frame)
 	for _, lat := range []float64{-90, 0, 90} {

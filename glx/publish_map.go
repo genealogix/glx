@@ -168,7 +168,7 @@ func buildPlaceMap(rows []placeRow) *placeMap {
 		return nil
 	}
 
-	box, height := fitBox(boundingBox(located), float64(mapFrameWidth))
+	box, height := fitBox(boundingBox(located))
 	pm := &placeMap{
 		Label:   fmt.Sprintf("Map of %d located place(s) in this archive", len(located)),
 		Width:   mapWidth,
@@ -289,7 +289,8 @@ func padLon(box geoBox, by float64) geoBox {
 // box on one axis toward that area's shape. Geographic limits may stop the
 // expansion or move the middle latitude; fittedMapFrame then letterboxes the
 // final box to preserve its scale at that latitude.
-func fitBox(box geoBox, frameW float64) (fitted geoBox, frameH int) {
+func fitBox(box geoBox) (fitted geoBox, frameH int) {
+	const frameW = float64(mapFrameWidth)
 	frameH = clampInt(int(math.Round(frameW*box.aspect())), mapMinHeight, mapMaxHeight)
 
 	// Target: geoW/geoH == frameW/frameH, with geoW in corrected units.
