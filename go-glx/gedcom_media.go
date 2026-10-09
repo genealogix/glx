@@ -427,20 +427,25 @@ func classifyFileRef(fileRef string) bool {
 }
 
 // deduplicateFilename returns a unique filename for media/files/.
-// If "photo.jpg" is already used, returns "photo-2.jpg", etc.
+// If "photo.jpg" is already used, returns the next available numbered suffix.
 func deduplicateFilename(basename string, usedNames map[string]int) string {
 	if _, exists := usedNames[basename]; !exists {
 		usedNames[basename] = 1
 
 		return basename
 	}
-	usedNames[basename]++
 	ext := filepath.Ext(basename)
 	name := strings.TrimSuffix(basename, ext)
-	deduped := fmt.Sprintf("%s-%d%s", name, usedNames[basename], ext)
-	usedNames[deduped] = 1
+	for {
+		usedNames[basename]++
+		deduped := fmt.Sprintf("%s-%d%s", name, usedNames[basename], ext)
+		if _, exists := usedNames[deduped]; exists {
+			continue
+		}
+		usedNames[deduped] = 1
 
-	return deduped
+		return deduped
+	}
 }
 
 // normalizePathSeparators converts backslashes to forward slashes.

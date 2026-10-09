@@ -70,6 +70,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Fixed
 
+- **Media import keeps images with colliding filenames distinct** — GEDCOM and GEDZIP imports skip occupied numbered filenames, so importing `photo.jpg`, `photo-2.jpg` and another `photo.jpg` retains all three image files and their correct media references instead of overwriting the second image. (#1390)
+
 - **Research lead references and status displays** — `glx merge-persons` keeps lead candidate references unique in their original order, and `glx summary` preserves archive-defined lead statuses instead of counting them as active. The lead vocabulary test has a distinct name so it compiles alongside the research creation commands merged in #1348. (#1347)
 
 - **Self-contained single-file archives now get the standard research-log vocabularies** ([#660](https://github.com/genealogix/glx/issues/660)) — Loading a single `.glx` file filled in missing standard vocabularies but skipped `search_result_types` and `research_log_status_types`, so `glx validate archive.glx` rejected a research log using a standard value such as `status: in_progress` or `result: found` that the same archive passed as a directory. Both are now filled in, along with the new `lead_statuses`.
