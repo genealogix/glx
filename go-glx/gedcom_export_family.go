@@ -583,12 +583,14 @@ type childParentSet struct {
 }
 
 // survivingParents returns the parents of childID in relationship relID whose
-// link to the child the archive has not disproven, warning once for each
-// disproven link left out of the export.
-func survivingParents(expCtx *ExportContext, relID string, parentIDs []string, childID string) []string {
+// link to the child the archive has not disproven, plus the rejected parents,
+// warning once for each disproven link left out of the export.
+func survivingParents(expCtx *ExportContext, relID string, parentIDs []string, childID string) ([]string, []string) {
 	parents := make([]string, 0, len(parentIDs))
+	var disproven []string
 	for _, parentID := range parentIDs {
 		if expCtx.standings.Link(relID, parentID, childID) == RelationshipStandingDisproven {
+			disproven = append(disproven, parentID)
 			expCtx.addExportWarning(EntityTypeRelationships, relID,
 				fmt.Sprintf("parent %s of %s is disproven; link not exported", parentID, childID))
 
@@ -597,16 +599,18 @@ func survivingParents(expCtx *ExportContext, relID string, parentIDs []string, c
 		parents = append(parents, parentID)
 	}
 
-	return parents
+	return parents, disproven
 }
 
 // collectChildParentSets groups the parent-child relationships by child.
 // Each child gets one explicit set per distinct parent set of its
 // multi-parent relationships, plus at most one set holding all parents of its
 // one-parent relationships. Shared parents remain available for pair matching.
+// Rejected parents are kept by child so fallback cannot restore those links.
 // Relationships missing a parent or a child are reported as export warnings.
-func collectChildParentSets(expCtx *ExportContext, relIDs []string) map[string][]*childParentSet {
+func collectChildParentSets(expCtx *ExportContext, relIDs []string) (map[string][]*childParentSet, map[string][]string) {
 	sets := make(map[string][]*childParentSet)
+	disprovenParents := make(map[string][]string)
 	explicitByKey := make(map[string]*childParentSet)
 	singleSets := make(map[string]*childParentSet)
 
@@ -629,7 +633,10 @@ func collectChildParentSets(expCtx *ExportContext, relIDs []string) map[string][
 		}
 
 		for _, childID := range childIDs {
-			parents := survivingParents(expCtx, relID, parentIDs, childID)
+			parents, disproven := survivingParents(expCtx, relID, parentIDs, childID)
+			if len(disproven) > 0 {
+				disprovenParents[childID] = append(disprovenParents[childID], disproven...)
+			}
 			if len(parents) == 0 {
 				continue
 			}
@@ -663,7 +670,7 @@ func collectChildParentSets(expCtx *ExportContext, relIDs []string) map[string][
 		sets[childID] = append(sets[childID], single)
 	}
 
-	return sets
+	return sets, disprovenParents
 }
 
 func inheritSingleParentPedigree(explicit, single *childParentSet) {
@@ -707,13 +714,13 @@ func addSingleParent(singleSets map[string]*childParentSet, childID, parentID, p
 //     no shared FAM gets a FAM synthesized for that couple, which their other
 //     children reuse, instead of being filed under one parent's unrelated
 //     marriage.
-//   - The one-parent fallback is unchanged: the child joins that parent's first
-//     FAM that holds no pair-matched children, else a synthesized
-//     single-parent FAM.
+//   - The one-parent fallback joins that parent's first FAM that holds no
+//     pair-matched children and would not restore a disproven parent, else a
+//     synthesized single-parent FAM.
 func attachChildrenToFamilies(expCtx *ExportContext, relIDs []string,
 	parentToFamilies map[string][]int, parentPairToFamily map[string]int,
 ) {
-	childSets := collectChildParentSets(expCtx, relIDs)
+	childSets, disprovenParents := collectChildParentSets(expCtx, relIDs)
 	childIDs := make([]string, 0, len(childSets))
 	for childID := range childSets {
 		childIDs = append(childIDs, childID)
@@ -755,7 +762,7 @@ func attachChildrenToFamilies(expCtx *ExportContext, relIDs []string,
 				if len(set.parents) == 0 {
 					continue
 				}
-				matched = singleParentFallbackFamily(set, expCtx, parentToFamilies, familiesWithPairedChildren)
+				matched = singleParentFallbackFamily(set, expCtx, parentToFamilies, familiesWithPairedChildren, disprovenParents[childID])
 			}
 
 			assignChildToFamilies(childID, set, matched, expCtx)
@@ -827,13 +834,18 @@ func pairedFamilies(parentIDs []string, parentPairToFamily map[string]int) []int
 // singleParentFallbackFamily picks the family for a child's one-parent
 // relationships when their parents share no FAM: the first parent's first
 // family (skipping families with pair-matched children when the child has a
-// single parent), else a synthesized single-parent family for the first parent.
+// single parent, or a spouse whose parent link was disproven), else a
+// synthesized single-parent family for the first parent.
 func singleParentFallbackFamily(set *childParentSet, expCtx *ExportContext,
 	parentToFamilies map[string][]int, familiesWithPairedChildren map[int]bool,
+	disprovenParents []string,
 ) []int {
 	for _, parentID := range set.parents {
 		for _, idx := range parentToFamilies[parentID] {
 			if len(set.parents) == 1 && familiesWithPairedChildren[idx] {
+				continue
+			}
+			if fallbackRestoresDisprovenParent(expCtx.Families[idx], set.parents, disprovenParents) {
 				continue
 			}
 
@@ -842,6 +854,19 @@ func singleParentFallbackFamily(set *childParentSet, expCtx *ExportContext,
 	}
 
 	return []int{createSyntheticFamily(set.parents[0], expCtx, parentToFamilies)}
+}
+
+// fallbackRestoresDisprovenParent reports whether a family would add a
+// rejected parent that the surviving parent set does not directly support.
+// A separate surviving link to the same parent remains an accepted alternative.
+func fallbackRestoresDisprovenParent(family *ExportFamily, parents, disprovenParents []string) bool {
+	for _, spouseID := range []string{family.HusbandID, family.WifeID} {
+		if slices.Contains(disprovenParents, spouseID) && !slices.Contains(parents, spouseID) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // createSyntheticCoupleFamily creates a FAM for two parents who share no
