@@ -96,6 +96,14 @@ var (
 	ErrAddCitationSourceRequired           = errors.New("--source is required")
 	ErrAddCitationDistinguisherRequired    = errors.New("at least one of --url, --locator, --text-from-source, or --id is required (otherwise citation IDs would not be idempotent)")
 	ErrAddRelationshipTypeRequired         = errors.New("--type is required")
+	ErrAddResearchLogDescriptorRequired    = errors.New("at least one of --title, --subject-*, --objective, or --id is required")
+	ErrAddSearchLogRequired                = errors.New("--log is required")
+	ErrAddSearchWhatRequired               = errors.New("a search needs at least one of --source, --repository, --collection, --query, or --citation")
+	ErrAddSearchLogAmbiguous               = errors.New("research log is defined in more than one file")
+	ErrAddStudyTitleRequired               = errors.New("--title is required")
+	ErrAddPropertyFormat                   = errors.New("--property must be in the form key=value")
+	ErrAddPropertyUnknown                  = errors.New("property not defined in the vocabulary")
+	ErrAddPropertyRepeated                 = errors.New("property given more than once but is not multi-value")
 
 	// `glx evidence` errors
 	ErrEvidenceUnknownFormat = errors.New("unknown output format (must be 'text' or 'json')")
@@ -107,6 +115,14 @@ var (
 	// ErrEvidenceSubjectAmbiguous reports a query that is the entity ID of more
 	// than one subject type, which only a hand-edited archive can produce.
 	ErrEvidenceSubjectAmbiguous = errors.New("ID belongs to more than one entity")
+
+	// `glx census add` errors
+	ErrCensusNeighborUnknownPerson = errors.New("census neighbor references a person not in the archive or the template")
+
+	// `glx households` errors
+	ErrHouseholdsNoTarget      = errors.New("give a person, or --place to list every census household at a place")
+	ErrHouseholdsUnknownFormat = errors.New("unknown output format (must be 'text' or 'json')")
+	ErrHouseholdsPlaceNotFound = errors.New("place not found")
 
 	// `glx migrations` errors
 	ErrMigrationsUnknownFormat     = errors.New("unknown output format (must be 'text' or 'json')")

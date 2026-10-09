@@ -185,14 +185,57 @@ type Relationship struct {
 }
 
 // Event represents a genealogical event.
+//
+// Household and Neighbors are meaningful on census events only. Household is
+// the enumerated composition of the household as the schedule records it:
+// tick-mark tallies by sex, age bracket, and status for schedules (US
+// 1790–1840 and similar) that name only the head (#1332). Neighbors lists
+// households enumerated near this one on the census page, for FAN research
+// (#180).
 type Event struct {
-	Title        string         `yaml:"title,omitempty"` // Optional human-readable label (e.g., "1860 Census — Webb Household")
-	Type         string         `refType:"event_types"       yaml:"type"`
-	PlaceID      string         `refType:"places"            yaml:"place,omitempty"`
-	Date         DateString     `yaml:"date,omitempty"` // Date in GLX format: "1850", "ABT 1850", "BEF 1920-01-15", "BET 1880 AND 1890"
-	Participants []Participant  `yaml:"participants"`
-	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
-	Notes        NoteList       `yaml:"notes,omitempty"`
+	Title        string          `yaml:"title,omitempty"` // Optional human-readable label (e.g., "1860 Census — Webb Household")
+	Type         string          `refType:"event_types"       yaml:"type"`
+	PlaceID      string          `refType:"places"            yaml:"place,omitempty"`
+	Date         DateString      `yaml:"date,omitempty"` // Date in GLX format: "1850", "ABT 1850", "BEF 1920-01-15", "BET 1880 AND 1890"
+	Participants []Participant   `yaml:"participants"`
+	Household    *Household      `yaml:"household,omitempty"`
+	Neighbors    []EventNeighbor `yaml:"neighbors,omitempty"`
+	Properties   map[string]any  `yaml:"properties,omitempty"` // Vocabulary-defined properties
+	Notes        NoteList        `yaml:"notes,omitempty"`
+}
+
+// Household records the composition of a census household as enumerated.
+// A struct rather than a bare list so per-household columns (dwelling or
+// family number, totals) can be added later without reshaping the field.
+type Household struct {
+	// Tally holds one row per tick-mark column of the schedule.
+	Tally []HouseholdTallyRow `yaml:"tally,omitempty"`
+}
+
+// HouseholdTallyRow is one tick-mark column of a census household: Count
+// persons of the given sex whose age falls in [AgeFrom, AgeTo] (both
+// inclusive; either bound may be absent for open-ended brackets such as
+// "under 10" or "45 and upwards") and who share Status (e.g. "free white",
+// "enslaved", "foreigner not naturalized", "engaged in agriculture").
+type HouseholdTallyRow struct {
+	Sex     string   `yaml:"sex,omitempty"` // sex_types key; checked softly (warning), as for person sex
+	AgeFrom *int     `yaml:"age_from,omitempty"`
+	AgeTo   *int     `yaml:"age_to,omitempty"`
+	Count   int      `yaml:"count"`
+	Status  string   `yaml:"status,omitempty"`
+	Notes   NoteList `yaml:"notes,omitempty"`
+}
+
+// EventNeighbor is a household enumerated near the event's household on the
+// same census page or an adjacent one. Name is the head as written on the
+// page; Person optionally links it to a Person entity in the archive.
+type EventNeighbor struct {
+	Name     string   `yaml:"name,omitempty"`
+	Person   string   `refType:"persons"         yaml:"person,omitempty"`
+	Position string   `yaml:"position,omitempty"` // e.g. previous_household, next_household, same_page
+	Page     string   `yaml:"page,omitempty"`
+	Line     string   `yaml:"line,omitempty"`
+	Notes    NoteList `yaml:"notes,omitempty"`
 }
 
 // Place represents a geographical location.

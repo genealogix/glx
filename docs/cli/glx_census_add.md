@@ -22,6 +22,14 @@ The template format uses a simple YAML structure describing the census
 year, location, household members, and citation details. Members can
 reference existing persons by ID or by name (matched against the archive).
 
+Head-only schedules (US 1790-1840 and similar) are supported: list the
+tick-mark columns under household.tally (sex, age_from, age_to, count,
+status), and add any known household member the schedule counts but does
+not name with named: false. Such members get role household_member and a
+low-confidence residence assertion, and are treated as found in that census
+by analyze, coverage, and households. household.neighbors records nearby
+households on the page (name, person, position, page, line).
+
 Use --dry-run to preview what would be generated without writing files.
 
 ```

@@ -63,6 +63,94 @@
         "additionalProperties": false
       }
     },
+    "household": {
+      "type": "object",
+      "description": "Enumerated composition of a census household: tick-mark tallies for schedules that name only the head (e.g. US 1790-1840). Census events only.",
+      "properties": {
+        "tally": {
+          "type": "array",
+          "description": "One row per tick-mark column of the schedule",
+          "items": {
+            "type": "object",
+            "required": ["count"],
+            "properties": {
+              "sex": {
+                "type": "string",
+                "description": "Sex of the persons counted (sex_types vocabulary key; unknown values are a warning)"
+              },
+              "age_from": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Lower bound of the age bracket, inclusive; omit for 'under N'"
+              },
+              "age_to": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Upper bound of the age bracket, inclusive; omit for 'N and upwards'"
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Number of persons tallied in this column"
+              },
+              "status": {
+                "type": "string",
+                "description": "Free-text column status (e.g. 'free white', 'enslaved', 'foreigner not naturalized', 'engaged in agriculture')"
+              },
+              "notes": {
+                "oneOf": [
+                  { "type": "string" },
+                  { "type": "array", "items": { "type": "string" } }
+                ],
+                "description": "Notes about this tally row"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "neighbors": {
+      "type": "array",
+      "description": "Households enumerated near this one on the census page, for FAN research. Census events only.",
+      "items": {
+        "type": "object",
+        "description": "A neighboring household. At least one of name or person is required (enforced by glx validate).",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Head of the neighboring household as written on the page"
+          },
+          "person": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9-]{1,64}$",
+            "description": "Reference to Person entity for the neighbor, if in the archive"
+          },
+          "position": {
+            "type": "string",
+            "description": "Position relative to this household (e.g. previous_household, next_household, same_page, previous_page, next_page)"
+          },
+          "page": {
+            "type": "string",
+            "description": "Census page (sheet) number of the neighbor"
+          },
+          "line": {
+            "type": "string",
+            "description": "Line number on the page"
+          },
+          "notes": {
+            "oneOf": [
+              { "type": "string" },
+              { "type": "array", "items": { "type": "string" } }
+            ],
+            "description": "Notes about the neighbor"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
     "notes": {
       "oneOf": [
         { "type": "string" },

@@ -14,6 +14,8 @@ Create an Event entity in the archive.
 --type is required and is validated against the event_types vocabulary.
 --principal is a shorthand for adding the named person with role "principal".
 --participant is repeatable in the form person-id:role.
+--property is repeatable in the form key=value; each key must be defined in
+the event_properties vocabulary (event_subtype, description, cause, ...).
 
 ```
 glx add event [flags]
@@ -33,6 +35,11 @@ glx add event [flags]
     --participant person-john:groom \
     --participant person-jane:bride \
     --archive ./archive
+
+  # Event with properties
+  glx add event --type death --date 1826 --principal person-lewis-little \
+    --property cause="fever" --property description="Died intestate" \
+    --archive ./archive
 ```
 
 ### Options
@@ -48,6 +55,7 @@ glx add event [flags]
       --participant stringArray   Additional participant in the form person-id:role (repeatable)
       --place string              Place ID for the event
       --principal string          Person ID of the principal subject (shorthand for --participant PERSON-ID:principal)
+      --property stringArray      Event property in the form key=value; key from event_properties (repeatable)
       --skip-validate             Skip whole-archive validation after adding (vocab and reference checks still run)
       --title string              Optional human-readable title
       --type string               Event type (required, vocabulary key in event_types)

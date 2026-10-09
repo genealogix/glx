@@ -50,7 +50,10 @@ type siteModel struct {
 	Persons   []*personPage
 	Sources   []sourceRow
 	Places    []placeRow
-	Search    []searchEntry
+	// PlaceMap is the map drawn above the place index; nil when fewer than
+	// two places carry coordinates.
+	PlaceMap *placeMap
+	Search   []searchEntry
 }
 
 // siteStats holds entity counts for the landing page.
@@ -91,13 +94,16 @@ type personPage struct {
 	DeathDate  string
 	DeathPlace string
 	Timeline   []timelineRow
-	Parents    []personLink
-	Spouses    []personLink
-	Children   []personLink
-	Siblings   []personLink
-	Notes      []string
-	Sources    []personSourceRef
-	Media      []*mediaItem
+	// TimelineStrip is the visual timeline drawn above the timeline list; nil
+	// when the person's dated events do not span at least two distinct years.
+	TimelineStrip *timelineStrip
+	Parents       []personLink
+	Spouses       []personLink
+	Children      []personLink
+	Siblings      []personLink
+	Notes         []string
+	Sources       []personSourceRef
+	Media         []*mediaItem
 	// Pedigree and Descendancy are the inline SVG charts drawn on the
 	// profile; either is nil when the person has no relatives in that
 	// direction.
@@ -112,12 +118,19 @@ type personPage struct {
 	StepSiblings []personLink
 }
 
-// timelineRow is a single chronological entry on a person page.
+// timelineRow is a single chronological entry on a person page. Year is the
+// entry's first parseable year (0 when the date carries none), which is what
+// the visual timeline strip plots. Calendar preserves the recorded calendar
+// prefix (empty for Gregorian), so unrelated year systems do not share a scale.
 type timelineRow struct {
-	Date    string
-	Label   string
-	Detail  string
-	Undated bool
+	Date     string
+	Label    string
+	Detail   string
+	Year     int
+	Calendar string
+	// Unparsed means the recovered year has no reliable calendar/scale.
+	Unparsed bool
+	Undated  bool
 }
 
 // personSourceRef is a source/citation supporting a person, resolved to
@@ -150,7 +163,9 @@ type placeRow struct {
 	FullName   string // hierarchical "Boston, Massachusetts, United States"
 	Type       string
 	HasCoords  bool
-	MapURL     string // OpenStreetMap link when coordinates are present
+	Lat        float64 // only meaningful when HasCoords
+	Lon        float64 // only meaningful when HasCoords
+	MapURL     string  // OpenStreetMap link when coordinates are present
 	EventCount int
 }
 
@@ -207,6 +222,7 @@ func buildSiteModel(archive *glxlib.GLXFile, opts siteModelOptions) *siteModel {
 	model.Persons = buildPersonPages(archive, idx)
 	model.Sources = buildSourceRows(archive)
 	model.Places = buildPlaceRows(archive, idx)
+	model.PlaceMap = buildPlaceMap(model.Places)
 	model.Search = buildSearchIndex(model)
 
 	return model
@@ -416,6 +432,7 @@ func buildPersonPage(id string, person *glxlib.Person, archive *glxlib.GLXFile, 
 	page.LifeSpan = lifeSpan(birth, death)
 
 	page.Timeline = buildTimelineRows(id, archive)
+	page.TimelineStrip = buildTimelineStrip(page.Timeline)
 	buildFamilyGroups(page, id, archive, idx)
 	page.Sources = buildPersonSources(id, archive, idx)
 	page.Media = buildPersonMedia(id, archive, idx)
@@ -431,11 +448,17 @@ func buildTimelineRows(personID string, archive *glxlib.GLXFile) []timelineRow {
 	entries := collectTimelineEntries(personID, archive, true)
 	rows := make([]timelineRow, 0, len(entries))
 	for _, e := range entries {
+		// Parsing preserves a recoverable year and calendar even when the
+		// archive carries a date whose remaining text cannot be interpreted.
+		date, err := glxlib.DateString(e.Date).Parse()
 		rows = append(rows, timelineRow{
-			Date:    displayDate(e.Date),
-			Label:   e.Label,
-			Detail:  e.Detail,
-			Undated: e.SortKey == "\xff",
+			Date:     displayDate(e.Date),
+			Label:    e.Label,
+			Detail:   e.Detail,
+			Year:     date.Year(),
+			Calendar: date.CalendarName(),
+			Unparsed: err != nil,
+			Undated:  e.SortKey == "\xff",
 		})
 	}
 
@@ -583,6 +606,8 @@ func buildPlaceRows(archive *glxlib.GLXFile, idx *siteIndex) []placeRow {
 		}
 		if place.Latitude != nil && place.Longitude != nil {
 			row.HasCoords = true
+			row.Lat = *place.Latitude
+			row.Lon = *place.Longitude
 			row.MapURL = openStreetMapURL(*place.Latitude, *place.Longitude)
 		}
 		rows = append(rows, row)

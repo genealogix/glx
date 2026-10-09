@@ -209,6 +209,10 @@ type ExportContext struct {
 	PersonSpouseFamilies map[string][]string         // person ID -> family XRefs where spouse
 	PersonChildFamilies  map[string][]childFamilyRef // person ID -> family refs where child
 
+	// standings says which relationship links the archive has disproven, so
+	// family reconstruction leaves them out. Nil reads every link as accepted.
+	standings *RelationshipStandingIndex
+
 	// PersonPropertyAssertions maps personID -> property -> assertions
 	// Used to export SOUR on NAME, OCCU, RESI, etc. from assertion evidence
 	PersonPropertyAssertions map[string]map[string][]*Assertion
