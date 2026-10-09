@@ -41,6 +41,33 @@ func TestAnalyzeGaps_MissingBirth(t *testing.T) {
 	}
 }
 
+// A dated baptism or christening of the person satisfies the birth check;
+// one the person only attended does not (#1365).
+func TestAnalyzeGaps_BaptismSatisfiesBirth(t *testing.T) {
+	for _, tc := range []struct {
+		eventType, role string
+		flagged         bool
+	}{
+		{glxlib.EventTypeBaptism, "principal", false},
+		{glxlib.EventTypeChristening, "principal", false},
+		{glxlib.EventTypeBaptism, glxlib.ParticipantRoleGodparent, true},
+	} {
+		archive := &glxlib.GLXFile{
+			Persons: map[string]*glxlib.Person{
+				"person-a": {Properties: map[string]any{}},
+			},
+			Events: map[string]*glxlib.Event{
+				"event-bapt-a": {Type: tc.eventType, Date: "1664-08-21", Participants: []glxlib.Participant{{Person: "person-a", Role: tc.role}}},
+			},
+		}
+
+		found := findIssue(analyzeGaps(archive), "person-a", "birth_event")
+		if (found != nil) != tc.flagged {
+			t.Errorf("%s as %s: flagged=%v, want %v", tc.eventType, tc.role, found != nil, tc.flagged)
+		}
+	}
+}
+
 func TestAnalyzeGaps_HasBirth(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
