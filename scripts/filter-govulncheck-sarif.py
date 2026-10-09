@@ -13,6 +13,12 @@ packages are imported. A suppressed advisory reported at "warning" (package
 imported) or "error" (symbol called) is kept, because that means the reasoning
 recorded in osv-scanner.toml no longer holds.
 
+It also drops repeated entries from each result's "stacks" array. govulncheck
+can emit the same trace twice (for example, when a vulnerable symbol is reached
+through both the standard library's bundled http2 and golang.org/x/net), and
+the SARIF schema requires "stacks" to be unique, so upload-sarif would reject
+the whole file and fail the job instead of raising the alerts.
+
 Usage:
     python3 scripts/filter-govulncheck-sarif.py osv-scanner.toml < in.sarif > out.sarif
 """
@@ -31,6 +37,22 @@ def suppressed_ids(config_path):
     return {entry["id"] for entry in config.get("IgnoredVulns", [])}
 
 
+def dedupe_stacks(result):
+    stacks = result.get("stacks")
+    if not stacks:
+        return
+    seen = set()
+    unique = []
+    for stack in stacks:
+        key = json.dumps(stack, sort_keys=True)
+        if key not in seen:
+            seen.add(key)
+            unique.append(stack)
+    if len(unique) != len(stacks):
+        print(f"dropped {len(stacks) - len(unique)} duplicate stack(s) from {result.get('ruleId')}", file=sys.stderr)
+        result["stacks"] = unique
+
+
 def main():
     if len(sys.argv) != 2:
         sys.exit(__doc__)
@@ -46,6 +68,7 @@ def main():
                 continue
             if rule in ignored:
                 print(f"kept {rule}: level {result.get('level')!r} means the suppression no longer holds", file=sys.stderr)
+            dedupe_stacks(result)
             kept.append(result)
         # The rules table is left as is: a rule with no result raises no alert,
         # and pruning it could invalidate a result's ruleIndex.
