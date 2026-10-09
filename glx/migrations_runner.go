@@ -53,7 +53,7 @@ type migrationEntry struct {
 	Date    string `json:"date,omitempty"`
 	PlaceID string `json:"place_id,omitempty"` // empty when the place is a freeform string, not an entity reference
 	Place   string `json:"place"`              // canonical hierarchy path, or the freeform value verbatim
-	Region  string `json:"region,omitempty"`   // normalized region used for movement detection
+	Region  string `json:"region,omitempty"`   // normalized top-level region (state, province, district), used for --pattern stops
 	Label   string `json:"label"`              // what kind of observation this is (e.g. "Birth", "1860 US Census")
 	Role    string `json:"role,omitempty"`     // the person's participant role, for event observations
 
@@ -65,17 +65,21 @@ type migrationEntry struct {
 	Excluded bool   `json:"excluded,omitempty"`
 	Note     string `json:"note,omitempty"`
 
-	sortKey  string // chronological sort key; not serialized
-	location bool   // a residence value: an explicit statement of where the person lived
+	sortKey  string   // chronological sort key; not serialized
+	location bool     // a residence value: an explicit statement of where the person lived
+	path     []string // normalized place hierarchy, outermost first, below the country/continent level
 }
 
-// migrationMovement is a detected change of region between two consecutive
-// dated observations.
+// migrationMovement is a detected change of place between two consecutive
+// dated observations. FromRegion and ToRegion name the two places at the
+// highest level they differ: the states for a move from Florida to Wisconsin,
+// the villages themselves for a move between two villages of one district
+// (#1370).
 type migrationMovement struct {
 	FromRegion string `json:"from_region"`
 	ToRegion   string `json:"to_region"`
-	FromDate   string `json:"from_date,omitempty"` // last observation in the origin region
-	ToDate     string `json:"to_date,omitempty"`   // first observation in the destination region
+	FromDate   string `json:"from_date,omitempty"` // last observation in the origin place
+	ToDate     string `json:"to_date,omitempty"`   // first observation in the destination place
 }
 
 // migrationReport is the migration timeline for one person. Family is only
@@ -221,9 +225,16 @@ func collectMigrationEntries(personID string, archive *glxlib.GLXFile) []migrati
 		}
 		entry := newMigrationEntry(string(event.Date), event.PlaceID, label, archive)
 		entry.Role = role
-		if ok && !participation.Present {
+		switch {
+		case ok && !participation.Present:
 			entry.Excluded = true
 			entry.Note = fmt.Sprintf("role %q does not imply presence", role)
+		case ok && !participation.OwnRecord && isParentAtDeathRecord(event, personID):
+			// A child's death or burial places the child, not the parent's
+			// household: an infant buried in a war refuge or the mother's home
+			// parish says nothing of where the father lived (#1370).
+			entry.Excluded = true
+			entry.Note = fmt.Sprintf("role %q on a %s places the deceased, not this person", role, strings.ToLower(formatEventTypeLabel(event.Type)))
 		}
 		entries = append(entries, entry)
 	}
@@ -259,6 +270,43 @@ func childBirthOf(event *glxlib.Event, personID string, children map[string]stri
 	}
 
 	return "", false
+}
+
+// migrationDeathEventTypes are the event types that record where someone
+// died or was laid to rest.
+var migrationDeathEventTypes = map[string]bool{
+	glxlib.EventTypeDeath:     true,
+	glxlib.EventTypeBurial:    true,
+	glxlib.EventTypeCremation: true,
+	"funeral":                 true,
+}
+
+// migrationParentRoles are the roles that name a person as the parent of an
+// event's principal.
+var migrationParentRoles = map[string]bool{
+	glxlib.ParticipantRoleParent: true,
+	"father":                     true,
+	"mother":                     true,
+}
+
+// isParentAtDeathRecord reports whether personID takes part in a death-type
+// event only as a parent of the deceased.
+func isParentAtDeathRecord(event *glxlib.Event, personID string) bool {
+	if !migrationDeathEventTypes[strings.ToLower(strings.TrimSpace(event.Type))] {
+		return false
+	}
+	parent := false
+	for _, p := range event.Participants {
+		if p.Person != personID {
+			continue
+		}
+		if !migrationParentRoles[strings.ToLower(strings.TrimSpace(p.Role))] {
+			return false
+		}
+		parent = true
+	}
+
+	return parent
 }
 
 // migrationEventLabel picks a display label for an event observation: the
@@ -313,14 +361,14 @@ func residenceMigrationEntries(raw any, archive *glxlib.GLXFile) []migrationEntr
 type residencePeriod struct {
 	date   glxdate.Date
 	span   glxdate.Interval
-	region string
+	path   []string
 	label  string // the residence's date and place, for notes
 }
 
 // applyResidencePeriods lets a dated residence win over event places inside
 // its period (#1330): an observation whose whole possible date span fits
-// inside a residence, in a region none of the covering residences name, is
-// kept in the timeline but excluded from movement detection. The researcher's explicit
+// inside a residence, at a place that none of the covering residences contain
+// or fall within, is kept in the timeline but excluded from movement detection. The researcher's explicit
 // statement of where the person lived outranks the place of a deed signed,
 // an estate settled, or a marriage witnessed on a visit elsewhere.
 //
@@ -332,11 +380,11 @@ func applyResidencePeriods(entries []migrationEntry) {
 	var periods []residencePeriod
 	for i := range entries {
 		e := &entries[i]
-		if !e.location || e.Region == "" {
+		if !e.location || len(e.placePath()) == 0 {
 			continue
 		}
 		if date, ok := boundedMigrationDate(e.Date); ok {
-			periods = append(periods, residencePeriod{date: date, span: date.Timing().Outer, region: e.Region, label: e.Date + " " + e.Place})
+			periods = append(periods, residencePeriod{date: date, span: date.Timing().Outer, path: e.placePath(), label: e.Date + " " + e.Place})
 		}
 	}
 	if len(periods) == 0 {
@@ -345,14 +393,14 @@ func applyResidencePeriods(entries []migrationEntry) {
 
 	for i := range entries {
 		e := &entries[i]
-		if e.location || e.Excluded || e.Region == "" || e.sortKey == undatedMigrationSortKey {
+		if e.location || e.Excluded || len(e.placePath()) == 0 || e.sortKey == undatedMigrationSortKey {
 			continue
 		}
 		date, ok := boundedMigrationDate(e.Date)
 		if !ok {
 			continue
 		}
-		if conflict := conflictingResidence(periods, e.Region, date); conflict != nil {
+		if conflict := conflictingResidence(periods, e.placePath(), date); conflict != nil {
 			e.Excluded = true
 			e.Note = "inside residence " + conflict.label
 		}
@@ -361,7 +409,7 @@ func applyResidencePeriods(entries []migrationEntry) {
 
 // conflictingResidence finds a residence that contains the event's whole
 // possible span, unless a matching residence preserves the agreement veto.
-func conflictingResidence(periods []residencePeriod, region string, date glxdate.Date) *residencePeriod {
+func conflictingResidence(periods []residencePeriod, path []string, date glxdate.Date) *residencePeriod {
 	span := date.Timing().Outer
 	var conflict *residencePeriod
 	for i := range periods {
@@ -369,13 +417,13 @@ func conflictingResidence(periods []residencePeriod, region string, date glxdate
 		if date.Calendar() != p.date.Calendar() || date.CalendarName() != p.date.CalendarName() {
 			continue
 		}
-		sameRegion := strings.EqualFold(p.region, region)
+		samePlace := placesCompatible(p.path, path)
 		// Preserve the existing overlap veto when a matching residence
 		// covers the first possible date, even if it does not cover the end.
-		if sameRegion && p.span.Start <= span.Start && span.Start < p.span.End {
+		if samePlace && p.span.Start <= span.Start && span.Start < p.span.End {
 			return nil
 		}
-		if !sameRegion && p.span.Contains(span) && conflict == nil {
+		if !samePlace && p.span.Contains(span) && conflict == nil {
 			conflict = p
 		}
 	}
@@ -422,12 +470,91 @@ func newMigrationEntry(date, placeRef, label string, archive *glxlib.GLXFile) mi
 		entry.PlaceID = placeRef
 		entry.Place = buildCanonicalPath(placeRef, archive.Places)
 		entry.Region = regionForPlace(placeRef, archive.Places)
+		entry.path = migrationPlacePath(placeRef, archive.Places)
 	} else {
 		entry.Place = placeRef
 		entry.Region = regionFromFreeform(placeRef)
+		entry.path = migrationFreeformPath(placeRef)
 	}
 
 	return entry
+}
+
+// placePath returns the entry's hierarchy for movement detection, falling
+// back to its region alone for entries built without one.
+func (e *migrationEntry) placePath() []string {
+	if len(e.path) > 0 || e.Region == "" {
+		return e.path
+	}
+
+	return []string{e.Region}
+}
+
+// migrationPlacePath returns a place's normalized names, outermost first,
+// with the country/continent levels above the region removed, so that two
+// places compare from the level regionForPlace reports downwards
+// (Millbrook → [Wisconsin, Hartford Co., Millbrook]). A chain made only of
+// containers keeps all of its names.
+func migrationPlacePath(placeID string, places map[string]*glxlib.Place) []string {
+	var names, types []string
+	visited := make(map[string]bool)
+	for current := placeID; current != "" && !visited[current]; {
+		visited[current] = true
+		place, ok := places[current]
+		if !ok || place == nil {
+			break
+		}
+		if name := strings.TrimSpace(place.Name); name != "" {
+			names = append(names, normalizeRegionName(name))
+			types = append(types, place.Type)
+		}
+		current = place.ParentID
+	}
+	slices.Reverse(names)
+	slices.Reverse(types)
+
+	for i := range names {
+		if !migrationContainerTypes[types[i]] {
+			return names[i:]
+		}
+	}
+
+	return names
+}
+
+// migrationFreeformPath splits a freeform place string into its components,
+// outermost first ("Millbrook, Hartford Co., WI" → [WI, Hartford Co., Millbrook]).
+func migrationFreeformPath(place string) []string {
+	var path []string
+	for _, part := range slices.Backward(strings.Split(place, ",")) {
+		if p := strings.TrimSpace(part); p != "" {
+			path = append(path, normalizeRegionName(p))
+		}
+	}
+
+	return path
+}
+
+// placeDivergence compares two place paths. When one place contains the other
+// (the same village, or a village and its district) there is no move;
+// otherwise from and to are the two places' names at the first level they
+// differ.
+func placeDivergence(a, b []string) (from, to string, moved bool) {
+	for i := range min(len(a), len(b)) {
+		if !strings.EqualFold(a[i], b[i]) {
+			return a[i], b[i], true
+		}
+	}
+
+	return "", "", false
+}
+
+// placesCompatible reports whether two place paths can describe the same
+// residence: they are equal or one contains the other.
+func placesCompatible(a, b []string) bool {
+	_, _, moved := placeDivergence(a, b)
+
+	return !moved
 }
 
 // migrationContainerTypes are place types too large to be a meaningful
@@ -526,29 +653,55 @@ func dedupeMigrationEntries(entries []migrationEntry) []migrationEntry {
 }
 
 // computeMovements scans the dated observations in chronological order and
-// records each change of region. Consecutive observations in the same region
-// collapse; undated and region-less observations are skipped.
+// records each change of place. Consecutive observations of the same place,
+// or of a place and one containing it, collapse; undated, placeless and
+// excluded observations are skipped.
 func computeMovements(entries []migrationEntry) []migrationMovement {
 	var movements []migrationMovement
-	var prev *migrationEntry
-
-	for i := range entries {
-		entry := &entries[i]
-		if entry.sortKey == undatedMigrationSortKey || entry.Region == "" || entry.Excluded {
-			continue
-		}
-		if prev != nil && !strings.EqualFold(prev.Region, entry.Region) {
+	walkMigrationStops(entries, func(prev, entry *migrationEntry, from, to string) {
+		if prev != nil {
 			movements = append(movements, migrationMovement{
-				FromRegion: prev.Region,
-				ToRegion:   entry.Region,
+				FromRegion: from,
+				ToRegion:   to,
 				FromDate:   prev.Date,
 				ToDate:     entry.Date,
 			})
 		}
-		prev = entry
-	}
+	})
 
 	return movements
+}
+
+// walkMigrationStops calls onStop for the first counted observation and for
+// every observation that moves the person to a place the previous counted
+// observations do not cover. prev is the last observation before the move
+// (nil for the first stop) and from/to name the two places where they differ.
+//
+// Within a stop the most specific place seen is the one compared against, so
+// "Wisconsin" after "Millbrook, Wisconsin" is no move, nor is a return to
+// Millbrook after it.
+func walkMigrationStops(entries []migrationEntry, onStop func(prev, entry *migrationEntry, from, to string)) {
+	var prev *migrationEntry
+	var current []string
+
+	for i := range entries {
+		entry := &entries[i]
+		path := entry.placePath()
+		if entry.sortKey == undatedMigrationSortKey || len(path) == 0 || entry.Excluded {
+			continue
+		}
+		switch from, to, moved := placeDivergence(current, path); {
+		case prev == nil:
+			onStop(nil, entry, "", "")
+			current = path
+		case moved:
+			onStop(prev, entry, from, to)
+			current = path
+		case len(path) > len(current):
+			current = path
+		}
+		prev = entry
+	}
 }
 
 // ============================================================================
@@ -592,22 +745,14 @@ func matchMigrationPattern(archive *glxlib.GLXFile, terms []string) migrationPat
 	return report
 }
 
-// migrationStops collapses a person's dated observations into their region
-// sequence: one stop per consecutive run of the same region, keeping the
+// migrationStops collapses a person's dated observations into their place
+// sequence: one stop per movement computeMovements would report, keeping the
 // first observation of each run.
 func migrationStops(entries []migrationEntry) []migrationStop {
 	var stops []migrationStop
-
-	for i := range entries {
-		e := &entries[i]
-		if e.sortKey == undatedMigrationSortKey || e.Region == "" || e.Excluded {
-			continue
-		}
-		if len(stops) > 0 && strings.EqualFold(stops[len(stops)-1].Region, e.Region) {
-			continue
-		}
-		stops = append(stops, migrationStop{Region: e.Region, Place: e.Place, Date: e.Date})
-	}
+	walkMigrationStops(entries, func(_, entry *migrationEntry, _, _ string) {
+		stops = append(stops, migrationStop{Region: entry.Region, Place: entry.Place, Date: entry.Date})
+	})
 
 	return stops
 }
