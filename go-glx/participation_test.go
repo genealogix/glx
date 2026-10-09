@@ -179,6 +179,21 @@ func TestAssertionPersons(t *testing.T) {
 			&Assertion{Subject: EntityRef{Event: "ev-marriage"}, Participant: &Participant{Person: "p-witness", Role: ParticipantRoleWitness}},
 			nil,
 		},
+		{
+			"witness evidence does not inherit the groom conclusion",
+			&Assertion{Subject: EntityRef{Event: "ev-marriage"}, Participant: &Participant{Person: "p-groom", Role: ParticipantRoleWitness}},
+			nil,
+		},
+		{
+			"own-record evidence does not inherit the witness conclusion",
+			&Assertion{Subject: EntityRef{Event: "ev-marriage"}, Participant: &Participant{Person: "p-witness", Role: ParticipantRoleGroom}},
+			[]string{"p-witness"},
+		},
+		{
+			"godparent evidence does not inherit the child conclusion",
+			&Assertion{Subject: EntityRef{Event: "ev-baptism"}, Participant: &Participant{Person: "p-child", Role: ParticipantRoleGodparent}},
+			nil,
+		},
 		{"unknown event", &Assertion{Subject: EntityRef{Event: "ev-missing"}}, nil},
 		{"relationship subject", &Assertion{Subject: EntityRef{Relationship: "rel-1"}}, nil},
 		{"place subject", &Assertion{Subject: EntityRef{Place: "p-x"}}, nil},

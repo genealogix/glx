@@ -235,10 +235,16 @@ func AssertionPersons(assertion *Assertion, archive *GLXFile) []string {
 		if participant.Person == "" || slices.Contains(persons, participant.Person) {
 			continue
 		}
-		if p := assertion.Participant; p != nil && p.Person != "" && p.Person != participant.Person {
-			continue
+		role := participant.Role
+		if p := assertion.Participant; p != nil {
+			if p.Person != participant.Person {
+				continue
+			}
+			// The evidence asserts this role, which may disagree with the
+			// event's conclusion. A witness claim is not a groom's record.
+			role = p.Role
 		}
-		if ClassifyParticipation(event.Type, participant.Role, archive.ParticipantRoles).OwnRecord {
+		if ClassifyParticipation(event.Type, role, archive.ParticipantRoles).OwnRecord {
 			persons = append(persons, participant.Person)
 		}
 	}
