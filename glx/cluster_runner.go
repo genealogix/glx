@@ -255,7 +255,7 @@ func collectCensusNeighborLinks(personID string, archive *glxlib.GLXFile, linkMa
 			})
 		}
 
-		if clusterEventHasParticipant(personID, event) {
+		if censusHasHouseholdMember(personID, event) {
 			for _, n := range event.Neighbors {
 				link(n.Person, neighborPositionLabel(n.Position))
 			}

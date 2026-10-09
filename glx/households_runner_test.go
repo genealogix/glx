@@ -138,6 +138,98 @@ func TestBuildHouseholds_HeadFirstThenAge(t *testing.T) {
 	assert.Nil(t, h.Neighbors, "neighbors are only collected with --neighbors")
 }
 
+func TestBuildHouseholds_InfantAgeOrdering(t *testing.T) {
+	archive := newHouseholdsArchive()
+	event := archive.Events["event-census-1860"]
+	event.Participants = []glxlib.Participant{
+		{Person: "person-robert", Role: glxlib.ParticipantRolePrincipal},
+		{Person: "person-charles", Properties: map[string]any{"age_at_event": "3/12"}},
+		{Person: "person-emma", Properties: map[string]any{"age_at_event": "6m"}},
+		{Person: "person-jane", Properties: map[string]any{"age_at_event": 2}},
+		{Person: "person-mary", Properties: map[string]any{"age_at_event": "2y 3m"}},
+		{Person: "person-eliz"},
+		{Person: "person-james", Properties: map[string]any{"age_at_event": "unknown"}},
+		{Person: "person-henry", Properties: map[string]any{"age_at_event": "3m"}},
+	}
+
+	h := buildHouseholds(archive, "person-emma", householdsOptions{}).Households[0]
+
+	assert.Equal(t, []string{"person-robert", "person-mary", "person-jane", "person-emma", "person-charles", "person-henry", "person-eliz", "person-james"}, memberIDs(&h))
+	assert.Equal(t, "6m", h.Members[3].Age, "sorting preserves the recorded age")
+	assert.Equal(t, "3/12", h.Members[4].Age)
+}
+
+func TestHouseholdAgeYears(t *testing.T) {
+	for _, tt := range []struct {
+		age  string
+		want float64
+	}{
+		{"45", 45},
+		{"0", 0},
+		{"0.5", 0.5},
+		{"45y 3m", 45.25},
+		{"2y3m", 2.25},
+		{"6m", 0.5},
+		{" 6M ", 0.5},
+		{"3/12", 0.25},
+		{"3 / 12", 0.25},
+		{"10d", 10 / 365.25},
+		{"1y 2m 3d", 1 + 2.0/12 + 3/365.25},
+		{"", -1},
+		{"unknown", -1},
+		{"<1", -1},
+		{"6mo", -1},
+		{"3/0", -1},
+		{"3/x", -1},
+		{"3/12/2", -1},
+		{"-1", -1},
+		{"NaN", -1},
+		{"Inf", -1},
+		{"1e999", -1},
+	} {
+		t.Run(tt.age, func(t *testing.T) {
+			assert.InDelta(t, tt.want, householdAgeYears(tt.age), 1e-10)
+		})
+	}
+}
+
+func TestBuildHouseholds_ExcludesNonresidentRoles(t *testing.T) {
+	for _, role := range []string{"enumerator", "witness", "neighbor", "neighbour", "mentioned", " Enumerator "} { //nolint:misspell // Test the supported British English role alias.
+		t.Run(role, func(t *testing.T) {
+			archive := newHouseholdsArchive()
+			event := archive.Events["event-census-1860"]
+			// Even an explicit head property must not turn a nonresident into
+			// a household member or displace the resident head.
+			event.Participants = append([]glxlib.Participant{{
+				Person: "person-henry", Role: role,
+				Properties: map[string]any{glxlib.ParticipantPropertyRelationshipToHead: "head"},
+			}}, event.Participants...)
+
+			assert.Empty(t, buildHouseholds(archive, "person-henry", householdsOptions{}).Households)
+			h := buildHouseholds(archive, "person-robert", householdsOptions{}).Households[0]
+			assert.Equal(t, []string{"person-robert", "person-jane", "person-emma", "person-charles"}, memberIDs(&h))
+			assert.True(t, h.Members[0].Head)
+			assert.Equal(t, memberIDs(&h), memberIDs(&buildHouseholds(archive, "", householdsOptions{Year: 1860}).Households[0]))
+
+			// The classifier unions a person's roles: an enumerator who also
+			// has a resident role still has this household as their own record.
+			event.Participants = append(event.Participants, glxlib.Participant{Person: "person-henry", Role: glxlib.ParticipantRoleHouseholdMember})
+			h = buildHouseholds(archive, "person-henry", householdsOptions{}).Households[0]
+			assert.Equal(t, []string{"person-robert", "person-jane", "person-emma", "person-charles", "person-henry"}, memberIDs(&h))
+		})
+	}
+}
+
+func TestCensusHeadIndex_ExcludesNonresidentFallback(t *testing.T) {
+	event := &glxlib.Event{Type: glxlib.EventTypeCensus, Participants: []glxlib.Participant{
+		{Person: "enumerator", Role: "enumerator"},
+		{Person: "unnamed", Role: glxlib.ParticipantRoleHouseholdMember, Properties: map[string]any{glxlib.ParticipantPropertyNamed: false}},
+	}}
+	assert.Equal(t, -1, censusHeadIndex(event))
+	event.Participants = append(event.Participants, glxlib.Participant{Person: "boarder", Role: "boarder"})
+	assert.Equal(t, 2, censusHeadIndex(event), "the existing named-resident fallback is retained")
+}
+
 func TestBuildHouseholds_RelationshipToHeadWins(t *testing.T) {
 	archive := newHouseholdsArchive()
 	ev := archive.Events["event-census-1860"]
@@ -242,6 +334,30 @@ func TestBuildCluster_CensusNeighbors(t *testing.T) {
 	require.Len(t, fromNeighbor.Associates, 1)
 	assert.Equal(t, "person-james", fromNeighbor.Associates[0].PersonID)
 	assert.Equal(t, "neighbor (next household)", fromNeighbor.Associates[0].Links[0].Role)
+}
+
+func TestCensusNeighborLinks_ExcludesNonresidentRoles(t *testing.T) {
+	for _, role := range []string{"enumerator", "witness", "neighbor", "neighbour", "mentioned"} { //nolint:misspell // Test the supported British English role alias.
+		t.Run(role, func(t *testing.T) {
+			archive := newHouseholdsArchive()
+			event := archive.Events["event-census-1820"]
+			event.Participants = append([]glxlib.Participant{{Person: "person-robert", Role: role}}, event.Participants...)
+
+			links := map[string][]associateLink{}
+			collectCensusNeighborLinks("person-robert", archive, links, "", 0, 0)
+			assert.Empty(t, links, "working on or being mentioned in a census gives no neighbor score")
+
+			links = map[string][]associateLink{}
+			collectCensusNeighborLinks("person-henry", archive, links, "", 0, 0)
+			require.Len(t, links, 1)
+			assert.Contains(t, links, "person-james", "the reverse link selects the resident head")
+
+			event.Participants = event.Participants[:1]
+			links = map[string][]associateLink{}
+			collectCensusNeighborLinks("person-henry", archive, links, "", 0, 0)
+			assert.Empty(t, links, "no reverse neighbor score without a resident head")
+		})
+	}
 }
 
 // A person counted in a head-only census household (named: false) is found in

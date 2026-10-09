@@ -279,7 +279,7 @@ events:
 | `status` | string | No | Free-text column status: `free white`, `free colored`, `enslaved`, `foreigner not naturalized`, `engaged in agriculture`... A row with only a status counts persons in that column regardless of age and sex |
 | `notes` | string \| string[] | No | Notes about the row |
 
-The head is normally counted in the tally too, so the tally total is the household size. Brackets are free integers: GLX does not yet validate them against each census's column headings.
+The head is normally counted in the population tally too. Only mutually exclusive population columns that together cover the whole household can be summed to obtain household size. Other columns can overlap those counts: in the example above, the demographic rows count four people, while the `engaged in agriculture` row counts one person who can also be included in those demographic rows. Summing all five marks would overcount the household. Brackets are free integers: GLX does not yet validate them against each census's column headings.
 
 Tooling treats a `named: false` participant as present in the census: `glx analyze` does not suggest searching that census for them, `glx coverage` ticks the census row, and `glx households` lists them as "counted, not named".
 

@@ -17,6 +17,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -41,8 +43,8 @@ type householdMember struct {
 	// Named is false for a member the schedule counts only as a tick mark.
 	Named bool `json:"named"`
 
-	ageYears int // parsed Age for sorting; -1 when unknown
-	order    int // position on the event, for a stable tie-break
+	ageYears float64 // parsed Age for sorting; -1 when unknown
+	order    int     // position on the event, for a stable tie-break
 }
 
 // householdTally is one tick-mark row of a census household, with a
@@ -162,7 +164,7 @@ func buildHouseholds(archive *glxlib.GLXFile, personID string, opts householdsOp
 		if event == nil || event.Type != glxlib.EventTypeCensus {
 			continue
 		}
-		if personID != "" && !clusterEventHasParticipant(personID, event) {
+		if personID != "" && !censusHasHouseholdMember(personID, event) {
 			continue
 		}
 		year := glxlib.ExtractFirstYear(string(event.Date))
@@ -205,7 +207,7 @@ func buildHousehold(archive *glxlib.GLXFile, eventID string, event *glxlib.Event
 
 	head := censusHeadIndex(event)
 	for i, p := range event.Participants {
-		if p.Person == "" {
+		if !isCensusHouseholdMember(p) {
 			continue
 		}
 		age := participantStringProperty(p, glxlib.ParticipantPropertyAgeAtEvent)
@@ -217,7 +219,7 @@ func buildHousehold(archive *glxlib.GLXFile, eventID string, event *glxlib.Event
 			Age:                age,
 			Head:               i == head,
 			Named:              !glxlib.IsUnnamedParticipant(p),
-			ageYears:           leadingYears(age),
+			ageYears:           householdAgeYears(age),
 			order:              i,
 		})
 	}
@@ -269,14 +271,32 @@ func buildHousehold(archive *glxlib.GLXFile, eventID string, event *glxlib.Event
 	return h
 }
 
+// isCensusHouseholdMember uses the existing own-record classification to
+// distinguish enumerated residents from enumerators and other nonresident
+// roles. Vocabulary presence overrides do not change household membership.
+func isCensusHouseholdMember(p glxlib.Participant) bool {
+	return p.Person != "" && glxlib.ClassifyParticipation(glxlib.EventTypeCensus, p.Role, nil).OwnRecord
+}
+
+// censusHasHouseholdMember unions a person's roles, so a person with both a
+// resident and a nonresident role still has this census as their own record.
+func censusHasHouseholdMember(personID string, event *glxlib.Event) bool {
+	participation, _, _ := glxlib.EventParticipation(event, personID, nil)
+
+	return participation.OwnRecord
+}
+
 // censusHeadIndex returns the index of the census event's head of household
-// in event.Participants, or -1 when there is no named participant. The head
+// in event.Participants, or -1 when there is no eligible resident. The head
 // is the participant whose relationship_to_head is "head" or "self"; failing
 // that, the first named participant in a subject role (principal/subject),
 // since the head is the household's principal; failing that, the first named
 // participant, as schedules list the head first.
 func censusHeadIndex(event *glxlib.Event) int {
 	for i, p := range event.Participants {
+		if !isCensusHouseholdMember(p) {
+			continue
+		}
 		switch strings.ToLower(participantStringProperty(p, glxlib.ParticipantPropertyRelationshipToHead)) {
 		case "head", "self":
 			return i
@@ -284,7 +304,7 @@ func censusHeadIndex(event *glxlib.Event) int {
 	}
 	firstNamed := -1
 	for i, p := range event.Participants {
-		if p.Person == "" || glxlib.IsUnnamedParticipant(p) {
+		if !isCensusHouseholdMember(p) || glxlib.IsUnnamedParticipant(p) {
 			continue
 		}
 		switch p.Role {
@@ -314,23 +334,45 @@ func participantStringProperty(p glxlib.Participant, key string) string {
 	return fmt.Sprint(v)
 }
 
-// leadingYears parses the leading whole number of an age such as "45",
-// "45y 3m", or "3/12"; it returns -1 when the age does not start with a digit.
-func leadingYears(age string) int {
+var householdAgeUnits = regexp.MustCompile(`(?i)^(?:(\d+)y\s*)?(?:(\d+)m\s*)?(?:(\d+)d)?$`)
+
+// householdAgeYears compares ages recorded as years, fractional years (3/12),
+// or years/months/days (45y 3m, 6m). Units use approximate year lengths for
+// ordering only; the recorded Age is preserved. Unrecognized ages sort last.
+func householdAgeYears(age string) float64 {
 	age = strings.TrimSpace(age)
-	end := 0
-	for end < len(age) && age[end] >= '0' && age[end] <= '9' {
-		end++
-	}
-	if end == 0 {
+	if age == "" {
 		return -1
 	}
-	n, err := strconv.Atoi(age[:end])
-	if err != nil {
+	if years, err := strconv.ParseFloat(age, 64); err == nil && years >= 0 && !math.IsInf(years, 0) {
+		return years
+	}
+	if numerator, denominator, ok := strings.Cut(age, "/"); ok {
+		n, nErr := strconv.Atoi(strings.TrimSpace(numerator))
+		d, dErr := strconv.Atoi(strings.TrimSpace(denominator))
+		if nErr == nil && dErr == nil && n >= 0 && d > 0 {
+			return float64(n) / float64(d)
+		}
+
 		return -1
+	}
+	parts := householdAgeUnits.FindStringSubmatch(age)
+	if parts == nil {
+		return -1
+	}
+	years := 0.0
+	for i, divisor := range []float64{1, 12, 365.25} {
+		if parts[i+1] == "" {
+			continue
+		}
+		amount, err := strconv.ParseFloat(parts[i+1], 64)
+		if err != nil {
+			return -1
+		}
+		years += amount / divisor
 	}
 
-	return n
+	return years
 }
 
 // formatTallyRow renders a tally row such as "2 female 10–15 (free white)",
