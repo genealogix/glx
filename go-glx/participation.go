@@ -15,6 +15,7 @@
 package glx
 
 import (
+	"slices"
 	"strings"
 )
 
@@ -199,6 +200,50 @@ func EventParticipation(event *Event, personID string, roles map[string]*Vocabul
 	}
 
 	return result, bestRole, bestRank >= 0
+}
+
+// AssertionPersons returns the people whose own record an assertion's evidence
+// is: the subject person of an assertion about a person, and for an assertion
+// about an event, the participants whose role makes the event their own record
+// (ClassifyParticipation). A parish register cited for a baptism's date is the
+// child's record, not the godparent's, so witnesses, informants, godparents and
+// others named in someone else's record are left out. An assertion that names
+// one participant of the event speaks for that participant only. Assertions
+// about relationships and places return nil.
+//
+// Under the GLX evidence model a vital fact is an assertion about the event, so
+// a check that reads only Subject.Person misses most of a person's evidence:
+// every entry in a pre-civil-registration parish register is evidence of this
+// shape (#1211).
+func AssertionPersons(assertion *Assertion, archive *GLXFile) []string {
+	if assertion == nil {
+		return nil
+	}
+	if assertion.Subject.Person != "" {
+		return []string{assertion.Subject.Person}
+	}
+	if assertion.Subject.Event == "" || archive == nil {
+		return nil
+	}
+	event := archive.Events[assertion.Subject.Event]
+	if event == nil {
+		return nil
+	}
+
+	var persons []string
+	for _, participant := range event.Participants {
+		if participant.Person == "" || slices.Contains(persons, participant.Person) {
+			continue
+		}
+		if p := assertion.Participant; p != nil && p.Person != "" && p.Person != participant.Person {
+			continue
+		}
+		if ClassifyParticipation(event.Type, participant.Role, archive.ParticipantRoles).OwnRecord {
+			persons = append(persons, participant.Person)
+		}
+	}
+
+	return persons
 }
 
 // rank orders classifications so the most significant of a person's roles

@@ -379,6 +379,39 @@ func TestAnalyzeEvidence_SingleSourcePerson(t *testing.T) {
 	}
 }
 
+// TestAnalyzeEvidence_SingleSourcePersonViaEvents: assertions about the
+// person's own events count toward their sources (#1211).
+func TestAnalyzeEvidence_SingleSourcePersonViaEvents(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-a":       {Properties: map[string]any{}},
+			"person-witness": {Properties: map[string]any{}},
+		},
+		Sources: map[string]*glxlib.Source{
+			"source-kb": {Title: "Kirchenbuch"},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-death": {Type: glxlib.EventTypeDeath, Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
+			"event-burial": {Type: glxlib.EventTypeBurial, Participants: []glxlib.Participant{
+				{Person: "person-a", Role: "principal"},
+				{Person: "person-witness", Role: "witness"},
+			}},
+		},
+		Assertions: map[string]*glxlib.Assertion{
+			"a-death":  {Subject: glxlib.EntityRef{Event: "event-death"}, Sources: []string{"source-kb"}},
+			"a-burial": {Subject: glxlib.EntityRef{Event: "event-burial"}, Sources: []string{"source-kb"}},
+		},
+	}
+
+	issues := analyzeEvidence(archive)
+	if findIssueByMessage(issues, "person-a", "single source") == nil {
+		t.Fatal("expected single-source issue for the decedent")
+	}
+	if findIssueByMessage(issues, "person-witness", "single source") != nil {
+		t.Error("a witness's evidence is not counted from someone else's record")
+	}
+}
+
 // --- Consistency Analysis ---
 
 func TestAnalyzeEvidence_UncitedNotes(t *testing.T) {
