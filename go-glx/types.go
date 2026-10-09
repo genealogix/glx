@@ -90,6 +90,7 @@ type GLXFile struct { //nolint:revive // GLXFile is the established name across 
 	GenderTypes            map[string]*VocabularyEntry `yaml:"gender_types,omitempty"`
 	SearchResultTypes      map[string]*VocabularyEntry `yaml:"search_result_types,omitempty"`
 	ResearchLogStatusTypes map[string]*VocabularyEntry `yaml:"research_log_status_types,omitempty"`
+	LeadStatuses           map[string]*VocabularyEntry `yaml:"lead_statuses,omitempty"`
 	StudyTypes             map[string]*VocabularyEntry `yaml:"study_types,omitempty"`
 	StudyStatuses          map[string]*VocabularyEntry `yaml:"study_statuses,omitempty"`
 	LegalStatuses          map[string]*VocabularyEntry `yaml:"legal_statuses,omitempty"`
@@ -329,6 +330,7 @@ type ResearchLog struct {
 	Objective   string         `yaml:"objective,omitempty"`
 	Status      string         `refType:"research_log_status_types" yaml:"status,omitempty"`
 	Searches    []Search       `yaml:"searches,omitempty"`
+	Leads       []ResearchLead `yaml:"leads,omitempty"`
 	Citations   []string       `refType:"citations"                 yaml:"citations,omitempty"`
 	Conclusions string         `yaml:"conclusions,omitempty"`
 	Properties  map[string]any `yaml:"properties,omitempty"`
@@ -346,6 +348,29 @@ type Search struct {
 	Result       string     `refType:"search_result_types" yaml:"result,omitempty"`
 	CitationID   string     `refType:"citations"           yaml:"citation,omitempty"`
 	Notes        NoteList   `yaml:"notes,omitempty"`
+}
+
+// ResearchLead is one competing hypothesis under investigation within a
+// ResearchLog, for example a candidate father for a person whose parentage is
+// unknown. Leads are embedded (not standalone entities): a brick-wall log
+// typically carries several, each weighed for and against and eventually
+// eliminated or confirmed. Persons lists candidate Person entities the lead is
+// about; Citations and Assertions optionally point at the structured evidence
+// behind the free-text EvidenceFor/EvidenceAgainst summaries.
+//
+// A lead tracks a research alternative, not a conclusion. Status is the lead's
+// own workflow state: changing it never changes the referenced Assertions,
+// which carry the conclusion and its confidence.
+type ResearchLead struct {
+	Description     string   `yaml:"description,omitempty"`
+	Persons         []string `refType:"persons"                 yaml:"persons,omitempty"`
+	Status          string   `refType:"lead_statuses"           yaml:"status,omitempty"`
+	EvidenceFor     []string `yaml:"evidence_for,omitempty"`
+	EvidenceAgainst []string `yaml:"evidence_against,omitempty"`
+	Citations       []string `refType:"citations"               yaml:"citations,omitempty"`
+	Assertions      []string `refType:"assertions"              yaml:"assertions,omitempty"`
+	NextSteps       []string `yaml:"next_steps,omitempty"`
+	Notes           NoteList `yaml:"notes,omitempty"`
 }
 
 // Study represents the formal scope of a research project — a One Place Study,
@@ -593,6 +618,7 @@ func (g *GLXFile) Merge(other *GLXFile) (conflicts []string, identicalSkipped in
 	addDedup(mergeMapDedup("confidence_levels", g.ConfidenceLevels, other.ConfidenceLevels))
 	addDedup(mergeMapDedup("search_result_types", g.SearchResultTypes, other.SearchResultTypes))
 	addDedup(mergeMapDedup("research_log_status_types", g.ResearchLogStatusTypes, other.ResearchLogStatusTypes))
+	addDedup(mergeMapDedup("lead_statuses", g.LeadStatuses, other.LeadStatuses))
 	addDedup(mergeMapDedup("study_types", g.StudyTypes, other.StudyTypes))
 	addDedup(mergeMapDedup("study_statuses", g.StudyStatuses, other.StudyStatuses))
 
@@ -676,6 +702,9 @@ func (g *GLXFile) initMaps() {
 	}
 	if g.ResearchLogStatusTypes == nil {
 		g.ResearchLogStatusTypes = make(map[string]*VocabularyEntry)
+	}
+	if g.LeadStatuses == nil {
+		g.LeadStatuses = make(map[string]*VocabularyEntry)
 	}
 	if g.StudyTypes == nil {
 		g.StudyTypes = make(map[string]*VocabularyEntry)

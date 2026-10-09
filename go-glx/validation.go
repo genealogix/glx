@@ -132,6 +132,7 @@ func (glx *GLXFile) buildVocabularyMaps(result *ValidationResult) {
 	result.Vocabularies[VocabGenderTypes] = buildIDSet(glx.GenderTypes)
 	result.Vocabularies[VocabSearchResultTypes] = buildIDSet(glx.SearchResultTypes)
 	result.Vocabularies[VocabResearchLogStatusTypes] = buildIDSet(glx.ResearchLogStatusTypes)
+	result.Vocabularies[VocabLeadStatuses] = buildIDSet(glx.LeadStatuses)
 	result.Vocabularies[VocabStudyTypes] = buildIDSet(glx.StudyTypes)
 	result.Vocabularies[VocabStudyStatuses] = buildIDSet(glx.StudyStatuses)
 	result.Vocabularies[VocabLegalStatuses] = buildIDSet(glx.LegalStatuses)
