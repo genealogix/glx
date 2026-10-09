@@ -116,6 +116,14 @@ var (
 	// than one subject type, which only a hand-edited archive can produce.
 	ErrEvidenceSubjectAmbiguous = errors.New("ID belongs to more than one entity")
 
+	// `glx census add` errors
+	ErrCensusNeighborUnknownPerson = errors.New("census neighbor references a person not in the archive or the template")
+
+	// `glx households` errors
+	ErrHouseholdsNoTarget      = errors.New("give a person, or --place to list every census household at a place")
+	ErrHouseholdsUnknownFormat = errors.New("unknown output format (must be 'text' or 'json')")
+	ErrHouseholdsPlaceNotFound = errors.New("place not found")
+
 	// `glx migrations` errors
 	ErrMigrationsUnknownFormat     = errors.New("unknown output format (must be 'text' or 'json')")
 	ErrMigrationsPersonOrPattern   = errors.New("a person argument or --pattern is required")
