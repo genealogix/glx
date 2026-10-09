@@ -276,17 +276,18 @@ func buildAppearances(events []personSourceInfo, archive *GLXFile) []CoverageApp
 			EventType: e.EventType,
 			Role:      e.PersonRole,
 			Date:      string(event.Date),
-			Label:     appearanceLabel(event, archive),
+			Label:     AppearanceLabel(event, archive),
 		})
 	}
 
 	return appearances
 }
 
-// appearanceLabel names whose record an event is: "Probate of Caspar
+// AppearanceLabel names whose record an event is: "Probate of Caspar
 // Stoehr" from the participants whose own record it is, else the event's
-// title, else its type.
-func appearanceLabel(event *Event, archive *GLXFile) string {
+// title, else its type. It labels an event a person appears in without it
+// being their own record (coverage's "Appears in", timeline rows).
+func AppearanceLabel(event *Event, archive *GLXFile) string {
 	typeLabel := coverageEventTypeLabel(event.Type)
 
 	var names []string
