@@ -156,6 +156,60 @@ func TestCompareGivenNames_OneEmpty(t *testing.T) {
 	assert.Equal(t, 0.0, compareGivenNames("", "John"))
 }
 
+// --- Compound given names (#1366) ---
+
+func TestCompareGivenNames_CompoundScoresOnEveryWord(t *testing.T) {
+	// The shared Johann must not carry Georg/Christoffel.
+	differing := compareGivenNames("Johann Georg", "Johann Christoffel")
+	assert.Less(t, differing, 0.3)
+	assert.InDelta(t, compareGivenWords("georg", "christoffel"), differing, 1e-12,
+		"the weakest word pair is the score")
+
+	assert.InDelta(t, 1.0, compareGivenNames("Johann Georg", "johann  georg"), 1e-12)
+	assert.InDelta(t, 1.0, compareGivenNames("Anna-Maria", "Anna Maria"), 1e-12)
+	assert.InDelta(t, 0.6, compareGivenNames("J. G.", "Johann Georg"), 1e-12)
+	assert.Greater(t, compareGivenNames("Johan Georg", "Johann Georg"), 0.8, "a spelling variant still scores high")
+}
+
+func TestCompareGivenNames_CallNameAgainstFullName(t *testing.T) {
+	// A call name alone pairs with the word it belongs to, scaled by the share
+	// of the longer name's words it accounts for.
+	assert.InDelta(t, 0.5, compareGivenNames("Georg", "Johann Georg"), 1e-12)
+	assert.InDelta(t, 0.5, compareGivenNames("Johann Georg", "Johann"), 1e-12)
+	assert.InDelta(t, 2.0/3.0, compareGivenNames("Johann Georg", "Johann Georg Friedrich"), 1e-12)
+	assert.Less(t, compareGivenNames("Catharina", "Johann Wilhelm"), 0.2)
+}
+
+func TestScoreNameSimilarity_CompoundGivenNotSimilar(t *testing.T) {
+	a := &Person{Properties: map[string]any{"name": "Johann Wilhelm Schöpff"}}
+	b := &Person{Properties: map[string]any{"name": "Johann Conrad Schöpff"}}
+	score, detail, hasData := scoreNameSimilarity(a, b)
+	assert.True(t, hasData)
+	assert.Less(t, score, 0.65)
+	assert.NotContains(t, detail, "given exact")
+}
+
+func TestScorePhoneticSimilarity_CompoundGivenCodedPerWord(t *testing.T) {
+	// Coded whole, both are J526 (the space is dropped).
+	a := &Person{Properties: map[string]any{"name": "Johann Georg Wörner"}}
+	b := &Person{Properties: map[string]any{"name": "Johann Christoffel Wörner"}}
+	score, detail, hasData := scorePhoneticSimilarity(a, b)
+	assert.True(t, hasData)
+	assert.InDelta(t, 0.5, score, 1e-12)
+	assert.Equal(t, "surname phonetic", detail)
+
+	// A call name alone matches the full name it is part of, and an initial
+	// is skipped rather than coded.
+	c := &Person{Properties: map[string]any{"name": "Georg Wörner"}}
+	score, detail, _ = scorePhoneticSimilarity(a, c)
+	assert.InDelta(t, 1.0, score, 1e-12)
+	assert.Contains(t, detail, "given phonetic")
+
+	d := &Person{Properties: map[string]any{"name": "J. Georg Wörner"}}
+	score, _, _ = scorePhoneticSimilarity(a, d)
+	assert.InDelta(t, 1.0, score, 1e-12)
+}
+
 // --- Phonetic similarity tests (#704) ---
 
 func TestScorePhoneticSimilarity_ExactMatch(t *testing.T) {
