@@ -152,11 +152,6 @@
             "minLength": 1,
             "description": "Lead status (validated against lead_statuses vocabulary: active, eliminated, confirmed)"
           },
-          "confidence": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Researcher's confidence in the hypothesis (validated against confidence_levels vocabulary)"
-          },
           "evidence_for": {
             "type": "array",
             "description": "Free-text summaries of evidence supporting the hypothesis",
@@ -178,7 +173,7 @@
           },
           "assertions": {
             "type": "array",
-            "description": "Assertions that model this hypothesis (e.g., a speculative parent_child assertion)",
+            "description": "Assertions that model this hypothesis (e.g., a speculative parent_child assertion). A cross-reference only: changing the lead status does not change these assertions",
             "items": {
               "type": "string",
               "pattern": "^[a-zA-Z0-9-]{1,64}$"

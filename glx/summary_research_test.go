@@ -49,7 +49,6 @@ func newResearchTestArchive() *glxlib.GLXFile {
 						Description: "John H. Green of Wheeling, VA",
 						Persons:     []string{"person-john"},
 						Status:      glxlib.LeadStatusActive,
-						Confidence:  "medium",
 						NextSteps:   []string{"Search 1850 census, Ohio County, VA"},
 					},
 					{
@@ -79,7 +78,7 @@ func TestPrintResearchSection_Subject(t *testing.T) {
 	assert.Contains(t, output, "Identify Mary Green's parents")
 	assert.Contains(t, output, "1 planned search not yet performed")
 	assert.Contains(t, output, "1 active, 1 eliminated")
-	assert.Contains(t, output, "- John H. Green of Wheeling, VA (medium confidence; next: Search 1850 census, Ohio County, VA)")
+	assert.Contains(t, output, "- John H. Green of Wheeling, VA (next: Search 1850 census, Ohio County, VA)")
 	assert.NotContains(t, output, "Luther Green of Springwater", "eliminated leads are counted, not listed")
 	assert.NotContains(t, output, "research-log-john-origins")
 }
@@ -108,7 +107,7 @@ func TestPrintResearchSection_NoLogs(t *testing.T) {
 func TestFormatOpenLead_Fallbacks(t *testing.T) {
 	assert.Equal(t, "person-a, person-b", formatOpenLead(&glxlib.ResearchLead{Persons: []string{"person-a", "person-b"}}))
 	assert.Equal(t, "(undescribed lead)", formatOpenLead(&glxlib.ResearchLead{}))
-	assert.Equal(t, "X (low confidence)", formatOpenLead(&glxlib.ResearchLead{Description: "X", Confidence: "low"}))
+	assert.Equal(t, "X (next: Y)", formatOpenLead(&glxlib.ResearchLead{Description: "X", NextSteps: []string{"Y"}}))
 }
 
 func TestShowSummary_ResearchSectionFromExample(t *testing.T) {
@@ -181,7 +180,7 @@ func TestMergeStandardVocabularies_LeadStatuses(t *testing.T) {
 func TestPrintResearchSection_PreservesLeadStatuses(t *testing.T) {
 	archive := newResearchTestArchive()
 	archive.ResearchLogs["research-log-mary-parents"].Leads = []glxlib.ResearchLead{
-		{Description: "On hold", Status: "parked", Confidence: "low", NextSteps: []string{"Wait for access"}},
+		{Description: "On hold", Status: "parked", NextSteps: []string{"Wait for access"}},
 		{Description: "Still investigating", Status: glxlib.LeadStatusActive},
 		{Description: "Awaiting records", Status: "blocked"},
 		{Description: "No status yet"},
@@ -192,7 +191,7 @@ func TestPrintResearchSection_PreservesLeadStatuses(t *testing.T) {
 		printResearchSection("person-mary", archive)
 	})
 	assert.Contains(t, output, "1 active, 1 confirmed, 1 eliminated, 1 blocked, 1 parked, 1 unspecified")
-	assert.Contains(t, output, "On hold (parked; low confidence; next: Wait for access)")
+	assert.Contains(t, output, "On hold (parked; next: Wait for access)")
 	assert.Contains(t, output, "Awaiting records (blocked)")
 	assert.Contains(t, output, "No status yet")
 	assert.NotContains(t, output, "4 active")

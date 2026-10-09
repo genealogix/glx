@@ -119,7 +119,7 @@ func printResearchLogSummary(id, personID string, log *glxlib.ResearchLog) {
 	}
 }
 
-// formatOpenLead renders an open lead as "description (confidence; next: step)".
+// formatOpenLead renders an open lead as "description (status; next: step)".
 func formatOpenLead(lead *glxlib.ResearchLead) string {
 	text := lead.Description
 	if text == "" {
@@ -131,9 +131,6 @@ func formatOpenLead(lead *glxlib.ResearchLead) string {
 	var details []string
 	if lead.Status != "" && lead.Status != glxlib.LeadStatusActive {
 		details = append(details, lead.Status)
-	}
-	if lead.Confidence != "" {
-		details = append(details, lead.Confidence+" confidence")
 	}
 	if len(lead.NextSteps) > 0 {
 		details = append(details, "next: "+lead.NextSteps[0])

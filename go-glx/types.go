@@ -343,11 +343,14 @@ type Search struct {
 // eliminated or confirmed. Persons lists candidate Person entities the lead is
 // about; Citations and Assertions optionally point at the structured evidence
 // behind the free-text EvidenceFor/EvidenceAgainst summaries.
+//
+// A lead tracks a research alternative, not a conclusion. Status is the lead's
+// own workflow state: changing it never changes the referenced Assertions,
+// which carry the conclusion and its confidence.
 type ResearchLead struct {
 	Description     string   `yaml:"description,omitempty"`
 	Persons         []string `refType:"persons"                 yaml:"persons,omitempty"`
 	Status          string   `refType:"lead_statuses"           yaml:"status,omitempty"`
-	Confidence      string   `refType:"confidence_levels"       yaml:"confidence,omitempty"`
 	EvidenceFor     []string `yaml:"evidence_for,omitempty"`
 	EvidenceAgainst []string `yaml:"evidence_against,omitempty"`
 	Citations       []string `refType:"citations"               yaml:"citations,omitempty"`

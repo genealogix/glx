@@ -33,7 +33,6 @@ const researchLeadYAML = `research_logs:
         persons:
           - person-john-h-green
         status: active
-        confidence: medium
         evidence_for:
           - Daughter aged 5-10 in the 1840 census
         evidence_against:
@@ -60,7 +59,6 @@ func TestResearchLeadRoundTrip(t *testing.T) {
 	assert.Equal(t, "John H. Green of Wheeling, VA", lead.Description)
 	assert.Equal(t, []string{"person-john-h-green"}, lead.Persons)
 	assert.Equal(t, LeadStatusActive, lead.Status)
-	assert.Equal(t, "medium", lead.Confidence)
 	assert.Equal(t, []string{"Daughter aged 5-10 in the 1840 census"}, lead.EvidenceFor)
 	assert.Equal(t, []string{"Father born in England, not connected to the NY Greens"}, lead.EvidenceAgainst)
 	assert.Equal(t, []string{"citation-1840-census"}, lead.Citations)
@@ -106,7 +104,6 @@ func leadValidationArchive(lead *ResearchLead) *GLXFile {
 			LeadStatusActive:     {Label: "Active"},
 			LeadStatusEliminated: {Label: "Eliminated"},
 		},
-		ConfidenceLevels: map[string]*VocabularyEntry{"medium": {Label: "Medium"}},
 		ResearchLogs: map[string]*ResearchLog{
 			"log-1": {Leads: []ResearchLead{*lead}},
 		},
@@ -118,7 +115,6 @@ func TestResearchLeadValidation(t *testing.T) {
 		result := leadValidationArchive(&ResearchLead{
 			Persons:    []string{"person-1"},
 			Status:     LeadStatusActive,
-			Confidence: "medium",
 			Citations:  []string{"citation-1"},
 			Assertions: []string{"assertion-1"},
 		}).Validate()
@@ -132,7 +128,6 @@ func TestResearchLeadValidation(t *testing.T) {
 	}{
 		{"unknown candidate person", ResearchLead{Persons: []string{"person-missing"}}, "person-missing"},
 		{"status not in vocabulary", ResearchLead{Status: "maybe"}, "maybe"},
-		{"confidence not in vocabulary", ResearchLead{Confidence: "certain"}, "certain"},
 		{"unknown citation", ResearchLead{Citations: []string{"citation-missing"}}, "citation-missing"},
 		{"unknown assertion", ResearchLead{Assertions: []string{"assertion-missing"}}, "assertion-missing"},
 	}

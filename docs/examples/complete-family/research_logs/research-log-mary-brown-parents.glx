@@ -21,14 +21,12 @@ research_logs:
     leads:
       - description: "Daughter of Thomas and Ann Brown, weaver, of Leeds"
         status: active
-        confidence: medium
         evidence_for:
           - "Baptism of a Mary Brown, April 1852, St Paul's, a month after her recorded birth date"
         next_steps:
           - "Find the Thomas Brown household in the 1861 census and check for a daughter Mary aged 9"
       - description: "Daughter of William and Sarah Brown, labourer, of Leeds"
         status: eliminated
-        confidence: low
         evidence_against:
           - "This Mary Brown was buried in 1854, aged 2 (St Paul's burial register)"
     notes: "The 1875 marriage entry does not name the bride's father, so baptism and census records must carry the identification."

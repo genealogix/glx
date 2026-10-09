@@ -129,6 +129,8 @@ research_logs:
 // A self-contained single-file archive validates standard research-log
 // vocabulary values (log status, search result, lead status) just as a
 // directory archive does.
+// The confidence_levels block is only there to make the file self-contained;
+// the three vocabularies under test are left for glx to fill in.
 func TestResearchLeads_SelfContainedSingleFile(t *testing.T) {
 	dir := t.TempDir()
 	file := filepath.Join(dir, "archive.glx")
@@ -154,7 +156,6 @@ research_logs:
       - description: "John Green"
         persons: [person-john]
         status: active
-        confidence: medium
 `)
 	require.NoError(t, os.WriteFile(file, doc, 0o600))
 	v := runGLX(t, dir, "validate", "archive.glx")
