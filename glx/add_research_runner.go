@@ -64,6 +64,9 @@ func addResearchLog(io *IOStreams, opts *addResearchLogOptions) error {
 	if err := validateVocabKey(ctx.archive, glxlib.VocabResearchLogStatusTypes, opts.Status); err != nil {
 		return err
 	}
+	if err := validateDateFlag("--date", opts.Date); err != nil {
+		return err
+	}
 	for _, cid := range opts.Citations {
 		if err := validateRefExists(ctx.archive, glxlib.EntityTypeCitations, cid); err != nil {
 			return err
@@ -249,6 +252,9 @@ func buildSearch(archive *glxlib.GLXFile, opts *addSearchOptions) (*glxlib.Searc
 	if opts.Source == "" && opts.Repository == "" && strings.TrimSpace(opts.Collection) == "" &&
 		strings.TrimSpace(opts.Query) == "" && opts.Citation == "" {
 		return nil, ErrAddSearchWhatRequired
+	}
+	if err := validateDateFlag("--date", opts.Date); err != nil {
+		return nil, err
 	}
 	if err := validateRefExists(archive, glxlib.EntityTypeSources, opts.Source); err != nil {
 		return nil, err
@@ -483,6 +489,9 @@ func addStudy(io *IOStreams, opts *addStudyOptions) error {
 		return err
 	}
 	if err := validateVocabKey(ctx.archive, glxlib.VocabStudyStatuses, opts.Status); err != nil {
+		return err
+	}
+	if err := validateDateFlag("--date-range", opts.DateRange); err != nil {
 		return err
 	}
 	for _, pid := range opts.Places {

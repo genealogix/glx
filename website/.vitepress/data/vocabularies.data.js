@@ -17,6 +17,7 @@ export default {
       'event-types': readFileSync(resolve(vocabDir, 'event-types.glx'), 'utf-8'),
       'gender-types': readFileSync(resolve(vocabDir, 'gender-types.glx'), 'utf-8'),
       'information-types': readFileSync(resolve(vocabDir, 'information-types.glx'), 'utf-8'),
+      'lead-statuses': readFileSync(resolve(vocabDir, 'lead-statuses.glx'), 'utf-8'),
       'legal-statuses': readFileSync(resolve(vocabDir, 'legal-statuses.glx'), 'utf-8'),
       'source-natures': readFileSync(resolve(vocabDir, 'source-natures.glx'), 'utf-8'),
       'media-properties': readFileSync(resolve(vocabDir, 'media-properties.glx'), 'utf-8'),

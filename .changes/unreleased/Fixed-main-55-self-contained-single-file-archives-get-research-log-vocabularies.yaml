@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**Self-contained single-file archives now get the standard research-log vocabularies** — Loading a single `.glx` file filled in missing standard vocabularies but skipped `search_result_types` and `research_log_status_types`, so `glx validate archive.glx` rejected a research log using a standard value such as `status: in_progress` or `result: found` that the same archive passed as a directory. Both are now filled in, along with the new `lead_statuses`.'
+time: '2026-10-10T00:00:04Z'
+custom:
+  Issue: '#660'
