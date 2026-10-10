@@ -232,11 +232,15 @@ func marriagePairKey(a, b string) string {
 	return b + "|" + a
 }
 
-// checkMissingBirth reports persons with no birth event (no date or place).
+// checkMissingBirth reports persons with no birth event (no date or place). A
+// dated or placed baptism or christening of the person satisfies it: before
+// civil registration that entry is the birth evidence (#1365).
 func checkMissingBirth(archive *glxlib.GLXFile, id, name string) []AnalysisIssue {
-	_, birthEvent := glxlib.FindPersonEvent(archive, id, glxlib.EventTypeBirth)
-	if birthEvent != nil && (birthEvent.Date != "" || birthEvent.PlaceID != "") {
-		return nil
+	for _, eventType := range []string{glxlib.EventTypeBirth, glxlib.EventTypeBaptism, glxlib.EventTypeChristening} {
+		_, event := glxlib.FindPersonEvent(archive, id, eventType)
+		if event != nil && (event.Date != "" || event.PlaceID != "") {
+			return nil
+		}
 	}
 
 	return []AnalysisIssue{{
