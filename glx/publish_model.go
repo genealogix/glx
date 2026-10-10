@@ -259,7 +259,8 @@ type siteIndex struct {
 	// standings classifies each relationship's support in the archive.
 	standings *glxlib.RelationshipStandingIndex
 	// assertionsByPerson maps a person ID to assertions that reference the
-	// person as subject or as the asserted participant.
+	// person as subject or as the asserted participant, or that are about an
+	// event that is the person's own record (glxlib.AssertionPersons).
 	assertionsByPerson map[string][]*glxlib.Assertion
 	// eventsByPlace counts events referencing each place ID.
 	eventsByPlace map[string]int
@@ -294,7 +295,7 @@ func newSiteIndex(archive *glxlib.GLXFile) *siteIndex {
 
 	for _, aID := range sortedKeys(archive.Assertions) {
 		a := archive.Assertions[aID]
-		idx.indexAssertion(a)
+		idx.indexAssertion(a, archive)
 	}
 
 	for _, evID := range sortedKeys(archive.Events) {
@@ -358,8 +359,10 @@ func (idx *siteIndex) indexRelationship(relID string, rel *glxlib.Relationship) 
 	}
 }
 
-// indexAssertion records which persons an assertion references.
-func (idx *siteIndex) indexAssertion(a *glxlib.Assertion) {
+// indexAssertion records which persons an assertion references. An assertion
+// about a person's baptism or burial is evidence on that person's page: a
+// parish register entry has no other shape (#1211).
+func (idx *siteIndex) indexAssertion(a *glxlib.Assertion, archive *glxlib.GLXFile) {
 	seen := map[string]bool{}
 	add := func(personID string) {
 		if personID == "" || seen[personID] {
@@ -369,8 +372,8 @@ func (idx *siteIndex) indexAssertion(a *glxlib.Assertion) {
 		idx.assertionsByPerson[personID] = append(idx.assertionsByPerson[personID], a)
 	}
 
-	if a.Subject.Person != "" {
-		add(a.Subject.Person)
+	for _, personID := range glxlib.AssertionPersons(a, archive) {
+		add(personID)
 	}
 	if a.Participant != nil {
 		add(a.Participant.Person)

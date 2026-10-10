@@ -302,6 +302,60 @@ func TestSuggestVitalRecords_ChurchRegisterCounts(t *testing.T) {
 		"a parish register is the vital record where civil registration did not exist")
 }
 
+// TestSuggestVitalRecords_EventCitedRegisterCounts is #1211: the register is
+// cited on an assertion about the person's own death event, which is how a
+// parish register entry is recorded, and counts as theirs.
+func TestSuggestVitalRecords_EventCitedRegisterCounts(t *testing.T) {
+	archive := mecklenburgArchive()
+	archive.Sources = map[string]*glxlib.Source{
+		"source-kirchenbuch": {Title: "Kirchenbuch Liepen", Type: glxlib.SourceTypeChurchRegister},
+	}
+	archive.Citations = map[string]*glxlib.Citation{
+		"citation-burial": {SourceID: "source-kirchenbuch"},
+	}
+	archive.Assertions = map[string]*glxlib.Assertion{
+		"assertion-death": {
+			Subject:   glxlib.EntityRef{Event: "event-death"},
+			Property:  "date",
+			Value:     "1807-08-31",
+			Citations: []string{"citation-burial"},
+		},
+	}
+
+	assert.Empty(t, suggestVitalRecords(archive),
+		"a register cited on the person's own death event is their vital record")
+}
+
+// TestSuggestVitalRecords_WitnessedEventDoesNotCount: a register entry that
+// names the person only as a witness is someone else's vital record.
+func TestSuggestVitalRecords_WitnessedEventDoesNotCount(t *testing.T) {
+	archive := mecklenburgArchive()
+	archive.Persons["person-child"] = &glxlib.Person{Properties: map[string]any{glxlib.PersonPropertyName: "Child"}}
+	archive.Events["event-baptism"] = &glxlib.Event{
+		Type: glxlib.EventTypeBaptism, Date: "1780",
+		Participants: []glxlib.Participant{
+			{Person: "person-child", Role: "subject"},
+			{Person: "person-hollnagel", Role: glxlib.ParticipantRoleWitness},
+		},
+	}
+	archive.Sources = map[string]*glxlib.Source{
+		"source-kirchenbuch": {Title: "Kirchenbuch Liepen", Type: glxlib.SourceTypeChurchRegister},
+	}
+	archive.Assertions = map[string]*glxlib.Assertion{
+		"assertion-baptism": {
+			Subject:  glxlib.EntityRef{Event: "event-baptism"},
+			Property: "date",
+			Value:    "1780",
+			Sources:  []string{"source-kirchenbuch"},
+		},
+	}
+
+	issues := suggestVitalRecords(archive)
+
+	require.Len(t, issues, 1)
+	assert.Equal(t, "person-hollnagel", issues[0].Person)
+}
+
 func TestSuggestVitalRecords_NoSourceStillSuggests(t *testing.T) {
 	archive := mecklenburgArchive()
 
