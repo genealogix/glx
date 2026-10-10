@@ -541,7 +541,7 @@ func mergeOnePlace(entityType EntityType, id string, base, ours, theirs *Place) 
 	var conflicts []Merge3Conflict
 
 	merged.Name, conflicts = scalarOrConflict(prefix+".name", base.Name, ours.Name, theirs.Name, conflicts)
-	merged.ParentID, conflicts = scalarOrConflict(prefix+".parent", base.ParentID, ours.ParentID, theirs.ParentID, conflicts)
+	conflicts = mergePlaceParent(prefix+".parent", merged, base, ours, theirs, conflicts)
 	merged.Type, conflicts = scalarOrConflict(prefix+".type", base.Type, ours.Type, theirs.Type, conflicts)
 	merged.Latitude, conflicts = float64PtrOrConflict(prefix+".latitude", base.Latitude, ours.Latitude, theirs.Latitude, conflicts)
 	merged.Longitude, conflicts = float64PtrOrConflict(prefix+".longitude", base.Longitude, ours.Longitude, theirs.Longitude, conflicts)
@@ -1192,6 +1192,41 @@ func stringSet(s []string) map[string]struct{} {
 	}
 
 	return out
+}
+
+// mergePlaceParent 3-way merges a place's parent — the plain ParentID or the
+// temporal ParentHistory (#225) — as one opaque value, so a change from the
+// string form to the dated list (or an edit to one entry) is taken whole.
+func mergePlaceParent(path string, merged, base, ours, theirs *Place, conflicts []Merge3Conflict) []Merge3Conflict {
+	parentEq := func(a, b *Place) bool {
+		return a.ParentID == b.ParentID && slices.Equal(a.ParentHistory, b.ParentHistory)
+	}
+	parentValue := func(p *Place) any {
+		if len(p.ParentHistory) > 0 {
+			return slices.Clone(p.ParentHistory)
+		}
+
+		return p.ParentID
+	}
+
+	winner := ours
+	switch {
+	case parentEq(base, ours):
+		winner = theirs
+	case parentEq(base, theirs), parentEq(ours, theirs):
+		winner = ours
+	default:
+		conflicts = append(conflicts, Merge3Conflict{
+			Path:        path,
+			BaseValue:   parentValue(base),
+			OursValue:   parentValue(ours),
+			TheirsValue: parentValue(theirs),
+		})
+	}
+	merged.ParentID = winner.ParentID
+	merged.ParentHistory = slices.Clone(winner.ParentHistory)
+
+	return conflicts
 }
 
 // merge3NoteList applies the same set-merge semantics to NoteList values.

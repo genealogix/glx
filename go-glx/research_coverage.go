@@ -99,7 +99,7 @@ func buildCoverage(personID string, person *Person, archive *GLXFile, fallback s
 	}
 
 	// National census records, for the countries the person's places name
-	schedules := censusSchedulesForPlaces(coveragePlaceRefs(presentEvents), archive, fallback)
+	schedules := censusSchedulesForDatedPlaces(coveragePlaceRefs(presentEvents), archive, fallback)
 	records := buildCensusRecords(birthYear, deathYear, schedules, personSources, personEvents, presentEvents, archive)
 
 	// State census records
@@ -143,9 +143,10 @@ type personSourceInfo struct {
 	Ref        string // source or citation ID
 	Type       string // source type
 	Title      string
-	EventType  string // if found via an event
-	PersonRole string // this person's role in that event
-	PlaceID    string // place reference (events only)
+	EventType  string     // if found via an event
+	PersonRole string     // this person's role in that event
+	PlaceID    string     // place reference (events only)
+	Date       DateString // event date (events only); resolves temporal place parents
 	Year       int
 	Evidenced  bool // events only: a firm assertion resolves a citation, source or media
 	Estimated  bool // events only: only hypothetical assertions resolve any evidence
@@ -240,6 +241,7 @@ func collectPersonEvents(personID string, archive *GLXFile, evidenced, estimated
 			Year:       ExtractFirstYear(string(event.Date)),
 			Title:      event.Title,
 			PlaceID:    event.PlaceID,
+			Date:       event.Date,
 			Evidenced:  evidenced[eventID],
 			Estimated:  estimated[eventID],
 			PersonRole: role,
@@ -331,11 +333,11 @@ func coverageDatedPlaces(events []personSourceInfo) []CensusDatedPlace {
 
 // coveragePlaceRefs returns the place references of a person's events, for
 // resolving which countries' census schedules apply to them.
-func coveragePlaceRefs(events []personSourceInfo) []string {
-	var refs []string
+func coveragePlaceRefs(events []personSourceInfo) []datedPlaceRef {
+	var refs []datedPlaceRef
 	for _, e := range events {
 		if e.PlaceID != "" {
-			refs = append(refs, e.PlaceID)
+			refs = append(refs, datedPlaceRef{placeID: e.PlaceID, date: e.Date})
 		}
 	}
 

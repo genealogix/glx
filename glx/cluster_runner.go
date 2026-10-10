@@ -611,23 +611,11 @@ func clusterEventHasParticipant(personID string, event *glxlib.Event) bool {
 	return false
 }
 
-// placeIsDescendant checks if placeID is a descendant of ancestorID in the place hierarchy.
+// placeIsDescendant checks if placeID is a descendant of ancestorID in the
+// place hierarchy, following the parents of every period (#225): a county
+// that moved from a territory to a state is a descendant of both.
 func placeIsDescendant(placeID, ancestorID string, archive *glxlib.GLXFile) bool {
-	visited := make(map[string]bool)
-	current := placeID
-	for current != "" && !visited[current] {
-		visited[current] = true
-		place, ok := archive.Places[current]
-		if !ok || place == nil {
-			return false
-		}
-		if place.ParentID == ancestorID {
-			return true
-		}
-		current = place.ParentID
-	}
-
-	return false
+	return archive.PlaceHasAncestor(placeID, ancestorID)
 }
 
 // yearInRange checks if a year falls within the filter range.

@@ -18,6 +18,7 @@ import (
 	"cmp"
 	"errors"
 	"fmt"
+	"maps"
 	"reflect"
 	"slices"
 	"strconv"
@@ -55,6 +56,7 @@ func (glx *GLXFile) Validate() *ValidationResult {
 
 	// Phase 4: Validate structural constraints
 	glx.validatePlaceHierarchyCycles(result)
+	glx.validatePlaceParentHistory(result)
 	glx.validateParticipantRoleContexts(result)
 
 	// Phase 5: Validate entity-level field formats
@@ -984,54 +986,121 @@ func (glx *GLXFile) validateTemporalFields(
 }
 
 // validatePlaceHierarchyCycles detects cycles in place parent references.
-// For each place, it walks the parent chain and reports an error if the chain
-// loops back to a previously visited place. Each cycle is reported exactly once.
+// It follows every parent edge — the plain parent and each entry of a
+// temporal parent list (#225) — depth-first, and reports an error for each
+// edge that loops back into the current path. Each cycle is reported exactly
+// once. A cycle is an error even when its edges belong to different periods.
 func (glx *GLXFile) validatePlaceHierarchyCycles(result *ValidationResult) {
 	if len(glx.Places) == 0 {
 		return
 	}
 
-	verified := make(map[string]struct{})
-	for placeID := range glx.Places {
-		if _, done := verified[placeID]; done {
-			continue
-		}
+	const (
+		unvisited = iota
+		onPath
+		done
+	)
+	state := make(map[string]int, len(glx.Places))
+	var path []string
+	pathIndex := make(map[string]int)
 
-		var path []string
-		visited := make(map[string]int) // placeID -> index in path
-		current := placeID
-		for {
-			if _, done := verified[current]; done {
-				break
+	var visit func(id string)
+	visit = func(id string) {
+		state[id] = onPath
+		pathIndex[id] = len(path)
+		path = append(path, id)
+
+		for _, parent := range glx.Places[id].ParentIDs() {
+			if _, exists := glx.Places[parent]; !exists {
+				continue
 			}
-			if idx, inPath := visited[current]; inPath {
-				cycleMembers := path[idx:]
+			switch state[parent] {
+			case onPath:
+				cycleMembers := path[pathIndex[parent]:]
 				result.Errors = append(result.Errors, ValidationError{
 					SourceType:  EntityTypePlaces,
 					SourceID:    cycleMembers[0],
-					SourceField: "parent",
+					SourceField: placeFieldParent,
 					TargetType:  string(EntityTypePlaces),
-					TargetID:    current,
+					TargetID:    parent,
 					Message: fmt.Sprintf("places: place hierarchy cycle detected: %s -> %s",
-						strings.Join(cycleMembers, " -> "), current),
+						strings.Join(cycleMembers, " -> "), parent),
 				})
-
-				break
+			case unvisited:
+				visit(parent)
 			}
-
-			place, exists := glx.Places[current]
-			if !exists || place.ParentID == "" {
-				break
-			}
-
-			visited[current] = len(path)
-			path = append(path, current)
-			current = place.ParentID
 		}
 
-		// Mark all path nodes as verified to avoid duplicate reports.
-		for _, id := range path {
-			verified[id] = struct{}{}
+		path = path[:len(path)-1]
+		delete(pathIndex, id)
+		state[id] = done
+	}
+
+	for _, id := range slices.Sorted(maps.Keys(glx.Places)) {
+		if state[id] == unvisited {
+			visit(id)
+		}
+	}
+}
+
+// validatePlaceParentHistory checks temporal place parents (#225): every
+// entry's parent must exist (the default parent is already checked through
+// ParentID's refType), every date must be a valid GLX date, and two entries
+// naming different parents should not certainly overlap in time.
+func (glx *GLXFile) validatePlaceParentHistory(result *ValidationResult) {
+	for _, placeID := range slices.Sorted(maps.Keys(glx.Places)) {
+		place := glx.Places[placeID]
+		if !place.HasTemporalParent() {
+			continue
+		}
+		for i, period := range place.ParentHistory {
+			field := fmt.Sprintf("%s[%d]", placeFieldParent, i)
+			switch {
+			case period.Value == "":
+				result.Errors = append(result.Errors, ValidationError{
+					SourceType:  EntityTypePlaces,
+					SourceID:    placeID,
+					SourceField: field,
+					Message:     fmt.Sprintf("places[%s].%s: parent entry has no value", placeID, field),
+				})
+			case period.Value != place.ParentID:
+				glx.checkReference(EntityTypePlaces, placeID, field, string(EntityTypePlaces), period.Value, result)
+			}
+			if period.Date != "" {
+				glx.validateDateFormat(EntityTypePlaces, placeID, field+".date", string(period.Date), result)
+			}
+		}
+		glx.warnOverlappingParentPeriods(placeID, place.ParentHistory, result)
+	}
+}
+
+// warnOverlappingParentPeriods warns when two dated entries of a temporal
+// parent name different parents for periods that certainly overlap. Shared
+// imprecise boundaries ("TO 1972" then "FROM 1972") are not overlaps.
+func (glx *GLXFile) warnOverlappingParentPeriods(placeID string, periods []PlaceParentPeriod, result *ValidationResult) {
+	for i := range periods {
+		if periods[i].Date == "" {
+			continue
+		}
+		a, ok := parentPeriodCore(periods[i].Date)
+		if !ok {
+			continue
+		}
+		for j := i + 1; j < len(periods); j++ {
+			if periods[j].Date == "" || periods[j].Value == periods[i].Value {
+				continue
+			}
+			b, ok := parentPeriodCore(periods[j].Date)
+			if !ok || max(a.lo, b.lo) > min(a.hi, b.hi) {
+				continue
+			}
+			result.Warnings = append(result.Warnings, ValidationWarning{
+				SourceType: EntityTypePlaces,
+				SourceID:   placeID,
+				Field:      placeFieldParent,
+				Message: fmt.Sprintf("places[%s].parent: periods overlap: %s (%s) and %s (%s)",
+					placeID, periods[i].Value, periods[i].Date, periods[j].Value, periods[j].Date),
+			})
 		}
 	}
 }

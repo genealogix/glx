@@ -12,7 +12,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { classifySchemaChange, normalizeDialect } from "./schema-compat.mjs";
+import { classifySchemaChange, collapseWidenings, normalizeDialect } from "./schema-compat.mjs";
 
 const PATH = "specification/schema/v1/thing.schema.json";
 
@@ -225,4 +225,59 @@ test("tightening a dependency named description is still breaking", () => {
   const r = classifySchemaChange({ path: PATH, baseContent: json(base), currentContent: json(next) });
   assert.equal(r.status, "breaking");
   assert.equal(r.breaking, true);
+});
+
+// --- Widening a field into anyOf/oneOf (#225) ---
+// A place's `parent` went from a place ID to "a place ID, or a list of dated
+// entries". Every archive valid before is still valid, but the keyword diff
+// sees `type` removed and `oneOf` added.
+
+const ID = { type: "string", pattern: "^[a-z0-9-]+$" };
+const LIST = { type: "array", minItems: 1, items: { type: "object", required: ["value"] } };
+const withField = (field) => ({ ...BASE, properties: { ...BASE.properties, parent: field } });
+const classify = (base, next) =>
+  classifySchemaChange({ path: PATH, baseContent: json(base), currentContent: json(next) });
+
+test("widening a field into oneOf with a disjoint new type is backward compatible", () => {
+  const r = classify(withField(ID), withField({ description: "now a list too", oneOf: [ID, LIST] }));
+  assert.equal(r.status, "compatible");
+});
+
+test("widening a field into anyOf is backward compatible whatever the new branch", () => {
+  const r = classify(withField(ID), withField({ anyOf: [{ type: "string", maxLength: 3 }, ID] }));
+  assert.equal(r.status, "compatible");
+});
+
+test("oneOf with a branch that overlaps the old type is breaking", () => {
+  // A string matching both branches would now fail oneOf.
+  const r = classify(withField(ID), withField({ oneOf: [ID, { type: "string" }] }));
+  assert.equal(r.status, "breaking");
+});
+
+test("oneOf integer → number overlap is breaking", () => {
+  const r = classify(withField({ type: "integer" }), withField({ oneOf: [{ type: "integer" }, { type: "number" }] }));
+  assert.equal(r.status, "breaking");
+});
+
+test("widening that also tightens the kept branch is breaking", () => {
+  const tightened = { ...ID, maxLength: 10 };
+  const r = classify(withField(ID), withField({ oneOf: [tightened, LIST] }));
+  assert.equal(r.status, "breaking");
+});
+
+test("a sibling constraint beside the new oneOf is still diffed", () => {
+  const r = classify(withField(ID), withField({ oneOf: [ID, LIST], minLength: 2 }));
+  assert.equal(r.status, "breaking");
+});
+
+test("a widening elsewhere does not hide a removed property", () => {
+  const next = withField({ oneOf: [ID, LIST] });
+  delete next.properties.name;
+  assert.equal(classify(withField(ID), next).status, "breaking");
+});
+
+test("collapseWidenings leaves enum/const data alone", () => {
+  const base = { type: "object", const: { type: "string" } };
+  const next = { type: "object", const: { anyOf: [{ type: "string" }] } };
+  assert.deepEqual(collapseWidenings(base, next), next);
 });

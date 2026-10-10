@@ -722,7 +722,7 @@ func TestExportPlaceSubrecords_Empty(t *testing.T) {
 		PlaceStrings: make(map[string]string),
 	}
 
-	result := exportPlaceSubrecords("", expCtx)
+	result := exportPlaceSubrecords("", "", expCtx)
 	assert.Nil(t, result)
 }
 
@@ -745,7 +745,7 @@ func TestExportPlaceSubrecords_WithCoordinates(t *testing.T) {
 		},
 	}
 
-	records := exportPlaceSubrecords("place-1", expCtx)
+	records := exportPlaceSubrecords("place-1", "", expCtx)
 	require.Len(t, records, 1)
 
 	placRecord := records[0]
