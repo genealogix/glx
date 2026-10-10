@@ -557,8 +557,10 @@ func buildVitalRecords(personID string, archive *GLXFile, sources, events []pers
 	records := make([]CoverageRecord, 0, 2+len(marriageRecords))
 
 	records = append(records,
-		buildVitalRecord("Birth record", severityHigh, EventTypeBirth, "birth", sources, events),
-		buildVitalRecord("Death record", severityMedium, EventTypeDeath, "death", sources, events),
+		// Before civil registration the baptism entry is the birth record, and
+		// many registers give no birth date at all (#1365)
+		buildVitalRecord("Birth record", severityHigh, "birth", sources, events, EventTypeBirth, EventTypeBaptism, EventTypeChristening),
+		buildVitalRecord("Death record", severityMedium, "death", sources, events, EventTypeDeath),
 	)
 
 	// Marriage records — check relationships for spouse
@@ -567,12 +569,17 @@ func buildVitalRecords(personID string, archive *GLXFile, sources, events []pers
 	return records
 }
 
-// buildVitalRecord builds one birth-or-death checklist entry. The record counts
+// buildVitalRecord builds one birth-or-death checklist entry from the first of
+// eventTypes, in order of preference, that the person has. The record counts
 // as found on an event only when that event carries evidence; an event standing
 // on its own is a conclusion, and counting it would inflate the score for
 // exactly the people whose records are missing.
-func buildVitalRecord(label, missingPriority, eventType, titleKeyword string, sources, events []personSourceInfo) CoverageRecord {
-	eventRef := findEvidencedEvent(events, eventType)
+func buildVitalRecord(label, missingPriority, titleKeyword string, sources, events []personSourceInfo, eventTypes ...string) CoverageRecord {
+	var eventRef, unevidencedRef string
+	for _, eventType := range eventTypes {
+		eventRef = firstNonEmpty(eventRef, findEvidencedEvent(events, eventType))
+		unevidencedRef = firstNonEmpty(unevidencedRef, findUnevidencedEvent(events, eventType))
+	}
 	sourceRef := findMatchingSourceRef(sources, SourceTypeVitalRecord, titleKeyword)
 	found := eventRef != "" || sourceRef != ""
 
@@ -588,7 +595,7 @@ func buildVitalRecord(label, missingPriority, eventType, titleKeyword string, so
 			rec.SourceRef = sourceRef
 		}
 	} else {
-		rec.Description = unevidencedEventNote(events, findUnevidencedEvent(events, eventType))
+		rec.Description = unevidencedEventNote(events, unevidencedRef)
 	}
 
 	return rec
