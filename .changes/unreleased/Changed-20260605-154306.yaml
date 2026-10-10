@@ -1,0 +1,5 @@
+kind: Changed
+body: Changelog is now managed with changie (one fragment file per change under `.changes/unreleased/`) instead of a hand-edited `CHANGELOG.md`, eliminating PR-time changelog merge conflicts at the source. `CHANGELOG.md` is regenerated from fragments at release time (`changie batch` + `changie merge`), GitHub Release notes now come from the curated per-version file via GoReleaser `--release-notes` (so the commit-scraping changelog block is disabled), the obsolete `auto-resolve-conflicts.yml` workflow is retired, and a `changelog-fragments` CI job validates fragments. Add an entry with `make changelog` (or `changie new`); `/compact-changelog` is repurposed as a release-time consolidation pass.
+time: 2026-06-05T15:43:06.1342376-05:00
+custom:
+    Issue: '#858, #888, #853, #391, #386, #321'

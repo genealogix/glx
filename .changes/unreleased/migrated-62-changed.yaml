@@ -1,0 +1,6 @@
+kind: Changed
+body: |-
+  **`census add` no longer names a country in the source title it generates** — A template with no `census.source.title` produced "1790 U.S. Federal Census — …" wherever the household actually was, and `census.type` only had special handling for `federal` and `state`. The generated label is now built from `census.type` alone: `federal` gives "Federal Census", `state` gives "State Census", `national` gives "National Census", and a template with no type gives the unqualified "Census". Users who want the country in the title put it in `census.source.title`, which is unchanged. `CensusData.Type` was already free text; its comment now says so. An archive whose existing census sources carry the old auto-generated titles will not match the new ones, so `census add` creates a new source rather than reusing them — pass `source_id`, or set `source.title` to the existing title, to keep using the old one.
+time: 2026-10-01T00:00:10Z
+custom:
+  Issue: "#186"

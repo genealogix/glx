@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**Research CLI writes preserve unrelated logs and valid reference lists** — `glx add search` checks the whole decoded file before accepting a YAML-node append, so shared anchors cannot also change another log or entity. Log discovery uses decoded YAML keys, including escaped IDs, and still rejects multiple definitions. `glx add research-log --citation` and `glx add study --place/--source` keep each referenced ID once in the order first supplied, preventing duplicate-item schema errors.'
+time: '2026-10-09T00:00:15Z'
+custom:
+  Issue: '#1348'

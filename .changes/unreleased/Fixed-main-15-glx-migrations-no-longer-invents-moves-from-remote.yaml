@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**`glx migrations` no longer invents moves from remote deeds and estates** — Events in which the person''s role does not imply presence (grantor, grantee, legatee, heir, ...) are shown but excluded from movement detection, and a dated `residence` covering an event''s date wins over an event place in another region'
+time: '2026-10-07T00:00:15Z'
+custom:
+  Issue: '#1330'

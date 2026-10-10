@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**`glx path` no longer walks disproven relationships, and marks hypothetical hops** — `path` built its graph from every relationship, so a parent the archive marks `status: disproven` was a valid hop, and a low-confidence, `unresearched` `relative` link read as an established connection. It now uses the same relationship standing as `summary`, `ancestors` and `publish`: a disproven link is never followed; a hop along a hypothetical link is marked `(?)` in text output (with a count under the path) and `"hypothetical": true` in JSON (with a top-level `hypothetical_hops`); and among equally short paths the one with the fewest hypothetical hops is chosen. A new `--accepted-only` flag follows no hypothetical relationship at all.'
+time: '2026-10-09T00:00:11Z'
+custom:
+  Issue: '#208'
