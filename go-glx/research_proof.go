@@ -814,7 +814,7 @@ func supportLevel(relevant []proofAssertion, topic, personID string) int {
 	best := supportNone
 	for i := range relevant {
 		a := relevant[i].a
-		if relevant[i].synthetic || strings.EqualFold(a.Status, statusDisproven) || !proofAssertionAnswersQuestion(&relevant[i], topic, personID) {
+		if relevant[i].synthetic || strings.EqualFold(a.Status, statusDisproven) || !proofAssertionSupportsQuestion(&relevant[i], topic, personID) {
 			continue
 		}
 		if score := assertionSupportScore(a); score > best {
@@ -926,6 +926,23 @@ func answerFromAssertions(relevant []proofAssertion, archive *GLXFile, topic, pe
 	sort.Strings(values)
 
 	return "Supported by evidence: " + strings.Join(values, ", ") + ".", true
+}
+
+// proofAssertionSupportsQuestion reports whether an assertion can strengthen
+// the conclusion. Beyond the assertions that answer the question, a parent_child
+// relationship asserted on the person's own child participant evidences the
+// whole edge (#1367): the record shows the person as the child, and the
+// relationship names the parents. It supports the answer without supplying it,
+// so answerFromAssertions still ignores it.
+func proofAssertionSupportsQuestion(pa *proofAssertion, topic, personID string) bool {
+	if proofAssertionAnswersQuestion(pa, topic, personID) {
+		return true
+	}
+	p := pa.a.Participant
+
+	return topic == topicParentage && p != nil && p.Person == personID &&
+		IsParentChildRelationshipType(pa.relType) && !strings.EqualFold(pa.relType, RelationshipTypeStepParent) &&
+		IsChildSideRole(p.Role) && !IsStepRole(p.Role)
 }
 
 func proofAssertionAnswersQuestion(pa *proofAssertion, topic, personID string) bool {

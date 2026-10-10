@@ -244,6 +244,75 @@ func TestBuildProof_Parentage(t *testing.T) {
 	assert.Equal(t, "assertion-jane-parentage", result.Evidence[0].AssertionID)
 }
 
+// An assertion on the child's own participant evidences the parent_child edge,
+// and the relationship names the parents, so it supports the conclusion (#1367).
+func TestBuildProof_ParentageChildParticipant(t *testing.T) {
+	archive := newTestArchiveForProof()
+	archive.Assertions["assertion-jane-parentage"] = &Assertion{
+		Subject:     EntityRef{Relationship: "rel-jane-robert"},
+		Participant: &Participant{Person: "person-jane", Role: ParticipantRoleChild},
+		Citations:   []string{"cit-1880"}, Confidence: "high", Status: statusProven,
+	}
+	result := testBuildProof("person-jane", archive.Persons["person-jane"], "parentage", archive)
+
+	assert.Equal(t, proofConclusionProven, result.Conclusion)
+	assert.Contains(t, result.Summary, "Robert Webb")
+	assert.Contains(t, result.Summary, "Mary Webb")
+	assert.NotContains(t, result.Summary, "not yet identified")
+}
+
+// A disproven child-participant assertion is still evidence but no support.
+func TestBuildProof_ParentageChildParticipantDisproven(t *testing.T) {
+	archive := newTestArchiveForProof()
+	archive.Assertions["assertion-jane-parentage"] = &Assertion{
+		Subject:     EntityRef{Relationship: "rel-jane-robert"},
+		Participant: &Participant{Person: "person-jane", Role: ParticipantRoleChild},
+		Citations:   []string{"cit-1880"}, Confidence: "high", Status: statusDisproven,
+	}
+	result := testBuildProof("person-jane", archive.Persons["person-jane"], "parentage", archive)
+
+	assert.NotEqual(t, proofConclusionProven, result.Conclusion)
+}
+
+// A cited baptism of the person is the birth record before civil registration
+// (#1365); a baptism the person only attended as godparent is not.
+func TestBuildProof_BaptismSatisfiesBirthRecordGap(t *testing.T) {
+	newArchive := func(role string) *GLXFile {
+		return &GLXFile{
+			Persons: map[string]*Person{
+				"person-g": {Properties: map[string]any{PersonPropertyName: "Gertraudt Schoepff"}},
+			},
+			Events: map[string]*Event{
+				"event-bapt": {
+					Type: EventTypeBaptism, Date: "1658-03-28",
+					Participants: []Participant{{Person: "person-g", Role: role}},
+				},
+			},
+			Sources:   map[string]*Source{"source-kb": {Title: "Kirchenbuch 1", Type: SourceTypeChurchRegister}},
+			Citations: map[string]*Citation{"cit-kb": {SourceID: "source-kb"}},
+			Assertions: map[string]*Assertion{
+				"assertion-bapt": {
+					Subject:  EntityRef{Event: "event-bapt"},
+					Property: "date", Value: "1658-03-28",
+					Citations: []string{"cit-kb"}, Confidence: "high",
+				},
+			},
+		}
+	}
+	gapLabels := func(archive *GLXFile) []string {
+		result := testBuildProof("person-g", archive.Persons["person-g"], "parentage", archive)
+		labels := make([]string, 0, len(result.Gaps))
+		for _, g := range result.Gaps {
+			labels = append(labels, g.Label)
+		}
+
+		return labels
+	}
+
+	assert.NotContains(t, gapLabels(newArchive(ParticipantRolePrincipal)), "Birth record")
+	assert.Contains(t, gapLabels(newArchive(ParticipantRoleGodparent)), "Birth record")
+}
+
 func TestBuildProof_DeathProbable(t *testing.T) {
 	archive := newTestArchiveForProof()
 	result := testBuildProof("person-robert", archive.Persons["person-robert"], "death", archive)
