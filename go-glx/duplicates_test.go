@@ -16,6 +16,7 @@ package glx
 
 import (
 	"math"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -198,8 +199,8 @@ func TestScorePhoneticSimilarity_CompoundGivenCodedPerWord(t *testing.T) {
 	assert.InDelta(t, 0.5, score, 1e-12)
 	assert.Equal(t, "surname phonetic", detail)
 
-	// A call name alone matches the full name it is part of, and an initial
-	// is skipped rather than coded.
+	// A call name alone matches the full name it is part of, and a compatible
+	// initial constrains the alignment without being coded.
 	c := &Person{Properties: map[string]any{"name": "Georg Wörner"}}
 	score, detail, _ = scorePhoneticSimilarity(a, c)
 	assert.InDelta(t, 1.0, score, 1e-12)
@@ -208,6 +209,69 @@ func TestScorePhoneticSimilarity_CompoundGivenCodedPerWord(t *testing.T) {
 	d := &Person{Properties: map[string]any{"name": "J. Georg Wörner"}}
 	score, _, _ = scorePhoneticSimilarity(a, d)
 	assert.InDelta(t, 1.0, score, 1e-12)
+}
+
+func TestScorePhoneticSimilarity_CompoundInitialConstraints(t *testing.T) {
+	tests := []struct {
+		name       string
+		givenA     string
+		givenB     string
+		givenMatch bool
+		score      float64
+	}{
+		{"English conflicting initial", "John B.", "John William Alexander", false, 0.5},
+		{"German conflicting initial", "Johann B.", "Johann Wilhelm Christoffel", false, 0.5},
+		{"leading conflicting initial", "P. Georg", "Johann Georg", false, 0.5},
+		{"conflicting recorded initials", "John B. William", "John C. William", false, 0.5},
+		{"compatible leading initial", "J. Georg", "Johann Georg", true, 1},
+		{"compatible middle initial", "John W.", "John William Alexander", true, 1},
+		{"Unicode initial", "É. Marie", "Émilie Marie", true, 1},
+		{"full-word Soundex normalization unchanged", "İsmail", "Ismail", false, 0.5},
+		{"call name", "Georg", "Johann Georg", true, 1},
+		{"hyphenated name", "Anna-Maria", "Anna Maria", true, 1},
+		{"later full-word alignment", "J. John", "John J. John", true, 1},
+		{"initial matches alone give no hit", "J. John", "John J.", false, 0.5},
+		{"initial-only name stays missing data", "J. G.", "Johann Georg", false, 1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for _, given := range [][2]string{{tt.givenA, tt.givenB}, {tt.givenB, tt.givenA}} {
+				a := &Person{Properties: map[string]any{"name": given[0] + " Smith"}}
+				b := &Person{Properties: map[string]any{"name": given[1] + " Smith"}}
+				score, detail, hasData := scorePhoneticSimilarity(a, b)
+				assert.True(t, hasData)
+				assert.InDelta(t, tt.score, score, 1e-12)
+				assert.Equal(t, tt.givenMatch, strings.Contains(detail, "given phonetic"))
+			}
+		})
+	}
+}
+
+func TestFindDuplicates_ConflictingCompoundInitials(t *testing.T) {
+	for _, names := range [][2]string{
+		{"John B.", "John William Alexander"},
+		{"Johann B.", "Johann Wilhelm Christoffel"},
+	} {
+		t.Run(names[0], func(t *testing.T) {
+			person := func(given string) *Person {
+				return &Person{Properties: map[string]any{
+					"name": map[string]any{
+						"value":  given + " Smith",
+						"fields": map[string]any{"given": given, "surname": "Smith"},
+					},
+				}}
+			}
+			archive := &GLXFile{Persons: map[string]*Person{"a": person(names[0]), "b": person(names[1])}}
+			result, err := FindDuplicates(archive, DuplicateOptions{Threshold: 0.6})
+			require.NoError(t, err)
+			assert.Empty(t, result.Pairs, "a conflicting initial must not create a default-threshold candidate")
+
+			result, err = FindDuplicates(archive, DuplicateOptions{Threshold: 0})
+			require.NoError(t, err)
+			require.Len(t, result.Pairs, 1)
+			assert.InDelta(t, 0.5, result.Pairs[0].Score, 1e-12)
+		})
+	}
 }
 
 // --- Phonetic similarity tests (#704) ---

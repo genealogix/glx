@@ -776,8 +776,7 @@ func scorePhoneticSimilarity(personA, personB *Person) (float64, string, bool) {
 	)
 
 	// Soundex already strips everything but ASCII letters internally, so no
-	// surrounding TrimSpace is needed here. The given-name branch below still
-	// needs a trimmed string to feed isPhoneticInitial.
+	// surrounding TrimSpace is needed here.
 	surnameCodeA := Soundex(surnameA)
 	surnameCodeB := Soundex(surnameB)
 	if surnameCodeA != "" && surnameCodeB != "" {
@@ -791,11 +790,11 @@ func scorePhoneticSimilarity(personA, personB *Person) (float64, string, bool) {
 	// Given names are coded word by word (#1366): Soundex drops the space, so
 	// coding "Johann Georg" whole gives J526, the same as "Johann Christoffel",
 	// and only the first word and a letter or two of the second ever counted.
-	givenCodesA := givenSoundexCodes(givenA)
-	givenCodesB := givenSoundexCodes(givenB)
-	if len(givenCodesA) > 0 && len(givenCodesB) > 0 {
+	givenWordsA, givenHasA := givenPhoneticWords(givenA)
+	givenWordsB, givenHasB := givenPhoneticWords(givenB)
+	if givenHasA && givenHasB {
 		ran++
-		if isOrderedSubset(givenCodesA, givenCodesB) {
+		if isOrderedPhoneticSubset(givenWordsA, givenWordsB) {
 			hits++
 			parts = append(parts, "given phonetic")
 		}
@@ -838,37 +837,73 @@ func givenNameWords(given string) []string {
 	})
 }
 
-// givenSoundexCodes returns the Soundex code of each word of a given name,
-// skipping initials (see isPhoneticInitial) and words with no codable letters.
-func givenSoundexCodes(given string) []string {
-	var codes []string
+// givenPhoneticWord keeps an initial's text as an alignment constraint, but
+// only a full word has a Soundex code and can supply phonetic evidence.
+type givenPhoneticWord struct {
+	text string
+	code string
+}
+
+// givenPhoneticWords codes each full word and retains initials without coding
+// them. The second return reports whether any full word could be coded.
+func givenPhoneticWords(given string) ([]givenPhoneticWord, bool) {
+	var words []givenPhoneticWord
+	var hasData bool
 	for _, w := range givenNameWords(given) {
+		text := strings.ToLower(w)
 		if isPhoneticInitial(w) {
+			words = append(words, givenPhoneticWord{text: text})
+
 			continue
 		}
 		if code := Soundex(w); code != "" {
-			codes = append(codes, code)
+			words = append(words, givenPhoneticWord{text: text, code: code})
+			hasData = true
 		}
 	}
 
-	return codes
+	return words, hasData
 }
 
-// isOrderedSubset reports whether the shorter of a and b appears, in order,
-// within the longer: ["G620"] within ["J500", "G620"], so a call name alone
-// still matches the full baptismal name it belongs to.
-func isOrderedSubset(a, b []string) bool {
+// isOrderedPhoneticSubset pairs every word of the shorter name, in order,
+// within the longer. Initials must agree with their paired word, so "John B."
+// cannot earn a hit on "John William Alexander" just by dropping the B.
+// At least one pair must match full-word Soundex codes; compatible initials
+// constrain the alignment without earning a phonetic hit on their own.
+func isOrderedPhoneticSubset(a, b []givenPhoneticWord) bool {
 	if len(a) > len(b) {
 		a, b = b, a
 	}
-	i := 0
-	for _, w := range b {
-		if i < len(a) && a[i] == w {
-			i++
+	// hits[i] is the most full-word hits in a reachable alignment of the
+	// first i words of a. Scan backwards so one word of b cannot be reused.
+	hits := make([]int, len(a)+1)
+	for i := 1; i < len(hits); i++ {
+		hits[i] = -1
+	}
+	for _, wordB := range b {
+		for i := len(a); i > 0; i-- {
+			wordA := a[i-1]
+			if hits[i-1] < 0 || !phoneticGivenWordsMatch(wordA, wordB) {
+				continue
+			}
+			pairHits := hits[i-1]
+			if wordA.code != "" && wordB.code != "" {
+				pairHits++
+			}
+			hits[i] = max(hits[i], pairHits)
 		}
 	}
 
-	return i == len(a)
+	return hits[len(a)] > 0
+}
+
+func phoneticGivenWordsMatch(a, b givenPhoneticWord) bool {
+	if a.code == "" || b.code == "" {
+		return strings.TrimSuffix(a.text, ".") == strings.TrimSuffix(b.text, ".") ||
+			isInitialMatch(a.text, b.text)
+	}
+
+	return a.code == b.code
 }
 
 // splitFullName splits a simple "Given Surname" string into parts.
