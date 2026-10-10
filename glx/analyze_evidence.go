@@ -63,7 +63,7 @@ func checkUnsupportedAssertions(archive *glxlib.GLXFile) []AnalysisIssue {
 }
 
 // checkSingleSourcePersons finds persons where all assertions cite the same
-// single source.
+// single source, counting assertions about the person's own events (#1211).
 func checkSingleSourcePersons(archive *glxlib.GLXFile) []AnalysisIssue {
 	// Build per-person source sets from assertions
 	personSources := make(map[string]map[string]bool) // person ID → set of source IDs
@@ -73,29 +73,26 @@ func checkSingleSourcePersons(archive *glxlib.GLXFile) []AnalysisIssue {
 		if assertion == nil {
 			continue
 		}
-		personID := assertion.Subject.Person
-		if personID == "" {
-			continue
-		}
+		for _, personID := range glxlib.AssertionPersons(assertion, archive) {
+			personAssertionCount[personID]++
 
-		personAssertionCount[personID]++
-
-		if personSources[personID] == nil {
-			personSources[personID] = make(map[string]bool)
-		}
-
-		for _, sourceID := range assertion.Sources {
-			personSources[personID][sourceID] = true
-		}
-
-		// Also count sources via citations
-		for _, citationID := range assertion.Citations {
-			cit, ok := archive.Citations[citationID]
-			if !ok || cit == nil {
-				continue
+			if personSources[personID] == nil {
+				personSources[personID] = make(map[string]bool)
 			}
-			if cit.SourceID != "" {
-				personSources[personID][cit.SourceID] = true
+
+			for _, sourceID := range assertion.Sources {
+				personSources[personID][sourceID] = true
+			}
+
+			// Also count sources via citations
+			for _, citationID := range assertion.Citations {
+				cit, ok := archive.Citations[citationID]
+				if !ok || cit == nil {
+					continue
+				}
+				if cit.SourceID != "" {
+					personSources[personID][cit.SourceID] = true
+				}
 			}
 		}
 	}

@@ -155,15 +155,16 @@ type personSourceInfo struct {
 }
 
 // collectPersonSources gathers all sources and citations that reference a person
-// via assertions.
+// via assertions: those about the person, and those about an event that is the
+// person's own record (AssertionPersons). A church register cited for a burial
+// date is the decedent's church record, not only the burial's (#1211).
 func collectPersonSources(personID string, archive *GLXFile) []personSourceInfo {
 	var sources []personSourceInfo
 	seen := make(map[string]bool)
 
-	// From assertions about this person
 	for _, assertionID := range sortedKeys(archive.Assertions) {
 		assertion := archive.Assertions[assertionID]
-		if assertion == nil || assertion.Subject.ID() != personID {
+		if !slices.Contains(AssertionPersons(assertion, archive), personID) {
 			continue
 		}
 		for _, citID := range assertion.Citations {
