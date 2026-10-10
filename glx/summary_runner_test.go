@@ -568,6 +568,10 @@ func TestFormatReadableDate(t *testing.T) {
 	assert.Equal(t, "March 1850", formatReadableDate("1850-03"))
 	assert.Equal(t, "1850", formatReadableDate("1850"))
 	assert.Equal(t, "ABT 1850", formatReadableDate("ABT 1850"))
+	assert.Equal(t, "February 29, 1600", formatReadableDate("1600-02-29"))
+	// An impossible day stays raw rather than reading as a real date (#1373).
+	assert.Equal(t, "1643-02-30", formatReadableDate("1643-02-30"))
+	assert.Equal(t, "1643-02-30", displayDate("1643-02-30"))
 }
 
 func TestDisplayDate(t *testing.T) {
