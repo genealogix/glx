@@ -17,6 +17,7 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"regexp"
 	"sort"
@@ -25,6 +26,7 @@ import (
 	"time"
 
 	glxlib "github.com/genealogix/glx/go-glx"
+	"github.com/genealogix/glx/go-glx/glxdate"
 )
 
 // maxAddIDCollisions bounds the -2, -3, ... suffix search for derived IDs.
@@ -228,6 +230,31 @@ func pickVocab(archive *glxlib.GLXFile, vocabName string) map[string]*glxlib.Voc
 	default:
 		return nil
 	}
+}
+
+// validateDateFlag rejects a date the GLX date grammar does not accept, so a
+// value typed at the prompt is caught by the add that writes it rather than
+// surfacing later as a `glx validate` warning (#1373). `flag` names the flag in
+// the error. An empty value is a no-op (optional field).
+func validateDateFlag(flag, value string) error {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil
+	}
+	parsed, err := glxdate.Parse(value)
+	if err != nil {
+		reason := err.Error()
+		if perr, ok := errors.AsType[*glxdate.ParseError](err); ok {
+			reason = perr.Reason
+		}
+
+		return fmt.Errorf("%w: %s %q: %s", ErrAddDateInvalid, flag, value, reason)
+	}
+	if parsed.Timing().Reversed {
+		return fmt.Errorf("%w: %s %q: range end precedes its start", ErrAddDateInvalid, flag, value)
+	}
+
+	return nil
 }
 
 // validateRefExists ensures `id` is a key in the archive's named entity map.
@@ -709,6 +736,9 @@ func addEvent(io *IOStreams, opts *addEventOptions) error {
 	if err := validateRefExists(ctx.archive, glxlib.EntityTypePersons, opts.Principal); err != nil {
 		return err
 	}
+	if err := validateDateFlag("--date", opts.Date); err != nil {
+		return err
+	}
 
 	participants, err := buildEventParticipants(ctx.archive, opts)
 	if err != nil {
@@ -717,6 +747,11 @@ func addEvent(io *IOStreams, opts *addEventOptions) error {
 	props, err := buildEventPropertyFlags(opts.Properties, ctx.archive.EventProperties)
 	if err != nil {
 		return err
+	}
+	// The schema requires at least one participant; an event written without
+	// one leaves an archive that `glx validate` refuses to load (#1373).
+	if len(participants) == 0 {
+		return ErrAddEventParticipantsRequired
 	}
 
 	descriptor := opts.Principal
@@ -887,6 +922,9 @@ func addSource(io *IOStreams, opts *addSourceOptions) error {
 	if err := validateVocabKey(ctx.archive, glxlib.VocabInformationTypes, opts.InformationType); err != nil {
 		return err
 	}
+	if err := validateDateFlag("--date", opts.Date); err != nil {
+		return err
+	}
 
 	base := glxlib.EntityID(glxlib.EntityIDPrefixSource, opts.Title)
 	id, err := deriveOrOverrideID(base, opts.OverrideID, idSet(ctx.archive.Sources), opts.Force)
@@ -966,6 +1004,12 @@ func addCitation(io *IOStreams, opts *addCitationOptions) error {
 		return err
 	}
 	if err := validateRefExists(ctx.archive, glxlib.EntityTypeRepositories, opts.Repository); err != nil {
+		return err
+	}
+	if err := validateDateFlag("--accessed", opts.Accessed); err != nil {
+		return err
+	}
+	if err := validateDateFlag("--source-date", opts.SourceDate); err != nil {
 		return err
 	}
 
@@ -1127,6 +1171,12 @@ func typedPropertyValue(key, raw string, def *glxlib.PropertyDefinition) (any, e
 		}
 
 		return b, nil
+	case "date":
+		if err := validateDateFlag("--property "+key, raw); err != nil {
+			return nil, err
+		}
+
+		return raw, nil
 	default:
 		return raw, nil
 	}
@@ -1297,6 +1347,9 @@ func addAssertion(io *IOStreams, opts *addAssertionOptions) error {
 		return err
 	}
 	if err := validateVocabKey(ctx.archive, glxlib.VocabConfidenceLevels, opts.Confidence); err != nil {
+		return err
+	}
+	if err := validateDateFlag("--date", opts.AssertionDate); err != nil {
 		return err
 	}
 	participant, err := resolveAssertionParticipant(ctx.archive, opts)
