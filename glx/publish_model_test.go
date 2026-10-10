@@ -16,6 +16,7 @@ package main
 
 import (
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -235,6 +236,39 @@ func TestBuildPersonPage_Sources(t *testing.T) {
 	}
 	if src.Confidence != "high" || src.Status != "proven" {
 		t.Errorf("confidence/status = %q/%q", src.Confidence, src.Status)
+	}
+}
+
+// TestBuildPersonPage_EventSubjectSources: a register cited on an assertion
+// about a person's own event is listed on their page, and not on the page of
+// someone named in the entry only as a witness (#1211).
+func TestBuildPersonPage_EventSubjectSources(t *testing.T) {
+	archive := buildModelTestArchive()
+	archive.Events["event-john-birth"].Participants = append(archive.Events["event-john-birth"].Participants,
+		glxlib.Participant{Person: "person-mary-smith", Role: "witness"})
+	archive.Sources["source-baptisms"] = &glxlib.Source{Title: "Boston Baptisms", Type: glxlib.SourceTypeChurchRegister}
+	archive.Assertions["assertion-john-birth-date"] = &glxlib.Assertion{
+		Subject:  glxlib.EntityRef{Event: "event-john-birth"},
+		Property: "date",
+		Value:    "1850-01-15",
+		Sources:  []string{"source-baptisms"},
+	}
+
+	model := buildSiteModel(archive, siteModelOptions{})
+
+	titles := func(page *personPage) []string {
+		out := make([]string, 0, len(page.Sources))
+		for _, src := range page.Sources {
+			out = append(out, src.Title)
+		}
+
+		return out
+	}
+	if got := titles(findPage(t, model, "person-john-smith")); !slices.Contains(got, "Boston Baptisms") {
+		t.Errorf("John's sources = %v, want Boston Baptisms listed", got)
+	}
+	if got := titles(findPage(t, model, "person-mary-smith")); slices.Contains(got, "Boston Baptisms") {
+		t.Errorf("witness's sources = %v, want Boston Baptisms left out", got)
 	}
 }
 
