@@ -202,6 +202,17 @@ func TestGenerateLifeHistory_StepAndHypothetical(t *testing.T) {
 	assert.Contains(t, rachel, "She was the child of Adam Call and Elizabeth Starr. Her stepfather was Lewis Little.")
 }
 
+func TestNarrativeNames_GivenOnlyKeepsWholeGivenName(t *testing.T) {
+	// #1364: "Johann, Michell, Catharina, and Johann" lost the call names.
+	archive := siblingNamesArchive(map[string]any{
+		"person-wilhelm": schopffName("Johann Wilhelm"),
+		"person-conrad":  "Johann Conrad Schöpff",
+		"person-cath":    schopffName("Catharina"),
+	})
+	edges := []familyEdge{{PersonID: "person-cath"}, {PersonID: "person-conrad"}, {PersonID: "person-wilhelm", Hypothetical: true}}
+	assert.Equal(t, []string{"Catharina", "Johann Conrad", "Johann Wilhelm (?)"}, narrativeNames(edges, archive, true))
+}
+
 func TestJoinStepChildNames(t *testing.T) {
 	archive := littleFamilyArchive()
 	edges := []familyEdge{{PersonID: "person-peggy"}, {PersonID: "person-jasper"}}
