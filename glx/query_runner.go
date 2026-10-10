@@ -96,7 +96,7 @@ func validateQueryFlags(entityType glxlib.EntityType, opts *queryOpts) error {
 		glxlib.EntityTypeRepositories:  {"--name": true},
 		glxlib.EntityTypeCitations:     {},
 		glxlib.EntityTypeMedia:         {},
-		glxlib.EntityTypeResearchLogs:  {},
+		glxlib.EntityTypeResearchLogs:  {"--status": true, "--subject": true},
 		glxlib.EntityTypeStudies:       {},
 	}
 
@@ -153,7 +153,7 @@ func queryEntities(entityType glxlib.EntityType, opts *queryOpts) error {
 	case glxlib.EntityTypeMedia:
 		return queryMedia(archive)
 	case glxlib.EntityTypeResearchLogs:
-		return queryResearchLogs(archive)
+		return queryResearchLogs(archive, opts)
 	case glxlib.EntityTypeStudies:
 		return queryStudies(archive)
 	default:
@@ -504,12 +504,26 @@ func queryMedia(archive *glxlib.GLXFile) error {
 	return nil
 }
 
-// queryResearchLogs lists all research logs with their objective and status.
-func queryResearchLogs(archive *glxlib.GLXFile) error {
+// queryResearchLogs lists research logs with their objective and status,
+// optionally filtered by --status and by --subject (the log's subject or a
+// candidate person in one of its leads).
+func queryResearchLogs(archive *glxlib.GLXFile, opts *queryOpts) error {
 	ids := sortedKeys(archive.ResearchLogs)
+	lowerSubject := strings.ToLower(opts.Subject)
+	var count int
 
 	for _, id := range ids {
 		log := archive.ResearchLogs[id]
+		if log == nil {
+			continue
+		}
+		if opts.Status != "" && !strings.EqualFold(log.Status, opts.Status) {
+			continue
+		}
+		if lowerSubject != "" && !researchLogMatchesSubject(log, lowerSubject, archive) {
+			continue
+		}
+
 		summary := log.Title
 		if summary == "" {
 			summary = log.Objective
@@ -518,12 +532,35 @@ func queryResearchLogs(archive *glxlib.GLXFile) error {
 		if status == "" {
 			status = "-"
 		}
-		fmt.Printf("  %s  [%s]  %s\n", id, status, summary)
+		line := fmt.Sprintf("  %s  [%s]  %s", id, status, summary)
+		if n := len(log.Leads); n > 0 {
+			line += fmt.Sprintf("  (%d %s)", n, pluralize(n, "lead", "leads"))
+		}
+		fmt.Println(line)
+		count++
 	}
 
-	fmt.Printf("\n%d research logs found\n", len(ids))
+	fmt.Printf("\n%d research logs found\n", count)
 
 	return nil
+}
+
+// researchLogMatchesSubject checks whether a research log is about the queried
+// entity: by exact ID of its subject or of a lead's candidate person, or by
+// name substring of any person the log references (case-insensitive).
+func researchLogMatchesSubject(log *glxlib.ResearchLog, lowerQuery string, archive *glxlib.GLXFile) bool {
+	if log.ReferencesEntity(lowerQuery) {
+		return true
+	}
+	for _, personID := range log.PersonIDs() {
+		if person, ok := archive.Persons[personID]; ok && person != nil {
+			if containsFold(glxlib.PersonDisplayName(person), lowerQuery) {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 // queryStudies lists all studies with their type and status.

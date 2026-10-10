@@ -768,7 +768,7 @@ func TestAnalyzeConsistency_DuplicateSiblingNames(t *testing.T) {
 		Persons: map[string]*glxlib.Person{
 			"person-parent": {Properties: map[string]any{"name": "James Green"}},
 			"person-mary-1": {Properties: map[string]any{"name": "Mary Green"}},
-			"person-mary-2": {Properties: map[string]any{"name": "Mary Elizabeth Green"}},
+			"person-mary-2": {Properties: map[string]any{"name": "Mary Green"}},
 			"person-john":   {Properties: map[string]any{"name": "John Green"}},
 		},
 		Relationships: map[string]*glxlib.Relationship{
@@ -804,6 +804,73 @@ func TestAnalyzeConsistency_DuplicateSiblingNames(t *testing.T) {
 	}
 	if !containsSubstring(found.Message, "Mary") {
 		t.Errorf("expected capitalized 'Mary' in message: %s", found.Message)
+	}
+}
+
+// siblingNamesArchive builds one parent with the given children, each a
+// person ID mapped to its name property, under parent_child relationships.
+func siblingNamesArchive(children map[string]any) *glxlib.GLXFile {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-parent": {Properties: map[string]any{"name": "Johann Georg Schöpff"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{},
+		Events:        map[string]*glxlib.Event{},
+	}
+	for id, name := range children {
+		archive.Persons[id] = &glxlib.Person{Properties: map[string]any{"name": name}}
+		archive.Relationships["rel-"+id] = &glxlib.Relationship{
+			Type: "parent_child",
+			Participants: []glxlib.Participant{
+				{Person: "person-parent", Role: "parent"},
+				{Person: id, Role: "child"},
+			},
+		}
+	}
+
+	return archive
+}
+
+// schopffName is a structured name with the given name in its own field.
+func schopffName(given string) map[string]any {
+	return map[string]any{
+		"value":  given + " Schöpff",
+		"fields": map[string]any{"given": given, "surname": "Schöpff"},
+	}
+}
+
+func TestAnalyzeConsistency_CompoundGivenNamesNotShared(t *testing.T) {
+	// #1366: sons all baptized Johann, known by the second name.
+	archive := siblingNamesArchive(map[string]any{
+		"person-wilhelm": schopffName("Johann Wilhelm"),
+		"person-conrad":  schopffName("Johann Conrad"),
+		"person-mary":    "Mary Green",
+		"person-mary-e":  "Mary Elizabeth Green",
+	})
+
+	for _, issue := range analyzeConsistency(archive) {
+		if containsSubstring(issue.Message, "share given name") {
+			t.Errorf("different full given names flagged as shared: %s", issue.Message)
+		}
+	}
+}
+
+func TestAnalyzeConsistency_FullGivenNameSharedCaseFolded(t *testing.T) {
+	archive := siblingNamesArchive(map[string]any{
+		"person-jw-1": schopffName("Johann Wilhelm"),
+		"person-jw-2": schopffName("johann  wilhelm"),
+		"person-jc":   schopffName("Johann Conrad"),
+	})
+
+	found := findIssueByMessage(analyzeConsistency(archive), "person-parent", "share given name")
+	if found == nil {
+		t.Fatal("expected the two Johann Wilhelms to be flagged")
+	}
+	if !containsSubstring(found.Message, `"Johann Wilhelm"`) && !containsSubstring(found.Message, `"johann wilhelm"`) {
+		t.Errorf("expected the whole given name in the message: %s", found.Message)
+	}
+	if containsSubstring(found.Message, "person-jc") {
+		t.Errorf("Johann Conrad does not share the name: %s", found.Message)
 	}
 }
 

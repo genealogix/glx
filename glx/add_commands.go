@@ -40,7 +40,8 @@ Subcommands:
   add study          Create a study
 
 Every subcommand validates supplied values against the archive's vocabularies
-and entity references before writing. The created entity ID is the only
+and entity references, and every date flag against the GLX date grammar,
+before writing. The created entity ID is the only
 thing written to stdout (progress goes to stderr), so it can be captured with
 shell substitution (add search echoes the ID of the log it appended to):
 
@@ -175,6 +176,8 @@ var addEventCmd = &cobra.Command{
 --type is required and is validated against the event_types vocabulary.
 --principal is a shorthand for adding the named person with role "principal".
 --participant is repeatable in the form person-id:role.
+At least one of --principal or --participant is required.
+--date must be a valid GLX date string (e.g. 1725-02-25, ABT 1850, JULIAN 1643-02-20).
 --property is repeatable in the form key=value; each key must be defined in
 the event_properties vocabulary (event_subtype, description, cause, ...).`,
 	Example: `  # Christening with a principal and a place

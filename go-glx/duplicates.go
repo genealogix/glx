@@ -20,6 +20,7 @@ import (
 	"math"
 	"sort"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -775,8 +776,7 @@ func scorePhoneticSimilarity(personA, personB *Person) (float64, string, bool) {
 	)
 
 	// Soundex already strips everything but ASCII letters internally, so no
-	// surrounding TrimSpace is needed here. The given-name branch below still
-	// needs a trimmed string to feed isPhoneticInitial.
+	// surrounding TrimSpace is needed here.
 	surnameCodeA := Soundex(surnameA)
 	surnameCodeB := Soundex(surnameB)
 	if surnameCodeA != "" && surnameCodeB != "" {
@@ -787,17 +787,16 @@ func scorePhoneticSimilarity(personA, personB *Person) (float64, string, bool) {
 		}
 	}
 
-	givenTrimA := strings.TrimSpace(givenA)
-	givenTrimB := strings.TrimSpace(givenB)
-	if !isPhoneticInitial(givenTrimA) && !isPhoneticInitial(givenTrimB) {
-		givenCodeA := Soundex(givenTrimA)
-		givenCodeB := Soundex(givenTrimB)
-		if givenCodeA != "" && givenCodeB != "" {
-			ran++
-			if givenCodeA == givenCodeB {
-				hits++
-				parts = append(parts, "given phonetic")
-			}
+	// Given names are coded word by word (#1366): Soundex drops the space, so
+	// coding "Johann Georg" whole gives J526, the same as "Johann Christoffel",
+	// and only the first word and a letter or two of the second ever counted.
+	givenWordsA, givenHasA := givenPhoneticWords(givenA)
+	givenWordsB, givenHasB := givenPhoneticWords(givenB)
+	if givenHasA && givenHasB {
+		ran++
+		if isOrderedPhoneticSubset(givenWordsA, givenWordsB) {
+			hits++
+			parts = append(parts, "given phonetic")
 		}
 	}
 
@@ -828,6 +827,83 @@ func scorePhoneticSimilarity(personA, personB *Person) (float64, string, bool) {
 // this helper makes the function do exactly what its name says.
 func isPhoneticInitial(s string) bool {
 	return utf8.RuneCountInString(strings.TrimSuffix(s, ".")) == 1
+}
+
+// givenNameWords splits a given name into its words, treating a hyphen as a
+// word break so "Anna-Maria" and "Anna Maria" compare alike.
+func givenNameWords(given string) []string {
+	return strings.FieldsFunc(given, func(r rune) bool {
+		return r == '-' || unicode.IsSpace(r)
+	})
+}
+
+// givenPhoneticWord keeps an initial's text as an alignment constraint, but
+// only a full word has a Soundex code and can supply phonetic evidence.
+type givenPhoneticWord struct {
+	text string
+	code string
+}
+
+// givenPhoneticWords codes each full word and retains initials without coding
+// them. The second return reports whether any full word could be coded.
+func givenPhoneticWords(given string) ([]givenPhoneticWord, bool) {
+	var words []givenPhoneticWord
+	var hasData bool
+	for _, w := range givenNameWords(given) {
+		text := strings.ToLower(w)
+		if isPhoneticInitial(w) {
+			words = append(words, givenPhoneticWord{text: text})
+
+			continue
+		}
+		if code := Soundex(w); code != "" {
+			words = append(words, givenPhoneticWord{text: text, code: code})
+			hasData = true
+		}
+	}
+
+	return words, hasData
+}
+
+// isOrderedPhoneticSubset pairs every word of the shorter name, in order,
+// within the longer. Initials must agree with their paired word, so "John B."
+// cannot earn a hit on "John William Alexander" just by dropping the B.
+// At least one pair must match full-word Soundex codes; compatible initials
+// constrain the alignment without earning a phonetic hit on their own.
+func isOrderedPhoneticSubset(a, b []givenPhoneticWord) bool {
+	if len(a) > len(b) {
+		a, b = b, a
+	}
+	// hits[i] is the most full-word hits in a reachable alignment of the
+	// first i words of a. Scan backwards so one word of b cannot be reused.
+	hits := make([]int, len(a)+1)
+	for i := 1; i < len(hits); i++ {
+		hits[i] = -1
+	}
+	for _, wordB := range b {
+		for i := len(a); i > 0; i-- {
+			wordA := a[i-1]
+			if hits[i-1] < 0 || !phoneticGivenWordsMatch(wordA, wordB) {
+				continue
+			}
+			pairHits := hits[i-1]
+			if wordA.code != "" && wordB.code != "" {
+				pairHits++
+			}
+			hits[i] = max(hits[i], pairHits)
+		}
+	}
+
+	return hits[len(a)] > 0
+}
+
+func phoneticGivenWordsMatch(a, b givenPhoneticWord) bool {
+	if a.code == "" || b.code == "" {
+		return strings.TrimSuffix(a.text, ".") == strings.TrimSuffix(b.text, ".") ||
+			isInitialMatch(a.text, b.text)
+	}
+
+	return a.code == b.code
 }
 
 // splitFullName splits a simple "Given Surname" string into parts.
@@ -868,6 +944,21 @@ func compareGivenNames(a, b string) float64 {
 		return 1.0
 	}
 
+	wordsA := givenNameWords(a)
+	wordsB := givenNameWords(b)
+	if len(wordsA) <= 1 && len(wordsB) <= 1 {
+		return compareGivenWords(a, b)
+	}
+
+	return compareCompoundGivenNames(wordsA, wordsB)
+}
+
+// compareGivenWords scores two single-word given names.
+func compareGivenWords(a, b string) float64 {
+	if a == b {
+		return 1.0
+	}
+
 	// Check nickname variants
 	if areNicknameVariants(a, b) {
 		return 0.9
@@ -879,6 +970,46 @@ func compareGivenNames(a, b string) float64 {
 	}
 
 	return normalizedLevenshtein(a, b)
+}
+
+// compareCompoundGivenNames scores given names of more than one word (#1366).
+// Each word of the shorter name is paired, in order, with a word of the
+// longer, choosing the pairing whose weakest pair scores best, and that
+// weakest pair is the score. In German, Dutch and Scandinavian registers
+// every son may be Johann and every daughter Anna, with the second word the
+// name the person went by, so "Johann Georg" against "Johann Christoffel"
+// must score on Georg/Christoffel rather than ride on the shared Johann.
+// A call name alone ("Georg") still pairs with "Johann Georg", scaled by the
+// share of the longer name's words that found a partner, so a name that
+// leaves words out scores below one that matches them all.
+func compareCompoundGivenNames(wordsA, wordsB []string) float64 {
+	if len(wordsA) > len(wordsB) {
+		wordsA, wordsB = wordsB, wordsA
+	}
+	m, n := len(wordsA), len(wordsB)
+
+	// best[i][j]: the best weakest-pair score with the first i words of the
+	// shorter name paired within the first j words of the longer.
+	best := make([][]float64, m+1)
+	for i := range best {
+		best[i] = make([]float64, n+1)
+		for j := range best[i] {
+			if i == 0 {
+				best[i][j] = 1 // nothing paired yet, so no weak pair
+			} else {
+				best[i][j] = -1 // not yet reachable
+			}
+		}
+	}
+	for i := 1; i <= m; i++ {
+		for j := i; j <= n; j++ {
+			skip := best[i][j-1]
+			pair := min(best[i-1][j-1], compareGivenWords(wordsA[i-1], wordsB[j-1]))
+			best[i][j] = max(skip, pair)
+		}
+	}
+
+	return best[m][n] * float64(m) / float64(n)
 }
 
 // scoreEventYearSimilarity compares years from two events. The third return

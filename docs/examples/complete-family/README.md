@@ -97,9 +97,10 @@ This example uses **descriptive IDs** to make the archive more human-readable:
 
 - `studies/study-smith-yorkshire.glx` - Family reconstruction scope for Smith family in 19th-c. Yorkshire
 
-### Research Logs (1 file)
+### Research Logs (2 files)
 
 - `research_logs/research-log-john-smith-birth.glx` - Investigation that confirmed John Smith's birth date, with two `Search` entries
+- `research_logs/research-log-mary-brown-parents.glx` - Brick-wall investigation into Mary Brown's parents, with a planned (`not_searched`) search and two competing `leads` (one active, one eliminated)
 
 ## Evidence Chain in This Example
 
