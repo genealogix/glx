@@ -16,6 +16,7 @@ package glx
 
 import (
 	"fmt"
+	"slices"
 )
 
 // RenameResult holds the outcome of a rename operation.
@@ -423,6 +424,13 @@ func updateAllRefs(glx *GLXFile, oldID, newID string) int {
 				count++
 			}
 		}
+		for i := range rl.Leads {
+			var replacements int
+			rl.Leads[i].Persons, replacements = replaceInReferenceSet(rl.Leads[i].Persons, oldID, newID)
+			count += replacements
+			count += replaceInSlice(rl.Leads[i].Citations, oldID, newID)
+			count += replaceInSlice(rl.Leads[i].Assertions, oldID, newID)
+		}
 		count += replaceInSlice(rl.Citations, oldID, newID)
 		count += replaceInProperties(rl.Properties, oldID, newID)
 	}
@@ -452,6 +460,31 @@ func replaceInSlice(s []string, oldID, newID string) int {
 	}
 
 	return count
+}
+
+// replaceInReferenceSet rewrites a reference list while preserving the order
+// of first appearance. Consolidating two persons can otherwise leave duplicate
+// candidates in a lead. Copy before rewriting so shared candidate slices are
+// each updated and deduplicated independently.
+func replaceInReferenceSet(ids []string, oldID, newID string) ([]string, int) {
+	if !slices.Contains(ids, oldID) {
+		return ids, 0
+	}
+	result := make([]string, 0, len(ids))
+	seen := make(map[string]bool, len(ids))
+	count := 0
+	for _, id := range ids {
+		if id == oldID {
+			id = newID
+			count++
+		}
+		if !seen[id] {
+			seen[id] = true
+			result = append(result, id)
+		}
+	}
+
+	return result, count
 }
 
 // replaceInProperties scans a properties map for string values matching oldID
