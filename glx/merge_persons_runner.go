@@ -73,7 +73,7 @@ func mergePersons(archivePath, keepID, dropID string, opts glxlib.MergePersonsOp
 	}
 
 	if isDir {
-		return safeWriteMultiFileArchive(archivePath, archive)
+		return writeArchiveInPlace(archivePath, archive, rewriteChanged)
 	}
 
 	return writeSingleFileArchive(archivePath, archive, false)

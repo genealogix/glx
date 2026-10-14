@@ -106,9 +106,8 @@ func entityCounts(g *glxlib.GLXFile) counts {
 //
 //nolint:gocognit,gocyclo // top-level orchestrator: load + path-resolve + preview branch + merge + media plan + save
 func mergeArchives(srcPath, destPath string, preview bool, threshold float64) error {
-	// Resolve to absolute paths so "." becomes a real path that os.Rename can
-	// operate on. POSIX forbids renaming "." (EINVAL) and Windows rejects it
-	// with ERROR_SHARING_VIOLATION.
+	// Resolve to absolute paths so "." is reported, and compared by the media
+	// planner, as the directory it names.
 	var err error
 	destPath, err = filepath.Abs(destPath)
 	if err != nil {
@@ -235,10 +234,11 @@ func mergeArchives(srcPath, destPath string, preview bool, threshold float64) er
 		return nil
 	}
 
-	// Save — multi-file archives use crash-safe temp+swap to prevent partial writes.
-	// Single-file archives use os.WriteFile directly (not atomic; see #595).
+	// Save — multi-file archives are rewritten in place, file by file, each
+	// write atomic with rollback (#1247). Single-file archives use
+	// os.WriteFile directly (not atomic; see #595).
 	if destIsDir {
-		if err := safeWriteMultiFileArchive(destPath, dest); err != nil {
+		if err := writeArchiveInPlace(destPath, dest, rewriteChanged); err != nil {
 			return err
 		}
 		copied, skipped, copyErr := executeMediaCopies(mediaPlan, destPath, dest)

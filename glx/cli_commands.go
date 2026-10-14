@@ -2027,7 +2027,12 @@ the source has any, a warning is printed and the merged Media URIs will
 dangle.
 
 Use --preview to see what would happen without modifying any files,
-including cross-archive duplicate person detection.`,
+including cross-archive duplicate person detection.
+
+A multi-file destination is updated in place: a changed entity or vocabulary
+entry is rewritten in the file that holds it, whatever the archive's layout,
+and each new entity gets its own file at ` + "`<type>/<id>.glx`" + `. Files with nothing
+to change are left untouched.`,
 	Example: `  # Merge another archive into the current one
   glx merge ./other-archive/ --into ./my-archive/
 
@@ -2128,7 +2133,11 @@ Notes are combined per --notes-strategy (default: append).
 
 This is the natural follow-on to ` + "`glx duplicates`" + `: once you've identified
 that two person records are the same individual, this command consolidates
-them in a single atomic operation.`,
+them in a single atomic operation.
+
+A multi-file archive is updated in place: only the files that define or
+reference either person are rewritten, where they are, and a file left with
+nothing in it is deleted. Other files are left untouched.`,
 	Example: `  # Merge person-jungk-1750 into person-juncker-1750
   glx merge-persons person-juncker-1750 person-jungk-1750 --archive ./archive
 
