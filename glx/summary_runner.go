@@ -1137,8 +1137,9 @@ func childrenSentence(personID, subject string, fam *familyLinks, archive *glxli
 
 // narrativeNames returns the display names of the edges' people, skipping
 // people missing from the archive, with the "(?)" marker on hypothetical ones.
-// givenOnly shortens each name to its first word (used for a person's own
-// children, who share the family's surname).
+// givenOnly shortens each name to the whole given name, "Johann Conrad" rather
+// than "Johann" (#1364), for a person's own children, who share the family's
+// surname.
 func narrativeNames(edges []familyEdge, archive *glxlib.GLXFile, givenOnly bool) []string {
 	var names []string
 	for _, e := range edges {
@@ -1147,8 +1148,8 @@ func narrativeNames(edges []familyEdge, archive *glxlib.GLXFile, givenOnly bool)
 			continue
 		}
 		name := extractPersonName(p)
-		if parts := strings.Fields(name); givenOnly && len(parts) > 0 {
-			name = parts[0]
+		if given := extractGivenName(p); givenOnly && given != "" {
+			name = given
 		}
 		if e.Hypothetical {
 			name += " " + hypotheticalMarker

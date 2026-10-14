@@ -51,6 +51,11 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          # Nothing in this job pushes with git: GoReleaser publishes through
+          # the API with GITHUB_TOKEN and only reads tags/history locally. So
+          # do not leave the token in .git/config for later steps (zizmor
+          # artipacked, #928).
+          persist-credentials: false
 
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0

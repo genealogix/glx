@@ -364,32 +364,26 @@ func checkDuplicateSiblingNames(archive *glxlib.GLXFile) []AnalysisIssue {
 	return issues
 }
 
-// extractGivenName returns the given (first) name from a person's name property.
-// Uses the "given" field if available in structured name data; otherwise splits
-// the display name and takes the first token.
+// extractGivenName returns a person's whole given name, every word of it
+// (#1366): "Johann Wilhelm" and "Johann Conrad" are different names, and in
+// German, Dutch and Scandinavian registers a family's sons may all be Johann
+// with the second word the name each went by. Uses the "given" field of the
+// structured name when there is one; otherwise the display name less its last
+// word, taken as the surname.
 func extractGivenName(person *glxlib.Person) string {
 	if person == nil || person.Properties == nil {
 		return ""
 	}
-	// Try structured name fields first
-	raw, ok := person.Properties["name"]
-	if ok {
-		if m, ok := raw.(map[string]any); ok {
-			if fields, ok := m["fields"].(map[string]any); ok {
-				if given, ok := fields["given"].(string); ok && given != "" {
-					return strings.Fields(given)[0]
-				}
-			}
-		}
+	given, _ := glxlib.ExtractNameFields(person.Properties[glxlib.PersonPropertyName])
+	if given = strings.Join(strings.Fields(given), " "); given != "" {
+		return given
 	}
-	// Fall back to first token of display name
-	fullName := glxlib.PersonDisplayName(person)
-	parts := strings.Fields(fullName)
-	if len(parts) > 0 {
-		return parts[0]
+	parts := strings.Fields(glxlib.PersonDisplayName(person))
+	if len(parts) > 1 {
+		parts = parts[:len(parts)-1]
 	}
 
-	return ""
+	return strings.Join(parts, " ")
 }
 
 // allReplacementPattern returns true if all duplicate-named siblings follow the

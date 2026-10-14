@@ -25,7 +25,8 @@ Subcommands:
   add study          Create a study
 
 Every subcommand validates supplied values against the archive's vocabularies
-and entity references before writing. The created entity ID is the only
+and entity references, and every date flag against the GLX date grammar,
+before writing. The created entity ID is the only
 thing written to stdout (progress goes to stderr), so it can be captured with
 shell substitution (add search echoes the ID of the log it appended to):
 

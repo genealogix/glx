@@ -91,6 +91,8 @@ var (
 	ErrAddRelationshipParticipantsRequired = errors.New("a relationship needs at least two participants (use --parent/--child or --participant)")
 	ErrAddPlaceNameRequired                = errors.New("--name is required")
 	ErrAddEventTypeRequired                = errors.New("--type is required")
+	ErrAddEventParticipantsRequired        = errors.New("an event needs at least one participant (use --principal or --participant)")
+	ErrAddDateInvalid                      = errors.New("not a valid GLX date")
 	ErrAddRepositoryNameRequired           = errors.New("--name is required")
 	ErrAddSourceTitleRequired              = errors.New("--title is required")
 	ErrAddCitationSourceRequired           = errors.New("--source is required")

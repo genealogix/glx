@@ -14,6 +14,8 @@ Create an Event entity in the archive.
 --type is required and is validated against the event_types vocabulary.
 --principal is a shorthand for adding the named person with role "principal".
 --participant is repeatable in the form person-id:role.
+At least one of --principal or --participant is required.
+--date must be a valid GLX date string (e.g. 1725-02-25, ABT 1850, JULIAN 1643-02-20).
 --property is repeatable in the form key=value; each key must be defined in
 the event_properties vocabulary (event_subtype, description, cause, ...).
 

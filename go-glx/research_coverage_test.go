@@ -270,10 +270,67 @@ func TestCollectPersonSources(t *testing.T) {
 
 	sources := collectPersonSources("person-john", archive)
 
-	require.Len(t, sources, 1)
+	// The fixture's own events cite the town vital records, and an assertion
+	// about John's own event is evidence about John (#1211)
+	require.Len(t, sources, 2)
 	assert.Equal(t, "citation-1850", sources[0].Ref)
 	assert.Equal(t, SourceTypeCensus, sources[0].Type)
 	assert.Equal(t, 1850, sources[0].Year)
+	assert.Equal(t, "citation-town-records", sources[1].Ref)
+	assert.Equal(t, SourceTypeVitalRecord, sources[1].Type)
+}
+
+// TestBuildCoverage_EventCitedChurchRegister is the #1211 repro: every date
+// comes from a church register through assertions about the person's death
+// and burial events, the only shape a parish register entry has.
+func TestBuildCoverage_EventCitedChurchRegister(t *testing.T) {
+	archive := &GLXFile{
+		Persons: map[string]*Person{
+			"p-jg":      {Properties: map[string]any{PersonPropertyName: "Johann Georg Schöpff"}},
+			"p-witness": {Properties: map[string]any{PersonPropertyName: "Hans Witness"}},
+		},
+		Sources: map[string]*Source{
+			"src-kb": {Type: SourceTypeChurchRegister, Title: "Kirchenbuch 1"},
+		},
+		Citations: map[string]*Citation{
+			"cit-burial": {SourceID: "src-kb"},
+		},
+		Events: map[string]*Event{
+			"ev-death": {
+				Type: EventTypeDeath, Date: "1689-12-27",
+				Participants: []Participant{{Person: "p-jg", Role: ParticipantRolePrincipal}},
+			},
+			"ev-burial": {
+				Type: EventTypeBurial, Date: "1689-12-29",
+				Participants: []Participant{
+					{Person: "p-jg", Role: ParticipantRolePrincipal},
+					{Person: "p-witness", Role: ParticipantRoleWitness},
+				},
+			},
+		},
+		Assertions: map[string]*Assertion{
+			"a-death":  {Subject: EntityRef{Event: "ev-death"}, Property: "date", Value: "1689-12-27", Citations: []string{"cit-burial"}},
+			"a-burial": {Subject: EntityRef{Event: "ev-burial"}, Property: "date", Value: "1689-12-29", Citations: []string{"cit-burial"}},
+		},
+	}
+
+	church := func(result *CoverageResult) CoverageRecord {
+		for _, rec := range result.Records {
+			if rec.Label == "Church records" {
+				return rec
+			}
+		}
+		t.Fatal("no Church records row")
+
+		return CoverageRecord{}
+	}
+
+	rec := church(buildCoverage("p-jg", archive.Persons["p-jg"], archive, ""))
+	assert.True(t, rec.Found, "the burial entry is the decedent's church record")
+	assert.Equal(t, "cit-burial", rec.SourceRef)
+
+	rec = church(buildCoverage("p-witness", archive.Persons["p-witness"], archive, ""))
+	assert.False(t, rec.Found, "a witness named in the entry is not its subject")
 }
 
 func TestFindCensusMatch(t *testing.T) {

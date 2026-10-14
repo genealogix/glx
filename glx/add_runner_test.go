@@ -292,6 +292,103 @@ func TestAdd_EventRejectsBadParticipantFlag(t *testing.T) {
 	}
 }
 
+// An event with no participant fails the schema's minItems, so `glx validate`
+// would refuse the whole archive; add must refuse it and write nothing (#1373).
+func TestAdd_EventRequiresParticipant(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+	err := addEvent(io, &addEventOptions{
+		ArchivePath: dir,
+		Type:        "baptism",
+		Date:        "1643",
+	})
+	if !errors.Is(err, ErrAddEventParticipantsRequired) {
+		t.Fatalf("expected ErrAddEventParticipantsRequired, got %v", err)
+	}
+	if n := len(readBackArchive(t, dir).Events); n != 0 {
+		t.Errorf("rejected add wrote %d event(s)", n)
+	}
+}
+
+// Every date flag on every add subcommand is parsed with the GLX date grammar,
+// and a value it rejects (or a reversed range) fails the add, writing nothing,
+// rather than landing as a `glx validate` warning (#1373).
+func TestAdd_RejectsInvalidDates(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+	if err := addPerson(io, &addPersonOptions{ArchivePath: dir, OverrideID: "pa", Given: "A"}); err != nil {
+		t.Fatalf("addPerson: %v", err)
+	}
+	if err := addSource(io, &addSourceOptions{ArchivePath: dir, OverrideID: "s1", Title: "Register"}); err != nil {
+		t.Fatalf("addSource: %v", err)
+	}
+	if err := addResearchLog(io, &addResearchLogOptions{ArchivePath: dir, OverrideID: "log1", Title: "Log"}); err != nil {
+		t.Fatalf("addResearchLog: %v", err)
+	}
+	before := readBackArchive(t, dir)
+	counts := func(a *glxlib.GLXFile) [6]int {
+		searches := 0
+		for _, l := range a.ResearchLogs {
+			searches += len(l.Searches)
+		}
+
+		return [6]int{len(a.Events), len(a.Sources), len(a.Citations), len(a.Assertions), len(a.Studies), len(a.ResearchLogs) + searches}
+	}
+	want := counts(before)
+
+	event := func(date string) func() error {
+		return func() error {
+			return addEvent(io, &addEventOptions{ArchivePath: dir, Type: "baptism", Date: date, Principal: "pa"})
+		}
+	}
+	cases := map[string]func() error{
+		"event church-day text":   event("Dom. 12 Trin 1643"),
+		"event impossible day":    event("1643-02-30"),
+		"event julian impossible": event("JULIAN 1643-02-30"),
+		"event calendar suffix":   event("1702-01-02 JULIAN"),
+		"event reversed range":    event("BET 1700 AND 1650"),
+		"source --date":           func() error { return addSource(io, &addSourceOptions{ArchivePath: dir, Title: "Bad", Date: "1643-13"}) },
+		"citation --source-date": func() error {
+			return addCitation(io, &addCitationOptions{ArchivePath: dir, Source: "s1", Locator: "p. 1", SourceDate: "1643-02-30"})
+		},
+		"citation --accessed": func() error {
+			return addCitation(io, &addCitationOptions{ArchivePath: dir, Source: "s1", Locator: "p. 2", Accessed: "yesterday"})
+		},
+		"assertion --date": func() error {
+			return addAssertion(io, &addAssertionOptions{ArchivePath: dir, SubjectPerson: "pa", Property: "occupation", Value: "smith", Sources: []string{"s1"}, AssertionDate: "1643-02-30"})
+		},
+		"research-log --date": func() error {
+			return addResearchLog(io, &addResearchLogOptions{ArchivePath: dir, Title: "Bad", Date: "1643-02-30"})
+		},
+		"search --date": func() error {
+			return addSearch(io, &addSearchOptions{ArchivePath: dir, Log: "log1", Query: "Schepp", Date: "1643-02-30"})
+		},
+		"study --date-range": func() error {
+			return addStudy(io, &addStudyOptions{ArchivePath: dir, Title: "Bad", DateRange: "FROM 1822 TO 1750"})
+		},
+	}
+	for name, run := range cases {
+		t.Run(name, func(t *testing.T) {
+			if err := run(); !errors.Is(err, ErrAddDateInvalid) {
+				t.Errorf("expected ErrAddDateInvalid, got %v", err)
+			}
+		})
+	}
+	if got := counts(readBackArchive(t, dir)); got != want {
+		t.Errorf("rejected adds wrote entities: before %v, after %v", want, got)
+	}
+
+	// The error names the flag, the value and the grammar's reason.
+	err := event("1643-02-30")()
+	if msg := err.Error(); !strings.Contains(msg, `--date "1643-02-30"`) || !strings.Contains(msg, "day is not valid for the month") {
+		t.Errorf("error message: %q", msg)
+	}
+	// A valid Julian date is still accepted.
+	if err := event("JULIAN 1643-02-28")(); err != nil {
+		t.Errorf("valid JULIAN date rejected: %v", err)
+	}
+}
+
 // =============================================================================
 // add repository / source / citation
 // =============================================================================

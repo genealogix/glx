@@ -563,16 +563,20 @@ func TestAddPerson_ExternalIDs(t *testing.T) {
 func TestAddEvent_PropertyFlags(t *testing.T) {
 	dir := initArchiveDir(t)
 	io, _, _ := TestIOStreams()
+	if err := addPerson(io, &addPersonOptions{ArchivePath: dir, Given: "Lewis", Surname: "Little"}); err != nil {
+		t.Fatalf("addPerson: %v", err)
+	}
 	err := addEvent(io, &addEventOptions{
 		ArchivePath: dir,
 		Type:        "death",
 		Date:        "1826",
+		Principal:   "person-lewis-little",
 		Properties:  []string{"event_subtype=intestate", "description=Died at home, aged 60=ish"},
 	})
 	if err != nil {
 		t.Fatalf("addEvent: %v", err)
 	}
-	props := readBackArchive(t, dir).Events["event-death-1826"].Properties
+	props := readBackArchive(t, dir).Events["event-death-lewis-little"].Properties
 	if props["event_subtype"] != "intestate" || props["description"] != "Died at home, aged 60=ish" {
 		t.Errorf("event properties: %#v", props)
 	}
@@ -584,13 +588,14 @@ func TestBuildPropertyFlags(t *testing.T) {
 		"cause":   {ValueType: "string"},
 		"count":   {ValueType: "integer"},
 		"living":  {ValueType: "boolean"},
+		"when":    {ValueType: "date"},
 		"aliases": {ValueType: "string", MultiValue: &yes},
 	}
-	props, err := buildEventPropertyFlags([]string{"cause=fever", "count=3", "living=true", "aliases=a", "aliases=b"}, vocab)
+	props, err := buildEventPropertyFlags([]string{"cause=fever", "count=3", "living=true", "when=JULIAN 1643-02-28", "aliases=a", "aliases=b"}, vocab)
 	if err != nil {
 		t.Fatalf("buildPropertyFlags: %v", err)
 	}
-	if props["cause"] != "fever" || props["count"] != 3 || props["living"] != true {
+	if props["cause"] != "fever" || props["count"] != 3 || props["living"] != true || props["when"] != "JULIAN 1643-02-28" {
 		t.Errorf("typed values: %#v", props)
 	}
 	if list, ok := props["aliases"].([]any); !ok || len(list) != 2 {
@@ -604,6 +609,8 @@ func TestBuildPropertyFlags(t *testing.T) {
 		"bogus=1":    ErrAddPropertyUnknown,
 		"count=many": ErrAddPropertyFormat,
 		"living=eh":  ErrAddPropertyFormat,
+		// A date-typed property is held to the date grammar (#1373).
+		"when=1643-02-30": ErrAddDateInvalid,
 	}
 	for flag, want := range bad {
 		if _, err := buildEventPropertyFlags([]string{flag}, vocab); !errors.Is(err, want) {

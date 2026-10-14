@@ -47,14 +47,19 @@ func displayDate(date string) string {
 //   - "1850-03"    → "March 1850"
 //
 // A BCE suffix is kept after the readable body ("March 15, 0044 BCE").
-// Returns the input unchanged for other formats.
+// Returns the input unchanged for other formats, and for an ISO date the
+// grammar rejects.
 func formatReadableDate(s string) string {
 	s = strings.TrimSpace(s)
 	if body, isBCE := strings.CutSuffix(s, " BCE"); isBCE {
 		return formatReadableDate(body) + " BCE"
 	}
-	// Full date: YYYY-MM-DD
+	// Full date: YYYY-MM-DD. One the grammar rejects (1643-02-30) stays raw,
+	// so an impossible day is never printed as a real date (#1373).
 	if isFullDate(s) {
+		if _, err := glxdate.Parse(s); err != nil {
+			return s
+		}
 		month := isoDateMonths[s[5:7]]
 		if month == "" {
 			return s
