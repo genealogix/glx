@@ -343,7 +343,7 @@ type ConversionContext struct {
 
 	// Media file tracking (for CLI to copy/write files)
 	MediaFileSources []MediaFileSource
-	MediaFileNames   map[string]int // basename -> count, for dedup
+	MediaFileNames   *FilenameAllocator // reserved destination names, including case/Unicode equivalents
 
 	// Statistics
 	Stats ImportStatistics
@@ -424,7 +424,7 @@ func ImportGEDCOM(reader io.Reader, logWriter io.Writer) (*GLXFile, *ImportResul
 		ExtensionSchemas:    make(map[string]*ExtensionSchema),
 		DeferredFamilies:    []*GEDCOMRecord{},
 		DeferredFamilyLinks: []*FamilyLink{},
-		MediaFileNames:      make(map[string]int),
+		MediaFileNames:      NewFilenameAllocator(),
 		Stats:               ImportStatistics{},
 	}
 

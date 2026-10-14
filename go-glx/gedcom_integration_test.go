@@ -1349,44 +1349,44 @@ func TestClassifyFileRef(t *testing.T) {
 }
 
 func TestDeduplicateFilename(t *testing.T) {
-	usedNames := make(map[string]int)
+	usedNames := NewFilenameAllocator()
 
 	// First use — unchanged
-	name1 := deduplicateFilename("photo.jpg", usedNames)
+	name1 := usedNames.Allocate("photo.jpg")
 	if name1 != "photo.jpg" {
 		t.Errorf("First use: got %q, want %q", name1, "photo.jpg")
 	}
 
 	// Second use — deduplicated
-	name2 := deduplicateFilename("photo.jpg", usedNames)
+	name2 := usedNames.Allocate("photo.jpg")
 	if name2 != "photo-2.jpg" {
 		t.Errorf("Second use: got %q, want %q", name2, "photo-2.jpg")
 	}
 
 	// Third use — deduplicated again
-	name3 := deduplicateFilename("photo.jpg", usedNames)
+	name3 := usedNames.Allocate("photo.jpg")
 	if name3 != "photo-3.jpg" {
 		t.Errorf("Third use: got %q, want %q", name3, "photo-3.jpg")
 	}
 
 	// Different file — unchanged
-	name4 := deduplicateFilename("document.pdf", usedNames)
+	name4 := usedNames.Allocate("document.pdf")
 	if name4 != "document.pdf" {
 		t.Errorf("Different file: got %q, want %q", name4, "document.pdf")
 	}
 
 	// No extension
-	name5 := deduplicateFilename("README", usedNames)
+	name5 := usedNames.Allocate("README")
 	if name5 != "README" {
 		t.Errorf("No extension: got %q, want %q", name5, "README")
 	}
-	name6 := deduplicateFilename("README", usedNames)
+	name6 := usedNames.Allocate("README")
 	if name6 != "README-2" {
 		t.Errorf("No extension dedup: got %q, want %q", name6, "README-2")
 	}
 
 	// Collision: natural name matches a previously deduplicated name
-	name7 := deduplicateFilename("photo-2.jpg", usedNames)
+	name7 := usedNames.Allocate("photo-2.jpg")
 	if name7 != "photo-2-2.jpg" {
 		t.Errorf("Collision with deduped name: got %q, want %q", name7, "photo-2-2.jpg")
 	}
@@ -1408,10 +1408,10 @@ func TestDeduplicateFilename_OccupiedSuffixes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			usedNames := make(map[string]int)
+			usedNames := NewFilenameAllocator()
 			seen := make(map[string]bool)
 			for i, input := range tt.input {
-				got := deduplicateFilename(input, usedNames)
+				got := usedNames.Allocate(input)
 				if got != tt.want[i] {
 					t.Errorf("allocation %d for %q: got %q, want %q", i, input, got, tt.want[i])
 				}

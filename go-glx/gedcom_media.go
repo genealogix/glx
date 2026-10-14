@@ -257,7 +257,7 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 		// Relative path — track for copying and rewrite URI
 		normalizedRef := normalizePathSeparators(fileRef)
 		basename := filepath.Base(normalizedRef)
-		targetName := deduplicateFilename(basename, conv.MediaFileNames)
+		targetName := conv.MediaFileNames.Allocate(basename)
 		conv.MediaFileSources = append(conv.MediaFileSources, MediaFileSource{
 			MediaID:        mediaID,
 			SourceType:     MediaSourceFile,
@@ -289,7 +289,7 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 	// Track BLOB data for CLI to decode and write
 	if blobText != "" {
 		ext := extensionFromMimeType(media.MimeType)
-		targetName := deduplicateFilename("blob-"+mediaID+ext, conv.MediaFileNames)
+		targetName := conv.MediaFileNames.Allocate("blob-" + mediaID + ext)
 		conv.MediaFileSources = append(conv.MediaFileSources, MediaFileSource{
 			MediaID:        mediaID,
 			SourceType:     MediaSourceBlob,
@@ -424,28 +424,6 @@ func classifyFileRef(fileRef string) bool {
 	}
 
 	return true
-}
-
-// deduplicateFilename returns a unique filename for media/files/.
-// If "photo.jpg" is already used, returns the next available numbered suffix.
-func deduplicateFilename(basename string, usedNames map[string]int) string {
-	if _, exists := usedNames[basename]; !exists {
-		usedNames[basename] = 1
-
-		return basename
-	}
-	ext := filepath.Ext(basename)
-	name := strings.TrimSuffix(basename, ext)
-	for {
-		usedNames[basename]++
-		deduped := fmt.Sprintf("%s-%d%s", name, usedNames[basename], ext)
-		if _, exists := usedNames[deduped]; exists {
-			continue
-		}
-		usedNames[deduped] = 1
-
-		return deduped
-	}
 }
 
 // normalizePathSeparators converts backslashes to forward slashes.

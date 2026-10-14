@@ -16,6 +16,7 @@ package main
 
 import (
 	"archive/zip"
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -87,6 +88,13 @@ func importGEDZIP(gedzipPath, outputPath, format string, validate, verbose bool,
 		if w.Tag == glxlib.WarningTagGEDZIP {
 			_, _ = fmt.Fprintf(output, "Warning: %s\n", w.Message)
 		}
+	}
+	mediaDir := outputPath
+	if format == FormatSingle {
+		mediaDir = filepath.Dir(ensureGLXExtension(outputPath))
+	}
+	if err := reserveImportMediaDestinations(glx, result.MediaFiles, mediaDir); err != nil {
+		return fmt.Errorf("reserving media destinations: %w", err)
 	}
 
 	if format == FormatSingle {
@@ -211,7 +219,7 @@ func importGEDZIPToMultiFile(glx *glxlib.GLXFile, outputPath string, validate, v
 
 	// Stage inside the archive directory itself: commitStagedMedia resolves
 	// every path through an os.Root scoped to the archive, which only reaches
-	// paths beneath it. Same filesystem too, so the commit is always a rename.
+	// paths beneath it. The same filesystem allows exclusive hard-link commits.
 	if err := os.MkdirAll(outputPath, dirPermissions); err != nil {
 		return fmt.Errorf("creating directory for %s: %w", outputPath, err)
 	}
@@ -268,8 +276,12 @@ func stageMediaFilesFromFS(streams *IOStreams, stageDir string, mediaFiles []glx
 	}
 
 	var copyCount, blobCount, warnCount int
+	reserved := glxlib.NewFilenameAllocator()
 
 	for _, mf := range mediaFiles {
+		if !reserved.Reserve(mf.TargetFilename) {
+			return 0, 0, 0, fmt.Errorf("%w: duplicate staged media destination %s", os.ErrExist, mf.TargetFilename)
+		}
 		destPath := filepath.Join(filesDir, mf.TargetFilename)
 
 		switch mf.SourceType {
@@ -304,7 +316,7 @@ func stageMediaFilesFromFS(streams *IOStreams, stageDir string, mediaFiles []glx
 
 				continue
 			}
-			if err := os.WriteFile(destPath, decoded, filePermissions); err != nil {
+			if err := writeFileFrom(destPath, bytes.NewReader(decoded)); err != nil {
 				streams.Printf("Warning: could not write BLOB file %s: %v\n", destPath, err)
 				warnCount++
 
@@ -324,9 +336,8 @@ func stageMediaFilesFromFS(streams *IOStreams, stageDir string, mediaFiles []glx
 // os.Root scoped to targetDir, so no symlinked component can redirect a write
 // outside the archive — not the leaf media/files/<name>, and not a "media" or
 // "media/files" directory that a bare os.MkdirAll would happily follow. Each
-// file lands by rename, which replaces the destination atomically without
-// following a symlink there and leaves any existing file intact if the commit
-// fails partway.
+// file lands by an exclusive hard link (or exclusive copy when links are not
+// supported), so even a destination created after allocation is never replaced.
 func commitStagedMedia(stageDir, targetDir string) error {
 	stagedFilesDir := filepath.Join(stageDir, glxlib.MediaFilesDir)
 	entries, err := os.ReadDir(stagedFilesDir)
@@ -352,14 +363,66 @@ func commitStagedMedia(stageDir, targetDir string) error {
 	if err := root.MkdirAll(glxlib.MediaFilesDir, dirPermissions); err != nil {
 		return fmt.Errorf("creating media/files directory: %w", err)
 	}
+	targetFiles, err := root.Open(glxlib.MediaFilesDir)
+	if err != nil {
+		return fmt.Errorf("opening media/files directory: %w", err)
+	}
+	existing, readErr := targetFiles.Readdirnames(-1)
+	closeErr := targetFiles.Close()
+	if readErr != nil {
+		return fmt.Errorf("reading media/files directory: %w", readErr)
+	}
+	if closeErr != nil {
+		return fmt.Errorf("closing media/files directory: %w", closeErr)
+	}
+	reserved := glxlib.NewFilenameAllocator(existing...)
+	for _, entry := range entries {
+		if !entry.Type().IsRegular() {
+			return fmt.Errorf("%w: staged media %s is not a regular file", os.ErrInvalid, entry.Name())
+		}
+		if !reserved.Reserve(entry.Name()) {
+			return fmt.Errorf("%w: media destination %s", os.ErrExist, entry.Name())
+		}
+	}
 
 	stagedRel := path.Join(filepath.ToSlash(stageRel), glxlib.MediaFilesDir)
 	for _, entry := range entries {
 		src := path.Join(stagedRel, entry.Name())
 		dst := path.Join(glxlib.MediaFilesDir, entry.Name())
-		if err := robustRenameIn(root, src, dst); err != nil {
+		if err := commitStagedFile(root, src, dst); err != nil {
 			return fmt.Errorf("committing media file %s: %w", entry.Name(), err)
 		}
+	}
+
+	return nil
+}
+
+// commitStagedFile publishes a staged regular file without replacing an
+// existing destination. Both paths stay confined to root. Hard links preserve
+// atomic visibility; exclusive copying is a fallback for filesystems without
+// hard-link support.
+func commitStagedFile(root *os.Root, src, dst string) error {
+	if err := root.Link(src, dst); err == nil {
+		return nil
+	} else if errors.Is(err, os.ErrExist) {
+		return err
+	}
+
+	input, err := root.Open(src)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = input.Close() }()
+	output, err := root.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_EXCL, filePermissions)
+	if err != nil {
+		return err
+	}
+	_, copyErr := io.Copy(output, input)
+	closeErr := output.Close()
+	if copyErr != nil || closeErr != nil {
+		_ = root.Remove(dst)
+
+		return errors.Join(copyErr, closeErr)
 	}
 
 	return nil
@@ -402,7 +465,7 @@ func copyMemberFile(bundle fs.FS, memberPath, destPath string) error {
 // destination is removed so the next caller cannot observe a truncated or
 // oversized file.
 func writeStreamEntry(src io.Reader, name, destPath string) error {
-	dst, err := os.OpenFile(filepath.Clean(destPath), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, filePermissions)
+	dst, err := os.OpenFile(filepath.Clean(destPath), os.O_WRONLY|os.O_CREATE|os.O_EXCL, filePermissions)
 	if err != nil {
 		return fmt.Errorf("creating destination file for %q: %w", name, err)
 	}

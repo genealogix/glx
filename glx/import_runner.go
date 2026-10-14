@@ -81,6 +81,13 @@ func importGEDCOM(gedcomPath, outputPath, format string, validate, verbose bool,
 
 	// Determine GEDCOM source directory for resolving relative media file paths
 	gedcomDir := filepath.Dir(gedcomPath)
+	mediaDir := outputPath
+	if format == FormatSingle {
+		mediaDir = filepath.Dir(ensureGLXExtension(outputPath))
+	}
+	if err := reserveImportMediaDestinations(glx, result.MediaFiles, mediaDir); err != nil {
+		return fmt.Errorf("reserving media destinations: %w", err)
+	}
 
 	// Serialize based on format
 	if format == FormatSingle {
