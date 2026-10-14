@@ -43,6 +43,10 @@ For each person with deprecated properties:
 - Never overwrites existing event data
 - Converts assertions to reference the event instead of the person property
 
+A multi-file archive is updated in place: each file holding something that
+changes is rewritten where it is, a created event gets its own file at
+events/<id>.glx, and files with nothing to migrate are left untouched.
+
 With --rename-gender-to-sex, also renames the legacy ` + "`gender`" + ` person
 property (and any related assertions and inlined vocabulary entries) to
 ` + "`sex`" + `, completing the two-field-model split introduced in #528.
@@ -253,7 +257,9 @@ func migrateArchive(archivePath string) error {
 
 	// Write the migrated archive back.
 	if isDir {
-		if err := safeWriteMultiFileArchive(archivePath, archive); err != nil {
+		// rewriteNormalized: the description migrations are load-time
+		// shims, so only a comparison with the bytes on disk sees them.
+		if err := writeArchiveInPlace(archivePath, archive, rewriteNormalized); err != nil {
 			return fmt.Errorf("failed to write archive: %w", err)
 		}
 	} else {
