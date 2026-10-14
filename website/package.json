@@ -7,8 +7,8 @@
     "build": "npm run copy-static && vitepress build",
     "preview": "vitepress preview",
     "copy-static": "node scripts/copy-static.mjs",
-    "lint": "eslint '.vitepress/**/*.{js,vue}' --max-warnings 0",
-    "lint:fix": "eslint '.vitepress/**/*.{js,vue}' --fix",
+    "lint": "eslint . --max-warnings 0",
+    "lint:fix": "eslint . --fix",
     "format": "prettier --write \"**/*.{js,vue,json,md}\""
   },
   "keywords": [
