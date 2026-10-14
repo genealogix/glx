@@ -22,6 +22,7 @@ inherited by anyone importing `github.com/genealogix/glx/go-glx` as a library.
 | Tool | Package | Used by |
 |---|---|---|
 | govulncheck | `golang.org/x/vuln/cmd/govulncheck` | `.github/workflows/security.yml`, `make vulncheck` |
+| actionlint | `github.com/rhysd/actionlint/cmd/actionlint` | `.github/workflows/workflow-lint.yml`, `make lint-workflows` |
 
 ## Tools deliberately NOT here
 

@@ -153,5 +153,15 @@ workflow passes.
   workflows (`security.yml`, `validate-spec.yml`) can populate; a poisoned
   cache entry would taint the build *upstream* of signing, and provenance/
   signatures won't catch it. Hence `cache: false` on `actions/setup-go` in
-  `release.yml` (#1051) — do not "tidy" it back to `true`. Wiring zizmor's
-  `cache-poisoning` audit into CI (#928) would catch regressions generically.
+  `release.yml` (#1051) — do not "tidy" it back to `true`. zizmor's
+  `cache-poisoning` audit in `workflow-lint.yml` (#928) catches regressions.
+
+## `workflow-lint.yml`: zizmor + actionlint gate every workflow edit
+
+Any PR touching `.github/workflows/` runs zizmor and actionlint, and both
+fail on any finding (source of truth: the "Static analysis of CI workflow
+definitions" row in `../SECURITY-POSTURE.md`). Run `make lint-workflows`
+before pushing a workflow change. Fix a finding rather than suppressing it;
+where a suppression is genuinely right (e.g. shellcheck SC2016 on a
+single-quoted GraphQL document), put it on the one command with a comment
+saying why.
