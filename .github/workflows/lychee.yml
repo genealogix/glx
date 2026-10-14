@@ -123,17 +123,23 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ISSUE_NUMBER: ${{ steps.create-issue.outputs.issue-number }}
+        # Owner and repo come from the runner-provided GITHUB_REPOSITORY_OWNER
+        # and GITHUB_REPOSITORY env vars, not ${{ }} interpolation into this
+        # script (zizmor template-injection, #928). The single-quoted GraphQL
+        # documents below contain $variables meant for GraphQL, not the shell,
+        # hence the SC2016 suppression on each `gh api graphql` call.
         run: |
           set -euo pipefail
           # jq's `// empty` coerces a JSON null (missing issue, missing
           # org-level issue-type access) to an empty string; the extra "null"
           # comparison below is belt-and-braces against a literal string.
+          # shellcheck disable=SC2016
           issue_info=$(gh api graphql -f query='
             query($owner:String!, $repo:String!, $n:Int!) {
               repository(owner:$owner, name:$repo) { issue(number:$n) { id issueType { name } } }
             }' \
-            -F owner="${{ github.repository_owner }}" \
-            -F repo="${{ github.event.repository.name }}" \
+            -F owner="$GITHUB_REPOSITORY_OWNER" \
+            -F repo="${GITHUB_REPOSITORY#*/}" \
             -F n="$ISSUE_NUMBER")
           issue_id=$(echo "$issue_info" | jq -r '.data.repository.issue.id // empty')
           if [[ -z "$issue_id" || "$issue_id" == "null" ]]; then
@@ -153,6 +159,7 @@ jobs:
           cursor=""
           while :; do
             if [[ -z "$cursor" ]]; then
+              # shellcheck disable=SC2016
               page=$(gh api graphql -f query='
                 query($org:String!) {
                   organization(login:$org) {
@@ -162,8 +169,9 @@ jobs:
                     }
                   }
                 }' \
-                -F org="${{ github.repository_owner }}")
+                -F org="$GITHUB_REPOSITORY_OWNER")
             else
+              # shellcheck disable=SC2016
               page=$(gh api graphql -f query='
                 query($org:String!, $cursor:String!) {
                   organization(login:$org) {
@@ -173,7 +181,7 @@ jobs:
                     }
                   }
                 }' \
-                -F org="${{ github.repository_owner }}" \
+                -F org="$GITHUB_REPOSITORY_OWNER" \
                 -F cursor="$cursor")
             fi
             bug_type_id=$(echo "$page" | jq -r '.data.organization.issueTypes.nodes[] | select(.name == "Bug") | .id')
@@ -187,12 +195,13 @@ jobs:
             cursor=$(echo "$page" | jq -r '.data.organization.issueTypes.pageInfo.endCursor')
           done
           if [[ -z "$bug_type_id" || "$bug_type_id" == "null" ]]; then
-            echo "::error::Bug issue type not found in organization ${{ github.repository_owner }}"
+            echo "::error::Bug issue type not found in organization ${GITHUB_REPOSITORY_OWNER}"
             exit 1
           fi
           # `|| true`: gh exits non-zero on GraphQL errors while still printing
           # the JSON body — without it, set -e would abort here and the
           # friendly error summary below would never run.
+          # shellcheck disable=SC2016
           result=$(gh api graphql \
             -f query='mutation($id:ID!, $type:ID!) {
               updateIssueIssueType(input:{issueId:$id, issueTypeId:$type}) { issue { number } }
@@ -213,9 +222,10 @@ jobs:
         if: steps.lychee.outputs.exit_code == 0 && steps.find-issue.outputs.number != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ steps.find-issue.outputs.number }}
         run: |
           set -euo pipefail
-          gh issue close "${{ steps.find-issue.outputs.number }}" \
+          gh issue close "$ISSUE_NUMBER" \
             --comment "All external links healthy as of $(date -u '+%Y-%m-%d'). Automated closure by lychee.yml."
 
       - name: Fail job when broken links detected

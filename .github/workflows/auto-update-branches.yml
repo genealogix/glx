@@ -27,6 +27,12 @@ jobs:
         with:
           app-id: ${{ secrets.GH_APP_ID }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          # Scope the token to what the script below uses instead of inheriting
+          # the app installation's full grant (zizmor github-app, #928):
+          # contents:write for the merges endpoint (plus ref/compare reads),
+          # pull-requests:read for `gh pr list`.
+          permission-contents: write
+          permission-pull-requests: read
 
       - name: Update out-of-date PR branches
         env:
