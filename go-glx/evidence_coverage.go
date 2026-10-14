@@ -190,8 +190,8 @@ func markAssertionValue(coverage EntityCoverage, a *Assertion, archive *GLXFile)
 	}
 }
 
-// markPlaceAncestors adds every ancestor of each covered place, guarding
-// against parent cycles.
+// markPlaceAncestors adds every ancestor of each covered place, following
+// parent edges of any period (#225) and guarding against parent cycles.
 func markPlaceAncestors(covered map[string]bool, places map[string]*Place) {
 	seeds := make([]string, 0, len(covered))
 	for id := range covered {
@@ -200,15 +200,21 @@ func markPlaceAncestors(covered map[string]bool, places map[string]*Place) {
 
 	for _, id := range seeds {
 		visited := map[string]bool{id: true}
-		place := places[id]
-		for place != nil && place.ParentID != "" && !visited[place.ParentID] {
-			parent := place.ParentID
-			visited[parent] = true
-			if places[parent] == nil {
-				break
+		queue := []string{id}
+		for len(queue) > 0 {
+			place := places[queue[0]]
+			queue = queue[1:]
+			for _, parent := range place.ParentIDs() {
+				if visited[parent] {
+					continue
+				}
+				visited[parent] = true
+				if places[parent] == nil {
+					continue
+				}
+				covered[parent] = true
+				queue = append(queue, parent)
 			}
-			covered[parent] = true
-			place = places[parent]
 		}
 	}
 }

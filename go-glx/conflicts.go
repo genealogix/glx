@@ -229,21 +229,17 @@ func foldFactText(s string) string {
 	return strings.Join(strings.Fields(b.String()), " ")
 }
 
+// placeAncestor reports whether ancestor is child or one of its ancestors,
+// following parent edges of any period (#225).
 func placeAncestor(ancestor, child string, places map[string]*Place) bool {
-	seen := make(map[string]bool)
-	for child != "" && !seen[child] {
-		if child == ancestor {
-			return true
-		}
-		seen[child] = true
-		p := places[child]
-		if p == nil {
-			return false
-		}
-		child = p.ParentID
+	if child == "" {
+		return false
+	}
+	if child == ancestor {
+		return true
 	}
 
-	return false
+	return (&GLXFile{Places: places}).PlaceHasAncestor(child, ancestor)
 }
 
 // ConflictProperty returns vocabulary semantics, including structural event
