@@ -45,7 +45,7 @@ For each person with deprecated properties:
 
 A multi-file archive is updated in place: each file holding something that
 changes is rewritten where it is, a created event gets its own file at
-events/<id>.glx, and files with nothing to migrate are left untouched.
+` + "`events/<id>.glx`" + `, and files with nothing to migrate are left untouched.
 
 With --rename-gender-to-sex, also renames the legacy ` + "`gender`" + ` person
 property (and any related assertions and inlined vocabulary entries) to

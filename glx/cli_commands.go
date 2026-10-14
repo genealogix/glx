@@ -2031,7 +2031,7 @@ including cross-archive duplicate person detection.
 
 A multi-file destination is updated in place: a changed entity or vocabulary
 entry is rewritten in the file that holds it, whatever the archive's layout,
-and each new entity gets its own file at <type>/<id>.glx. Files with nothing
+and each new entity gets its own file at ` + "`<type>/<id>.glx`" + `. Files with nothing
 to change are left untouched.`,
 	Example: `  # Merge another archive into the current one
   glx merge ./other-archive/ --into ./my-archive/
