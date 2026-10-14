@@ -1,0 +1,112 @@
+name: Workflow Lint
+
+# Static analysis of the CI definitions themselves (#928). Every other security
+# check in this repo scans what CI builds — code, dependencies, artifacts — and
+# none read .github/workflows/*.yml, the layer the tj-actions/changed-files
+# (CVE-2025-30066) and pull_request_target "pwn request" compromises went
+# through. Two complementary tools, both blocking:
+#
+#   zizmor     — security semantics: template-injection, dangerous-triggers,
+#                cache-poisoning, excessive-permissions, artipacked,
+#                unpinned-uses, github-app token scope, and the online audits
+#                (known-vulnerable-actions, impostor-commit, ref-confusion).
+#   actionlint — correctness: workflow syntax, expression typing, runner
+#                labels, and shellcheck over every `run:` script.
+#
+# Blocking rather than SARIF-to-Code-Scanning on purpose: both tools are clean
+# on main, so a finding is a regression to fix in the PR that introduces it,
+# and plain output also works on fork PRs (whose token cannot upload SARIF).
+# It is a separate workflow rather than a job in security.yml because that file
+# must hold only SARIF-uploading jobs (#1145). Run the same checks locally with
+# `make lint-workflows`.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/**'
+      - '.github/actions/**'
+      - '.github/dependabot.yml'
+      - '.github/requirements/zizmor.txt'
+      - 'ci-tools/go.mod'
+      - 'ci-tools/go.sum'
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - '.github/actions/**'
+      - '.github/dependabot.yml'
+      - '.github/requirements/zizmor.txt'
+      - 'ci-tools/go.mod'
+      - 'ci-tools/go.sum'
+  schedule:
+    # Weekly, so zizmor's online audits catch a newly published advisory
+    # against an action we already pin, not only edits to our own files.
+    - cron: '23 6 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: workflow-lint-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  GIT_CONFIG_COUNT: 2
+  GIT_CONFIG_KEY_0: init.defaultBranch
+  GIT_CONFIG_VALUE_0: main
+  GIT_CONFIG_KEY_1: advice.detachedHead
+  GIT_CONFIG_VALUE_1: "false"
+
+jobs:
+  zizmor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+
+      # zizmor is installed from PyPI by hash rather than through
+      # zizmorcore/zizmor-action, whose `version` input defaults to "latest":
+      # a SHA-pinned action that downloads an unpinned binary is not pinned.
+      # Dependabot's pip ecosystem keeps .github/requirements/zizmor.txt current.
+      - name: Install zizmor
+        run: pip install --require-hashes --no-deps -r .github/requirements/zizmor.txt
+
+      # GH_TOKEN enables the online audits; the job's read-only token suffices.
+      # --format=github emits findings as annotations on the PR diff, and
+      # zizmor exits non-zero when any finding is reported.
+      - name: Run zizmor
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: zizmor --format=github .
+
+  actionlint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      # actionlint silently skips its shellcheck pass when the binary is not on
+      # PATH. It is preinstalled on ubuntu-latest; fail loudly if that changes
+      # rather than let `run:` scripts go unchecked.
+      - name: Check shellcheck is available
+        run: shellcheck --version
+
+      # Pinned via the tool directive in ci-tools/go.mod (shared with
+      # `make lint-workflows`; Dependabot's gomod ecosystem bumps it).
+      - name: Run actionlint
+        run: go tool -modfile=ci-tools/go.mod actionlint -color
