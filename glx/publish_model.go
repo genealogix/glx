@@ -556,7 +556,7 @@ func sourceRefFromCitation(citID string, a *glxlib.Assertion, archive *glxlib.GL
 // fragment links.
 func buildSourceRows(archive *glxlib.GLXFile) []sourceRow {
 	rows := make([]sourceRow, 0, len(archive.Sources))
-	usedAnchors := map[string]bool{}
+	usedAnchors := glxlib.NewFilenameAllocator()
 	for _, id := range sortedKeys(archive.Sources) {
 		src := archive.Sources[id]
 		if src == nil {
@@ -593,7 +593,7 @@ func buildSourceRows(archive *glxlib.GLXFile) []sourceRow {
 // name. Anchors are assigned the same way as in buildSourceRows.
 func buildPlaceRows(archive *glxlib.GLXFile, idx *siteIndex) []placeRow {
 	rows := make([]placeRow, 0, len(archive.Places))
-	usedAnchors := map[string]bool{}
+	usedAnchors := glxlib.NewFilenameAllocator()
 	for _, id := range sortedKeys(archive.Places) {
 		place := archive.Places[id]
 		if place == nil {

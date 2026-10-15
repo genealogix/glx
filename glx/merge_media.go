@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
@@ -69,6 +70,12 @@ func planSourceMediaCopies(srcPath, destPath string, src *glxlib.GLXFile) ([]pla
 	if err != nil {
 		return nil, err
 	}
+	existingNames := make([]string, 0, len(taken))
+	for name := range taken {
+		existingNames = append(existingNames, name)
+	}
+	sort.Strings(existingNames)
+	allocator := glxlib.NewFilenameAllocator(existingNames...)
 
 	entries, err := os.ReadDir(srcFiles)
 	if err != nil {
@@ -93,23 +100,39 @@ func planSourceMediaCopies(srcPath, destPath string, src *glxlib.GLXFile) ([]pla
 		}
 
 		target := name
-		if _, exists := taken[name]; exists {
-			same, err := filesIdentical(srcFile, filepath.Join(destPath, glxlib.MediaFilesDir, name))
-			if err != nil {
-				return nil, fmt.Errorf("comparing media file %s: %w", name, err)
+		if existingName, exists := allocator.Existing(name); exists {
+			if _, onDisk := taken[existingName]; onDisk {
+				existingPath := filepath.Join(destPath, glxlib.MediaFilesDir, existingName)
+				info, statErr := os.Lstat(existingPath)
+				if statErr != nil {
+					return nil, fmt.Errorf("inspecting media file %s: %w", existingName, statErr)
+				}
+				if info.Mode().IsRegular() {
+					same, compareErr := filesIdentical(srcFile, existingPath)
+					if compareErr != nil {
+						return nil, fmt.Errorf("comparing media file %s: %w", name, compareErr)
+					}
+					if same {
+						// Reuse the actual on-disk spelling on case-sensitive filesystems too.
+						for _, id := range mediaIDs {
+							if m := src.Media[id]; m != nil {
+								m.URI = glxlib.MediaFilesDir + "/" + existingName
+							}
+						}
+
+						continue
+					}
+				}
 			}
-			if same {
-				// Identical content — reuse the existing binary, no rename.
-				continue
-			}
-			target = nextAvailableMediaName(name, taken)
+			target = allocator.Allocate(name)
 			for _, id := range mediaIDs {
 				if m := src.Media[id]; m != nil {
 					m.URI = glxlib.MediaFilesDir + "/" + target
 				}
 			}
+		} else {
+			allocator.Reserve(name)
 		}
-		taken[target] = struct{}{}
 		srcMedia := make(map[string]*glxlib.Media, len(mediaIDs))
 		for _, id := range mediaIDs {
 			srcMedia[id] = src.Media[id]
@@ -202,40 +225,36 @@ func mediaURIBasename(uri string) string {
 	return rest
 }
 
-// listMediaFilenames returns the set of regular-file names in dir. A missing
-// directory is treated as empty.
+// listMediaFilenames returns the set of names in dir. Directories and symlinks
+// also occupy a destination name and must never be replaced. A missing
+// directory is treated as empty; an occupied non-directory path is an error.
+// Archive safe-write can preserve a media/files symlink by moving the link
+// itself, but merge copies through this path and must not write to its target.
 func listMediaFilenames(dir string) (map[string]struct{}, error) {
+	for _, current := range []string{filepath.Dir(dir), dir} {
+		info, err := os.Lstat(current)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return map[string]struct{}{}, nil
+			}
+
+			return nil, fmt.Errorf("inspecting %s: %w", current, err)
+		}
+		if !info.IsDir() {
+			return nil, fmt.Errorf("media path %s is not a directory: %w", current, os.ErrInvalid)
+		}
+	}
+
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return map[string]struct{}{}, nil
-		}
-
 		return nil, fmt.Errorf("reading %s: %w", dir, err)
 	}
 	out := make(map[string]struct{}, len(entries))
 	for _, e := range entries {
-		if e.IsDir() {
-			continue
-		}
 		out[e.Name()] = struct{}{}
 	}
 
 	return out, nil
-}
-
-// nextAvailableMediaName returns the first "<stem>-N<ext>" form not already
-// present in taken, starting at -2 to match the GEDCOM importer's convention
-// (see go-glx/gedcom_media.go::deduplicateFilename).
-func nextAvailableMediaName(basename string, taken map[string]struct{}) string {
-	ext := filepath.Ext(basename)
-	stem := strings.TrimSuffix(basename, ext)
-	for i := 2; ; i++ {
-		candidate := fmt.Sprintf("%s-%d%s", stem, i, ext)
-		if _, exists := taken[candidate]; !exists {
-			return candidate
-		}
-	}
 }
 
 // filesIdentical reports whether two files have identical content. Size is

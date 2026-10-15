@@ -162,13 +162,13 @@ func isHTTPURL(uri string) bool {
 // directory deep), copied-file sources are written with the "../" prefix
 // baked in so templates can use Src directly.
 type mediaResolver struct {
-	baseDir   string                 // directory media URIs are resolved relative to
-	outputDir string                 // site output root
-	embed     bool                   // base64-embed images instead of copying
-	mediaDir  string                 // <outputDir>/media, created lazily
-	assigned  map[string]string      // absolute source path -> output basename
-	usedNames map[string]bool        // output basenames already taken
-	resolved  map[string]mediaResult // source path -> already-resolved result
+	baseDir   string                    // directory media URIs are resolved relative to
+	outputDir string                    // site output root
+	embed     bool                      // base64-embed images instead of copying
+	mediaDir  string                    // <outputDir>/media, created lazily
+	assigned  map[string]string         // absolute source path -> output basename
+	usedNames *glxlib.FilenameAllocator // output basenames already taken
+	resolved  map[string]mediaResult    // source path -> already-resolved result
 	copied    int
 }
 
@@ -188,7 +188,7 @@ func resolveSiteMedia(model *siteModel, baseDir, outputDir string, embed bool) (
 		embed:     embed,
 		mediaDir:  filepath.Join(outputDir, mediaDirName),
 		assigned:  map[string]string{},
-		usedNames: map[string]bool{},
+		usedNames: glxlib.NewFilenameAllocator(),
 		resolved:  map[string]mediaResult{},
 	}
 
@@ -447,16 +447,10 @@ func safePersonStem(personID string) string {
 	return safeAnchorStem(personID, searchKindPerson)
 }
 
-// uniqueFileName returns stem+ext, appending -2, -3, … until it is unused, and
-// records the chosen name in used.
-func uniqueFileName(stem, ext string, used map[string]bool) string {
-	name := stem + ext
-	for i := 2; used[name]; i++ {
-		name = fmt.Sprintf("%s-%d%s", stem, i, ext)
-	}
-	used[name] = true
-
-	return name
+// uniqueFileName shares the library's collision rules with imported and merged
+// media while retaining each publish caller's sanitized stem and extension.
+func uniqueFileName(stem, ext string, used *glxlib.FilenameAllocator) string {
+	return used.Allocate(stem + ext)
 }
 
 // assignPersonFiles maps each person ID (given in sorted order for determinism)
@@ -465,7 +459,7 @@ func uniqueFileName(stem, ext string, used map[string]bool) string {
 // loader does not reject — are disambiguated with a numeric suffix so a page is
 // never silently overwritten and links never resolve to the wrong person.
 func assignPersonFiles(sortedIDs []string) map[string]string {
-	used := map[string]bool{}
+	used := glxlib.NewFilenameAllocator()
 	files := make(map[string]string, len(sortedIDs))
 	for _, id := range sortedIDs {
 		files[id] = uniqueFileName(safePersonStem(id), ".html", used)

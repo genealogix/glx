@@ -65,18 +65,6 @@ func TestIndexMediaByBasename(t *testing.T) {
 	assert.Equal(t, []string{"m3"}, got["letter.txt"])
 }
 
-func TestNextAvailableMediaName(t *testing.T) {
-	taken := map[string]struct{}{
-		"photo.jpg":   {},
-		"photo-2.jpg": {},
-		"photo-3.jpg": {},
-	}
-	assert.Equal(t, "photo-4.jpg", nextAvailableMediaName("photo.jpg", taken))
-
-	noExt := map[string]struct{}{"data": {}}
-	assert.Equal(t, "data-2", nextAvailableMediaName("data", noExt))
-}
-
 func TestFilesIdentical(t *testing.T) {
 	dir := t.TempDir()
 	a := filepath.Join(dir, "a.bin")
@@ -120,7 +108,7 @@ func TestListMediaFilenames(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, got)
 	})
-	t.Run("returns regular files and skips subdirs", func(t *testing.T) {
+	t.Run("reserves files and directories", func(t *testing.T) {
 		dir := t.TempDir()
 		require.NoError(t, os.WriteFile(filepath.Join(dir, "a.jpg"), []byte("a"), 0o644))
 		require.NoError(t, os.WriteFile(filepath.Join(dir, "b.pdf"), []byte("b"), 0o644))
@@ -128,10 +116,10 @@ func TestListMediaFilenames(t *testing.T) {
 
 		got, err := listMediaFilenames(dir)
 		require.NoError(t, err)
-		assert.Len(t, got, 2)
+		assert.Len(t, got, 3)
 		assert.Contains(t, got, "a.jpg")
 		assert.Contains(t, got, "b.pdf")
-		assert.NotContains(t, got, "nested")
+		assert.Contains(t, got, "nested")
 	})
 }
 
@@ -194,6 +182,84 @@ func TestPlanSourceMediaCopies_NonDirAtMediaFilesPath(t *testing.T) {
 	plan, err := planSourceMediaCopies(srcDir, destDir, src)
 	require.NoError(t, err)
 	assert.Empty(t, plan)
+}
+
+func TestPlanSourceMediaCopies_CaseEquivalentDestination(t *testing.T) {
+	for _, identical := range []bool{false, true} {
+		t.Run(map[bool]string{false: "distinct bytes", true: "identical bytes"}[identical], func(t *testing.T) {
+			srcDir := t.TempDir()
+			destDir := t.TempDir()
+			srcFiles := filepath.Join(srcDir, glxlib.MediaFilesDir)
+			destFiles := filepath.Join(destDir, glxlib.MediaFilesDir)
+			require.NoError(t, os.MkdirAll(srcFiles, 0o755))
+			require.NoError(t, os.MkdirAll(destFiles, 0o755))
+			oldBytes := []byte("old image")
+			newBytes := []byte("new image")
+			if identical {
+				newBytes = oldBytes
+			}
+			require.NoError(t, os.WriteFile(filepath.Join(destFiles, "Photo.JPG"), oldBytes, 0o644))
+			require.NoError(t, os.WriteFile(filepath.Join(srcFiles, "photo.jpg"), newBytes, 0o644))
+			src := &glxlib.GLXFile{Media: map[string]*glxlib.Media{"media-1": {URI: "media/files/photo.jpg"}}}
+			plan, err := planSourceMediaCopies(srcDir, destDir, src)
+			require.NoError(t, err)
+			if identical {
+				require.Empty(t, plan)
+				require.Equal(t, "media/files/Photo.JPG", src.Media["media-1"].URI)
+			} else {
+				require.Len(t, plan, 1)
+				require.Equal(t, "photo-2.jpg", plan[0].TargetName)
+				require.Equal(t, "media/files/photo-2.jpg", src.Media["media-1"].URI)
+				copied, _, copyErr := executeMediaCopies(plan, destDir, src)
+				require.NoError(t, copyErr)
+				require.Equal(t, 1, copied)
+				actual, readErr := os.ReadFile(filepath.Join(destFiles, "photo-2.jpg"))
+				require.NoError(t, readErr)
+				require.Equal(t, newBytes, actual)
+			}
+			actual, readErr := os.ReadFile(filepath.Join(destFiles, "Photo.JPG"))
+			require.NoError(t, readErr)
+			require.Equal(t, oldBytes, actual)
+		})
+	}
+}
+
+func TestPlanSourceMediaCopies_DirectoryOccupiesDestinationName(t *testing.T) {
+	srcDir := t.TempDir()
+	destDir := t.TempDir()
+	srcFiles := filepath.Join(srcDir, glxlib.MediaFilesDir)
+	destFiles := filepath.Join(destDir, glxlib.MediaFilesDir)
+	require.NoError(t, os.MkdirAll(srcFiles, 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(destFiles, "Photo.JPG"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(srcFiles, "photo.jpg"), []byte("new bytes"), 0o644))
+	src := &glxlib.GLXFile{Media: map[string]*glxlib.Media{"media-1": {URI: "media/files/photo.jpg"}}}
+	plan, err := planSourceMediaCopies(srcDir, destDir, src)
+	require.NoError(t, err)
+	require.Len(t, plan, 1)
+	require.Equal(t, "photo-2.jpg", plan[0].TargetName)
+}
+
+func TestPlanSourceMediaCopies_RejectsSymlinkedDestinationFilesDir(t *testing.T) {
+	srcDir := t.TempDir()
+	destDir := t.TempDir()
+	outside := t.TempDir()
+	srcFiles := filepath.Join(srcDir, glxlib.MediaFilesDir)
+	require.NoError(t, os.MkdirAll(srcFiles, dirPermissions))
+	require.NoError(t, os.WriteFile(filepath.Join(srcFiles, "photo.jpg"), []byte("new bytes"), filePermissions))
+	require.NoError(t, os.MkdirAll(filepath.Join(destDir, "media"), dirPermissions))
+	linkedFiles := filepath.Join(destDir, glxlib.MediaFilesDir)
+	if err := os.Symlink(outside, linkedFiles); err != nil {
+		t.Skipf("creating symlink is unavailable: %v", err)
+	}
+	_, err := os.ReadDir(linkedFiles)
+	require.NoError(t, err, "the symlink target is readable, so the planner must reject it explicitly")
+
+	src := &glxlib.GLXFile{Media: map[string]*glxlib.Media{"media-1": {URI: "media/files/photo.jpg"}}}
+	_, err = planSourceMediaCopies(srcDir, destDir, src)
+	require.ErrorIs(t, err, os.ErrInvalid)
+	entries, err := os.ReadDir(outside)
+	require.NoError(t, err)
+	require.Empty(t, entries, "merge must not write into a directory outside the destination archive")
 }
 
 func TestExecuteMediaCopies_ZeroLengthPlan(t *testing.T) {

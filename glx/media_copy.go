@@ -15,6 +15,8 @@
 package main
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -41,13 +43,20 @@ func copyMediaFiles(streams *IOStreams, archiveDir string, mediaFiles []glxlib.M
 	}
 
 	var copyCount, blobCount, warnCount int
+	reserved := glxlib.NewFilenameAllocator()
 
 	for _, mf := range mediaFiles {
+		if !reserved.Reserve(mf.TargetFilename) {
+			return fmt.Errorf("%w: duplicate media destination %s", os.ErrExist, mf.TargetFilename)
+		}
 		destPath := filepath.Join(filesDir, mf.TargetFilename)
 
 		switch mf.SourceType {
 		case glxlib.MediaSourceFile:
 			if err := copyMediaFile(gedcomDir, mf.RelativePath, destPath); err != nil {
+				if errors.Is(err, os.ErrExist) {
+					return fmt.Errorf("media destination was occupied while copying %s: %w", mf.RelativePath, err)
+				}
 				streams.Printf("Warning: could not copy media file %s: %v\n", mf.RelativePath, err)
 				warnCount++
 
@@ -63,7 +72,10 @@ func copyMediaFiles(streams *IOStreams, archiveDir string, mediaFiles []glxlib.M
 
 				continue
 			}
-			if err := os.WriteFile(destPath, decoded, filePermissions); err != nil {
+			if err := writeFileFrom(destPath, bytes.NewReader(decoded)); err != nil {
+				if errors.Is(err, os.ErrExist) {
+					return fmt.Errorf("media destination was occupied while writing BLOB %s: %w", mf.MediaID, err)
+				}
 				streams.Printf("Warning: could not write BLOB file %s: %v\n", destPath, err)
 				warnCount++
 
@@ -163,7 +175,7 @@ func copyContainedFile(baseDir, src, dst string) error {
 // partial file if the copy or close fails.
 func writeFileFrom(dst string, src io.Reader) error {
 	dst = filepath.Clean(dst)
-	dstFile, err := os.Create(dst)
+	dstFile, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_EXCL, filePermissions)
 	if err != nil {
 		return err
 	}

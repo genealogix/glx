@@ -257,12 +257,14 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 		// Relative path — track for copying and rewrite URI
 		normalizedRef := normalizePathSeparators(fileRef)
 		basename := filepath.Base(normalizedRef)
-		targetName := deduplicateFilename(basename, conv.MediaFileNames)
+		originalFilename := originalFilenameFor(basename, conv.Version)
+		targetName := conv.MediaFileNames.Allocate(basename)
 		conv.MediaFileSources = append(conv.MediaFileSources, MediaFileSource{
-			MediaID:        mediaID,
-			SourceType:     MediaSourceFile,
-			RelativePath:   normalizedRef,
-			TargetFilename: targetName,
+			MediaID:          mediaID,
+			SourceType:       MediaSourceFile,
+			RelativePath:     normalizedRef,
+			OriginalFilename: originalFilename,
+			TargetFilename:   targetName,
 		})
 		media.URI = MediaFilesDir + "/" + targetName
 		// Record the pre-rename basename: a collision rename (photo.jpg →
@@ -278,7 +280,7 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 		// must win.
 		if !isCanonicalMediaRef(normalizedRef) || targetName != basename {
 			if _, exists := media.Properties[MediaPropertyOriginalFilename]; !exists {
-				media.Properties[MediaPropertyOriginalFilename] = originalFilenameFor(basename, conv.Version)
+				media.Properties[MediaPropertyOriginalFilename] = originalFilename
 			}
 		}
 	} else {
@@ -289,7 +291,7 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 	// Track BLOB data for CLI to decode and write
 	if blobText != "" {
 		ext := extensionFromMimeType(media.MimeType)
-		targetName := deduplicateFilename("blob-"+mediaID+ext, conv.MediaFileNames)
+		targetName := conv.MediaFileNames.Allocate("blob-" + mediaID + ext)
 		conv.MediaFileSources = append(conv.MediaFileSources, MediaFileSource{
 			MediaID:        mediaID,
 			SourceType:     MediaSourceBlob,
@@ -424,23 +426,6 @@ func classifyFileRef(fileRef string) bool {
 	}
 
 	return true
-}
-
-// deduplicateFilename returns a unique filename for media/files/.
-// If "photo.jpg" is already used, returns "photo-2.jpg", etc.
-func deduplicateFilename(basename string, usedNames map[string]int) string {
-	if _, exists := usedNames[basename]; !exists {
-		usedNames[basename] = 1
-
-		return basename
-	}
-	usedNames[basename]++
-	ext := filepath.Ext(basename)
-	name := strings.TrimSuffix(basename, ext)
-	deduped := fmt.Sprintf("%s-%d%s", name, usedNames[basename], ext)
-	usedNames[deduped] = 1
-
-	return deduped
 }
 
 // normalizePathSeparators converts backslashes to forward slashes.
