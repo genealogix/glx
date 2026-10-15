@@ -719,6 +719,24 @@ func stageMediaInside(t *testing.T, targetDir string, files map[string]string) s
 	return stageDir
 }
 
+func TestCommitStagedMedia_PublishesNewFiles(t *testing.T) {
+	targetDir := filepath.Join(t.TempDir(), "archive")
+	stageDir := stageMediaInside(t, targetDir, map[string]string{
+		"photo.jpg":    "photo bytes",
+		"portrait.jpg": "portrait bytes",
+	})
+
+	require.NoError(t, commitStagedMedia(stageDir, targetDir))
+	for name, want := range map[string]string{
+		"photo.jpg":    "photo bytes",
+		"portrait.jpg": "portrait bytes",
+	} {
+		actual, err := os.ReadFile(filepath.Join(targetDir, glxlib.MediaFilesDir, name))
+		require.NoError(t, err)
+		require.Equal(t, []byte(want), actual)
+	}
+}
+
 func TestCommitStagedMedia_DoesNotReplaceLeafSymlink(t *testing.T) {
 	// media/files/photo.jpg is an existing symlink pointing outside the
 	// archive. The commit must neither replace the link nor write through it.
