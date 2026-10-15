@@ -227,14 +227,24 @@ func mediaURIBasename(uri string) string {
 
 // listMediaFilenames returns the set of names in dir. Directories and symlinks
 // also occupy a destination name and must never be replaced. A missing
-// directory is treated as empty.
+// directory is treated as empty; an occupied non-directory path is an error.
 func listMediaFilenames(dir string) (map[string]struct{}, error) {
+	for _, current := range []string{filepath.Dir(dir), dir} {
+		info, err := os.Lstat(current)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return map[string]struct{}{}, nil
+			}
+
+			return nil, fmt.Errorf("inspecting %s: %w", current, err)
+		}
+		if !info.IsDir() {
+			return nil, fmt.Errorf("media path %s is not a directory: %w", current, os.ErrInvalid)
+		}
+	}
+
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return map[string]struct{}{}, nil
-		}
-
 		return nil, fmt.Errorf("reading %s: %w", dir, err)
 	}
 	out := make(map[string]struct{}, len(entries))

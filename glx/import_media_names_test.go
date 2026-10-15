@@ -61,9 +61,14 @@ func TestReserveImportMediaDestinations_UnoccupiedAndEmpty(t *testing.T) {
 }
 
 func TestReserveImportMediaDestinations_RejectsNonDirectoryMediaPath(t *testing.T) {
-	archiveDir := t.TempDir()
-	require.NoError(t, os.Mkdir(filepath.Join(archiveDir, "media"), dirPermissions))
-	require.NoError(t, os.WriteFile(filepath.Join(archiveDir, glxlib.MediaFilesDir), []byte("occupied"), filePermissions))
-	files := []glxlib.MediaFileSource{{MediaID: "file", TargetFilename: "photo.jpg"}}
-	require.Error(t, reserveImportMediaDestinations(&glxlib.GLXFile{}, files, archiveDir))
+	for _, occupied := range []string{"media", glxlib.MediaFilesDir} {
+		t.Run(occupied, func(t *testing.T) {
+			archiveDir := t.TempDir()
+			occupiedPath := filepath.Join(archiveDir, occupied)
+			require.NoError(t, os.MkdirAll(filepath.Dir(occupiedPath), dirPermissions))
+			require.NoError(t, os.WriteFile(occupiedPath, []byte("occupied"), filePermissions))
+			files := []glxlib.MediaFileSource{{MediaID: "file", TargetFilename: "photo.jpg"}}
+			require.Error(t, reserveImportMediaDestinations(&glxlib.GLXFile{}, files, archiveDir))
+		})
+	}
 }
