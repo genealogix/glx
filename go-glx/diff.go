@@ -19,7 +19,7 @@ import (
 	"sort"
 	"strings"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // ChangeKind classifies how an entity changed between two archive states.
