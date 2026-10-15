@@ -49,6 +49,25 @@ func TestReserveImportMediaDestinations_PreservesExistingFileAndReferences(t *te
 	require.Equal(t, []byte("old bytes"), oldBytes)
 }
 
+func TestReserveImportMediaDestinations_UsesVersionAwareOriginalName(t *testing.T) {
+	const encoded = "CharlotteBront%C3%AB.jpg"
+	archiveDir := t.TempDir()
+	filesDir := filepath.Join(archiveDir, glxlib.MediaFilesDir)
+	require.NoError(t, os.MkdirAll(filesDir, dirPermissions))
+	require.NoError(t, os.WriteFile(filepath.Join(filesDir, encoded), []byte("old bytes"), filePermissions))
+	media := &glxlib.Media{URI: glxlib.MediaFilesDir + "/" + encoded}
+	glx := &glxlib.GLXFile{Media: map[string]*glxlib.Media{"file": media}}
+	files := []glxlib.MediaFileSource{{
+		MediaID: "file", SourceType: glxlib.MediaSourceFile, RelativePath: "media/files/" + encoded,
+		OriginalFilename: "CharlotteBrontë.jpg", TargetFilename: encoded,
+	}}
+
+	require.NoError(t, reserveImportMediaDestinations(glx, files, archiveDir))
+	require.Equal(t, "CharlotteBront%C3%AB-2.jpg", files[0].TargetFilename)
+	require.Equal(t, glxlib.MediaFilesDir+"/CharlotteBront%C3%AB-2.jpg", media.URI)
+	require.Equal(t, "CharlotteBrontë.jpg", media.Properties[glxlib.MediaPropertyOriginalFilename])
+}
+
 func TestReserveImportMediaDestinations_UnoccupiedAndEmpty(t *testing.T) {
 	archiveDir := t.TempDir()
 	require.NoError(t, reserveImportMediaDestinations(nil, nil, archiveDir))

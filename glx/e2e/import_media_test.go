@@ -183,6 +183,42 @@ func TestImport_PreservesExistingMediaFiles(t *testing.T) {
 	}
 }
 
+func TestImport_GEDCOM7DestinationCollisionKeepsDecodedOriginalName(t *testing.T) {
+	const encoded = "CharlotteBront%C3%AB.jpg"
+	const decoded = "CharlotteBrontë.jpg"
+	for _, extension := range []string{"ged", "gdz"} {
+		for _, format := range []string{"multi", "single"} {
+			t.Run(extension+"/"+format, func(t *testing.T) {
+				work := t.TempDir()
+				gedcom := "0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @M1@ OBJE\n1 FILE media/files/" + encoded + "\n2 FORM image/jpeg\n0 TRLR\n"
+				sourceBytes := mediaTestJPEG(t, color.RGBA{G: 240, A: 255})
+				src := writeMediaTestArchive(t, filepath.Join(work, "source"), extension, gedcom, "media/files/"+decoded, sourceBytes)
+				outputRoot := filepath.Join(work, "output")
+				output := outputRoot
+				if format == "single" {
+					output = filepath.Join(outputRoot, "archive.glx")
+				}
+				filesDir := filepath.Join(outputRoot, "media", "files")
+				require.NoError(t, os.MkdirAll(filesDir, 0o755))
+				originalBytes := []byte("already present")
+				require.NoError(t, os.WriteFile(filepath.Join(filesDir, encoded), originalBytes, 0o600))
+
+				res := runGLX(t, work, "import", src, "-o", output, "--format", format)
+				require.Equal(t, 0, res.exitCode, res.stderr)
+				media := importedMediaEntity(t, output, format, "media-1")
+				require.Equal(t, "media/files/CharlotteBront%C3%AB-2.jpg", media.URI)
+				require.Equal(t, decoded, media.Properties[glxlib.MediaPropertyOriginalFilename])
+				actual, err := os.ReadFile(filepath.Join(outputRoot, filepath.FromSlash(media.URI)))
+				require.NoError(t, err)
+				require.Equal(t, sourceBytes, actual)
+				prior, err := os.ReadFile(filepath.Join(filesDir, encoded))
+				require.NoError(t, err)
+				require.Equal(t, originalBytes, prior)
+			})
+		}
+	}
+}
+
 func TestImport_MixedFileAndBLOBDestinations(t *testing.T) {
 	for _, extension := range []string{"ged", "gdz"} {
 		for _, format := range []string{"multi", "single"} {
@@ -243,6 +279,7 @@ func writeMediaTestArchive(t *testing.T, dir, extension, gedcom, name string, pa
 	require.NoError(t, os.MkdirAll(dir, 0o755))
 	src := filepath.Join(dir, "input."+extension)
 	if extension == "ged" {
+		require.NoError(t, os.MkdirAll(filepath.Dir(filepath.Join(dir, name)), 0o755))
 		require.NoError(t, os.WriteFile(filepath.Join(dir, name), payload, 0o600))
 		require.NoError(t, os.WriteFile(src, []byte(gedcom), 0o600))
 

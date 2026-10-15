@@ -32,3 +32,19 @@ func TestFilenameAllocator_CaseAndUnicodeCollisions(t *testing.T) {
 	assert.Equal(t, "Cafe\u0301-2.png", a.Allocate("Cafe\u0301.png"))
 	assert.Equal(t, "photo-3.jpg", a.Allocate("photo.jpg"))
 }
+
+func TestFilenameAllocator_CachedSuffixSkipsNaturallyReservedNames(t *testing.T) {
+	a := NewFilenameAllocator("Photo.JPG", "photo-2.jpg", "PHOTO-4.JPG")
+	assert.Equal(t, "photo-3.jpg", a.Allocate("photo.jpg"))
+	assert.Equal(t, "PHOTO-5.JPG", a.Allocate("PHOTO.JPG"))
+	assert.True(t, a.Reserve("photo-6.jpg"))
+	assert.Equal(t, "Photo-7.jpg", a.Allocate("Photo.jpg"))
+}
+
+func BenchmarkFilenameAllocator_RepeatedBasename(b *testing.B) {
+	a := NewFilenameAllocator()
+	b.ResetTimer()
+	for range b.N {
+		a.Allocate("photo.jpg")
+	}
+}

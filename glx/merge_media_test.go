@@ -239,6 +239,29 @@ func TestPlanSourceMediaCopies_DirectoryOccupiesDestinationName(t *testing.T) {
 	require.Equal(t, "photo-2.jpg", plan[0].TargetName)
 }
 
+func TestPlanSourceMediaCopies_RejectsSymlinkedDestinationFilesDir(t *testing.T) {
+	srcDir := t.TempDir()
+	destDir := t.TempDir()
+	outside := t.TempDir()
+	srcFiles := filepath.Join(srcDir, glxlib.MediaFilesDir)
+	require.NoError(t, os.MkdirAll(srcFiles, dirPermissions))
+	require.NoError(t, os.WriteFile(filepath.Join(srcFiles, "photo.jpg"), []byte("new bytes"), filePermissions))
+	require.NoError(t, os.MkdirAll(filepath.Join(destDir, "media"), dirPermissions))
+	linkedFiles := filepath.Join(destDir, glxlib.MediaFilesDir)
+	if err := os.Symlink(outside, linkedFiles); err != nil {
+		t.Skipf("creating symlink is unavailable: %v", err)
+	}
+	_, err := os.ReadDir(linkedFiles)
+	require.NoError(t, err, "the symlink target is readable, so the planner must reject it explicitly")
+
+	src := &glxlib.GLXFile{Media: map[string]*glxlib.Media{"media-1": {URI: "media/files/photo.jpg"}}}
+	_, err = planSourceMediaCopies(srcDir, destDir, src)
+	require.ErrorIs(t, err, os.ErrInvalid)
+	entries, err := os.ReadDir(outside)
+	require.NoError(t, err)
+	require.Empty(t, entries, "merge must not write into a directory outside the destination archive")
+}
+
 func TestExecuteMediaCopies_ZeroLengthPlan(t *testing.T) {
 	copied, skipped, err := executeMediaCopies(nil, t.TempDir(), &glxlib.GLXFile{})
 	require.NoError(t, err)

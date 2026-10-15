@@ -257,12 +257,14 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 		// Relative path — track for copying and rewrite URI
 		normalizedRef := normalizePathSeparators(fileRef)
 		basename := filepath.Base(normalizedRef)
+		originalFilename := originalFilenameFor(basename, conv.Version)
 		targetName := conv.MediaFileNames.Allocate(basename)
 		conv.MediaFileSources = append(conv.MediaFileSources, MediaFileSource{
-			MediaID:        mediaID,
-			SourceType:     MediaSourceFile,
-			RelativePath:   normalizedRef,
-			TargetFilename: targetName,
+			MediaID:          mediaID,
+			SourceType:       MediaSourceFile,
+			RelativePath:     normalizedRef,
+			OriginalFilename: originalFilename,
+			TargetFilename:   targetName,
 		})
 		media.URI = MediaFilesDir + "/" + targetName
 		// Record the pre-rename basename: a collision rename (photo.jpg →
@@ -278,7 +280,7 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 		// must win.
 		if !isCanonicalMediaRef(normalizedRef) || targetName != basename {
 			if _, exists := media.Properties[MediaPropertyOriginalFilename]; !exists {
-				media.Properties[MediaPropertyOriginalFilename] = originalFilenameFor(basename, conv.Version)
+				media.Properties[MediaPropertyOriginalFilename] = originalFilename
 			}
 		}
 	} else {

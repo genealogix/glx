@@ -27,12 +27,16 @@ import (
 // Unicode normalization forms. It does not access the filesystem: callers seed
 // it with existing names before allocating new ones.
 type FilenameAllocator struct {
-	used map[string]string // normalized key -> first reserved spelling
+	used       map[string]string // normalized key -> first reserved spelling
+	nextSuffix map[string]int    // normalized basename -> next suffix worth trying
 }
 
 // NewFilenameAllocator creates an allocator seeded with existing basenames.
 func NewFilenameAllocator(existing ...string) *FilenameAllocator {
-	a := &FilenameAllocator{used: make(map[string]string, len(existing))}
+	a := &FilenameAllocator{
+		used:       make(map[string]string, len(existing)),
+		nextSuffix: make(map[string]int),
+	}
 	for _, name := range existing {
 		a.Reserve(name)
 	}
@@ -74,9 +78,13 @@ func (a *FilenameAllocator) Allocate(basename string) string {
 
 	ext := filepath.Ext(basename)
 	stem := strings.TrimSuffix(basename, ext)
-	for n := 2; ; n++ {
+	key := FilenameCollisionKey(basename)
+	next := max(a.nextSuffix[key], 2)
+	for n := next; ; n++ {
 		candidate := fmt.Sprintf("%s-%d%s", stem, n, ext)
 		if a.Reserve(candidate) {
+			a.nextSuffix[key] = n + 1
+
 			return candidate
 		}
 	}

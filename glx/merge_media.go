@@ -228,6 +228,8 @@ func mediaURIBasename(uri string) string {
 // listMediaFilenames returns the set of names in dir. Directories and symlinks
 // also occupy a destination name and must never be replaced. A missing
 // directory is treated as empty; an occupied non-directory path is an error.
+// Archive safe-write can preserve a media/files symlink by moving the link
+// itself, but merge copies through this path and must not write to its target.
 func listMediaFilenames(dir string) (map[string]struct{}, error) {
 	for _, current := range []string{filepath.Dir(dir), dir} {
 		info, err := os.Lstat(current)

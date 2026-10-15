@@ -51,7 +51,11 @@ func reserveImportMediaDestinations(glx *glxlib.GLXFile, files []glxlib.MediaFil
 					media.Properties = make(map[string]any)
 				}
 				if _, exists := media.Properties[glxlib.MediaPropertyOriginalFilename]; !exists {
-					media.Properties[glxlib.MediaPropertyOriginalFilename] = path.Base(files[i].RelativePath)
+					original := files[i].OriginalFilename
+					if original == "" {
+						original = path.Base(files[i].RelativePath)
+					}
+					media.Properties[glxlib.MediaPropertyOriginalFilename] = original
 				}
 			}
 		}

@@ -77,6 +77,11 @@ type MediaFileSource struct {
 	// normalized to forward slashes ('/'). Only set when SourceType is MediaSourceFile.
 	RelativePath string
 
+	// OriginalFilename is the source basename interpreted under the GEDCOM
+	// version's FILE rules. It is available if the CLI must rename a canonical
+	// media reference after finding a destination file on disk.
+	OriginalFilename string
+
 	// MemberPath is the resolved path of the media file within a GEDZIP bundle,
 	// normalized to forward slashes. Only set when importing from a GEDZIP bundle.
 	MemberPath string
