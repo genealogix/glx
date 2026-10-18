@@ -395,11 +395,16 @@ func printLifeEventsSection(personID string, person *glxlib.Person, archive *glx
 		if summarySkippedEventTypes[strings.ToLower(event.Type)] {
 			continue
 		}
-		if !isPersonParticipant(personID, event) {
+		participation, role, ok := glxlib.EventParticipation(event, personID, archive.ParticipantRoles)
+		if !ok {
 			continue
 		}
 
 		label := snakeCaseToTitle(event.Type) + ":"
+		if !participation.OwnRecord {
+			// Someone else's record: say whose, and the person's role (#1362)
+			label = glxlib.AppearanceLabel(event, archive) + " (" + role + "):"
+		}
 		detail := formatSummaryEventDatePlace(event, archive)
 		fmt.Printf("  %-18s%s\n", label, detail)
 		hasContent = true
@@ -700,10 +705,13 @@ func relationshipSpouse(personID, spouseID string, rel *glxlib.Relationship, arc
 	return info
 }
 
-// findEventOnlySpouses derives spouses from marriage events the person takes
-// part in, skipping any person in seen (already found via a relationship).
-// Every spouse it returns is marked in seen, so an event modeled twice does
-// not produce the same spouse twice.
+// findEventOnlySpouses derives spouses from marriage events in which the
+// person is one of the couple (groom, bride, spouse, principal), skipping any
+// person in seen (already found via a relationship). Only the other members
+// of the couple are spouses: the bride's father or a witness named in the
+// entry is not, and a person named in it only as father or witness has no
+// spouse there at all (#1362). Every spouse it returns is marked in seen, so
+// an event modeled twice does not produce the same spouse twice.
 func findEventOnlySpouses(personID string, seen map[string]bool, archive *glxlib.GLXFile) []spouseInfo {
 	var spouses []spouseInfo
 
@@ -713,12 +721,15 @@ func findEventOnlySpouses(personID string, seen map[string]bool, archive *glxlib
 			continue
 		}
 
-		if !hasParticipant(personID, ev.Participants) {
+		if !ownsSummaryEvent(personID, ev, archive) {
 			continue
 		}
 
 		for _, p := range ev.Participants {
 			if p.Person == personID || p.Person == "" || seen[p.Person] {
+				continue
+			}
+			if !glxlib.ClassifyParticipation(ev.Type, p.Role, archive.ParticipantRoles).OwnRecord {
 				continue
 			}
 			seen[p.Person] = true
@@ -743,7 +754,8 @@ func findEventOnlySpouses(personID string, seen map[string]bool, archive *glxlib
 	return spouses
 }
 
-// findMarriageEvent searches for a marriage event involving both persons.
+// findMarriageEvent searches for a marriage event in which both persons are
+// of the couple.
 func findMarriageEvent(personA, personB string, archive *glxlib.GLXFile) (date, place string) {
 	ids := sortedKeys(archive.Events)
 	for _, id := range ids {
@@ -754,16 +766,7 @@ func findMarriageEvent(personA, personB string, archive *glxlib.GLXFile) (date, 
 		if !strings.EqualFold(ev.Type, "marriage") {
 			continue
 		}
-		hasA, hasB := false, false
-		for _, p := range ev.Participants {
-			if p.Person == personA {
-				hasA = true
-			}
-			if p.Person == personB {
-				hasB = true
-			}
-		}
-		if hasA && hasB {
+		if ownsSummaryEvent(personA, ev, archive) && ownsSummaryEvent(personB, ev, archive) {
 			return string(ev.Date), resolvePlaceName(ev.PlaceID, archive)
 		}
 	}
@@ -908,17 +911,6 @@ func findEventForPerson(personID, eventType string, archive *glxlib.GLXFile) str
 	return formatSummaryEventDatePlace(event, archive)
 }
 
-// isPersonParticipant checks if a person participates in an event.
-func isPersonParticipant(personID string, event *glxlib.Event) bool {
-	for _, p := range event.Participants {
-		if p.Person == personID {
-			return true
-		}
-	}
-
-	return false
-}
-
 // hasParticipant checks if a person is among participants.
 func hasParticipant(personID string, participants []glxlib.Participant) bool {
 	for _, p := range participants {
@@ -928,6 +920,15 @@ func hasParticipant(personID string, participants []glxlib.Participant) bool {
 	}
 
 	return false
+}
+
+// ownsSummaryEvent reports whether the event is the person's own record
+// (their own death, one of the couple in a marriage), not one in which they
+// are named as spouse of the deceased, parent, witness or the like.
+func ownsSummaryEvent(personID string, event *glxlib.Event, archive *glxlib.GLXFile) bool {
+	participation, _, ok := glxlib.EventParticipation(event, personID, archive.ParticipantRoles)
+
+	return ok && participation.OwnRecord
 }
 
 // formatSummaryEventDatePlace formats an event's date and place for display.
@@ -1226,7 +1227,9 @@ func capitalize(s string) string {
 	return strings.ToUpper(string(r)) + s[size:]
 }
 
-// findEventDatePlace returns the date and place for the first event of a given type.
+// findEventDatePlace returns the date and place of the first event of a given
+// type that is the person's own record: a husband named as spouse on his
+// wife's death did not die on her date (#1362).
 func findEventDatePlace(personID, eventType string, archive *glxlib.GLXFile) (string, string) {
 	ids := sortedKeys(archive.Events)
 	for _, id := range ids {
@@ -1237,7 +1240,7 @@ func findEventDatePlace(personID, eventType string, archive *glxlib.GLXFile) (st
 		if !strings.EqualFold(event.Type, eventType) {
 			continue
 		}
-		if isPersonParticipant(personID, event) {
+		if ownsSummaryEvent(personID, event, archive) {
 			return string(event.Date), resolvePlaceName(event.PlaceID, archive)
 		}
 	}
