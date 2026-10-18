@@ -760,6 +760,70 @@ func TestCommitStagedMedia_RollsBackPartialCommit(t *testing.T) {
 	require.Equal(t, []byte("old archive"), actual)
 }
 
+func TestSnapshotCommittedMedia_RollsBackOnlyUnchangedFiles(t *testing.T) {
+	targetDir := filepath.Join(t.TempDir(), "archive")
+	stageDir := stageMediaInside(t, targetDir, map[string]string{
+		"remove.jpg":  "new bytes",
+		"replace.jpg": "new bytes",
+	})
+	require.NoError(t, commitStagedMedia(stageDir, targetDir))
+	rollback, err := snapshotCommittedMedia(stageDir, targetDir)
+	require.NoError(t, err)
+
+	mediaDir := filepath.Join(targetDir, glxlib.MediaFilesDir)
+	replacement := filepath.Join(mediaDir, "replacement.tmp")
+	require.NoError(t, os.WriteFile(replacement, []byte("another writer's bytes"), filePermissions))
+	require.NoError(t, os.Remove(filepath.Join(mediaDir, "replace.jpg")))
+	require.NoError(t, os.Rename(replacement, filepath.Join(mediaDir, "replace.jpg")))
+
+	rollback()
+	require.NoFileExists(t, filepath.Join(mediaDir, "remove.jpg"))
+	actual, err := os.ReadFile(filepath.Join(mediaDir, "replace.jpg"))
+	require.NoError(t, err)
+	require.Equal(t, []byte("another writer's bytes"), actual)
+}
+
+func TestSnapshotCommittedMedia_RejectsMissingOrNonRegularFile(t *testing.T) {
+	for _, kind := range []string{"missing", "directory"} {
+		t.Run(kind, func(t *testing.T) {
+			targetDir := filepath.Join(t.TempDir(), "archive")
+			stageDir := stageMediaInside(t, targetDir, map[string]string{"photo.jpg": "staged bytes"})
+			if kind == "directory" {
+				require.NoError(t, os.MkdirAll(filepath.Join(targetDir, glxlib.MediaFilesDir, "photo.jpg"), dirPermissions))
+			}
+
+			rollback, err := snapshotCommittedMedia(stageDir, targetDir)
+			require.Nil(t, rollback)
+			if kind == "missing" {
+				require.ErrorIs(t, err, os.ErrNotExist)
+			} else {
+				require.ErrorIs(t, err, os.ErrInvalid)
+			}
+		})
+	}
+}
+
+func TestSnapshotCommittedMedia_NoStagedMedia(t *testing.T) {
+	targetDir := t.TempDir()
+	stageDir := filepath.Join(targetDir, ".glx-stage-empty")
+	require.NoError(t, os.Mkdir(stageDir, dirPermissions))
+
+	rollback, err := snapshotCommittedMedia(stageDir, targetDir)
+	require.NoError(t, err)
+	require.NotNil(t, rollback)
+	rollback()
+}
+
+func TestCommitStagedMedia_RejectsNonRegularStagedEntry(t *testing.T) {
+	targetDir := filepath.Join(t.TempDir(), "archive")
+	stageDir := stageMediaInside(t, targetDir, nil)
+	require.NoError(t, os.Mkdir(filepath.Join(stageDir, glxlib.MediaFilesDir, "photo.jpg"), dirPermissions))
+
+	err := commitStagedMedia(stageDir, targetDir)
+	require.ErrorIs(t, err, os.ErrInvalid)
+	require.NoDirExists(t, filepath.Join(targetDir, glxlib.MediaFilesDir, "photo.jpg"))
+}
+
 func TestCommitStagedMedia_DoesNotReplaceLeafSymlink(t *testing.T) {
 	// media/files/photo.jpg is an existing symlink pointing outside the
 	// archive. The commit must neither replace the link nor write through it.
