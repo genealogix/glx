@@ -44,11 +44,11 @@ func preserveTestArchive() *glxlib.GLXFile {
 func TestSafeWrite_PreservesDotEntryUnderMediaFiles(t *testing.T) {
 	archiveDir := filepath.Join(t.TempDir(), "archive")
 	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
 	writeSkipTestFile(t, filepath.Join(archiveDir, "media", "files", ".keep"), "")
 	writeSkipTestFile(t, filepath.Join(archiveDir, "media", "files", "portrait.jpg"), "jpeg bytes")
 
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
 
 	assert.FileExists(t, filepath.Join(archiveDir, "media", "files", ".keep"))
 	assert.FileExists(t, filepath.Join(archiveDir, "media", "files", "portrait.jpg"))
@@ -60,48 +60,17 @@ func TestSafeWrite_PreservesDotEntryUnderMediaFiles(t *testing.T) {
 func TestSafeWrite_PreservesNestedDotEntries(t *testing.T) {
 	archiveDir := filepath.Join(t.TempDir(), "archive")
 	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
 	draft := filepath.Join(archiveDir, "persons", ".drafts", "draft.glx")
 	sidecar := filepath.Join(archiveDir, "persons", "._person-1.glx")
 	writeSkipTestFile(t, draft, "persons: {}")
 	writeSkipTestFile(t, sidecar, "not glx")
 
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
 
 	assert.FileExists(t, draft)
 	assert.FileExists(t, sidecar)
 	assert.FileExists(t, filepath.Join(archiveDir, "persons", "person-1.glx"))
-}
-
-func TestFirstSkippedEntry(t *testing.T) {
-	dir := t.TempDir()
-	writeSkipTestFile(t, filepath.Join(dir, "persons", "person-1.glx"), "persons: {}")
-
-	found, err := firstSkippedEntry(dir)
-	require.NoError(t, err)
-	assert.Empty(t, found)
-
-	writeSkipTestFile(t, filepath.Join(dir, "persons", ".drafts", "x.glx"), "persons: {}")
-
-	found, err = firstSkippedEntry(dir)
-	require.NoError(t, err)
-	assert.Equal(t, "persons/.drafts", found)
-}
-
-// relSlash names an entry the way the stale-backup refusal reports it: relative
-// to the backup directory the message already names, with forward slashes on
-// every platform, so the message reads the same on Windows as on Unix (#1272).
-func TestRelSlash(t *testing.T) {
-	base := filepath.Join("tmp", "archive.bak")
-
-	assert.Equal(t, "media/files", relSlash(base, filepath.Join(base, "media", "files")))
-	assert.Equal(t, ".", relSlash(base, base))
-
-	// A path that cannot be made relative to base — here an absolute target
-	// against a relative base — falls back to the whole path, normalized.
-	// Callers pass paths built by joining onto base, so this is defensive.
-	assert.Equal(t, "/elsewhere/media/files",
-		relSlash(base, string(filepath.Separator)+filepath.Join("elsewhere", "media", "files")))
 }
 
 // The loader follows an ordinary symlink and reads its target, so the cache
@@ -181,30 +150,14 @@ func TestValidateAndReport(t *testing.T) {
 func TestSafeWrite_ToleratesDotEntriesAlreadyCarriedAtTopLevel(t *testing.T) {
 	archiveDir := filepath.Join(t.TempDir(), "archive")
 	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
 	writeSkipTestFile(t, filepath.Join(archiveDir, ".gitignore"), "*.bak\n")
 	writeSkipTestFile(t, filepath.Join(archiveDir, ".git", "HEAD"), "ref: refs/heads/main\n")
 
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
 
 	assert.FileExists(t, filepath.Join(archiveDir, ".gitignore"))
 	assert.FileExists(t, filepath.Join(archiveDir, ".git", "HEAD"))
-}
-
-// A leftover backup from a failed run that still holds a nested dot entry is
-// unrecovered data; the next safe write must refuse rather than delete it.
-func TestSafeWrite_RefusesStaleBackupWithNestedDotEntry(t *testing.T) {
-	archiveDir := filepath.Join(t.TempDir(), "archive")
-	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
-	stale := archiveDir + ".bak"
-	writeSkipTestFile(t, filepath.Join(stale, "persons", "person-1.glx"), "persons: {}\n")
-	writeSkipTestFile(t, filepath.Join(stale, "persons", ".drafts", "draft.glx"), "persons: {}\n")
-
-	err := safeWriteMultiFileArchive(archiveDir, preserveTestArchive())
-
-	require.ErrorIs(t, err, ErrStaleBackupForeignFile)
-	assert.FileExists(t, filepath.Join(stale, "persons", ".drafts", "draft.glx"), "the stale backup must be left for the user to inspect")
 }
 
 func TestCollectGLXFiles_DanglingSymlinkIsAnError(t *testing.T) {
@@ -266,49 +219,6 @@ func TestComputeFSFingerprint_DanglingSymlinkFallsBack(t *testing.T) {
 	assert.NoError(t, err, "a dangling link falls back to the entry's own metadata instead of failing the walk")
 }
 
-// Walk errors inside the backup tree must surface as errors rather than be
-// swallowed: an unreadable directory means the preservation walks cannot
-// prove what they would be deleting.
-func TestSafeWrite_UnreadableBackupDirectoryIsAnError(t *testing.T) {
-	if runtime.GOOS == goosWindows || os.Geteuid() == 0 {
-		t.Skip("relies on permission bits being enforced")
-	}
-	unreadable := func(t *testing.T, dir string) {
-		t.Helper()
-		require.NoError(t, os.Chmod(dir, 0o000))
-		t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
-	}
-
-	t.Run("stale backup", func(t *testing.T) {
-		archiveDir := filepath.Join(t.TempDir(), "archive")
-		require.NoError(t, os.MkdirAll(archiveDir, 0o755))
-		require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
-		stale := archiveDir + ".bak"
-		writeSkipTestFile(t, filepath.Join(stale, "persons", "person-1.glx"), "persons: {}\n")
-		unreadable(t, filepath.Join(stale, "persons"))
-
-		err := safeWriteMultiFileArchive(archiveDir, preserveTestArchive())
-
-		require.Error(t, err)
-		assert.NotErrorIs(t, err, ErrStaleBackupForeignFile, "an inspection failure is not the same as a foreign file")
-	})
-
-	t.Run("dot-entry walk", func(t *testing.T) {
-		archiveDir := filepath.Join(t.TempDir(), "archive")
-		require.NoError(t, os.MkdirAll(archiveDir, 0o755))
-		require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
-		locked := filepath.Join(archiveDir, "persons", "locked")
-		writeSkipTestFile(t, filepath.Join(locked, "note.txt"), "x")
-		unreadable(t, locked)
-		t.Cleanup(func() { _ = os.Chmod(filepath.Join(archiveDir+".bak", "persons", "locked"), 0o755) })
-
-		err := safeWriteMultiFileArchive(archiveDir, preserveTestArchive())
-
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "preserving")
-	})
-}
-
 // A visible symlink whose target resolves under a dot-prefixed directory is
 // skipped by the loader (symlinkTargetIsExcluded) and never re-emitted, so
 // the swap must carry it across like a dot-named entry.
@@ -318,17 +228,16 @@ func TestSafeWrite_PreservesSymlinkIntoDotDirectory(t *testing.T) {
 	}
 	archiveDir := filepath.Join(t.TempDir(), "archive")
 	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
 	writeSkipTestFile(t, filepath.Join(archiveDir, ".worktrees", "copy", "persons", "alias.glx"), "persons: {}\n")
 	link := filepath.Join(archiveDir, "persons", "alias.glx")
 	require.NoError(t, os.Symlink(filepath.Join("..", ".worktrees", "copy", "persons", "alias.glx"), link))
 
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
 
 	info, err := os.Lstat(link)
 	require.NoError(t, err, "the excluded symlink must survive the safe write")
 	assert.NotZero(t, info.Mode()&os.ModeSymlink)
-	assert.NoDirExists(t, archiveDir+".bak")
 }
 
 // The loader matches the .glx extension case-insensitively and never filtered
@@ -344,7 +253,7 @@ func TestSafeWrite_UppercaseManagedDirectoryIsReplacedNotDuplicated(t *testing.T
 	require.NoError(t, err)
 	require.Len(t, loaded.Persons, 1)
 
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, loaded))
+	require.NoError(t, writeArchiveInPlace(archiveDir, loaded, rewriteChanged))
 
 	entries, err := os.ReadDir(archiveDir)
 	require.NoError(t, err)
@@ -435,71 +344,24 @@ func TestSafeWrite_PreservesSymlinkChainIntoDotDirectory(t *testing.T) {
 	}
 	archiveDir := filepath.Join(t.TempDir(), "archive")
 	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
 	writeSkipTestFile(t, filepath.Join(archiveDir, ".worktrees", "copy", "persons", "alias.glx"), "persons: {}\n")
 	hop := filepath.Join(archiveDir, "persons", "hop.glx")
 	dup := filepath.Join(archiveDir, "persons", "dup.glx")
 	require.NoError(t, os.Symlink(filepath.Join("..", ".worktrees", "copy", "persons", "alias.glx"), hop))
 	require.NoError(t, os.Symlink("hop.glx", dup))
 
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
 
 	for _, link := range []string{hop, dup} {
 		info, err := os.Lstat(link)
 		require.NoError(t, err, "%s must survive the safe write", link)
 		assert.NotZero(t, info.Mode()&os.ModeSymlink)
 	}
-	assert.NoDirExists(t, archiveDir+".bak")
 }
 
-// When a skipped entry sits at the same path as a file the writer produced,
-// moving on would let the backup — and the entry — be deleted. The write must
-// fail and keep the backup.
-func TestSafeWrite_PreservedEntryCollisionRetainsBackup(t *testing.T) {
-	if runtime.GOOS == goosWindows {
-		t.Skip("symlink creation requires elevation on Windows")
-	}
-	archiveDir := filepath.Join(t.TempDir(), "archive")
-	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
-	// The archive's person-1 lives in a differently named file, so the
-	// serializer will emit persons/person-1.glx — the path the link occupies.
-	writeSkipTestFile(t, filepath.Join(archiveDir, "persons", "alice.glx"),
-		"persons:\n  person-1:\n    properties:\n      primary_name: Alice\n")
-	writeSkipTestFile(t, filepath.Join(archiveDir, ".drafts", "person-1.glx"), "persons: {}\n")
-	link := filepath.Join(archiveDir, "persons", "person-1.glx")
-	require.NoError(t, os.Symlink(filepath.Join("..", ".drafts", "person-1.glx"), link))
-
-	loaded, _, err := LoadArchive(archiveDir)
-	require.NoError(t, err)
-	err = safeWriteMultiFileArchive(archiveDir, loaded)
-
-	require.ErrorIs(t, err, ErrPreservedEntryCollision)
-	info, lerr := os.Lstat(filepath.Join(archiveDir+".bak", "persons", "person-1.glx"))
-	require.NoError(t, lerr, "the backup with the skipped link must be retained")
-	assert.NotZero(t, info.Mode()&os.ModeSymlink)
-}
-
-func TestSafeWrite_RefusesStaleBackupWithSkippedSymlink(t *testing.T) {
-	if runtime.GOOS == goosWindows {
-		t.Skip("symlink creation requires elevation on Windows")
-	}
-	archiveDir := filepath.Join(t.TempDir(), "archive")
-	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
-	stale := archiveDir + ".bak"
-	writeSkipTestFile(t, filepath.Join(stale, "persons", "person-1.glx"), "persons: {}\n")
-	require.NoError(t, os.Symlink(filepath.Join("..", ".worktrees", "copy", "alias.glx"), filepath.Join(stale, "persons", "alias.glx")))
-
-	err := safeWriteMultiFileArchive(archiveDir, preserveTestArchive())
-
-	require.ErrorIs(t, err, ErrStaleBackupForeignFile)
-	_, lerr := os.Lstat(filepath.Join(stale, "persons", "alias.glx"))
-	assert.NoError(t, lerr, "the stale backup must be left for the user to inspect")
-}
-
-// Managed directories are recognized case-insensitively, so the binaries of an
-// archive laid out as MEDIA/files/ have to be found the same way or a safe
-// write deletes them with the backup.
+// The in-place write never moves a directory, so the binaries of an archive
+// laid out as MEDIA/files/ stay where they are.
 func TestSafeWrite_PreservesMediaBinariesFromCaseVariantDirectory(t *testing.T) {
 	archiveDir := filepath.Join(t.TempDir(), "archive")
 	writeSkipTestFile(t, filepath.Join(archiveDir, "PERSONS", "person-1.glx"),
@@ -508,14 +370,9 @@ func TestSafeWrite_PreservesMediaBinariesFromCaseVariantDirectory(t *testing.T) 
 
 	loaded, _, err := LoadArchive(archiveDir)
 	require.NoError(t, err)
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, loaded))
+	require.NoError(t, writeArchiveInPlace(archiveDir, loaded, rewriteChanged))
 
-	dirs, derr := mediaFilesDirsIn(archiveDir)
-	require.NoError(t, derr)
-	require.Len(t, dirs, 1, "exactly one media/files must exist after the write")
-	found := dirs[0]
-	assert.FileExists(t, filepath.Join(found, "portrait.jpg"))
-	assert.NoDirExists(t, archiveDir+".bak")
+	assert.FileExists(t, filepath.Join(archiveDir, "MEDIA", "files", "portrait.jpg"))
 }
 
 func TestPlaceholderTarget(t *testing.T) {
@@ -555,54 +412,19 @@ func TestSafeWrite_PreservesSymlinkChainWhoseHopSortsFirst(t *testing.T) {
 	}
 	archiveDir := filepath.Join(t.TempDir(), "archive")
 	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
 	writeSkipTestFile(t, filepath.Join(archiveDir, ".drafts", "person.glx"), "persons: {}\n")
 	a := filepath.Join(archiveDir, "persons", "a.glx")
 	z := filepath.Join(archiveDir, "persons", "z.glx")
 	require.NoError(t, os.Symlink(filepath.Join("..", ".drafts", "person.glx"), a))
 	require.NoError(t, os.Symlink("a.glx", z))
 
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
 
 	for _, link := range []string{a, z} {
 		_, err := os.Lstat(link)
 		require.NoError(t, err, "%s must survive the safe write", filepath.Base(link))
 	}
-	assert.NoDirExists(t, archiveDir+".bak")
-}
-
-// A managed top-level name (metadata.glx) that is a skipped symlink is foreign
-// and stays put, so a fresh metadata.glx from the writer is a genuine
-// collision. The swap is refused and undone: the archive is left exactly as it
-// was, with no backup to recover from because nothing was lost.
-func TestSafeWrite_ManagedTopLevelCollisionLeavesArchiveUntouched(t *testing.T) {
-	if runtime.GOOS == goosWindows {
-		t.Skip("symlink creation requires elevation on Windows")
-	}
-	archiveDir := filepath.Join(t.TempDir(), "archive")
-	writeSkipTestFile(t, filepath.Join(archiveDir, "persons", "person-1.glx"),
-		"metadata:\n  source_system: test\npersons:\n  person-1:\n    properties:\n      primary_name: Alice\n")
-	writeSkipTestFile(t, filepath.Join(archiveDir, ".drafts", "metadata.glx"), "metadata: {}\n")
-	require.NoError(t, os.Symlink(filepath.Join(".drafts", "metadata.glx"), filepath.Join(archiveDir, "metadata.glx")))
-
-	loaded, _, err := LoadArchive(archiveDir)
-	require.NoError(t, err)
-	if loaded.ImportMetadata == nil {
-		t.Skip("metadata is not loaded from an entity file in this build; collision cannot be staged")
-	}
-	before, err := computeFSFingerprint(archiveDir)
-	require.NoError(t, err)
-
-	err = safeWriteMultiFileArchive(archiveDir, loaded)
-
-	require.ErrorIs(t, err, ErrPreservedEntryCollision)
-	info, lerr := os.Lstat(filepath.Join(archiveDir, "metadata.glx"))
-	require.NoError(t, lerr, "the skipped link must still be in place")
-	assert.NotZero(t, info.Mode()&os.ModeSymlink)
-	after, err := computeFSFingerprint(archiveDir)
-	require.NoError(t, err)
-	assert.Equal(t, before, after, "a refused swap must leave the archive untouched")
-	assert.NoDirExists(t, archiveDir+".bak")
 }
 
 // The archive directory is often the user's shell cwd. Replacing it with a new
@@ -611,17 +433,16 @@ func TestSafeWrite_ManagedTopLevelCollisionLeavesArchiveUntouched(t *testing.T) 
 func TestSafeWrite_KeepsArchiveDirectoryItself(t *testing.T) {
 	archiveDir := filepath.Join(t.TempDir(), "archive")
 	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
 	before, err := os.Stat(archiveDir)
 	require.NoError(t, err)
 
 	t.Chdir(archiveDir)
-	require.NoError(t, safeWriteMultiFileArchive(".", preserveTestArchive()))
+	require.NoError(t, writeArchiveInPlace(".", preserveTestArchive(), rewriteChanged))
 
 	after, err := os.Stat(archiveDir)
 	require.NoError(t, err)
 	assert.True(t, os.SameFile(before, after), "the archive directory was replaced rather than rewritten")
-	assert.NoDirExists(t, archiveDir+".bak")
 	entries, err := os.ReadDir(filepath.Dir(archiveDir))
 	require.NoError(t, err)
 	for _, e := range entries {
@@ -640,129 +461,24 @@ func TestSafeWrite_ThroughSymlinkedArchiveRoot(t *testing.T) {
 	base := t.TempDir()
 	target := filepath.Join(base, "real")
 	require.NoError(t, os.MkdirAll(target, 0o755))
-	require.NoError(t, safeWriteMultiFileArchive(target, preserveTestArchive()))
+	require.NoError(t, writeArchiveInPlace(target, preserveTestArchive(), rewriteChanged))
 	draft := filepath.Join(target, "persons", ".drafts", "person-draft.glx")
 	writeSkipTestFile(t, draft, "persons: {}\n")
 	link := filepath.Join(base, "link")
 	require.NoError(t, os.Symlink(target, link))
 
-	require.NoError(t, safeWriteMultiFileArchive(link, preserveTestArchive()))
+	require.NoError(t, writeArchiveInPlace(link, preserveTestArchive(), rewriteChanged))
 
 	assert.FileExists(t, draft, "a skipped entry inside a managed directory must survive")
 	info, err := os.Lstat(link)
 	require.NoError(t, err)
 	assert.NotZero(t, info.Mode()&os.ModeSymlink, "the user's link must stay a link")
-	assert.NoDirExists(t, target+".bak")
-	assert.NoDirExists(t, link+".bak")
-}
-
-// A crash between the swap's renames leaves the backup holding entries the
-// archive no longer has. The next write must refuse rather than delete that
-// backup as stale, or the interruption becomes permanent data loss.
-func TestSafeWrite_RefusesBackupLeftMidSwap(t *testing.T) {
-	archiveDir := filepath.Join(t.TempDir(), "archive")
-	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
-
-	// Stage the state a kill after backing up persons/ leaves behind: the
-	// marker and the only copy of persons/ in the backup.
-	backup := archiveDir + ".bak"
-	require.NoError(t, os.MkdirAll(backup, 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(backup, swapInProgressMarker), []byte("x\n"), 0o644))
-	require.NoError(t, os.Rename(filepath.Join(archiveDir, "persons"), filepath.Join(backup, "persons")))
-
-	err := safeWriteMultiFileArchive(archiveDir, preserveTestArchive())
-
-	require.ErrorIs(t, err, ErrInterruptedSwap)
-	// The message names the resolved backup path, which on Windows can differ
-	// textually from t.TempDir()'s (8.3 short names expand), so match its tail.
-	assert.Contains(t, err.Error(), filepath.Base(backup))
-	assert.DirExists(t, filepath.Join(backup, "persons"), "the only copy of persons/ must not be deleted")
-}
-
-// A collision found after some fresh entries are already in place must undo
-// both phases: the placed entries go back to the temp dir, the backed-up ones
-// come home, and no backup or marker is left. Fresh entries are placed in
-// name order, so persons/ lands before a foreign regular file named
-// vocabularies blocks vocabularies/.
-func TestSafeWrite_CollisionAfterPartialPlacementRollsBack(t *testing.T) {
-	archiveDir := filepath.Join(t.TempDir(), "archive")
-	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
-	require.NoError(t, os.RemoveAll(filepath.Join(archiveDir, "vocabularies")))
-	writeSkipTestFile(t, filepath.Join(archiveDir, "vocabularies"), "a file, not the vocabularies directory\n")
-	before, err := computeFSFingerprint(archiveDir)
-	require.NoError(t, err)
-
-	err = safeWriteMultiFileArchive(archiveDir, preserveTestArchive())
-
-	require.ErrorIs(t, err, ErrPreservedEntryCollision)
-	after, ferr := computeFSFingerprint(archiveDir)
-	require.NoError(t, ferr)
-	assert.Equal(t, before, after, "the rollback must restore the archive exactly")
-	assert.NoDirExists(t, archiveDir+".bak")
-	assertNoTempDirsBeside(t, archiveDir)
-}
-
-// A rename that fails in the first phase (here: the archive directory is not
-// writable, so persons/ cannot leave it) rolls back and reports, leaving the
-// archive as it was and no backup behind.
-func TestSafeWrite_FailedBackupRenameRollsBack(t *testing.T) {
-	if runtime.GOOS == goosWindows {
-		t.Skip("directory write permission does not gate rename on Windows")
-	}
-	if os.Geteuid() == 0 {
-		t.Skip("root ignores directory permissions")
-	}
-	archiveDir := filepath.Join(t.TempDir(), "archive")
-	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
-	before, err := computeFSFingerprint(archiveDir)
-	require.NoError(t, err)
-	require.NoError(t, os.Chmod(archiveDir, 0o555))
-	t.Cleanup(func() { _ = os.Chmod(archiveDir, 0o755) })
-
-	err = safeWriteMultiFileArchive(archiveDir, preserveTestArchive())
-
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "backing up")
-	require.NoError(t, os.Chmod(archiveDir, 0o755))
-	after, ferr := computeFSFingerprint(archiveDir)
-	require.NoError(t, ferr)
-	assert.Equal(t, before, after)
-	assert.NoDirExists(t, archiveDir+".bak")
-	assertNoTempDirsBeside(t, archiveDir)
 }
 
 func TestSafeWrite_MissingDestinationFails(t *testing.T) {
-	err := safeWriteMultiFileArchive(filepath.Join(t.TempDir(), "does-not-exist"), preserveTestArchive())
+	err := writeArchiveInPlace(filepath.Join(t.TempDir(), "does-not-exist"), preserveTestArchive(), rewriteChanged)
 
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "cannot access destination")
-}
-
-// assertNoTempDirsBeside fails if a safe-write temp dir was left next to dir.
-func assertNoTempDirsBeside(t *testing.T, dir string) {
-	t.Helper()
-	entries, err := os.ReadDir(filepath.Dir(dir))
-	require.NoError(t, err)
-	for _, e := range entries {
-		assert.False(t, strings.HasPrefix(e.Name(), ".glx-tmp-"), "temp dir %s left behind", e.Name())
-	}
-}
-
-// A completed or rolled-back swap leaves no marker behind, so an ordinary
-// leftover backup is still cleaned up as before.
-func TestSafeWrite_LeavesNoSwapMarker(t *testing.T) {
-	archiveDir := filepath.Join(t.TempDir(), "archive")
-	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
-
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
-
-	assert.NoDirExists(t, archiveDir+".bak")
-	_, err := os.Lstat(filepath.Join(archiveDir, swapInProgressMarker))
-	assert.True(t, os.IsNotExist(err), "the marker belongs in the backup only, and only mid-swap")
 }
 
 // fsCaseSensitive reports whether dir lives on a case-sensitive filesystem.
@@ -775,7 +491,7 @@ func fsCaseSensitive(t *testing.T, dir string) bool {
 	return err != nil
 }
 
-func TestSafeWrite_RefusesAmbiguousCaseVariantMediaDirectories(t *testing.T) {
+func TestSafeWrite_LeavesCaseVariantMediaDirectoriesAlone(t *testing.T) {
 	base := t.TempDir()
 	if !fsCaseSensitive(t, base) {
 		t.Skip("needs a case-sensitive filesystem to hold media/ and MEDIA/ side by side")
@@ -788,10 +504,11 @@ func TestSafeWrite_RefusesAmbiguousCaseVariantMediaDirectories(t *testing.T) {
 
 	loaded, _, err := LoadArchive(archiveDir)
 	require.NoError(t, err)
-	err = safeWriteMultiFileArchive(archiveDir, loaded)
+	err = writeArchiveInPlace(archiveDir, loaded, rewriteChanged)
 
-	require.ErrorIs(t, err, ErrAmbiguousMediaFilesDirs)
-	assert.FileExists(t, filepath.Join(archiveDir+".bak", "MEDIA", "files", "b.jpg"), "neither tree may be deleted")
+	require.NoError(t, err)
+	assert.FileExists(t, filepath.Join(archiveDir, "media", "files", "a.jpg"))
+	assert.FileExists(t, filepath.Join(archiveDir, "MEDIA", "files", "b.jpg"))
 }
 
 // dirEntryFor returns the fs.DirEntry for name inside dir, as a walk would
@@ -821,12 +538,6 @@ func TestWindowsPlaceholderBranches(t *testing.T) {
 	alias := dirEntryFor(t, personsDir, "alias.glx")
 	content := dirEntryFor(t, personsDir, "real.glx")
 
-	t.Run("loaderSkips recognizes a placeholder into a dot directory", func(t *testing.T) {
-		assert.True(t, loaderSkipsOn(goosWindows, root, root, filepath.Join("persons", "alias.glx"), alias))
-		assert.False(t, loaderSkipsOn(goosWindows, root, root, filepath.Join("persons", "real.glx"), content), "ordinary content is not a placeholder")
-		assert.False(t, loaderSkipsOn("linux", root, root, filepath.Join("persons", "alias.glx"), alias), "placeholders are a Windows representation only")
-	})
-
 	t.Run("fingerprint excludes a placeholder into a dot directory", func(t *testing.T) {
 		assert.True(t, placeholderExcludedOn(goosWindows, filepath.Join(personsDir, "alias.glx"), "persons/alias.glx", alias))
 		assert.False(t, placeholderExcludedOn(goosWindows, filepath.Join(personsDir, "real.glx"), "persons/real.glx", content))
@@ -843,20 +554,19 @@ func TestSafeWrite_PreservesLinkThroughSymlinkedDirectory(t *testing.T) {
 	}
 	archiveDir := filepath.Join(t.TempDir(), "archive")
 	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
 	writeSkipTestFile(t, filepath.Join(archiveDir, ".worktrees", "copy", "p.glx"), "persons: {}\n")
 	shared := filepath.Join(archiveDir, "persons", "shared")
 	alias := filepath.Join(archiveDir, "persons", "alias.glx")
 	require.NoError(t, os.Symlink(filepath.Join("..", ".worktrees", "copy"), shared))
 	require.NoError(t, os.Symlink(filepath.Join("shared", "p.glx"), alias))
 
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
 
 	for _, link := range []string{shared, alias} {
 		_, err := os.Lstat(link)
 		require.NoError(t, err, "%s must survive the safe write", filepath.Base(link))
 	}
-	assert.NoDirExists(t, archiveDir+".bak")
 }
 
 // The loader accepts an absolute target that resolves inside the archive; a
@@ -868,17 +578,16 @@ func TestSafeWrite_PreservesAbsoluteSymlinkIntoDotDirectory(t *testing.T) {
 	}
 	archiveDir := filepath.Join(t.TempDir(), "archive")
 	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
 	target := filepath.Join(archiveDir, ".worktrees", "copy", "p.glx")
 	writeSkipTestFile(t, target, "persons: {}\n")
 	alias := filepath.Join(archiveDir, "persons", "alias.glx")
 	require.NoError(t, os.Symlink(target, alias))
 
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
 
 	_, err := os.Lstat(alias)
 	require.NoError(t, err, "the absolute link into the dot directory must survive")
-	assert.NoDirExists(t, archiveDir+".bak")
 }
 
 // Case folding applies to real managed directories only. A regular file that
@@ -891,11 +600,11 @@ func TestSafeWrite_ForeignEntriesNamedLikeManagedDirsArePreserved(t *testing.T) 
 	}
 	archiveDir := filepath.Join(base, "archive")
 	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
 	writeSkipTestFile(t, filepath.Join(archiveDir, "PERSONS"), "not an archive directory\n")
 	require.NoError(t, os.Symlink("persons", filepath.Join(archiveDir, "Events")))
 
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
 
 	assert.FileExists(t, filepath.Join(archiveDir, "PERSONS"))
 	_, err := os.Lstat(filepath.Join(archiveDir, "Events"))
@@ -913,37 +622,14 @@ func TestSafeWrite_DoesNotFollowSymlinkedMediaDirectory(t *testing.T) {
 	writeSkipTestFile(t, external, "jpeg bytes")
 	archiveDir := filepath.Join(base, "archive")
 	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
 	require.NoError(t, os.Symlink(filepath.Join("..", "assets"), filepath.Join(archiveDir, "MEDIA")))
 
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
 
 	assert.FileExists(t, external, "data behind the symlink must stay where it was")
 	_, err := os.Lstat(filepath.Join(archiveDir, "MEDIA"))
 	assert.NoError(t, err, "the symlink itself is foreign and is preserved")
-}
-
-// An unreadable media directory in a stale backup is an inspection failure,
-// not evidence that the backup is empty; cleanup must fail closed.
-func TestSafeWrite_UnreadableMediaInStaleBackupIsRefused(t *testing.T) {
-	if runtime.GOOS == goosWindows || os.Geteuid() == 0 {
-		t.Skip("relies on permission bits being enforced")
-	}
-	archiveDir := filepath.Join(t.TempDir(), "archive")
-	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
-	stale := archiveDir + ".bak"
-	writeSkipTestFile(t, filepath.Join(stale, "media", "files", "portrait.jpg"), "jpeg bytes")
-	mediaDir := filepath.Join(stale, "media")
-	require.NoError(t, os.Chmod(mediaDir, 0o000))
-	t.Cleanup(func() { _ = os.Chmod(mediaDir, 0o755) })
-
-	err := safeWriteMultiFileArchive(archiveDir, preserveTestArchive())
-
-	require.Error(t, err)
-	require.NotErrorIs(t, err, ErrStaleBackupForeignFile, "an inspection failure is reported as such")
-	require.NoError(t, os.Chmod(mediaDir, 0o755))
-	assert.FileExists(t, filepath.Join(stale, "media", "files", "portrait.jpg"), "the backup must be left intact")
 }
 
 // A skipped link's chain can pass through a top-level foreign entry that never
@@ -956,30 +642,26 @@ func TestSafeWrite_PreservesLinkThroughTopLevelForeignLink(t *testing.T) {
 	}
 	archiveDir := filepath.Join(t.TempDir(), "archive")
 	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
 	writeSkipTestFile(t, filepath.Join(archiveDir, ".drafts", "x.glx"), "persons: {}\n")
 	alias := filepath.Join(archiveDir, "alias.glx")
 	require.NoError(t, os.Symlink(filepath.Join(".drafts", "x.glx"), alias))
 	z := filepath.Join(archiveDir, "persons", "z.glx")
 	require.NoError(t, os.Symlink(filepath.Join("..", "alias.glx"), z))
 
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, preserveTestArchive()))
+	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
 
 	for _, link := range []string{alias, z} {
 		info, err := os.Lstat(link)
 		require.NoError(t, err, "%s must survive the safe write", link)
 		assert.NotZero(t, info.Mode()&os.ModeSymlink)
 	}
-	assert.NoDirExists(t, archiveDir+".bak")
 }
 
-// The loader reads a .glx file at the archive top level, but the multi-file
-// writer has no place for it: preserving it as foreign duplicates its entities
-// beside the freshly written entity directories, and dropping it deletes a
-// hand-made file. Until #1247 settles which the user wants, the write is
-// refused before anything is moved — in any letter case, since the loader's
-// extension test is case-insensitive.
-func TestSafeWrite_RefusesTopLevelGLXFile(t *testing.T) {
+// A .glx file at the archive top level is archive content like any other: a
+// change to an entity it holds is written back into it, in any letter case of
+// the extension, and no entity directory appears beside it (#1247).
+func TestSafeWrite_UpdatesTopLevelGLXFileInPlace(t *testing.T) {
 	for _, name := range []string{"family.glx", "FAMILY.GLX", "metadata.GLX"} {
 		t.Run(name, func(t *testing.T) {
 			archiveDir := filepath.Join(t.TempDir(), "archive")
@@ -989,13 +671,19 @@ func TestSafeWrite_RefusesTopLevelGLXFile(t *testing.T) {
 			loaded, _, err := LoadArchive(archiveDir)
 			require.NoError(t, err)
 			require.Len(t, loaded.Persons, 1, "the loader reads the top-level file")
+			loaded.Persons["person-1"].Properties["primary_name"] = "Alicia"
 
-			err = safeWriteMultiFileArchive(archiveDir, loaded)
+			require.NoError(t, writeArchiveInPlace(archiveDir, loaded, rewriteChanged))
 
-			require.ErrorIs(t, err, ErrTopLevelGLXFile)
-			assert.FileExists(t, filepath.Join(archiveDir, name), "the archive is left untouched")
+			data, err := os.ReadFile(filepath.Join(archiveDir, name))
+			require.NoError(t, err)
+			assert.Contains(t, string(data), "Alicia")
 			assert.NoDirExists(t, filepath.Join(archiveDir, "persons"))
-			assert.NoDirExists(t, archiveDir+".bak")
+
+			reloaded, duplicates, err := LoadArchive(archiveDir)
+			require.NoError(t, err)
+			assert.Empty(t, duplicates)
+			assert.Len(t, reloaded.Persons, 1)
 		})
 	}
 }
@@ -1007,13 +695,12 @@ func TestSafeWrite_AllowsTopLevelMetadataFile(t *testing.T) {
 	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
 	archive := preserveTestArchive()
 	archive.ImportMetadata = &glxlib.Metadata{SourceSystem: "test"}
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, archive))
+	require.NoError(t, writeArchiveInPlace(archiveDir, archive, rewriteChanged))
 	require.FileExists(t, filepath.Join(archiveDir, archiveMetadataFile))
 
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, archive))
+	require.NoError(t, writeArchiveInPlace(archiveDir, archive, rewriteChanged))
 
 	assert.FileExists(t, filepath.Join(archiveDir, archiveMetadataFile))
-	assert.NoDirExists(t, archiveDir+".bak")
 }
 
 // A dot-prefixed .glx at the top level (an AppleDouble sidecar, a draft) is
@@ -1027,10 +714,9 @@ func TestSafeWrite_AllowsTopLevelDotGLXFile(t *testing.T) {
 
 	loaded, _, err := LoadArchive(archiveDir)
 	require.NoError(t, err)
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, loaded))
+	require.NoError(t, writeArchiveInPlace(archiveDir, loaded, rewriteChanged))
 
 	assert.FileExists(t, filepath.Join(archiveDir, "._family.glx"))
-	assert.NoDirExists(t, archiveDir+".bak")
 }
 
 // media/files may itself be a symlink to storage elsewhere. Renaming a link
@@ -1052,11 +738,10 @@ func TestSafeWrite_PreservesMediaFilesSymlink(t *testing.T) {
 
 	loaded, _, err := LoadArchive(archiveDir)
 	require.NoError(t, err)
-	require.NoError(t, safeWriteMultiFileArchive(archiveDir, loaded))
+	require.NoError(t, writeArchiveInPlace(archiveDir, loaded, rewriteChanged))
 
 	info, err := os.Lstat(link)
 	require.NoError(t, err, "the media/files link must survive the safe write")
 	assert.NotZero(t, info.Mode()&os.ModeSymlink)
 	assert.FileExists(t, filepath.Join(storage, "portrait.jpg"))
-	assert.NoDirExists(t, archiveDir+".bak")
 }
