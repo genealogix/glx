@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFilenameAllocator_CaseAndUnicodeCollisions(t *testing.T) {
@@ -39,6 +40,44 @@ func TestFilenameAllocator_CachedSuffixSkipsNaturallyReservedNames(t *testing.T)
 	assert.Equal(t, "PHOTO-5.JPG", a.Allocate("PHOTO.JPG"))
 	assert.True(t, a.Reserve("photo-6.jpg"))
 	assert.Equal(t, "Photo-7.jpg", a.Allocate("Photo.jpg"))
+}
+
+func TestFilenameAllocator_WindowsAliasesAndReservedNames(t *testing.T) {
+	a := NewFilenameAllocator()
+	assert.Equal(t, "photo.jpg", a.Allocate("photo.jpg."))
+	assert.Equal(t, "photo-2.jpg", a.Allocate("photo.jpg "))
+	assert.Equal(t, "CON-2.jpg", a.Allocate("CON.jpg"))
+	assert.Equal(t, "CON-2.foo.jpg", a.Allocate("CON.foo.jpg"))
+	assert.Equal(t, "NUL-2", a.Allocate("NUL"))
+	assert.Equal(t, "COM¹-2.jpg", a.Allocate("COM¹.jpg"))
+	assert.Equal(t, "a-b.jpg", a.Allocate("a:b.jpg"))
+	assert.Equal(t, FilenameCollisionKey("photo.jpg"), FilenameCollisionKey("PHOTO.JPG. "))
+}
+
+func TestFilenameAllocator_AllocateMatchingCanReuseNumberedCandidate(t *testing.T) {
+	a := NewFilenameAllocator("photo.jpg", "photo-2.jpg")
+	actual, reused, err := a.AllocateMatching("photo.jpg", func(candidate string) (string, error) {
+		if candidate == "photo-2.jpg" {
+			return candidate, nil
+		}
+
+		return "", nil
+	})
+	require.NoError(t, err)
+	assert.True(t, reused)
+	assert.Equal(t, "photo-2.jpg", actual)
+	actual, reused, err = a.AllocateMatching("photo.jpg", func(candidate string) (string, error) {
+		return candidate, nil
+	})
+	require.NoError(t, err)
+	assert.True(t, reused)
+	assert.Equal(t, "photo.jpg", actual)
+	actual, reused, err = a.AllocateMatching("photo.jpg", func(candidate string) (string, error) {
+		return candidate, nil
+	})
+	require.NoError(t, err)
+	assert.False(t, reused)
+	assert.Equal(t, "photo-3.jpg", actual)
 }
 
 func BenchmarkFilenameAllocator_RepeatedBasename(b *testing.B) {

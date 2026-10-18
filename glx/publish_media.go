@@ -340,9 +340,7 @@ func (r *mediaResolver) outputName(srcPath, uri string) string {
 	}
 
 	base := safeMediaBase(filepath.Base(filepath.FromSlash(uri)))
-	ext := filepath.Ext(base)
-	stem := strings.TrimSuffix(base, ext)
-	name := uniqueFileName(stem, ext, r.usedNames)
+	name := r.usedNames.Allocate(base)
 	r.assigned[srcPath] = name
 
 	return name
@@ -447,12 +445,6 @@ func safePersonStem(personID string) string {
 	return safeAnchorStem(personID, searchKindPerson)
 }
 
-// uniqueFileName shares the library's collision rules with imported and merged
-// media while retaining each publish caller's sanitized stem and extension.
-func uniqueFileName(stem, ext string, used *glxlib.FilenameAllocator) string {
-	return used.Allocate(stem + ext)
-}
-
 // assignPersonFiles maps each person ID (given in sorted order for determinism)
 // to a unique, collision-safe HTML filename. Distinct IDs that sanitize to the
 // same stem — including case-only and punctuation-only differences the viewer's
@@ -462,7 +454,7 @@ func assignPersonFiles(sortedIDs []string) map[string]string {
 	used := glxlib.NewFilenameAllocator()
 	files := make(map[string]string, len(sortedIDs))
 	for _, id := range sortedIDs {
-		files[id] = uniqueFileName(safePersonStem(id), ".html", used)
+		files[id] = used.Allocate(safePersonStem(id) + ".html")
 	}
 
 	return files

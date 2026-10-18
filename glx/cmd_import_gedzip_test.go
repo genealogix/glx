@@ -737,6 +737,29 @@ func TestCommitStagedMedia_PublishesNewFiles(t *testing.T) {
 	}
 }
 
+func TestCommitStagedMedia_RollsBackPartialCommit(t *testing.T) {
+	targetDir := filepath.Join(t.TempDir(), "archive")
+	stageDir := stageMediaInside(t, targetDir, map[string]string{"a.jpg": "first", "b.jpg": "second"})
+	archivePath := filepath.Join(targetDir, "archive.glx")
+	require.NoError(t, os.WriteFile(archivePath, []byte("old archive"), filePermissions))
+	failed := os.ErrPermission
+	count := 0
+	err := commitStagedMediaUsing(stageDir, targetDir, func(root *os.Root, src, dst string) error {
+		count++
+		if count == 2 {
+			return failed
+		}
+
+		return commitStagedFile(root, src, dst)
+	})
+	require.ErrorIs(t, err, failed)
+	require.NoFileExists(t, filepath.Join(targetDir, glxlib.MediaFilesDir, "a.jpg"))
+	require.NoFileExists(t, filepath.Join(targetDir, glxlib.MediaFilesDir, "b.jpg"))
+	actual, err := os.ReadFile(archivePath)
+	require.NoError(t, err)
+	require.Equal(t, []byte("old archive"), actual)
+}
+
 func TestCommitStagedMedia_DoesNotReplaceLeafSymlink(t *testing.T) {
 	// media/files/photo.jpg is an existing symlink pointing outside the
 	// archive. The commit must neither replace the link nor write through it.

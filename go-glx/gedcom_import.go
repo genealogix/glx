@@ -18,6 +18,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"path"
 	"strconv"
 	"strings"
 )
@@ -82,6 +83,10 @@ type MediaFileSource struct {
 	// media reference after finding a destination file on disk.
 	OriginalFilename string
 
+	// RequestedFilename is the unnumbered destination basename, before any
+	// collision allocation. The CLI uses it when checking existing archives.
+	RequestedFilename string
+
 	// MemberPath is the resolved path of the media file within a GEDZIP bundle,
 	// normalized to forward slashes. Only set when importing from a GEDZIP bundle.
 	MemberPath string
@@ -92,6 +97,39 @@ type MediaFileSource struct {
 
 	// TargetFilename is the destination filename within media/files/.
 	TargetFilename string
+
+	// ReuseExisting means TargetFilename already contains identical bytes in
+	// the destination archive and does not need to be written again.
+	ReuseExisting bool
+}
+
+// SetMediaURI updates the active media URI and records FILE provenance when
+// allocation changed the source's requested basename.
+func (source *MediaFileSource) SetMediaURI(media *Media, filename string) {
+	media.URI = MediaFilesDir + "/" + filename
+	requested := source.RequestedFilename
+	if requested == "" {
+		requested = source.TargetFilename
+	}
+	if source.SourceType == MediaSourceFile && filename != requested {
+		source.RecordOriginalFilename(media)
+	}
+}
+
+// RecordOriginalFilename preserves the source's interpreted FILE basename
+// unless a pre-existing property already supplies provenance.
+func (source *MediaFileSource) RecordOriginalFilename(media *Media) {
+	if media.Properties == nil {
+		media.Properties = make(map[string]any)
+	}
+	if _, exists := media.Properties[MediaPropertyOriginalFilename]; exists {
+		return
+	}
+	original := source.OriginalFilename
+	if original == "" {
+		original = path.Base(source.RelativePath)
+	}
+	media.Properties[MediaPropertyOriginalFilename] = original
 }
 
 // ImportResult contains statistics and information about the import

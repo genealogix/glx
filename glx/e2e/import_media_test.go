@@ -30,7 +30,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
@@ -247,8 +247,71 @@ func TestImport_MixedFileAndBLOBDestinations(t *testing.T) {
 				blobActual, err := os.ReadFile(filepath.Join(mediaRoot, filepath.FromSlash(blobMedia.URI)))
 				require.NoError(t, err)
 				require.Equal(t, []byte{0, 0, 0}, blobActual)
+				before, err := os.ReadDir(filepath.Join(mediaRoot, "media", "files"))
+				require.NoError(t, err)
+				res = runGLX(t, work, "import", src, "-o", output, "--format", format)
+				require.Equal(t, 0, res.exitCode, res.stderr)
+				after, err := os.ReadDir(filepath.Join(mediaRoot, "media", "files"))
+				require.NoError(t, err)
+				require.Len(t, after, len(before), "re-import must reuse both FILE and BLOB bytes")
+				require.Equal(t, fileMedia.URI, importedMediaEntity(t, output, format, "media-1").URI)
+				require.Equal(t, blobMedia.URI, importedMediaEntity(t, output, format, "media-2").URI)
 			})
 		}
+	}
+}
+
+func TestImport_FileAndBLOBOnSameMediaKeepActiveFileURI(t *testing.T) {
+	for _, extension := range []string{"ged", "gdz"} {
+		for _, format := range []string{"multi", "single"} {
+			t.Run(extension+"/"+format, func(t *testing.T) {
+				work := t.TempDir()
+				fileBytes := []byte{1, 2, 3, 4}
+				gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n" +
+					"0 @M1@ OBJE\n1 FILE blob-media-1.bin\n1 BLOB\n2 CONT ....\n0 TRLR\n"
+				src := writeMediaTestArchive(t, filepath.Join(work, "source"), extension, gedcom, "blob-media-1.bin", fileBytes)
+				outputRoot := filepath.Join(work, "output")
+				output := outputRoot
+				if format == "single" {
+					output = filepath.Join(outputRoot, "archive.glx")
+				}
+				filesDir := filepath.Join(outputRoot, "media", "files")
+				require.NoError(t, os.MkdirAll(filesDir, 0o755))
+				require.NoError(t, os.WriteFile(filepath.Join(filesDir, "blob-media-1.bin"), []byte("occupied"), 0o600))
+				for range 2 {
+					res := runGLX(t, work, "import", src, "-o", output, "--format", format)
+					require.Equal(t, 0, res.exitCode, res.stderr)
+					media := importedMediaEntity(t, output, format, "media-1")
+					require.Equal(t, "media/files/blob-media-1-2.bin", media.URI)
+					actual, err := os.ReadFile(filepath.Join(outputRoot, filepath.FromSlash(media.URI)))
+					require.NoError(t, err)
+					require.Equal(t, fileBytes, actual)
+				}
+				entries, err := os.ReadDir(filesDir)
+				require.NoError(t, err)
+				require.Len(t, entries, 3)
+			})
+		}
+	}
+}
+
+func TestImport_SingleFilePublicationFailureRemovesNewMedia(t *testing.T) {
+	for _, extension := range []string{"ged", "gdz"} {
+		t.Run(extension, func(t *testing.T) {
+			work := t.TempDir()
+			src := writeMediaTestInput(t, work, "source", extension, "photo.jpg", []byte("photo bytes"))
+			output := filepath.Join(work, "archive.glx")
+			require.NoError(t, os.Mkdir(output, 0o755)) // rename cannot replace a directory
+			sentinel := filepath.Join(output, "keep.txt")
+			require.NoError(t, os.WriteFile(sentinel, []byte("old data"), 0o600))
+			res := runGLX(t, work, "import", src, "-o", output, "--format", "single")
+			require.NotEqual(t, 0, res.exitCode)
+			actual, err := os.ReadFile(sentinel)
+			require.NoError(t, err)
+			require.Equal(t, []byte("old data"), actual)
+			_, err = os.Stat(filepath.Join(work, "media", "files", "photo.jpg"))
+			require.True(t, os.IsNotExist(err), "unpublished media must be removed")
+		})
 	}
 }
 

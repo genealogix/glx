@@ -259,14 +259,16 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 		basename := filepath.Base(normalizedRef)
 		originalFilename := originalFilenameFor(basename, conv.Version)
 		targetName := conv.MediaFileNames.Allocate(basename)
-		conv.MediaFileSources = append(conv.MediaFileSources, MediaFileSource{
-			MediaID:          mediaID,
-			SourceType:       MediaSourceFile,
-			RelativePath:     normalizedRef,
-			OriginalFilename: originalFilename,
-			TargetFilename:   targetName,
-		})
-		media.URI = MediaFilesDir + "/" + targetName
+		source := MediaFileSource{
+			MediaID:           mediaID,
+			SourceType:        MediaSourceFile,
+			RelativePath:      normalizedRef,
+			OriginalFilename:  originalFilename,
+			RequestedFilename: basename,
+			TargetFilename:    targetName,
+		}
+		conv.MediaFileSources = append(conv.MediaFileSources, source)
+		source.SetMediaURI(media, targetName)
 		// Record the pre-rename basename: a collision rename (photo.jpg →
 		// photo-2.jpg) puts only the renamed form in the URI, which would
 		// otherwise lose the source filename entirely. A ref already pointing
@@ -278,10 +280,8 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 		// existence guard is defensive: no current tag maps to this key, but
 		// a future mapping would write properties before this branch runs and
 		// must win.
-		if !isCanonicalMediaRef(normalizedRef) || targetName != basename {
-			if _, exists := media.Properties[MediaPropertyOriginalFilename]; !exists {
-				media.Properties[MediaPropertyOriginalFilename] = originalFilename
-			}
+		if !isCanonicalMediaRef(normalizedRef) {
+			source.RecordOriginalFilename(media)
 		}
 	} else {
 		// URL, absolute path, or empty — leave as-is
@@ -293,10 +293,11 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 		ext := extensionFromMimeType(media.MimeType)
 		targetName := conv.MediaFileNames.Allocate("blob-" + mediaID + ext)
 		conv.MediaFileSources = append(conv.MediaFileSources, MediaFileSource{
-			MediaID:        mediaID,
-			SourceType:     MediaSourceBlob,
-			BlobData:       blobText,
-			TargetFilename: targetName,
+			MediaID:           mediaID,
+			SourceType:        MediaSourceBlob,
+			BlobData:          blobText,
+			RequestedFilename: "blob-" + mediaID + ext,
+			TargetFilename:    targetName,
 		})
 		// If no FILE ref, set URI to the blob file
 		if media.URI == "" {

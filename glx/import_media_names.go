@@ -15,51 +15,207 @@
 package main
 
 import (
-	"path"
+	"bytes"
+	"crypto/sha256"
+	"fmt"
+	"io"
+	"io/fs"
+	"os"
 	"path/filepath"
+	"sort"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
-// reserveImportMediaDestinations keeps a new import from claiming names already
-// present beside a single-file archive or inside an existing directory archive.
-// It runs before serialization so Media URIs and copied filenames stay aligned.
+func importMediaDir(outputPath, format string) string {
+	if format == FormatSingle {
+		return filepath.Dir(ensureGLXExtension(outputPath))
+	}
+
+	return outputPath
+}
+
+// reserveImportMediaDestinations is retained for callers without source bytes.
 func reserveImportMediaDestinations(glx *glxlib.GLXFile, files []glxlib.MediaFileSource, archiveDir string) error {
+	return allocateImportMediaDestinations(glx, files, archiveDir, "", nil)
+}
+
+// allocateImportMediaDestinations reuses identical on-disk media and allocates
+// the rest from each source's original unnumbered basename.
+func allocateImportMediaDestinations(glx *glxlib.GLXFile, files []glxlib.MediaFileSource, archiveDir, sourceDir string, bundle fs.FS) error {
 	if len(files) == 0 {
 		return nil
 	}
-
-	existing, err := listMediaFilenames(filepath.Join(archiveDir, glxlib.MediaFilesDir))
+	filesDir := filepath.Join(archiveDir, glxlib.MediaFilesDir)
+	existing, err := listMediaFilenames(filesDir)
 	if err != nil {
 		return err
 	}
-	allocator := glxlib.NewFilenameAllocator()
+	byKey := make(map[string][]string, len(existing))
+	names := make([]string, 0, len(existing))
 	for name := range existing {
-		allocator.Reserve(name)
+		key := glxlib.FilenameCollisionKey(name)
+		byKey[key] = append(byKey[key], name)
+		names = append(names, name)
+	}
+	for key := range byKey {
+		sort.Strings(byKey[key])
+	}
+	sort.Strings(names)
+	allocator := glxlib.NewFilenameAllocator(names...)
+	claimed := make(map[string]bool, len(files))
+	activeURI := make(map[string]string, len(glx.Media))
+	for id, media := range glx.Media {
+		if media != nil {
+			activeURI[id] = media.URI
+		}
 	}
 	for i := range files {
-		oldName := files[i].TargetFilename
-		newName := allocator.Allocate(oldName)
-		if newName == oldName {
-			continue
+		mf := &files[i]
+		oldName := mf.TargetFilename
+		requested := mf.RequestedFilename
+		if requested == "" {
+			requested = oldName
 		}
-		files[i].TargetFilename = newName
-		if media := glx.Media[files[i].MediaID]; media != nil && media.URI == glxlib.MediaFilesDir+"/"+oldName {
-			media.URI = glxlib.MediaFilesDir + "/" + newName
-			if files[i].SourceType == glxlib.MediaSourceFile {
-				if media.Properties == nil {
-					media.Properties = make(map[string]any)
-				}
-				if _, exists := media.Properties[glxlib.MediaPropertyOriginalFilename]; !exists {
-					original := files[i].OriginalFilename
-					if original == "" {
-						original = path.Base(files[i].RelativePath)
-					}
-					media.Properties[glxlib.MediaPropertyOriginalFilename] = original
-				}
+		matcher := &importMediaMatcher{
+			source: mf, sourceDir: sourceDir, bundle: bundle,
+			archiveDir: archiveDir, filesDir: filesDir,
+			byKey: byKey, claimed: claimed,
+		}
+		newName, reused, err := allocator.AllocateMatching(requested, matcher.match)
+		if err != nil {
+			return fmt.Errorf("allocating media filename %s: %w", requested, err)
+		}
+		claimed[newName] = true
+		if media := glx.Media[mf.MediaID]; media != nil && activeURI[mf.MediaID] == glxlib.MediaFilesDir+"/"+oldName {
+			mf.SetMediaURI(media, newName)
+		}
+		mf.TargetFilename = newName
+		mf.ReuseExisting = reused
+	}
+
+	return nil
+}
+
+type importMediaMatcher struct {
+	source     *glxlib.MediaFileSource
+	sourceDir  string
+	bundle     fs.FS
+	archiveDir string
+	filesDir   string
+	byKey      map[string][]string
+	claimed    map[string]bool
+	checked    bool
+	haveSource bool
+	sourceHash [32]byte
+}
+
+func (m *importMediaMatcher) match(candidate string) (string, error) {
+	variants := m.byKey[glxlib.FilenameCollisionKey(candidate)]
+	if len(variants) == 0 {
+		return "", nil
+	}
+	if !m.checked {
+		m.sourceHash, m.haveSource = importSourceHash(m.source, m.sourceDir, m.bundle)
+		m.checked = true
+	}
+	if !m.haveSource {
+		return "", nil
+	}
+	for pass := range 2 {
+		for _, name := range variants {
+			if m.claimed[name] || (pass == 0) != (name == candidate) {
+				continue
+			}
+			same, err := m.matchesFile(name)
+			if err != nil {
+				return "", err
+			}
+			if same {
+				return name, nil
 			}
 		}
 	}
 
-	return nil
+	return "", nil
+}
+
+func (m *importMediaMatcher) matchesFile(name string) (bool, error) {
+	fullPath := filepath.Join(m.filesDir, name)
+	info, err := os.Lstat(fullPath)
+	if err != nil {
+		return false, fmt.Errorf("inspecting media file %s: %w", name, err)
+	}
+	if !info.Mode().IsRegular() {
+		return false, nil
+	}
+	f, err := openWithin(m.archiveDir, fullPath)
+	if err != nil {
+		return false, fmt.Errorf("opening media file %s: %w", name, err)
+	}
+	hash, hashErr := hashReader(f)
+	closeErr := f.Close()
+	if hashErr != nil {
+		return false, hashErr
+	}
+	if closeErr != nil {
+		return false, closeErr
+	}
+
+	return hash == m.sourceHash, nil
+}
+
+func importSourceHash(mf *glxlib.MediaFileSource, sourceDir string, bundle fs.FS) ([32]byte, bool) {
+	var reader io.ReadCloser
+	switch mf.SourceType {
+	case glxlib.MediaSourceFile:
+		switch {
+		case bundle != nil:
+			if mf.MemberPath == "" {
+				return [32]byte{}, false
+			}
+			f, err := bundle.Open(mf.MemberPath)
+			if err != nil {
+				return [32]byte{}, false
+			}
+			info, err := f.Stat()
+			if err != nil || !info.Mode().IsRegular() {
+				_ = f.Close()
+
+				return [32]byte{}, false
+			}
+			reader = f
+		case sourceDir != "":
+			f, err := openMediaSourceFile(sourceDir, mf.RelativePath)
+			if err != nil {
+				return [32]byte{}, false
+			}
+			reader = f
+		default:
+			return [32]byte{}, false
+		}
+	case glxlib.MediaSourceBlob:
+		data, err := glxlib.DecodeGEDCOMBlob(mf.BlobData)
+		if err != nil {
+			return [32]byte{}, false
+		}
+		reader = io.NopCloser(bytes.NewReader(data))
+	default:
+		return [32]byte{}, false
+	}
+	defer func() { _ = reader.Close() }()
+	hash, err := hashReader(reader)
+
+	return hash, err == nil
+}
+
+func hashReader(r io.Reader) ([32]byte, error) {
+	h := sha256.New()
+	if _, err := io.Copy(h, r); err != nil {
+		return [32]byte{}, err
+	}
+	var digest [32]byte
+	copy(digest[:], h.Sum(nil))
+
+	return digest, nil
 }

@@ -89,11 +89,7 @@ func importGEDZIP(gedzipPath, outputPath, format string, validate, verbose bool,
 			_, _ = fmt.Fprintf(output, "Warning: %s\n", w.Message)
 		}
 	}
-	mediaDir := outputPath
-	if format == FormatSingle {
-		mediaDir = filepath.Dir(ensureGLXExtension(outputPath))
-	}
-	if err := reserveImportMediaDestinations(glx, result.MediaFiles, mediaDir); err != nil {
+	if err := allocateImportMediaDestinations(glx, result.MediaFiles, importMediaDir(outputPath, format), "", zr); err != nil {
 		return fmt.Errorf("reserving media destinations: %w", err)
 	}
 
@@ -182,6 +178,10 @@ func importGEDZIPToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, 
 	if err := commitStagedMedia(stageDir, archiveDir); err != nil {
 		return fmt.Errorf("failed to commit media files: %w", err)
 	}
+	rollbackMedia, err := snapshotCommittedMedia(stageDir, archiveDir)
+	if err != nil {
+		return fmt.Errorf("tracking committed media: %w", err)
+	}
 
 	if verbose || copyCount > 0 || blobCount > 0 {
 		streams.Printf("  Media files: %d copied, %d blobs written", copyCount, blobCount)
@@ -192,6 +192,7 @@ func importGEDZIPToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, 
 	}
 
 	if err := robustRename(tempPath, outputPath); err != nil {
+		rollbackMedia()
 		return fmt.Errorf("writing archive to %s: %w", outputPath, err)
 	}
 
@@ -279,6 +280,9 @@ func stageMediaFilesFromFS(streams *IOStreams, stageDir string, mediaFiles []glx
 	reserved := glxlib.NewFilenameAllocator()
 
 	for _, mf := range mediaFiles {
+		if mf.ReuseExisting {
+			continue
+		}
 		if !reserved.Reserve(mf.TargetFilename) {
 			return 0, 0, 0, fmt.Errorf("%w: duplicate staged media destination %s", os.ErrExist, mf.TargetFilename)
 		}
@@ -339,6 +343,11 @@ func stageMediaFilesFromFS(streams *IOStreams, stageDir string, mediaFiles []glx
 // file lands by an exclusive hard link (or exclusive copy when links are not
 // supported), so even a destination created after allocation is never replaced.
 func commitStagedMedia(stageDir, targetDir string) error {
+	return commitStagedMediaUsing(stageDir, targetDir, commitStagedFile)
+}
+
+// commitStagedMediaUsing permits deterministic failure injection in rollback tests.
+func commitStagedMediaUsing(stageDir, targetDir string, publish func(*os.Root, string, string) error) (commitErr error) {
 	stagedFilesDir := filepath.Join(stageDir, glxlib.MediaFilesDir)
 	entries, err := os.ReadDir(stagedFilesDir)
 	if err != nil {
@@ -386,15 +395,89 @@ func commitStagedMedia(stageDir, targetDir string) error {
 	}
 
 	stagedRel := path.Join(filepath.ToSlash(stageRel), glxlib.MediaFilesDir)
+	type committedFile struct {
+		name string
+		info os.FileInfo
+	}
+	committed := make([]committedFile, 0, len(entries))
+	defer func() {
+		if commitErr != nil {
+			for _, file := range committed {
+				current, err := root.Lstat(file.name)
+				if err == nil && os.SameFile(current, file.info) {
+					_ = root.Remove(file.name)
+				}
+			}
+		}
+	}()
 	for _, entry := range entries {
 		src := path.Join(stagedRel, entry.Name())
 		dst := path.Join(glxlib.MediaFilesDir, entry.Name())
-		if err := commitStagedFile(root, src, dst); err != nil {
+		if err := publish(root, src, dst); err != nil {
 			return fmt.Errorf("committing media file %s: %w", entry.Name(), err)
 		}
+		info, err := root.Lstat(dst)
+		if err != nil {
+			return fmt.Errorf("inspecting committed media file %s: %w", entry.Name(), err)
+		}
+		committed = append(committed, committedFile{dst, info})
 	}
 
 	return nil
+}
+
+// snapshotCommittedMedia records identities of newly published media. If a
+// single-file archive cannot be published, its caller removes only files that
+// still have those identities, preserving files replaced by another writer.
+func snapshotCommittedMedia(stageDir, targetDir string) (func(), error) {
+	entries, err := os.ReadDir(filepath.Join(stageDir, glxlib.MediaFilesDir))
+	if os.IsNotExist(err) {
+		return func() {}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	root, err := os.OpenRoot(targetDir)
+	if err != nil {
+		return nil, err
+	}
+	type published struct {
+		name string
+		info os.FileInfo
+	}
+	files := make([]published, 0, len(entries))
+	for _, entry := range entries {
+		name := path.Join(glxlib.MediaFilesDir, entry.Name())
+		info, statErr := root.Lstat(name)
+		if statErr != nil {
+			_ = root.Close()
+
+			return nil, fmt.Errorf("inspecting committed media %s: %w", name, statErr)
+		}
+		if !info.Mode().IsRegular() {
+			_ = root.Close()
+
+			return nil, fmt.Errorf("committed media %s is no longer a regular file: %w", name, os.ErrInvalid)
+		}
+		files = append(files, published{name, info})
+	}
+	if err := root.Close(); err != nil {
+		return nil, err
+	}
+
+	return func() {
+		root, err := os.OpenRoot(targetDir)
+		if err != nil {
+			return
+		}
+		defer func() { _ = root.Close() }()
+		for _, file := range files {
+			current, err := root.Lstat(file.name)
+			if err == nil && current.Mode().IsRegular() && os.SameFile(current, file.info) {
+				_ = root.Remove(file.name)
+			}
+		}
+	}, nil
 }
 
 // commitStagedFile publishes a staged regular file without replacing an
@@ -417,10 +500,19 @@ func commitStagedFile(root *os.Root, src, dst string) error {
 	if err != nil {
 		return err
 	}
+	createdInfo, statErr := output.Stat()
+	if statErr != nil {
+		_ = output.Close()
+
+		return statErr
+	}
 	_, copyErr := io.Copy(output, input)
 	closeErr := output.Close()
 	if copyErr != nil || closeErr != nil {
-		_ = root.Remove(dst)
+		current, err := root.Lstat(dst)
+		if err == nil && os.SameFile(current, createdInfo) {
+			_ = root.Remove(dst)
+		}
 
 		return errors.Join(copyErr, closeErr)
 	}

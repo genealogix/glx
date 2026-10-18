@@ -81,11 +81,7 @@ func importGEDCOM(gedcomPath, outputPath, format string, validate, verbose bool,
 
 	// Determine GEDCOM source directory for resolving relative media file paths
 	gedcomDir := filepath.Dir(gedcomPath)
-	mediaDir := outputPath
-	if format == FormatSingle {
-		mediaDir = filepath.Dir(ensureGLXExtension(outputPath))
-	}
-	if err := reserveImportMediaDestinations(glx, result.MediaFiles, mediaDir); err != nil {
+	if err := allocateImportMediaDestinations(glx, result.MediaFiles, importMediaDir(outputPath, format), gedcomDir, nil); err != nil {
 		return fmt.Errorf("reserving media destinations: %w", err)
 	}
 
@@ -105,16 +101,39 @@ func importToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, verbos
 
 	// Ensure .glx extension
 	outputPath = ensureGLXExtension(outputPath)
-
-	// Write archive
-	if err := writeSingleFileArchive(outputPath, glx, validate); err != nil {
+	archiveDir := filepath.Dir(outputPath)
+	if err := os.MkdirAll(archiveDir, dirPermissions); err != nil {
+		return fmt.Errorf("creating archive directory: %w", err)
+	}
+	stageDir, err := os.MkdirTemp(archiveDir, ".glx-stage-*")
+	if err != nil {
+		return fmt.Errorf("creating media staging directory: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(stageDir) }()
+	if err := copyMediaFiles(SystemIOStreams(), stageDir, mediaFiles, gedcomDir, verbose); err != nil {
+		return fmt.Errorf("failed to copy media files: %w", err)
+	}
+	tempFile, err := os.CreateTemp(archiveDir, ".glx-single-*.tmp")
+	if err != nil {
+		return fmt.Errorf("creating temporary archive: %w", err)
+	}
+	tempPath := tempFile.Name()
+	_ = tempFile.Close()
+	defer func() { _ = os.Remove(tempPath) }()
+	if err := writeSingleFileArchive(tempPath, glx, validate); err != nil {
 		return formatValidationError(err, showFirstErrors)
 	}
+	if err := commitStagedMedia(stageDir, archiveDir); err != nil {
+		return fmt.Errorf("failed to commit media files: %w", err)
+	}
+	rollbackMedia, err := snapshotCommittedMedia(stageDir, archiveDir)
+	if err != nil {
+		return fmt.Errorf("tracking committed media: %w", err)
+	}
+	if err := robustRename(tempPath, outputPath); err != nil {
+		rollbackMedia()
 
-	// Copy media files into sibling media/files/ directory
-	archiveDir := filepath.Dir(outputPath)
-	if err := copyMediaFiles(SystemIOStreams(), archiveDir, mediaFiles, gedcomDir, verbose); err != nil {
-		return fmt.Errorf("failed to copy media files: %w", err)
+		return fmt.Errorf("publishing archive: %w", err)
 	}
 
 	printSuccessSingleFile("imported", outputPath)
@@ -129,14 +148,26 @@ func importToMultiFile(glx *glxlib.GLXFile, outputPath string, validate, verbose
 		_, _ = fmt.Fprintf(out, "Writing multi-file archive: %s\n", outputPath)
 	}
 
-	// Write archive
-	if err := writeMultiFileArchive(outputPath, glx, validate); err != nil {
+	files, err := serializeMultiFileArchive(glx, validate)
+	if err != nil {
 		return formatValidationError(err, showFirstErrors)
 	}
-
-	// Copy media files into the archive's media/files/ directory
-	if err := copyMediaFiles(SystemIOStreams(), outputPath, mediaFiles, gedcomDir, verbose); err != nil {
+	if err := os.MkdirAll(outputPath, dirPermissions); err != nil {
+		return fmt.Errorf("creating archive directory: %w", err)
+	}
+	stageDir, err := os.MkdirTemp(outputPath, ".glx-stage-*")
+	if err != nil {
+		return fmt.Errorf("creating media staging directory: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(stageDir) }()
+	if err := copyMediaFiles(SystemIOStreams(), stageDir, mediaFiles, gedcomDir, verbose); err != nil {
 		return fmt.Errorf("failed to copy media files: %w", err)
+	}
+	if err := commitStagedMedia(stageDir, outputPath); err != nil {
+		return fmt.Errorf("failed to commit media files: %w", err)
+	}
+	if err := writeFilesToDir(outputPath, files); err != nil {
+		return err
 	}
 
 	printSuccessMultiFile("imported", outputPath)

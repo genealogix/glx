@@ -17,9 +17,11 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -35,6 +37,7 @@ import (
 // detect entities that survived the merge.
 type plannedMediaCopy struct {
 	SrcPath    string                   // absolute path of the file under srcPath/media/files/
+	SrcRoot    string                   // source archive root for confined reads
 	TargetName string                   // basename to write into destPath/media/files/
 	SrcMedia   map[string]*glxlib.Media // src.Media entries by ID at planning time
 }
@@ -62,6 +65,9 @@ func planSourceMediaCopies(srcPath, destPath string, src *glxlib.GLXFile) ([]pla
 	}
 	if !info.IsDir() {
 		return nil, nil
+	}
+	if _, err := listMediaFilenames(srcFiles); err != nil {
+		return nil, fmt.Errorf("inspecting source media/files: %w", err)
 	}
 
 	mediaByBasename := indexMediaByBasename(src.Media)
@@ -100,7 +106,11 @@ func planSourceMediaCopies(srcPath, destPath string, src *glxlib.GLXFile) ([]pla
 		}
 
 		target := name
-		if existingName, exists := allocator.Existing(name); exists {
+		existingName, exists := allocator.Existing(name)
+		if _, exact := taken[name]; exact {
+			existingName, exists = name, true
+		}
+		if exists {
 			if _, onDisk := taken[existingName]; onDisk {
 				existingPath := filepath.Join(destPath, glxlib.MediaFilesDir, existingName)
 				info, statErr := os.Lstat(existingPath)
@@ -108,7 +118,7 @@ func planSourceMediaCopies(srcPath, destPath string, src *glxlib.GLXFile) ([]pla
 					return nil, fmt.Errorf("inspecting media file %s: %w", existingName, statErr)
 				}
 				if info.Mode().IsRegular() {
-					same, compareErr := filesIdentical(srcFile, existingPath)
+					same, compareErr := filesIdenticalWithin(srcPath, srcFile, destPath, existingPath)
 					if compareErr != nil {
 						return nil, fmt.Errorf("comparing media file %s: %w", name, compareErr)
 					}
@@ -139,6 +149,7 @@ func planSourceMediaCopies(srcPath, destPath string, src *glxlib.GLXFile) ([]pla
 		}
 		plan = append(plan, plannedMediaCopy{
 			SrcPath:    srcFile,
+			SrcRoot:    srcPath,
 			TargetName: target,
 			SrcMedia:   srcMedia,
 		})
@@ -158,8 +169,12 @@ func executeMediaCopies(plan []plannedMediaCopy, destPath string, merged *glxlib
 	if len(plan) == 0 {
 		return 0, 0, nil
 	}
-	dstDir := filepath.Join(destPath, glxlib.MediaFilesDir)
-	if err := os.MkdirAll(dstDir, dirPermissions); err != nil {
+	root, err := os.OpenRoot(destPath)
+	if err != nil {
+		return 0, 0, fmt.Errorf("opening destination archive: %w", err)
+	}
+	defer func() { _ = root.Close() }()
+	if err := root.MkdirAll(glxlib.MediaFilesDir, dirPermissions); err != nil {
 		return 0, 0, fmt.Errorf("creating media/files dir: %w", err)
 	}
 	for _, p := range plan {
@@ -179,9 +194,38 @@ func executeMediaCopies(plan []plannedMediaCopy, destPath string, merged *glxlib
 
 			continue
 		}
-		dst := filepath.Join(dstDir, p.TargetName)
-		if err := copyFile(p.SrcPath, dst); err != nil {
-			return copied, skipped, fmt.Errorf("copying %s: %w", p.SrcPath, err)
+		dst := path.Join(glxlib.MediaFilesDir, p.TargetName)
+		srcRoot := p.SrcRoot
+		if srcRoot == "" {
+			srcRoot = filepath.Dir(p.SrcPath)
+		}
+		src, err := openWithin(srcRoot, p.SrcPath)
+		if err != nil {
+			return copied, skipped, fmt.Errorf("opening source media %s: %w", p.SrcPath, err)
+		}
+		out, err := root.OpenFile(dst, os.O_CREATE|os.O_EXCL|os.O_WRONLY, filePermissions)
+		if err != nil {
+			_ = src.Close()
+
+			return copied, skipped, fmt.Errorf("creating destination media %s: %w", dst, err)
+		}
+		createdInfo, statErr := out.Stat()
+		if statErr != nil {
+			_ = out.Close()
+			_ = src.Close()
+
+			return copied, skipped, fmt.Errorf("inspecting destination media %s: %w", dst, statErr)
+		}
+		_, copyErr := io.Copy(out, src)
+		closeErr := out.Close()
+		_ = src.Close()
+		if copyErr != nil || closeErr != nil {
+			current, err := root.Lstat(dst)
+			if err == nil && os.SameFile(current, createdInfo) {
+				_ = root.Remove(dst)
+			}
+
+			return copied, skipped, fmt.Errorf("copying %s: %w", p.SrcPath, errors.Join(copyErr, closeErr))
 		}
 		copied++
 	}
@@ -231,30 +275,105 @@ func mediaURIBasename(uri string) string {
 // Archive safe-write can preserve a media/files symlink by moving the link
 // itself, but merge copies through this path and must not write to its target.
 func listMediaFilenames(dir string) (map[string]struct{}, error) {
-	for _, current := range []string{filepath.Dir(dir), dir} {
-		info, err := os.Lstat(current)
+	base := filepath.Dir(dir)
+	rel := filepath.Base(dir)
+	// For archive media, anchor at the archive root so a swapped media
+	// directory cannot redirect even the listing outside the archive.
+	if filepath.Base(base) == "media" && rel == "files" {
+		base = filepath.Dir(base)
+		rel = path.Join("media", "files")
+	}
+	root, err := os.OpenRoot(base)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return map[string]struct{}{}, nil
+		}
+
+		return nil, fmt.Errorf("opening media parent %s: %w", base, err)
+	}
+	defer func() { _ = root.Close() }()
+	parts := []string{rel}
+	if rel == path.Join("media", "files") {
+		parts = []string{"media", rel}
+	}
+	var checked os.FileInfo
+	for _, current := range parts {
+		info, err := root.Lstat(current)
 		if err != nil {
 			if os.IsNotExist(err) {
 				return map[string]struct{}{}, nil
 			}
 
-			return nil, fmt.Errorf("inspecting %s: %w", current, err)
+			return nil, fmt.Errorf("inspecting %s: %w", filepath.Join(base, current), err)
 		}
 		if !info.IsDir() {
-			return nil, fmt.Errorf("media path %s is not a directory: %w", current, os.ErrInvalid)
-		}
-	}
+			if info.Mode()&os.ModeSymlink != 0 {
+				return nil, fmt.Errorf("media directory %s is a symlink; imports and merges cannot write through media-directory symlinks: %w", filepath.Join(base, current), os.ErrInvalid)
+			}
 
-	entries, err := os.ReadDir(dir)
+			return nil, fmt.Errorf("media path %s is not a directory: %w", filepath.Join(base, current), os.ErrInvalid)
+		}
+		checked = info
+	}
+	opened, err := root.Open(rel)
 	if err != nil {
 		return nil, fmt.Errorf("reading %s: %w", dir, err)
 	}
-	out := make(map[string]struct{}, len(entries))
-	for _, e := range entries {
-		out[e.Name()] = struct{}{}
+	openedInfo, statErr := opened.Stat()
+	if statErr != nil || !os.SameFile(checked, openedInfo) {
+		_ = opened.Close()
+
+		return nil, fmt.Errorf("media directory %s changed while listing: %w", dir, os.ErrInvalid)
+	}
+	names, readErr := opened.Readdirnames(-1)
+	closeErr := opened.Close()
+	if readErr != nil {
+		return nil, fmt.Errorf("reading %s: %w", dir, readErr)
+	}
+	if closeErr != nil {
+		return nil, fmt.Errorf("closing %s: %w", dir, closeErr)
+	}
+	out := make(map[string]struct{}, len(names))
+	for _, name := range names {
+		out[name] = struct{}{}
 	}
 
 	return out, nil
+}
+
+// filesIdenticalWithin compares two archive media files through confined roots.
+func filesIdenticalWithin(rootA, a, rootB, b string) (bool, error) {
+	fa, err := openWithin(rootA, a)
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = fa.Close() }()
+	fb, err := openWithin(rootB, b)
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = fb.Close() }()
+	sa, err := fa.Stat()
+	if err != nil {
+		return false, err
+	}
+	sb, err := fb.Stat()
+	if err != nil {
+		return false, err
+	}
+	if !sa.Mode().IsRegular() || !sb.Mode().IsRegular() || sa.Size() != sb.Size() {
+		return false, nil
+	}
+	ha, err := hashReader(fa)
+	if err != nil {
+		return false, err
+	}
+	hb, err := hashReader(fb)
+	if err != nil {
+		return false, err
+	}
+
+	return ha == hb, nil
 }
 
 // filesIdentical reports whether two files have identical content. Size is

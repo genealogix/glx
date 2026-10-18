@@ -224,6 +224,28 @@ func TestPlanSourceMediaCopies_CaseEquivalentDestination(t *testing.T) {
 	}
 }
 
+func TestPlanSourceMediaCopies_PrefersExactOnDiskSpelling(t *testing.T) {
+	srcDir := t.TempDir()
+	destDir := t.TempDir()
+	srcFiles := filepath.Join(srcDir, glxlib.MediaFilesDir)
+	destFiles := filepath.Join(destDir, glxlib.MediaFilesDir)
+	require.NoError(t, os.MkdirAll(srcFiles, 0o755))
+	require.NoError(t, os.MkdirAll(destFiles, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(destFiles, "Photo.JPG"), []byte("different"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(destFiles, "photo.jpg"), []byte("same"), 0o644))
+	entries, err := os.ReadDir(destFiles)
+	require.NoError(t, err)
+	if len(entries) != 2 {
+		t.Skip("case-insensitive filesystem cannot store both variants")
+	}
+	require.NoError(t, os.WriteFile(filepath.Join(srcFiles, "photo.jpg"), []byte("same"), 0o644))
+	src := &glxlib.GLXFile{Media: map[string]*glxlib.Media{"media-1": {URI: "media/files/photo.jpg"}}}
+	plan, err := planSourceMediaCopies(srcDir, destDir, src)
+	require.NoError(t, err)
+	require.Empty(t, plan)
+	require.Equal(t, "media/files/photo.jpg", src.Media["media-1"].URI)
+}
+
 func TestPlanSourceMediaCopies_DirectoryOccupiesDestinationName(t *testing.T) {
 	srcDir := t.TempDir()
 	destDir := t.TempDir()
@@ -260,6 +282,20 @@ func TestPlanSourceMediaCopies_RejectsSymlinkedDestinationFilesDir(t *testing.T)
 	entries, err := os.ReadDir(outside)
 	require.NoError(t, err)
 	require.Empty(t, entries, "merge must not write into a directory outside the destination archive")
+}
+
+func TestPlanSourceMediaCopies_RejectsSymlinkedSourceFilesDir(t *testing.T) {
+	srcDir := t.TempDir()
+	destDir := t.TempDir()
+	outside := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(srcDir, "media"), dirPermissions))
+	require.NoError(t, os.WriteFile(filepath.Join(outside, "photo.jpg"), []byte("outside"), filePermissions))
+	if err := os.Symlink(outside, filepath.Join(srcDir, glxlib.MediaFilesDir)); err != nil {
+		t.Skipf("creating symlink is unavailable: %v", err)
+	}
+	src := &glxlib.GLXFile{Media: map[string]*glxlib.Media{"media-1": {URI: "media/files/photo.jpg"}}}
+	_, err := planSourceMediaCopies(srcDir, destDir, src)
+	require.ErrorIs(t, err, os.ErrInvalid)
 }
 
 func TestExecuteMediaCopies_ZeroLengthPlan(t *testing.T) {

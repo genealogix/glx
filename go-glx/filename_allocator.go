@@ -17,6 +17,7 @@ package glx
 import (
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"golang.org/x/text/cases"
@@ -29,6 +30,8 @@ import (
 type FilenameAllocator struct {
 	used       map[string]string // normalized key -> first reserved spelling
 	nextSuffix map[string]int    // normalized basename -> next suffix worth trying
+	claimed    map[string]bool   // on-disk spellings already used by this import
+	seedMax    map[string]int    // highest on-disk numbered candidate per basename
 }
 
 // NewFilenameAllocator creates an allocator seeded with existing basenames.
@@ -36,9 +39,12 @@ func NewFilenameAllocator(existing ...string) *FilenameAllocator {
 	a := &FilenameAllocator{
 		used:       make(map[string]string, len(existing)),
 		nextSuffix: make(map[string]int),
+		claimed:    make(map[string]bool),
+		seedMax:    make(map[string]int),
 	}
 	for _, name := range existing {
 		a.Reserve(name)
+		a.recordSeed(name)
 	}
 
 	return a
@@ -48,7 +54,7 @@ func NewFilenameAllocator(existing ...string) *FilenameAllocator {
 // that can address the same file on common Windows and macOS filesystems share
 // a reservation. Conservative extra collisions only cause a numbered suffix.
 func FilenameCollisionKey(name string) string {
-	return norm.NFC.String(cases.Fold().String(norm.NFC.String(name)))
+	return cases.Fold().String(norm.NFC.String(strings.TrimRight(name, ". ")))
 }
 
 // Existing returns the first reserved spelling equivalent to name, if any.
@@ -61,6 +67,11 @@ func (a *FilenameAllocator) Existing(name string) (string, bool) {
 // Reserve claims name if no equivalent spelling has been reserved.
 func (a *FilenameAllocator) Reserve(name string) bool {
 	key := FilenameCollisionKey(name)
+
+	return a.reserveKey(name, key)
+}
+
+func (a *FilenameAllocator) reserveKey(name, key string) bool {
 	if _, exists := a.used[key]; exists {
 		return false
 	}
@@ -72,20 +83,106 @@ func (a *FilenameAllocator) Reserve(name string) bool {
 // Allocate reserves basename unchanged when available, or the first free
 // <stem>-N<ext> spelling starting at -2. The supplied spelling is preserved.
 func (a *FilenameAllocator) Allocate(basename string) string {
-	if a.Reserve(basename) {
+	basename = portableFilename(basename)
+	key := FilenameCollisionKey(basename)
+	if a.reserveKey(basename, key) {
 		return basename
 	}
 
 	ext := filepath.Ext(basename)
 	stem := strings.TrimSuffix(basename, ext)
-	key := FilenameCollisionKey(basename)
 	next := max(a.nextSuffix[key], 2)
 	for n := next; ; n++ {
 		candidate := fmt.Sprintf("%s-%d%s", stem, n, ext)
-		if a.Reserve(candidate) {
+		if a.reserveKey(candidate, FilenameCollisionKey(candidate)) {
 			a.nextSuffix[key] = n + 1
 
 			return candidate
 		}
 	}
+}
+
+// AllocateMatching reuses an occupied candidate when match finds identical
+// content on disk. match receives candidate names in allocation order and may
+// return an existing spelling (including a case or Unicode variant). The
+// allocator itself remains independent of filesystem I/O.
+func (a *FilenameAllocator) AllocateMatching(basename string, match func(string) (string, error)) (string, bool, error) {
+	basename = portableFilename(basename)
+	baseKey := FilenameCollisionKey(basename)
+	ext := filepath.Ext(basename)
+	stem := strings.TrimSuffix(basename, ext)
+	for n := 1; ; {
+		candidate := basename
+		if n > 1 {
+			candidate = fmt.Sprintf("%s-%d%s", stem, n, ext)
+		}
+		key := FilenameCollisionKey(candidate)
+		if _, occupied := a.used[key]; !occupied {
+			a.used[key] = candidate
+			a.claimed[candidate] = true
+			a.nextSuffix[baseKey] = n + 1
+
+			return candidate, false, nil
+		}
+		actual, err := match(candidate)
+		if err != nil {
+			return "", false, err
+		}
+		if actual != "" && !a.claimed[actual] {
+			a.claimed[actual] = true
+
+			return actual, true, nil
+		}
+		n++
+		if n > a.seedMax[baseKey] {
+			n = max(n, a.nextSuffix[baseKey])
+		}
+	}
+}
+
+func (a *FilenameAllocator) recordSeed(name string) {
+	key := FilenameCollisionKey(name)
+	a.seedMax[key] = max(a.seedMax[key], 1)
+	ext := filepath.Ext(name)
+	stem := strings.TrimSuffix(name, ext)
+	base, suffix, found := strings.CutLast(stem, "-")
+	if !found {
+		return
+	}
+	n, err := strconv.Atoi(suffix)
+	if err != nil || n < 2 {
+		return
+	}
+	key = FilenameCollisionKey(base + ext)
+	a.seedMax[key] = max(a.seedMax[key], n)
+}
+
+// portableFilename avoids Win32's trailing-dot/space aliases and reserved
+// device basenames. The original source spelling remains available as provenance.
+func portableFilename(name string) string {
+	name = strings.TrimRight(name, ". ")
+	if name == "" {
+		return "unnamed"
+	}
+	if strings.ContainsAny(name, "<>:\"/\\|?*") {
+		name = strings.Map(func(r rune) rune {
+			if strings.ContainsRune("<>:\"/\\|?*", r) {
+				return '-'
+			}
+
+			return r
+		}, name)
+	}
+	first, rest, hasDot := strings.Cut(name, ".")
+	stem := strings.ToUpper(strings.TrimRight(first, " ."))
+	switch stem {
+	case "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "COM¹", "COM²", "COM³", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9", "LPT¹", "LPT²", "LPT³":
+		if hasDot {
+			return first + "-2." + rest
+		}
+
+		return first + "-2"
+	}
+
+	return name
 }

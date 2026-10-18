@@ -91,3 +91,61 @@ func TestReserveImportMediaDestinations_RejectsNonDirectoryMediaPath(t *testing.
 		})
 	}
 }
+
+func TestAllocateImportMediaDestinations_ReusesExactAndNumberedContent(t *testing.T) {
+	archiveDir := t.TempDir()
+	sourceDir := t.TempDir()
+	filesDir := filepath.Join(archiveDir, glxlib.MediaFilesDir)
+	require.NoError(t, os.MkdirAll(filesDir, dirPermissions))
+	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "photo.jpg"), []byte("current"), filePermissions))
+	require.NoError(t, os.WriteFile(filepath.Join(filesDir, "Photo.JPG"), []byte("old"), filePermissions))
+	require.NoError(t, os.WriteFile(filepath.Join(filesDir, "photo.jpg"), []byte("current"), filePermissions))
+	entries, err := os.ReadDir(filesDir)
+	require.NoError(t, err)
+	exactAvailable := len(entries) == 2 // default macOS volumes collapse case variants
+	media := &glxlib.Media{URI: "media/files/photo.jpg"}
+	glx := &glxlib.GLXFile{Media: map[string]*glxlib.Media{"file": media}}
+	files := []glxlib.MediaFileSource{{MediaID: "file", RelativePath: "photo.jpg", RequestedFilename: "photo.jpg", TargetFilename: "photo.jpg"}}
+	require.NoError(t, allocateImportMediaDestinations(glx, files, archiveDir, sourceDir, nil))
+	if exactAvailable {
+		require.Equal(t, "photo.jpg", files[0].TargetFilename)
+	} else {
+		require.Equal(t, "Photo.JPG", files[0].TargetFilename)
+	}
+	require.True(t, files[0].ReuseExisting)
+	require.Equal(t, "media/files/"+files[0].TargetFilename, media.URI)
+
+	require.NoError(t, os.WriteFile(filepath.Join(filesDir, "photo.jpg"), []byte("old exact"), filePermissions))
+	require.NoError(t, os.WriteFile(filepath.Join(filesDir, "photo-2.jpg"), []byte("current"), filePermissions))
+	files[0].TargetFilename = "photo.jpg"
+	media.URI = "media/files/photo.jpg"
+	files[0].ReuseExisting = false
+	require.NoError(t, allocateImportMediaDestinations(glx, files, archiveDir, sourceDir, nil))
+	require.Equal(t, "photo-2.jpg", files[0].TargetFilename)
+	require.True(t, files[0].ReuseExisting)
+	require.Equal(t, "media/files/photo-2.jpg", media.URI)
+}
+
+func TestAllocateImportMediaDestinations_NumberedWithoutNestedSuffix(t *testing.T) {
+	archiveDir := t.TempDir()
+	sourceDir := t.TempDir()
+	filesDir := filepath.Join(archiveDir, glxlib.MediaFilesDir)
+	require.NoError(t, os.MkdirAll(filesDir, dirPermissions))
+	require.NoError(t, os.WriteFile(filepath.Join(filesDir, "photo.jpg"), []byte("occupied"), filePermissions))
+	for _, sub := range []string{"a", "b"} {
+		require.NoError(t, os.MkdirAll(filepath.Join(sourceDir, sub), dirPermissions))
+		require.NoError(t, os.WriteFile(filepath.Join(sourceDir, sub, "photo.jpg"), []byte(sub), filePermissions))
+	}
+	glx := &glxlib.GLXFile{Media: map[string]*glxlib.Media{
+		"a": {URI: "media/files/photo.jpg"},
+		"b": {URI: "media/files/photo-2.jpg"},
+	}}
+	files := []glxlib.MediaFileSource{
+		{MediaID: "a", RelativePath: "a/photo.jpg", RequestedFilename: "photo.jpg", TargetFilename: "photo.jpg"},
+		{MediaID: "b", RelativePath: "b/photo.jpg", RequestedFilename: "photo.jpg", TargetFilename: "photo-2.jpg"},
+	}
+	require.NoError(t, allocateImportMediaDestinations(glx, files, archiveDir, sourceDir, nil))
+	require.Equal(t, "photo-2.jpg", files[0].TargetFilename)
+	require.Equal(t, "photo-3.jpg", files[1].TargetFilename)
+	require.Equal(t, "media/files/photo-3.jpg", glx.Media["b"].URI)
+}
