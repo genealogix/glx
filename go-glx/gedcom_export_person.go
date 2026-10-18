@@ -557,7 +557,7 @@ func exportPersonEvent(eventID string, event *Event, expCtx *ExportContext) *GED
 	}
 
 	// PLAC (from PlaceStrings cache)
-	placRecords := exportPlaceSubrecords(event.PlaceID, expCtx)
+	placRecords := exportPlaceSubrecords(event.PlaceID, event.Date, expCtx)
 	if placRecords != nil {
 		record.SubRecords = append(record.SubRecords, placRecords...)
 	}
@@ -699,7 +699,7 @@ func exportResidenceRecords(personID string, person *Person, expCtx *ExportConte
 		}
 
 		if placeID != "" {
-			placRecords := exportPlaceSubrecords(placeID, expCtx)
+			placRecords := exportPlaceSubrecords(placeID, DateString(dateStr), expCtx)
 			if placRecords != nil {
 				record.SubRecords = append(record.SubRecords, placRecords...)
 			} else {
