@@ -17,7 +17,7 @@ package main
 import (
 	"strings"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // allowlistEntry mirrors one item of .claude/drift-allowlist.yaml. Only the
