@@ -18,7 +18,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // Metadata holds import metadata extracted from GEDCOM HEAD and SUBM records.

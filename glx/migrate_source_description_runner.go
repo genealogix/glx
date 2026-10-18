@@ -17,7 +17,7 @@ package main
 import (
 	"os"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // migrateSourceDescriptions reports how many Source entities in the archive at

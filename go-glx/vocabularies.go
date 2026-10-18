@@ -20,7 +20,7 @@ import (
 	"strings"
 	"sync"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 
 	vocabularies "github.com/genealogix/glx/specification/5-standard-vocabularies"
 )
