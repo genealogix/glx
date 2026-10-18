@@ -544,29 +544,27 @@ func buildBurialYearIndex(archive *glxlib.GLXFile) map[string]int {
 
 // addCensusYearFromSources indexes census years from citations and sources
 // referenced by assertions, so that persons documented only via citations
-// (not full census events) are not flagged as missing.
+// (not full census events) are not flagged as missing. An assertion about an
+// event counts for the people whose own record the event is (#1211).
 func addCensusYearFromSources(archive *glxlib.GLXFile, personCensusYears map[string]map[int]bool) {
 	for _, assertion := range archive.Assertions {
 		if assertion == nil {
 			continue
 		}
-		personID := assertion.Subject.Person
-		if personID == "" {
-			continue
-		}
-
-		// Check citations → sources
-		for _, citID := range assertion.Citations {
-			cit := archive.Citations[citID]
-			if cit == nil {
-				continue
+		for _, personID := range glxlib.AssertionPersons(assertion, archive) {
+			// Check citations → sources
+			for _, citID := range assertion.Citations {
+				cit := archive.Citations[citID]
+				if cit == nil {
+					continue
+				}
+				indexCensusSource(archive.Sources[cit.SourceID], personID, personCensusYears)
 			}
-			indexCensusSource(archive.Sources[cit.SourceID], personID, personCensusYears)
-		}
 
-		// Check direct sources
-		for _, srcID := range assertion.Sources {
-			indexCensusSource(archive.Sources[srcID], personID, personCensusYears)
+			// Check direct sources
+			for _, srcID := range assertion.Sources {
+				indexCensusSource(archive.Sources[srcID], personID, personCensusYears)
+			}
 		}
 	}
 }
@@ -622,6 +620,9 @@ func isVitalRecordSource(source *glxlib.Source) bool {
 // suggestVitalRecords recommends searching for vital records when a person has
 // approximate birth/death dates but cites no vital record — or the parish or
 // population register that serves as one where no civil certificate exists.
+// A record cited on an assertion about the person's own event (their birth,
+// baptism, burial) counts as theirs; one cited on an event they only witnessed
+// does not (#1211).
 func suggestVitalRecords(archive *glxlib.GLXFile) []AnalysisIssue {
 	// Build set of persons who have a vital record source
 	personsWithVitals := make(map[string]bool)
@@ -630,8 +631,8 @@ func suggestVitalRecords(archive *glxlib.GLXFile) []AnalysisIssue {
 		if assertion == nil {
 			continue
 		}
-		personID := assertion.Subject.Person
-		if personID == "" {
+		persons := glxlib.AssertionPersons(assertion, archive)
+		if len(persons) == 0 {
 			continue
 		}
 
@@ -660,7 +661,9 @@ func suggestVitalRecords(archive *glxlib.GLXFile) []AnalysisIssue {
 		}
 
 		if hasVitalSource {
-			personsWithVitals[personID] = true
+			for _, personID := range persons {
+				personsWithVitals[personID] = true
+			}
 		}
 	}
 

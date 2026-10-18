@@ -41,17 +41,17 @@ Direct dependencies
     Copyright 2013-2023 The Cobra Authors
     https://github.com/spf13/cobra
 
-  golang.org/x/text
-    License: BSD-3-Clause
-    Copyright 2009 The Go Authors
-    https://github.com/golang/text
-
-  gopkg.in/yaml.v3
+  go.yaml.in/yaml/v3
     License: MIT AND Apache-2.0
     Copyright (c) 2006-2010 Kirill Simonov
     Copyright (c) 2006-2011 Kirill Simonov
     Copyright (c) 2011-2019 Canonical Ltd
-    https://github.com/go-yaml/yaml/tree/v3
+    https://github.com/yaml/go-yaml/tree/v3
+
+  golang.org/x/text
+    License: BSD-3-Clause
+    Copyright 2009 The Go Authors
+    https://github.com/golang/text
 
 Transitive dependencies
 -----------------------
@@ -127,11 +127,6 @@ Transitive dependencies
     Copyright (c) 2017 Kevin Burke
     Copyright (c) 2013-2017 Thomas Pelletier, Eric Anderton
     https://github.com/kevinburke/ssh_config
-
-  github.com/klauspost/cpuid/v2
-    License: MIT
-    Copyright (c) 2015 Klaus Post
-    https://github.com/klauspost/cpuid
 
   github.com/pjbgf/sha1cd
     License: Apache-2.0
