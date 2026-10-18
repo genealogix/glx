@@ -17,6 +17,7 @@ package glx
 import (
 	"fmt"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -31,7 +32,8 @@ type FilenameAllocator struct {
 	used       map[string]string // normalized key -> first reserved spelling
 	nextSuffix map[string]int    // normalized basename -> next suffix worth trying
 	claimed    map[string]bool   // on-disk spellings already used by this import
-	seedMax    map[string]int    // highest on-disk numbered candidate per basename
+	seeded     map[string][]int  // numbered on-disk candidates, grouped by basename
+	seededSort map[string]bool   // whether a basename's seeded suffixes are sorted
 }
 
 // NewFilenameAllocator creates an allocator seeded with existing basenames.
@@ -40,11 +42,11 @@ func NewFilenameAllocator(existing ...string) *FilenameAllocator {
 		used:       make(map[string]string, len(existing)),
 		nextSuffix: make(map[string]int),
 		claimed:    make(map[string]bool),
-		seedMax:    make(map[string]int),
+		seeded:     make(map[string][]int),
+		seededSort: make(map[string]bool),
 	}
 	for _, name := range existing {
 		a.Reserve(name)
-		a.recordSeed(name)
 	}
 
 	return a
@@ -67,8 +69,12 @@ func (a *FilenameAllocator) Existing(name string) (string, bool) {
 // Reserve claims name if no equivalent spelling has been reserved.
 func (a *FilenameAllocator) Reserve(name string) bool {
 	key := FilenameCollisionKey(name)
+	if !a.reserveKey(name, key) {
+		return false
+	}
+	a.recordSeed(name)
 
-	return a.reserveKey(name, key)
+	return true
 }
 
 func (a *FilenameAllocator) reserveKey(name, key string) bool {
@@ -134,15 +140,18 @@ func (a *FilenameAllocator) AllocateMatching(basename string, match func(string)
 			return actual, true, nil
 		}
 		n++
-		if n > a.seedMax[baseKey] {
-			n = max(n, a.nextSuffix[baseKey])
+		if n < a.nextSuffix[baseKey] {
+			seed := a.nextSeededSuffix(baseKey, n)
+			if seed != 0 && seed < a.nextSuffix[baseKey] {
+				n = seed
+			} else {
+				n = a.nextSuffix[baseKey]
+			}
 		}
 	}
 }
 
 func (a *FilenameAllocator) recordSeed(name string) {
-	key := FilenameCollisionKey(name)
-	a.seedMax[key] = max(a.seedMax[key], 1)
 	ext := filepath.Ext(name)
 	stem := strings.TrimSuffix(name, ext)
 	base, suffix, found := strings.CutLast(stem, "-")
@@ -153,8 +162,23 @@ func (a *FilenameAllocator) recordSeed(name string) {
 	if err != nil || n < 2 {
 		return
 	}
-	key = FilenameCollisionKey(base + ext)
-	a.seedMax[key] = max(a.seedMax[key], n)
+	key := FilenameCollisionKey(base + ext)
+	a.seeded[key] = append(a.seeded[key], n)
+	a.seededSort[key] = false
+}
+
+func (a *FilenameAllocator) nextSeededSuffix(key string, atLeast int) int {
+	seeds := a.seeded[key]
+	if !a.seededSort[key] {
+		sort.Ints(seeds)
+		a.seededSort[key] = true
+	}
+	i := sort.SearchInts(seeds, atLeast)
+	if i < len(seeds) {
+		return seeds[i]
+	}
+
+	return 0
 }
 
 // portableFilename avoids Win32's trailing-dot/space aliases and reserved

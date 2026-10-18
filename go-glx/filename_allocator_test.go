@@ -15,6 +15,7 @@
 package glx
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -78,6 +79,46 @@ func TestFilenameAllocator_AllocateMatchingCanReuseNumberedCandidate(t *testing.
 	require.NoError(t, err)
 	assert.False(t, reused)
 	assert.Equal(t, "photo-3.jpg", actual)
+}
+
+func TestFilenameAllocator_AllocateMatchingSkipsGeneratedPrefixWithSparseHighSeed(t *testing.T) {
+	a := NewFilenameAllocator("photo.jpg", "photo-1000000000.jpg")
+	matchCalls := 0
+	for n := 2; n < 1002; n++ {
+		actual, reused, err := a.AllocateMatching("photo.jpg", func(string) (string, error) {
+			matchCalls++
+
+			return "", nil
+		})
+		require.NoError(t, err)
+		assert.False(t, reused)
+		assert.Equal(t, fmt.Sprintf("photo-%d.jpg", n), actual)
+	}
+	assert.LessOrEqual(t, matchCalls, 1000, "generated candidates should not be rescanned")
+}
+
+func TestFilenameAllocator_AllocateMatchingStillChecksSeedWithinGeneratedPrefix(t *testing.T) {
+	a := NewFilenameAllocator("photo.jpg", "photo-3.jpg")
+	noMatch := func(string) (string, error) { return "", nil }
+	first, reused, err := a.AllocateMatching("photo.jpg", noMatch)
+	require.NoError(t, err)
+	assert.False(t, reused)
+	assert.Equal(t, "photo-2.jpg", first)
+	second, reused, err := a.AllocateMatching("photo.jpg", noMatch)
+	require.NoError(t, err)
+	assert.False(t, reused)
+	assert.Equal(t, "photo-4.jpg", second)
+
+	third, reused, err := a.AllocateMatching("photo.jpg", func(candidate string) (string, error) {
+		if candidate == "photo-3.jpg" {
+			return candidate, nil
+		}
+
+		return "", nil
+	})
+	require.NoError(t, err)
+	assert.True(t, reused)
+	assert.Equal(t, "photo-3.jpg", third)
 }
 
 func BenchmarkFilenameAllocator_RepeatedBasename(b *testing.B) {

@@ -366,6 +366,48 @@ func TestExecuteMediaCopies_CopiesWhenAnyReferenceSurvives(t *testing.T) {
 	assert.Equal(t, "SHARED", string(got))
 }
 
+func TestExecuteMediaCopies_DestinationAppearsAfterPlanning(t *testing.T) {
+	destDir := t.TempDir()
+	srcDir := t.TempDir()
+	srcPath := filepath.Join(srcDir, "photo.jpg")
+	require.NoError(t, os.WriteFile(srcPath, []byte("source bytes"), filePermissions))
+	mediaDir := filepath.Join(destDir, glxlib.MediaFilesDir)
+	require.NoError(t, os.MkdirAll(mediaDir, dirPermissions))
+	destPath := filepath.Join(mediaDir, "photo.jpg")
+	require.NoError(t, os.WriteFile(destPath, []byte("another writer's bytes"), filePermissions))
+	entity := &glxlib.Media{URI: glxlib.MediaFilesDir + "/photo.jpg"}
+	plan := []plannedMediaCopy{{
+		SrcPath: srcPath, SrcRoot: srcDir, TargetName: "photo.jpg",
+		SrcMedia: map[string]*glxlib.Media{"photo": entity},
+	}}
+	merged := &glxlib.GLXFile{Media: map[string]*glxlib.Media{"photo": entity}}
+
+	copied, skipped, err := executeMediaCopies(plan, destDir, merged)
+	require.ErrorIs(t, err, os.ErrExist)
+	assert.Zero(t, copied)
+	assert.Zero(t, skipped)
+	actual, readErr := os.ReadFile(destPath)
+	require.NoError(t, readErr)
+	assert.Equal(t, []byte("another writer's bytes"), actual)
+}
+
+func TestExecuteMediaCopies_SourceDisappearsAfterPlanning(t *testing.T) {
+	destDir := t.TempDir()
+	srcDir := t.TempDir()
+	entity := &glxlib.Media{URI: glxlib.MediaFilesDir + "/photo.jpg"}
+	plan := []plannedMediaCopy{{
+		SrcPath: filepath.Join(srcDir, "photo.jpg"), SrcRoot: srcDir, TargetName: "photo.jpg",
+		SrcMedia: map[string]*glxlib.Media{"photo": entity},
+	}}
+	merged := &glxlib.GLXFile{Media: map[string]*glxlib.Media{"photo": entity}}
+
+	copied, skipped, err := executeMediaCopies(plan, destDir, merged)
+	require.ErrorIs(t, err, os.ErrNotExist)
+	assert.Zero(t, copied)
+	assert.Zero(t, skipped)
+	require.NoFileExists(t, filepath.Join(destDir, glxlib.MediaFilesDir, "photo.jpg"))
+}
+
 func TestExecuteMediaCopies_SkipsWhenSameIDButDestEntityKept(t *testing.T) {
 	// Conflict scenario: src and dest both define media-shared. Merge keeps
 	// dest's. merged.Media[media-shared] is dest's pointer, not src's — so

@@ -55,3 +55,29 @@ func TestPlainImport_MediaCommitFailurePreservesExistingArchive(t *testing.T) {
 		})
 	}
 }
+
+func TestSingleFileImport_ArchivePublicationFailureRollsBackMedia(t *testing.T) {
+	for _, input := range []string{"GEDCOM", "GEDZIP"} {
+		t.Run(input, func(t *testing.T) {
+			work := t.TempDir()
+			output := filepath.Join(work, "archive.glx")
+			require.NoError(t, os.Mkdir(output, dirPermissions))
+			sourceDir := t.TempDir()
+			require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "photo.jpg"), []byte("new media"), filePermissions))
+			media := []glxlib.MediaFileSource{{
+				SourceType: glxlib.MediaSourceFile, RelativePath: "photo.jpg",
+				MemberPath: "photo.jpg", TargetFilename: "photo.jpg",
+			}}
+			glx := &glxlib.GLXFile{}
+			var err error
+			if input == "GEDCOM" {
+				err = importToSingleFile(glx, output, false, false, 0, media, sourceDir, io.Discard)
+			} else {
+				err = importGEDZIPToSingleFile(glx, output, false, false, 0, media, os.DirFS(sourceDir), io.Discard)
+			}
+			require.Error(t, err)
+			require.DirExists(t, output)
+			require.NoFileExists(t, filepath.Join(work, glxlib.MediaFilesDir, "photo.jpg"))
+		})
+	}
+}

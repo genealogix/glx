@@ -64,6 +64,7 @@ func allocateImportMediaDestinations(glx *glxlib.GLXFile, files []glxlib.MediaFi
 	sort.Strings(names)
 	allocator := glxlib.NewFilenameAllocator(names...)
 	claimed := make(map[string]bool, len(files))
+	destinationHashes := make(map[string]mediaHashCache, len(existing))
 	activeURI := make(map[string]string, len(glx.Media))
 	for id, media := range glx.Media {
 		if media != nil {
@@ -80,7 +81,7 @@ func allocateImportMediaDestinations(glx *glxlib.GLXFile, files []glxlib.MediaFi
 		matcher := &importMediaMatcher{
 			source: mf, sourceDir: sourceDir, bundle: bundle,
 			archiveDir: archiveDir, filesDir: filesDir,
-			byKey: byKey, claimed: claimed,
+			byKey: byKey, claimed: claimed, destinationHashes: destinationHashes,
 		}
 		newName, reused, err := allocator.AllocateMatching(requested, matcher.match)
 		if err != nil {
@@ -98,16 +99,22 @@ func allocateImportMediaDestinations(glx *glxlib.GLXFile, files []glxlib.MediaFi
 }
 
 type importMediaMatcher struct {
-	source     *glxlib.MediaFileSource
-	sourceDir  string
-	bundle     fs.FS
-	archiveDir string
-	filesDir   string
-	byKey      map[string][]string
-	claimed    map[string]bool
-	checked    bool
-	haveSource bool
-	sourceHash [32]byte
+	source            *glxlib.MediaFileSource
+	sourceDir         string
+	bundle            fs.FS
+	archiveDir        string
+	filesDir          string
+	byKey             map[string][]string
+	claimed           map[string]bool
+	destinationHashes map[string]mediaHashCache
+	checked           bool
+	haveSource        bool
+	sourceHash        [32]byte
+}
+
+type mediaHashCache struct {
+	info os.FileInfo
+	hash [32]byte
 }
 
 func (m *importMediaMatcher) match(candidate string) (string, error) {
@@ -149,9 +156,25 @@ func (m *importMediaMatcher) matchesFile(name string) (bool, error) {
 	if !info.Mode().IsRegular() {
 		return false, nil
 	}
+	if cached, ok := m.destinationHashes[name]; ok && os.SameFile(info, cached.info) &&
+		info.Size() == cached.info.Size() && info.ModTime().Equal(cached.info.ModTime()) &&
+		cached.hash != m.sourceHash {
+		return false, nil
+	}
 	f, err := openWithin(m.archiveDir, fullPath)
 	if err != nil {
 		return false, fmt.Errorf("opening media file %s: %w", name, err)
+	}
+	openedInfo, statErr := f.Stat()
+	if statErr != nil {
+		_ = f.Close()
+
+		return false, fmt.Errorf("inspecting opened media file %s: %w", name, statErr)
+	}
+	if !openedInfo.Mode().IsRegular() || !os.SameFile(info, openedInfo) {
+		_ = f.Close()
+
+		return false, fmt.Errorf("media file %s changed while opening: %w", name, os.ErrInvalid)
 	}
 	hash, hashErr := hashReader(f)
 	closeErr := f.Close()
@@ -161,6 +184,7 @@ func (m *importMediaMatcher) matchesFile(name string) (bool, error) {
 	if closeErr != nil {
 		return false, closeErr
 	}
+	m.destinationHashes[name] = mediaHashCache{info: openedInfo, hash: hash}
 
 	return hash == m.sourceHash, nil
 }

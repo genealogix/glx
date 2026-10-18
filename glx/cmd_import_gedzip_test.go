@@ -435,6 +435,32 @@ func TestImportGEDZIP_FailedMediaDoesNotOverwriteExistingArchive(t *testing.T) {
 	require.Equal(t, originalContent, content, "existing archive must not be modified if media copy fails")
 }
 
+func TestImportGEDZIP_ExistingMediaDoesNotBypassDecompressionLimit(t *testing.T) {
+	orig := maxGEDZIPEntryBytes
+	maxGEDZIPEntryBytes = 256
+	t.Cleanup(func() { maxGEDZIPEntryBytes = orig })
+
+	tmpDir := t.TempDir()
+	outPath := filepath.Join(tmpDir, "archive.glx")
+	oldArchive := []byte("old archive")
+	require.NoError(t, os.WriteFile(outPath, oldArchive, filePermissions))
+	mediaDir := filepath.Join(tmpDir, glxlib.MediaFilesDir)
+	require.NoError(t, os.MkdirAll(mediaDir, dirPermissions))
+	oversized := bytes.Repeat([]byte("A"), 512)
+	require.NoError(t, os.WriteFile(filepath.Join(mediaDir, "photo.jpg"), oversized, filePermissions))
+	gdz := buildGEDZIP(t, map[string][]byte{
+		"gedcom.ged":      []byte(gedcom7WithMedia),
+		"media/photo.jpg": oversized,
+	})
+
+	err := importGEDCOM(gdz, outPath, FormatSingle, true, false, defaultShowFirstErrors)
+	require.ErrorIs(t, err, ErrGEDZIPEntryTooLarge)
+	archive, readErr := os.ReadFile(outPath)
+	require.NoError(t, readErr)
+	require.Equal(t, oldArchive, archive)
+	require.NoFileExists(t, filepath.Join(mediaDir, "photo-2.jpg"))
+}
+
 func TestImportGEDZIP_VerboseEmitsExtractionMessage(t *testing.T) {
 	gdz := buildGEDZIP(t, map[string][]byte{
 		"gedcom.ged": []byte(minimalGEDCOM7),
@@ -744,10 +770,10 @@ func TestCommitStagedMedia_RollsBackPartialCommit(t *testing.T) {
 	require.NoError(t, os.WriteFile(archivePath, []byte("old archive"), filePermissions))
 	failed := os.ErrPermission
 	count := 0
-	err := commitStagedMediaUsing(stageDir, targetDir, func(root *os.Root, src, dst string) error {
+	_, err := commitStagedMediaUsing(stageDir, targetDir, func(root *os.Root, src, dst string) (os.FileInfo, error) {
 		count++
 		if count == 2 {
-			return failed
+			return nil, failed
 		}
 
 		return commitStagedFile(root, src, dst)
@@ -760,14 +786,13 @@ func TestCommitStagedMedia_RollsBackPartialCommit(t *testing.T) {
 	require.Equal(t, []byte("old archive"), actual)
 }
 
-func TestSnapshotCommittedMedia_RollsBackOnlyUnchangedFiles(t *testing.T) {
+func TestCommitStagedMedia_RollsBackOnlyUnchangedFiles(t *testing.T) {
 	targetDir := filepath.Join(t.TempDir(), "archive")
 	stageDir := stageMediaInside(t, targetDir, map[string]string{
 		"remove.jpg":  "new bytes",
 		"replace.jpg": "new bytes",
 	})
-	require.NoError(t, commitStagedMedia(stageDir, targetDir))
-	rollback, err := snapshotCommittedMedia(stageDir, targetDir)
+	rollback, err := commitStagedMediaWithRollback(stageDir, targetDir)
 	require.NoError(t, err)
 
 	mediaDir := filepath.Join(targetDir, glxlib.MediaFilesDir)
@@ -783,35 +808,43 @@ func TestSnapshotCommittedMedia_RollsBackOnlyUnchangedFiles(t *testing.T) {
 	require.Equal(t, []byte("another writer's bytes"), actual)
 }
 
-func TestSnapshotCommittedMedia_RejectsMissingOrNonRegularFile(t *testing.T) {
-	for _, kind := range []string{"missing", "directory"} {
-		t.Run(kind, func(t *testing.T) {
-			targetDir := filepath.Join(t.TempDir(), "archive")
-			stageDir := stageMediaInside(t, targetDir, map[string]string{"photo.jpg": "staged bytes"})
-			if kind == "directory" {
-				require.NoError(t, os.MkdirAll(filepath.Join(targetDir, glxlib.MediaFilesDir, "photo.jpg"), dirPermissions))
-			}
-
-			rollback, err := snapshotCommittedMedia(stageDir, targetDir)
-			require.Nil(t, rollback)
-			if kind == "missing" {
-				require.ErrorIs(t, err, os.ErrNotExist)
-			} else {
-				require.ErrorIs(t, err, os.ErrInvalid)
-			}
-		})
-	}
-}
-
-func TestSnapshotCommittedMedia_NoStagedMedia(t *testing.T) {
+func TestCommitStagedMedia_NoStagedMedia(t *testing.T) {
 	targetDir := t.TempDir()
 	stageDir := filepath.Join(targetDir, ".glx-stage-empty")
 	require.NoError(t, os.Mkdir(stageDir, dirPermissions))
 
-	rollback, err := snapshotCommittedMedia(stageDir, targetDir)
+	rollback, err := commitStagedMediaWithRollback(stageDir, targetDir)
 	require.NoError(t, err)
 	require.NotNil(t, rollback)
 	rollback()
+}
+
+func TestCommitStagedMedia_RollbackNeverDeletesReplacementBeforeTracking(t *testing.T) {
+	targetDir := filepath.Join(t.TempDir(), "archive")
+	stageDir := stageMediaInside(t, targetDir, map[string]string{"a.jpg": "first", "b.jpg": "second"})
+	mediaDir := filepath.Join(targetDir, glxlib.MediaFilesDir)
+	require.NoError(t, os.MkdirAll(mediaDir, dirPermissions))
+	replacement := filepath.Join(mediaDir, "replacement.tmp")
+	require.NoError(t, os.WriteFile(replacement, []byte("another writer's bytes"), filePermissions))
+	count := 0
+	_, err := commitStagedMediaUsing(stageDir, targetDir, func(root *os.Root, src, dst string) (os.FileInfo, error) {
+		count++
+		if count == 2 {
+			return nil, os.ErrPermission
+		}
+		createdInfo, publishErr := commitStagedFile(root, src, dst)
+		if publishErr != nil {
+			return nil, publishErr
+		}
+		require.NoError(t, root.Remove(dst))
+		require.NoError(t, root.Link("media/files/replacement.tmp", dst))
+
+		return createdInfo, nil
+	})
+	require.ErrorIs(t, err, os.ErrPermission)
+	actual, readErr := os.ReadFile(filepath.Join(mediaDir, "a.jpg"))
+	require.NoError(t, readErr)
+	require.Equal(t, []byte("another writer's bytes"), actual)
 }
 
 func TestCommitStagedMedia_RejectsNonRegularStagedEntry(t *testing.T) {

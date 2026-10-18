@@ -15,6 +15,7 @@
 package main
 
 import (
+	"crypto/sha256"
 	"os"
 	"path/filepath"
 	"testing"
@@ -148,4 +149,77 @@ func TestAllocateImportMediaDestinations_NumberedWithoutNestedSuffix(t *testing.
 	require.Equal(t, "photo-2.jpg", files[0].TargetFilename)
 	require.Equal(t, "photo-3.jpg", files[1].TargetFilename)
 	require.Equal(t, "media/files/photo-3.jpg", glx.Media["b"].URI)
+}
+
+func TestImportMediaMatcher_RechecksChangedDestination(t *testing.T) {
+	archiveDir := t.TempDir()
+	filesDir := filepath.Join(archiveDir, glxlib.MediaFilesDir)
+	require.NoError(t, os.MkdirAll(filesDir, dirPermissions))
+	path := filepath.Join(filesDir, "photo.jpg")
+	require.NoError(t, os.WriteFile(path, []byte("older"), filePermissions))
+	m := &importMediaMatcher{
+		archiveDir:        archiveDir,
+		filesDir:          filesDir,
+		destinationHashes: make(map[string]mediaHashCache),
+		sourceHash:        sha256.Sum256([]byte("fresh")),
+	}
+	same, err := m.matchesFile("photo.jpg")
+	require.NoError(t, err)
+	require.False(t, same)
+	require.Len(t, m.destinationHashes, 1)
+
+	replacement := filepath.Join(filesDir, "replacement.tmp")
+	require.NoError(t, os.WriteFile(replacement, []byte("fresh"), filePermissions))
+	require.NoError(t, os.Remove(path))
+	require.NoError(t, os.Rename(replacement, path))
+	same, err = m.matchesFile("photo.jpg")
+	require.NoError(t, err)
+	require.True(t, same)
+
+	info := m.destinationHashes["photo.jpg"].info
+	require.NoError(t, os.WriteFile(path, []byte("other"), filePermissions))
+	require.NoError(t, os.Chtimes(path, info.ModTime(), info.ModTime()))
+	same, err = m.matchesFile("photo.jpg")
+	require.NoError(t, err)
+	require.False(t, same, "a cached match must be verified before reusing the file")
+}
+
+func TestAllocateImportMediaDestinations_ReusesIdenticalBlob(t *testing.T) {
+	archiveDir := t.TempDir()
+	filesDir := filepath.Join(archiveDir, glxlib.MediaFilesDir)
+	require.NoError(t, os.MkdirAll(filesDir, dirPermissions))
+	require.NoError(t, os.WriteFile(filepath.Join(filesDir, "blob-media-1.bin"), []byte{0, 0, 0}, filePermissions))
+	media := &glxlib.Media{URI: glxlib.MediaFilesDir + "/blob-media-1.bin"}
+	glx := &glxlib.GLXFile{Media: map[string]*glxlib.Media{"blob": media}}
+	files := []glxlib.MediaFileSource{{
+		MediaID: "blob", SourceType: glxlib.MediaSourceBlob,
+		BlobData: "....", TargetFilename: "blob-media-1.bin",
+	}}
+
+	require.NoError(t, allocateImportMediaDestinations(glx, files, archiveDir, "", nil))
+	require.True(t, files[0].ReuseExisting)
+	require.Equal(t, "blob-media-1.bin", files[0].TargetFilename)
+	require.Equal(t, glxlib.MediaFilesDir+"/blob-media-1.bin", media.URI)
+}
+
+func TestAllocateImportMediaDestinations_DoesNotReuseUnreadableBundleMember(t *testing.T) {
+	for _, member := range []string{"", "missing.jpg", "."} {
+		t.Run("member="+member, func(t *testing.T) {
+			archiveDir := t.TempDir()
+			filesDir := filepath.Join(archiveDir, glxlib.MediaFilesDir)
+			require.NoError(t, os.MkdirAll(filesDir, dirPermissions))
+			require.NoError(t, os.WriteFile(filepath.Join(filesDir, "photo.jpg"), []byte("old"), filePermissions))
+			media := &glxlib.Media{URI: glxlib.MediaFilesDir + "/photo.jpg"}
+			glx := &glxlib.GLXFile{Media: map[string]*glxlib.Media{"file": media}}
+			files := []glxlib.MediaFileSource{{
+				MediaID: "file", SourceType: glxlib.MediaSourceFile,
+				MemberPath: member, TargetFilename: "photo.jpg",
+			}}
+
+			require.NoError(t, allocateImportMediaDestinations(glx, files, archiveDir, "", os.DirFS(t.TempDir())))
+			require.False(t, files[0].ReuseExisting)
+			require.Equal(t, "photo-2.jpg", files[0].TargetFilename)
+			require.Equal(t, glxlib.MediaFilesDir+"/photo-2.jpg", media.URI)
+		})
+	}
 }

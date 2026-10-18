@@ -123,12 +123,9 @@ func importToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, verbos
 	if err := writeSingleFileArchive(tempPath, glx, validate); err != nil {
 		return formatValidationError(err, showFirstErrors)
 	}
-	if err := commitStagedMedia(stageDir, archiveDir); err != nil {
-		return fmt.Errorf("failed to commit media files: %w", err)
-	}
-	rollbackMedia, err := snapshotCommittedMedia(stageDir, archiveDir)
+	rollbackMedia, err := commitStagedMediaWithRollback(stageDir, archiveDir)
 	if err != nil {
-		return fmt.Errorf("tracking committed media: %w", err)
+		return fmt.Errorf("failed to commit media files: %w", err)
 	}
 	if err := robustRename(tempPath, outputPath); err != nil {
 		rollbackMedia()
