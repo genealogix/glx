@@ -27,7 +27,7 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 
 	schema "github.com/genealogix/glx/specification/schema/v1"
 )
@@ -343,7 +343,7 @@ func readMultiFileArchive(dir string) (map[string][]byte, error) {
 }
 
 // parseYAMLAsMap parses YAML bytes into a normalized map[string]any. The
-// normalization step converts map[any]any (which gopkg.in/yaml.v3 may produce
+// normalization step converts map[any]any (which the YAML decoder may produce
 // for nested maps with non-string keys) into map[string]any so that the JSON
 // schema validator can ingest the value and so that map equality works as
 // expected with assert.Equal.
