@@ -667,7 +667,7 @@ func computeMovements(entries []migrationEntry) []migrationMovement {
 				ToDate:     entry.Date,
 			})
 		}
-	})
+	}, nil)
 
 	return movements
 }
@@ -679,8 +679,9 @@ func computeMovements(entries []migrationEntry) []migrationMovement {
 //
 // Within a stop the most specific place seen is the one compared against, so
 // "Wisconsin" after "Millbrook, Wisconsin" is no move, nor is a return to
-// Millbrook after it.
-func walkMigrationStops(entries []migrationEntry, onStop func(prev, entry *migrationEntry, from, to string)) {
+// Millbrook after it. onRefine, when provided, receives an observation that
+// makes the current stop more specific without adding a movement.
+func walkMigrationStops(entries []migrationEntry, onStop func(prev, entry *migrationEntry, from, to string), onRefine func(entry *migrationEntry)) {
 	var prev *migrationEntry
 	var current []string
 
@@ -699,6 +700,9 @@ func walkMigrationStops(entries []migrationEntry, onStop func(prev, entry *migra
 			current = path
 		case len(path) > len(current):
 			current = path
+			if onRefine != nil {
+				onRefine(entry)
+			}
 		}
 		prev = entry
 	}
@@ -747,11 +751,14 @@ func matchMigrationPattern(archive *glxlib.GLXFile, terms []string) migrationPat
 
 // migrationStops collapses a person's dated observations into their place
 // sequence: one stop per movement computeMovements would report, keeping the
-// first observation of each run.
+// first observation at the most specific place in each run. Its date is the
+// first observation of that place, rather than an earlier enclosing region.
 func migrationStops(entries []migrationEntry) []migrationStop {
 	var stops []migrationStop
 	walkMigrationStops(entries, func(_, entry *migrationEntry, _, _ string) {
 		stops = append(stops, migrationStop{Region: entry.Region, Place: entry.Place, Date: entry.Date})
+	}, func(entry *migrationEntry) {
+		stops[len(stops)-1] = migrationStop{Region: entry.Region, Place: entry.Place, Date: entry.Date}
 	})
 
 	return stops

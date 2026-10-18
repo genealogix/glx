@@ -256,3 +256,31 @@ func TestSummary_LifeHistoryDeathIsThePersonsOwn(t *testing.T) {
 	date, _ = findMarriageEvent("p-jg", "p-father", archive)
 	assert.Empty(t, date, "a father named on the marriage is not of the couple")
 }
+
+func TestMigrations_PatternKeepsMoreSpecificStop(t *testing.T) {
+	archive := parishRegisterArchive()
+	archive.Events["ev-birth"].PlaceID = "pl-amt"
+	archive.Events["ev-bapt-other"].PlaceID = "pl-nk"
+	report := matchMigrationPattern(archive, []string{"Niederkleen", "Pohl-Göns"})
+	require.Len(t, report.Matches, 1)
+	require.Len(t, report.Matches[0].Stops, 2)
+	assert.Equal(t, "1642-07-03", report.Matches[0].Stops[0].Date)
+	assert.Contains(t, report.Matches[0].Stops[0].Place, "Niederkleen")
+}
+
+func TestSummary_CustomUnionSpousesKeepCoupleRoles(t *testing.T) {
+	for _, eventType := range []string{"civil_union", "common_law_marriage"} {
+		t.Run(eventType, func(t *testing.T) {
+			archive := parishRegisterArchive()
+			delete(archive.Relationships, "rel-marr")
+			event := archive.Events["ev-marr"]
+			event.Type = eventType
+			event.Participants[0].Role = "spouse"
+			event.Participants[1].Role = "spouse"
+			spouses := findSpouses("p-jg", archive)
+			require.Len(t, spouses, 1)
+			assert.Equal(t, "p-bride", spouses[0].PersonID)
+			assert.Empty(t, findSpouses("p-father", archive))
+		})
+	}
+}
