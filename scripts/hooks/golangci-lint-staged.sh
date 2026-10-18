@@ -17,7 +17,7 @@
 # Run from the repository root: bash scripts/hooks/golangci-lint-staged.sh
 set -euo pipefail
 
-want=$(tr -d '[:space:]' < .golangci-lint-version)
+want=$(git show :.golangci-lint-version | tr -d '[:space:]')
 have=$(golangci-lint version --short 2>/dev/null || true)
 if [ "v${have#v}" != "$want" ]; then
   echo "golangci-lint $want is required (pinned in .golangci-lint-version); found ${have:-none}." >&2
@@ -34,7 +34,7 @@ fi
 
 diff_opts=(--cached --no-color --no-ext-diff --src-prefix=a/ --dst-prefix=b/)
 if [ -n "$base" ]; then
-  changed=$(git diff "${diff_opts[@]}" --name-only --diff-filter=ACMR "$base" -- '*.go')
+  changed=$(git diff "${diff_opts[@]}" --name-only --no-renames --diff-filter=ACDM "$base" -- '*.go')
 else
   changed=$(git ls-files -- '*.go')
 fi
