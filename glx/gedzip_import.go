@@ -205,6 +205,7 @@ func importGEDZIPToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, 
 	if err := robustRename(tempPath, outputPath); err != nil {
 		rollbackNormalization()
 		rollbackMedia()
+
 		return fmt.Errorf("writing archive to %s: %w", outputPath, err)
 	}
 
@@ -277,6 +278,7 @@ func importGEDZIPToMultiFile(glx *glxlib.GLXFile, outputPath string, validate, v
 	if err := writeFilesToDir(outputPath, files); err != nil {
 		rollbackNormalization()
 		rollbackMedia()
+
 		return err
 	}
 

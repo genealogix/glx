@@ -196,6 +196,7 @@ func importToMultiFile(glx *glxlib.GLXFile, outputPath string, validate, verbose
 	if err := writeFilesToDir(outputPath, files); err != nil {
 		rollbackNormalization()
 		rollbackMedia()
+
 		return err
 	}
 
