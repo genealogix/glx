@@ -217,6 +217,11 @@ func importGEDZIPToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, 
 
 // importGEDZIPToMultiFile writes the imported GLX data to a multi-file directory and copies media
 func importGEDZIPToMultiFile(glx *glxlib.GLXFile, outputPath string, validate, verbose bool, showFirstErrors int, mediaFiles []glxlib.MediaFileSource, bundle fs.FS, out io.Writer) error {
+	return importGEDZIPToMultiFileUsing(glx, outputPath, validate, verbose, showFirstErrors, mediaFiles, bundle, out, writeFilesToDir)
+}
+
+// importGEDZIPToMultiFileUsing permits deterministic metadata-write failure tests.
+func importGEDZIPToMultiFileUsing(glx *glxlib.GLXFile, outputPath string, validate, verbose bool, showFirstErrors int, mediaFiles []glxlib.MediaFileSource, bundle fs.FS, out io.Writer, writeFiles func(string, map[string][]byte) error) error {
 	if verbose {
 		_, _ = fmt.Fprintf(out, "Writing multi-file archive: %s\n", outputPath)
 	}
@@ -268,17 +273,16 @@ func importGEDZIPToMultiFile(glx *glxlib.GLXFile, outputPath string, validate, v
 
 		return fmt.Errorf("validating reused media: %w", err)
 	}
-	rollbackNormalization, err := normalizeImportMediaDir(outputPath)
+	_, err = normalizeImportMediaDir(outputPath)
 	if err != nil {
 		rollbackMedia()
 
 		return fmt.Errorf("normalizing media directory: %w", err)
 	}
 
-	if err := writeFilesToDir(outputPath, files); err != nil {
-		rollbackNormalization()
-		rollbackMedia()
-
+	if err := writeFiles(outputPath, files); err != nil {
+		// writeFiles can publish some entity files before a later write fails.
+		// Keep the media those files may already reference.
 		return err
 	}
 

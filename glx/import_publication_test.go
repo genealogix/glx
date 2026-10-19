@@ -15,15 +15,78 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
+
+var errTestLaterMetadataWrite = errors.New("later metadata write failed")
+
+func TestMultiFileImport_PartialMetadataWriteKeepsReferencedMedia(t *testing.T) {
+	for _, input := range []string{"GEDCOM", "GEDZIP"} {
+		t.Run(input, func(t *testing.T) {
+			work := t.TempDir()
+			output := filepath.Join(work, "archive")
+			variant := filepath.Join(output, "MEDIA", "files")
+			require.NoError(t, os.MkdirAll(variant, dirPermissions))
+			require.NoError(t, os.WriteFile(filepath.Join(variant, "photo.jpg"), []byte("old"), filePermissions))
+			sourceDir := t.TempDir()
+			require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "new.jpg"), []byte("new"), filePermissions))
+			glx := &glxlib.GLXFile{Media: map[string]*glxlib.Media{
+				"photo": {URI: glxlib.MediaFilesDir + "/photo.jpg"},
+			}}
+			media := []glxlib.MediaFileSource{{
+				MediaID: "photo", SourceType: glxlib.MediaSourceFile, RelativePath: "new.jpg",
+				MemberPath: "new.jpg", RequestedFilename: "photo.jpg", TargetFilename: "photo.jpg",
+			}}
+			bundle := os.DirFS(sourceDir)
+			if input == "GEDCOM" {
+				require.NoError(t, allocateImportMediaDestinations(glx, media, output, sourceDir, nil))
+			} else {
+				require.NoError(t, allocateImportMediaDestinations(glx, media, output, "", bundle))
+			}
+			require.Equal(t, "photo-2.jpg", media[0].TargetFilename)
+
+			// writeFilesToDir writes map entries one at a time. Publish the
+			// Media entity first, then fail as a later metadata entry could.
+			// This makes the partial-write boundary deterministic.
+			var published string
+			writePartial := func(root string, files map[string][]byte) error {
+				for rel, content := range files {
+					if strings.HasPrefix(rel, "media/") && strings.HasSuffix(rel, ".glx") {
+						published = rel
+						if err := writeFilesToDir(root, map[string][]byte{rel: content}); err != nil {
+							return err
+						}
+
+						return errTestLaterMetadataWrite
+					}
+				}
+
+				return fmt.Errorf("serialized archive has no Media entity: %w", os.ErrNotExist)
+			}
+			var err error
+			if input == "GEDCOM" {
+				err = importToMultiFileUsing(glx, output, false, false, 0, media, sourceDir, io.Discard, writePartial)
+			} else {
+				err = importGEDZIPToMultiFileUsing(glx, output, false, false, 0, media, bundle, io.Discard, writePartial)
+			}
+			require.ErrorIs(t, err, errTestLaterMetadataWrite)
+			require.NotEmpty(t, published)
+			require.Contains(t, string(mustReadImportMedia(t, filepath.Join(output, published))), glxlib.MediaFilesDir+"/photo-2.jpg")
+			require.Equal(t, []byte("new"), mustReadImportMedia(t, filepath.Join(output, glxlib.MediaFilesDir, "photo-2.jpg")))
+			require.Equal(t, []byte("old"), mustReadImportMedia(t, filepath.Join(output, glxlib.MediaFilesDir, "photo.jpg")))
+		})
+	}
+}
 
 func TestImport_CaseVariantMediaDirectory(t *testing.T) {
 	for _, variant := range []string{"MEDIA/files", "media/FILES", "MEDIA/FILES"} {
