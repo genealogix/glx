@@ -256,7 +256,7 @@ func mergeArchives(srcPath, destPath string, preview bool, threshold float64) er
 // exclusive-copy collision cannot leave a newly written URI pointing at a
 // different writer's bytes. A failed archive swap removes only our new files.
 func publishMergedMultiFileArchive(destPath string, archive *glxlib.GLXFile, plan []plannedMediaCopy) (copied, skipped int, err error) {
-	currentFiles, err := mergeMediaFilesDir(destPath)
+	currentFiles, err := archiveMediaFilesDir(destPath)
 	if err != nil {
 		return 0, 0, fmt.Errorf("inspecting destination media/files: %w", err)
 	}

@@ -25,6 +25,177 @@ import (
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
+func TestImport_CaseVariantMediaDirectory(t *testing.T) {
+	for _, variant := range []string{"MEDIA/files", "media/FILES", "MEDIA/FILES"} {
+		for _, input := range []string{"GEDCOM", "GEDZIP"} {
+			for _, format := range []string{FormatSingle, FormatMulti} {
+				t.Run(variant+"/"+input+"/"+format, func(t *testing.T) {
+					work := t.TempDir()
+					if !fsCaseSensitive(t, work) {
+						t.Skip("requires a case-sensitive filesystem")
+					}
+					output := filepath.Join(work, "archive")
+					archiveDir := output
+					if format == FormatSingle {
+						archiveDir = work
+					}
+					mediaDir := filepath.Join(archiveDir, variant)
+					require.NoError(t, os.MkdirAll(mediaDir, dirPermissions))
+					require.NoError(t, os.WriteFile(filepath.Join(mediaDir, "photo.jpg"), []byte("same"), filePermissions))
+					sourceDir := t.TempDir()
+					require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "reuse.jpg"), []byte("same"), filePermissions))
+					require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "fresh.jpg"), []byte("different"), filePermissions))
+					glx := &glxlib.GLXFile{Media: map[string]*glxlib.Media{
+						"reuse": {URI: glxlib.MediaFilesDir + "/photo.jpg"},
+						"fresh": {URI: glxlib.MediaFilesDir + "/photo.jpg"},
+					}}
+					media := []glxlib.MediaFileSource{
+						{MediaID: "reuse", SourceType: glxlib.MediaSourceFile, RelativePath: "reuse.jpg", MemberPath: "reuse.jpg", RequestedFilename: "photo.jpg", TargetFilename: "photo.jpg"},
+						{MediaID: "fresh", SourceType: glxlib.MediaSourceFile, RelativePath: "fresh.jpg", MemberPath: "fresh.jpg", RequestedFilename: "photo.jpg", TargetFilename: "photo.jpg"},
+					}
+					bundle := os.DirFS(sourceDir)
+					if input == "GEDCOM" {
+						require.NoError(t, allocateImportMediaDestinations(glx, media, archiveDir, sourceDir, nil))
+					} else {
+						require.NoError(t, allocateImportMediaDestinations(glx, media, archiveDir, "", bundle))
+					}
+					require.True(t, media[0].ReuseExisting)
+					require.Equal(t, "photo.jpg", media[0].TargetFilename)
+					require.Equal(t, "photo-2.jpg", media[1].TargetFilename)
+					var err error
+					switch {
+					case input == "GEDCOM" && format == FormatSingle:
+						err = importToSingleFile(glx, output, false, false, 0, media, sourceDir, io.Discard)
+					case input == "GEDCOM":
+						err = importToMultiFile(glx, output, false, false, 0, media, sourceDir, io.Discard)
+					case format == FormatSingle:
+						err = importGEDZIPToSingleFile(glx, output, false, false, 0, media, bundle, io.Discard)
+					default:
+						err = importGEDZIPToMultiFile(glx, output, false, false, 0, media, bundle, io.Discard)
+					}
+					require.NoError(t, err)
+					canonical := filepath.Join(archiveDir, glxlib.MediaFilesDir)
+					require.Equal(t, []byte("same"), mustReadImportMedia(t, filepath.Join(canonical, "photo.jpg")))
+					require.Equal(t, []byte("different"), mustReadImportMedia(t, filepath.Join(canonical, "photo-2.jpg")))
+					dirs, err := mediaFilesDirsIn(archiveDir)
+					require.NoError(t, err)
+					require.Equal(t, []string{canonical}, dirs)
+					require.Equal(t, glxlib.MediaFilesDir+"/photo.jpg", glx.Media["reuse"].URI)
+					require.Equal(t, glxlib.MediaFilesDir+"/photo-2.jpg", glx.Media["fresh"].URI)
+				})
+			}
+		}
+	}
+}
+
+func TestImport_AmbiguousMediaDirectoriesRejectBeforeWrites(t *testing.T) {
+	for _, input := range []string{"GEDCOM", "GEDZIP"} {
+		for _, format := range []string{FormatSingle, FormatMulti} {
+			t.Run(input+"/"+format, func(t *testing.T) {
+				work := t.TempDir()
+				if !fsCaseSensitive(t, work) {
+					t.Skip("requires a case-sensitive filesystem")
+				}
+				output := filepath.Join(work, "archive")
+				archiveDir := output
+				oldPath := filepath.Join(output, "metadata.glx")
+				if format == FormatSingle {
+					archiveDir = work
+					oldPath = output + ".glx"
+				}
+				for _, variant := range []string{glxlib.MediaFilesDir, "MEDIA/files"} {
+					dir := filepath.Join(archiveDir, variant)
+					require.NoError(t, os.MkdirAll(dir, dirPermissions))
+					require.NoError(t, os.WriteFile(filepath.Join(dir, "photo.jpg"), []byte(variant), filePermissions))
+				}
+				require.NoError(t, os.WriteFile(oldPath, []byte("old archive"), filePermissions))
+				sourceDir := t.TempDir()
+				require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "photo.jpg"), []byte("new"), filePermissions))
+				media := []glxlib.MediaFileSource{{MediaID: "photo", SourceType: glxlib.MediaSourceFile, RelativePath: "photo.jpg", MemberPath: "photo.jpg", TargetFilename: "photo.jpg"}}
+				glx := &glxlib.GLXFile{Media: map[string]*glxlib.Media{"photo": {URI: glxlib.MediaFilesDir + "/photo.jpg"}}}
+				var err error
+				if input == "GEDCOM" {
+					err = allocateImportMediaDestinations(glx, media, archiveDir, sourceDir, nil)
+				} else {
+					err = allocateImportMediaDestinations(glx, media, archiveDir, "", os.DirFS(sourceDir))
+				}
+				require.ErrorIs(t, err, ErrAmbiguousMediaFilesDirs)
+				// The publication helpers also refuse an ambiguous archive when
+				// invoked directly, before staging or touching existing metadata.
+				switch {
+				case input == "GEDCOM" && format == FormatSingle:
+					err = importToSingleFile(glx, output, false, false, 0, media, sourceDir, io.Discard)
+				case input == "GEDCOM":
+					err = importToMultiFile(glx, output, false, false, 0, media, sourceDir, io.Discard)
+				case format == FormatSingle:
+					err = importGEDZIPToSingleFile(glx, output, false, false, 0, media, os.DirFS(sourceDir), io.Discard)
+				default:
+					err = importGEDZIPToMultiFile(glx, output, false, false, 0, media, os.DirFS(sourceDir), io.Discard)
+				}
+				require.ErrorIs(t, err, ErrAmbiguousMediaFilesDirs)
+				for _, variant := range []string{glxlib.MediaFilesDir, "MEDIA/files"} {
+					require.Equal(t, []byte(variant), mustReadImportMedia(t, filepath.Join(archiveDir, variant, "photo.jpg")))
+				}
+				require.Equal(t, []byte("old archive"), mustReadImportMedia(t, oldPath))
+				require.False(t, media[0].ReuseExisting)
+				stages, err := filepath.Glob(filepath.Join(archiveDir, ".glx-stage-*"))
+				require.NoError(t, err)
+				require.Empty(t, stages)
+			})
+		}
+	}
+}
+
+func TestSingleFileImport_CaseVariantPublicationFailureRestoresMedia(t *testing.T) {
+	for _, input := range []string{"GEDCOM", "GEDZIP"} {
+		t.Run(input, func(t *testing.T) {
+			work := t.TempDir()
+			if !fsCaseSensitive(t, work) {
+				t.Skip("requires a case-sensitive filesystem")
+			}
+			output := filepath.Join(work, "archive.glx")
+			require.NoError(t, os.Mkdir(output, dirPermissions))
+			require.NoError(t, os.WriteFile(filepath.Join(output, "marker"), []byte("original"), filePermissions))
+			variant := filepath.Join(work, "MEDIA", "files")
+			require.NoError(t, os.MkdirAll(variant, dirPermissions))
+			require.NoError(t, os.WriteFile(filepath.Join(variant, "photo.jpg"), []byte("same"), filePermissions))
+			sourceDir := t.TempDir()
+			require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "reuse.jpg"), []byte("same"), filePermissions))
+			require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "fresh.jpg"), []byte("different"), filePermissions))
+			glx := &glxlib.GLXFile{Media: map[string]*glxlib.Media{
+				"reuse": {URI: glxlib.MediaFilesDir + "/photo.jpg"},
+				"fresh": {URI: glxlib.MediaFilesDir + "/photo.jpg"},
+			}}
+			media := []glxlib.MediaFileSource{
+				{MediaID: "reuse", SourceType: glxlib.MediaSourceFile, RelativePath: "reuse.jpg", MemberPath: "reuse.jpg", RequestedFilename: "photo.jpg", TargetFilename: "photo.jpg"},
+				{MediaID: "fresh", SourceType: glxlib.MediaSourceFile, RelativePath: "fresh.jpg", MemberPath: "fresh.jpg", RequestedFilename: "photo.jpg", TargetFilename: "photo.jpg"},
+			}
+			bundle := os.DirFS(sourceDir)
+			var err error
+			if input == "GEDCOM" {
+				require.NoError(t, allocateImportMediaDestinations(glx, media, work, sourceDir, nil))
+				err = importToSingleFile(glx, output, false, false, 0, media, sourceDir, io.Discard)
+			} else {
+				require.NoError(t, allocateImportMediaDestinations(glx, media, work, "", bundle))
+				err = importGEDZIPToSingleFile(glx, output, false, false, 0, media, bundle, io.Discard)
+			}
+			require.Error(t, err)
+			require.Equal(t, []byte("original"), mustReadImportMedia(t, filepath.Join(output, "marker")))
+			require.Equal(t, []byte("same"), mustReadImportMedia(t, filepath.Join(variant, "photo.jpg")))
+			require.NoFileExists(t, filepath.Join(variant, "photo-2.jpg"))
+			require.NoDirExists(t, filepath.Join(work, glxlib.MediaFilesDir))
+		})
+	}
+}
+
+func mustReadImportMedia(t *testing.T, path string) []byte {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+
+	return data
+}
+
 func TestPlainImport_MediaCommitFailurePreservesExistingArchive(t *testing.T) {
 	media := []glxlib.MediaFileSource{
 		{SourceType: glxlib.MediaSourceBlob, TargetFilename: "same.bin", BlobData: "...."},

@@ -102,6 +102,9 @@ func importToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, verbos
 	// Ensure .glx extension
 	outputPath = ensureGLXExtension(outputPath)
 	archiveDir := filepath.Dir(outputPath)
+	if _, err := importMediaFilesDir(archiveDir); err != nil {
+		return fmt.Errorf("inspecting media destination: %w", err)
+	}
 	if err := os.MkdirAll(archiveDir, dirPermissions); err != nil {
 		return fmt.Errorf("creating archive directory: %w", err)
 	}
@@ -132,7 +135,14 @@ func importToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, verbos
 
 		return fmt.Errorf("validating reused media: %w", err)
 	}
+	rollbackNormalization, err := normalizeImportMediaDir(archiveDir)
+	if err != nil {
+		rollbackMedia()
+
+		return fmt.Errorf("normalizing media directory: %w", err)
+	}
 	if err := robustRename(tempPath, outputPath); err != nil {
+		rollbackNormalization()
 		rollbackMedia()
 
 		return fmt.Errorf("publishing archive: %w", err)
@@ -148,6 +158,9 @@ func importToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, verbos
 func importToMultiFile(glx *glxlib.GLXFile, outputPath string, validate, verbose bool, showFirstErrors int, mediaFiles []glxlib.MediaFileSource, gedcomDir string, out io.Writer) error {
 	if verbose {
 		_, _ = fmt.Fprintf(out, "Writing multi-file archive: %s\n", outputPath)
+	}
+	if _, err := importMediaFilesDir(outputPath); err != nil {
+		return fmt.Errorf("inspecting media destination: %w", err)
 	}
 
 	files, err := serializeMultiFileArchive(glx, validate)
@@ -174,7 +187,15 @@ func importToMultiFile(glx *glxlib.GLXFile, outputPath string, validate, verbose
 
 		return fmt.Errorf("validating reused media: %w", err)
 	}
+	rollbackNormalization, err := normalizeImportMediaDir(outputPath)
+	if err != nil {
+		rollbackMedia()
+
+		return fmt.Errorf("normalizing media directory: %w", err)
+	}
 	if err := writeFilesToDir(outputPath, files); err != nil {
+		rollbackNormalization()
+		rollbackMedia()
 		return err
 	}
 

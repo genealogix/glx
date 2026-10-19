@@ -55,7 +55,7 @@ type plannedMediaCopy struct {
 // srcPath and destPath must be absolute. A single-file archive (or any
 // archive with no media/files/ directory) produces an empty plan.
 func planSourceMediaCopies(srcPath, destPath string, src *glxlib.GLXFile) ([]plannedMediaCopy, error) {
-	srcFiles, err := mergeMediaFilesDir(srcPath)
+	srcFiles, err := archiveMediaFilesDir(srcPath)
 	if err != nil {
 		return nil, fmt.Errorf("inspecting source media/files: %w", err)
 	}
@@ -81,7 +81,7 @@ func planSourceMediaCopies(srcPath, destPath string, src *glxlib.GLXFile) ([]pla
 
 	mediaByBasename := indexMediaByBasename(src.Media)
 
-	destFiles, err := mergeMediaFilesDir(destPath)
+	destFiles, err := archiveMediaFilesDir(destPath)
 	if err != nil {
 		return nil, fmt.Errorf("inspecting destination media/files: %w", err)
 	}
@@ -179,9 +179,9 @@ func planSourceMediaCopies(srcPath, destPath string, src *glxlib.GLXFile) ([]pla
 	return plan, nil
 }
 
-// mergeMediaFilesDir finds the one real media/files directory, preserving its
-// on-disk spelling. A case-ambiguous archive cannot be safely merged.
-func mergeMediaFilesDir(archivePath string) (string, error) {
+// archiveMediaFilesDir finds the one real media/files directory, preserving its
+// on-disk spelling. A case-ambiguous archive cannot be safely written.
+func archiveMediaFilesDir(archivePath string) (string, error) {
 	dirs, err := mediaFilesDirsIn(archivePath)
 	if err != nil {
 		return "", err

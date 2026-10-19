@@ -148,6 +148,9 @@ func importGEDZIPToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, 
 
 	outputPath = ensureGLXExtension(outputPath)
 	archiveDir := filepath.Dir(outputPath)
+	if _, err := importMediaFilesDir(archiveDir); err != nil {
+		return fmt.Errorf("inspecting media destination: %w", err)
+	}
 
 	stageDir, err := os.MkdirTemp(archiveDir, ".glx-stage-*")
 	if err != nil {
@@ -184,6 +187,12 @@ func importGEDZIPToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, 
 
 		return fmt.Errorf("validating reused media: %w", err)
 	}
+	rollbackNormalization, err := normalizeImportMediaDir(archiveDir)
+	if err != nil {
+		rollbackMedia()
+
+		return fmt.Errorf("normalizing media directory: %w", err)
+	}
 
 	if verbose || copyCount > 0 || blobCount > 0 {
 		streams.Printf("  Media files: %d copied, %d blobs written", copyCount, blobCount)
@@ -194,6 +203,7 @@ func importGEDZIPToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, 
 	}
 
 	if err := robustRename(tempPath, outputPath); err != nil {
+		rollbackNormalization()
 		rollbackMedia()
 		return fmt.Errorf("writing archive to %s: %w", outputPath, err)
 	}
@@ -208,6 +218,9 @@ func importGEDZIPToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, 
 func importGEDZIPToMultiFile(glx *glxlib.GLXFile, outputPath string, validate, verbose bool, showFirstErrors int, mediaFiles []glxlib.MediaFileSource, bundle fs.FS, out io.Writer) error {
 	if verbose {
 		_, _ = fmt.Fprintf(out, "Writing multi-file archive: %s\n", outputPath)
+	}
+	if _, err := importMediaFilesDir(outputPath); err != nil {
+		return fmt.Errorf("inspecting media destination: %w", err)
 	}
 
 	// Serialize and validate up front, before anything touches the filesystem.
@@ -254,8 +267,16 @@ func importGEDZIPToMultiFile(glx *glxlib.GLXFile, outputPath string, validate, v
 
 		return fmt.Errorf("validating reused media: %w", err)
 	}
+	rollbackNormalization, err := normalizeImportMediaDir(outputPath)
+	if err != nil {
+		rollbackMedia()
+
+		return fmt.Errorf("normalizing media directory: %w", err)
+	}
 
 	if err := writeFilesToDir(outputPath, files); err != nil {
+		rollbackNormalization()
+		rollbackMedia()
 		return err
 	}
 
@@ -381,6 +402,15 @@ func commitStagedMediaUsing(stageDir, targetDir string, publish func(*os.Root, s
 	if !ok {
 		return nil, fmt.Errorf("%w: staging directory %s is not inside %s", ErrPathEscapesDir, stageDir, targetDir)
 	}
+	targetFilesDir, err := importMediaFilesDir(targetDir)
+	if err != nil {
+		return nil, err
+	}
+	targetRel, err := filepath.Rel(targetDir, targetFilesDir)
+	if err != nil {
+		return nil, fmt.Errorf("resolving media destination: %w", err)
+	}
+	targetRel = filepath.ToSlash(targetRel)
 
 	root, err := os.OpenRoot(targetDir)
 	if err != nil {
@@ -388,10 +418,10 @@ func commitStagedMediaUsing(stageDir, targetDir string, publish func(*os.Root, s
 	}
 	defer func() { _ = root.Close() }()
 
-	if err := root.MkdirAll(glxlib.MediaFilesDir, dirPermissions); err != nil {
+	if err := root.MkdirAll(targetRel, dirPermissions); err != nil {
 		return nil, fmt.Errorf("creating media/files directory: %w", err)
 	}
-	targetFiles, err := root.Open(glxlib.MediaFilesDir)
+	targetFiles, err := root.Open(targetRel)
 	if err != nil {
 		return nil, fmt.Errorf("opening media/files directory: %w", err)
 	}
@@ -422,7 +452,7 @@ func commitStagedMediaUsing(stageDir, targetDir string, publish func(*os.Root, s
 	}()
 	for _, entry := range entries {
 		src := path.Join(stagedRel, entry.Name())
-		dst := path.Join(glxlib.MediaFilesDir, entry.Name())
+		dst := path.Join(targetRel, entry.Name())
 		info, err := publish(root, src, dst)
 		if err != nil {
 			return nil, fmt.Errorf("committing media file %s: %w", entry.Name(), err)
