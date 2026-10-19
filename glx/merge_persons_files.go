@@ -37,6 +37,9 @@ func prepareMergeFiles(original map[string][]byte, archive *glxlib.GLXFile, resu
 	if err != nil {
 		return nil, err
 	}
+	if err := preserveMergeAliases(roots, result.Changes); err != nil {
+		return nil, err
+	}
 	_, dropParent, dropIndex, err := findMergeEntity(roots, glxlib.EntityTypePersons, dropID)
 	if err != nil {
 		return nil, err
@@ -95,6 +98,68 @@ func prepareMergeFiles(original map[string][]byte, archive *glxlib.GLXFile, resu
 	}
 
 	return files, nil
+}
+
+// Materialize aliases before their source entity is changed or removed. Keeping
+// an old anchor on a merged value would silently change unrelated entities.
+func preserveMergeAliases(roots map[string]*yaml.Node, changes []glxlib.EntityChange) error {
+	affected := make(map[*yaml.Node]bool)
+	var collect func(*yaml.Node)
+	collect = func(node *yaml.Node) {
+		if node.Anchor != "" {
+			affected[node] = true
+		}
+		for _, child := range node.Content {
+			collect(child)
+		}
+	}
+	for _, change := range changes {
+		_, parent, index, err := findMergeEntity(roots, change.EntityType, change.ID)
+		if err != nil {
+			return err
+		}
+		collect(parent.Content[index+1])
+	}
+	var expand func(*yaml.Node, map[*yaml.Node]bool, bool) (*yaml.Node, error)
+	expand = func(node *yaml.Node, stack map[*yaml.Node]bool, copied bool) (*yaml.Node, error) {
+		if node.Kind == yaml.AliasNode && affected[node.Alias] {
+			if stack[node.Alias] {
+				return nil, fmt.Errorf("%w: cyclic YAML alias %s", glxlib.ErrValidationFailed, node.Value)
+			}
+			stack[node.Alias] = true
+			out, err := expand(node.Alias, stack, true)
+			delete(stack, node.Alias)
+			if err != nil {
+				return nil, err
+			}
+			out.HeadComment, out.LineComment, out.FootComment = node.HeadComment, node.LineComment, node.FootComment
+
+			return out, nil
+		}
+		out := node
+		if copied {
+			value := *node
+			out = &value
+			out.Anchor = ""
+			out.Content = make([]*yaml.Node, len(node.Content))
+		}
+		for i, child := range node.Content {
+			replacement, err := expand(child, stack, copied)
+			if err != nil {
+				return nil, err
+			}
+			out.Content[i] = replacement
+		}
+
+		return out, nil
+	}
+	for _, root := range roots {
+		if _, err := expand(root, make(map[*yaml.Node]bool), false); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func mergeFileNodeContext(change *glxlib.EntityChange, result *glxlib.MergePersonsResult, keepID, dropID string) mergeNodeContext {
