@@ -30,20 +30,21 @@ import (
 )
 
 // plannedMediaCopy describes one binary file to copy from the source archive
-// into the destination archive once the merge has been written. Several Media
+// into the destination archive before the merge is published. Several Media
 // entities may reference the same binary, so the plan is keyed by source
 // file: SrcMedia captures the src.Media entries by ID at planning time so
 // execution can use pointer identity — rather than a URI coincidence — to
 // detect entities that survived the merge.
 type plannedMediaCopy struct {
-	SrcPath    string                   // absolute path of the file under srcPath/media/files/
+	SrcPath    string                   // absolute path of the source binary
 	SrcRoot    string                   // source archive root for confined reads
-	TargetName string                   // basename to write into destPath/media/files/
+	TargetDir  string                   // actual destination media/files spelling, relative to destPath
+	TargetName string                   // basename to write under TargetDir
 	SrcMedia   map[string]*glxlib.Media // src.Media entries by ID at planning time
 }
 
-// planSourceMediaCopies inspects srcPath/media/files/ and builds a plan for
-// carrying the binaries referenced by src.Media entities into destPath, with
+// planSourceMediaCopies inspects the source's case-equivalent media/files/
+// directory and builds a plan for carrying referenced binaries into destPath, with
 // name dedup against the destination's existing media/files/. Source files
 // whose contents match an identically-named file already in the destination
 // are skipped (no copy, no rename). Source files whose name collides with a
@@ -54,16 +55,24 @@ type plannedMediaCopy struct {
 // srcPath and destPath must be absolute. A single-file archive (or any
 // archive with no media/files/ directory) produces an empty plan.
 func planSourceMediaCopies(srcPath, destPath string, src *glxlib.GLXFile) ([]plannedMediaCopy, error) {
-	srcFiles := filepath.Join(srcPath, glxlib.MediaFilesDir)
-	info, err := os.Stat(srcFiles)
+	srcFiles, err := mergeMediaFilesDir(srcPath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-
 		return nil, fmt.Errorf("inspecting source media/files: %w", err)
 	}
-	if !info.IsDir() {
+	if srcFiles == "" {
+		// Keep rejecting a canonical directory reached through a symlink,
+		// while treating a missing or non-directory path as no media to copy.
+		canonical := filepath.Join(srcPath, glxlib.MediaFilesDir)
+		info, statErr := os.Stat(canonical)
+		if statErr != nil && !os.IsNotExist(statErr) {
+			return nil, fmt.Errorf("inspecting source media/files: %w", statErr)
+		}
+		if statErr == nil && info.IsDir() {
+			if _, err := listMediaFilenames(canonical); err != nil {
+				return nil, fmt.Errorf("inspecting source media/files: %w", err)
+			}
+		}
+
 		return nil, nil
 	}
 	if _, err := listMediaFilenames(srcFiles); err != nil {
@@ -72,7 +81,18 @@ func planSourceMediaCopies(srcPath, destPath string, src *glxlib.GLXFile) ([]pla
 
 	mediaByBasename := indexMediaByBasename(src.Media)
 
-	taken, err := listMediaFilenames(filepath.Join(destPath, glxlib.MediaFilesDir))
+	destFiles, err := mergeMediaFilesDir(destPath)
+	if err != nil {
+		return nil, fmt.Errorf("inspecting destination media/files: %w", err)
+	}
+	if destFiles == "" {
+		destFiles = filepath.Join(destPath, glxlib.MediaFilesDir)
+	}
+	targetDir, err := filepath.Rel(destPath, destFiles)
+	if err != nil {
+		return nil, fmt.Errorf("resolving destination media/files: %w", err)
+	}
+	taken, err := listMediaFilenames(destFiles)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +132,7 @@ func planSourceMediaCopies(srcPath, destPath string, src *glxlib.GLXFile) ([]pla
 		}
 		if exists {
 			if _, onDisk := taken[existingName]; onDisk {
-				existingPath := filepath.Join(destPath, glxlib.MediaFilesDir, existingName)
+				existingPath := filepath.Join(destFiles, existingName)
 				info, statErr := os.Lstat(existingPath)
 				if statErr != nil {
 					return nil, fmt.Errorf("inspecting media file %s: %w", existingName, statErr)
@@ -150,12 +170,30 @@ func planSourceMediaCopies(srcPath, destPath string, src *glxlib.GLXFile) ([]pla
 		plan = append(plan, plannedMediaCopy{
 			SrcPath:    srcFile,
 			SrcRoot:    srcPath,
+			TargetDir:  filepath.ToSlash(targetDir),
 			TargetName: target,
 			SrcMedia:   srcMedia,
 		})
 	}
 
 	return plan, nil
+}
+
+// mergeMediaFilesDir finds the one real media/files directory, preserving its
+// on-disk spelling. A case-ambiguous archive cannot be safely merged.
+func mergeMediaFilesDir(archivePath string) (string, error) {
+	dirs, err := mediaFilesDirsIn(archivePath)
+	if err != nil {
+		return "", err
+	}
+	if len(dirs) > 1 {
+		return "", fmt.Errorf("%w: %s and %s", ErrAmbiguousMediaFilesDirs, dirs[0], dirs[1])
+	}
+	if len(dirs) == 0 {
+		return "", nil
+	}
+
+	return dirs[0], nil
 }
 
 // executeMediaCopies copies each planned source binary into the merged
@@ -182,7 +220,8 @@ func executeMediaCopiesWithRollback(plan []plannedMediaCopy, destPath string, me
 		return 0, 0, nil, fmt.Errorf("opening destination archive: %w", err)
 	}
 	defer func() { _ = root.Close() }()
-	if err := root.MkdirAll(glxlib.MediaFilesDir, dirPermissions); err != nil {
+	targetDir := plannedMediaTargetDir(plan[0])
+	if err := root.MkdirAll(targetDir, dirPermissions); err != nil {
 		return 0, 0, nil, fmt.Errorf("creating media/files dir: %w", err)
 	}
 	committed := make([]committedMediaFile, 0, len(plan))
@@ -227,7 +266,7 @@ func executeMediaCopiesWithRollback(plan []plannedMediaCopy, destPath string, me
 }
 
 func copyPlannedMedia(root *os.Root, p plannedMediaCopy) (committedMediaFile, error) {
-	dst := path.Join(glxlib.MediaFilesDir, p.TargetName)
+	dst := path.Join(plannedMediaTargetDir(p), p.TargetName)
 	srcRoot := p.SrcRoot
 	if srcRoot == "" {
 		srcRoot = filepath.Dir(p.SrcPath)
@@ -259,6 +298,14 @@ func copyPlannedMedia(root *os.Root, p plannedMediaCopy) (committedMediaFile, er
 	}
 
 	return committedMediaFile{dst, createdInfo}, nil
+}
+
+func plannedMediaTargetDir(p plannedMediaCopy) string {
+	if p.TargetDir != "" {
+		return p.TargetDir
+	}
+
+	return glxlib.MediaFilesDir
 }
 
 // indexMediaByBasename maps each Media entity's URI basename to the list of
@@ -305,11 +352,15 @@ func mediaURIBasename(uri string) string {
 func listMediaFilenames(dir string) (map[string]struct{}, error) {
 	base := filepath.Dir(dir)
 	rel := filepath.Base(dir)
+	parts := []string{rel}
 	// For archive media, anchor at the archive root so a swapped media
-	// directory cannot redirect even the listing outside the archive.
-	if filepath.Base(base) == "media" && rel == "files" {
+	// directory cannot redirect even the listing outside the archive. Keep
+	// the actual spelling for case-sensitive MEDIA/files variants.
+	if strings.EqualFold(filepath.Base(base), "media") && strings.EqualFold(rel, "files") {
+		mediaName := filepath.Base(base)
 		base = filepath.Dir(base)
-		rel = path.Join("media", "files")
+		rel = path.Join(mediaName, rel)
+		parts = []string{mediaName, rel}
 	}
 	root, err := os.OpenRoot(base)
 	if err != nil {
@@ -320,10 +371,6 @@ func listMediaFilenames(dir string) (map[string]struct{}, error) {
 		return nil, fmt.Errorf("opening media parent %s: %w", base, err)
 	}
 	defer func() { _ = root.Close() }()
-	parts := []string{rel}
-	if rel == path.Join("media", "files") {
-		parts = []string{"media", rel}
-	}
 	var checked os.FileInfo
 	for _, current := range parts {
 		info, err := root.Lstat(current)

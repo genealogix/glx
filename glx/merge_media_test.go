@@ -121,6 +121,16 @@ func TestListMediaFilenames(t *testing.T) {
 		assert.Contains(t, got, "b.pdf")
 		assert.Contains(t, got, "nested")
 	})
+	t.Run("rejects case-variant intermediate symlink", func(t *testing.T) {
+		archiveDir := t.TempDir()
+		outside := t.TempDir()
+		require.NoError(t, os.MkdirAll(filepath.Join(outside, "files"), dirPermissions))
+		if err := os.Symlink(outside, filepath.Join(archiveDir, "MEDIA")); err != nil {
+			t.Skipf("creating symlink is unavailable: %v", err)
+		}
+		_, err := listMediaFilenames(filepath.Join(archiveDir, "MEDIA", "files"))
+		require.ErrorIs(t, err, os.ErrInvalid)
+	})
 }
 
 func TestPlanSourceMediaCopies_NoMediaFilesDir(t *testing.T) {
@@ -462,6 +472,55 @@ func TestPublishMergedMultiFileArchive_WriteFailureRollsBackCopiedMedia(t *testi
 	actualBackupMedia, readErr := os.ReadFile(filepath.Join(staleMediaDir, "unrecovered.jpg"))
 	require.NoError(t, readErr)
 	require.Equal(t, []byte("keep"), actualBackupMedia)
+}
+
+func TestPublishMergedMultiFileArchive_CaseVariantDirectoryDisappears(t *testing.T) {
+	destDir := t.TempDir()
+	oldMetadata := []byte("old metadata")
+	require.NoError(t, os.WriteFile(filepath.Join(destDir, "metadata.glx"), oldMetadata, filePermissions))
+	variantFiles := filepath.Join(destDir, "MEDIA", "files")
+	require.NoError(t, os.MkdirAll(variantFiles, dirPermissions))
+	srcDir := t.TempDir()
+	srcFiles := filepath.Join(srcDir, glxlib.MediaFilesDir)
+	require.NoError(t, os.MkdirAll(srcFiles, dirPermissions))
+	require.NoError(t, os.WriteFile(filepath.Join(srcFiles, "photo.jpg"), []byte("source"), filePermissions))
+	archive := &glxlib.GLXFile{Media: map[string]*glxlib.Media{
+		"media-src": {URI: "media/files/photo.jpg"},
+	}}
+	plan, err := planSourceMediaCopies(srcDir, destDir, archive)
+	require.NoError(t, err)
+	require.Len(t, plan, 1)
+	require.Equal(t, "MEDIA/files", plan[0].TargetDir)
+	require.NoError(t, os.RemoveAll(variantFiles))
+
+	_, _, err = publishMergedMultiFileArchive(destDir, archive, plan)
+	require.ErrorIs(t, err, os.ErrInvalid)
+	actual, readErr := os.ReadFile(filepath.Join(destDir, "metadata.glx"))
+	require.NoError(t, readErr)
+	require.Equal(t, oldMetadata, actual)
+	require.NoDirExists(t, filepath.Join(destDir, glxlib.MediaFilesDir))
+	require.NoDirExists(t, destDir+".bak")
+}
+
+func TestPublishMergedMultiFileArchive_AmbiguousDirectoryWithoutCopies(t *testing.T) {
+	destDir := t.TempDir()
+	if !fsCaseSensitive(t, destDir) {
+		t.Skip("needs a case-sensitive filesystem for distinct media directory spellings")
+	}
+	oldMetadata := []byte("old metadata")
+	require.NoError(t, os.WriteFile(filepath.Join(destDir, "metadata.glx"), oldMetadata, filePermissions))
+	for _, rel := range []string{glxlib.MediaFilesDir, "MEDIA/files"} {
+		filesDir := filepath.Join(destDir, rel)
+		require.NoError(t, os.MkdirAll(filesDir, dirPermissions))
+		require.NoError(t, os.WriteFile(filepath.Join(filesDir, "old.jpg"), []byte(rel), filePermissions))
+	}
+
+	_, _, err := publishMergedMultiFileArchive(destDir, &glxlib.GLXFile{}, nil)
+	require.ErrorIs(t, err, ErrAmbiguousMediaFilesDirs)
+	actual, readErr := os.ReadFile(filepath.Join(destDir, "metadata.glx"))
+	require.NoError(t, readErr)
+	require.Equal(t, oldMetadata, actual)
+	require.NoDirExists(t, destDir+".bak")
 }
 
 func TestExecuteMediaCopies_SkipsWhenSameIDButDestEntityKept(t *testing.T) {

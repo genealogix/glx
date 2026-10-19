@@ -441,6 +441,112 @@ func TestMergeArchives_CopiesSourceMediaBinariesAndPreservesDestBinaries(t *test
 	assert.Equal(t, "media/files/deed.pdf", reloaded.Media["media-dest-deed"].URI)
 }
 
+func TestMergeArchives_CaseVariantMediaDirectories(t *testing.T) {
+	base := t.TempDir()
+	if !fsCaseSensitive(t, base) {
+		t.Skip("needs a case-sensitive filesystem for distinct media directory spellings")
+	}
+	for _, tc := range []struct {
+		name, sourceFiles, destinationFiles string
+	}{
+		{"destination MEDIA/files", glxlib.MediaFilesDir, "MEDIA/files"},
+		{"destination media/FILES", glxlib.MediaFilesDir, "media/FILES"},
+		{"destination MEDIA/FILES", glxlib.MediaFilesDir, "MEDIA/FILES"},
+		{"source MEDIA/files", "MEDIA/files", glxlib.MediaFilesDir},
+		{"source media/FILES", "media/FILES", glxlib.MediaFilesDir},
+		{"source MEDIA/FILES", "MEDIA/FILES", glxlib.MediaFilesDir},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			destDir := t.TempDir()
+			srcDir := t.TempDir()
+			dest := &glxlib.GLXFile{Media: map[string]*glxlib.Media{
+				"media-dest-photo": {URI: "media/files/photo.jpg"},
+				"media-dest-same":  {URI: "media/files/same.jpg"},
+			}}
+			src := &glxlib.GLXFile{Media: map[string]*glxlib.Media{
+				"media-src-photo":  {URI: "media/files/photo.jpg"},
+				"media-src-same":   {URI: "media/files/same.jpg"},
+				"media-src-unique": {URI: "media/files/unique.jpg"},
+			}}
+			require.NoError(t, writeMultiFileArchive(destDir, dest, false))
+			require.NoError(t, writeMultiFileArchive(srcDir, src, false))
+			for _, file := range []struct{ dir, name, content string }{
+				{filepath.Join(destDir, tc.destinationFiles), "photo.jpg", "DEST"},
+				{filepath.Join(destDir, tc.destinationFiles), "same.jpg", "SAME"},
+				{filepath.Join(srcDir, tc.sourceFiles), "photo.jpg", "SOURCE"},
+				{filepath.Join(srcDir, tc.sourceFiles), "same.jpg", "SAME"},
+				{filepath.Join(srcDir, tc.sourceFiles), "unique.jpg", "UNIQUE"},
+			} {
+				require.NoError(t, os.MkdirAll(file.dir, dirPermissions))
+				require.NoError(t, os.WriteFile(filepath.Join(file.dir, file.name), []byte(file.content), filePermissions))
+			}
+
+			require.NoError(t, mergeArchives(srcDir, destDir, false, 0.6))
+			canonical := filepath.Join(destDir, glxlib.MediaFilesDir)
+			for name, want := range map[string]string{
+				"photo.jpg": "DEST", "photo-2.jpg": "SOURCE", "same.jpg": "SAME", "unique.jpg": "UNIQUE",
+			} {
+				actual, err := os.ReadFile(filepath.Join(canonical, name))
+				require.NoError(t, err, name)
+				require.Equal(t, want, string(actual), name)
+			}
+			reloaded, _, err := LoadArchiveWithOptions(destDir, false)
+			require.NoError(t, err)
+			require.Equal(t, "media/files/photo-2.jpg", reloaded.Media["media-src-photo"].URI)
+			require.Equal(t, "media/files/same.jpg", reloaded.Media["media-src-same"].URI)
+			require.Equal(t, "media/files/unique.jpg", reloaded.Media["media-src-unique"].URI)
+			dirs, err := mediaFilesDirsIn(destDir)
+			require.NoError(t, err)
+			require.Equal(t, []string{canonical}, dirs)
+			require.NoDirExists(t, destDir+".bak")
+		})
+	}
+}
+
+func TestMergeArchives_RejectsAmbiguousMediaDirectoriesBeforeWriting(t *testing.T) {
+	base := t.TempDir()
+	if !fsCaseSensitive(t, base) {
+		t.Skip("needs a case-sensitive filesystem for distinct media directory spellings")
+	}
+	for _, ambiguousSource := range []bool{false, true} {
+		name := "destination"
+		if ambiguousSource {
+			name = "source"
+		}
+		t.Run(name, func(t *testing.T) {
+			destDir := t.TempDir()
+			srcDir := t.TempDir()
+			dest := &glxlib.GLXFile{Media: map[string]*glxlib.Media{
+				"media-dest": {URI: "media/files/dest.jpg"},
+			}}
+			src := &glxlib.GLXFile{Media: map[string]*glxlib.Media{
+				"media-src": {URI: "media/files/src.jpg"},
+			}}
+			require.NoError(t, writeMultiFileArchive(destDir, dest, false))
+			require.NoError(t, writeMultiFileArchive(srcDir, src, false))
+			for _, file := range []struct{ dir, name string }{
+				{filepath.Join(destDir, glxlib.MediaFilesDir), "dest.jpg"},
+				{filepath.Join(srcDir, glxlib.MediaFilesDir), "src.jpg"},
+			} {
+				require.NoError(t, os.MkdirAll(file.dir, dirPermissions))
+				require.NoError(t, os.WriteFile(filepath.Join(file.dir, file.name), []byte(file.name), filePermissions))
+			}
+			ambiguousDir := destDir
+			if ambiguousSource {
+				ambiguousDir = srcDir
+			}
+			require.NoError(t, os.MkdirAll(filepath.Join(ambiguousDir, "MEDIA", "files"), dirPermissions))
+			require.NoError(t, os.WriteFile(filepath.Join(ambiguousDir, "MEDIA", "files", "other.jpg"), []byte("other"), filePermissions))
+			before := snapshotDir(t, destDir)
+
+			err := mergeArchives(srcDir, destDir, false, 0.6)
+			require.ErrorIs(t, err, ErrAmbiguousMediaFilesDirs)
+			require.Equal(t, before, snapshotDir(t, destDir))
+			require.NoDirExists(t, destDir+".bak")
+		})
+	}
+}
+
 func TestMergeArchives_SkipsBinaryWhenMediaEntityConflicts(t *testing.T) {
 	// When a source Media entity collides with a destination entity by ID,
 	// Merge() keeps the destination version. The source binary then has no
