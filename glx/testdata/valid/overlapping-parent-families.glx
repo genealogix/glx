@@ -1,0 +1,43 @@
+persons:
+  person-child:
+    properties: {name: {value: Child One}}
+  person-father:
+    properties: {name: {value: Father One}, sex: male}
+  person-mother:
+    properties: {name: {value: Mother One}, sex: female}
+  person-other:
+    properties: {name: {value: Other One}, sex: female}
+  person-step:
+    properties: {name: {value: Step One}, sex: male}
+relationships:
+  rel-marriage-a-unrelated:
+    type: marriage
+    participants:
+      - {person: person-step, role: spouse}
+      - {person: person-other, role: spouse}
+  rel-marriage-b-birth:
+    type: marriage
+    participants:
+      - {person: person-father, role: spouse}
+      - {person: person-mother, role: spouse}
+  rel-marriage-c-step:
+    type: marriage
+    participants:
+      - {person: person-step, role: spouse}
+      - {person: person-mother, role: spouse}
+  rel-pc-both:
+    type: parent_child
+    participants:
+      - {person: person-father, role: parent}
+      - {person: person-mother, role: parent}
+      - {person: person-child, role: child}
+  rel-pc-mother:
+    type: parent_child
+    participants:
+      - {person: person-mother, role: parent}
+      - {person: person-child, role: child}
+  rel-pc-step:
+    type: parent_child
+    participants:
+      - {person: person-step, role: parent}
+      - {person: person-child, role: child}

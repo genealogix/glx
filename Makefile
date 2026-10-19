@@ -1,5 +1,5 @@
 # GENEALOGIX Makefile
-.PHONY: help check build build-cli build-website install-deps install-hooks lint lint-fix lint-codeowners fix fix-diff test test-verbose test-race test-coverage bench mod-tidy mod-verify tidy-check ci-tools-tidy-check clean fmt check-schemas check-drift-allowlist check-code-drift check-memory-drift test-scripts check-links validate-examples docs-cli release-snapshot vulncheck gosec license-check
+.PHONY: help check build build-cli build-website install-deps install-hooks lint lint-fix lint-codeowners lint-workflows fix fix-diff test test-verbose test-race test-coverage bench mod-tidy mod-verify tidy-check ci-tools-tidy-check clean fmt check-schemas check-drift-allowlist check-code-drift check-memory-drift test-scripts check-links validate-examples docs-cli release-snapshot vulncheck gosec license-check
 
 .DEFAULT_GOAL := help
 
@@ -88,6 +88,20 @@ lint-codeowners: ## Verify every file is matched by a .github/CODEOWNERS rule
 	fi; \
 	echo "CODEOWNERS coverage OK"
 
+# Static analysis of .github/ (#928), the same two checks as
+# .github/workflows/workflow-lint.yml. actionlint is pinned via the tool
+# directive in ci-tools/go.mod and needs shellcheck on PATH for its `run:`
+# script pass (it silently skips that pass otherwise). zizmor runs through uvx
+# at the version pinned in .github/requirements/zizmor.txt (CI installs that
+# file by hash); export GH_TOKEN to enable its online audits.
+lint-workflows: ## Lint GitHub Actions workflows (actionlint + zizmor)
+	@command -v shellcheck >/dev/null || { echo "ERROR: shellcheck not found on PATH (actionlint needs it)"; exit 1; }
+	go tool -modfile=ci-tools/go.mod actionlint
+	@command -v uvx >/dev/null || { echo "ERROR: uvx not found (install uv: https://docs.astral.sh/uv/)"; exit 1; }
+	@v="$$(sed -n 's/^zizmor==\([^ ]*\).*/\1/p' .github/requirements/zizmor.txt)"; \
+	test -n "$$v" || { echo "ERROR: no zizmor pin in .github/requirements/zizmor.txt"; exit 1; }; \
+	uvx "zizmor@$$v" --no-progress .
+
 fix: ## Run Go 1.27 modernizers on codebase
 	go fix ./...
 
@@ -142,10 +156,20 @@ ci-tools-tidy-check: ## Verify ci-tools/go.mod and ci-tools/go.sum are tidy
 vulncheck: ## Run govulncheck against the Go vulnerability DB (pinned via ci-tools/go.mod)
 	go tool -modfile=ci-tools/go.mod govulncheck ./...
 
+# TEMPORARY (securego/gosec#1771): gosec releases up to v2.29.0 cannot read Go
+# 1.27.2's export data, so the pinned gosec is built in a throwaway module with
+# golang.org/x/tools raised to GOSEC_XTOOLS. Keep it in sync with security.yml, and
+# return to `go run ...@$$v` once a gosec release carries x/tools >= v0.50.0.
+GOSEC_XTOOLS ?= v0.50.0
+
 gosec: ## Run gosec static security analysis (pinned via .gosec-version)
 	@v="$$(tr -d '[:space:]' < .gosec-version)"; \
 	printf '%s' "$$v" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$$' || { echo "invalid .gosec-version: $$v (expected vMAJOR.MINOR.PATCH)" >&2; exit 1; }; \
-	go run "github.com/securego/gosec/v2/cmd/gosec@$$v" -quiet ./...
+	build="$$(mktemp -d)"; trap 'rm -rf "$$build"' EXIT; \
+	( cd "$$build" && go mod init gosec-build >/dev/null 2>&1 && \
+	  go get "github.com/securego/gosec/v2/cmd/gosec@$$v" "golang.org/x/tools@$(GOSEC_XTOOLS)" >/dev/null 2>&1 && \
+	  GOOS="$$(go env GOHOSTOS)" GOARCH="$$(go env GOHOSTARCH)" go build -o "$$build/gosec" github.com/securego/gosec/v2/cmd/gosec ) || { echo "building gosec $$v failed" >&2; exit 1; }; \
+	"$$build/gosec" -quiet ./...
 
 ## Licensing
 # go-licenses is intentionally NOT in ci-tools/go.mod — its tree pulls
@@ -170,8 +194,8 @@ check-code-drift: ## Deterministically detect go-glx type vs JSON-schema drift
 check-memory-drift: ## Deterministically detect CLAUDE.md/AGENTS.md drift vs the repo
 	@go run ./tools/memcheck
 
-test-scripts: ## Unit-test the Node drift-check scripts (spec-schema parser + schema-compat classifier)
-	@node --test scripts/drift-checks/spec-schema-drift.test.mjs specification/schema-compat.test.mjs
+test-scripts: ## Unit-test the Node drift-check scripts and serve viewer
+	@node --test scripts/drift-checks/spec-schema-drift.test.mjs specification/schema-compat.test.mjs glx/web_test/app.test.mjs scripts/hooks/staged.test.mjs
 
 ## Example Validation
 validate-examples: build-cli ## Validate all example archives

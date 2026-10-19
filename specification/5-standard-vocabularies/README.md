@@ -199,6 +199,19 @@ Defines the lifecycle status of a [research log](../4-entity-types/research-log.
 
 ---
 
+### Lead Statuses
+
+Defines the status of a lead, a competing hypothesis inside a [research log](../4-entity-types/research-log.md#researchlead) (active, eliminated, confirmed).
+
+<YamlFile
+  :content="vocabularies['lead-statuses']"
+  title="vocabularies/lead-statuses.glx"
+/>
+
+**View Source:** [lead-statuses.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/lead-statuses.glx) | **See Also:** [ResearchLog Entity Documentation](../4-entity-types/research-log.md) | [Vocabularies Specification](../4-entity-types/vocabularies.md#lead-statuses-vocabulary)
+
+---
+
 ### Study Types
 
 Defines classifications for research-project Study entities (one place study, one name study, family reconstruction, descendancy/ancestry studies, brick-wall investigations).
@@ -304,6 +317,8 @@ Defines standard and custom properties for event entities.
 **Standard Properties Include:**
 
 - `age_at_event` - Age of the person at the time of the event (GEDCOM: AGE)
+- `named` - Participant-level: `false` when the source counts the participant without naming them (head-only census tick marks)
+- `relationship_to_head` - Participant-level: relationship to the head of household as recorded
 - `cause` - Cause of the event, e.g., cause of death (GEDCOM: CAUS)
 - `event_subtype` - Further classification of the event type (GEDCOM: TYPE)
 - `description` - Event description

@@ -16,6 +16,7 @@ package main
 
 import (
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -238,6 +239,39 @@ func TestBuildPersonPage_Sources(t *testing.T) {
 	}
 }
 
+// TestBuildPersonPage_EventSubjectSources: a register cited on an assertion
+// about a person's own event is listed on their page, and not on the page of
+// someone named in the entry only as a witness (#1211).
+func TestBuildPersonPage_EventSubjectSources(t *testing.T) {
+	archive := buildModelTestArchive()
+	archive.Events["event-john-birth"].Participants = append(archive.Events["event-john-birth"].Participants,
+		glxlib.Participant{Person: "person-mary-smith", Role: "witness"})
+	archive.Sources["source-baptisms"] = &glxlib.Source{Title: "Boston Baptisms", Type: glxlib.SourceTypeChurchRegister}
+	archive.Assertions["assertion-john-birth-date"] = &glxlib.Assertion{
+		Subject:  glxlib.EntityRef{Event: "event-john-birth"},
+		Property: "date",
+		Value:    "1850-01-15",
+		Sources:  []string{"source-baptisms"},
+	}
+
+	model := buildSiteModel(archive, siteModelOptions{})
+
+	titles := func(page *personPage) []string {
+		out := make([]string, 0, len(page.Sources))
+		for _, src := range page.Sources {
+			out = append(out, src.Title)
+		}
+
+		return out
+	}
+	if got := titles(findPage(t, model, "person-john-smith")); !slices.Contains(got, "Boston Baptisms") {
+		t.Errorf("John's sources = %v, want Boston Baptisms listed", got)
+	}
+	if got := titles(findPage(t, model, "person-mary-smith")); slices.Contains(got, "Boston Baptisms") {
+		t.Errorf("witness's sources = %v, want Boston Baptisms left out", got)
+	}
+}
+
 func TestBuildPersonPage_Media(t *testing.T) {
 	model := buildSiteModel(buildModelTestArchive(), siteModelOptions{})
 	john := findPage(t, model, "person-john-smith")
@@ -357,6 +391,11 @@ func TestLifeSpan(t *testing.T) {
 		{"birth only", "1850-06-01", "", "b. 1850"},
 		{"death only", "", "1920", "d. 1920"},
 		{"neither", "", "", ""},
+		// #1328: ranges and qualifiers survive, with a spaced separator.
+		{"ranges", "BET 1756 AND 1774", "BET 1826-05-16 AND 1830", "1756/1774 – 1826/1830"},
+		{"about birth", "ABT 1765", "1830", "c. 1765 – 1830"},
+		{"range birth only", "BET 1756 AND 1770", "", "b. 1756/1770"},
+		{"before death only", "", "BEF 1860", "d. bef. 1860"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -371,21 +410,6 @@ func TestLifeSpan(t *testing.T) {
 				t.Errorf("lifeSpan(%q,%q) = %q, want %q", tc.birth, tc.death, got, tc.want)
 			}
 		})
-	}
-}
-
-func TestEventYear(t *testing.T) {
-	cases := map[string]string{
-		"1850":       "1850",
-		"1850-03-22": "1850",
-		"ABT 1850":   "1850",
-		"":           "",
-		"unknown":    "",
-	}
-	for in, want := range cases {
-		if got := eventYear(in); got != want {
-			t.Errorf("eventYear(%q) = %q, want %q", in, got, want)
-		}
 	}
 }
 

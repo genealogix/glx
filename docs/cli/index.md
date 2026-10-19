@@ -51,6 +51,7 @@ For installation instructions, see [`glx/README.md`](../../glx/README.md). For a
 - [`glx stats`](glx_stats.md) — entity-count and confidence dashboard
 - [`glx places`](glx_places.md) — place data quality issues
 - [`glx cluster`](glx_cluster.md) — FAN-club analysis
+- [`glx households`](glx_households.md) — reconstruct census households for a person or a place
 - [`glx analyze`](glx_analyze.md) — gap, conflict, and suggestion analysis
 - [`glx duplicates`](glx_duplicates.md) — detect duplicate entities
 - [`glx coverage`](glx_coverage.md) — research coverage report

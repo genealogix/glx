@@ -162,6 +162,7 @@ func init() {
 	rootCmd.AddCommand(evidenceCmd)
 	rootCmd.AddCommand(censusCmd)
 	rootCmd.AddCommand(clusterCmd)
+	rootCmd.AddCommand(householdsCmd)
 	rootCmd.AddCommand(pathCmd)
 	rootCmd.AddCommand(duplicatesCmd)
 	rootCmd.AddCommand(coverageCmd)
@@ -431,6 +432,7 @@ var (
 	validateReport          bool
 	validateStdin           bool
 	validateEntityType      string
+	validateShowFirstErrors int
 	errReportTooManyArgs    = errors.New("--report accepts at most one path argument")
 	errStdinReportExclusive = errors.New("--stdin and --report are mutually exclusive")
 )
@@ -474,6 +476,9 @@ that point into them. A dot-prefixed .glx file named explicitly on the command
 line is validated. An
 archive whose own root directory is dot-named is still validated normally.
 
+Use --show-first-errors N to limit each error list in any validation mode,
+including --stdin (default 10, 0 for all). Warnings are always listed in full.
+
 Use --report to generate a confidence summary showing assertion coverage
 and highlighting unsupported claims. The archive is validated first, so
 --report fails on an archive that plain validate rejects.`,
@@ -500,6 +505,7 @@ and highlighting unsupported claims. The archive is validated first, so
 
 func init() {
 	validateCmd.Flags().BoolVar(&validateReport, "report", false, "Generate confidence summary report")
+	validateCmd.Flags().IntVar(&validateShowFirstErrors, "show-first-errors", defaultShowFirstErrors, "Number of validation errors to show (0 for all)")
 	validateCmd.Flags().BoolVar(&validateStdin, "stdin", false,
 		"Read one entity as YAML on stdin and validate it against its entity-type schema (no path args)")
 	validateCmd.Flags().StringVar(&validateEntityType, "entity-type", "",
@@ -514,13 +520,13 @@ func runValidate(_ *cobra.Command, args []string) error {
 		return errStdinReportExclusive
 	}
 	if validateStdin {
-		return validateStdinEntity(SystemIOStreams(), validateEntityType, args, os.Stdin)
+		return validateStdinEntity(SystemIOStreams(), validateEntityType, args, os.Stdin, validateShowFirstErrors)
 	}
 	if validateReport {
-		return validateAndReport(SystemIOStreams(), args)
+		return validateAndReport(SystemIOStreams(), args, validateShowFirstErrors)
 	}
 
-	return validatePaths(SystemIOStreams(), args)
+	return validatePathsShowing(SystemIOStreams(), args, validateShowFirstErrors)
 }
 
 // ============================================================================
@@ -686,7 +692,8 @@ var queryCmd = &cobra.Command{
 	Long: `Filter and list entities from a GENEALOGIX archive.
 
 Supported entity types: persons, events, assertions, sources,
-relationships, places, citations, repositories, media.
+relationships, places, citations, repositories, media, research_logs,
+studies.
 
 Filters vary by entity type:
   persons:       --name, --born-before, --born-after, --birthplace
@@ -696,6 +703,8 @@ Filters vary by entity type:
   relationships: --type
   places:        --name
   repositories:  --name
+  research_logs: --status, --subject (the log's subject or a lead's
+                 candidate person, by ID or name substring)
 
 All entity types support --archive to specify the archive path.`,
 	Example: `  # Find persons born before 1850
@@ -715,6 +724,9 @@ All entity types support --archive to specify the archive path.`,
 
   # Find persons by name in a specific archive
   glx query persons --name "Smith" --archive my-archive
+
+  # Find research logs about a person (as subject or as a lead candidate)
+  glx query research_logs --subject person-mary-green
 
   # List all sources
   glx query sources`,
@@ -744,10 +756,10 @@ func init() {
 	queryCmd.Flags().IntVar(&queryBefore, "before", 0, "Filter events with date before this year")
 	queryCmd.Flags().IntVar(&queryAfter, "after", 0, "Filter events with date after this year")
 	queryCmd.Flags().StringVar(&queryConfidence, "confidence", "", "Filter assertions by confidence level")
-	queryCmd.Flags().StringVar(&queryStatus, "status", "", "Filter assertions by status")
+	queryCmd.Flags().StringVar(&queryStatus, "status", "", "Filter assertions or research logs by status")
 	queryCmd.Flags().StringVar(&querySource, "source", "", "Filter assertions by source ID (direct or via citation)")
 	queryCmd.Flags().StringVar(&queryCitation, "citation", "", "Filter assertions by citation ID")
-	queryCmd.Flags().StringVar(&querySubject, "subject", "", "Filter assertions by subject entity ID or person name substring")
+	queryCmd.Flags().StringVar(&querySubject, "subject", "", "Filter assertions or research logs by subject entity ID or person name substring")
 	queryCmd.Flags().StringVar(&queryBirthplace, "birthplace", "", "Filter persons by birthplace (place ID or name substring)")
 }
 
@@ -960,7 +972,10 @@ Sections displayed:
   - Life Events: census, immigration, naturalization, military service, etc.
   - Family: spouse(s) with marriage info, parents, siblings
   - Relationships: godparent, neighbor, household, employment, etc.
-  - Life History: auto-generated biographical narrative`,
+  - Life History: auto-generated biographical narrative
+  - Research: research logs about the person (as subject or as a lead
+    candidate) with objective, status, planned searches, and open leads
+    with their recorded statuses`,
 	Example: `  # Summary by person ID
   glx summary person-abc123
 
@@ -1000,9 +1015,12 @@ var publishCmd = &cobra.Command{
 with family who won't install tools or read YAML.
 
 The site includes a person profile page for everyone in the archive (with
-vital facts, a life timeline, pedigree and descendancy charts, linked family
-members, supporting sources, and a media gallery), plus source and place
-indexes and a client-side search.
+vital facts, a life timeline plotted to scale, pedigree and descendancy
+charts, linked family members, supporting sources, and a media gallery), plus
+source and place indexes — the place index maps everywhere the archive records
+coordinates for — and a client-side search.
+The timeline strip is shown when parsed dates span distinct years in one
+recorded calendar; mixed-calendar events remain in the chronological list.
 The output is a plain directory of HTML/CSS/JS with no server, database, or
 build tooling required — open index.html directly with file:// or host it
 anywhere (GitHub Pages, S3, Netlify).
@@ -1111,15 +1129,19 @@ place observation: events they participated in (birth, census, marriage, ...),
 their children's birth events (a child's birthplace is evidence of the
 parent's residence), and residence property values.
 
-Observations are sorted chronologically and each change of region is reported
-as a movement (e.g. "Florida → Wisconsin"). Regions compare at the
-state/region level of the place hierarchy, and pre-statehood territories
-match their successor states ("Florida Territory" equals "Florida").
+Observations are sorted chronologically and each change of place is reported
+as a movement, named at the highest level of the place hierarchy where the
+two places differ: "Florida → Wisconsin" between two states, "Niederkleen →
+Pohl-Göns" between two villages of one district. A place and a place inside
+it (a state and one of its towns) are not a move. Country and continent
+levels are skipped, and pre-statehood territories match their successor
+states ("Florida Territory" equals "Florida").
 
 Not every observation counts toward a movement. An event in which the
 person's role does not put them at its place (a grantor or grantee of a deed,
 a legatee or heir of an estate, someone merely mentioned) is shown but not
-counted; an archive can mark its own roles with implies_presence in the
+counted, and so is a parent named on a child's death or burial, which places
+the child rather than the parent's household; an archive can mark its own roles with implies_presence in the
 participant roles vocabulary. A bounded residence value overrides an event
 elsewhere only when the event's whole possible date span fits within that
 residence: the event remains visible but is not counted as a move. Open-ended
@@ -1128,7 +1150,7 @@ without conversion.
 
 With --pattern, searches all persons in the archive for a migration pattern
 instead: a comma-separated list of places that must appear in chronological
-order in a person's region sequence. Knowing who else made the same move
+order in a person's sequence of places. Knowing who else made the same move
 narrows the search for a person's family.
 
 The person argument can be an exact entity ID (e.g., person-jane-webb) or a
@@ -1335,6 +1357,14 @@ The template format uses a simple YAML structure describing the census
 year, location, household members, and citation details. Members can
 reference existing persons by ID or by name (matched against the archive).
 
+Head-only schedules (US 1790-1840 and similar) are supported: list the
+tick-mark columns under household.tally (sex, age_from, age_to, count,
+status), and add any known household member the schedule counts but does
+not name with named: false. Such members get role household_member and a
+low-confidence residence assertion, and are treated as found in that census
+by analyze, coverage, and households. household.neighbors records nearby
+households on the page (name, person, position, page, line).
+
 Use --dry-run to preview what would be generated without writing files.`,
 	Example: `  # Import a census template
   glx census add --from 1860-census-lane.yaml --archive my-archive
@@ -1364,6 +1394,84 @@ func runCensusAdd(_ *cobra.Command, _ []string) error {
 }
 
 // ============================================================================
+// Households Command (census household reconstruction)
+// ============================================================================
+
+var (
+	householdsArchive   string
+	householdsPlace     string
+	householdsYear      int
+	householdsNeighbors bool
+	householdsFormat    string
+)
+
+var householdsCmd = &cobra.Command{
+	Use:   "households [person]",
+	Short: "Reconstruct census households",
+	Long: `Reconstruct census households from the archive. Every census event is one
+household: the people enumerated in it, with their role, relationship to the
+head, and age at the census (participant property age_at_event).
+
+Members are listed head first, then by age, oldest first. The head is the
+participant whose relationship_to_head is "head", otherwise the first named
+participant in a principal/subject role. Members a head-only schedule counts
+without naming (participant property named: false) are marked "counted, not
+named", and the event's household tally (the tick-mark columns of 1790-1840
+style schedules) is printed under the members.
+
+With a person, lists each census household that person appears in. With
+--place, lists every census household at that place or any place inside it;
+combine with --year to look at a single enumeration. --neighbors adds the
+households recorded as page neighbors on each census event.
+
+The person argument can be an exact entity ID or a name to search for.`,
+	Example: `  # Every census household a person appears in
+  glx households person-robert-webb
+
+  # One census year only
+  glx households person-robert-webb --year 1860
+
+  # Every household enumerated at a place in 1860
+  glx households --place place-millbrook-hartford --year 1860
+
+  # Include page neighbors, for FAN research
+  glx households person-abram-baker --neighbors
+
+  # Machine-readable output
+  glx households person-robert-webb --format json`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runHouseholds,
+}
+
+func init() {
+	householdsCmd.Flags().StringVarP(&householdsArchive, "archive", "a", ".", "Archive path (directory or single file)")
+	householdsCmd.Flags().StringVar(&householdsPlace, "place", "", "Only households at this place ID (includes descendant places)")
+	householdsCmd.Flags().IntVar(&householdsYear, "year", 0, "Only households from this census year")
+	householdsCmd.Flags().BoolVar(&householdsNeighbors, "neighbors", false, "Show the page neighbors recorded on each census event")
+	householdsCmd.Flags().StringVar(&householdsFormat, "format", "text", "Output format: text or json")
+}
+
+func runHouseholds(_ *cobra.Command, args []string) error {
+	return householdsFromArgs(SystemIOStreams(), args)
+}
+
+// householdsFromArgs maps the positional person argument and flags onto
+// showHouseholds.
+func householdsFromArgs(io *IOStreams, args []string) error {
+	opts := householdsOptions{
+		PlaceID:   householdsPlace,
+		Year:      householdsYear,
+		Neighbors: householdsNeighbors,
+		Format:    householdsFormat,
+	}
+	if len(args) > 0 {
+		opts.PersonQuery = args[0]
+	}
+
+	return showHouseholds(io, householdsArchive, opts)
+}
+
+// ============================================================================
 // Cluster Command (FAN Club Analysis)
 // ============================================================================
 
@@ -1383,12 +1491,14 @@ club analysis — the primary methodology for breaking genealogical brickwalls.
 
 Cross-references the archive to find people connected to the target through:
 - Census households: people enumerated in the same census events
+- Census neighbors: households recorded as page neighbors on a census event
+  (the event's neighbors list), when the neighbor is linked to a person
 - Shared events: co-participants in marriages, baptisms, land records, etc.
 - Place overlap: people associated with the same places in the same time period
 
 Associates are ranked by connection strength: census household links (3 points),
-shared event links (2 points), and place overlap links (1 point). Multiple
-connections compound for higher scores.
+census neighbor and shared event links (2 points), and place overlap links
+(1 point). Multiple connections compound for higher scores.
 
 The person argument can be an exact entity ID (e.g., person-d-lane) or a
 name to search for (e.g., "Mary Green"). If the name matches multiple
@@ -1428,9 +1538,10 @@ func runCluster(_ *cobra.Command, args []string) error {
 // ============================================================================
 
 var (
-	pathArchive string
-	pathMaxHops int
-	pathJSON    bool
+	pathArchive      string
+	pathMaxHops      int
+	pathAcceptedOnly bool
+	pathJSON         bool
 )
 
 var pathCmd = &cobra.Command{
@@ -1445,6 +1556,13 @@ godparent, neighbor, etc.) to find the shortest connection.
 Each hop shows the relationship type and the destination person's role.
 Use --max-hops to limit search depth (default 10).
 
+A relationship whose assertions are all disproven is a rejected alternative
+and is never followed. A hop along a relationship recorded only as a
+hypothesis (low confidence, or a speculative, unresearched, or disputed
+status, with no proven assertion) is marked "(?)", and among equally short
+paths the one with the fewest such hops is shown. Use --accepted-only to
+follow no hypothetical relationships at all.
+
 Person arguments can be exact entity IDs or name substrings.`,
 	Example: `  # Find path between two persons by ID
   glx path person-mary-lane person-louenza-mortimer
@@ -1454,6 +1572,9 @@ Person arguments can be exact entity IDs or name substrings.`,
 
   # Limit search depth
   glx path "Mary Lane" "John Smith" --max-hops 5
+
+  # Follow no relationship recorded only as a hypothesis
+  glx path "Mary Lane" "John Smith" --accepted-only
 
   # JSON output
   glx path "Mary Lane" "John Smith" --json
@@ -1467,11 +1588,12 @@ Person arguments can be exact entity IDs or name substrings.`,
 func init() {
 	pathCmd.Flags().StringVarP(&pathArchive, "archive", "a", ".", "Archive path (directory or single file)")
 	pathCmd.Flags().IntVar(&pathMaxHops, "max-hops", 10, "Maximum number of hops to search")
+	pathCmd.Flags().BoolVar(&pathAcceptedOnly, "accepted-only", false, "Follow only relationships not recorded as a hypothesis")
 	pathCmd.Flags().BoolVar(&pathJSON, "json", false, "Output as JSON")
 }
 
 func runPath(_ *cobra.Command, args []string) error {
-	return showPath(pathArchive, args[0], args[1], pathMaxHops, pathJSON)
+	return showPath(pathArchive, args[0], args[1], pathMaxHops, pathAcceptedOnly, pathJSON)
 }
 
 // ============================================================================

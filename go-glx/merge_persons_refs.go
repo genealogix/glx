@@ -35,6 +35,8 @@ type MergeReferenceChange struct {
 	NewValue   any
 }
 
+const mergeReferencePruned = "pruned"
+
 type mergeEntity struct {
 	kind        EntityType
 	id          string
@@ -354,6 +356,7 @@ func cleanupResolvedPersonRelationships(archive, prepared *GLXFile, keepID, drop
 		removed[id] = true
 	}
 	removeMergeDependentAssertions(archive, prepared, removed, result)
+	pruneRemovedAssertionReferences(archive, prepared, result)
 	for _, id := range result.RemovedRelationships {
 		delete(archive.Relationships, id)
 	}
@@ -367,7 +370,7 @@ func cleanupResolvedPersonRelationships(archive, prepared *GLXFile, keepID, drop
 		}
 		editMergeProperties(entity, func(kind EntityType, id, path string, original any) (string, bool) {
 			if kind == EntityTypeRelationships && removed[id] {
-				result.ReferenceChanges = append(result.ReferenceChanges, MergeReferenceChange{entity.kind, entity.id, path, kind, "pruned", cloneMergeValue(reflect.ValueOf(original)).Interface(), nil})
+				result.ReferenceChanges = append(result.ReferenceChanges, MergeReferenceChange{entity.kind, entity.id, path, kind, mergeReferencePruned, cloneMergeValue(reflect.ValueOf(original)).Interface(), nil})
 
 				return id, true
 			}
@@ -421,6 +424,46 @@ func removeMergeDependentAssertions(archive, prepared *GLXFile, removed map[stri
 	})
 }
 
+// Removed claims no longer support research leads or vocabulary-declared
+// assertion references. Preserve the lead and the rest of each property history.
+func pruneRemovedAssertionReferences(archive, prepared *GLXFile, result *MergePersonsResult) {
+	removed := make(map[string]bool, len(result.RemovedAssertions))
+	for _, id := range result.RemovedAssertions {
+		removed[id] = true
+	}
+	forMergeEntities(archive, prepared, func(entity mergeEntity) {
+		record := func(path string, original any) {
+			result.ReferenceChanges = append(result.ReferenceChanges, MergeReferenceChange{entity.kind, entity.id, path, EntityTypeAssertions, mergeReferencePruned, cloneMergeValue(reflect.ValueOf(original)).Interface(), nil})
+		}
+		if entity.kind == EntityTypeResearchLogs {
+			log, _ := reflect.TypeAssert[*ResearchLog](entity.value.Addr())
+			for i := range log.Leads {
+				lead := &log.Leads[i]
+				kept := make([]string, 0, len(lead.Assertions))
+				for j, id := range lead.Assertions {
+					if removed[id] {
+						record(fmt.Sprintf("leads[%d].assertions[%d]", i, j), id)
+					} else {
+						kept = append(kept, id)
+					}
+				}
+				if len(kept) != len(lead.Assertions) {
+					lead.Assertions = kept
+				}
+			}
+		}
+		editMergeProperties(entity, func(kind EntityType, id, path string, original any) (string, bool) {
+			if kind == EntityTypeAssertions && removed[id] {
+				record(path, original)
+
+				return id, true
+			}
+
+			return id, false
+		})
+	})
+}
+
 func rewriteMergedPersonReferences(archive, prepared *GLXFile, oldID, newID string, result *MergePersonsResult) int {
 	count := 0
 	forMergeEntities(archive, prepared, func(entity mergeEntity) {
@@ -441,6 +484,9 @@ func rewriteMergedPersonReferences(archive, prepared *GLXFile, oldID, newID stri
 				a.Value = newID
 			}
 		}
+		if entity.kind == EntityTypeResearchLogs {
+			deduplicateMergeLeadPersons(entity, result)
+		}
 		editMergeProperties(entity, func(kind EntityType, id, path string, original any) (string, bool) {
 			if kind == EntityTypePersons && id == oldID {
 				next, _ := editMergeProperty(cloneMergeValue(reflect.ValueOf(original)), path,
@@ -455,6 +501,26 @@ func rewriteMergedPersonReferences(archive, prepared *GLXFile, oldID, newID stri
 	})
 
 	return count
+}
+
+func deduplicateMergeLeadPersons(entity mergeEntity, result *MergePersonsResult) {
+	log, _ := reflect.TypeAssert[*ResearchLog](entity.value.Addr())
+	for i := range log.Leads {
+		lead := &log.Leads[i]
+		seen := make(map[string]bool)
+		kept := make([]string, 0, len(lead.Persons))
+		for j, id := range lead.Persons {
+			if seen[id] {
+				result.ReferenceChanges = append(result.ReferenceChanges, MergeReferenceChange{entity.kind, entity.id, fmt.Sprintf("leads[%d].persons[%d]", i, j), EntityTypePersons, mergeReferencePruned, id, nil})
+			} else {
+				seen[id] = true
+				kept = append(kept, id)
+			}
+		}
+		if len(kept) != len(lead.Persons) {
+			lead.Persons = kept
+		}
+	}
 }
 
 // The SDK accepts sparse archives, so validate entity references independently

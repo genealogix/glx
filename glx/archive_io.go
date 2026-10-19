@@ -17,6 +17,7 @@ package main
 import (
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"path"
 	"path/filepath"
@@ -820,24 +821,29 @@ func LoadArchiveWithOptions(rootPath string, schemaValidate bool) (*glxlib.GLXFi
 // apart on a symlinked archive root.
 func loadArchiveFromFiles(rootPath string, files map[string][]byte, schemaValidate bool) (*glxlib.GLXFile, []string, error) {
 	if schemaValidate {
-		var allErrors []string
-		for relPath, data := range files {
+		var fileErrors []fileValidationIssues
+		for _, relPath := range slices.Sorted(maps.Keys(files)) {
+			data := files[relPath]
 			absPath := filepath.Join(rootPath, relPath)
 
 			doc, parseErr := ParseYAMLFile(data)
 			if parseErr != nil {
-				allErrors = append(allErrors, fmt.Sprintf("%s: YAML parse error: %v", absPath, parseErr))
+				fileErrors = append(fileErrors, fileValidationIssues{
+					path:       absPath,
+					issues:     []string{fmt.Sprintf("YAML parse error: %v", parseErr)},
+					parseError: true,
+				})
 
 				continue
 			}
 
 			issues := ValidateGLXFileStructure(doc)
 			if len(issues) > 0 {
-				allErrors = append(allErrors, fmt.Sprintf("%s:\n  - %s", absPath, strings.Join(issues, "\n  - ")))
+				fileErrors = append(fileErrors, fileValidationIssues{path: absPath, issues: issues})
 			}
 		}
-		if len(allErrors) > 0 {
-			return nil, nil, fmt.Errorf("%w:\n\n%s", ErrMultipleFilesFailed, strings.Join(allErrors, "\n\n"))
+		if len(fileErrors) > 0 {
+			return nil, nil, &archiveFilesValidationError{files: fileErrors}
 		}
 	}
 

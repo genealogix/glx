@@ -41,6 +41,33 @@ func TestAnalyzeGaps_MissingBirth(t *testing.T) {
 	}
 }
 
+// A dated baptism or christening of the person satisfies the birth check;
+// one the person only attended does not (#1365).
+func TestAnalyzeGaps_BaptismSatisfiesBirth(t *testing.T) {
+	for _, tc := range []struct {
+		eventType, role string
+		flagged         bool
+	}{
+		{glxlib.EventTypeBaptism, "principal", false},
+		{glxlib.EventTypeChristening, "principal", false},
+		{glxlib.EventTypeBaptism, glxlib.ParticipantRoleGodparent, true},
+	} {
+		archive := &glxlib.GLXFile{
+			Persons: map[string]*glxlib.Person{
+				"person-a": {Properties: map[string]any{}},
+			},
+			Events: map[string]*glxlib.Event{
+				"event-bapt-a": {Type: tc.eventType, Date: "1664-08-21", Participants: []glxlib.Participant{{Person: "person-a", Role: tc.role}}},
+			},
+		}
+
+		found := findIssue(analyzeGaps(archive), "person-a", "birth_event")
+		if (found != nil) != tc.flagged {
+			t.Errorf("%s as %s: flagged=%v, want %v", tc.eventType, tc.role, found != nil, tc.flagged)
+		}
+	}
+}
+
 func TestAnalyzeGaps_HasBirth(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
@@ -376,6 +403,39 @@ func TestAnalyzeEvidence_SingleSourcePerson(t *testing.T) {
 	found := findIssueByMessage(issues, "person-a", "single source")
 	if found == nil {
 		t.Fatal("expected single-source person issue")
+	}
+}
+
+// TestAnalyzeEvidence_SingleSourcePersonViaEvents: assertions about the
+// person's own events count toward their sources (#1211).
+func TestAnalyzeEvidence_SingleSourcePersonViaEvents(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-a":       {Properties: map[string]any{}},
+			"person-witness": {Properties: map[string]any{}},
+		},
+		Sources: map[string]*glxlib.Source{
+			"source-kb": {Title: "Kirchenbuch"},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-death": {Type: glxlib.EventTypeDeath, Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
+			"event-burial": {Type: glxlib.EventTypeBurial, Participants: []glxlib.Participant{
+				{Person: "person-a", Role: "principal"},
+				{Person: "person-witness", Role: "witness"},
+			}},
+		},
+		Assertions: map[string]*glxlib.Assertion{
+			"a-death":  {Subject: glxlib.EntityRef{Event: "event-death"}, Sources: []string{"source-kb"}},
+			"a-burial": {Subject: glxlib.EntityRef{Event: "event-burial"}, Sources: []string{"source-kb"}},
+		},
+	}
+
+	issues := analyzeEvidence(archive)
+	if findIssueByMessage(issues, "person-a", "single source") == nil {
+		t.Fatal("expected single-source issue for the decedent")
+	}
+	if findIssueByMessage(issues, "person-witness", "single source") != nil {
+		t.Error("a witness's evidence is not counted from someone else's record")
 	}
 }
 
@@ -768,7 +828,7 @@ func TestAnalyzeConsistency_DuplicateSiblingNames(t *testing.T) {
 		Persons: map[string]*glxlib.Person{
 			"person-parent": {Properties: map[string]any{"name": "James Green"}},
 			"person-mary-1": {Properties: map[string]any{"name": "Mary Green"}},
-			"person-mary-2": {Properties: map[string]any{"name": "Mary Elizabeth Green"}},
+			"person-mary-2": {Properties: map[string]any{"name": "Mary Green"}},
 			"person-john":   {Properties: map[string]any{"name": "John Green"}},
 		},
 		Relationships: map[string]*glxlib.Relationship{
@@ -804,6 +864,73 @@ func TestAnalyzeConsistency_DuplicateSiblingNames(t *testing.T) {
 	}
 	if !containsSubstring(found.Message, "Mary") {
 		t.Errorf("expected capitalized 'Mary' in message: %s", found.Message)
+	}
+}
+
+// siblingNamesArchive builds one parent with the given children, each a
+// person ID mapped to its name property, under parent_child relationships.
+func siblingNamesArchive(children map[string]any) *glxlib.GLXFile {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-parent": {Properties: map[string]any{"name": "Johann Georg Schöpff"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{},
+		Events:        map[string]*glxlib.Event{},
+	}
+	for id, name := range children {
+		archive.Persons[id] = &glxlib.Person{Properties: map[string]any{"name": name}}
+		archive.Relationships["rel-"+id] = &glxlib.Relationship{
+			Type: "parent_child",
+			Participants: []glxlib.Participant{
+				{Person: "person-parent", Role: "parent"},
+				{Person: id, Role: "child"},
+			},
+		}
+	}
+
+	return archive
+}
+
+// schopffName is a structured name with the given name in its own field.
+func schopffName(given string) map[string]any {
+	return map[string]any{
+		"value":  given + " Schöpff",
+		"fields": map[string]any{"given": given, "surname": "Schöpff"},
+	}
+}
+
+func TestAnalyzeConsistency_CompoundGivenNamesNotShared(t *testing.T) {
+	// #1366: sons all baptized Johann, known by the second name.
+	archive := siblingNamesArchive(map[string]any{
+		"person-wilhelm": schopffName("Johann Wilhelm"),
+		"person-conrad":  schopffName("Johann Conrad"),
+		"person-mary":    "Mary Green",
+		"person-mary-e":  "Mary Elizabeth Green",
+	})
+
+	for _, issue := range analyzeConsistency(archive) {
+		if containsSubstring(issue.Message, "share given name") {
+			t.Errorf("different full given names flagged as shared: %s", issue.Message)
+		}
+	}
+}
+
+func TestAnalyzeConsistency_FullGivenNameSharedCaseFolded(t *testing.T) {
+	archive := siblingNamesArchive(map[string]any{
+		"person-jw-1": schopffName("Johann Wilhelm"),
+		"person-jw-2": schopffName("johann  wilhelm"),
+		"person-jc":   schopffName("Johann Conrad"),
+	})
+
+	found := findIssueByMessage(analyzeConsistency(archive), "person-parent", "share given name")
+	if found == nil {
+		t.Fatal("expected the two Johann Wilhelms to be flagged")
+	}
+	if !containsSubstring(found.Message, `"Johann Wilhelm"`) && !containsSubstring(found.Message, `"johann wilhelm"`) {
+		t.Errorf("expected the whole given name in the message: %s", found.Message)
+	}
+	if containsSubstring(found.Message, "person-jc") {
+		t.Errorf("Johann Conrad does not share the name: %s", found.Message)
 	}
 }
 

@@ -280,7 +280,7 @@ func TestMergePersons_ValidationFailureDoesNotMutateInput(t *testing.T) {
 	// Unsupported custom target category exercises post-plan integrity failure,
 	// rather than creating an additional cascade rule beyond the specification.
 	archive.PersonProperties["unsupported"] = &PropertyDefinition{ReferenceType: "assertions"}
-	archive.Persons["person-third"].Properties = map[string]any{"unsupported": "a-speculative"}
+	archive.Assertions["unsupported-dependent"] = &Assertion{Subject: EntityRef{Person: "person-third"}, Property: "unsupported", Value: "a-speculative"}
 	before := cloneMergeArchive(archive)
 	_, err := MergePersons(archive, "person-keep", "person-drop", MergePersonsOptions{})
 	require.ErrorIs(t, err, ErrValidationFailed)
@@ -325,4 +325,40 @@ func TestMergePersons_ReportsParticipantStandingWhenAggregateStaysAccepted(t *te
 		}
 	}
 	assert.True(t, found, "participant standing must be disclosed even when aggregate standing stays accepted")
+}
+
+func TestMergePersons_PrunesRemovedClaimsFromResearchLeadsAndTypedProperties(t *testing.T) {
+	archive := identityEvidenceFixture(t)
+	archive.ResearchLogs["l"].Leads = []ResearchLead{{
+		Description: "Candidate identity", Persons: []string{"person-drop", "person-third", "person-keep"},
+		Assertions: []string{"a-accepted", "a-literal", "a-qualified"},
+		Status:     "confirmed", EvidenceFor: []string{"Original summary"}, NextSteps: []string{"Check register"},
+	}}
+	archive.PersonProperties["supporting_claim"] = &PropertyDefinition{Label: "Supporting claim", ReferenceType: "assertions", MultiValue: new(true)}
+	removed := map[string]any{"value": "a-accepted", "date": "1850", "fields": map[string]any{"note": "whole occurrence"}}
+	archive.Persons["person-third"].Properties = map[string]any{"supporting_claim": []any{removed, "a-literal"}, "literal": "a-accepted"}
+	expected := archive.ResearchLogs["l"].Leads[0]
+	expected.Persons = []string{"person-keep", "person-third"}
+	expected.Assertions = []string{"a-literal"}
+	result, err := MergePersons(archive, "person-keep", "person-drop", MergePersonsOptions{})
+	require.NoError(t, err)
+	assert.Equal(t, expected, archive.ResearchLogs["l"].Leads[0])
+	assert.Equal(t, []any{"a-literal"}, archive.Persons["person-third"].Properties["supporting_claim"])
+	assert.Equal(t, "a-accepted", archive.Persons["person-third"].Properties["literal"])
+	assert.Empty(t, archive.Validate().Errors)
+	var prunedClaim, prunedLead bool
+	for _, reference := range result.ReferenceChanges {
+		if reference.EntityType == EntityTypePersons && reference.ID == "person-third" && reference.Path == "properties.supporting_claim[0]" {
+			assert.Equal(t, removed, reference.OldValue)
+			assert.Equal(t, "pruned", reference.Action)
+			prunedClaim = true
+		}
+		if reference.EntityType == EntityTypeResearchLogs && reference.ID == "l" && reference.Path == "leads[0].assertions[0]" {
+			assert.Equal(t, "a-accepted", reference.OldValue)
+			assert.Equal(t, "pruned", reference.Action)
+			prunedLead = true
+		}
+	}
+	assert.True(t, prunedClaim)
+	assert.True(t, prunedLead)
 }

@@ -34,6 +34,7 @@ The standard vocabulary files are:
 - `repository-types.glx`
 - `search-result-types.glx`
 - `research-log-status-types.glx`
+- `lead-statuses.glx`
 - `person-properties.glx`
 - `event-properties.glx`
 - `relationship-properties.glx`
@@ -595,7 +596,7 @@ participant_roles:
 | `label` | Yes | Human-readable label |
 | `description` | No | Detailed description |
 | `applies_to` | No | Array of contexts the role is meant for (`event`, `relationship`). Omitted means all contexts; see [applies_to semantics](#applies_to-semantics) |
-| `gedcom` | No | GEDCOM `ASSO ROLE` tag value emitted/consumed for round-trip (#524) |
+| `gedcom` | No | GEDCOM 7.0 `ASSO.ROLE` enumeration value (e.g., `WITN`, `CLERGY`) emitted on export, overriding the built-in mapping (#524). Roles without one export as `ROLE OTHER` with a `PHRASE` naming the role |
 | `implies_presence` | No | Boolean. Whether a person in this role was at the event's place on its date. Set `false` for roles that name a person without placing them there, such as a grantor selling land from another state or an absent legatee. When omitted, tools fall back to a built-in default (see below) |
 
 #### Role semantics in tooling
@@ -761,6 +762,46 @@ research_log_status_types:
 ### Standard Research Log Status Types
 
 See [ResearchLog Entity - Status lifecycle](research-log.md#status-lifecycle) for the standard status values and the investigation lifecycle.
+
+---
+
+## Lead Statuses Vocabulary
+
+**Default file**: `vocabularies/lead-statuses.glx`
+
+**Used By**: [ResearchLog Entity](research-log.md#researchlead) (each lead's `status`)
+
+**Purpose**: Records whether a lead (a competing hypothesis inside a research log) is still being pursued, has been ruled out, or has been confirmed. A lead status is research workflow state: changing it never changes the assertions the lead references.
+
+**Standard Templates**: See [Standard Vocabularies - Lead Statuses](../5-standard-vocabularies/#lead-statuses) for the complete default vocabulary.
+
+### Structure
+
+```yaml
+lead_statuses:
+  active:
+    label: "Active"
+    description: "Hypothesis is still being pursued; evidence neither rules it in nor out yet."
+
+  eliminated:
+    label: "Eliminated"
+    description: "Hypothesis has been ruled out by contradicting evidence."
+
+  confirmed:
+    label: "Confirmed"
+    description: "The research has settled on this hypothesis. Setting this status changes no assertion; record the conclusion in assertions and relationships separately."
+```
+
+### Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `label` | Yes | Human-readable label |
+| `description` | No | Detailed description |
+
+### Standard Lead Statuses
+
+See [ResearchLog Entity - Leads](research-log.md#researchlead) for guidance on recording and eliminating leads.
 
 ---
 
@@ -1035,6 +1076,8 @@ Event properties are generally less common than person properties, since most ev
 - `event_subtype` - Further classification of the event type (GEDCOM: TYPE)
 - `marriage_type` - Free-text `MARR TYPE` value preserved on import (civil, religious, common law, …)
 - `name_as_recorded` - **Participant-level only**: set under `event.participants[].properties`, not `event.properties`. The participant's name as written in the source (structured, with name fields)
+- `named` - **Participant-level only**: boolean; `false` when the source counts the participant without naming them (a tick mark in a head-only census household). See [Census Households](event.md#census-households)
+- `relationship_to_head` - **Participant-level only**: relationship to the head of household as written in the source (head, wife, son, boarder...)
 - `description` - Event description
 
 **Note:** Event timing and location are handled by the `date` and `place` fields directly on the event, not as properties. The `notes` field is a standard entity field available on all entity types, not a property.
@@ -1816,6 +1859,7 @@ Each vocabulary type has a corresponding JSON Schema for validation:
 | Study Statuses | [study-statuses.schema.json](../schema/v1/vocabularies/study-statuses.schema.json) |
 | Search Result Types | [search-result-types.schema.json](../schema/v1/vocabularies/search-result-types.schema.json) |
 | Research Log Status Types | [research-log-status-types.schema.json](../schema/v1/vocabularies/research-log-status-types.schema.json) |
+| Lead Statuses | [lead-statuses.schema.json](../schema/v1/vocabularies/lead-statuses.schema.json) |
 | Person Properties | [person-properties.schema.json](../schema/v1/vocabularies/person-properties.schema.json) |
 | Event Properties | [event-properties.schema.json](../schema/v1/vocabularies/event-properties.schema.json) |
 | Relationship Properties | [relationship-properties.schema.json](../schema/v1/vocabularies/relationship-properties.schema.json) |

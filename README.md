@@ -104,6 +104,7 @@ The `glx` CLI groups its commands into archive management, import/export, explor
 - [`glx stats`](docs/cli/glx_stats.md) — entity-count and confidence dashboard
 - [`glx places`](docs/cli/glx_places.md) — place data quality issues
 - [`glx cluster`](docs/cli/glx_cluster.md) — FAN-club analysis
+- [`glx households`](docs/cli/glx_households.md) — reconstruct census households for a person or a place
 - [`glx analyze`](docs/cli/glx_analyze.md) — gap, conflict, and suggestion analysis
 - [`glx duplicates`](docs/cli/glx_duplicates.md) — detect duplicate entities
 - [`glx coverage`](docs/cli/glx_coverage.md) — research coverage report

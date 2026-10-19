@@ -28,6 +28,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"maps"
 	"os"
@@ -104,8 +105,22 @@ func runGLX(t *testing.T, workDir string, args ...string) result {
 func runGLXWithEnv(t *testing.T, extraEnv []string, workDir string, args ...string) result {
 	t.Helper()
 
+	return runGLXWithIO(t, extraEnv, nil, workDir, args...)
+}
+
+// runGLXWithStdin supplies YAML to commands that validate a piped entity.
+func runGLXWithStdin(t *testing.T, workDir, input string, args ...string) result {
+	t.Helper()
+
+	return runGLXWithIO(t, nil, strings.NewReader(input), workDir, args...)
+}
+
+func runGLXWithIO(t *testing.T, extraEnv []string, in io.Reader, workDir string, args ...string) result {
+	t.Helper()
+
 	cmd := exec.CommandContext(t.Context(), glxBinary, args...) //nolint:gosec // args come from the test, not user input
 	cmd.Dir = workDir
+	cmd.Stdin = in
 	// Pin the cache mode. Without this the subprocess inherits whatever
 	// GLX_CACHE the developer or CI runner happens to export, so the same test
 	// exercises the cached loader on one machine and the uncached one on

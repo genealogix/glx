@@ -22,7 +22,7 @@ import (
 	"slices"
 	"strings"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
@@ -212,6 +212,8 @@ func equalMergeNodes(a, b *yaml.Node) bool {
 	return reflect.DeepEqual(first, second)
 }
 
+const yamlStringTag = "!!str"
+
 type mergeNodeContext struct {
 	keepID, dropID string
 	personPaths    map[string]bool
@@ -236,7 +238,7 @@ func rewriteMergeReferenceNode(node *yaml.Node, context mergeNodeContext) *yaml.
 			}
 		}
 	case yaml.ScalarNode:
-		if out.Tag == "!!str" && out.Value == context.dropID {
+		if out.Tag == yamlStringTag && out.Value == context.dropID {
 			out.Value = context.keepID
 		}
 	}

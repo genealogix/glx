@@ -14,6 +14,11 @@ Create a Source entity in the archive.
 --title is required (or --id). --type is validated against the source_types
 vocabulary. --repository must reference an existing repository.
 
+--url, --publication-info, --call-number, --source-nature and
+--information-type set the matching source properties. --source-nature and
+--information-type are validated against the source_natures and
+information_types vocabularies.
+
 ```
 glx add source [flags]
 ```
@@ -28,25 +33,35 @@ glx add source [flags]
   # Book with author(s) and date
   glx add source --title "Genealogy of the Smith Family" \
     --type book --author "Jane Smith" --date 1923 --archive ./archive
+
+  # Online database with its evidence classification
+  glx add source --title "Find a Grave Memorials" --type database \
+    --url https://www.findagrave.com --source-nature derivative \
+    --information-type secondary --archive ./archive
 ```
 
 ### Options
 
 ```
-  -a, --archive string       Archive path (directory) (default ".")
-      --author stringArray   Author (repeatable)
-      --date string          Publication or compilation date
-      --description string   Short description
-      --dry-run              Print what would be created without writing files
-      --force                Overwrite an existing entity with the chosen ID
-  -h, --help                 help for source
-      --id string            Override the derived entity ID
-      --language string      Source language (e.g. en, de, la)
-      --note stringArray     Free-text note (repeatable)
-      --repository string    Repository ID
-      --skip-validate        Skip whole-archive validation after adding (vocab and reference checks still run)
-      --title string         Source title (required unless --id is given)
-      --type string          Source type (vocabulary key in source_types)
+  -a, --archive string            Archive path (directory) (default ".")
+      --author stringArray        Author (repeatable)
+      --call-number string        Repository call number or shelf mark
+      --date string               Publication or compilation date
+      --description string        Short description
+      --dry-run                   Print what would be created without writing files
+      --force                     Overwrite an existing entity with the chosen ID
+  -h, --help                      help for source
+      --id string                 Override the derived entity ID
+      --information-type string   Information type (vocabulary key in information_types, e.g. primary, secondary)
+      --language string           Source language (e.g. en, de, la)
+      --note stringArray          Free-text note (repeatable)
+      --publication-info string   Publisher, place and date of publication, edition
+      --repository string         Repository ID
+      --skip-validate             Skip whole-archive validation after adding (vocab and reference checks still run)
+      --source-nature string      Source nature (vocabulary key in source_natures, e.g. original, derivative)
+      --title string              Source title (required unless --id is given)
+      --type string               Source type (vocabulary key in source_types)
+      --url string                Web address of the source collection or database
 ```
 
 ### Options inherited from parent commands

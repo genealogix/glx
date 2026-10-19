@@ -16,6 +16,7 @@ package glx
 
 import (
 	"reflect"
+	"slices"
 	"sort"
 )
 
@@ -116,6 +117,7 @@ func ThreeWayMerge(base, ours, theirs *GLXFile) (*GLXFile, []Merge3Conflict) {
 	merged.LegalStatuses, conflicts = merge3OpaqueMap("legal_statuses", base.LegalStatuses, ours.LegalStatuses, theirs.LegalStatuses, conflicts)
 	merged.SearchResultTypes, conflicts = merge3OpaqueMap("search_result_types", base.SearchResultTypes, ours.SearchResultTypes, theirs.SearchResultTypes, conflicts)
 	merged.ResearchLogStatusTypes, conflicts = merge3OpaqueMap("research_log_status_types", base.ResearchLogStatusTypes, ours.ResearchLogStatusTypes, theirs.ResearchLogStatusTypes, conflicts)
+	merged.LeadStatuses, conflicts = merge3OpaqueMap("lead_statuses", base.LeadStatuses, ours.LeadStatuses, theirs.LeadStatuses, conflicts)
 	merged.StudyTypes, conflicts = merge3OpaqueMap("study_types", base.StudyTypes, ours.StudyTypes, theirs.StudyTypes, conflicts)
 	merged.StudyStatuses, conflicts = merge3OpaqueMap("study_statuses", base.StudyStatuses, ours.StudyStatuses, theirs.StudyStatuses, conflicts)
 	merged.SourceNatures, conflicts = merge3OpaqueMap("source_natures", base.SourceNatures, ours.SourceNatures, theirs.SourceNatures, conflicts)
@@ -494,11 +496,36 @@ func mergeOneEvent(entityType EntityType, id string, base, ours, theirs *Event) 
 	merged.Date, conflicts = dateOrConflict(prefix+".date", base.Date, ours.Date, theirs.Date, conflicts)
 
 	merged.Participants, conflicts = participantsOrConflict(prefix+".participants", base.Participants, ours.Participants, theirs.Participants, conflicts)
+	merged.Household, conflicts = opaqueOrConflict(prefix+".household", base.Household, ours.Household, theirs.Household, conflicts)
+	merged.Neighbors, conflicts = opaqueOrConflict(prefix+".neighbors", base.Neighbors, ours.Neighbors, theirs.Neighbors, conflicts)
 
 	merged.Properties, conflicts = merge3Properties(prefix+".properties", base.Properties, ours.Properties, theirs.Properties, conflicts)
 	merged.Notes = merge3NoteList(base.Notes, ours.Notes, theirs.Notes)
 
 	return merged, conflicts
+}
+
+// opaqueOrConflict merges a structured field (an event's household tally or
+// neighbor list) as one opaque value: a change on one side wins, identical
+// changes agree, and differing changes on both sides conflict with ours kept.
+//
+//nolint:ireturn // T is a type parameter, not a returned interface.
+func opaqueOrConflict[T any](path string, base, ours, theirs T, conflicts []Merge3Conflict) (T, []Merge3Conflict) {
+	switch {
+	case reflect.DeepEqual(base, ours):
+		return theirs, conflicts
+	case reflect.DeepEqual(base, theirs), reflect.DeepEqual(ours, theirs):
+		return ours, conflicts
+	}
+
+	conflicts = append(conflicts, Merge3Conflict{
+		Path:        path,
+		BaseValue:   base,
+		OursValue:   ours,
+		TheirsValue: theirs,
+	})
+
+	return ours, conflicts
 }
 
 func mergeOnePlace(entityType EntityType, id string, base, ours, theirs *Place) (*Place, []Merge3Conflict) {
@@ -686,6 +713,9 @@ func mergeOneResearchLog(entityType EntityType, id string, base, ours, theirs *R
 
 	// Searches: ordered list of embedded structs with no natural key — opaque.
 	merged.Searches, conflicts = searchesOrConflict(prefix+".searches", base.Searches, ours.Searches, theirs.Searches, conflicts)
+
+	// Leads: same shape as Searches (ordered embedded structs, no natural key), so opaque.
+	merged.Leads, conflicts = leadsOrConflict(prefix+".leads", base.Leads, ours.Leads, theirs.Leads, conflicts)
 
 	// Citations is a reference list — additive 3-way set merge.
 	merged.Citations = merge3StringSet(base.Citations, ours.Citations, theirs.Citations)
@@ -1064,6 +1094,29 @@ func cloneSearches(s []Search) []Search {
 	copy(out, s)
 
 	return out
+}
+
+// leadsOrConflict 3-way merges a []ResearchLead (ResearchLog.Leads). Like
+// searchesOrConflict, leads have no natural key, so the list is treated
+// opaquely: a one-sided change wins, divergent changes conflict.
+func leadsOrConflict(path string, base, ours, theirs []ResearchLead, conflicts []Merge3Conflict) ([]ResearchLead, []Merge3Conflict) {
+	switch {
+	case reflect.DeepEqual(base, ours):
+		return slices.Clone(theirs), conflicts
+	case reflect.DeepEqual(base, theirs):
+		return slices.Clone(ours), conflicts
+	case reflect.DeepEqual(ours, theirs):
+		return slices.Clone(ours), conflicts
+	}
+
+	conflicts = append(conflicts, Merge3Conflict{
+		Path:        path,
+		BaseValue:   base,
+		OursValue:   ours,
+		TheirsValue: theirs,
+	})
+
+	return slices.Clone(ours), conflicts
 }
 
 // merge3StringSet performs an additive 3-way merge of a string list treated

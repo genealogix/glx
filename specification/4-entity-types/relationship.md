@@ -438,6 +438,9 @@ or edit away a qualifier. Sources, citations, media and unrelated assertions rem
 
 Research logs whose optional subject is removed lose only that subject; searches,
 negative results, citations, conclusions, status, notes and other research remain.
+Research leads retain their content and surviving assertion references; references
+to deleted assertions are pruned from leads and declared assertion-reference
+properties. Candidate person lists remain unique after following the survivor.
 Declared relationship-reference properties lose matching whole occurrences,
 including structured fields and dates, while retaining other values and order.
 Ordinary person references follow the survivor; opaque text is not a reference.

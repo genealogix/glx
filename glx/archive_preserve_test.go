@@ -162,7 +162,7 @@ func TestValidateMediaFileExistence_DotComponentWarns(t *testing.T) {
 func TestValidateAndReport(t *testing.T) {
 	t.Run("rejects more than one path", func(t *testing.T) {
 		streams, _, _ := newTestStreams()
-		err := validateAndReport(streams, []string{"a", "b"})
+		err := validateAndReport(streams, []string{"a", "b"}, defaultShowFirstErrors)
 		assert.ErrorIs(t, err, errReportTooManyArgs)
 	})
 
@@ -170,7 +170,7 @@ func TestValidateAndReport(t *testing.T) {
 		dir := t.TempDir()
 		writeSkipTestFile(t, filepath.Join(dir, "persons", "bad.glx"), "persons: [\n")
 		streams, _, _ := newTestStreams()
-		err := validateAndReport(streams, []string{dir})
+		err := validateAndReport(streams, []string{dir}, defaultShowFirstErrors)
 		assert.Error(t, err, "an archive that fails validation must not produce a report")
 	})
 }
@@ -240,7 +240,7 @@ func TestValidateAndReport_ValidArchiveProducesReport(t *testing.T) {
 	writeSkipTestFile(t, filepath.Join(dir, "persons", "person-1.glx"), "persons:\n  person-1:\n    properties:\n      primary_name: Alice\n")
 	streams, _, _ := newTestStreams()
 
-	assert.NoError(t, validateAndReport(streams, []string{dir}))
+	assert.NoError(t, validateAndReport(streams, []string{dir}, defaultShowFirstErrors))
 }
 
 func TestValidateSingleFileSemantics_IgnoresNonGLXFiles(t *testing.T) {

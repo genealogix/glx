@@ -128,3 +128,43 @@ func TestPublish_Errors(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, entries, "a failed publish must not leave output behind")
 }
+
+// A date range or qualifier must survive into the one-line lifespan shown in
+// the page header, family lists, and charts instead of collapsing to its first
+// year (#1328).
+func TestPublish_LifespanKeepsDateRanges(t *testing.T) {
+	work := t.TempDir()
+	archive := `persons:
+  person-lewis:
+    properties: {name: {value: "Lewis Little"}, sex: male}
+  person-ann:
+    properties: {name: {value: "Ann Little"}, sex: female}
+events:
+  ev-birth-lewis:
+    type: birth
+    date: "BET 1756 AND 1774"
+    participants: [{person: person-lewis, role: principal}]
+  ev-death-lewis:
+    type: death
+    date: "BET 1826-05-16 AND 1830"
+    participants: [{person: person-lewis, role: principal}]
+  ev-birth-ann:
+    type: birth
+    date: "ABT 1765"
+    participants: [{person: person-ann, role: principal}]
+relationships:
+  rel-marriage:
+    type: marriage
+    participants: [{person: person-lewis, role: spouse}, {person: person-ann, role: spouse}]
+`
+	require.NoError(t, os.WriteFile(filepath.Join(work, "archive.glx"), []byte(archive), 0o644))
+
+	res := runGLX(t, work, "publish", "--archive", "archive.glx", "--output", "site")
+
+	require.Equal(t, 0, res.exitCode, res.stderr)
+	lewis, err := os.ReadFile(filepath.Join(work, "site", "persons", "person-lewis.html"))
+	require.NoError(t, err)
+	assert.Contains(t, string(lewis), `<p class="lifespan">1756/1774 – 1826/1830</p>`)
+	assert.Contains(t, string(lewis), "(b. c. 1765)", "the spouse's qualified birth year is kept")
+	assert.NotContains(t, string(lewis), "1756–1826")
+}

@@ -172,7 +172,7 @@ func TestQueryResearchLogs_DirectFunction(t *testing.T) {
 			"research-log-objective-fallback": {Objective: "Find baptism"},
 		},
 	}
-	require.NoError(t, queryResearchLogs(archive))
+	require.NoError(t, queryResearchLogs(archive, &queryOpts{}))
 }
 
 func TestQueryStudies_DirectFunction(t *testing.T) {

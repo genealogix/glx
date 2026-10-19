@@ -37,6 +37,7 @@ Use GLX to initialize new archives, validate files, and ensure data quality.
 * [glx duplicates](glx_duplicates.md)	 - Detect potential duplicate persons in a GLX archive
 * [glx evidence](glx_evidence.md)	 - Show all evidence for a property, grouped by value
 * [glx export](glx_export.md)	 - Export a GLX archive to GEDCOM or JSON-LD format
+* [glx households](glx_households.md)	 - Reconstruct census households
 * [glx import](glx_import.md)	 - Import a GEDCOM or GEDZIP file to GLX format
 * [glx init](glx_init.md)	 - Initialize a new GENEALOGIX archive in the specified directory
 * [glx join](glx_join.md)	 - Join a multi-file GLX archive into single-file format

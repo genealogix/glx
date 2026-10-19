@@ -19,7 +19,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
@@ -160,6 +160,17 @@ func validateCensusRefs(result *glxlib.CensusResult, existing *glxlib.GLXFile) e
 			if _, ok := result.Persons[p.Person]; !ok {
 				if existing.Persons == nil || existing.Persons[p.Person] == nil {
 					return fmt.Errorf("event %s participant references unknown person %s", id, p.Person)
+				}
+			}
+		}
+		// Event neighbor -> Person references (#180)
+		for _, n := range evt.Neighbors {
+			if n.Person == "" {
+				continue
+			}
+			if _, ok := result.Persons[n.Person]; !ok {
+				if existing.Persons == nil || existing.Persons[n.Person] == nil {
+					return fmt.Errorf("%w: event %s neighbor %s", ErrCensusNeighborUnknownPerson, id, n.Person)
 				}
 			}
 		}

@@ -18,6 +18,13 @@ godparent, neighbor, etc.) to find the shortest connection.
 Each hop shows the relationship type and the destination person's role.
 Use --max-hops to limit search depth (default 10).
 
+A relationship whose assertions are all disproven is a rejected alternative
+and is never followed. A hop along a relationship recorded only as a
+hypothesis (low confidence, or a speculative, unresearched, or disputed
+status, with no proven assertion) is marked "(?)", and among equally short
+paths the one with the fewest such hops is shown. Use --accepted-only to
+follow no hypothetical relationships at all.
+
 Person arguments can be exact entity IDs or name substrings.
 
 ```
@@ -36,6 +43,9 @@ glx path <person-a> <person-b> [flags]
   # Limit search depth
   glx path "Mary Lane" "John Smith" --max-hops 5
 
+  # Follow no relationship recorded only as a hypothesis
+  glx path "Mary Lane" "John Smith" --accepted-only
+
   # JSON output
   glx path "Mary Lane" "John Smith" --json
 
@@ -46,6 +56,7 @@ glx path <person-a> <person-b> [flags]
 ### Options
 
 ```
+      --accepted-only    Follow only relationships not recorded as a hypothesis
   -a, --archive string   Archive path (directory or single file) (default ".")
   -h, --help             help for path
       --json             Output as JSON

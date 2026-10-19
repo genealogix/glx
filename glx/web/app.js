@@ -100,7 +100,13 @@ async function api(path) {
 // Formatting helpers
 // ---------------------------------------------------------------------------
 
-function lifespan(birth, death) {
+// lifespan prefers the server's display string, which keeps date qualifiers
+// and ranges ("c. 1765 – 1830", "1756/1774 – 1826/1830"), over the bare
+// numeric years.
+function lifespan(ref) {
+  if (ref.lifespan) return ref.lifespan;
+  const birth = ref.birthYear;
+  const death = ref.deathYear;
   if (birth && death) return `${birth}–${death}`;
   if (birth) return `b. ${birth}`;
   if (death) return `d. ${death}`;
@@ -115,7 +121,7 @@ function sexClass(sex) {
 
 function personLink(ref) {
   const span = h("a", { href: `#/person/${encodeURIComponent(ref.id)}` }, ref.name || ref.id);
-  const years = lifespan(ref.birthYear, ref.deathYear);
+  const years = lifespan(ref);
   if (!years && !ref.detail) return span;
   return h("span", null, span, " ",
     h("span", { class: "ref-detail" }, ref.detail ? ref.detail : `(${years})`));
@@ -192,7 +198,7 @@ async function viewPersons() {
   const rows = persons.map((p) => {
     const tr = navRow(`#/person/${encodeURIComponent(p.id)}`, [
       h("td", null, p.name),
-      h("td", { class: "years" }, lifespan(p.birthYear, p.deathYear)),
+      h("td", { class: "years" }, lifespan(p)),
       h("td", { class: "muted" }, p.sex || ""),
     ]);
     tr.dataset.name = (p.name || "").toLowerCase();
@@ -454,11 +460,11 @@ function treeNode(node, w, hh) {
   g.appendChild(bar);
 
   g.appendChild(svgText(node.name || node.id, 12, 19, "tn-name", w - 20));
-  const years = lifespan(node.birthYear, node.deathYear);
+  const years = lifespan(node);
   if (years) g.appendChild(svgText(years, 12, 35, "tn-years", w - 20));
 
   const title = document.createElementNS(SVG_NS, "title");
-  title.textContent = node.name || node.id;
+  title.textContent = [node.name || node.id, years].filter(Boolean).join("\n");
   g.appendChild(title);
 
   return g;
