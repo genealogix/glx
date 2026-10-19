@@ -34,6 +34,10 @@ type FilenameAllocator struct {
 	claimed    map[string]bool   // on-disk spellings already used by this import
 	seeded     map[string][]int  // numbered on-disk candidates, grouped by basename
 	seededSort map[string]bool   // whether a basename's seeded suffixes are sorted
+	seededName map[string]string // original spelling -> normalized key
+	remaining  map[string]int    // unclaimed on-disk variants per normalized key
+	exhausted  map[string]bool   // candidates with no unclaimed on-disk variant
+	firstOpen  map[string]int    // first candidate not yet exhausted per basename
 }
 
 // NewFilenameAllocator creates an allocator seeded with existing basenames.
@@ -44,9 +48,15 @@ func NewFilenameAllocator(existing ...string) *FilenameAllocator {
 		claimed:    make(map[string]bool),
 		seeded:     make(map[string][]int),
 		seededSort: make(map[string]bool),
+		seededName: make(map[string]string, len(existing)),
+		remaining:  make(map[string]int),
+		exhausted:  make(map[string]bool),
+		firstOpen:  make(map[string]int),
 	}
 	for _, name := range existing {
-		a.Reserve(name)
+		key := FilenameCollisionKey(name)
+		a.reserveKey(name, key)
+		a.recordExisting(name, key)
 	}
 
 	return a
@@ -72,7 +82,7 @@ func (a *FilenameAllocator) Reserve(name string) bool {
 	if !a.reserveKey(name, key) {
 		return false
 	}
-	a.recordSeed(name)
+	a.recordExisting(name, key)
 
 	return true
 }
@@ -84,6 +94,15 @@ func (a *FilenameAllocator) reserveKey(name, key string) bool {
 	a.used[key] = name
 
 	return true
+}
+
+func (a *FilenameAllocator) recordExisting(name, key string) {
+	if _, seen := a.seededName[name]; seen {
+		return
+	}
+	a.seededName[name] = key
+	a.remaining[key]++
+	a.recordSeed(name)
 }
 
 // Allocate reserves basename unchanged when available, or the first free
@@ -117,7 +136,7 @@ func (a *FilenameAllocator) AllocateMatching(basename string, match func(string)
 	baseKey := FilenameCollisionKey(basename)
 	ext := filepath.Ext(basename)
 	stem := strings.TrimSuffix(basename, ext)
-	for n := 1; ; {
+	for n := max(a.firstOpen[baseKey], 1); ; {
 		candidate := basename
 		if n > 1 {
 			candidate = fmt.Sprintf("%s-%d%s", stem, n, ext)
@@ -126,18 +145,29 @@ func (a *FilenameAllocator) AllocateMatching(basename string, match func(string)
 		if _, occupied := a.used[key]; !occupied {
 			a.used[key] = candidate
 			a.claimed[candidate] = true
+			a.exhausted[key] = true
 			a.nextSuffix[baseKey] = n + 1
+			a.advanceFirstOpen(baseKey, basename, stem, ext)
 
 			return candidate, false, nil
 		}
-		actual, err := match(candidate)
-		if err != nil {
-			return "", false, err
-		}
-		if actual != "" && !a.claimed[actual] {
-			a.claimed[actual] = true
+		if !a.exhausted[key] {
+			actual, err := match(candidate)
+			if err != nil {
+				return "", false, err
+			}
+			if actual != "" && !a.claimed[actual] {
+				a.claimed[actual] = true
+				if a.seededName[actual] == key {
+					a.remaining[key]--
+				}
+				if a.remaining[key] == 0 {
+					a.exhausted[key] = true
+					a.advanceFirstOpen(baseKey, basename, stem, ext)
+				}
 
-			return actual, true, nil
+				return actual, true, nil
+			}
 		}
 		n++
 		if n < a.nextSuffix[baseKey] {
@@ -149,6 +179,21 @@ func (a *FilenameAllocator) AllocateMatching(basename string, match func(string)
 			}
 		}
 	}
+}
+
+func (a *FilenameAllocator) advanceFirstOpen(baseKey, basename, stem, ext string) {
+	n := max(a.firstOpen[baseKey], 1)
+	for {
+		candidate := basename
+		if n > 1 {
+			candidate = fmt.Sprintf("%s-%d%s", stem, n, ext)
+		}
+		if !a.exhausted[FilenameCollisionKey(candidate)] {
+			break
+		}
+		n++
+	}
+	a.firstOpen[baseKey] = n
 }
 
 func (a *FilenameAllocator) recordSeed(name string) {

@@ -121,6 +121,57 @@ func TestFilenameAllocator_AllocateMatchingStillChecksSeedWithinGeneratedPrefix(
 	assert.Equal(t, "photo-3.jpg", third)
 }
 
+func TestFilenameAllocator_AllocateMatchingSkipsFullyClaimedReusePrefix(t *testing.T) {
+	const count = 1000
+	names := make([]string, 0, count)
+	names = append(names, "photo.jpg")
+	for n := 2; n <= count; n++ {
+		names = append(names, fmt.Sprintf("photo-%d.jpg", n))
+	}
+	a := NewFilenameAllocator(names...)
+	matchCalls := 0
+	for _, want := range names {
+		actual, reused, err := a.AllocateMatching("photo.jpg", func(candidate string) (string, error) {
+			matchCalls++
+
+			return candidate, nil
+		})
+		require.NoError(t, err)
+		assert.True(t, reused)
+		assert.Equal(t, want, actual)
+	}
+	assert.Equal(t, count, matchCalls, "claimed destinations should be skipped on later refreshes")
+	actual, reused, err := a.AllocateMatching("photo.jpg", func(string) (string, error) {
+		matchCalls++
+
+		return "", nil
+	})
+	require.NoError(t, err)
+	assert.False(t, reused)
+	assert.Equal(t, "photo-1001.jpg", actual)
+	assert.Equal(t, count, matchCalls)
+}
+
+func TestFilenameAllocator_AllocateMatchingKeepsUnclaimedCaseVariants(t *testing.T) {
+	a := NewFilenameAllocator("Photo.JPG", "photo.jpg")
+	for _, want := range []string{"Photo.JPG", "photo.jpg"} {
+		actual, reused, err := a.AllocateMatching("photo.jpg", func(string) (string, error) {
+			return want, nil
+		})
+		require.NoError(t, err)
+		assert.True(t, reused)
+		assert.Equal(t, want, actual)
+	}
+	actual, reused, err := a.AllocateMatching("photo.jpg", func(string) (string, error) {
+		t.Fatal("all case variants were claimed")
+
+		return "", nil
+	})
+	require.NoError(t, err)
+	assert.False(t, reused)
+	assert.Equal(t, "photo-2.jpg", actual)
+}
+
 func BenchmarkFilenameAllocator_RepeatedBasename(b *testing.B) {
 	a := NewFilenameAllocator()
 	b.ResetTimer()
