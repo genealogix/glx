@@ -28,8 +28,6 @@ import (
 	"strings"
 )
 
-const mergeTransactionPermissions os.FileMode = 0o700
-
 // Install only changed files, using archive-scoped renames throughout. Original
 // inodes stay in an archive-local rollback area until success. Durable copies
 // in the sibling .bak preserve the regular writer's recovery contract.
@@ -61,7 +59,7 @@ func installMergeFilesWithSync(directory string, original, planned map[string][]
 	}
 	defer func() { _ = archive.Close() }()
 	transaction := ".glx-merge-" + rand.Text()
-	if err := archive.Mkdir(transaction, mergeTransactionPermissions); err != nil {
+	if err := makeMergePrivateDirectory(archive, transaction); err != nil {
 		return err
 	}
 	removeTransaction := true
@@ -81,7 +79,7 @@ func installMergeFilesWithSync(directory string, original, planned map[string][]
 	if err := removeStaleMergeBackup(parent, backupName); err != nil {
 		return err
 	}
-	if err := parent.Mkdir(backupName, mergeTransactionPermissions); err != nil {
+	if err := makeMergePrivateDirectory(parent, backupName); err != nil {
 		return err
 	}
 	backup, err := parent.OpenRoot(backupName)
@@ -130,8 +128,16 @@ func installMergeFilesWithSync(directory string, original, planned map[string][]
 		return fmt.Errorf("syncing installed merge; recovery data retained: %w", err)
 	}
 	removeTransaction = true
+
+	return removeCompletedMergeBackup(parent, backupName, syncHandle)
+}
+
+func removeCompletedMergeBackup(parent *os.Root, backupName string, syncHandle func(*os.File) error) error {
 	if err := parent.RemoveAll(backupName); err != nil {
 		return fmt.Errorf("removing completed merge backup: %w", err)
+	}
+	if err := syncMergeDirectories(parent, []string{backupName}, syncHandle); err != nil {
+		return fmt.Errorf("syncing completed merge backup removal: %w", err)
 	}
 
 	return nil
@@ -270,7 +276,7 @@ func stageMergeFilesWithSync(archive *os.Root, transaction string, original, pla
 		if err := archive.MkdirAll(filepath.Dir(target), dirPermissions); err != nil {
 			return nil, err
 		}
-		if err := writeDurableMergeFileWithSync(archive, target, next, info.Mode().Perm(), syncHandle); err != nil {
+		if err := writeDurableMergeCopyWithSync(archive, target, next, info.Mode().Perm(), archive, path, syncHandle); err != nil {
 			return nil, err
 		}
 	}
@@ -333,7 +339,7 @@ func copyMergeBackupWithSync(archive, backup *os.Root, transaction string, paths
 		if err := backup.MkdirAll(filepath.Dir(path), dirPermissions); err != nil {
 			return err
 		}
-		if err := writeDurableMergeFileWithSync(backup, path, original[path], info.Mode().Perm(), syncHandle); err != nil {
+		if err := writeDurableMergeCopyWithSync(backup, path, original[path], info.Mode().Perm(), archive, path, syncHandle); err != nil {
 			return err
 		}
 	}
@@ -342,7 +348,11 @@ func copyMergeBackupWithSync(archive, backup *os.Root, transaction string, paths
 }
 
 func writeDurableMergeFileWithSync(root *os.Root, path string, data []byte, mode os.FileMode, syncHandle func(*os.File) error) error {
-	file, err := root.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, mode)
+	return writeDurableMergeCopyWithSync(root, path, data, mode, nil, "", syncHandle)
+}
+
+func writeDurableMergeCopyWithSync(root *os.Root, path string, data []byte, mode os.FileMode, source *os.Root, sourcePath string, syncHandle func(*os.File) error) error {
+	file, err := createMergeFile(root, path, mode, source, sourcePath)
 	if err != nil {
 		return err
 	}

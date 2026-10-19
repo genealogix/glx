@@ -106,6 +106,7 @@ func TestMergePersonsSyncsRecoveryAndRenamesBeforeCleanup(t *testing.T) {
 	synced := make(map[string]bool)
 	installed := false
 	archiveSyncedAfterInstall := false
+	backupRemovalSynced := false
 	err = installMergeFilesWithSync(dir, original, planned, func(root *os.Root, from, to string) error {
 		if !installed {
 			assert.True(t, synced[filepath.Clean(dir+".bak")], "backup entries must persist before originals move")
@@ -128,7 +129,10 @@ func TestMergePersonsSyncsRecoveryAndRenamesBeforeCleanup(t *testing.T) {
 				synced[name] = true
 			}
 		}
-		if installed {
+		if installed && name == filepath.Dir(dir) {
+			assert.NoDirExists(t, dir+".bak")
+			backupRemovalSynced = true
+		} else if installed {
 			assert.FileExists(t, filepath.Join(dir+".bak", swapInProgressMarker))
 			if name == dir {
 				archiveSyncedAfterInstall = true
@@ -139,6 +143,7 @@ func TestMergePersonsSyncsRecoveryAndRenamesBeforeCleanup(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.True(t, archiveSyncedAfterInstall)
+	assert.True(t, backupRemovalSynced)
 	assert.NoDirExists(t, dir+".bak")
 	transactions, err := filepath.Glob(filepath.Join(dir, ".glx-merge-*"))
 	require.NoError(t, err)
@@ -174,4 +179,35 @@ func TestMergePersonsRetainsBackupWhenRollbackSyncFails(t *testing.T) {
 	actual, err := collectGLXFilesFromDir(dir)
 	require.NoError(t, err)
 	assert.Equal(t, original, actual)
+}
+
+func TestMergePersonsReportsBackupRemovalSyncFailure(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "archive")
+	writeMergeFixture(t, dir)
+	original, err := collectGLXFilesFromDir(dir)
+	require.NoError(t, err)
+	planned := maps.Clone(original)
+	path := filepath.Join("persons", "person-keep.glx")
+	planned[path] = append([]byte("# merged\n"), original[path]...)
+	observed := false
+	err = installMergeFilesWithSync(dir, original, planned, robustRenameIn, func(file *os.File) error {
+		info, statErr := file.Stat()
+		require.NoError(t, statErr)
+		parentInfo, statErr := os.Stat(filepath.Dir(dir))
+		require.NoError(t, statErr)
+		_, backupErr := os.Stat(dir + ".bak")
+		if os.SameFile(info, parentInfo) && os.IsNotExist(backupErr) {
+			observed = true
+
+			return fs.ErrInvalid
+		}
+
+		return nil
+	})
+	require.ErrorIs(t, err, fs.ErrInvalid)
+	assert.True(t, observed)
+	assert.Contains(t, err.Error(), "syncing completed merge backup removal")
+	actual, err := collectGLXFilesFromDir(dir)
+	require.NoError(t, err)
+	assert.Equal(t, planned, actual, "installed data remains intact when cleanup durability is uncertain")
 }

@@ -296,15 +296,32 @@ func editMergeProperty(value reflect.Value, path string, edit func(string, strin
 	out := cloneMergeValue(value)
 	switch out.Kind() {
 	case reflect.Map:
-		out.SetMapIndex(reflect.ValueOf("value").Convert(out.Type().Key()), reflect.ValueOf(replacement))
+		key := reflect.ValueOf("value").Convert(out.Type().Key())
+		out.SetMapIndex(key, replaceMergeReferenceString(value.MapIndex(key), replacement))
 	case reflect.Struct:
-		out.FieldByName("Value").Set(reflect.ValueOf(replacement))
+		out.FieldByName("Value").Set(replaceMergeReferenceString(value.FieldByName("Value"), replacement))
 	default:
 		out = reflect.New(value.Type()).Elem()
 		out.SetString(replacement)
 	}
 
 	return out, false
+}
+
+// Retain named-string and interface/pointer element types in SDK maps.
+func replaceMergeReferenceString(value reflect.Value, replacement string) reflect.Value {
+	out := reflect.New(value.Type()).Elem()
+	switch value.Kind() {
+	case reflect.Interface:
+		out.Set(replaceMergeReferenceString(value.Elem(), replacement))
+	case reflect.Pointer:
+		out.Set(reflect.New(value.Type().Elem()))
+		out.Elem().Set(replaceMergeReferenceString(value.Elem(), replacement))
+	default:
+		out.SetString(replacement)
+	}
+
+	return out
 }
 
 func mergeReferenceValue(value reflect.Value) reflect.Value {
