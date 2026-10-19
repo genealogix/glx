@@ -23,6 +23,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
@@ -62,6 +64,38 @@ func TestCopyMediaFiles_FileCopy(t *testing.T) {
 	if !bytes.Equal(copied, testContent) {
 		t.Errorf("Copied content mismatch: got %q, want %q", string(copied), string(testContent))
 	}
+}
+
+func TestCopyMediaFiles_DoesNotReplaceExistingDestination(t *testing.T) {
+	srcDir := t.TempDir()
+	destDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "photo.jpg"), []byte("new bytes"), 0o600))
+	filesDir := filepath.Join(destDir, glxlib.MediaFilesDir)
+	require.NoError(t, os.MkdirAll(filesDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(filesDir, "photo.jpg"), []byte("old bytes"), 0o600))
+
+	err := copyMediaFiles(SystemIOStreams(), destDir, []glxlib.MediaFileSource{{
+		MediaID: "media-1", SourceType: glxlib.MediaSourceFile, RelativePath: "photo.jpg", TargetFilename: "photo.jpg",
+	}}, srcDir, false)
+	require.ErrorIs(t, err, os.ErrExist)
+	actual, readErr := os.ReadFile(filepath.Join(filesDir, "photo.jpg"))
+	require.NoError(t, readErr)
+	require.Equal(t, []byte("old bytes"), actual)
+}
+
+func TestCopyMediaFiles_RejectsCaseEquivalentDuplicateDestinations(t *testing.T) {
+	srcDir := t.TempDir()
+	destDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "Photo.JPG"), []byte("first bytes"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "second.jpg"), []byte("second bytes"), 0o600))
+	err := copyMediaFiles(SystemIOStreams(), destDir, []glxlib.MediaFileSource{
+		{MediaID: "media-1", SourceType: glxlib.MediaSourceFile, RelativePath: "Photo.JPG", TargetFilename: "Photo.JPG"},
+		{MediaID: "media-2", SourceType: glxlib.MediaSourceFile, RelativePath: "second.jpg", TargetFilename: "photo.jpg"},
+	}, srcDir, false)
+	require.ErrorIs(t, err, os.ErrExist)
+	actual, readErr := os.ReadFile(filepath.Join(destDir, glxlib.MediaFilesDir, "Photo.JPG"))
+	require.NoError(t, readErr)
+	require.Equal(t, []byte("first bytes"), actual)
 }
 
 func TestCopyMediaFiles_BlobWrite(t *testing.T) {

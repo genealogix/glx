@@ -15,6 +15,8 @@
 package main
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -41,13 +43,23 @@ func copyMediaFiles(streams *IOStreams, archiveDir string, mediaFiles []glxlib.M
 	}
 
 	var copyCount, blobCount, warnCount int
+	reserved := glxlib.NewFilenameAllocator()
 
 	for _, mf := range mediaFiles {
+		if mf.ReuseExisting {
+			continue
+		}
+		if !reserved.Reserve(mf.TargetFilename) {
+			return fmt.Errorf("%w: duplicate media destination %s", os.ErrExist, mf.TargetFilename)
+		}
 		destPath := filepath.Join(filesDir, mf.TargetFilename)
 
 		switch mf.SourceType {
 		case glxlib.MediaSourceFile:
 			if err := copyMediaFile(gedcomDir, mf.RelativePath, destPath); err != nil {
+				if errors.Is(err, os.ErrExist) {
+					return fmt.Errorf("media destination was occupied while copying %s: %w", mf.RelativePath, err)
+				}
 				streams.Printf("Warning: could not copy media file %s: %v\n", mf.RelativePath, err)
 				warnCount++
 
@@ -63,7 +75,10 @@ func copyMediaFiles(streams *IOStreams, archiveDir string, mediaFiles []glxlib.M
 
 				continue
 			}
-			if err := os.WriteFile(destPath, decoded, filePermissions); err != nil {
+			if err := writeFileFrom(destPath, bytes.NewReader(decoded)); err != nil {
+				if errors.Is(err, os.ErrExist) {
+					return fmt.Errorf("media destination was occupied while writing BLOB %s: %w", mf.MediaID, err)
+				}
 				streams.Printf("Warning: could not write BLOB file %s: %v\n", destPath, err)
 				warnCount++
 
@@ -90,6 +105,18 @@ func copyMediaFiles(streams *IOStreams, archiveDir string, mediaFiles []glxlib.M
 // rejected lexically, and a symlink inside gedcomDir that points outside it is
 // refused at open time (see openWithin) rather than followed.
 func copyMediaFile(gedcomDir, relativePath, destPath string) error {
+	srcFile, err := openMediaSourceFile(gedcomDir, relativePath)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = srcFile.Close() }()
+
+	return writeFileFrom(destPath, srcFile)
+}
+
+// openMediaSourceFile applies the same raw-then-decoded FILE resolution for
+// both content matching and the subsequent copy.
+func openMediaSourceFile(gedcomDir, relativePath string) (*os.File, error) {
 	// Normalize backslashes to forward slashes for cross-platform compatibility
 	// (belt-and-braces: MediaFileSource.RelativePath is already slash-normalized
 	// at import, but direct callers may supply raw Windows path separators).
@@ -98,72 +125,48 @@ func copyMediaFile(gedcomDir, relativePath, destPath string) error {
 	// Prevent path traversal attacks from GEDCOM FILE references
 	srcPath := filepath.Join(gedcomDir, normalized)
 	if !isPathWithin(srcPath, gedcomDir) {
-		return fmt.Errorf("path traversal detected in media reference: %s", relativePath)
+		return nil, fmt.Errorf("path traversal detected in media reference %s: %w", relativePath, ErrPathEscapesDir)
 	}
-	err := copyContainedFile(gedcomDir, srcPath, destPath)
+	src, err := openWithin(gedcomDir, srcPath)
 	if err == nil {
-		return nil
+		return src, nil
 	}
 
 	// Only fall back to URL-decoded path if the source file does not exist.
 	// Other errors (permissions, disk full, etc.) should be returned immediately.
 	if !os.IsNotExist(err) {
-		return fmt.Errorf("copying media file from %s: %w", srcPath, err)
+		return nil, fmt.Errorf("opening media file from %s: %w", srcPath, err)
 	}
 
 	// Try URL-decoded version (e.g., "CharlotteBront%C3%AB.jpg" -> "CharlotteBrontë.jpg")
 	decoded, decodeErr := url.PathUnescape(normalized)
 	if decodeErr != nil {
-		return fmt.Errorf("failed to decode media path %q: %w", normalized, decodeErr)
+		return nil, fmt.Errorf("failed to decode media path %q: %w", normalized, decodeErr)
 	}
 	if decoded == normalized {
-		return fmt.Errorf("%w: %s", ErrMediaFileNotFound, srcPath)
+		return nil, fmt.Errorf("%w: %s", ErrMediaFileNotFound, srcPath)
 	}
 
 	decodedPath := filepath.Join(gedcomDir, decoded)
 	if !isPathWithin(decodedPath, gedcomDir) {
-		return fmt.Errorf("path traversal detected in media reference: %s", relativePath)
+		return nil, fmt.Errorf("path traversal detected in media reference %s: %w", relativePath, ErrPathEscapesDir)
 	}
-	err = copyContainedFile(gedcomDir, decodedPath, destPath)
+	src, err = openWithin(gedcomDir, decodedPath)
 	if err == nil {
-		return nil
+		return src, nil
 	}
 	if os.IsNotExist(err) {
-		return fmt.Errorf("%w: %s", ErrMediaFileNotFound, decodedPath)
+		return nil, fmt.Errorf("%w: %s", ErrMediaFileNotFound, decodedPath)
 	}
 
-	return fmt.Errorf("copying media file from %s: %w", decodedPath, err)
-}
-
-// copyFile copies a single file from src to dst using streaming I/O.
-func copyFile(src, dst string) error {
-	src = filepath.Clean(src)
-	srcFile, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = srcFile.Close() }()
-
-	return writeFileFrom(dst, srcFile)
-}
-
-// copyContainedFile copies src, which must lie inside baseDir (see openWithin),
-// to dst using streaming I/O.
-func copyContainedFile(baseDir, src, dst string) error {
-	srcFile, err := openWithin(baseDir, src)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = srcFile.Close() }()
-
-	return writeFileFrom(dst, srcFile)
+	return nil, fmt.Errorf("opening media file from %s: %w", decodedPath, err)
 }
 
 // writeFileFrom streams src into a newly created file at dst, removing the
 // partial file if the copy or close fails.
 func writeFileFrom(dst string, src io.Reader) error {
 	dst = filepath.Clean(dst)
-	dstFile, err := os.Create(dst)
+	dstFile, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_EXCL, filePermissions)
 	if err != nil {
 		return err
 	}

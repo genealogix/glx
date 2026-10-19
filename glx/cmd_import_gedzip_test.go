@@ -435,6 +435,32 @@ func TestImportGEDZIP_FailedMediaDoesNotOverwriteExistingArchive(t *testing.T) {
 	require.Equal(t, originalContent, content, "existing archive must not be modified if media copy fails")
 }
 
+func TestImportGEDZIP_ExistingMediaDoesNotBypassDecompressionLimit(t *testing.T) {
+	orig := maxGEDZIPEntryBytes
+	maxGEDZIPEntryBytes = 256
+	t.Cleanup(func() { maxGEDZIPEntryBytes = orig })
+
+	tmpDir := t.TempDir()
+	outPath := filepath.Join(tmpDir, "archive.glx")
+	oldArchive := []byte("old archive")
+	require.NoError(t, os.WriteFile(outPath, oldArchive, filePermissions))
+	mediaDir := filepath.Join(tmpDir, glxlib.MediaFilesDir)
+	require.NoError(t, os.MkdirAll(mediaDir, dirPermissions))
+	oversized := bytes.Repeat([]byte("A"), 512)
+	require.NoError(t, os.WriteFile(filepath.Join(mediaDir, "photo.jpg"), oversized, filePermissions))
+	gdz := buildGEDZIP(t, map[string][]byte{
+		"gedcom.ged":      []byte(gedcom7WithMedia),
+		"media/photo.jpg": oversized,
+	})
+
+	err := importGEDCOM(gdz, outPath, FormatSingle, true, false, defaultShowFirstErrors)
+	require.ErrorIs(t, err, ErrGEDZIPEntryTooLarge)
+	archive, readErr := os.ReadFile(outPath)
+	require.NoError(t, readErr)
+	require.Equal(t, oldArchive, archive)
+	require.NoFileExists(t, filepath.Join(mediaDir, "photo-2.jpg"))
+}
+
 func TestImportGEDZIP_VerboseEmitsExtractionMessage(t *testing.T) {
 	gdz := buildGEDZIP(t, map[string][]byte{
 		"gedcom.ged": []byte(minimalGEDCOM7),
@@ -719,9 +745,121 @@ func stageMediaInside(t *testing.T, targetDir string, files map[string]string) s
 	return stageDir
 }
 
-func TestCommitStagedMedia_ReplacesLeafSymlinkWithoutFollowingIt(t *testing.T) {
+func TestCommitStagedMedia_PublishesNewFiles(t *testing.T) {
+	targetDir := filepath.Join(t.TempDir(), "archive")
+	stageDir := stageMediaInside(t, targetDir, map[string]string{
+		"photo.jpg":    "photo bytes",
+		"portrait.jpg": "portrait bytes",
+	})
+
+	require.NoError(t, commitStagedMedia(stageDir, targetDir))
+	for name, want := range map[string]string{
+		"photo.jpg":    "photo bytes",
+		"portrait.jpg": "portrait bytes",
+	} {
+		actual, err := os.ReadFile(filepath.Join(targetDir, glxlib.MediaFilesDir, name))
+		require.NoError(t, err)
+		require.Equal(t, []byte(want), actual)
+	}
+}
+
+func TestCommitStagedMedia_RollsBackPartialCommit(t *testing.T) {
+	targetDir := filepath.Join(t.TempDir(), "archive")
+	stageDir := stageMediaInside(t, targetDir, map[string]string{"a.jpg": "first", "b.jpg": "second"})
+	archivePath := filepath.Join(targetDir, "archive.glx")
+	require.NoError(t, os.WriteFile(archivePath, []byte("old archive"), filePermissions))
+	failed := os.ErrPermission
+	count := 0
+	_, err := commitStagedMediaUsing(stageDir, targetDir, func(root *os.Root, src, dst string) (os.FileInfo, error) {
+		count++
+		if count == 2 {
+			return nil, failed
+		}
+
+		return commitStagedFile(root, src, dst)
+	})
+	require.ErrorIs(t, err, failed)
+	require.NoFileExists(t, filepath.Join(targetDir, glxlib.MediaFilesDir, "a.jpg"))
+	require.NoFileExists(t, filepath.Join(targetDir, glxlib.MediaFilesDir, "b.jpg"))
+	actual, err := os.ReadFile(archivePath)
+	require.NoError(t, err)
+	require.Equal(t, []byte("old archive"), actual)
+}
+
+func TestCommitStagedMedia_RollsBackOnlyUnchangedFiles(t *testing.T) {
+	targetDir := filepath.Join(t.TempDir(), "archive")
+	stageDir := stageMediaInside(t, targetDir, map[string]string{
+		"remove.jpg":  "new bytes",
+		"replace.jpg": "new bytes",
+	})
+	rollback, err := commitStagedMediaWithRollback(stageDir, targetDir)
+	require.NoError(t, err)
+
+	mediaDir := filepath.Join(targetDir, glxlib.MediaFilesDir)
+	replacement := filepath.Join(mediaDir, "replacement.tmp")
+	require.NoError(t, os.WriteFile(replacement, []byte("another writer's bytes"), filePermissions))
+	require.NoError(t, os.Remove(filepath.Join(mediaDir, "replace.jpg")))
+	require.NoError(t, os.Rename(replacement, filepath.Join(mediaDir, "replace.jpg")))
+
+	rollback()
+	require.NoFileExists(t, filepath.Join(mediaDir, "remove.jpg"))
+	actual, err := os.ReadFile(filepath.Join(mediaDir, "replace.jpg"))
+	require.NoError(t, err)
+	require.Equal(t, []byte("another writer's bytes"), actual)
+}
+
+func TestCommitStagedMedia_NoStagedMedia(t *testing.T) {
+	targetDir := t.TempDir()
+	stageDir := filepath.Join(targetDir, ".glx-stage-empty")
+	require.NoError(t, os.Mkdir(stageDir, dirPermissions))
+
+	rollback, err := commitStagedMediaWithRollback(stageDir, targetDir)
+	require.NoError(t, err)
+	require.NotNil(t, rollback)
+	rollback()
+}
+
+func TestCommitStagedMedia_RollbackNeverDeletesReplacementBeforeTracking(t *testing.T) {
+	targetDir := filepath.Join(t.TempDir(), "archive")
+	stageDir := stageMediaInside(t, targetDir, map[string]string{"a.jpg": "first", "b.jpg": "second"})
+	mediaDir := filepath.Join(targetDir, glxlib.MediaFilesDir)
+	require.NoError(t, os.MkdirAll(mediaDir, dirPermissions))
+	replacement := filepath.Join(mediaDir, "replacement.tmp")
+	require.NoError(t, os.WriteFile(replacement, []byte("another writer's bytes"), filePermissions))
+	count := 0
+	_, err := commitStagedMediaUsing(stageDir, targetDir, func(root *os.Root, src, dst string) (os.FileInfo, error) {
+		count++
+		if count == 2 {
+			return nil, os.ErrPermission
+		}
+		createdInfo, publishErr := commitStagedFile(root, src, dst)
+		if publishErr != nil {
+			return nil, publishErr
+		}
+		require.NoError(t, root.Remove(dst))
+		require.NoError(t, root.Link("media/files/replacement.tmp", dst))
+
+		return createdInfo, nil
+	})
+	require.ErrorIs(t, err, os.ErrPermission)
+	actual, readErr := os.ReadFile(filepath.Join(mediaDir, "a.jpg"))
+	require.NoError(t, readErr)
+	require.Equal(t, []byte("another writer's bytes"), actual)
+}
+
+func TestCommitStagedMedia_RejectsNonRegularStagedEntry(t *testing.T) {
+	targetDir := filepath.Join(t.TempDir(), "archive")
+	stageDir := stageMediaInside(t, targetDir, nil)
+	require.NoError(t, os.Mkdir(filepath.Join(stageDir, glxlib.MediaFilesDir, "photo.jpg"), dirPermissions))
+
+	err := commitStagedMedia(stageDir, targetDir)
+	require.ErrorIs(t, err, os.ErrInvalid)
+	require.NoDirExists(t, filepath.Join(targetDir, glxlib.MediaFilesDir, "photo.jpg"))
+}
+
+func TestCommitStagedMedia_DoesNotReplaceLeafSymlink(t *testing.T) {
 	// media/files/photo.jpg is an existing symlink pointing outside the
-	// archive. The commit must replace the link itself, not write through it.
+	// archive. The commit must neither replace the link nor write through it.
 	tmpDir := t.TempDir()
 
 	outside := filepath.Join(tmpDir, "outside.txt")
@@ -735,20 +873,29 @@ func TestCommitStagedMedia_ReplacesLeafSymlinkWithoutFollowingIt(t *testing.T) {
 	require.NoError(t, os.MkdirAll(targetFiles, dirPermissions))
 	require.NoError(t, os.Symlink(outside, filepath.Join(targetFiles, "photo.jpg")))
 
-	require.NoError(t, commitStagedMedia(stageDir, targetDir))
+	require.ErrorIs(t, commitStagedMedia(stageDir, targetDir), os.ErrExist)
 
 	committed := filepath.Join(targetFiles, "photo.jpg")
 	info, err := os.Lstat(committed)
 	require.NoError(t, err)
-	require.Zero(t, info.Mode()&os.ModeSymlink, "committed media must be a regular file, not a symlink")
-
-	got, err := os.ReadFile(committed)
-	require.NoError(t, err)
-	require.Equal(t, []byte("staged bytes"), got)
+	require.NotZero(t, info.Mode()&os.ModeSymlink, "occupied symlink must survive")
 
 	content, err := os.ReadFile(outside)
 	require.NoError(t, err)
 	require.Equal(t, originalContent, content, "symlink target must not be written through")
+}
+
+func TestCommitStagedMedia_DoesNotReplaceCaseEquivalentFile(t *testing.T) {
+	targetDir := filepath.Join(t.TempDir(), "archive")
+	stageDir := stageMediaInside(t, targetDir, map[string]string{"photo.jpg": "new bytes"})
+	targetFiles := filepath.Join(targetDir, glxlib.MediaFilesDir)
+	require.NoError(t, os.MkdirAll(targetFiles, dirPermissions))
+	require.NoError(t, os.WriteFile(filepath.Join(targetFiles, "Photo.JPG"), []byte("old bytes"), filePermissions))
+
+	require.ErrorIs(t, commitStagedMedia(stageDir, targetDir), os.ErrExist)
+	actual, err := os.ReadFile(filepath.Join(targetFiles, "Photo.JPG"))
+	require.NoError(t, err)
+	require.Equal(t, []byte("old bytes"), actual)
 }
 
 func TestCommitStagedMedia_RefusesSymlinkedMediaDirectory(t *testing.T) {
@@ -788,9 +935,7 @@ func TestCommitStagedMedia_RejectsStagingOutsideTarget(t *testing.T) {
 }
 
 func TestCommitStagedMedia_PreservesExistingFileWhenCommitFails(t *testing.T) {
-	// A commit that fails partway must leave already-present media intact
-	// rather than destroying a file it cannot replace. "blocked.jpg" sorts
-	// before "photo.jpg", so the failure happens first.
+	// A blocked destination prevents commit before any staged file is linked.
 	tmpDir := t.TempDir()
 	targetDir := filepath.Join(tmpDir, "archive")
 
@@ -802,7 +947,7 @@ func TestCommitStagedMedia_PreservesExistingFileWhenCommitFails(t *testing.T) {
 	targetFiles := filepath.Join(targetDir, glxlib.MediaFilesDir)
 	require.NoError(t, os.MkdirAll(targetFiles, dirPermissions))
 
-	// A non-empty directory cannot be replaced by a rename.
+	// A directory occupies the destination name just like a file.
 	blocking := filepath.Join(targetFiles, "blocked.jpg")
 	require.NoError(t, os.MkdirAll(blocking, dirPermissions))
 	require.NoError(t, os.WriteFile(filepath.Join(blocking, "occupant"), []byte("x"), filePermissions))
@@ -812,7 +957,7 @@ func TestCommitStagedMedia_PreservesExistingFileWhenCommitFails(t *testing.T) {
 
 	err := commitStagedMedia(stageDir, targetDir)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "committing media file blocked.jpg")
+	require.Contains(t, err.Error(), "media destination blocked.jpg")
 
 	got, readErr := os.ReadFile(existing)
 	require.NoError(t, readErr)
@@ -902,6 +1047,22 @@ func TestStageMediaFilesFromFS_WritesBlobAndWarnsOnBadBlob(t *testing.T) {
 	require.Contains(t, out.String(), "could not decode BLOB")
 	require.FileExists(t, filepath.Join(stageDir, glxlib.MediaFilesDir, "blob-M1.bin"))
 	require.NoFileExists(t, filepath.Join(stageDir, glxlib.MediaFilesDir, "blob-M2.bin"))
+}
+
+func TestStageMediaFilesFromFS_RejectsCaseEquivalentDestinations(t *testing.T) {
+	gdz := buildGEDZIP(t, map[string][]byte{"gedcom.ged": []byte(minimalGEDCOM7)})
+	zr, err := zip.OpenReader(gdz)
+	require.NoError(t, err)
+	defer func() { _ = zr.Close() }()
+	stageDir := t.TempDir()
+	_, _, _, err = stageMediaFilesFromFS(SystemIOStreams(), stageDir, []glxlib.MediaFileSource{
+		{MediaID: "M1", SourceType: glxlib.MediaSourceBlob, BlobData: "....", TargetFilename: "Photo.JPG"},
+		{MediaID: "M2", SourceType: glxlib.MediaSourceBlob, BlobData: "....", TargetFilename: "photo.jpg"},
+	}, zr)
+	require.ErrorIs(t, err, os.ErrExist)
+	actual, readErr := os.ReadFile(filepath.Join(stageDir, glxlib.MediaFilesDir, "Photo.JPG"))
+	require.NoError(t, readErr)
+	require.Equal(t, []byte{0, 0, 0}, actual)
 }
 
 func TestImportGEDZIPToMultiFile_SerializationFailureLeavesMediaUncommitted(t *testing.T) {

@@ -238,21 +238,46 @@ func mergeArchives(srcPath, destPath string, preview bool, threshold float64) er
 	// Save — multi-file archives use crash-safe temp+swap to prevent partial writes.
 	// Single-file archives use os.WriteFile directly (not atomic; see #595).
 	if destIsDir {
-		if err := safeWriteMultiFileArchive(destPath, dest); err != nil {
-			return err
+		copied, skipped, publishErr := publishMergedMultiFileArchive(destPath, dest, mediaPlan)
+		if publishErr != nil {
+			return publishErr
 		}
-		copied, skipped, copyErr := executeMediaCopies(mediaPlan, destPath, dest)
 		result.MediaFilesCopied = copied
 		result.MediaFilesSkipped = skipped
 		printMediaCopyReport(result)
-		if copyErr != nil {
-			return fmt.Errorf("copying source media binaries: %w", copyErr)
-		}
 
 		return nil
 	}
 
 	return writeSingleFileArchive(destPath, dest, false)
+}
+
+// publishMergedMultiFileArchive commits binaries before metadata so an
+// exclusive-copy collision cannot leave a newly written URI pointing at a
+// different writer's bytes. A failed archive swap removes only our new files.
+func publishMergedMultiFileArchive(destPath string, archive *glxlib.GLXFile, plan []plannedMediaCopy) (copied, skipped int, err error) {
+	currentFiles, err := archiveMediaFilesDir(destPath)
+	if err != nil {
+		return 0, 0, fmt.Errorf("inspecting destination media/files: %w", err)
+	}
+	if len(plan) > 0 && plan[0].TargetDir != "" {
+		plannedFiles := filepath.Join(destPath, filepath.FromSlash(plan[0].TargetDir))
+		matches := currentFiles == plannedFiles || currentFiles == "" && plan[0].TargetDir == glxlib.MediaFilesDir
+		if !matches {
+			return 0, 0, fmt.Errorf("destination media/files changed after planning: %w", os.ErrInvalid)
+		}
+	}
+	copied, skipped, rollback, err := executeMediaCopiesWithRollback(plan, destPath, archive)
+	if err != nil {
+		return copied, skipped, fmt.Errorf("copying source media binaries: %w", err)
+	}
+	if err := safeWriteMultiFileArchive(destPath, archive); err != nil {
+		rollback()
+
+		return copied, skipped, err
+	}
+
+	return copied, skipped, nil
 }
 
 // warnOrphanSourceMedia prints a warning when the source archive carries media
