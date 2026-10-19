@@ -76,7 +76,7 @@ func installMergeFilesWithRename(directory string, original, planned map[string]
 	if err := removeStaleMergeBackup(parent, backupName); err != nil {
 		return err
 	}
-	if err := parent.Mkdir(backupName, dirPermissions); err != nil {
+	if err := parent.Mkdir(backupName, mergeTransactionPermissions); err != nil {
 		return err
 	}
 	backup, err := parent.OpenRoot(backupName)

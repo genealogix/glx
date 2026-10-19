@@ -93,3 +93,50 @@ func TestMergePersonsPreservesModeUnderRestrictiveUmask(t *testing.T) {
 		assert.Equal(t, original[path], data)
 	}
 }
+
+func TestMergePersonsBackupRemainsPrivateUnderPermissiveUmask(t *testing.T) {
+	const childEnv = "GLX_MERGE_PRIVATE_BACKUP_TEST_CHILD"
+	if os.Getenv(childEnv) != "1" {
+		command := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^TestMergePersonsBackupRemainsPrivateUnderPermissiveUmask$")
+		command.Env = append(os.Environ(), childEnv+"=1")
+		output, err := command.CombinedOutput()
+		require.NoError(t, err, string(output))
+
+		return
+	}
+	previous := syscall.Umask(0)
+	defer syscall.Umask(previous)
+	parent := t.TempDir()
+	require.NoError(t, os.Chmod(parent, 0o755))
+	dir := filepath.Join(parent, "private-archive")
+	require.NoError(t, os.Mkdir(dir, 0o700))
+	writeMergeFixture(t, dir)
+	original, err := collectGLXFilesFromDir(dir)
+	require.NoError(t, err)
+	path := filepath.Join("persons", "person-keep.glx")
+	require.NoError(t, os.Chmod(filepath.Join(dir, path), 0o644))
+	planned := maps.Clone(original)
+	planned[path] = append([]byte("# merged\n"), original[path]...)
+	var activeMode os.FileMode
+	err = installMergeFilesWithRename(dir, original, planned, func(root *os.Root, from, to string) error {
+		info, statErr := os.Stat(dir + ".bak")
+		require.NoError(t, statErr)
+		activeMode = info.Mode().Perm()
+		if strings.HasPrefix(from, ".glx-merge-") {
+			return os.ErrPermission // Retain the backup after installation and rollback fail.
+		}
+
+		return robustRenameIn(root, from, to)
+	})
+	require.ErrorIs(t, err, os.ErrPermission)
+	assert.Equal(t, os.FileMode(0o700), activeMode)
+	backup, err := os.Stat(dir + ".bak")
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o700), backup.Mode().Perm())
+	file, err := os.Stat(filepath.Join(dir+".bak", path))
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o644), file.Mode().Perm())
+	data, err := os.ReadFile(filepath.Join(dir+".bak", path))
+	require.NoError(t, err)
+	assert.Equal(t, original[path], data)
+}

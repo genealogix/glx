@@ -212,7 +212,7 @@ func mergeEvidenceScopes(before, after *GLXFile, keepID, dropID string, changes 
 			if assertion == nil {
 				continue
 			}
-			if !changedAssertions[id] && !changedSubjects[assertion.Subject] {
+			if !changedAssertions[id] && !changedSubjects[assertion.Subject] && !mergeAssertionPersonLabelChanged(archive, assertion, changedSubjects) {
 				continue
 			}
 			collectMergeAffectedPeople(archive, assertion, affected)
@@ -233,6 +233,21 @@ func mergeEvidenceScopes(before, after *GLXFile, keepID, dropID string, changes 
 	})
 
 	return ordered
+}
+
+// Evidence and proof resolve person names even when a claim's raw IDs are
+// unchanged. Include claims that reference a changed person so their subjects
+// and associated people receive the same before/after reporting.
+func mergeAssertionPersonLabelChanged(archive *GLXFile, assertion *Assertion, changedSubjects map[EntityRef]bool) bool {
+	if assertion.Participant != nil && changedSubjects[EntityRef{Person: assertion.Participant.Person}] {
+		return true
+	}
+	if assertion.Value == "" || !changedSubjects[EntityRef{Person: assertion.Value}] {
+		return false
+	}
+	definition := ConflictProperty(archive, assertion.Subject, assertion.Property)
+
+	return definition != nil && definition.ReferenceType == EntityTypePersons.String()
 }
 
 func mergeEvidenceAssertionChanges(before, after *GLXFile, changes []EntityChange) map[string]bool {

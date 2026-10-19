@@ -740,3 +740,65 @@ relationships:
 		})
 	}
 }
+
+func TestMergePersonsPreservesEditedResearchLeadComments(t *testing.T) {
+	for _, directory := range []bool{false, true} {
+		t.Run(strconv.FormatBool(directory), func(t *testing.T) {
+			dir := t.TempDir()
+			path := filepath.Join(dir, "archive.glx")
+			require.NoError(t, os.WriteFile(path, []byte(`persons:
+  person-keep: {notes: keep}
+  person-drop: {notes: drop}
+sources:
+  s: {type: book, title: Family register}
+relationships:
+  r:
+    type: possibly_same_person
+    participants: [{person: person-keep}, {person: person-drop}]
+assertions:
+  identity:
+    subject: {relationship: r}
+    sources: [s]
+    notes: Identity claim
+  retained:
+    subject: {person: person-keep}
+    sources: [s]
+    notes: Retained claim
+research_logs:
+  log:
+    leads:
+      # first lead
+      - description: First candidate # first description
+        persons:
+          - person-drop # rewritten candidate
+        assertions:
+          - identity # deleted claim
+          - retained # retained claim
+        evidence_for:
+          - 'Original research' # retained evidence
+      # second lead
+      - description: Second candidate # second description
+        persons: [person-keep]
+        next_steps: [Check register] # retained next step
+`), 0o600))
+			archivePath := path
+			if directory {
+				archivePath = dir
+			}
+			streams, _, _ := TestIOStreams()
+			require.NoError(t, mergePersonsWithIO(streams, strings.NewReader(""), false, archivePath,
+				"person-keep", "person-drop", glxlib.MergePersonsOptions{}, false, true))
+			data, err := os.ReadFile(path)
+			require.NoError(t, err)
+			for _, comment := range []string{"# first lead", "# first description", "person-keep # rewritten candidate", "# retained claim", "# retained evidence", "# second lead", "# second description", "# retained next step"} {
+				assert.Contains(t, string(data), comment)
+				assert.Equal(t, 1, strings.Count(string(data), comment), comment)
+			}
+			assert.NotContains(t, string(data), "# deleted claim")
+			archive, _, err := LoadArchiveWithOptions(dir, false)
+			require.NoError(t, err)
+			assert.Len(t, archive.ResearchLogs["log"].Leads, 2)
+			assert.Equal(t, []string{"retained"}, archive.ResearchLogs["log"].Leads[0].Assertions)
+		})
+	}
+}

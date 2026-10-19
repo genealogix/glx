@@ -296,10 +296,10 @@ func patchMergeSequence(out, original, desired, fallback *yaml.Node, path string
 	usedOriginal, usedFallback := make(map[*yaml.Node]bool), make(map[*yaml.Node]bool)
 	for i, child := range desired.Content {
 		var previous *yaml.Node
-		// MergePersons preserves participant membership/order. A person ID
+		// MergePersons preserves participant and research-lead membership/order. A person ID
 		// rewrite changes identity equality but not this entry's provenance.
 		switch {
-		case path == "participants" && original != nil && original.Kind == yaml.SequenceNode && len(original.Content) == len(desired.Content):
+		case positionalMergeSequence(path) && original != nil && original.Kind == yaml.SequenceNode && len(original.Content) == len(desired.Content):
 			previous = original.Content[i]
 		case original != nil && original.Kind == yaml.SequenceNode && i < len(original.Content) && !usedOriginal[original.Content[i]] && equalMergeNodes(original.Content[i], child):
 			previous = original.Content[i]
@@ -323,6 +323,11 @@ func patchMergeSequence(out, original, desired, fallback *yaml.Node, path string
 		}
 		out.Content[i] = patchMergeNode(previous, child, alternative, fmt.Sprintf("%s[%d]", path, i), context)
 	}
+}
+
+// These collections retain membership and order throughout a person merge.
+func positionalMergeSequence(path string) bool {
+	return path == "participants" || path == "leads"
 }
 
 // A drop occurrence already present in keep did not contribute to the union.
