@@ -13,6 +13,29 @@ Consolidate two person entities into one. The keep-id is retained;
 the drop-id's properties, notes, and cross-references are folded into it,
 then the drop-id person file is removed.
 
+Resolved possibly_same_person relationships between these two people are
+removed and listed in the merge summary, including with --dry-run. Other
+relationships are retained and their person references follow the merge.
+Whole assertions depending on a removed relationship are deleted, regardless
+of status or confidence. ResearchLog subjects are cleared while their research
+is retained. Declared relationship-reference properties lose only matching
+whole values; sources, citations, media and unrelated assertions remain.
+
+The preview lists every changed entity, deleted claim and cleared/pruned
+reference, plus changes to current standing, evidence, proof and coverage.
+Deleting claims can change existing interpretations (for example, a relationship
+with no remaining assertions is accepted under the existing fallback rules).
+Recovery requires a recorded pre-merge version; this command does not commit.
+
+After reporting and validation, Apply this merge? [y/N] defaults to cancellation.
+--yes (-y) skips approval but still reports and validates. Noninteractive use
+requires --yes. --dry-run only reports, even with --yes, and never prompts.
+The preview remains visible with --quiet. A changed archive requires a new preview.
+Merges refuse changes to linked GLX files (including Windows Git
+symlink placeholders) before approval, preserving the link and its target.
+Unchanged linked files in directory archives are retained. Run with exclusive
+archive write access; this command does not coordinate concurrent external writers.
+
 Property merging:
   - Properties present only on drop are copied verbatim.
   - Identical values agree silently.
@@ -27,7 +50,8 @@ Notes are combined per --notes-strategy (default: append).
 
 This is the natural follow-on to `glx duplicates`: once you've identified
 that two person records are the same individual, this command consolidates
-them in a single atomic operation.
+them. Single-file writes use atomic replacement; multi-file writes retain the
+existing rollback and interrupted-write recovery safeguards.
 
 ```
 glx merge-persons <keep-id> <drop-id> [flags]
@@ -41,6 +65,9 @@ glx merge-persons <keep-id> <drop-id> [flags]
 
   # Preview the merge
   glx merge-persons person-a person-b --archive ./archive --dry-run
+
+  # Apply without prompting (for scripts)
+  glx merge-persons person-a person-b --archive ./archive --yes
 
   # Resolve dated conflicts by picking the later entry
   glx merge-persons person-a person-b --archive ./archive --keep-newest
@@ -59,6 +86,7 @@ glx merge-persons <keep-id> <drop-id> [flags]
       --keep-newest               For conflicting temporal properties, keep the entry with the later date
       --keep-oldest               For conflicting temporal properties, keep the entry with the earlier date
       --notes-strategy string     How to combine notes: append | prefer-keep | prefer-drop (default "append")
+  -y, --yes                       Apply the reported merge without prompting (validation still runs)
 ```
 
 ### Options inherited from parent commands
