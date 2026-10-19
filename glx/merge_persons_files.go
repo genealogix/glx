@@ -100,66 +100,104 @@ func prepareMergeFiles(original map[string][]byte, archive *glxlib.GLXFile, resu
 	return files, nil
 }
 
-// Materialize aliases before their source entity is changed or removed. Keeping
-// an old anchor on a merged value would silently change unrelated entities.
+// Materialize aliases at the edit boundary before any nodes are moved or
+// deleted. Aliases outside that boundary keep their original representation.
 func preserveMergeAliases(roots map[string]*yaml.Node, changes []glxlib.EntityChange) error {
 	affected := make(map[*yaml.Node]bool)
-	var collect func(*yaml.Node)
-	collect = func(node *yaml.Node) {
-		if node.Anchor != "" {
-			affected[node] = true
-		}
-		for _, child := range node.Content {
-			collect(child)
-		}
-	}
+	outgoing := make(map[*yaml.Node]bool)
+	edited := make(map[*yaml.Node]bool)
 	for _, change := range changes {
 		_, parent, index, err := findMergeEntity(roots, change.EntityType, change.ID)
 		if err != nil {
 			return err
 		}
-		collect(parent.Content[index+1])
-	}
-	var expand func(*yaml.Node, map[*yaml.Node]bool, bool) (*yaml.Node, error)
-	expand = func(node *yaml.Node, stack map[*yaml.Node]bool, copied bool) (*yaml.Node, error) {
-		if node.Kind == yaml.AliasNode && affected[node.Alias] {
-			if stack[node.Alias] {
-				return nil, fmt.Errorf("%w: cyclic YAML alias %s", glxlib.ErrValidationFailed, node.Value)
-			}
-			stack[node.Alias] = true
-			out, err := expand(node.Alias, stack, true)
-			delete(stack, node.Alias)
-			if err != nil {
-				return nil, err
-			}
-			out.HeadComment, out.LineComment, out.FootComment = node.HeadComment, node.LineComment, node.FootComment
-
-			return out, nil
+		for _, node := range parent.Content[index : index+2] {
+			edited[node] = true
+			collectMergeAliases(node, affected, outgoing)
 		}
-		out := node
-		if copied {
-			value := *node
-			out = &value
-			out.Anchor = ""
-			out.Content = make([]*yaml.Node, len(node.Content))
-		}
-		for i, child := range node.Content {
-			replacement, err := expand(child, stack, copied)
-			if err != nil {
-				return nil, err
-			}
-			out.Content[i] = replacement
-		}
-
-		return out, nil
 	}
 	for _, root := range roots {
-		if _, err := expand(root, make(map[*yaml.Node]bool), false); err != nil {
+		markMergeAliasAncestors(root, edited, affected)
+	}
+	for _, root := range roots {
+		if _, err := expandMergeAlias(root, affected, outgoing, make(map[*yaml.Node]bool), false); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func collectMergeAliases(node *yaml.Node, affected, outgoing map[*yaml.Node]bool) {
+	if node.Anchor != "" {
+		affected[node] = true
+	}
+	if node.Kind == yaml.AliasNode {
+		outgoing[node] = true
+	}
+	for _, child := range node.Content {
+		collectMergeAliases(child, affected, outgoing)
+	}
+}
+
+// A collection (or another ancestor) changes when an entity is edited. Its
+// aliases must retain the original collection, including any removed members.
+func markMergeAliasAncestors(node *yaml.Node, edited, affected map[*yaml.Node]bool) bool {
+	contains := edited[node]
+	for i, child := range node.Content {
+		if markMergeAliasAncestors(child, edited, affected) {
+			contains = true
+			if node.Kind == yaml.MappingNode && i%2 == 1 && node.Content[i-1].Anchor != "" {
+				affected[node.Content[i-1]] = true
+			}
+		}
+	}
+	if contains && node.Anchor != "" {
+		affected[node] = true
+	}
+
+	return contains
+}
+
+func expandMergeAlias(node *yaml.Node, affected, outgoing, stack map[*yaml.Node]bool, copied bool) (*yaml.Node, error) {
+	// Copied subtrees must be self-contained: even an unchanged anchor can be
+	// later in the destination file, or belong to a different source file.
+	if node.Kind == yaml.AliasNode && (copied || affected[node.Alias] || outgoing[node]) {
+		if node.Alias == nil || stack[node.Alias] {
+			return nil, fmt.Errorf("%w: invalid or cyclic YAML alias %s", glxlib.ErrValidationFailed, node.Value)
+		}
+		stack[node.Alias] = true
+		out, err := expandMergeAlias(node.Alias, affected, outgoing, stack, true)
+		delete(stack, node.Alias)
+		if err != nil {
+			return nil, err
+		}
+		out.HeadComment, out.LineComment, out.FootComment = node.HeadComment, node.LineComment, node.FootComment
+		// Block collections have no inline value on which YAML can emit a
+		// line comment. Keep the alias occurrence's comment above the value.
+		if (out.Kind == yaml.MappingNode || out.Kind == yaml.SequenceNode) && out.Style&yaml.FlowStyle == 0 && out.LineComment != "" {
+			out.HeadComment = strings.TrimSpace(out.HeadComment + "\n" + out.LineComment)
+			out.LineComment = ""
+		}
+
+		return out, nil
+	}
+	out := node
+	if copied {
+		value := *node
+		out = &value
+		out.Anchor = ""
+		out.Content = make([]*yaml.Node, len(node.Content))
+	}
+	for i, child := range node.Content {
+		replacement, err := expandMergeAlias(child, affected, outgoing, stack, copied)
+		if err != nil {
+			return nil, err
+		}
+		out.Content[i] = replacement
+	}
+
+	return out, nil
 }
 
 func mergeFileNodeContext(change *glxlib.EntityChange, result *glxlib.MergePersonsResult, keepID, dropID string) mergeNodeContext {
@@ -205,7 +243,7 @@ func findMergeEntity(roots map[string]*yaml.Node, kind glxlib.EntityType, id str
 			continue
 		}
 		for index := 0; index < len(parent.Content); index += 2 {
-			if parent.Content[index].Value == id {
+			if mergeNodeKey(parent.Content[index]) == id {
 				return path, parent, index, nil
 			}
 		}
@@ -229,12 +267,26 @@ func mergeFileEntity(archive *glxlib.GLXFile, kind glxlib.EntityType, id string)
 	return nil, fmt.Errorf("%w: missing planned %s[%s]", glxlib.ErrValidationFailed, kind, id)
 }
 
+// YAML permits aliases to scalar mapping keys. Decode them for matching while
+// retaining their source nodes whenever an unaffected key can remain intact.
+func mergeNodeKey(node *yaml.Node) string {
+	if node.Kind == yaml.ScalarNode {
+		return node.Value
+	}
+	var key string
+	if err := node.Decode(&key); err != nil {
+		return ""
+	}
+
+	return key
+}
+
 func mergeMappingValue(node *yaml.Node, key string) *yaml.Node {
 	if node == nil || node.Kind != yaml.MappingNode {
 		return nil
 	}
 	for i := 0; i < len(node.Content); i += 2 {
-		if node.Content[i].Value == key {
+		if mergeNodeKey(node.Content[i]) == key {
 			return node.Content[i+1]
 		}
 	}
@@ -244,7 +296,7 @@ func mergeMappingValue(node *yaml.Node, key string) *yaml.Node {
 
 func removeMergeMappingKey(node *yaml.Node, key string) {
 	for i := 0; i < len(node.Content); i += 2 {
-		if node.Content[i].Value == key {
+		if mergeNodeKey(node.Content[i]) == key {
 			node.Content = slices.Delete(node.Content, i, i+2)
 
 			return
@@ -298,7 +350,7 @@ func rewriteMergeReferenceNode(node *yaml.Node, context mergeNodeContext) *yaml.
 		}
 	case yaml.MappingNode:
 		for i := 0; i < len(out.Content); i += 2 {
-			if out.Content[i].Value == "value" {
+			if mergeNodeKey(out.Content[i]) == "value" {
 				out.Content[i+1] = rewriteMergeReferenceNode(out.Content[i+1], context)
 			}
 		}
@@ -339,7 +391,7 @@ func patchMergeNode(original, desired, fallback *yaml.Node, path string, context
 
 func patchMergeMapping(out, original, desired, fallback *yaml.Node, path string, context mergeNodeContext) {
 	for i := 0; i < len(desired.Content); i += 2 {
-		key := desired.Content[i].Value
+		key := mergeNodeKey(desired.Content[i])
 		childPath := key
 		if path != "" {
 			childPath = path + "." + key
@@ -353,7 +405,7 @@ func patchMergeMapping(out, original, desired, fallback *yaml.Node, path string,
 		}
 		if keySource != nil && keySource.Kind == yaml.MappingNode {
 			for j := 0; j < len(keySource.Content); j += 2 {
-				if keySource.Content[j].Value == key {
+				if mergeNodeKey(keySource.Content[j]) == key {
 					out.Content[i] = cloneMergeNode(keySource.Content[j])
 
 					break
@@ -378,12 +430,6 @@ func patchMergeSequence(out, original, desired, fallback *yaml.Node, path string
 			previous = matchingMergeNode(original, child, usedOriginal)
 		}
 		alternative := matchingMergeNode(fallback, child, usedFallback)
-		// Unioned values beyond keep's original sequence come from drop.
-		// Rewriting B to A can make them equal to an existing keep value;
-		// retain drop's occurrence comments rather than reusing keep's node.
-		if original != nil && original.Kind == yaml.SequenceNode && i >= len(original.Content) && alternative != nil {
-			previous = nil
-		}
 		// Consume only contributing occurrences. An equal original wins
 		// without using a fallback that may belong to a later unioned value.
 		if previous != nil && (equalMergeNodes(previous, child) || !equalMergeNodes(alternative, child)) {
