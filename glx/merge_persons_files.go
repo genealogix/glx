@@ -280,10 +280,16 @@ func patchMergeMapping(out, original, desired, fallback *yaml.Node, path string,
 			childPath = path + "." + key
 		}
 		out.Content[i+1] = patchMergeNode(mergeMappingValue(original, key), desired.Content[i+1], mergeMappingValue(fallback, key), childPath, context)
-		if original != nil && original.Kind == yaml.MappingNode {
-			for j := 0; j < len(original.Content); j += 2 {
-				if original.Content[j].Value == key {
-					out.Content[i] = cloneMergeNode(original.Content[j])
+		// A property contributed only by drop also brings its key's comments.
+		// Prefer keep's key whenever both records contain the property.
+		keySource := original
+		if mergeMappingValue(original, key) == nil {
+			keySource = fallback
+		}
+		if keySource != nil && keySource.Kind == yaml.MappingNode {
+			for j := 0; j < len(keySource.Content); j += 2 {
+				if keySource.Content[j].Value == key {
+					out.Content[i] = cloneMergeNode(keySource.Content[j])
 
 					break
 				}
@@ -296,7 +302,7 @@ func patchMergeSequence(out, original, desired, fallback *yaml.Node, path string
 	usedOriginal, usedFallback := make(map[*yaml.Node]bool), make(map[*yaml.Node]bool)
 	for i, child := range desired.Content {
 		var previous *yaml.Node
-		// MergePersons preserves participant and research-lead membership/order. A person ID
+		// MergePersons preserves participant, neighbor and research-lead membership/order. A person ID
 		// rewrite changes identity equality but not this entry's provenance.
 		switch {
 		case positionalMergeSequence(path) && original != nil && original.Kind == yaml.SequenceNode && len(original.Content) == len(desired.Content):
@@ -327,7 +333,7 @@ func patchMergeSequence(out, original, desired, fallback *yaml.Node, path string
 
 // These collections retain membership and order throughout a person merge.
 func positionalMergeSequence(path string) bool {
-	return path == "participants" || path == "leads"
+	return path == "participants" || path == "neighbors" || path == "leads"
 }
 
 // A drop occurrence already present in keep did not contribute to the union.
