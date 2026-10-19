@@ -121,6 +121,26 @@ func TestFilenameAllocator_AllocateMatchingStillChecksSeedWithinGeneratedPrefix(
 	assert.Equal(t, "photo-3.jpg", third)
 }
 
+func TestFilenameAllocator_AllocateMatchingChecksTrailingDotSeed(t *testing.T) {
+	a := NewFilenameAllocator("photo.jpg", "photo-2.jpg.")
+	noMatch := func(string) (string, error) { return "", nil }
+	first, reused, err := a.AllocateMatching("photo.jpg", noMatch)
+	require.NoError(t, err)
+	assert.False(t, reused)
+	assert.Equal(t, "photo-3.jpg", first)
+
+	second, reused, err := a.AllocateMatching("photo.jpg", func(candidate string) (string, error) {
+		if candidate == "photo-2.jpg" {
+			return "photo-2.jpg.", nil
+		}
+
+		return "", nil
+	})
+	require.NoError(t, err)
+	assert.True(t, reused)
+	assert.Equal(t, "photo-2.jpg.", second)
+}
+
 func TestFilenameAllocator_AllocateMatchingSkipsFullyClaimedReusePrefix(t *testing.T) {
 	const count = 1000
 	names := make([]string, 0, count)

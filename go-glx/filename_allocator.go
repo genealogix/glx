@@ -197,6 +197,9 @@ func (a *FilenameAllocator) advanceFirstOpen(baseKey, basename, stem, ext string
 }
 
 func (a *FilenameAllocator) recordSeed(name string) {
+	// Parse the same portable spelling used by collision keys. An on-disk
+	// trailing dot or space must still be discoverable as a numbered seed.
+	name = strings.TrimRight(name, ". ")
 	ext := filepath.Ext(name)
 	stem := strings.TrimSuffix(name, ext)
 	base, suffix, found := strings.CutLast(stem, "-")

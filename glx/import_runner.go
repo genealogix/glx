@@ -127,6 +127,11 @@ func importToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, verbos
 	if err != nil {
 		return fmt.Errorf("failed to commit media files: %w", err)
 	}
+	if err := validateReusedMedia(archiveDir, mediaFiles, gedcomDir, nil); err != nil {
+		rollbackMedia()
+
+		return fmt.Errorf("validating reused media: %w", err)
+	}
 	if err := robustRename(tempPath, outputPath); err != nil {
 		rollbackMedia()
 
@@ -160,8 +165,14 @@ func importToMultiFile(glx *glxlib.GLXFile, outputPath string, validate, verbose
 	if err := copyMediaFiles(SystemIOStreams(), stageDir, mediaFiles, gedcomDir, verbose); err != nil {
 		return fmt.Errorf("failed to copy media files: %w", err)
 	}
-	if err := commitStagedMedia(stageDir, outputPath); err != nil {
+	rollbackMedia, err := commitStagedMediaWithRollback(stageDir, outputPath)
+	if err != nil {
 		return fmt.Errorf("failed to commit media files: %w", err)
+	}
+	if err := validateReusedMedia(outputPath, mediaFiles, gedcomDir, nil); err != nil {
+		rollbackMedia()
+
+		return fmt.Errorf("validating reused media: %w", err)
 	}
 	if err := writeFilesToDir(outputPath, files); err != nil {
 		return err

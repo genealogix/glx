@@ -94,10 +94,10 @@ func importGEDZIP(gedzipPath, outputPath, format string, validate, verbose bool,
 	}
 
 	if format == FormatSingle {
-		return importGEDZIPToSingleFile(glx, outputPath, validate, verbose, showFirstErrors, result.MediaFiles, zr, output)
+		return importGEDZIPToSingleFile(glx, outputPath, validate, verbose, showFirstErrors, result.MediaFiles, limitedBundle, output)
 	}
 
-	return importGEDZIPToMultiFile(glx, outputPath, validate, verbose, showFirstErrors, result.MediaFiles, zr, output)
+	return importGEDZIPToMultiFile(glx, outputPath, validate, verbose, showFirstErrors, result.MediaFiles, limitedBundle, output)
 }
 
 // sizeLimitedFS wraps an fs.FS to enforce maxGEDZIPEntryBytes on any opened file.
@@ -179,6 +179,11 @@ func importGEDZIPToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, 
 	if err != nil {
 		return fmt.Errorf("failed to commit media files: %w", err)
 	}
+	if err := validateReusedMedia(archiveDir, mediaFiles, "", bundle); err != nil {
+		rollbackMedia()
+
+		return fmt.Errorf("validating reused media: %w", err)
+	}
 
 	if verbose || copyCount > 0 || blobCount > 0 {
 		streams.Printf("  Media files: %d copied, %d blobs written", copyCount, blobCount)
@@ -240,8 +245,14 @@ func importGEDZIPToMultiFile(glx *glxlib.GLXFile, outputPath string, validate, v
 	// the media URIs it now references cannot be satisfied. writeFilesToDir
 	// only creates and overwrites the entity files it manages, so media/files/
 	// survives the archive write.
-	if err := commitStagedMedia(stageDir, outputPath); err != nil {
+	rollbackMedia, err := commitStagedMediaWithRollback(stageDir, outputPath)
+	if err != nil {
 		return fmt.Errorf("failed to commit media files: %w", err)
+	}
+	if err := validateReusedMedia(outputPath, mediaFiles, "", bundle); err != nil {
+		rollbackMedia()
+
+		return fmt.Errorf("validating reused media: %w", err)
 	}
 
 	if err := writeFilesToDir(outputPath, files); err != nil {

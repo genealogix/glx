@@ -81,3 +81,74 @@ func TestSingleFileImport_ArchivePublicationFailureRollsBackMedia(t *testing.T) 
 		})
 	}
 }
+
+func TestImport_ReusedMediaChangedBeforePublicationPreservesArchive(t *testing.T) {
+	for _, input := range []string{"GEDCOM", "GEDZIP"} {
+		for _, format := range []string{FormatSingle, FormatMulti} {
+			for _, mutation := range []string{"replaced", "deleted"} {
+				t.Run(input+"/"+format+"/"+mutation, func(t *testing.T) {
+					work := t.TempDir()
+					output := filepath.Join(work, "archive")
+					archiveDir := output
+					if format == FormatSingle {
+						output += ".glx"
+						archiveDir = work
+					}
+					mediaDir := filepath.Join(archiveDir, glxlib.MediaFilesDir)
+					require.NoError(t, os.MkdirAll(mediaDir, dirPermissions))
+					require.NoError(t, os.WriteFile(filepath.Join(mediaDir, "photo.jpg"), []byte("expected"), filePermissions))
+					oldPath := filepath.Join(output, "metadata.glx")
+					if format == FormatSingle {
+						oldPath = output
+					}
+					oldArchive := []byte("old archive")
+					require.NoError(t, os.WriteFile(oldPath, oldArchive, filePermissions))
+
+					sourceDir := t.TempDir()
+					require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "photo.jpg"), []byte("expected"), filePermissions))
+					require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "new.jpg"), []byte("new media"), filePermissions))
+					glx := &glxlib.GLXFile{Media: map[string]*glxlib.Media{
+						"photo": {URI: glxlib.MediaFilesDir + "/photo.jpg"},
+						"new":   {URI: glxlib.MediaFilesDir + "/new.jpg"},
+					}}
+					media := []glxlib.MediaFileSource{
+						{MediaID: "photo", SourceType: glxlib.MediaSourceFile, RelativePath: "photo.jpg", MemberPath: "photo.jpg", TargetFilename: "photo.jpg"},
+						{MediaID: "new", SourceType: glxlib.MediaSourceFile, RelativePath: "new.jpg", MemberPath: "new.jpg", TargetFilename: "new.jpg"},
+					}
+					if input == "GEDCOM" {
+						require.NoError(t, allocateImportMediaDestinations(glx, media, archiveDir, sourceDir, nil))
+					} else {
+						require.NoError(t, allocateImportMediaDestinations(glx, media, archiveDir, "", os.DirFS(sourceDir)))
+					}
+					require.True(t, media[0].ReuseExisting)
+					if mutation == "deleted" {
+						require.NoError(t, os.Remove(filepath.Join(mediaDir, "photo.jpg")))
+					} else {
+						require.NoError(t, os.WriteFile(filepath.Join(mediaDir, "photo.jpg"), []byte("changed!"), filePermissions))
+					}
+
+					var err error
+					switch {
+					case input == "GEDCOM" && format == FormatSingle:
+						err = importToSingleFile(glx, output, false, false, 0, media, sourceDir, io.Discard)
+					case input == "GEDCOM":
+						err = importToMultiFile(glx, output, false, false, 0, media, sourceDir, io.Discard)
+					case format == FormatSingle:
+						err = importGEDZIPToSingleFile(glx, output, false, false, 0, media, os.DirFS(sourceDir), io.Discard)
+					default:
+						err = importGEDZIPToMultiFile(glx, output, false, false, 0, media, os.DirFS(sourceDir), io.Discard)
+					}
+					if mutation == "deleted" {
+						require.ErrorIs(t, err, os.ErrNotExist)
+					} else {
+						require.ErrorIs(t, err, os.ErrInvalid)
+					}
+					actualArchive, readErr := os.ReadFile(oldPath)
+					require.NoError(t, readErr)
+					require.Equal(t, oldArchive, actualArchive)
+					require.NoFileExists(t, filepath.Join(mediaDir, "new.jpg"))
+				})
+			}
+		}
+	}
+}

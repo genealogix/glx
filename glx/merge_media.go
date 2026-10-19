@@ -166,17 +166,31 @@ func planSourceMediaCopies(srcPath, destPath string, src *glxlib.GLXFile) ([]pla
 // importing src's binary content under dest's preserved metadata would
 // misattribute the binary.
 func executeMediaCopies(plan []plannedMediaCopy, destPath string, merged *glxlib.GLXFile) (copied, skipped int, err error) {
+	copied, skipped, _, err = executeMediaCopiesWithRollback(plan, destPath, merged)
+
+	return copied, skipped, err
+}
+
+// executeMediaCopiesWithRollback leaves metadata publication to its caller and
+// returns a rollback for only the new binaries it successfully created.
+func executeMediaCopiesWithRollback(plan []plannedMediaCopy, destPath string, merged *glxlib.GLXFile) (copied, skipped int, rollback func(), err error) {
 	if len(plan) == 0 {
-		return 0, 0, nil
+		return 0, 0, func() {}, nil
 	}
 	root, err := os.OpenRoot(destPath)
 	if err != nil {
-		return 0, 0, fmt.Errorf("opening destination archive: %w", err)
+		return 0, 0, nil, fmt.Errorf("opening destination archive: %w", err)
 	}
 	defer func() { _ = root.Close() }()
 	if err := root.MkdirAll(glxlib.MediaFilesDir, dirPermissions); err != nil {
-		return 0, 0, fmt.Errorf("creating media/files dir: %w", err)
+		return 0, 0, nil, fmt.Errorf("creating media/files dir: %w", err)
 	}
+	committed := make([]committedMediaFile, 0, len(plan))
+	defer func() {
+		if err != nil {
+			rollbackCommittedMedia(root, committed)
+		}
+	}()
 	for _, p := range plan {
 		// Copy the binary if at least one src Media entity for this plan
 		// entry made it into the merged archive (same pointer, since Merge()
@@ -194,43 +208,57 @@ func executeMediaCopies(plan []plannedMediaCopy, destPath string, merged *glxlib
 
 			continue
 		}
-		dst := path.Join(glxlib.MediaFilesDir, p.TargetName)
-		srcRoot := p.SrcRoot
-		if srcRoot == "" {
-			srcRoot = filepath.Dir(p.SrcPath)
-		}
-		src, err := openWithin(srcRoot, p.SrcPath)
+		file, err := copyPlannedMedia(root, p)
 		if err != nil {
-			return copied, skipped, fmt.Errorf("opening source media %s: %w", p.SrcPath, err)
+			return copied, skipped, nil, err
 		}
-		out, err := root.OpenFile(dst, os.O_CREATE|os.O_EXCL|os.O_WRONLY, filePermissions)
-		if err != nil {
-			_ = src.Close()
-
-			return copied, skipped, fmt.Errorf("creating destination media %s: %w", dst, err)
-		}
-		createdInfo, statErr := out.Stat()
-		if statErr != nil {
-			_ = out.Close()
-			_ = src.Close()
-
-			return copied, skipped, fmt.Errorf("inspecting destination media %s: %w", dst, statErr)
-		}
-		_, copyErr := io.Copy(out, src)
-		closeErr := out.Close()
-		_ = src.Close()
-		if copyErr != nil || closeErr != nil {
-			current, err := root.Lstat(dst)
-			if err == nil && os.SameFile(current, createdInfo) {
-				_ = root.Remove(dst)
-			}
-
-			return copied, skipped, fmt.Errorf("copying %s: %w", p.SrcPath, errors.Join(copyErr, closeErr))
-		}
+		committed = append(committed, file)
 		copied++
 	}
 
-	return copied, skipped, nil
+	return copied, skipped, func() {
+		root, openErr := os.OpenRoot(destPath)
+		if openErr != nil {
+			return
+		}
+		defer func() { _ = root.Close() }()
+		rollbackCommittedMedia(root, committed)
+	}, nil
+}
+
+func copyPlannedMedia(root *os.Root, p plannedMediaCopy) (committedMediaFile, error) {
+	dst := path.Join(glxlib.MediaFilesDir, p.TargetName)
+	srcRoot := p.SrcRoot
+	if srcRoot == "" {
+		srcRoot = filepath.Dir(p.SrcPath)
+	}
+	src, err := openWithin(srcRoot, p.SrcPath)
+	if err != nil {
+		return committedMediaFile{}, fmt.Errorf("opening source media %s: %w", p.SrcPath, err)
+	}
+	defer func() { _ = src.Close() }()
+	out, err := root.OpenFile(dst, os.O_CREATE|os.O_EXCL|os.O_WRONLY, filePermissions)
+	if err != nil {
+		return committedMediaFile{}, fmt.Errorf("creating destination media %s: %w", dst, err)
+	}
+	createdInfo, statErr := out.Stat()
+	if statErr != nil {
+		_ = out.Close()
+
+		return committedMediaFile{}, fmt.Errorf("inspecting destination media %s: %w", dst, statErr)
+	}
+	_, copyErr := io.Copy(out, src)
+	closeErr := out.Close()
+	if copyErr != nil || closeErr != nil {
+		current, err := root.Lstat(dst)
+		if err == nil && os.SameFile(current, createdInfo) {
+			_ = root.Remove(dst)
+		}
+
+		return committedMediaFile{}, fmt.Errorf("copying %s: %w", p.SrcPath, errors.Join(copyErr, closeErr))
+	}
+
+	return committedMediaFile{dst, createdInfo}, nil
 }
 
 // indexMediaByBasename maps each Media entity's URI basename to the list of

@@ -98,6 +98,37 @@ func allocateImportMediaDestinations(glx *glxlib.GLXFile, files []glxlib.MediaFi
 	return nil
 }
 
+// validateReusedMedia checks that a reused destination still has the source's
+// bytes just before the archive is published. Allocation and publication are
+// separate filesystem operations, so a sync process may change the file in
+// between; publishing its URI without this check would silently misattribute it.
+func validateReusedMedia(archiveDir string, files []glxlib.MediaFileSource, sourceDir string, bundle fs.FS) error {
+	filesDir := filepath.Join(archiveDir, glxlib.MediaFilesDir)
+	for i := range files {
+		mf := &files[i]
+		if !mf.ReuseExisting {
+			continue
+		}
+		sourceHash, available := importSourceHash(mf, sourceDir, bundle)
+		if !available {
+			return fmt.Errorf("reused media source %s is no longer readable: %w", mf.TargetFilename, os.ErrInvalid)
+		}
+		matcher := &importMediaMatcher{
+			archiveDir: archiveDir, filesDir: filesDir, sourceHash: sourceHash,
+			destinationHashes: make(map[string]mediaHashCache),
+		}
+		same, err := matcher.matchesFile(mf.TargetFilename)
+		if err != nil {
+			return fmt.Errorf("rechecking reused media %s: %w", mf.TargetFilename, err)
+		}
+		if !same {
+			return fmt.Errorf("reused media %s changed before archive publication: %w", mf.TargetFilename, os.ErrInvalid)
+		}
+	}
+
+	return nil
+}
+
 type importMediaMatcher struct {
 	source            *glxlib.MediaFileSource
 	sourceDir         string
