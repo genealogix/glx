@@ -82,10 +82,12 @@ export function normalizeDialect(node, isSchema = true) {
 // Enum widening is monotone in ordinary property constraints, but can narrow
 // a negation or conditional, or make exclusive alternatives overlap. Follow
 // local references too: a definition can be reused in both safe and unsafe places.
-function checkEnumWidening(oldRoot, newRoot) {
+function normalizeEnumWidening(oldRoot, newRoot) {
   const seen = new Set();
+  const widened = new Map();
   let enumGrowth = false;
   let unresolvedUnsafeReference = false;
+  let nestedResource = false;
   const resolve = (root, ref) => ref.slice(2).split("/").reduce(
     (node, token) => node?.[token.replaceAll("~1", "/").replaceAll("~0", "~")], root);
   function visit(oldNode, newNode, unsafe, path) {
@@ -93,8 +95,11 @@ function checkEnumWidening(oldRoot, newRoot) {
     const key = `${path}:${unsafe}`;
     if (seen.has(key)) return;
     seen.add(key);
+    // A nested resource changes the base for fragment references. This guard
+    // only resolves document-root pointers, so retain strict comparison there.
+    nestedResource ||= newNode !== newRoot && typeof newNode.$id === "string";
     // The dependency matches raw paths ending in enum/N, including literal
-    // const data. Guard semantic replacements before enabling its add option.
+    // const data. Keep the dependency strict and normalize only schema enums.
     if ("const" in oldNode && "const" in newNode && !isDeepStrictEqual(oldNode.const, newNode.const)) {
       throw new Error(`const changed at ${path}`);
     }
@@ -105,6 +110,7 @@ function checkEnumWidening(oldRoot, newRoot) {
     const grows = Array.isArray(oldNode.enum) && Array.isArray(newNode.enum) &&
       newNode.enum.some((value) => !oldNode.enum.some((old) => isDeepStrictEqual(old, value)));
     enumGrowth ||= grows;
+    if (grows) widened.set(newNode, oldNode.enum);
     if (unsafe && grows) {
       throw new Error(`enum widening in non-monotone context at ${path}`);
     }
@@ -139,9 +145,15 @@ function checkEnumWidening(oldRoot, newRoot) {
     }
   }
   visit(oldRoot, newRoot, false, "#");
+  if (enumGrowth && nestedResource) {
+    throw new Error("enum widening with nested schema resources requires resource-aware resolution");
+  }
   if (enumGrowth && unresolvedUnsafeReference) {
     throw new Error("enum widening with an unresolved reference in a non-monotone context");
   }
+  // Apply only after all references have been checked: a definition first
+  // visited positively may also be reached later through a negation.
+  for (const [node, values] of widened) node.enum = values;
 }
 
 // classifySchemaChange decides whether one schema's change is backward-compatible
@@ -186,8 +198,8 @@ export function classifySchemaChange({ path, baseContent, currentContent }) {
   try {
     const oldNormalized = normalizeDialect(oldSchema);
     const newNormalized = normalizeDialect(newSchema);
-    checkEnumWidening(oldNormalized, newNormalized);
-    validateSchemaCompatibility(oldNormalized, newNormalized, { allowNewEnumValue: true });
+    normalizeEnumWidening(oldNormalized, newNormalized);
+    validateSchemaCompatibility(oldNormalized, newNormalized);
     return { path, status: "compatible", breaking: false, message: `✓ ${path}: backward compatible` };
   } catch (e) {
     return { path, status: "breaking", breaking: true, message: `✗ ${path}: BREAKING change — ${e.message}` };

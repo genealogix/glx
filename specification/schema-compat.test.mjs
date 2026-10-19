@@ -12,6 +12,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import Ajv2020 from "ajv/dist/2020.js";
 import { classifySchemaChange, normalizeDialect } from "./schema-compat.mjs";
 
 const PATH = "specification/schema/v1/thing.schema.json";
@@ -227,8 +228,8 @@ test("tightening a dependency named description is still breaking", () => {
   assert.equal(r.breaking, true);
 });
 
-// Enum additions relax ordinary constraints; the library requires the singular
-// allowNewEnumValue option, despite its README showing a plural spelling.
+// Enum additions relax ordinary constraints. Normalize only schema enums so
+// dependency fields and literal data named enum remain checked strictly.
 const classify = (base, next) => classifySchemaChange({
   path: PATH, baseContent: json(base), currentContent: json(next),
 });
@@ -311,4 +312,41 @@ test("dynamic and recursive references in unsafe contexts block enum widening", 
     const next = { ...base, $defs: { Target: { enum: ["a", "b"] } } };
     assert.equal(classify(base, next).breaking, true, keyword);
   }
+});
+
+test("a dependency named enum must not bypass required-field restrictions", () => {
+  for (const keyword of ["dependencies", "dependentRequired"]) {
+    const base = {
+      type: "object",
+      properties: { enum: { type: "string" }, a: {}, b: {} },
+      [keyword]: { enum: ["a"] },
+    };
+    const next = { ...base, [keyword]: { enum: ["a", "b"] } };
+    assert.equal(classify(base, next).breaking, true, keyword);
+    // A separate genuine enum relaxation must not hide the dependency tightening.
+    const withEnum = { ...base, properties: { ...base.properties, kind: { enum: ["old"] } } };
+    const both = { ...next, properties: { ...withEnum.properties, kind: { enum: ["old", "new"] } } };
+    assert.equal(classify(withEnum, both).breaking, true, keyword);
+  }
+});
+
+test("enum widening with nested schema resources is conservatively blocked", () => {
+  const base = {
+    $id: "https://example.org/root",
+    $defs: { Target: { enum: ["root"] } },
+    properties: {
+      embedded: {
+        $id: "embedded",
+        not: { $ref: "#/$defs/Target" },
+        $defs: { Target: { enum: ["a"] } },
+      },
+    },
+  };
+  const next = structuredClone(base);
+  next.properties.embedded.$defs.Target.enum.push("b");
+  const compile = (schema) => new Ajv2020({ strict: false }).compile(schema);
+  assert.equal(compile(base)({ embedded: "b" }), true);
+  assert.equal(compile(next)({ embedded: "b" }), false);
+  assert.equal(classify(base, next).breaking, true);
+  assert.equal(classify(base, base).breaking, false);
 });
