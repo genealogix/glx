@@ -356,6 +356,7 @@ func cleanupResolvedPersonRelationships(archive, prepared *GLXFile, keepID, drop
 		removed[id] = true
 	}
 	removeMergeDependentAssertions(archive, prepared, removed, result)
+	removeMergeAssertionDependents(archive, prepared, result)
 	pruneRemovedAssertionReferences(archive, prepared, result)
 	for _, id := range result.RemovedRelationships {
 		delete(archive.Relationships, id)
@@ -420,6 +421,70 @@ func removeMergeDependentAssertions(archive, prepared *GLXFile, removed map[stri
 		if dependent {
 			result.RemovedAssertions = append(result.RemovedAssertions, entity.id)
 			delete(archive.Assertions, entity.id)
+		}
+	})
+}
+
+// A claim whose typed value or participant qualifier depends on a deleted
+// claim is removed whole, just like a claim depending on a resolved relationship.
+// Build reverse edges once so long chains and reachable cycles terminate in
+// one pass over each edge; unrelated cycles and opaque text remain intact.
+func removeMergeAssertionDependents(archive, prepared *GLXFile, result *MergePersonsResult) {
+	if len(result.RemovedAssertions) == 0 {
+		return
+	}
+	type dependency struct {
+		id, path string
+		original any
+	}
+	dependents := make(map[string][]dependency)
+	forMergeEntities(archive, prepared, func(entity mergeEntity) {
+		if entity.kind != EntityTypeAssertions {
+			return
+		}
+		walkMergeAssertionReferences(entity, prepared, func(target, path string, original any) {
+			dependents[target] = append(dependents[target], dependency{entity.id, path, cloneMergeValue(reflect.ValueOf(original)).Interface()})
+		})
+	})
+	removed := make(map[string]bool, len(result.RemovedAssertions))
+	queue := slices.Clone(result.RemovedAssertions)
+	for _, id := range queue {
+		removed[id] = true
+	}
+	for i := 0; i < len(queue); i++ {
+		for _, dependent := range dependents[queue[i]] {
+			result.ReferenceChanges = append(result.ReferenceChanges, MergeReferenceChange{
+				EntityTypeAssertions, dependent.id, dependent.path, EntityTypeAssertions,
+				"removed-assertion", dependent.original, nil,
+			})
+			if removed[dependent.id] {
+				continue
+			}
+			removed[dependent.id] = true
+			delete(archive.Assertions, dependent.id)
+			result.RemovedAssertions = append(result.RemovedAssertions, dependent.id)
+			queue = append(queue, dependent.id)
+		}
+	}
+	slices.Sort(result.RemovedAssertions)
+}
+
+func walkMergeAssertionReferences(entity mergeEntity, prepared *GLXFile, visit func(string, string, any)) {
+	assertion, _ := reflect.TypeAssert[*Assertion](entity.value.Addr())
+	if def := ConflictProperty(prepared, assertion.Subject, assertion.Property); def != nil && def.ReferenceType == string(EntityTypeAssertions) && assertion.Value != "" {
+		visit(assertion.Value, "value", assertion.Value)
+	}
+	walkMergeProperties(entity, func(properties map[string]any, prefix string, definitions map[string]*PropertyDefinition) {
+		for key, value := range properties {
+			def := definitions[key]
+			if def == nil || def.ReferenceType != string(EntityTypeAssertions) || value == nil {
+				continue
+			}
+			_, _ = editMergeProperty(reflect.ValueOf(value), prefix+"."+key, func(id, path string, original any) (string, bool) {
+				visit(id, path, original)
+
+				return id, false
+			})
 		}
 	})
 }

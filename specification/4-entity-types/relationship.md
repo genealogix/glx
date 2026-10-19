@@ -433,6 +433,9 @@ binary `possibly_same_person` relationship connecting that pair, in either
 participant order. It deletes whole assertions whose subject, declared
 relationship-reference value, or declared relationship-reference participant
 property depends on a removed relationship, regardless of status or confidence.
+This whole-claim deletion extends transitively to assertions whose declared
+assertion-reference value or participant qualifier depends on a deleted claim.
+Unrelated assertion cycles remain intact; cycles reached by a deletion are removed.
 It does not reassign an identification claim to the surviving person's existence
 or edit away a qualifier. Sources, citations, media and unrelated assertions remain.
 

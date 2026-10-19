@@ -75,7 +75,8 @@ type MergePersonsResult struct {
 	// in sorted order. Their discarded references are not counted in RefsUpdated.
 	RemovedRelationships []string
 	// RemovedAssertions lists whole claims deleted because a typed reference
-	// depends on a removed relationship. Status and confidence do not exempt claims.
+	// depends directly or transitively on a removed identity relationship.
+	// Status and confidence do not exempt claims.
 	RemovedAssertions []string
 	// ReferenceChanges reports rewritten, cleared and pruned typed references.
 	ReferenceChanges []MergeReferenceChange
@@ -97,7 +98,9 @@ type MergePersonsResult struct {
 // Other relationships are retained, including candidates involving other people.
 // Whole assertions depending on removed relationships through their subject,
 // vocabulary-typed value or participant properties are deleted regardless of
-// status/confidence. Optional ResearchLog subjects are cleared; the logs and
+// status/confidence. This extends transitively through assertion-typed values
+// and participant qualifiers; unrelated assertion cycles remain intact.
+// Optional ResearchLog subjects are cleared; the logs and
 // their research remain. Relationship-valued property occurrences are pruned
 // whole, preserving other values/order. Sources, citations and media remain.
 // Deleted conclusions and evidence associations leave the current archive;

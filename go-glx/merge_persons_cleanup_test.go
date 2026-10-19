@@ -275,16 +275,16 @@ func TestMergePersons_SDKTemporalAndPointerReferenceForms(t *testing.T) {
 	}
 }
 
-func TestMergePersons_ValidationFailureDoesNotMutateInput(t *testing.T) {
+func TestValidateMergeReferences_RejectsDanglingTargetWithoutMutatingInput(t *testing.T) {
 	archive := identityEvidenceFixture(t)
-	// Unsupported custom target category exercises post-plan integrity failure,
-	// rather than creating an additional cascade rule beyond the specification.
-	archive.PersonProperties["unsupported"] = &PropertyDefinition{ReferenceType: "assertions"}
-	archive.Assertions["unsupported-dependent"] = &Assertion{Subject: EntityRef{Person: "person-third"}, Property: "unsupported", Value: "a-speculative"}
+	archive.PersonProperties["supporting_claim"] = &PropertyDefinition{ReferenceType: "assertions"}
+	archive.Persons["person-third"].Properties = map[string]any{"supporting_claim": "a-speculative"}
 	before := cloneMergeArchive(archive)
-	_, err := MergePersons(archive, "person-keep", "person-drop", MergePersonsOptions{})
+	invalid := cloneMergeArchive(archive)
+	delete(invalid.Assertions, "a-speculative")
+	err := validateMergeReferences(archive, invalid)
 	require.ErrorIs(t, err, ErrValidationFailed)
-	assert.Equal(t, before, archive, "cleanup, property merges and cache state must remain untouched on failure")
+	assert.Equal(t, before, archive, "validation must not change the original archive or cache state")
 }
 
 func TestMergePersons_UsesSubjectVocabularyAndReferenceType(t *testing.T) {
