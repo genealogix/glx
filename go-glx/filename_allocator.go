@@ -108,21 +108,30 @@ func (a *FilenameAllocator) recordExisting(name, key string) {
 // Allocate reserves basename unchanged when available, or the first free
 // <stem>-N<ext> spelling starting at -2. The supplied spelling is preserved.
 func (a *FilenameAllocator) Allocate(basename string) string {
-	basename = portableFilename(basename)
+	candidate, ordinal := a.NextAvailable(basename)
+	a.reserveKey(candidate, FilenameCollisionKey(candidate))
+	if ordinal > 1 {
+		a.nextSuffix[FilenameCollisionKey(PortableFilename(basename))] = ordinal + 1
+	}
+
+	return candidate
+}
+
+// NextAvailable reports the spelling and ordinal Allocate would reserve,
+// without changing the allocator. Ordinal 1 is the unsuffixed basename.
+func (a *FilenameAllocator) NextAvailable(basename string) (string, int) {
+	basename = PortableFilename(basename)
 	key := FilenameCollisionKey(basename)
-	if a.reserveKey(basename, key) {
-		return basename
+	if _, occupied := a.used[key]; !occupied {
+		return basename, 1
 	}
 
 	ext := filepath.Ext(basename)
 	stem := strings.TrimSuffix(basename, ext)
-	next := max(a.nextSuffix[key], 2)
-	for n := next; ; n++ {
+	for n := max(a.nextSuffix[key], 2); ; n++ {
 		candidate := fmt.Sprintf("%s-%d%s", stem, n, ext)
-		if a.reserveKey(candidate, FilenameCollisionKey(candidate)) {
-			a.nextSuffix[key] = n + 1
-
-			return candidate
+		if _, occupied := a.used[FilenameCollisionKey(candidate)]; !occupied {
+			return candidate, n
 		}
 	}
 }
@@ -132,7 +141,7 @@ func (a *FilenameAllocator) Allocate(basename string) string {
 // return an existing spelling (including a case or Unicode variant). The
 // allocator itself remains independent of filesystem I/O.
 func (a *FilenameAllocator) AllocateMatching(basename string, match func(string) (string, error)) (string, bool, error) {
-	basename = portableFilename(basename)
+	basename = PortableFilename(basename)
 	baseKey := FilenameCollisionKey(basename)
 	ext := filepath.Ext(basename)
 	stem := strings.TrimSuffix(basename, ext)
@@ -229,9 +238,9 @@ func (a *FilenameAllocator) nextSeededSuffix(key string, atLeast int) int {
 	return 0
 }
 
-// portableFilename avoids Win32's trailing-dot/space aliases and reserved
+// PortableFilename avoids Win32's trailing-dot/space aliases and reserved
 // device basenames. The original source spelling remains available as provenance.
-func portableFilename(name string) string {
+func PortableFilename(name string) string {
 	name = strings.TrimRight(name, ". ")
 	if name == "" {
 		return "unnamed"

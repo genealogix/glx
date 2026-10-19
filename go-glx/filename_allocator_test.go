@@ -43,6 +43,20 @@ func TestFilenameAllocator_CachedSuffixSkipsNaturallyReservedNames(t *testing.T)
 	assert.Equal(t, "Photo-7.jpg", a.Allocate("Photo.jpg"))
 }
 
+func TestFilenameAllocator_NextAvailableDoesNotReserve(t *testing.T) {
+	a := NewFilenameAllocator("photo.jpg", "photo-2.jpg")
+	name, ordinal := a.NextAvailable("photo.jpg")
+	assert.Equal(t, "photo-3.jpg", name)
+	assert.Equal(t, 3, ordinal)
+	name, ordinal = a.NextAvailable("photo.jpg")
+	assert.Equal(t, "photo-3.jpg", name)
+	assert.Equal(t, 3, ordinal)
+	assert.Equal(t, "photo-3.jpg", a.Allocate("photo.jpg"))
+	name, ordinal = a.NextAvailable("photo.jpg")
+	assert.Equal(t, "photo-4.jpg", name)
+	assert.Equal(t, 4, ordinal)
+}
+
 func TestFilenameAllocator_WindowsAliasesAndReservedNames(t *testing.T) {
 	a := NewFilenameAllocator()
 	assert.Equal(t, "photo.jpg", a.Allocate("photo.jpg."))

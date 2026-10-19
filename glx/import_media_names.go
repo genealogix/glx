@@ -23,9 +23,13 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
+	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
+
+const mediaFamilyIndexThreshold = 32
 
 func importMediaDir(outputPath, format string) string {
 	if format == FormatSingle {
@@ -63,6 +67,8 @@ func allocateImportMediaDestinations(glx *glxlib.GLXFile, files []glxlib.MediaFi
 	}
 	sort.Strings(names)
 	allocator := glxlib.NewFilenameAllocator(names...)
+	families := indexMediaFamilies(names)
+	familyUses := make(map[string]int)
 	claimed := make(map[string]bool, len(files))
 	destinationHashes := make(map[string]mediaHashCache, len(existing))
 	activeURI := make(map[string]string, len(glx.Media))
@@ -83,7 +89,21 @@ func allocateImportMediaDestinations(glx *glxlib.GLXFile, files []glxlib.MediaFi
 			archiveDir: archiveDir, filesDir: filesDir,
 			byKey: byKey, claimed: claimed, destinationHashes: destinationHashes,
 		}
-		newName, reused, err := allocator.AllocateMatching(requested, matcher.match)
+		var newName string
+		var reused bool
+		var err error
+		portable := glxlib.PortableFilename(requested)
+		familyKey := glxlib.FilenameCollisionKey(portable)
+		family := families[familyKey]
+		familyUses[familyKey]++
+		// Keep the first source's short-circuit match cheap; repeated imports
+		// through a dense occupied family use the content index.
+		if family != nil && len(family.seeds) >= mediaFamilyIndexThreshold && familyUses[familyKey] > 1 {
+			_, firstFree := allocator.NextAvailable(portable)
+			newName, reused, err = family.allocate(portable, firstFree, allocator, matcher)
+		} else {
+			newName, reused, err = allocator.AllocateMatching(requested, matcher.match)
+		}
 		if err != nil {
 			return fmt.Errorf("allocating media filename %s: %w", requested, err)
 		}
@@ -96,6 +116,124 @@ func allocateImportMediaDestinations(glx *glxlib.GLXFile, files []glxlib.MediaFi
 	}
 
 	return nil
+}
+
+type mediaFamilySeed struct {
+	name    string
+	ordinal int
+}
+
+// mediaFamilyIndex groups the on-disk numbered names for one requested
+// basename. Hashes are loaded only for the occupied prefix before the first
+// free spelling, then reused across imports with different source bytes.
+type mediaFamilyIndex struct {
+	seeds   []mediaFamilySeed
+	indexed int
+	byHash  map[[32]byte][]mediaFamilySeed
+	cursor  map[[32]byte]int
+}
+
+func indexMediaFamilies(names []string) map[string]*mediaFamilyIndex {
+	families := make(map[string]*mediaFamilyIndex, len(names))
+	add := func(key, name string, ordinal int) {
+		family := families[key]
+		if family == nil {
+			family = &mediaFamilyIndex{}
+			families[key] = family
+		}
+		family.seeds = append(family.seeds, mediaFamilySeed{name, ordinal})
+	}
+	for _, name := range names {
+		add(glxlib.FilenameCollisionKey(name), name, 1)
+		if baseKey, ordinal, ok := numberedMediaSeed(name); ok {
+			add(baseKey, name, ordinal)
+		}
+	}
+	for _, family := range families {
+		sort.Slice(family.seeds, func(i, j int) bool {
+			if family.seeds[i].ordinal != family.seeds[j].ordinal {
+				return family.seeds[i].ordinal < family.seeds[j].ordinal
+			}
+
+			return family.seeds[i].name < family.seeds[j].name
+		})
+	}
+
+	return families
+}
+
+func numberedMediaSeed(name string) (string, int, bool) {
+	trimmed := strings.TrimRight(name, ". ")
+	ext := filepath.Ext(trimmed)
+	stem := strings.TrimSuffix(trimmed, ext)
+	base, suffix, found := strings.CutLast(stem, "-")
+	if !found {
+		return "", 0, false
+	}
+	ordinal, err := strconv.Atoi(suffix)
+	if err != nil || ordinal < 2 || glxlib.FilenameCollisionKey(name) != glxlib.FilenameCollisionKey(fmt.Sprintf("%s-%d%s", base, ordinal, ext)) {
+		return "", 0, false
+	}
+
+	return glxlib.FilenameCollisionKey(base + ext), ordinal, true
+}
+
+func (family *mediaFamilyIndex) allocate(requested string, firstFree int, allocator *glxlib.FilenameAllocator, matcher *importMediaMatcher) (string, bool, error) {
+	matcher.sourceHash, matcher.haveSource = importSourceHash(matcher.source, matcher.sourceDir, matcher.bundle)
+	matcher.checked = true
+	if !matcher.haveSource {
+		return allocator.Allocate(requested), false, nil
+	}
+	if family.byHash == nil {
+		family.byHash = make(map[[32]byte][]mediaFamilySeed)
+		family.cursor = make(map[[32]byte]int)
+	}
+	for family.indexed < len(family.seeds) && family.seeds[family.indexed].ordinal < firstFree {
+		seed := family.seeds[family.indexed]
+		if _, err := matcher.matchesFile(seed.name); err != nil {
+			return "", false, err
+		}
+		if cached, ok := matcher.destinationHashes[seed.name]; ok {
+			family.byHash[cached.hash] = append(family.byHash[cached.hash], seed)
+		}
+		family.indexed++
+	}
+	matching := family.byHash[matcher.sourceHash]
+	for i := family.cursor[matcher.sourceHash]; i < len(matching) && matching[i].ordinal < firstFree; {
+		ordinal := matching[i].ordinal
+		candidate := indexedCandidateName(requested, ordinal)
+		var chosen string
+		for i < len(matching) && matching[i].ordinal == ordinal {
+			name := matching[i].name
+			i++
+			if matcher.claimed[name] {
+				continue
+			}
+			same, err := matcher.matchesFile(name)
+			if err != nil {
+				return "", false, err
+			}
+			if same && (chosen == "" || name == candidate) {
+				chosen = name
+			}
+		}
+		if chosen != "" {
+			return chosen, true, nil
+		}
+		family.cursor[matcher.sourceHash] = i
+	}
+
+	return allocator.Allocate(requested), false, nil
+}
+
+func indexedCandidateName(base string, ordinal int) string {
+	if ordinal == 1 {
+		return base
+	}
+	ext := filepath.Ext(base)
+	stem := strings.TrimSuffix(base, ext)
+
+	return fmt.Sprintf("%s-%d%s", stem, ordinal, ext)
 }
 
 // validateReusedMedia checks that a reused destination still has the source's

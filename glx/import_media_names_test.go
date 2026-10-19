@@ -16,6 +16,7 @@ package main
 
 import (
 	"crypto/sha256"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -24,6 +25,45 @@ import (
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
+
+func TestAllocateImportMediaDestinations_DenseNonmatchingFamilyKeepsReuse(t *testing.T) {
+	const count = 64
+	archiveDir := t.TempDir()
+	sourceDir := t.TempDir()
+	filesDir := filepath.Join(archiveDir, glxlib.MediaFilesDir)
+	require.NoError(t, os.MkdirAll(filesDir, dirPermissions))
+	for n := 1; n <= count; n++ {
+		name := "photo.jpg"
+		if n > 1 {
+			name = fmt.Sprintf("photo-%d.jpg", n)
+		}
+		require.NoError(t, os.WriteFile(filepath.Join(filesDir, name), []byte(fmt.Sprintf("existing %d", n)), filePermissions))
+	}
+	archive := &glxlib.GLXFile{Media: make(map[string]*glxlib.Media)}
+	files := make([]glxlib.MediaFileSource, 0, count+1)
+	for n := 1; n <= count+1; n++ {
+		id := fmt.Sprintf("incoming-%d", n)
+		name := id + ".jpg"
+		content := []byte(fmt.Sprintf("new %d", n))
+		if n == count+1 {
+			content = []byte("existing 2")
+		}
+		require.NoError(t, os.WriteFile(filepath.Join(sourceDir, name), content, filePermissions))
+		archive.Media[id] = &glxlib.Media{URI: glxlib.MediaFilesDir + "/photo.jpg"}
+		files = append(files, glxlib.MediaFileSource{
+			MediaID: id, SourceType: glxlib.MediaSourceFile, RelativePath: name,
+			RequestedFilename: "photo.jpg", TargetFilename: "photo.jpg",
+		})
+	}
+
+	require.NoError(t, allocateImportMediaDestinations(archive, files, archiveDir, sourceDir, nil))
+	for n := 1; n <= count; n++ {
+		require.Equal(t, fmt.Sprintf("photo-%d.jpg", count+n), files[n-1].TargetFilename)
+		require.False(t, files[n-1].ReuseExisting)
+	}
+	require.Equal(t, "photo-2.jpg", files[count].TargetFilename)
+	require.True(t, files[count].ReuseExisting)
+}
 
 func TestReserveImportMediaDestinations_PreservesExistingFileAndReferences(t *testing.T) {
 	archiveDir := t.TempDir()
