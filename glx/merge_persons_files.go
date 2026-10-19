@@ -37,6 +37,9 @@ func prepareMergeFiles(original map[string][]byte, archive *glxlib.GLXFile, resu
 	if err != nil {
 		return nil, err
 	}
+	if err := materializeMergeCollections(roots, result.Changes); err != nil {
+		return nil, err
+	}
 	if err := preserveMergeAliases(roots, result.Changes); err != nil {
 		return nil, err
 	}
@@ -98,6 +101,40 @@ func prepareMergeFiles(original map[string][]byte, archive *glxlib.GLXFile, resu
 	}
 
 	return files, nil
+}
+
+// Entity discovery must see mappings rather than aliases. Copy only collection
+// occurrences containing changed entities: editing the anchor's original node
+// would also alter snapshots and unrelated consumers of that collection.
+func materializeMergeCollections(roots map[string]*yaml.Node, changes []glxlib.EntityChange) error {
+	for _, change := range changes {
+		for _, root := range roots {
+			collection := mergeMappingValue(root, string(change.EntityType))
+			if collection == nil || collection.Kind != yaml.AliasNode {
+				continue
+			}
+			expanded, err := expandMergeAlias(collection, nil, nil, make(map[*yaml.Node]bool), true)
+			if err != nil {
+				return err
+			}
+			if mergeMappingValue(expanded, change.ID) == nil {
+				continue
+			}
+			// Collection mappings are mutated in place; put occurrence comments
+			// on the containing key so the encoder retains them after edits.
+			for i := 0; i < len(root.Content); i += 2 {
+				if root.Content[i+1] == collection {
+					root.Content[i].HeadComment = strings.TrimSpace(root.Content[i].HeadComment + "\n" + expanded.HeadComment)
+					expanded.HeadComment = ""
+
+					break
+				}
+			}
+			*collection = *expanded
+		}
+	}
+
+	return nil
 }
 
 // Materialize aliases at the edit boundary before any nodes are moved or
@@ -225,7 +262,11 @@ func parseMergeNodes(original map[string][]byte) (map[string]*yaml.Node, error) 
 		if len(document.Content) == 0 || document.Content[0].Kind != yaml.MappingNode {
 			return nil, glxlib.ErrValidationFailed
 		}
-		roots[path] = document.Content[0]
+		root := document.Content[0]
+		// Keep document comments when editing the root mapping directly.
+		root.HeadComment = strings.TrimSpace(document.HeadComment + "\n" + root.HeadComment)
+		root.FootComment = strings.TrimSpace(root.FootComment + "\n" + document.FootComment)
+		roots[path] = root
 	}
 
 	return roots, nil
