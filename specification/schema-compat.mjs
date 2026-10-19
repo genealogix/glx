@@ -15,6 +15,7 @@
 // deleted/breaking/compatible branches are unit-tested in schema-compat.test.mjs.
 // main() is the thin git/console wrapper, run only when invoked as a script.
 
+import { isDeepStrictEqual } from "util";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { execFileSync } from "child_process";
@@ -78,6 +79,71 @@ export function normalizeDialect(node, isSchema = true) {
   return out;
 }
 
+// Enum widening is monotone in ordinary property constraints, but can narrow
+// a negation or conditional, or make exclusive alternatives overlap. Follow
+// local references too: a definition can be reused in both safe and unsafe places.
+function checkEnumWidening(oldRoot, newRoot) {
+  const seen = new Set();
+  let enumGrowth = false;
+  let unresolvedUnsafeReference = false;
+  const resolve = (root, ref) => ref.slice(2).split("/").reduce(
+    (node, token) => node?.[token.replaceAll("~1", "/").replaceAll("~0", "~")], root);
+  function visit(oldNode, newNode, unsafe, path) {
+    if (!oldNode || !newNode || typeof oldNode !== "object" || typeof newNode !== "object") return;
+    const key = `${path}:${unsafe}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    // The dependency matches raw paths ending in enum/N, including literal
+    // const data. Guard semantic replacements before enabling its add option.
+    if ("const" in oldNode && "const" in newNode && !isDeepStrictEqual(oldNode.const, newNode.const)) {
+      throw new Error(`const changed at ${path}`);
+    }
+    if (Array.isArray(oldNode.enum) && Array.isArray(newNode.enum) &&
+        oldNode.enum.some((value) => !newNode.enum.some((next) => isDeepStrictEqual(value, next)))) {
+      throw new Error(`enum value removed or replaced at ${path}`);
+    }
+    const grows = Array.isArray(oldNode.enum) && Array.isArray(newNode.enum) &&
+      newNode.enum.some((value) => !oldNode.enum.some((old) => isDeepStrictEqual(old, value)));
+    enumGrowth ||= grows;
+    if (unsafe && grows) {
+      throw new Error(`enum widening in non-monotone context at ${path}`);
+    }
+    if (unsafe && ["$dynamicRef", "$recursiveRef"].some((name) => typeof newNode[name] === "string")) {
+      unresolvedUnsafeReference = true;
+    }
+    if (typeof newNode.$ref === "string" && oldNode.$ref === newNode.$ref) {
+      const pointer = newNode.$ref.startsWith("#/");
+      const oldTarget = pointer ? resolve(oldRoot, oldNode.$ref) : undefined;
+      const newTarget = pointer ? resolve(newRoot, newNode.$ref) : undefined;
+      if (oldTarget === undefined || newTarget === undefined) {
+        // Anchors and external references are outside this local pointer
+        // resolver. Their targets may reuse a widened definition, so fail
+        // conservatively when reached through a non-monotone constraint.
+        unresolvedUnsafeReference ||= unsafe;
+      } else {
+        visit(oldTarget, newTarget, unsafe, newNode.$ref);
+      }
+    }
+    for (const [name, value] of Object.entries(newNode)) {
+      if (DATA_VALUED_KEYWORDS.has(name)) continue;
+      if (MAP_VALUED_KEYWORDS.has(name)) {
+        for (const [entry, schema] of Object.entries(value || {})) {
+          visit(oldNode[name]?.[entry], schema, unsafe, `${path}/${name}/${entry}`);
+        }
+      } else if (Array.isArray(value)) {
+        value.forEach((schema, i) => visit(oldNode[name]?.[i], schema,
+          unsafe || name === "oneOf", `${path}/${name}/${i}`));
+      } else {
+        visit(oldNode[name], value, unsafe || ["not", "if", "contains"].includes(name), `${path}/${name}`);
+      }
+    }
+  }
+  visit(oldRoot, newRoot, false, "#");
+  if (enumGrowth && unresolvedUnsafeReference) {
+    throw new Error("enum widening with an unresolved reference in a non-monotone context");
+  }
+}
+
 // classifySchemaChange decides whether one schema's change is backward-compatible
 // from the base text and current text alone (each a string, or null to signal
 // "absent": baseContent === null means the schema is new; currentContent === null
@@ -118,7 +184,10 @@ export function classifySchemaChange({ path, baseContent, currentContent }) {
     };
   }
   try {
-    validateSchemaCompatibility(normalizeDialect(oldSchema), normalizeDialect(newSchema));
+    const oldNormalized = normalizeDialect(oldSchema);
+    const newNormalized = normalizeDialect(newSchema);
+    checkEnumWidening(oldNormalized, newNormalized);
+    validateSchemaCompatibility(oldNormalized, newNormalized, { allowNewEnumValue: true });
     return { path, status: "compatible", breaking: false, message: `✓ ${path}: backward compatible` };
   } catch (e) {
     return { path, status: "breaking", breaking: true, message: `✗ ${path}: BREAKING change — ${e.message}` };
