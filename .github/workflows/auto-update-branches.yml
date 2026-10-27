@@ -23,10 +23,18 @@ jobs:
     steps:
       - name: Generate GitHub App token
         id: app-token
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
-          app-id: ${{ secrets.GH_APP_ID }}
+          # genealogix-ci-bot's Client ID. It is public (GET /apps/genealogix-ci-bot),
+          # so it is inlined rather than kept in a secret; `app-id` is deprecated.
+          client-id: Iv23li2aMm9cwU59DEQr
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          # Scope the token to what the script below uses instead of inheriting
+          # the app installation's full grant (zizmor github-app, #928):
+          # contents:write for the merges endpoint (plus ref/compare reads),
+          # pull-requests:read for `gh pr list`.
+          permission-contents: write
+          permission-pull-requests: read
 
       - name: Update out-of-date PR branches
         env:

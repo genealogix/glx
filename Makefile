@@ -1,5 +1,5 @@
 # GENEALOGIX Makefile
-.PHONY: help check build build-cli build-website install-deps install-hooks lint lint-fix lint-codeowners fix fix-diff test test-verbose test-race test-coverage bench mod-tidy mod-verify tidy-check ci-tools-tidy-check clean fmt check-schemas check-drift-allowlist check-code-drift check-memory-drift test-scripts check-links validate-examples docs-cli release-snapshot vulncheck gosec license-check
+.PHONY: help check build build-cli build-website install-deps install-hooks lint lint-fix lint-codeowners lint-workflows fix fix-diff test test-verbose test-race test-coverage bench mod-tidy mod-verify tidy-check ci-tools-tidy-check clean fmt check-schemas check-drift-allowlist check-code-drift check-memory-drift test-scripts check-links validate-examples docs-cli release-snapshot vulncheck gosec license-check
 
 .DEFAULT_GOAL := help
 
@@ -87,6 +87,20 @@ lint-codeowners: ## Verify every file is matched by a .github/CODEOWNERS rule
 		exit 1; \
 	fi; \
 	echo "CODEOWNERS coverage OK"
+
+# Static analysis of .github/ (#928), the same two checks as
+# .github/workflows/workflow-lint.yml. actionlint is pinned via the tool
+# directive in ci-tools/go.mod and needs shellcheck on PATH for its `run:`
+# script pass (it silently skips that pass otherwise). zizmor runs through uvx
+# at the version pinned in .github/requirements/zizmor.txt (CI installs that
+# file by hash); export GH_TOKEN to enable its online audits.
+lint-workflows: ## Lint GitHub Actions workflows (actionlint + zizmor)
+	@command -v shellcheck >/dev/null || { echo "ERROR: shellcheck not found on PATH (actionlint needs it)"; exit 1; }
+	go tool -modfile=ci-tools/go.mod actionlint
+	@command -v uvx >/dev/null || { echo "ERROR: uvx not found (install uv: https://docs.astral.sh/uv/)"; exit 1; }
+	@v="$$(sed -n 's/^zizmor==\([^ ]*\).*/\1/p' .github/requirements/zizmor.txt)"; \
+	test -n "$$v" || { echo "ERROR: no zizmor pin in .github/requirements/zizmor.txt"; exit 1; }; \
+	uvx "zizmor@$$v" --no-progress .
 
 fix: ## Run Go 1.27 modernizers on codebase
 	go fix ./...
@@ -181,7 +195,7 @@ check-memory-drift: ## Deterministically detect CLAUDE.md/AGENTS.md drift vs the
 	@go run ./tools/memcheck
 
 test-scripts: ## Unit-test the Node drift-check scripts and serve viewer
-	@node --test scripts/drift-checks/spec-schema-drift.test.mjs specification/schema-compat.test.mjs glx/web_test/app.test.mjs
+	@node --test scripts/drift-checks/spec-schema-drift.test.mjs specification/schema-compat.test.mjs glx/web_test/app.test.mjs scripts/hooks/staged.test.mjs
 
 ## Example Validation
 validate-examples: build-cli ## Validate all example archives

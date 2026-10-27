@@ -36,8 +36,12 @@ Practical consequences:
   is a defect, whatever the namespace.
 - Three actions publish no floating major at all — `ossf/scorecard-action`
   (#779), `mszostok/codeowners-validator`, `sigstore/cosign-installer` (#938).
-  Their `uses:` lines carry a trailing "do not tidy to @vN" note; "correcting"
-  them fails with `Unable to resolve action <owner>/<repo>@vN`.
+  Each carries a "do not tidy to @vN" note in the comment directly above its
+  `uses:` line; "correcting" them fails with
+  `Unable to resolve action <owner>/<repo>@vN`.
+- Keep the trailing comment on a `uses:` line a bare `# vX.Y.Z`. Extra text
+  after the version stops Dependabot from rewriting the comment, leaving the
+  SHA and comment out of sync after a bump (#1415). Put notes on the line above.
 - Dependabot sustains the pins: it bumps the SHA and rewrites the `# vX.Y.Z`
   comment together, weekly, via the `github-actions` ecosystem entry.
 - To find the SHA for a tag (this dereferences annotated tags correctly):
@@ -153,5 +157,15 @@ workflow passes.
   workflows (`security.yml`, `validate-spec.yml`) can populate; a poisoned
   cache entry would taint the build *upstream* of signing, and provenance/
   signatures won't catch it. Hence `cache: false` on `actions/setup-go` in
-  `release.yml` (#1051) — do not "tidy" it back to `true`. Wiring zizmor's
-  `cache-poisoning` audit into CI (#928) would catch regressions generically.
+  `release.yml` (#1051) — do not "tidy" it back to `true`. zizmor's
+  `cache-poisoning` audit in `workflow-lint.yml` (#928) catches regressions.
+
+## `workflow-lint.yml`: zizmor + actionlint gate every workflow edit
+
+Any PR touching `.github/workflows/` runs zizmor and actionlint, and both
+fail on any finding (source of truth: the "Static analysis of CI workflow
+definitions" row in `../SECURITY-POSTURE.md`). Run `make lint-workflows`
+before pushing a workflow change. Fix a finding rather than suppressing it;
+where a suppression is genuinely right (e.g. shellcheck SC2016 on a
+single-quoted GraphQL document), put it on the one command with a comment
+saying why.
