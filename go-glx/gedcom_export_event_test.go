@@ -15,6 +15,7 @@
 package glx
 
 import (
+	"maps"
 	"regexp"
 	"strings"
 	"testing"
@@ -776,20 +777,66 @@ func TestExportGEDCOM_EventEvidenceKeepsDistinctDetailsWithAssociations(t *testi
 
 // A kinship role on an event with two subjects relates to one of them: the
 // bride's father at a marriage is not the groom's parent (#1372). In 5.5.1 the
-// ASSO goes only under the subject a relationship links him to; with no such
-// relationship it goes under both with RELA Participant and the role in a
-// NOTE. A role that relates to the event (witness) still goes under both, and
-// GEDCOM 7.0 keeps its event-level ROLE FATH either way.
+// ASSO goes only under the subject a relationship shows him to be the parent
+// of: a parent-child relationship, with him on the parent side and that
+// subject on the child side, that the archive has not disproven. Anything
+// else (no relationship, a relationship of another type, one that runs the
+// other way, a step or adoptive link, a disproven one) puts it under both
+// with RELA Participant and the role in a NOTE. A role that relates to the
+// event (witness) still goes under both, and GEDCOM 7.0 keeps its event-level
+// ROLE FATH either way.
 func TestExportGEDCOM_Associations551KinshipRoleOnlyUnderItsRelative(t *testing.T) {
-	const neutralParent = "\n2 RELA Participant\n2 NOTE Event role: Parent\n2 NOTE Event: Marriage"
+	const (
+		neutralParent = "\n2 RELA Participant\n2 NOTE Event role: Parent\n2 NOTE Event: Marriage"
+		kinParent     = "\n2 RELA Parent\n2 NOTE Event: Marriage"
+	)
+	link := func(relType, fatherRole, otherRole, other string) *Relationship {
+		return &Relationship{Type: relType, Participants: []Participant{
+			{Person: "person-father", Role: fatherRole},
+			{Person: other, Role: otherRole},
+		}}
+	}
+	fatherOfBride := link(RelationshipTypeParentChild, ParticipantRoleParent, ParticipantRoleChild, "person-bride")
+	neighborOfGroom := link(RelationshipTypeNeighbor, ParticipantRoleAssociate, ParticipantRoleAssociate, "person-groom")
 	for _, tc := range []struct {
-		name     string
-		parentOf string // "" for no parent_child relationship
-		groom    string // the father's ASSO under the groom after its XREF, "" for none
-		bride    string // the same under the bride
+		name      string
+		rels      map[string]*Relationship
+		disproven string // relationship whose father link is disproven, "" for none
+		groom     string // the father's ASSO under the groom after its XREF, "" for none
+		bride     string // the same under the bride
 	}{
-		{"unknown relative", "", neutralParent, neutralParent},
-		{"father of the bride", "person-bride", "", "\n2 RELA Parent\n2 NOTE Event: Marriage"},
+		{"unknown relative", nil, "", neutralParent, neutralParent},
+		{"father of the bride", map[string]*Relationship{"rel-pc": fatherOfBride}, "", "", kinParent},
+		{
+			"neighbor of the groom is not his parent",
+			map[string]*Relationship{"rel-n": neighborOfGroom},
+			"", neutralParent, neutralParent,
+		},
+		{
+			"father of the bride and neighbor of the groom",
+			map[string]*Relationship{"rel-pc": fatherOfBride, "rel-n": neighborOfGroom},
+			"", "", kinParent,
+		},
+		{
+			"child of the bride is not her parent",
+			map[string]*Relationship{"rel-pc": link(RelationshipTypeParentChild, ParticipantRoleChild, ParticipantRoleParent, "person-bride")},
+			"", neutralParent, neutralParent,
+		},
+		{
+			"parent-child relationship without roles",
+			map[string]*Relationship{"rel-pc": link(RelationshipTypeParentChild, "", "", "person-bride")},
+			"", neutralParent, neutralParent,
+		},
+		{
+			"step-parent is not a plain parent",
+			map[string]*Relationship{"rel-pc": link(RelationshipTypeStepParent, ParticipantRoleParent, ParticipantRoleChild, "person-bride")},
+			"", neutralParent, neutralParent,
+		},
+		{
+			"disproven father of the bride",
+			map[string]*Relationship{"rel-pc": fatherOfBride},
+			"rel-pc", neutralParent, neutralParent,
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			glx := newEventExportArchive(t, map[string][2]string{
@@ -812,12 +859,14 @@ func TestExportGEDCOM_Associations551KinshipRoleOnlyUnderItsRelative(t *testing.
 					{Person: "person-bride", Role: ParticipantRoleSpouse},
 				},
 			}
-			if tc.parentOf != "" {
-				glx.Relationships["rel-pc"] = &Relationship{
-					Type: RelationshipTypeParentChild,
-					Participants: []Participant{
-						{Person: "person-father", Role: ParticipantRoleParent},
-						{Person: tc.parentOf, Role: ParticipantRoleChild},
+			maps.Copy(glx.Relationships, tc.rels)
+			if tc.disproven != "" {
+				glx.Sources["source-proof"] = &Source{Title: "Parentage investigation"}
+				glx.Assertions = map[string]*Assertion{
+					"assertion-rejected": {
+						Subject:     EntityRef{Relationship: tc.disproven},
+						Participant: &Participant{Person: "person-father", Role: ParticipantRoleParent},
+						Sources:     []string{"source-proof"}, Confidence: ConfidenceLevelHigh, Status: "disproven",
 					},
 				}
 			}
@@ -843,7 +892,7 @@ func TestExportGEDCOM_Associations551KinshipRoleOnlyUnderItsRelative(t *testing.
 					assert.Contains(t, text, "1 ASSO "+father+host.want, host.name)
 				}
 			}
-			if tc.parentOf == "" {
+			if tc.groom != kinParent && tc.bride != kinParent {
 				assert.NotContains(t, ged, "RELA Parent")
 			}
 			assertGEDCOM551AssociationPlacement(t, ged)
@@ -873,4 +922,42 @@ func TestExportGEDCOM_Associations551KinshipRoleSingleSubject(t *testing.T) {
 	require.Len(t, associations, 1)
 	assert.Contains(t, associations[0], "1 ASSO @I2@\n2 RELA Parent\n2 NOTE Event: Baptism")
 	assertGEDCOM551AssociationPlacement(t, ged)
+}
+
+// A relationship link supports writing a kinship role as a 5.5.1 RELA only
+// when its type carries that kinship and both people's roles in it run in the
+// role's direction (#1372).
+func TestRelationshipLinkCarriesKinship(t *testing.T) {
+	for _, tc := range []struct {
+		eventRole, relType, assocRole, hostRole string
+		want                                    bool
+	}{
+		{ParticipantRoleParent, RelationshipTypeBiologicalParentChild, "parent", "child", true},
+		{ParticipantRoleChild, RelationshipTypeParentChild, "child", "parent", true},
+		{ParticipantRoleChild, RelationshipTypeParentChild, "parent", "child", false},
+		{ParticipantRoleParent, RelationshipTypeAdoptiveParentChild, "parent", "child", false},
+		{ParticipantRoleAdoptiveParent, RelationshipTypeAdoptiveParentChild, "parent", "child", true},
+		{ParticipantRoleAdoptiveParent, RelationshipTypeParentChild, "adoptive_parent", "adopted_child", true},
+		{ParticipantRoleFosterChild, RelationshipTypeFosterParentChild, "child", "parent", true},
+		{ParticipantRoleStepParent, RelationshipTypeStepParent, "parent", "child", true},
+		{ParticipantRoleStepParent, RelationshipTypeParentChild, "parent", "child", false},
+		{ParticipantRoleSpouse, RelationshipTypeMarriage, "spouse", "spouse", true},
+		{ParticipantRoleSpouse, RelationshipTypeCivilUnion, "husband", "wife", true},
+		{ParticipantRoleSpouse, RelationshipTypeMarriage, "witness", "spouse", false},
+		{ParticipantRoleSpouse, RelationshipTypeNeighbor, "spouse", "spouse", false},
+		{ParticipantRoleSibling, RelationshipTypeSibling, "sibling", "sibling", true},
+		{ParticipantRoleSibling, RelationshipTypeSibling, "", "", false},
+		{ParticipantRoleGodparent, RelationshipTypeGodparent, "godparent", "godchild", true},
+		{ParticipantRoleGodparent, RelationshipTypeGodparent, "godchild", "godparent", false},
+		{ParticipantRoleGodchild, RelationshipTypeGodparent, "godchild", "godparent", true},
+		{ParticipantRoleGuardian, RelationshipTypeGuardian, "guardian", "ward", true},
+		{ParticipantRoleGuardian, RelationshipTypeGuardian, "parent", "child", true},
+		{ParticipantRoleWard, RelationshipTypeGuardian, "ward", "guardian", true},
+		{ParticipantRoleGuardian, RelationshipTypeGuardian, "ward", "guardian", false},
+		{ParticipantRoleParent, RelationshipTypeGuardian, "parent", "child", false},
+	} {
+		link := relationshipLink{relID: "rel", relType: tc.relType, roleA: tc.assocRole, roleB: tc.hostRole}
+		assert.Equal(t, tc.want, relationshipLinkCarriesKinship(tc.eventRole, link),
+			"%s via %s (%s → %s)", tc.eventRole, tc.relType, tc.assocRole, tc.hostRole)
+	}
 }
