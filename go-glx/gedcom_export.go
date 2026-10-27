@@ -201,6 +201,10 @@ type ExportContext struct {
 	// Event context is descriptive NOTE text, not a structured event link.
 	personAssociations551 map[string]map[string]*GEDCOMRecord
 
+	// relationshipLinks is built on first use by kinshipSupported: for every
+	// ordered pair of persons, the relationships they share and their roles.
+	relationshipLinks map[[2]string][]relationshipLink
+
 	// Reconstructed family records
 	Families      []*ExportFamily
 	FamilyXRefMap map[string]string // relationship ID -> family XREF
