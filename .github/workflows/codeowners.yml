@@ -65,7 +65,8 @@ jobs:
           persist-credentials: false
 
       - name: Validate CODEOWNERS (syntax, duppatterns, files, shadowing)
-        uses: mszostok/codeowners-validator@7f3f5e28c6d7b8dfae5731e54ce2272ca384592f # v0.7.4 -- only vX.Y.Z tags published, no floating v0; do not "tidy" to @v0.7
+        # Only vX.Y.Z tags are published, no floating v0; do not "tidy" to @v0.7.
+        uses: mszostok/codeowners-validator@7f3f5e28c6d7b8dfae5731e54ce2272ca384592f # v0.7.4
         with:
           checks: 'files,duppatterns,syntax'
           experimental_checks: 'avoid-shadowing'
@@ -101,7 +102,8 @@ jobs:
 
       - name: Validate owners have write access (needs read:org PAT)
         if: env.OWNERS_PAT != ''
-        uses: mszostok/codeowners-validator@7f3f5e28c6d7b8dfae5731e54ce2272ca384592f # v0.7.4 -- only vX.Y.Z tags published, no floating v0; do not "tidy" to @v0.7
+        # Only vX.Y.Z tags are published, no floating v0; do not "tidy" to @v0.7.
+        uses: mszostok/codeowners-validator@7f3f5e28c6d7b8dfae5731e54ce2272ca384592f # v0.7.4
         with:
           checks: 'owners'
           github_access_token: ${{ env.OWNERS_PAT }}

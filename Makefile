@@ -195,7 +195,7 @@ check-memory-drift: ## Deterministically detect CLAUDE.md/AGENTS.md drift vs the
 	@go run ./tools/memcheck
 
 test-scripts: ## Unit-test the Node drift-check scripts and serve viewer
-	@node --test scripts/drift-checks/spec-schema-drift.test.mjs specification/schema-compat.test.mjs glx/web_test/app.test.mjs
+	@node --test scripts/drift-checks/spec-schema-drift.test.mjs specification/schema-compat.test.mjs glx/web_test/app.test.mjs scripts/hooks/staged.test.mjs
 
 ## Example Validation
 validate-examples: build-cli ## Validate all example archives
