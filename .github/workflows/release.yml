@@ -92,8 +92,21 @@ jobs:
       - name: Install syft
         uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
 
+      # goreleaser-action >= v7.3.0 looks in the runner tool cache before it
+      # downloads, and a cache hit is used WITHOUT re-running its checksum and
+      # cosign verification. The syft step above runs an unpinned install.sh
+      # (accepted risk, SECURITY-POSTURE.md "Action pinning"), which could plant
+      # a goreleaser-* entry there for that lookup to find. Clear every
+      # GoReleaser entry (the action keys them goreleaser[-pro]-checksum and
+      # goreleaser[-pro]-cosign) after that script has run, so the action always
+      # downloads and verifies the binary itself. A single-use job on a fresh
+      # hosted runner never had a cache hit to lose. Keep this step immediately
+      # ahead of "Run GoReleaser".
+      - name: Clear GoReleaser from the runner tool cache
+        run: rm -rf "${RUNNER_TOOL_CACHE:?}"/goreleaser*
+
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+        uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with:
           # Pin the GoReleaser tool to a minor (patch-floating), not '~> v2':
           # the action SHA pin above pins the action, not the tool binary it
