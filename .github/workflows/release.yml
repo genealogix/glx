@@ -73,7 +73,8 @@ jobs:
         run: go mod download
 
       - name: Install cosign
-        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2 -- only vX.Y.Z tags published, no floating v4; do not "tidy" to @v4 (#938)
+        # Only vX.Y.Z tags are published, no floating v4; do not "tidy" to @v4 (#938).
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
         with:
           cosign-release: 'v3.0.6'   # pin: --bundle output format is part of our release verification contract
 
