@@ -5,10 +5,12 @@ on:
     branches: [main]
     paths:
       - 'website/**'
+      - 'scripts/hooks/**'
       - '.github/workflows/lint-website.yml'
   pull_request:
     paths:
       - 'website/**'
+      - 'scripts/hooks/**'
       - '.github/workflows/lint-website.yml'
 
 permissions:
@@ -51,3 +53,6 @@ jobs:
         # Same command `make lint` runs; --max-warnings 0 lives in the npm
         # script itself so local and CI strictness can't drift.
         run: npm run lint
+
+      - name: Test staged lint hooks
+        run: node --test ../scripts/hooks/staged.test.mjs

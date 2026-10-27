@@ -76,6 +76,27 @@ func TestMigrationEntry_TemporalParent(t *testing.T) {
 	assert.Equal(t, "Wayne County, Indiana, United States", newMigrationEntry("1830", "place-wayne-in", "Residence", archive).Place)
 }
 
+func TestMigrationPlacePathAt_TemporalParent(t *testing.T) {
+	// A town moved from one county to another: the comparison path used to
+	// decide whether two observations are the same place follows the dated
+	// parent, as Place and Region do.
+	town := &glxlib.Place{Name: "Millbrook", Type: glxlib.PlaceTypeCity}
+	town.SetParentHistory([]glxlib.PlaceParentPeriod{
+		{Value: "place-hartford", Date: "FROM 1840 TO 1849"},
+		{Value: "place-dodge", Date: "FROM 1850"},
+	})
+	archive := &glxlib.GLXFile{Places: map[string]*glxlib.Place{
+		"place-wi":        {Name: "Wisconsin", Type: glxlib.PlaceTypeState},
+		"place-hartford":  {Name: "Hartford Co.", Type: glxlib.PlaceTypeCounty, ParentID: "place-wi"},
+		"place-dodge":     {Name: "Dodge Co.", Type: glxlib.PlaceTypeCounty, ParentID: "place-wi"},
+		"place-millbrook": town,
+	}}
+
+	assert.Equal(t, []string{"Wisconsin", "Hartford Co.", "Millbrook"}, newMigrationEntry("1845", "place-millbrook", "Residence", archive).path)
+	assert.Equal(t, []string{"Wisconsin", "Dodge Co.", "Millbrook"}, newMigrationEntry("1860", "place-millbrook", "Residence", archive).path)
+	assert.Equal(t, []string{"Wisconsin", "Dodge Co.", "Millbrook"}, migrationPlacePath("place-millbrook", archive.Places), "no date: default parent")
+}
+
 func TestPlaceIsDescendant_TemporalParent(t *testing.T) {
 	archive := temporalParentArchive()
 
