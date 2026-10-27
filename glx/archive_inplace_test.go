@@ -17,6 +17,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -303,4 +304,155 @@ func TestWriteArchiveInPlace_RefusesFileChangedSinceLoad(t *testing.T) {
 
 	require.ErrorIs(t, err, ErrRenameFileChanged)
 	assert.Equal(t, edited, readArchiveFile(t, dir, "people/family.glx"))
+}
+
+// requireValidArchive runs the validating load glx validate uses, then the
+// full validation pass, and fails on any error either reports.
+func requireValidArchive(t *testing.T, dir string) *glxlib.GLXFile {
+	t.Helper()
+	archive, duplicates, err := LoadArchive(dir)
+	require.NoError(t, err)
+	assert.Empty(t, duplicates)
+	result := archive.Validate()
+	for _, issue := range result.Errors {
+		t.Errorf("validation error: %s", issue.Message)
+	}
+
+	return archive
+}
+
+// stageDirSymlink creates relLink inside dir as a symlink to relTarget (both
+// slash-separated, relative to dir), creating the target directory.
+func stageDirSymlink(t *testing.T, dir, relLink, relTarget string) {
+	t.Helper()
+	if runtime.GOOS == goosWindows {
+		t.Skip("symlink creation requires elevation on Windows")
+	}
+	link := filepath.Join(dir, filepath.FromSlash(relLink))
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, filepath.FromSlash(relTarget)), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Dir(link), 0o755))
+	rel, err := filepath.Rel(filepath.Dir(link), filepath.Join(dir, filepath.FromSlash(relTarget)))
+	require.NoError(t, err)
+	require.NoError(t, os.Symlink(rel, link))
+}
+
+const newPersonSource = "persons:\n  person-new:\n    properties:\n      primary_name: Newcomer\n"
+
+// A new entity's canonical directory that is a symlink into a dot directory
+// would put the entity where the loader never looks. The write is refused and
+// nothing is written; the merge does not report a person the archive lost.
+func TestMerge_RefusesNewEntityThroughSymlinkIntoDotDirectory(t *testing.T) {
+	dest := stageInPlaceArchive(t, map[string]string{"people/family.glx": familyGLX})
+	stageDirSymlink(t, dest, "persons", ".drafts/persons")
+	src := stageInPlaceArchive(t, map[string]string{"persons/person-new.glx": newPersonSource})
+
+	err := mergeArchives(src, dest, false, 0.6)
+
+	require.ErrorIs(t, err, ErrPathNotArchiveContent)
+	assert.NoFileExists(t, filepath.Join(dest, ".drafts", "persons", "person-new.glx"))
+	assert.Equal(t, familyGLX, readArchiveFile(t, dest, "people/family.glx"))
+}
+
+// A symlinked directory that resolves to visible archive content is still
+// fine: the new entity is written through it and the next load sees it.
+func TestMerge_NewEntityThroughSymlinkToVisibleDirectoryStaysVisible(t *testing.T) {
+	dest := stageInPlaceArchive(t, map[string]string{"people/family.glx": familyGLX})
+	stageDirSymlink(t, dest, "persons", "people/more")
+	src := stageInPlaceArchive(t, map[string]string{"persons/person-new.glx": newPersonSource})
+
+	require.NoError(t, mergeArchives(src, dest, false, 0.6))
+
+	reloaded := requireValidArchive(t, dest)
+	assert.Contains(t, reloaded.Persons, "person-new")
+	assert.Len(t, reloaded.Persons, 3)
+}
+
+// The migrate variant: replacing born_on with a birth event must not move
+// the fact somewhere the loader skips.
+func TestMigrate_RefusesNewEventThroughSymlinkIntoDotDirectory(t *testing.T) {
+	person := "persons:\n  person-a:\n    properties:\n      primary_name: Alice\n      born_on: \"1850\"\n"
+	dir := stageInPlaceArchive(t, map[string]string{"persons/person-a.glx": person})
+	stageDirSymlink(t, dir, "events", ".drafts/events")
+
+	err := migrateArchive(dir)
+
+	require.ErrorIs(t, err, ErrPathNotArchiveContent)
+	assert.Equal(t, person, readArchiveFile(t, dir, "persons/person-a.glx"))
+	entries, readErr := os.ReadDir(filepath.Join(dir, ".drafts", "events"))
+	require.NoError(t, readErr)
+	assert.Empty(t, entries)
+}
+
+// The validating load checks references before it fills the standard
+// vocabularies. Merging a source that names birth/subject into a destination
+// that carries no vocabulary files must write the vocabularies the result
+// now relies on, or glx validate rejects an archive built from two valid ones.
+func TestMerge_TwoValidArchivesStayValid(t *testing.T) {
+	dest := stageInPlaceArchive(t, map[string]string{
+		"persons/person-a.glx": "persons:\n  person-a:\n    properties:\n      primary_name: Alice\n",
+	})
+	standard := glxlib.StandardVocabularies()
+	src := stageInPlaceArchive(t, map[string]string{
+		"persons/person-b.glx": "persons:\n  person-b:\n    properties:\n      primary_name: Bob\n",
+		"events/event-b.glx": "events:\n  event-b:\n    type: birth\n    date: \"1850\"\n" +
+			"    participants:\n      - person: person-b\n        role: subject\n",
+		"vocabularies/event-types.glx":       string(standard["event-types.glx"]),
+		"vocabularies/participant-roles.glx": string(standard["participant-roles.glx"]),
+	})
+	requireValidArchive(t, dest)
+	requireValidArchive(t, src)
+
+	require.NoError(t, mergeArchives(src, dest, false, 0.6))
+
+	merged := requireValidArchive(t, dest)
+	assert.Contains(t, merged.Events, "event-b")
+	assert.FileExists(t, filepath.Join(dest, "vocabularies", "event-types.glx"))
+	assert.FileExists(t, filepath.Join(dest, "vocabularies", "participant-roles.glx"))
+	assert.NoFileExists(t, filepath.Join(dest, "vocabularies", "place-types.glx"),
+		"a vocabulary nothing references stays implicit")
+}
+
+// The loader takes metadata from the first block with content and skips an
+// empty one, so an earlier `metadata: {}` (family/ sorts before metadata.glx)
+// must not be treated as the owner.
+func TestWriteArchiveInPlace_EmptyMetadataBlockDoesNotOwnMetadata(t *testing.T) {
+	emptyMetaFirst := "metadata: {}\npersons:\n  person-c:\n    properties:\n      primary_name: Carol\n"
+	metadata := "metadata:\n  source_system: My Tree\n"
+	files := map[string]string{
+		"family/person-c.glx":     emptyMetaFirst,
+		"metadata.glx":            metadata,
+		"persons/person-keep.glx": "persons:\n  person-keep:\n    properties:\n      primary_name: John Smith\n",
+		"persons/person-drop.glx": "persons:\n  person-drop:\n    properties:\n      primary_name: John Smith\n",
+	}
+
+	t.Run("no-op leaves both files alone", func(t *testing.T) {
+		dir := stageInPlaceArchive(t, files)
+
+		require.NoError(t, writeArchiveInPlace(dir, loadForInPlace(t, dir), rewriteChanged))
+
+		assert.Equal(t, emptyMetaFirst, readArchiveFile(t, dir, "family/person-c.glx"))
+		assert.Equal(t, metadata, readArchiveFile(t, dir, "metadata.glx"))
+	})
+
+	t.Run("an update goes to the populated block", func(t *testing.T) {
+		dir := stageInPlaceArchive(t, files)
+		archive := loadForInPlace(t, dir)
+		archive.ImportMetadata.SourceSystem = "Other Tree"
+
+		require.NoError(t, writeArchiveInPlace(dir, archive, rewriteChanged))
+
+		assert.Equal(t, emptyMetaFirst, readArchiveFile(t, dir, "family/person-c.glx"))
+		assert.Contains(t, readArchiveFile(t, dir, "metadata.glx"), "Other Tree")
+	})
+
+	t.Run("merge-persons keeps one metadata owner", func(t *testing.T) {
+		dir := stageInPlaceArchive(t, files)
+		requireValidArchive(t, dir)
+
+		require.NoError(t, mergePersons(dir, "person-keep", "person-drop", glxlib.MergePersonsOptions{}, false))
+
+		merged := requireValidArchive(t, dir)
+		assert.Equal(t, "My Tree", merged.ImportMetadata.SourceSystem)
+		assert.NotContains(t, readArchiveFile(t, dir, "family/person-c.glx"), "My Tree")
+	})
 }

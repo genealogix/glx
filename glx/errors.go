@@ -148,6 +148,12 @@ var (
 	// file path would resolve outside the archive root.
 	ErrRenamePathEscapesArchive = errors.New("planned file path escapes the archive root")
 
+	// ErrPathNotArchiveContent is returned when a planned write would land
+	// where the archive loader does not read, such as under a directory
+	// symlink that resolves into a dot-prefixed directory. The entities
+	// written there would be missing from the next load.
+	ErrPathNotArchiveContent = errors.New("planned file path resolves to a location the archive loader skips")
+
 	// ErrRenameDuplicatePlanPath is returned by glx rename when its write plan
 	// contains more than one operation for the same path. Applying both would
 	// make the second overwrite the first, and rollback could not restore the

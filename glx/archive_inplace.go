@@ -16,6 +16,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"maps"
 	"path/filepath"
@@ -24,7 +25,7 @@ import (
 	"strings"
 	"sync"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
@@ -194,6 +195,11 @@ type inPlacePlan struct {
 	// overwrite Persons/Person-A.glx on a case-insensitive filesystem, so
 	// a target that folds to an existing file joins that file instead.
 	existingFold map[string]string
+	// implicit holds the vocabulary collections no archive file defines and
+	// the write leaves that way, keyed by YAML key: the loader fills them
+	// with the standard entries, but only after the validating load has
+	// checked references (loadArchiveFromFiles).
+	implicit map[string]glxCollection
 }
 
 // fragmentFor returns the fragment that a write targeting relPath adds to:
@@ -223,6 +229,7 @@ func planInPlaceWrites(files map[string][]byte, final *glxlib.GLXFile, policy re
 		fragments:    make(map[string]*glxlib.GLXFile, len(files)),
 		created:      make(map[string]*glxlib.GLXFile),
 		existingFold: make(map[string]string, len(files)),
+		implicit:     make(map[string]glxCollection),
 	}
 	before := make(map[string][]byte, len(files))
 	for _, relPath := range plan.relPaths {
@@ -258,7 +265,59 @@ func planInPlaceWrites(files map[string][]byte, final *glxlib.GLXFile, policy re
 	}
 	plan.projectMetadata(serializer, final)
 
+	ops, err := plan.fileOps(serializer, before, policy)
+	if err != nil || len(ops) == 0 || len(plan.implicit) == 0 {
+		return ops, err
+	}
+
+	if !plan.materializeReferencedVocabularies(ops, final) {
+		return ops, nil
+	}
+
 	return plan.fileOps(serializer, before, policy)
+}
+
+// materializeReferencedVocabularies writes out each implicit vocabulary that
+// the archive as written would reference, and reports whether it wrote any.
+//
+// The validating load checks references before it fills the standard
+// vocabularies, so an archive with no event-types file is valid only while
+// nothing names an event type. A write that adds the first birth event (a
+// merge from an archive that did carry the file) would otherwise produce an
+// archive glx validate rejects. Running that same load over the files as the
+// write leaves them finds exactly the vocabularies the result needs.
+func (p *inPlacePlan) materializeReferencedVocabularies(ops []fileOp, final *glxlib.GLXFile) bool {
+	written := maps.Clone(p.files)
+	for _, op := range ops {
+		if op.newData == nil {
+			delete(written, op.relPath)
+		} else {
+			written[op.relPath] = op.newData
+		}
+	}
+
+	_, _, err := createSerializer(true, false, "").DeserializeMultiFileFromMap(written)
+	var invalid *glxlib.StructuredValidationError
+	if !errors.As(err, &invalid) {
+		return false
+	}
+
+	materialized := false
+	for _, issue := range invalid.Errors {
+		c, ok := p.implicit[issue.TargetType]
+		if !ok || !c.mapOf(final).MapIndex(reflect.ValueOf(issue.TargetID)).IsValid() {
+			continue
+		}
+		finalMap := c.mapOf(final)
+		fragment := p.fragmentFor(vocabularyPath(c.key))
+		for _, key := range sortedMapKeys(finalMap) {
+			c.setMapEntry(fragment, key, finalMap.MapIndex(reflect.ValueOf(key)))
+		}
+		delete(p.implicit, c.key)
+		materialized = true
+	}
+
+	return materialized
 }
 
 // projectCollection brings collection c of every fragment in line with final.
@@ -304,6 +363,10 @@ func (p *inPlacePlan) projectCollection(c glxCollection, final, baseline *glxlib
 		}
 	}
 	if len(added) == 0 {
+		if home == "" {
+			p.implicit[c.key] = c
+		}
+
 		return nil
 	}
 
@@ -361,22 +424,35 @@ func (p *inPlacePlan) placeNewEntities(c glxCollection, finalMap reflect.Value, 
 
 // projectMetadata updates the archive metadata block in the file the loader
 // took it from, or writes it to metadata.glx when the command added one.
+//
+// The loader takes the first block with content in sorted path order and
+// skips empty ones (GLXFile.Merge), so an earlier `metadata: {}` does not own
+// the block. Projecting into it would leave two populated blocks, which the
+// loader then reports as a conflict.
 func (p *inPlacePlan) projectMetadata(serializer *glxlib.DefaultSerializer, final *glxlib.GLXFile) {
 	for _, relPath := range p.relPaths {
-		if fragment := p.fragments[relPath]; fragment.ImportMetadata != nil {
+		if fragment := p.fragments[relPath]; metadataHasContent(serializer, fragment.ImportMetadata) {
 			fragment.ImportMetadata = final.ImportMetadata
 
 			return
 		}
 	}
 
-	// The serializer drops a metadata block with no content, so an empty
-	// one serializes to an empty fragment and needs no file.
-	data, err := serializer.SerializeSingleFileBytes(&glxlib.GLXFile{ImportMetadata: final.ImportMetadata})
-	if err != nil || string(data) == emptyFragment {
-		return
+	if metadataHasContent(serializer, final.ImportMetadata) {
+		p.fragmentFor(archiveMetadataFile).ImportMetadata = final.ImportMetadata
 	}
-	p.fragmentFor(archiveMetadataFile).ImportMetadata = final.ImportMetadata
+}
+
+// metadataHasContent reports whether a metadata block has content, as the
+// loader's Merge judges it. The serializer drops a block with no content, so
+// an empty one serializes to an empty fragment.
+func metadataHasContent(serializer *glxlib.DefaultSerializer, metadata *glxlib.Metadata) bool {
+	if metadata == nil {
+		return false
+	}
+	data, err := serializer.SerializeSingleFileBytes(&glxlib.GLXFile{ImportMetadata: metadata})
+
+	return err == nil && string(data) != emptyFragment
 }
 
 // fileOps serializes the planned fragments and returns an operation for each
