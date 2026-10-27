@@ -422,6 +422,46 @@ func TestPrivatizeLiving_RedactsLivingPerson(t *testing.T) {
 	}
 }
 
+func TestPrivatizeLiving_DropsRedactedEventEvidence(t *testing.T) {
+	archive := &GLXFile{
+		Persons: map[string]*Person{
+			"alive": {Properties: map[string]any{PersonPropertyLiving: true}},
+			"dead":  {},
+		},
+		Events: map[string]*Event{
+			"birth-alive": {Type: EventTypeBirth, Participants: []Participant{{Person: "alive", Role: ParticipantRolePrincipal}}},
+			"marriage": {Type: EventTypeMarriage, Participants: []Participant{
+				{Person: "alive", Role: ParticipantRoleSpouse}, {Person: "dead", Role: ParticipantRoleSpouse},
+			}},
+			"birth-dead": {Type: EventTypeBirth, Date: "1800", Participants: []Participant{{Person: "dead", Role: ParticipantRolePrincipal}}},
+		},
+		Relationships: map[string]*Relationship{
+			"couple": {Type: RelationshipTypeMarriage, StartEvent: "marriage", Participants: []Participant{
+				{Person: "alive", Role: ParticipantRoleSpouse}, {Person: "dead", Role: ParticipantRoleSpouse},
+			}},
+		},
+		Assertions: map[string]*Assertion{
+			"private-birth":       {Subject: EntityRef{Event: "birth-alive"}, Property: "date", Value: "2000-05-12", Citations: []string{"private"}},
+			"private-marriage":    {Subject: EntityRef{Event: "marriage"}, Citations: []string{"private"}},
+			"private-participant": {Subject: EntityRef{Event: "marriage"}, Participant: &Participant{Person: "dead", Role: ParticipantRoleSpouse}, Citations: []string{"private"}},
+			"public-birth":        {Subject: EntityRef{Event: "birth-dead"}, Property: "date", Value: "1800", Citations: []string{"public"}},
+		},
+	}
+
+	result := PrivatizeLiving(archive, fixedNow, LivingThresholdYears)
+	if result.AssertionsDropped != 3 {
+		t.Errorf("AssertionsDropped = %d, want 3", result.AssertionsDropped)
+	}
+	for _, id := range []string{"private-birth", "private-marriage", "private-participant"} {
+		if archive.Assertions[id] != nil {
+			t.Errorf("assertion %s exposes a redacted event's evidence", id)
+		}
+	}
+	if archive.Assertions["public-birth"] == nil {
+		t.Error("unredacted event evidence must be retained")
+	}
+}
+
 func TestPrivatizeLiving_AssertionWithLivingParticipant(t *testing.T) {
 	archive := &GLXFile{
 		Persons: map[string]*Person{

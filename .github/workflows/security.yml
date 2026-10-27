@@ -88,7 +88,7 @@ jobs:
 
       - name: Upload SARIF to Code Scanning
         if: always() && hashFiles('govulncheck.sarif') != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
         with:
           sarif_file: govulncheck.sarif
           category: govulncheck
@@ -137,6 +137,11 @@ jobs:
         # x/tools >= v0.50.0, build the pinned gosec in a throwaway module with
         # x/tools raised to v0.50.0, then return to the one-line
         # `go install ...@${v}`. Keep GOSEC_XTOOLS in sync with the Makefile.
+        #
+        # The final step is `go build -o` (as in the Makefile), not a bare
+        # `go install <pkg>`: the version is pinned by the `go get` above, but
+        # OpenSSF Scorecard's Pinned-Dependencies check only sees an install
+        # with no `@version` and flags it as an unpinned goCommand.
         env:
           GOSEC_XTOOLS: v0.50.0
         run: |
@@ -146,7 +151,9 @@ jobs:
           cd "$build"
           go mod init gosec-build
           go get "github.com/securego/gosec/v2/cmd/gosec@${v}" "golang.org/x/tools@${GOSEC_XTOOLS}"
-          go install github.com/securego/gosec/v2/cmd/gosec
+          bin="$(go env GOPATH)/bin"
+          mkdir -p "$bin"
+          go build -o "$bin/gosec" github.com/securego/gosec/v2/cmd/gosec
 
       - name: Run gosec
         # Staged write + guarded upload, adapted from govulncheck above
@@ -167,7 +174,7 @@ jobs:
 
       - name: Upload SARIF to Code Scanning
         if: always() && hashFiles('gosec.sarif') != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
         with:
           sarif_file: gosec.sarif
           category: gosec

@@ -1,0 +1,5 @@
+kind: Changed
+body: '**YAML parsing moves to the maintained `go.yaml.in/yaml/v3`, and `go.mod` requires Go 1.27.2** — the archived `gopkg.in/yaml.v3` is replaced by its maintained drop-in successor (same API), so the project links one YAML parser instead of two. `go.mod` now declares `go 1.27.2` instead of `go 1.27.0` with a `toolchain go1.27.2` hint, so a build with `GOTOOLCHAIN=local` on an older Go 1.27 fails instead of quietly using the unpatched standard library. Downstream projects importing `github.com/genealogix/glx/go-glx` need Go 1.27.2+. Indirect dependencies are bumped to their latest tagged releases (including `ProtonMail/go-crypto` 1.5.2, `circl` 1.6.5, `x/crypto` 0.58.0, `x/net` 0.61.0).'
+time: '2026-10-11T00:00:03Z'
+custom:
+  Issue: 'PR #1407'

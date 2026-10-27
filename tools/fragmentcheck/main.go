@@ -37,7 +37,7 @@ import (
 	"regexp"
 	"sort"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // issueRefPattern is the reference shape CONTRIBUTING requires: at least one

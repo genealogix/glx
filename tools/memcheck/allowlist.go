@@ -17,7 +17,7 @@ package main
 import (
 	"strings"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // allowEntry mirrors one item of .claude/memory-drift-allowlist.yaml: a

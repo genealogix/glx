@@ -41,6 +41,33 @@ func TestAnalyzeGaps_MissingBirth(t *testing.T) {
 	}
 }
 
+// A dated baptism or christening of the person satisfies the birth check;
+// one the person only attended does not (#1365).
+func TestAnalyzeGaps_BaptismSatisfiesBirth(t *testing.T) {
+	for _, tc := range []struct {
+		eventType, role string
+		flagged         bool
+	}{
+		{glxlib.EventTypeBaptism, "principal", false},
+		{glxlib.EventTypeChristening, "principal", false},
+		{glxlib.EventTypeBaptism, glxlib.ParticipantRoleGodparent, true},
+	} {
+		archive := &glxlib.GLXFile{
+			Persons: map[string]*glxlib.Person{
+				"person-a": {Properties: map[string]any{}},
+			},
+			Events: map[string]*glxlib.Event{
+				"event-bapt-a": {Type: tc.eventType, Date: "1664-08-21", Participants: []glxlib.Participant{{Person: "person-a", Role: tc.role}}},
+			},
+		}
+
+		found := findIssue(analyzeGaps(archive), "person-a", "birth_event")
+		if (found != nil) != tc.flagged {
+			t.Errorf("%s as %s: flagged=%v, want %v", tc.eventType, tc.role, found != nil, tc.flagged)
+		}
+	}
+}
+
 func TestAnalyzeGaps_HasBirth(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
@@ -376,6 +403,39 @@ func TestAnalyzeEvidence_SingleSourcePerson(t *testing.T) {
 	found := findIssueByMessage(issues, "person-a", "single source")
 	if found == nil {
 		t.Fatal("expected single-source person issue")
+	}
+}
+
+// TestAnalyzeEvidence_SingleSourcePersonViaEvents: assertions about the
+// person's own events count toward their sources (#1211).
+func TestAnalyzeEvidence_SingleSourcePersonViaEvents(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-a":       {Properties: map[string]any{}},
+			"person-witness": {Properties: map[string]any{}},
+		},
+		Sources: map[string]*glxlib.Source{
+			"source-kb": {Title: "Kirchenbuch"},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-death": {Type: glxlib.EventTypeDeath, Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
+			"event-burial": {Type: glxlib.EventTypeBurial, Participants: []glxlib.Participant{
+				{Person: "person-a", Role: "principal"},
+				{Person: "person-witness", Role: "witness"},
+			}},
+		},
+		Assertions: map[string]*glxlib.Assertion{
+			"a-death":  {Subject: glxlib.EntityRef{Event: "event-death"}, Sources: []string{"source-kb"}},
+			"a-burial": {Subject: glxlib.EntityRef{Event: "event-burial"}, Sources: []string{"source-kb"}},
+		},
+	}
+
+	issues := analyzeEvidence(archive)
+	if findIssueByMessage(issues, "person-a", "single source") == nil {
+		t.Fatal("expected single-source issue for the decedent")
+	}
+	if findIssueByMessage(issues, "person-witness", "single source") != nil {
+		t.Error("a witness's evidence is not counted from someone else's record")
 	}
 }
 

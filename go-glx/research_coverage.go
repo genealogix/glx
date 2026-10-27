@@ -154,15 +154,16 @@ type personSourceInfo struct {
 }
 
 // collectPersonSources gathers all sources and citations that reference a person
-// via assertions.
+// via assertions: those about the person, and those about an event that is the
+// person's own record (AssertionPersons). A church register cited for a burial
+// date is the decedent's church record, not only the burial's (#1211).
 func collectPersonSources(personID string, archive *GLXFile) []personSourceInfo {
 	var sources []personSourceInfo
 	seen := make(map[string]bool)
 
-	// From assertions about this person
 	for _, assertionID := range sortedKeys(archive.Assertions) {
 		assertion := archive.Assertions[assertionID]
-		if assertion == nil || assertion.Subject.ID() != personID {
+		if !slices.Contains(AssertionPersons(assertion, archive), personID) {
 			continue
 		}
 		for _, citID := range assertion.Citations {
@@ -276,17 +277,18 @@ func buildAppearances(events []personSourceInfo, archive *GLXFile) []CoverageApp
 			EventType: e.EventType,
 			Role:      e.PersonRole,
 			Date:      string(event.Date),
-			Label:     appearanceLabel(event, archive),
+			Label:     AppearanceLabel(event, archive),
 		})
 	}
 
 	return appearances
 }
 
-// appearanceLabel names whose record an event is: "Probate of Caspar
+// AppearanceLabel names whose record an event is: "Probate of Caspar
 // Stoehr" from the participants whose own record it is, else the event's
-// title, else its type.
-func appearanceLabel(event *Event, archive *GLXFile) string {
+// title, else its type. It labels an event a person appears in without it
+// being their own record (coverage's "Appears in", timeline rows).
+func AppearanceLabel(event *Event, archive *GLXFile) string {
 	typeLabel := coverageEventTypeLabel(event.Type)
 
 	var names []string
@@ -556,8 +558,10 @@ func buildVitalRecords(personID string, archive *GLXFile, sources, events []pers
 	records := make([]CoverageRecord, 0, 2+len(marriageRecords))
 
 	records = append(records,
-		buildVitalRecord("Birth record", severityHigh, EventTypeBirth, "birth", sources, events),
-		buildVitalRecord("Death record", severityMedium, EventTypeDeath, "death", sources, events),
+		// Before civil registration the baptism entry is the birth record, and
+		// many registers give no birth date at all (#1365)
+		buildVitalRecord("Birth record", severityHigh, "birth", sources, events, EventTypeBirth, EventTypeBaptism, EventTypeChristening),
+		buildVitalRecord("Death record", severityMedium, "death", sources, events, EventTypeDeath),
 	)
 
 	// Marriage records — check relationships for spouse
@@ -566,12 +570,17 @@ func buildVitalRecords(personID string, archive *GLXFile, sources, events []pers
 	return records
 }
 
-// buildVitalRecord builds one birth-or-death checklist entry. The record counts
+// buildVitalRecord builds one birth-or-death checklist entry from the first of
+// eventTypes, in order of preference, that the person has. The record counts
 // as found on an event only when that event carries evidence; an event standing
 // on its own is a conclusion, and counting it would inflate the score for
 // exactly the people whose records are missing.
-func buildVitalRecord(label, missingPriority, eventType, titleKeyword string, sources, events []personSourceInfo) CoverageRecord {
-	eventRef := findEvidencedEvent(events, eventType)
+func buildVitalRecord(label, missingPriority, titleKeyword string, sources, events []personSourceInfo, eventTypes ...string) CoverageRecord {
+	var eventRef, unevidencedRef string
+	for _, eventType := range eventTypes {
+		eventRef = firstNonEmpty(eventRef, findEvidencedEvent(events, eventType))
+		unevidencedRef = firstNonEmpty(unevidencedRef, findUnevidencedEvent(events, eventType))
+	}
 	sourceRef := findMatchingSourceRef(sources, SourceTypeVitalRecord, titleKeyword)
 	found := eventRef != "" || sourceRef != ""
 
@@ -587,7 +596,7 @@ func buildVitalRecord(label, missingPriority, eventType, titleKeyword string, so
 			rec.SourceRef = sourceRef
 		}
 	} else {
-		rec.Description = unevidencedEventNote(events, findUnevidencedEvent(events, eventType))
+		rec.Description = unevidencedEventNote(events, unevidencedRef)
 	}
 
 	return rec

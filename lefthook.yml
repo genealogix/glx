@@ -1,16 +1,21 @@
 # Pre-commit hooks for genealogix/glx.
 # Install with: make install-hooks
-# Skip once:    LEFTHOOK=0 git commit ...
+# Skip once:    git commit --no-verify ...
+#               (or LEFTHOOK=0 git commit ... in a POSIX shell,
+#                $env:LEFTHOOK=0 in PowerShell, set LEFTHOOK=0 in cmd)
 # Docs:         https://lefthook.dev/
+#
+# Both jobs lint the staged content with the same settings CI uses; the logic
+# lives in scripts/hooks/.
 
 pre-commit:
   parallel: true
   jobs:
     - name: golangci-lint
       glob: "*.go"
-      run: golangci-lint run --new-from-rev=HEAD ./...
+      run: bash scripts/hooks/golangci-lint-staged.sh
 
     - name: eslint
       root: "website/"
-      glob: "*.{js,vue}"
-      run: npx eslint {staged_files}
+      glob: "*.{js,mjs,cjs,vue}"
+      run: bash ../scripts/hooks/eslint-staged.sh {staged_files}

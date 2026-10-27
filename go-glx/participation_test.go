@@ -43,6 +43,9 @@ func TestClassifyParticipation(t *testing.T) {
 		{"godchild at baptism", EventTypeBaptism, ParticipantRoleGodchild, own},
 		{"testator", EventTypeWill, "testator", own},
 		{"spouse on marriage", EventTypeMarriage, ParticipantRoleSpouse, own},
+		{"spouse on civil union", RelationshipTypeCivilUnion, ParticipantRoleSpouse, own},
+		{"wife on common law marriage", RelationshipTypeCommonLawMarriage, "wife", own},
+		{"witness on civil union", RelationshipTypeCivilUnion, ParticipantRoleWitness, present},
 		{"spouse on death is not own", EventTypeDeath, ParticipantRoleSpouse, present},
 		{"census household head", EventTypeCensus, ParticipantRoleHouseholdHead, own},
 		{"census custom household role", EventTypeCensus, "daughter", own},
@@ -134,5 +137,74 @@ func TestEventParticipationUnionsIndependentAxes(t *testing.T) {
 		assert.True(t, ok)
 		assert.Equal(t, Participation{OwnRecord: true, Present: true}, participation)
 		assert.Equal(t, "principal", role)
+	}
+}
+
+func TestAssertionPersons(t *testing.T) {
+	archive := &GLXFile{
+		Events: map[string]*Event{
+			"ev-baptism": {
+				Type: EventTypeBaptism,
+				Participants: []Participant{
+					{Person: "p-child", Role: ParticipantRoleChild},
+					{Person: "p-godparent", Role: "godparent"},
+					{Person: "p-informant", Role: "informant"},
+				},
+			},
+			"ev-marriage": {
+				Type: EventTypeMarriage,
+				Participants: []Participant{
+					{Person: "p-groom", Role: ParticipantRoleGroom},
+					{Person: "p-bride", Role: ParticipantRoleBride},
+					{Person: "p-groom", Role: ParticipantRoleWitness},
+					{Person: "p-witness", Role: ParticipantRoleWitness},
+				},
+			},
+		},
+	}
+
+	tests := []struct {
+		name      string
+		assertion *Assertion
+		want      []string
+	}{
+		{"nil assertion", nil, nil},
+		{"person subject", &Assertion{Subject: EntityRef{Person: "p-x"}}, []string{"p-x"}},
+		{"event subject: own-record roles only", &Assertion{Subject: EntityRef{Event: "ev-baptism"}}, []string{"p-child"}},
+		{"couple, each person once", &Assertion{Subject: EntityRef{Event: "ev-marriage"}}, []string{"p-groom", "p-bride"}},
+		{
+			"participant assertion narrows to that person",
+			&Assertion{Subject: EntityRef{Event: "ev-marriage"}, Participant: &Participant{Person: "p-bride", Role: ParticipantRoleBride}},
+			[]string{"p-bride"},
+		},
+		{
+			"participant assertion about a witness",
+			&Assertion{Subject: EntityRef{Event: "ev-marriage"}, Participant: &Participant{Person: "p-witness", Role: ParticipantRoleWitness}},
+			nil,
+		},
+		{
+			"witness evidence does not inherit the groom conclusion",
+			&Assertion{Subject: EntityRef{Event: "ev-marriage"}, Participant: &Participant{Person: "p-groom", Role: ParticipantRoleWitness}},
+			nil,
+		},
+		{
+			"own-record evidence does not inherit the witness conclusion",
+			&Assertion{Subject: EntityRef{Event: "ev-marriage"}, Participant: &Participant{Person: "p-witness", Role: ParticipantRoleGroom}},
+			[]string{"p-witness"},
+		},
+		{
+			"godparent evidence does not inherit the child conclusion",
+			&Assertion{Subject: EntityRef{Event: "ev-baptism"}, Participant: &Participant{Person: "p-child", Role: ParticipantRoleGodparent}},
+			nil,
+		},
+		{"unknown event", &Assertion{Subject: EntityRef{Event: "ev-missing"}}, nil},
+		{"relationship subject", &Assertion{Subject: EntityRef{Relationship: "rel-1"}}, nil},
+		{"place subject", &Assertion{Subject: EntityRef{Place: "p-x"}}, nil},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, AssertionPersons(tt.assertion, archive))
+		})
 	}
 }
