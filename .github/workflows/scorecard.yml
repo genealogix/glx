@@ -47,7 +47,10 @@ jobs:
         # SHA-pinned with a version comment, and scorecard-action's own
         # Pinned-Dependencies check scores tag pins lower. The tag-repoint
         # class this guards against is CVE-2025-30066 (tj-actions).
-        uses: ossf/scorecard-action@2d1146689b8cda280b9bc96326124645441f03bc # v2.4.4 -- only vX.Y.Z tags published, no floating v2; do not "tidy" to @v2 (#779)
+        # Only vX.Y.Z tags are published, no floating v2; do not "tidy" to @v2
+        # (#779). Keep the trailing comment a bare version so Dependabot can
+        # rewrite it alongside the SHA.
+        uses: ossf/scorecard-action@fa7117db83c52d787ae5a89f350999701505d78e # v2.5.0
         with:
           results_file: scorecard-results.sarif
           results_format: sarif
@@ -62,7 +65,7 @@ jobs:
 
       - name: Upload SARIF to Code Scanning
         # Same SHA + version-comment pin as security.yml's upload-sarif steps.
-        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
         with:
           sarif_file: scorecard-results.sarif
           # A distinct tool category — does not collide with CodeQL default

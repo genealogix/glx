@@ -144,19 +144,30 @@ func collectTimelineEntries(personID string, archive *glxlib.GLXFile, includeFam
 }
 
 // collectDirectEvents finds all events where the person is a participant.
+// An event that is someone else's record (a child's burial with the person as
+// parent, a godchild's baptism, a wife's death with the person as spouse) is
+// labeled with whose record it is and the person's role, "Burial of Michell
+// Father (parent)", so it never reads as the person's own (#1363).
 func collectDirectEvents(personID string, archive *glxlib.GLXFile) []timelineEntry {
 	var entries []timelineEntry
 
 	ids := sortedKeys(archive.Events)
 	for _, id := range ids {
 		event := archive.Events[id]
+		if event == nil {
+			continue
+		}
 
-		if !timelineIsParticipant(personID, event) {
+		participation, role, ok := glxlib.EventParticipation(event, personID, archive.ParticipantRoles)
+		if !ok {
 			continue
 		}
 
 		date := string(event.Date)
 		label := formatEventTypeLabel(event.Type)
+		if !participation.OwnRecord {
+			label = glxlib.AppearanceLabel(event, archive) + " (" + role + ")"
+		}
 		detail := timelineResolvePlaceName(event.PlaceID, archive)
 
 		entries = append(entries, timelineEntry{
@@ -405,7 +416,9 @@ func relatedPersonTimelineEvents(rel relatedPerson, archive *glxlib.GLXFile) []t
 	ids := sortedKeys(archive.Events)
 	for _, id := range ids {
 		event := archive.Events[id]
-		if !timelineIsParticipant(rel.PersonID, event) {
+		// Only the relative's own birth or death: a wife entered as spouse on
+		// her husband's death is not "Death of spouse" (#1363).
+		if participation, _, ok := glxlib.EventParticipation(event, rel.PersonID, archive.ParticipantRoles); !ok || !participation.OwnRecord {
 			continue
 		}
 
@@ -507,17 +520,6 @@ func formatEventTypeLabel(eventType string) string {
 	label := strings.ReplaceAll(eventType, "_", " ")
 
 	return strings.ToUpper(label[:1]) + label[1:]
-}
-
-// timelineIsParticipant checks if a person is a participant in an event.
-func timelineIsParticipant(personID string, event *glxlib.Event) bool {
-	for _, p := range event.Participants {
-		if p.Person == personID {
-			return true
-		}
-	}
-
-	return false
 }
 
 // timelineResolvePlaceName looks up a place ID and returns its display name.
