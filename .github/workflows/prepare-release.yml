@@ -28,6 +28,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -72,6 +73,10 @@ jobs:
           # .changes/<version>.md and the regenerated CHANGELOG.md.
           git add -A .changes CHANGELOG.md
           git commit -m "chore: Prepare release ${VERSION}"
+          # Checkout runs with persist-credentials: false (zizmor artipacked), so
+          # the token is not left in .git/config for the batch/merge steps; hand
+          # it to git only here, for the one push that needs it.
+          gh auth setup-git
           git push -u origin "$BRANCH"
           {
             echo "Automated changelog assembly for ${VERSION} (changie batch + merge)."
