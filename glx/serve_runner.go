@@ -56,26 +56,41 @@ const (
 	serveShutdownGrace  = 5 * time.Second
 )
 
-// serveOptions configures the read-only archive viewer server.
+// serveOptions configures the archive viewer server.
 type serveOptions struct {
 	ArchivePath string
 	Host        string
 	Port        int
+	// Edit enables the write API (issue #93, Phase 2): creating and editing
+	// persons and adding relationships. Off by default, so a plain
+	// `glx serve` stays a read-only viewer.
+	Edit bool
 }
 
-// viewerServer serves a read-only browser UI and JSON API over an in-memory
-// snapshot of a GLX archive. The archive is loaded once at startup; this is a
-// Phase 1 read-only viewer (issue #93), so external edits are picked up on
-// restart. Live file watching is a later phase.
+// viewerServer serves a browser UI and JSON API over an in-memory snapshot of
+// a GLX archive. The archive is loaded once at startup and, when editing is
+// enabled, reloaded from disk after every write the server makes. External
+// edits made by the CLI or a text editor are picked up on the next write or on
+// restart; live file watching is a later phase of issue #93.
 type viewerServer struct {
 	archive     *glxlib.GLXFile
 	archivePath string
 	assets      fs.FS
 
+	// editable registers the write API. Only directory archives can be
+	// edited; serveArchive refuses --edit for a single-file archive.
+	editable bool
+
+	// mu guards archive and the vital index: read handlers hold it shared for
+	// their whole run, and a write holds it exclusively while it changes the
+	// files on disk and swaps in the reloaded archive.
+	mu sync.RWMutex
+
 	// vitalIndex maps a person ID to their birth/death years, built once on
-	// first use from a single pass over the archive's events. The archive is
-	// immutable for the server's lifetime, so the index is computed lazily and
-	// reused across requests. vitalOnce guards concurrent first requests.
+	// first use from a single pass over the archive's events. The snapshot is
+	// immutable between writes, so the index is computed lazily and reused
+	// across requests; a write resets vitalOnce under the exclusive lock.
+	// vitalOnce guards concurrent first requests.
 	vitalOnce  sync.Once
 	vitalIndex map[string]vitalYears
 }
@@ -84,6 +99,12 @@ type viewerServer struct {
 // is interrupted (Ctrl-C / SIGTERM). It is the thin command body behind
 // `glx serve`.
 func serveArchive(streams *IOStreams, opts serveOptions) error {
+	if opts.Edit {
+		if err := requireEditableArchive(opts.ArchivePath); err != nil {
+			return err
+		}
+	}
+
 	archive, err := loadArchiveForSummary(opts.ArchivePath)
 	if err != nil {
 		return err
@@ -98,6 +119,7 @@ func serveArchive(streams *IOStreams, opts serveOptions) error {
 		archive:     archive,
 		archivePath: opts.ArchivePath,
 		assets:      sub,
+		editable:    opts.Edit,
 	}
 
 	// Interrupt triggers a graceful shutdown so in-flight requests complete.
@@ -130,6 +152,9 @@ func serveArchive(streams *IOStreams, opts serveOptions) error {
 	streams.Printf("GLX viewer for %s\n", opts.ArchivePath)
 	streams.Printf("  %d persons, %d sources, %d events\n",
 		len(archive.Persons), len(archive.Sources), len(archive.Events))
+	if opts.Edit {
+		streams.Printf("  Editing enabled: changes are written to the archive files.\n")
+	}
 	streams.Printf("\n  Open this URL in your browser: %s\n  Press Ctrl-C to stop.\n\n", url)
 	if !isLoopbackHost(opts.Host) {
 		hostLabel := opts.Host
@@ -190,12 +215,15 @@ func isLoopbackHost(host string) bool {
 // /api/* to the handlers and everything else to the bundled assets.
 func (s *viewerServer) routes() http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /api/overview", s.handleOverview)
-	mux.HandleFunc("GET /api/persons", s.handlePersons)
-	mux.HandleFunc("GET /api/persons/{id}", s.handlePerson)
-	mux.HandleFunc("GET /api/persons/{id}/tree", s.handleTree)
-	mux.HandleFunc("GET /api/sources", s.handleSources)
-	mux.HandleFunc("GET /api/sources/{id}", s.handleSource)
+	mux.HandleFunc("GET /api/overview", s.readLocked(s.handleOverview))
+	mux.HandleFunc("GET /api/persons", s.readLocked(s.handlePersons))
+	mux.HandleFunc("GET /api/persons/{id}", s.readLocked(s.handlePerson))
+	mux.HandleFunc("GET /api/persons/{id}/tree", s.readLocked(s.handleTree))
+	mux.HandleFunc("GET /api/sources", s.readLocked(s.handleSources))
+	mux.HandleFunc("GET /api/sources/{id}", s.readLocked(s.handleSource))
+	if s.editable {
+		s.editRoutes(mux)
+	}
 	// Serve the embedded UI for GET and HEAD. A method-less "/" is used (rather
 	// than separate "GET /" and "HEAD /") because Go's ServeMux treats a
 	// method-bound catch-all as conflicting with the method-specific /api routes;
@@ -203,6 +231,16 @@ func (s *viewerServer) routes() http.Handler {
 	mux.Handle("/", staticHandler(http.FileServerFS(s.assets)))
 
 	return mux
+}
+
+// readLocked runs a read handler under the shared lock, so a concurrent write
+// cannot swap the archive out from under it.
+func (s *viewerServer) readLocked(handler http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		s.mu.RLock()
+		defer s.mu.RUnlock()
+		handler(w, r)
+	}
 }
 
 // staticHandler serves the embedded read-only UI for GET and HEAD requests and
@@ -244,6 +282,8 @@ type overviewDTO struct {
 	Counts      map[string]int     `json:"counts"`
 	Confidence  []confidenceRowDTO `json:"confidence"`
 	Coverage    []coverageRowDTO   `json:"coverage"`
+	// Editable tells the UI whether the write API is registered.
+	Editable bool `json:"editable"`
 }
 
 type confidenceRowDTO struct {
@@ -280,6 +320,7 @@ func (s *viewerServer) handleOverview(w http.ResponseWriter, _ *http.Request) {
 		Counts:      counts,
 		Confidence:  confidenceRows(a),
 		Coverage:    coverageRows(a),
+		Editable:    s.editable,
 	})
 }
 
