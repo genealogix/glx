@@ -68,7 +68,7 @@ jobs:
           # npm-only additions, each with the package that needs it:
           #   CC0-1.0       — @iconify-json/simple-icons (website)
           #   BlueOak-1.0.0 — minimatch >=10 (website)
-          #   Python-2.0    — argparse@2 (specification, via js-yaml)
+          #   PSF-2.0       — argparse@3 (specification, via js-yaml)
           # Nothing in the repo uses 0BSD or Unlicense today; they are
           # pre-approved deliberately because both are public-domain-
           # equivalent and impose no obligation a review decision could
@@ -91,7 +91,7 @@ jobs:
           #   LicenseRef-scancode-google-patent-license-golang
           allow-licenses: >-
             Apache-2.0, MIT, BSD-2-Clause, BSD-3-Clause, ISC, MPL-2.0,
-            CC0-1.0, BlueOak-1.0.0, Python-2.0, 0BSD, Unlicense,
+            CC0-1.0, BlueOak-1.0.0, PSF-2.0, 0BSD, Unlicense,
             LicenseRef-scancode-google-patent-license-golang
           # Note: a dependency whose license the action cannot resolve at all
           # is reported but does NOT fail the check (upstream behaviour), so

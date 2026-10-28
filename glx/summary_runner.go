@@ -726,7 +726,7 @@ func findEventOnlySpouses(personID string, seen map[string]bool, archive *glxlib
 		}
 
 		for _, p := range ev.Participants {
-			if p.Person == personID || p.Person == "" || seen[p.Person] {
+			if p.Person == personID || p.Person == "" || seen[p.Person] || !isCoupleRole(p.Role) {
 				continue
 			}
 			if !glxlib.ClassifyParticipation(ev.Type, p.Role, archive.ParticipantRoles).OwnRecord {
@@ -755,7 +755,7 @@ func findEventOnlySpouses(personID string, seen map[string]bool, archive *glxlib
 }
 
 // findMarriageEvent searches for a marriage event in which both persons are
-// of the couple.
+// members of the couple.
 func findMarriageEvent(personA, personB string, archive *glxlib.GLXFile) (date, place string) {
 	ids := sortedKeys(archive.Events)
 	for _, id := range ids {
@@ -772,6 +772,19 @@ func findMarriageEvent(personA, personB string, archive *glxlib.GLXFile) (date, 
 	}
 
 	return "", ""
+}
+
+// isCoupleRole reports whether a marriage-event participant role names one of
+// the couple. The empty role is the participant default (principal).
+func isCoupleRole(role string) bool {
+	switch strings.ToLower(strings.TrimSpace(role)) {
+	case "", glxlib.ParticipantRolePrincipal, glxlib.ParticipantRoleSubject,
+		glxlib.ParticipantRoleGroom, glxlib.ParticipantRoleBride, glxlib.ParticipantRoleSpouse,
+		"husband", "wife":
+		return true
+	}
+
+	return false
 }
 
 // findParentIDs finds the IDs of a person's parents (including step-parents),
