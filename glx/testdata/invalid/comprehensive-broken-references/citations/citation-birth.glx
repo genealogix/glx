@@ -2,6 +2,3 @@ citations:
   citation-birth:
     source: source-nonexistent
     repository: repository-nonexistent
-    properties:
-      locator: "Page 1"
-
