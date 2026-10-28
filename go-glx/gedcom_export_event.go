@@ -157,73 +157,306 @@ func exportEventAssociations(event *Event, skip func(Participant) bool, expCtx *
 func eventAssociationRecords(event *Event, skip func(Participant) bool, expCtx *ExportContext) []*GEDCOMRecord {
 	var records []*GEDCOMRecord
 	for _, p := range event.Participants {
-		if p.Person == "" || skip(p) {
-			continue
+		if asso := eventAssociationRecord(p, skip, false, expCtx); asso != nil {
+			records = append(records, asso)
 		}
-		// A participant who is not an exported person (a dangling reference,
-		// which validation reports) has no XREF to point at.
-		xref := expCtx.PersonXRefMap[p.Person]
-		if xref == "" {
-			continue
-		}
-
-		asso := &GEDCOMRecord{Tag: GedcomTagAsso, Value: xref}
-		if expCtx.Version == GEDCOM70 {
-			role := &GEDCOMRecord{Tag: GedcomTagRole, Value: gedcomAssociationRole(p, expCtx)}
-			if role.Value == GedcomRoleOther {
-				role.SubRecords = []*GEDCOMRecord{{
-					Tag:   GedcomTagPhrase,
-					Value: vocabularyLabel(expCtx.GLX.ParticipantRoles, p.Role),
-				}}
-			}
-			asso.SubRecords = append(asso.SubRecords, role)
-		} else {
-			label := vocabularyLabel(expCtx.GLX.ParticipantRoles, p.Role)
-			// RELA is one line of at most 25 characters in 5.5.1, with no
-			// CONT/CONC children. Preserve longer or multiline labels in NOTE.
-			relation := label
-			if strings.TrimSpace(relation) == "" || utf8.RuneCountInString(relation) > 25 || strings.ContainsAny(relation, "\r\n") {
-				relation = "Participant"
-			}
-			asso.SubRecords = append(asso.SubRecords, &GEDCOMRecord{
-				Tag:   GedcomTagRela,
-				Value: relation,
-			})
-			if relation != label {
-				noteLabel := strings.ReplaceAll(strings.ReplaceAll(label, "\r\n", "\n"), "\r", "\n")
-				asso.SubRecords = append(asso.SubRecords, &GEDCOMRecord{Tag: GedcomTagNote, Value: "Event role: " + noteLabel})
-			}
-		}
-		for _, note := range p.Notes {
-			asso.SubRecords = append(asso.SubRecords, &GEDCOMRecord{Tag: GedcomTagNote, Value: note})
-		}
-
-		records = append(records, asso)
 	}
 
 	return records
 }
 
+// eventAssociationRecord builds the ASSO subrecord for one event participant,
+// or returns nil when skip excludes it or it has no exported XREF. In 5.5.1,
+// neutral writes RELA Participant with the role in a NOTE, instead of a RELA
+// that would state the role as a relation to the INDI carrying the ASSO.
+func eventAssociationRecord(p Participant, skip func(Participant) bool, neutral bool, expCtx *ExportContext) *GEDCOMRecord {
+	if p.Person == "" || skip(p) {
+		return nil
+	}
+	// A participant who is not an exported person (a dangling reference,
+	// which validation reports) has no XREF to point at.
+	xref := expCtx.PersonXRefMap[p.Person]
+	if xref == "" {
+		return nil
+	}
+
+	asso := &GEDCOMRecord{Tag: GedcomTagAsso, Value: xref}
+	if expCtx.Version == GEDCOM70 {
+		role := &GEDCOMRecord{Tag: GedcomTagRole, Value: gedcomAssociationRole(p, expCtx)}
+		if role.Value == GedcomRoleOther {
+			role.SubRecords = []*GEDCOMRecord{{
+				Tag:   GedcomTagPhrase,
+				Value: vocabularyLabel(expCtx.GLX.ParticipantRoles, p.Role),
+			}}
+		}
+		asso.SubRecords = append(asso.SubRecords, role)
+	} else {
+		label := vocabularyLabel(expCtx.GLX.ParticipantRoles, p.Role)
+		// RELA is one line of at most 25 characters in 5.5.1, with no
+		// CONT/CONC children. Preserve longer or multiline labels in NOTE.
+		relation := label
+		if neutral || strings.TrimSpace(relation) == "" || utf8.RuneCountInString(relation) > 25 || strings.ContainsAny(relation, "\r\n") {
+			relation = gedcom551NeutralRelation
+		}
+		asso.SubRecords = append(asso.SubRecords, &GEDCOMRecord{
+			Tag:   GedcomTagRela,
+			Value: relation,
+		})
+		if relation != label {
+			noteLabel := strings.ReplaceAll(strings.ReplaceAll(label, "\r\n", "\n"), "\r", "\n")
+			asso.SubRecords = append(asso.SubRecords, &GEDCOMRecord{Tag: GedcomTagNote, Value: gedcom551EventRolePrefix + noteLabel})
+		}
+	}
+	for _, note := range p.Notes {
+		asso.SubRecords = append(asso.SubRecords, &GEDCOMRecord{Tag: GedcomTagNote, Value: note})
+	}
+
+	return asso
+}
+
+// gedcom551NeutralRelation is the RELA a 5.5.1 ASSO carries when the GLX role
+// cannot be written as a relation to the INDI: a label RELA cannot hold, or a
+// kinship role whose relative among the event's subjects is unknown. The role
+// itself goes in a NOTE starting with gedcom551EventRolePrefix, which import
+// reads back (#1372).
+const (
+	gedcom551NeutralRelation = "Participant"
+	gedcom551EventRolePrefix = "Event role: "
+)
+
+// kinshipParticipantRoles are participant roles that state a relation to one
+// particular person rather than to the event: the bride's father at a
+// marriage is the bride's parent, not the groom's (#1372). A 5.5.1 RELA states
+// the relation to the INDI that carries the ASSO, so these roles may only be
+// written under the subject they relate to.
+var kinshipParticipantRoles = map[string]bool{
+	ParticipantRoleParent:         true,
+	ParticipantRoleChild:          true,
+	ParticipantRoleSpouse:         true,
+	ParticipantRoleSibling:        true,
+	ParticipantRoleGodparent:      true,
+	ParticipantRoleGodchild:       true,
+	ParticipantRoleGuardian:       true,
+	ParticipantRoleWard:           true,
+	ParticipantRoleAdoptiveParent: true,
+	ParticipantRoleAdoptedChild:   true,
+	ParticipantRoleFosterParent:   true,
+	ParticipantRoleFosterChild:    true,
+	ParticipantRoleStepParent:     true,
+	ParticipantRoleStepChild:      true,
+}
+
+// gedcom551AssociationHosts returns the hosts whose INDI records receive a
+// participant's 5.5.1 ASSO, and whether its role must be written neutrally.
+// A kinship role on an event with several subjects relates to only one of
+// them: the ASSO goes to the subjects a relationship shows the participant
+// holds that kinship to (see kinshipSupported), and when none does, to every
+// subject with a neutral RELA.
+func gedcom551AssociationHosts(p Participant, hostIDs []string, expCtx *ExportContext) ([]string, bool) {
+	if len(hostIDs) < 2 || !kinshipParticipantRoles[p.Role] {
+		return hostIDs, false
+	}
+
+	var related []string
+	for _, hostID := range hostIDs {
+		if expCtx.kinshipSupported(p.Role, p.Person, hostID) {
+			related = append(related, hostID)
+		}
+	}
+	if len(related) == 0 {
+		return hostIDs, true
+	}
+
+	return related, false
+}
+
+// relationshipLink is one ordered pair of participants of a relationship:
+// the relationship's ID and type, and each person's role in it, lowercased.
+type relationshipLink struct {
+	relID, relType, roleA, roleB string
+}
+
+// kinshipSupported reports whether a relationship shows that associate holds
+// the kinship eventRole names to host: the relationship's type must carry
+// that kinship, the two people's roles in it must run in that direction, and
+// the archive must not have disproven the link. Sharing some other
+// relationship (neighbors, say), a link that runs the other way, or a
+// disproven one says nothing about whose parent a marriage's "parent"
+// participant is, so none of them counts (#1372).
+func (expCtx *ExportContext) kinshipSupported(eventRole, associate, host string) bool {
+	if expCtx.relationshipLinks == nil {
+		expCtx.relationshipLinks = make(map[[2]string][]relationshipLink)
+		for _, relID := range sortedKeys(expCtx.GLX.Relationships) {
+			rel := expCtx.GLX.Relationships[relID]
+			if rel == nil {
+				continue
+			}
+			relType := strings.ToLower(strings.TrimSpace(rel.Type))
+			for _, x := range rel.Participants {
+				for _, y := range rel.Participants {
+					if x.Person == "" || y.Person == "" || x.Person == y.Person {
+						continue
+					}
+					key := [2]string{x.Person, y.Person}
+					expCtx.relationshipLinks[key] = append(expCtx.relationshipLinks[key], relationshipLink{
+						relID:   relID,
+						relType: relType,
+						roleA:   strings.ToLower(strings.TrimSpace(x.Role)),
+						roleB:   strings.ToLower(strings.TrimSpace(y.Role)),
+					})
+				}
+			}
+		}
+	}
+	if expCtx.standings == nil {
+		expCtx.standings = NewRelationshipStandingIndex(expCtx.GLX)
+	}
+
+	eventRole = strings.ToLower(strings.TrimSpace(eventRole))
+	for _, link := range expCtx.relationshipLinks[[2]string{associate, host}] {
+		if !relationshipLinkCarriesKinship(eventRole, link) {
+			continue
+		}
+		if expCtx.standings.Link(link.relID, associate, host) != RelationshipStandingDisproven {
+			return true
+		}
+	}
+
+	return false
+}
+
+// parentChildEventRoles maps each parent-child event role to the kind of
+// parent-child link it states (see parentChildLinkKind; "" is a plain parent
+// and child) and whether the participant is on the parent side of it.
+var parentChildEventRoles = map[string]struct {
+	kind   string
+	parent bool
+}{
+	ParticipantRoleParent:         {"", true},
+	ParticipantRoleChild:          {"", false},
+	ParticipantRoleAdoptiveParent: {RelationshipTypeAdoptiveParentChild, true},
+	ParticipantRoleAdoptedChild:   {RelationshipTypeAdoptiveParentChild, false},
+	ParticipantRoleFosterParent:   {RelationshipTypeFosterParentChild, true},
+	ParticipantRoleFosterChild:    {RelationshipTypeFosterParentChild, false},
+	ParticipantRoleStepParent:     {RelationshipTypeStepParent, true},
+	ParticipantRoleStepChild:      {RelationshipTypeStepParent, false},
+}
+
+// relationshipLinkCarriesKinship reports whether a relationship link (roleA
+// the associate's role, roleB the host's) states the kinship eventRole names.
+// Both roles must say so: a link whose roles are missing or do not fit the
+// relationship type is ambiguous and supports nothing.
+func relationshipLinkCarriesKinship(eventRole string, link relationshipLink) bool {
+	if want, ok := parentChildEventRoles[eventRole]; ok {
+		if !IsParentChildRelationshipType(link.relType) {
+			return false
+		}
+		parentRole, childRole := link.roleA, link.roleB
+		if !want.parent {
+			parentRole, childRole = childRole, parentRole
+		}
+		if !IsParentSideRole(parentRole) || !IsChildSideRole(childRole) {
+			return false
+		}
+
+		return parentChildLinkKind(link.relType, parentRole, childRole) == want.kind
+	}
+
+	shape, ok := relationshipKinships[eventRole]
+
+	return ok && shape.relType(link.relType) && shape.associate(link.roleA) && shape.host(link.roleB)
+}
+
+// parentChildLinkKind names the kind of a parent-child link from its
+// relationship type and roles: step, foster or adoptive (as the relationship
+// type naming that kind), or "" for a plain parent and child.
+func parentChildLinkKind(relType, parentRole, childRole string) string {
+	switch {
+	case relType == RelationshipTypeStepParent || IsStepRole(parentRole) || IsStepRole(childRole):
+		return RelationshipTypeStepParent
+	case relType == RelationshipTypeFosterParentChild ||
+		parentRole == ParticipantRoleFosterParent || childRole == ParticipantRoleFosterChild:
+		return RelationshipTypeFosterParentChild
+	case relType == RelationshipTypeAdoptiveParentChild ||
+		parentRole == ParticipantRoleAdoptiveParent || childRole == ParticipantRoleAdoptedChild:
+		return RelationshipTypeAdoptiveParentChild
+	}
+
+	return ""
+}
+
+// kinshipShape is the relationship that states one of the kinship roles
+// outside parent and child: the relationship types that carry it, and the
+// roles the associate and the host must hold in it.
+type kinshipShape struct {
+	relType, associate, host func(string) bool
+}
+
+// relationshipKinships lists the kinship event roles other than the
+// parent-child ones (see parentChildEventRoles) by the relationship that
+// states each.
+var relationshipKinships = map[string]kinshipShape{
+	ParticipantRoleSpouse:    {IsCoupleRelationshipType, isCoupleRelationshipRole, isCoupleRelationshipRole},
+	ParticipantRoleSibling:   {is(RelationshipTypeSibling), is(ParticipantRoleSibling), is(ParticipantRoleSibling)},
+	ParticipantRoleGodparent: {is(RelationshipTypeGodparent), is(ParticipantRoleGodparent), is(ParticipantRoleGodchild)},
+	ParticipantRoleGodchild:  {is(RelationshipTypeGodparent), is(ParticipantRoleGodchild), is(ParticipantRoleGodparent)},
+	ParticipantRoleGuardian:  {is(RelationshipTypeGuardian), isGuardianSideRole, isWardSideRole},
+	ParticipantRoleWard:      {is(RelationshipTypeGuardian), isWardSideRole, isGuardianSideRole},
+}
+
+// is returns a predicate matching exactly want.
+func is(want string) func(string) bool {
+	return func(s string) bool { return s == want }
+}
+
+// isCoupleRelationshipRole reports whether a participant role places a person
+// in the couple of a marriage, civil union or partnership.
+func isCoupleRelationshipRole(role string) bool {
+	switch role {
+	case ParticipantRoleSpouse, "husband", "wife", "partner":
+		return true
+	}
+
+	return false
+}
+
+// isGuardianSideRole and isWardSideRole read a guardian relationship's roles.
+// Archives written before the guardian/ward roles existed recorded a
+// guardianship with parent/child, so those count too.
+func isGuardianSideRole(role string) bool {
+	return role == ParticipantRoleGuardian || role == ParticipantRoleParent
+}
+
+func isWardSideRole(role string) bool {
+	return role == ParticipantRoleWard || role == ParticipantRoleChild
+}
+
 // queueGEDCOM551EventAssociations projects event participants onto the event
-// hosts' INDI records. Notes identify the event without inventing a standard
-// event link that 5.5.1 cannot represent. Repeated exports of the same event
-// retain distinct participant notes and collapse only identical structures.
-func queueGEDCOM551EventAssociations(eventID string, event *Event, gedcomTag string, hostIDs []string,
+// hosts' INDI records. hostIDs are all of the event's subjects; writeIDs are
+// the hosts this call writes for (the person being exported, for an INDI
+// event). Notes identify the event without inventing a standard event link
+// that 5.5.1 cannot represent. Repeated exports of the same event retain
+// distinct participant notes and collapse only identical structures.
+func queueGEDCOM551EventAssociations(eventID string, event *Event, gedcomTag string, hostIDs, writeIDs []string,
 	skip func(Participant) bool, expCtx *ExportContext,
 ) {
 	if expCtx.Version != GEDCOM551 {
 		return
 	}
-	associations := eventAssociationRecords(event, skip, expCtx)
-	if len(associations) == 0 {
-		return
-	}
 
 	context := gedcom551EventContext(eventID, event, gedcomTag, hostIDs, expCtx)
-	for _, association := range associations {
+	for _, p := range event.Participants {
+		targets, neutral := gedcom551AssociationHosts(p, hostIDs, expCtx)
+		association := eventAssociationRecord(p, skip, neutral, expCtx)
+		if association == nil {
+			continue
+		}
 		association.SubRecords = append(association.SubRecords, &GEDCOMRecord{Tag: GedcomTagNote, Value: context})
 		key := eventID + "\x00" + string(serializeGEDCOMRecords([]*GEDCOMRecord{association}))
-		for _, personID := range hostIDs {
+		for _, personID := range targets {
+			if !slices.Contains(writeIDs, personID) {
+				continue
+			}
 			xref := expCtx.PersonXRefMap[personID]
 			if xref == "" || xref == association.Value {
 				continue
