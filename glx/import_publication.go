@@ -17,7 +17,6 @@ package main
 import (
 	"bytes"
 	"os"
-	"path/filepath"
 )
 
 type importMetadataSnapshot struct {
@@ -28,8 +27,15 @@ type importMetadataSnapshot struct {
 
 func snapshotImportMetadata(root string, files map[string][]byte) importMetadataSnapshot {
 	snapshot := importMetadataSnapshot{contents: make(map[string][]byte), missing: make(map[string]bool), valid: true}
+	handle, err := os.OpenRoot(root)
+	if err != nil {
+		snapshot.valid = false
+
+		return snapshot
+	}
+	defer func() { _ = handle.Close() }()
 	for rel := range files {
-		content, err := os.ReadFile(filepath.Join(root, rel))
+		content, err := handle.ReadFile(rel)
 		switch {
 		case os.IsNotExist(err):
 			snapshot.missing[rel] = true
@@ -49,13 +55,18 @@ func (snapshot importMetadataSnapshot) unchanged(root string) bool {
 	if !snapshot.valid {
 		return false
 	}
+	handle, err := os.OpenRoot(root)
+	if err != nil {
+		return false
+	}
+	defer func() { _ = handle.Close() }()
 	for rel := range snapshot.missing {
-		if _, err := os.Lstat(filepath.Join(root, rel)); !os.IsNotExist(err) {
+		if _, err := handle.Lstat(rel); !os.IsNotExist(err) {
 			return false
 		}
 	}
 	for rel, original := range snapshot.contents {
-		content, err := os.ReadFile(filepath.Join(root, rel))
+		content, err := handle.ReadFile(rel)
 		if err != nil || !bytes.Equal(original, content) {
 			return false
 		}
