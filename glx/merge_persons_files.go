@@ -118,6 +118,18 @@ func materializeMergeCollections(roots map[string]*yaml.Node, changes []glxlib.E
 			if collection == nil || (collection.Kind != yaml.AliasNode && !hasMergeCollectionKey(collection)) {
 				continue
 			}
+			// Flattening a mapping replaces its anchored descendants too.
+			// Freeze external alias consumers before those anchors disappear.
+			if collection.Kind == yaml.MappingNode {
+				affected := make(map[*yaml.Node]bool)
+				outgoing := make(map[*yaml.Node]bool)
+				collectMergeAliases(collection, affected, outgoing)
+				for _, document := range roots {
+					if _, err := expandMergeAlias(document, affected, outgoing, make(map[*yaml.Node]bool), false); err != nil {
+						return err
+					}
+				}
+			}
 			expanded, err := expandMergeAlias(collection, nil, nil, make(map[*yaml.Node]bool), true)
 			if err != nil {
 				return err

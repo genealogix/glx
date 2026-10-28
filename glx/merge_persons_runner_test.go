@@ -807,7 +807,7 @@ func TestMergePersonsMaterializesInheritedCollection(t *testing.T) {
 		t.Run(fmt.Sprintf("directory=%v", directory), func(t *testing.T) {
 			root := t.TempDir()
 			file := filepath.Join(root, "archive.glx")
-			data := []byte("persons:\n  <<: &people\n    person-keep:\n      properties:\n        primary_name: Inherited\n    person-drop:\n      notes: [Retained]\n  person-keep:\n    properties:\n      primary_name: Explicit\n")
+			data := []byte("persons: &all_people\n  <<: &people\n    person-keep:\n      properties:\n        primary_name: Inherited\n    person-drop:\n      notes: [Retained]\n  person-keep:\n    properties:\n      primary_name: Explicit\nresearch_logs:\n  snapshot-log:\n    properties:\n      snapshot: *all_people\n")
 			require.NoError(t, os.WriteFile(file, data, filePermissions))
 			path := file
 			if directory {
@@ -824,6 +824,9 @@ func TestMergePersonsMaterializesInheritedCollection(t *testing.T) {
 			require.NoError(t, err)
 			require.NotContains(t, archive.Persons, "person-drop")
 			require.Equal(t, "Explicit", archive.Persons["person-keep"].Properties["primary_name"])
+			snapshot, ok := archive.ResearchLogs["snapshot-log"].Properties["snapshot"].(map[string]any)
+			require.True(t, ok)
+			require.Contains(t, snapshot, "person-drop", "unrelated anchor consumers retain the original collection")
 		})
 	}
 }
