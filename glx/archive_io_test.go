@@ -901,7 +901,7 @@ func TestWriteArchiveInPlace(t *testing.T) {
 
 		// Overwrite with new content
 		updated := makeArchive()
-		if err := writeArchiveInPlace(archiveDir, updated, rewriteChanged); err != nil {
+		if err := writeArchiveInPlaceFresh(archiveDir, updated, rewriteChanged); err != nil {
 			t.Fatalf("writeArchiveInPlace() error = %v", err)
 		}
 
@@ -934,7 +934,7 @@ func TestWriteArchiveInPlace(t *testing.T) {
 		// t.Chdir restores the original working directory during cleanup.
 		t.Chdir(tmpDir)
 
-		if err := writeArchiveInPlace("rel-archive", makeArchive(), rewriteChanged); err != nil {
+		if err := writeArchiveInPlaceFresh("rel-archive", makeArchive(), rewriteChanged); err != nil {
 			t.Fatalf("writeArchiveInPlace(relative) error = %v", err)
 		}
 
@@ -983,7 +983,7 @@ func TestWriteArchiveInPlace(t *testing.T) {
 		}
 
 		// Run the write
-		if err := writeArchiveInPlace(archiveDir, makeArchive(), rewriteChanged); err != nil {
+		if err := writeArchiveInPlaceFresh(archiveDir, makeArchive(), rewriteChanged); err != nil {
 			t.Fatalf("writeArchiveInPlace() error = %v", err)
 		}
 
@@ -1025,7 +1025,7 @@ func TestWriteArchiveInPlace(t *testing.T) {
 		}
 
 		// Pass nil archive to trigger serialization error
-		err := writeArchiveInPlace(archiveDir, nil, rewriteChanged)
+		err := writeArchiveInPlaceFresh(archiveDir, nil, rewriteChanged)
 		if err == nil {
 			t.Fatal("expected error for nil archive")
 		}
@@ -1057,7 +1057,7 @@ func TestWriteArchiveInPlace(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if err := writeArchiveInPlace(archiveDir, makeArchive(), rewriteChanged); err != nil {
+		if err := writeArchiveInPlaceFresh(archiveDir, makeArchive(), rewriteChanged); err != nil {
 			t.Fatalf("writeArchiveInPlace() error = %v", err)
 		}
 	})
@@ -1092,7 +1092,7 @@ func TestWriteArchiveInPlace(t *testing.T) {
 		}
 
 		// Trigger a write
-		if err := writeArchiveInPlace(archiveDir, makeArchive(), rewriteChanged); err != nil {
+		if err := writeArchiveInPlaceFresh(archiveDir, makeArchive(), rewriteChanged); err != nil {
 			t.Fatalf("writeArchiveInPlace() error = %v", err)
 		}
 

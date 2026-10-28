@@ -44,11 +44,11 @@ func preserveTestArchive() *glxlib.GLXFile {
 func TestSafeWrite_PreservesDotEntryUnderMediaFiles(t *testing.T) {
 	archiveDir := filepath.Join(t.TempDir(), "archive")
 	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
-	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(archiveDir, preserveTestArchive(), rewriteChanged))
 	writeSkipTestFile(t, filepath.Join(archiveDir, "media", "files", ".keep"), "")
 	writeSkipTestFile(t, filepath.Join(archiveDir, "media", "files", "portrait.jpg"), "jpeg bytes")
 
-	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(archiveDir, preserveTestArchive(), rewriteChanged))
 
 	assert.FileExists(t, filepath.Join(archiveDir, "media", "files", ".keep"))
 	assert.FileExists(t, filepath.Join(archiveDir, "media", "files", "portrait.jpg"))
@@ -60,13 +60,13 @@ func TestSafeWrite_PreservesDotEntryUnderMediaFiles(t *testing.T) {
 func TestSafeWrite_PreservesNestedDotEntries(t *testing.T) {
 	archiveDir := filepath.Join(t.TempDir(), "archive")
 	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
-	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(archiveDir, preserveTestArchive(), rewriteChanged))
 	draft := filepath.Join(archiveDir, "persons", ".drafts", "draft.glx")
 	sidecar := filepath.Join(archiveDir, "persons", "._person-1.glx")
 	writeSkipTestFile(t, draft, "persons: {}")
 	writeSkipTestFile(t, sidecar, "not glx")
 
-	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(archiveDir, preserveTestArchive(), rewriteChanged))
 
 	assert.FileExists(t, draft)
 	assert.FileExists(t, sidecar)
@@ -150,11 +150,11 @@ func TestValidateAndReport(t *testing.T) {
 func TestSafeWrite_ToleratesDotEntriesAlreadyCarriedAtTopLevel(t *testing.T) {
 	archiveDir := filepath.Join(t.TempDir(), "archive")
 	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
-	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(archiveDir, preserveTestArchive(), rewriteChanged))
 	writeSkipTestFile(t, filepath.Join(archiveDir, ".gitignore"), "*.bak\n")
 	writeSkipTestFile(t, filepath.Join(archiveDir, ".git", "HEAD"), "ref: refs/heads/main\n")
 
-	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(archiveDir, preserveTestArchive(), rewriteChanged))
 
 	assert.FileExists(t, filepath.Join(archiveDir, ".gitignore"))
 	assert.FileExists(t, filepath.Join(archiveDir, ".git", "HEAD"))
@@ -228,12 +228,12 @@ func TestSafeWrite_PreservesSymlinkIntoDotDirectory(t *testing.T) {
 	}
 	archiveDir := filepath.Join(t.TempDir(), "archive")
 	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
-	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(archiveDir, preserveTestArchive(), rewriteChanged))
 	writeSkipTestFile(t, filepath.Join(archiveDir, ".worktrees", "copy", "persons", "alias.glx"), "persons: {}\n")
 	link := filepath.Join(archiveDir, "persons", "alias.glx")
 	require.NoError(t, os.Symlink(filepath.Join("..", ".worktrees", "copy", "persons", "alias.glx"), link))
 
-	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(archiveDir, preserveTestArchive(), rewriteChanged))
 
 	info, err := os.Lstat(link)
 	require.NoError(t, err, "the excluded symlink must survive the safe write")
@@ -253,7 +253,7 @@ func TestSafeWrite_UppercaseManagedDirectoryIsReplacedNotDuplicated(t *testing.T
 	require.NoError(t, err)
 	require.Len(t, loaded.Persons, 1)
 
-	require.NoError(t, writeArchiveInPlace(archiveDir, loaded, rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(archiveDir, loaded, rewriteChanged))
 
 	entries, err := os.ReadDir(archiveDir)
 	require.NoError(t, err)
@@ -344,14 +344,14 @@ func TestSafeWrite_PreservesSymlinkChainIntoDotDirectory(t *testing.T) {
 	}
 	archiveDir := filepath.Join(t.TempDir(), "archive")
 	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
-	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(archiveDir, preserveTestArchive(), rewriteChanged))
 	writeSkipTestFile(t, filepath.Join(archiveDir, ".worktrees", "copy", "persons", "alias.glx"), "persons: {}\n")
 	hop := filepath.Join(archiveDir, "persons", "hop.glx")
 	dup := filepath.Join(archiveDir, "persons", "dup.glx")
 	require.NoError(t, os.Symlink(filepath.Join("..", ".worktrees", "copy", "persons", "alias.glx"), hop))
 	require.NoError(t, os.Symlink("hop.glx", dup))
 
-	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(archiveDir, preserveTestArchive(), rewriteChanged))
 
 	for _, link := range []string{hop, dup} {
 		info, err := os.Lstat(link)
@@ -370,7 +370,7 @@ func TestSafeWrite_PreservesMediaBinariesFromCaseVariantDirectory(t *testing.T) 
 
 	loaded, _, err := LoadArchive(archiveDir)
 	require.NoError(t, err)
-	require.NoError(t, writeArchiveInPlace(archiveDir, loaded, rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(archiveDir, loaded, rewriteChanged))
 
 	assert.FileExists(t, filepath.Join(archiveDir, "MEDIA", "files", "portrait.jpg"))
 }
@@ -412,14 +412,14 @@ func TestSafeWrite_PreservesSymlinkChainWhoseHopSortsFirst(t *testing.T) {
 	}
 	archiveDir := filepath.Join(t.TempDir(), "archive")
 	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
-	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(archiveDir, preserveTestArchive(), rewriteChanged))
 	writeSkipTestFile(t, filepath.Join(archiveDir, ".drafts", "person.glx"), "persons: {}\n")
 	a := filepath.Join(archiveDir, "persons", "a.glx")
 	z := filepath.Join(archiveDir, "persons", "z.glx")
 	require.NoError(t, os.Symlink(filepath.Join("..", ".drafts", "person.glx"), a))
 	require.NoError(t, os.Symlink("a.glx", z))
 
-	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(archiveDir, preserveTestArchive(), rewriteChanged))
 
 	for _, link := range []string{a, z} {
 		_, err := os.Lstat(link)
@@ -433,12 +433,12 @@ func TestSafeWrite_PreservesSymlinkChainWhoseHopSortsFirst(t *testing.T) {
 func TestSafeWrite_KeepsArchiveDirectoryItself(t *testing.T) {
 	archiveDir := filepath.Join(t.TempDir(), "archive")
 	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
-	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(archiveDir, preserveTestArchive(), rewriteChanged))
 	before, err := os.Stat(archiveDir)
 	require.NoError(t, err)
 
 	t.Chdir(archiveDir)
-	require.NoError(t, writeArchiveInPlace(".", preserveTestArchive(), rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(".", preserveTestArchive(), rewriteChanged))
 
 	after, err := os.Stat(archiveDir)
 	require.NoError(t, err)
@@ -461,13 +461,13 @@ func TestSafeWrite_ThroughSymlinkedArchiveRoot(t *testing.T) {
 	base := t.TempDir()
 	target := filepath.Join(base, "real")
 	require.NoError(t, os.MkdirAll(target, 0o755))
-	require.NoError(t, writeArchiveInPlace(target, preserveTestArchive(), rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(target, preserveTestArchive(), rewriteChanged))
 	draft := filepath.Join(target, "persons", ".drafts", "person-draft.glx")
 	writeSkipTestFile(t, draft, "persons: {}\n")
 	link := filepath.Join(base, "link")
 	require.NoError(t, os.Symlink(target, link))
 
-	require.NoError(t, writeArchiveInPlace(link, preserveTestArchive(), rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(link, preserveTestArchive(), rewriteChanged))
 
 	assert.FileExists(t, draft, "a skipped entry inside a managed directory must survive")
 	info, err := os.Lstat(link)
@@ -476,7 +476,7 @@ func TestSafeWrite_ThroughSymlinkedArchiveRoot(t *testing.T) {
 }
 
 func TestSafeWrite_MissingDestinationFails(t *testing.T) {
-	err := writeArchiveInPlace(filepath.Join(t.TempDir(), "does-not-exist"), preserveTestArchive(), rewriteChanged)
+	err := writeArchiveInPlaceFresh(filepath.Join(t.TempDir(), "does-not-exist"), preserveTestArchive(), rewriteChanged)
 
 	require.Error(t, err)
 }
@@ -504,7 +504,7 @@ func TestSafeWrite_LeavesCaseVariantMediaDirectoriesAlone(t *testing.T) {
 
 	loaded, _, err := LoadArchive(archiveDir)
 	require.NoError(t, err)
-	err = writeArchiveInPlace(archiveDir, loaded, rewriteChanged)
+	err = writeArchiveInPlaceFresh(archiveDir, loaded, rewriteChanged)
 
 	require.NoError(t, err)
 	assert.FileExists(t, filepath.Join(archiveDir, "media", "files", "a.jpg"))
@@ -554,14 +554,14 @@ func TestSafeWrite_PreservesLinkThroughSymlinkedDirectory(t *testing.T) {
 	}
 	archiveDir := filepath.Join(t.TempDir(), "archive")
 	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
-	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(archiveDir, preserveTestArchive(), rewriteChanged))
 	writeSkipTestFile(t, filepath.Join(archiveDir, ".worktrees", "copy", "p.glx"), "persons: {}\n")
 	shared := filepath.Join(archiveDir, "persons", "shared")
 	alias := filepath.Join(archiveDir, "persons", "alias.glx")
 	require.NoError(t, os.Symlink(filepath.Join("..", ".worktrees", "copy"), shared))
 	require.NoError(t, os.Symlink(filepath.Join("shared", "p.glx"), alias))
 
-	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(archiveDir, preserveTestArchive(), rewriteChanged))
 
 	for _, link := range []string{shared, alias} {
 		_, err := os.Lstat(link)
@@ -578,13 +578,13 @@ func TestSafeWrite_PreservesAbsoluteSymlinkIntoDotDirectory(t *testing.T) {
 	}
 	archiveDir := filepath.Join(t.TempDir(), "archive")
 	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
-	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(archiveDir, preserveTestArchive(), rewriteChanged))
 	target := filepath.Join(archiveDir, ".worktrees", "copy", "p.glx")
 	writeSkipTestFile(t, target, "persons: {}\n")
 	alias := filepath.Join(archiveDir, "persons", "alias.glx")
 	require.NoError(t, os.Symlink(target, alias))
 
-	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(archiveDir, preserveTestArchive(), rewriteChanged))
 
 	_, err := os.Lstat(alias)
 	require.NoError(t, err, "the absolute link into the dot directory must survive")
@@ -600,11 +600,11 @@ func TestSafeWrite_ForeignEntriesNamedLikeManagedDirsArePreserved(t *testing.T) 
 	}
 	archiveDir := filepath.Join(base, "archive")
 	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
-	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(archiveDir, preserveTestArchive(), rewriteChanged))
 	writeSkipTestFile(t, filepath.Join(archiveDir, "PERSONS"), "not an archive directory\n")
 	require.NoError(t, os.Symlink("persons", filepath.Join(archiveDir, "Events")))
 
-	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(archiveDir, preserveTestArchive(), rewriteChanged))
 
 	assert.FileExists(t, filepath.Join(archiveDir, "PERSONS"))
 	_, err := os.Lstat(filepath.Join(archiveDir, "Events"))
@@ -622,10 +622,10 @@ func TestSafeWrite_DoesNotFollowSymlinkedMediaDirectory(t *testing.T) {
 	writeSkipTestFile(t, external, "jpeg bytes")
 	archiveDir := filepath.Join(base, "archive")
 	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
-	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(archiveDir, preserveTestArchive(), rewriteChanged))
 	require.NoError(t, os.Symlink(filepath.Join("..", "assets"), filepath.Join(archiveDir, "MEDIA")))
 
-	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(archiveDir, preserveTestArchive(), rewriteChanged))
 
 	assert.FileExists(t, external, "data behind the symlink must stay where it was")
 	_, err := os.Lstat(filepath.Join(archiveDir, "MEDIA"))
@@ -642,14 +642,14 @@ func TestSafeWrite_PreservesLinkThroughTopLevelForeignLink(t *testing.T) {
 	}
 	archiveDir := filepath.Join(t.TempDir(), "archive")
 	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
-	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(archiveDir, preserveTestArchive(), rewriteChanged))
 	writeSkipTestFile(t, filepath.Join(archiveDir, ".drafts", "x.glx"), "persons: {}\n")
 	alias := filepath.Join(archiveDir, "alias.glx")
 	require.NoError(t, os.Symlink(filepath.Join(".drafts", "x.glx"), alias))
 	z := filepath.Join(archiveDir, "persons", "z.glx")
 	require.NoError(t, os.Symlink(filepath.Join("..", "alias.glx"), z))
 
-	require.NoError(t, writeArchiveInPlace(archiveDir, preserveTestArchive(), rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(archiveDir, preserveTestArchive(), rewriteChanged))
 
 	for _, link := range []string{alias, z} {
 		info, err := os.Lstat(link)
@@ -673,7 +673,7 @@ func TestSafeWrite_UpdatesTopLevelGLXFileInPlace(t *testing.T) {
 			require.Len(t, loaded.Persons, 1, "the loader reads the top-level file")
 			loaded.Persons["person-1"].Properties["primary_name"] = "Alicia"
 
-			require.NoError(t, writeArchiveInPlace(archiveDir, loaded, rewriteChanged))
+			require.NoError(t, writeArchiveInPlaceFresh(archiveDir, loaded, rewriteChanged))
 
 			data, err := os.ReadFile(filepath.Join(archiveDir, name))
 			require.NoError(t, err)
@@ -695,10 +695,10 @@ func TestSafeWrite_AllowsTopLevelMetadataFile(t *testing.T) {
 	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
 	archive := preserveTestArchive()
 	archive.ImportMetadata = &glxlib.Metadata{SourceSystem: "test"}
-	require.NoError(t, writeArchiveInPlace(archiveDir, archive, rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(archiveDir, archive, rewriteChanged))
 	require.FileExists(t, filepath.Join(archiveDir, archiveMetadataFile))
 
-	require.NoError(t, writeArchiveInPlace(archiveDir, archive, rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(archiveDir, archive, rewriteChanged))
 
 	assert.FileExists(t, filepath.Join(archiveDir, archiveMetadataFile))
 }
@@ -714,7 +714,7 @@ func TestSafeWrite_AllowsTopLevelDotGLXFile(t *testing.T) {
 
 	loaded, _, err := LoadArchive(archiveDir)
 	require.NoError(t, err)
-	require.NoError(t, writeArchiveInPlace(archiveDir, loaded, rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(archiveDir, loaded, rewriteChanged))
 
 	assert.FileExists(t, filepath.Join(archiveDir, "._family.glx"))
 }
@@ -738,7 +738,7 @@ func TestSafeWrite_PreservesMediaFilesSymlink(t *testing.T) {
 
 	loaded, _, err := LoadArchive(archiveDir)
 	require.NoError(t, err)
-	require.NoError(t, writeArchiveInPlace(archiveDir, loaded, rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(archiveDir, loaded, rewriteChanged))
 
 	info, err := os.Lstat(link)
 	require.NoError(t, err, "the media/files link must survive the safe write")

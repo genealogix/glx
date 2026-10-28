@@ -78,6 +78,23 @@ func LoadArchiveWithOptions(rootPath string, schemaValidate bool) (*glxlib.GLXFi
 	return loadArchiveFromFiles(rootPath, files, schemaValidate)
 }
 
+// loadArchiveForWrite loads a multi-file archive as LoadArchiveWithOptions
+// does without schema validation, and also returns the file contents it was
+// built from. A command that writes the archive back passes those to
+// writeArchiveInPlace, which refuses to overwrite a file that changed since.
+func loadArchiveForWrite(rootPath string) (*glxlib.GLXFile, []string, map[string][]byte, error) {
+	files, err := collectGLXFilesFromDir(rootPath)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	archive, duplicates, err := loadArchiveFromFiles(rootPath, files, false)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return archive, duplicates, files, nil
+}
+
 // loadArchiveFromFiles builds an archive from an already-collected file map
 // (relative path -> contents, as returned by collectGLXFilesFromDir). It is
 // the half of LoadArchiveWithOptions that does no I/O of its own, split out so

@@ -16,9 +16,11 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
+	"os"
 	"path/filepath"
 	"reflect"
 	"slices"
@@ -38,10 +40,12 @@ const (
 	// entries it holds changed. A file the command did not touch keeps its
 	// bytes, comments and formatting.
 	rewriteChanged rewritePolicy = iota
-	// rewriteNormalized additionally rewrites a file whose on-disk content
-	// differs from what the typed model writes back, which is how a
-	// load-time shim's fold (a legacy Source or Media description, #667 and
-	// #894) reaches disk. glx migrate uses it.
+	// rewriteNormalized additionally rewrites a file that still holds a field
+	// a load-time shim folds away (a legacy top-level Source or Media
+	// description, #667 and #894). The typed model cannot see that fold as a
+	// change, so this is how it reaches disk. glx migrate uses it. A file
+	// with no such field is judged as under rewriteChanged, so formatting
+	// alone never causes a rewrite.
 	rewriteNormalized
 )
 
@@ -49,41 +53,49 @@ const (
 // nothing.
 const emptyFragment = "{}\n"
 
+// inPlaceJournalFile is written to the archive root while an in-place write
+// runs and removed when it ends. It holds the prior content of every file the
+// write touches, so a write cut short by a crash is detected by the next one
+// and can be undone by hand. The leading dot keeps the loader from reading it.
+const inPlaceJournalFile = ".glx-write-journal"
+
 // writeArchiveInPlace persists archive, the complete result of a command
-// that loaded the multi-file archive at archivePath and modified it in
-// memory, by rewriting only the files that need it, where they are:
+// that loaded the multi-file archive at archivePath from loaded (relative
+// path -> contents, as collectGLXFilesFromDir returned them) and modified it
+// in memory, by rewriting only the files that need it, where they are:
 //
 //   - an entity or vocabulary entry that changed is rewritten in the file
 //     that defined it, which keeps that file's other contents and its place
 //     in the user's layout (multi-entity files, sources/census/1850.glx, a
 //     top-level family.glx);
 //   - one the command removed is removed from every file defining it, and a
-//     file left with nothing in it is deleted;
+//     file left with nothing in it is deleted, along with any directory that
+//     deletion leaves empty;
 //   - a new entity gets a file of its own at the canonical
 //     <type>/<id>.glx (joining the file already at that path, if any);
 //   - everything else — untouched files, media binaries, dot entries,
 //     symlinks, foreign files — is never opened for writing.
 //
+// loaded must be the bytes the command loaded, not a fresh read: preflight
+// compares each file it rewrites against them, so an edit made on disk since
+// the load is refused rather than overwritten, and an entity added since is
+// never mistaken for one the command removed.
+//
 // This is the model glx rename adopted in #1204, generalized to commands
 // that may change any part of the archive; see genealogix/glx#1247. Writes go
 // through the same preflight and per-file atomic write with in-memory
-// rollback as rename (preflightFileOps, executeFileOps).
-func writeArchiveInPlace(archivePath string, archive *glxlib.GLXFile, policy rewritePolicy) error {
+// rollback as rename (preflightFileOps, executeFileOps), with a journal on
+// disk for the length of the write (inPlaceJournalFile).
+func writeArchiveInPlace(archivePath string, loaded map[string][]byte, archive *glxlib.GLXFile, policy rewritePolicy) error {
 	if archive == nil {
 		return glxlib.ErrGLXFileNil
 	}
-
-	// The files are read again rather than threaded from the command's load:
-	// preflight compares each file it rewrites against these bytes, so a
-	// change made since the load is still refused rather than overwritten
-	// whenever it lands in a file this write touches.
-	files, err := collectGLXFilesFromDir(archivePath)
-	if err != nil {
-		return fmt.Errorf("failed to read archive: %w", err)
+	if err := checkInPlaceJournal(archivePath); err != nil {
+		return err
 	}
 
-	ops, err := planInPlaceWrites(files, archive, policy)
-	if err != nil {
+	ops, err := planInPlaceWrites(loaded, archive, policy)
+	if err != nil || len(ops) == 0 {
 		return err
 	}
 
@@ -92,7 +104,127 @@ func writeArchiveInPlace(archivePath string, archive *glxlib.GLXFile, policy rew
 		return err
 	}
 
-	return executeFileOps(archivePath, ordered)
+	return executeInPlaceOps(archivePath, ordered)
+}
+
+// inPlaceJournalEntry records one file an in-place write touches: its path
+// and, when it existed, the content it held before the write.
+type inPlaceJournalEntry struct {
+	Path    string `json:"path"`
+	Existed bool   `json:"existed"`
+	Data    []byte `json:"data,omitempty"`
+}
+
+// checkInPlaceJournal refuses a write while an earlier write's journal is
+// still in the archive root: that write stopped part way, and writing over a
+// half-applied plan would bury the evidence of what it changed.
+func checkInPlaceJournal(archivePath string) error {
+	journal := filepath.Join(archivePath, inPlaceJournalFile)
+	_, err := os.Lstat(journal)
+	switch {
+	case err == nil:
+		return fmt.Errorf("%w: %s lists each file it touched with its prior content; "+
+			"restore those files (or the archive, from version control), then delete the journal", ErrInterruptedInPlaceWrite, journal)
+	case errors.Is(err, os.ErrNotExist):
+		return nil
+	default:
+		return fmt.Errorf("checking %s: %w", journal, err)
+	}
+}
+
+// executeInPlaceOps writes the journal, runs the preflighted operations, and
+// tidies up after them: on success it removes directories the deletions left
+// empty, on a rolled-back failure the directories the creations made. The
+// journal is removed unless rollback itself failed, in which case it is the
+// record of what the archive held before.
+func executeInPlaceOps(archivePath string, ordered []fileOp) error {
+	journal := filepath.Join(archivePath, inPlaceJournalFile)
+	entries := make([]inPlaceJournalEntry, 0, len(ordered))
+	for _, op := range ordered {
+		entries = append(entries, inPlaceJournalEntry{Path: filepath.ToSlash(op.relPath), Existed: op.oldData != nil, Data: op.oldData})
+	}
+	data, err := json.MarshalIndent(entries, "", "  ")
+	if err != nil {
+		return fmt.Errorf("encoding write journal: %w", err)
+	}
+	if err := atomicWriteFile(journal, data, filePermissions); err != nil {
+		return fmt.Errorf("writing %s: %w", journal, err)
+	}
+
+	createdDirs := missingParentDirs(archivePath, ordered)
+	if err := executeFileOps(archivePath, ordered); err != nil {
+		if errors.Is(err, errRollbackIncomplete) {
+			return fmt.Errorf("%w; prior contents are recorded in %s", err, journal)
+		}
+		removeEmptyDirs(createdDirs)
+		if rmErr := os.Remove(journal); rmErr != nil {
+			return fmt.Errorf("%w; removing %s: %w", err, journal, rmErr)
+		}
+
+		return err
+	}
+
+	removeEmptyDirs(emptiedParentDirs(archivePath, ordered))
+	if err := os.Remove(journal); err != nil {
+		return fmt.Errorf("archive written, but removing %s failed (delete it by hand): %w", journal, err)
+	}
+
+	return nil
+}
+
+// missingParentDirs returns the directories below root that creating the
+// ops' new files will make, deepest first.
+func missingParentDirs(root string, ops []fileOp) []string {
+	var dirs []string
+	for _, op := range ops {
+		if op.oldData != nil || op.newData == nil {
+			continue
+		}
+		for dir := filepath.Dir(op.relPath); dir != "." && !slices.Contains(dirs, dir); dir = filepath.Dir(dir) {
+			if _, err := os.Lstat(filepath.Join(root, dir)); err == nil {
+				break
+			}
+			dirs = append(dirs, dir)
+		}
+	}
+
+	return deepestFirst(root, dirs)
+}
+
+// emptiedParentDirs returns the directories below root that held a file the
+// ops delete, deepest first. Any of them may now be empty.
+func emptiedParentDirs(root string, ops []fileOp) []string {
+	var dirs []string
+	for _, op := range ops {
+		if op.newData != nil {
+			continue
+		}
+		for dir := filepath.Dir(op.relPath); dir != "." && !slices.Contains(dirs, dir); dir = filepath.Dir(dir) {
+			dirs = append(dirs, dir)
+		}
+	}
+
+	return deepestFirst(root, dirs)
+}
+
+// deepestFirst joins each relative directory to root and orders the result
+// so a directory comes before its parent.
+func deepestFirst(root string, dirs []string) []string {
+	abs := make([]string, 0, len(dirs))
+	for _, dir := range dirs {
+		abs = append(abs, filepath.Join(root, dir))
+	}
+	slices.SortFunc(abs, func(a, b string) int { return len(b) - len(a) })
+
+	return abs
+}
+
+// removeEmptyDirs removes each directory that is empty. One that is not, or
+// that cannot be removed, is left as it is: tidying never fails a write.
+func removeEmptyDirs(dirs []string) {
+	for _, dir := range dirs {
+		_ = os.Remove(dir)
+	}
 }
 
 // glxCollection is one map-valued field of GLXFile: an entity type, a
@@ -101,6 +233,11 @@ type glxCollection struct {
 	key      string
 	field    int
 	isEntity bool
+	// unionDefaults is set for the property vocabularies, which the loader
+	// always unions with the standard set (an archive entry overriding a
+	// standard one). The type vocabularies are filled with the standard set
+	// only when the archive defines none of their entries.
+	unionDefaults bool
 }
 
 // glxCollections lists every map field of GLXFile. Deriving it by reflection
@@ -111,6 +248,7 @@ var glxCollections = func() []glxCollection {
 	for _, entityType := range glxlib.AllEntityTypes {
 		entityKeys[entityType.String()] = true
 	}
+	propertyDefinition := reflect.TypeFor[*glxlib.PropertyDefinition]()
 
 	t := reflect.TypeFor[glxlib.GLXFile]()
 	var collections []glxCollection
@@ -120,7 +258,12 @@ var glxCollections = func() []glxCollection {
 			continue
 		}
 		key, _, _ := strings.Cut(field.Tag.Get("yaml"), ",")
-		collections = append(collections, glxCollection{key: key, field: i, isEntity: entityKeys[key]})
+		collections = append(collections, glxCollection{
+			key:           key,
+			field:         i,
+			isEntity:      entityKeys[key],
+			unionDefaults: field.Type.Elem() == propertyDefinition,
+		})
 	}
 
 	return collections
@@ -154,14 +297,16 @@ func (c glxCollection) setMapEntry(g *glxlib.GLXFile, key string, value reflect.
 
 // standardVocabularyPaths maps each vocabulary collection key to the
 // archive path of the standard vocabulary file that defines it, e.g.
-// event_types -> vocabularies/event-types.glx.
-var standardVocabularyPaths = sync.OnceValue(func() map[string]string {
+// event_types -> vocabularies/event-types.glx. A standard file that does not
+// parse is an error rather than a gap, since a gap would send its
+// collections to a guessed filename.
+var standardVocabularyPaths = sync.OnceValues(func() (map[string]string, error) {
 	serializer := createSerializer(false, false, "")
 	paths := make(map[string]string)
 	for filename, data := range glxlib.StandardVocabularies() {
 		fragment, err := serializer.DeserializeSingleFileBytes(data)
 		if err != nil {
-			continue
+			return nil, fmt.Errorf("parsing standard vocabulary %s: %w", filename, err)
 		}
 		for _, c := range glxCollections {
 			if c.mapOf(fragment).Len() > 0 {
@@ -170,17 +315,22 @@ var standardVocabularyPaths = sync.OnceValue(func() map[string]string {
 		}
 	}
 
-	return paths
+	return paths, nil
 })
 
 // vocabularyPath is where a vocabulary collection that no archive file
-// defines yet is written.
-func vocabularyPath(key string) string {
-	if p, ok := standardVocabularyPaths()[key]; ok {
-		return p
+// defines yet is written: the standard file for it, or, for a collection no
+// standard file covers, vocabularies/<key with hyphens>.glx.
+func vocabularyPath(key string) (string, error) {
+	paths, err := standardVocabularyPaths()
+	if err != nil {
+		return "", err
+	}
+	if p, ok := paths[key]; ok {
+		return p, nil
 	}
 
-	return filepath.Join(glxlib.ArchiveDirVocabularies, strings.ReplaceAll(key, "_", "-")+FileExtGLX)
+	return filepath.Join(glxlib.ArchiveDirVocabularies, strings.ReplaceAll(key, "_", "-")+FileExtGLX), nil
 }
 
 // inPlacePlan accumulates the fragments a write changes: the archive's
@@ -190,6 +340,16 @@ type inPlacePlan struct {
 	relPaths  []string
 	fragments map[string]*glxlib.GLXFile
 	created   map[string]*glxlib.GLXFile
+	// dirty holds the existing files whose fragment the projection changed.
+	// Only these (and, under rewriteNormalized, files holding a shimmed
+	// field) are serialized again.
+	dirty map[string]bool
+	// legacy holds the existing files with a field a load-time shim folds
+	// away; filled only under rewriteNormalized.
+	legacy map[string]bool
+	// canonical caches the typed round-trip of an existing file's original
+	// content, against which its rewrite is compared.
+	canonical map[string][]byte
 	// existingFold maps each existing path, slash-separated and lowercased,
 	// to its key in files: a file created at persons/person-a.glx would
 	// overwrite Persons/Person-A.glx on a case-insensitive filesystem, so
@@ -203,9 +363,12 @@ type inPlacePlan struct {
 }
 
 // fragmentFor returns the fragment that a write targeting relPath adds to:
-// the existing file it folds to, an already-planned new file, or a new one.
+// the existing file it folds to (marked dirty), an already-planned new file,
+// or a new one.
 func (p *inPlacePlan) fragmentFor(relPath string) *glxlib.GLXFile {
 	if existing, ok := p.existingFold[strings.ToLower(filepath.ToSlash(relPath))]; ok {
+		p.dirty[existing] = true
+
 		return p.fragments[existing]
 	}
 	if fragment, ok := p.created[relPath]; ok {
@@ -228,31 +391,30 @@ func planInPlaceWrites(files map[string][]byte, final *glxlib.GLXFile, policy re
 		relPaths:     slices.Sorted(maps.Keys(files)),
 		fragments:    make(map[string]*glxlib.GLXFile, len(files)),
 		created:      make(map[string]*glxlib.GLXFile),
+		dirty:        make(map[string]bool),
+		legacy:       make(map[string]bool),
+		canonical:    make(map[string][]byte),
 		existingFold: make(map[string]string, len(files)),
 		implicit:     make(map[string]glxCollection),
 	}
-	before := make(map[string][]byte, len(files))
+
+	// What the command started from, as the loader built it: the files merged
+	// in sorted order, then the standard vocabularies filled in. A vocabulary
+	// entry no file defines is either one of those defaults (not the
+	// archive's to write unless the command changed it) or new. Merge copies
+	// map entries, so projecting into the fragments below leaves it intact.
+	baseline := &glxlib.GLXFile{}
 	for _, relPath := range plan.relPaths {
 		fragment, err := serializer.DeserializeSingleFileBytes(files[relPath])
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse %s: %w", relPath, err)
 		}
-		serialized, err := serializer.SerializeSingleFileBytes(fragment)
-		if err != nil {
-			return nil, fmt.Errorf("failed to serialize %s: %w", relPath, err)
-		}
 		plan.fragments[relPath] = fragment
-		before[relPath] = serialized
 		plan.existingFold[strings.ToLower(filepath.ToSlash(relPath))] = relPath
-	}
-
-	// What the command started from, as the loader built it: the files merged
-	// in sorted order, then the standard vocabularies filled into every
-	// vocabulary map the files left empty. A vocabulary entry no file defines
-	// is either one of those defaults (not the archive's to write) or new.
-	baseline, _, err := serializer.DeserializeMultiFileFromMap(files)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load archive: %w", err)
+		if policy == rewriteNormalized && hasShimmedFields(files[relPath]) {
+			plan.legacy[relPath] = true
+		}
+		baseline.Merge(fragment)
 	}
 	if err := mergeStandardVocabularies(baseline); err != nil {
 		return nil, fmt.Errorf("failed to load standard vocabularies: %w", err)
@@ -265,16 +427,44 @@ func planInPlaceWrites(files map[string][]byte, final *glxlib.GLXFile, policy re
 	}
 	plan.projectMetadata(serializer, final)
 
-	ops, err := plan.fileOps(serializer, before, policy)
-	if err != nil || len(ops) == 0 || len(plan.implicit) == 0 {
-		return ops, err
+	// Writing one implicit vocabulary cannot make another one referenced, but
+	// loop to a fixed point anyway: each pass removes a collection from
+	// implicit, so it ends.
+	for {
+		ops, err := plan.fileOps(serializer)
+		if err != nil || len(ops) == 0 || len(plan.implicit) == 0 {
+			return ops, err
+		}
+		materialized, err := plan.materializeReferencedVocabularies(ops, final)
+		if err != nil {
+			return nil, err
+		}
+		if !materialized {
+			return ops, nil
+		}
+	}
+}
+
+// hasShimmedFields reports whether a file holds a field a load-time shim
+// folds into the typed model: a top-level description on a source (#667) or
+// a media entity (#894).
+func hasShimmedFields(data []byte) bool {
+	var doc struct {
+		Sources map[string]map[string]any `yaml:"sources"`
+		Media   map[string]map[string]any `yaml:"media"`
+	}
+	if yaml.Unmarshal(data, &doc) != nil {
+		return false
+	}
+	for _, entities := range []map[string]map[string]any{doc.Sources, doc.Media} {
+		for _, fields := range entities {
+			if _, ok := fields["description"]; ok {
+				return true
+			}
+		}
 	}
 
-	if !plan.materializeReferencedVocabularies(ops, final) {
-		return ops, nil
-	}
-
-	return plan.fileOps(serializer, before, policy)
+	return false
 }
 
 // materializeReferencedVocabularies writes out each implicit vocabulary that
@@ -284,10 +474,13 @@ func planInPlaceWrites(files map[string][]byte, final *glxlib.GLXFile, policy re
 // vocabularies, so an archive with no event-types file is valid only while
 // nothing names an event type. A write that adds the first birth event (a
 // merge from an archive that did carry the file) would otherwise produce an
-// archive glx validate rejects. Running that same load over the files as the
-// write leaves them finds exactly the vocabularies the result needs.
-func (p *inPlacePlan) materializeReferencedVocabularies(ops []fileOp, final *glxlib.GLXFile) bool {
-	written := maps.Clone(p.files)
+// archive glx validate rejects. Validating the files as the write leaves
+// them, before any fill, finds exactly the vocabularies the result needs.
+// That pass collects every issue rather than stopping at the first failure,
+// so an unrelated problem in the archive does not hide a missing vocabulary.
+func (p *inPlacePlan) materializeReferencedVocabularies(ops []fileOp, final *glxlib.GLXFile) (bool, error) {
+	written := make(map[string][]byte, len(p.files)+len(ops))
+	maps.Copy(written, p.files)
 	for _, op := range ops {
 		if op.newData == nil {
 			delete(written, op.relPath)
@@ -296,20 +489,23 @@ func (p *inPlacePlan) materializeReferencedVocabularies(ops []fileOp, final *glx
 		}
 	}
 
-	_, _, err := createSerializer(true, false, "").DeserializeMultiFileFromMap(written)
-	var invalid *glxlib.StructuredValidationError
-	if !errors.As(err, &invalid) {
-		return false
+	archive, _, err := createSerializer(false, false, "").DeserializeMultiFileFromMap(written)
+	if err != nil {
+		return false, fmt.Errorf("failed to read back the planned archive: %w", err)
 	}
 
 	materialized := false
-	for _, issue := range invalid.Errors {
+	for _, issue := range archive.Validate().Errors {
 		c, ok := p.implicit[issue.TargetType]
 		if !ok || !c.mapOf(final).MapIndex(reflect.ValueOf(issue.TargetID)).IsValid() {
 			continue
 		}
+		path, err := vocabularyPath(c.key)
+		if err != nil {
+			return false, err
+		}
 		finalMap := c.mapOf(final)
-		fragment := p.fragmentFor(vocabularyPath(c.key))
+		fragment := p.fragmentFor(path)
 		for _, key := range sortedMapKeys(finalMap) {
 			c.setMapEntry(fragment, key, finalMap.MapIndex(reflect.ValueOf(key)))
 		}
@@ -317,7 +513,7 @@ func (p *inPlacePlan) materializeReferencedVocabularies(ops []fileOp, final *glx
 		materialized = true
 	}
 
-	return materialized
+	return materialized, nil
 }
 
 // projectCollection brings collection c of every fragment in line with final.
@@ -336,13 +532,18 @@ func (p *inPlacePlan) projectCollection(c glxCollection, final, baseline *glxlib
 			home = relPath
 		}
 		for _, key := range sortedMapKeys(m) {
-			value := finalMap.MapIndex(reflect.ValueOf(key))
+			k := reflect.ValueOf(key)
+			value := finalMap.MapIndex(k)
 			switch _, owned := owners[key]; {
 			case !value.IsValid():
-				m.SetMapIndex(reflect.ValueOf(key), reflect.Value{})
+				m.SetMapIndex(k, reflect.Value{})
+				p.dirty[relPath] = true
 			case !owned:
 				owners[key] = relPath
-				m.SetMapIndex(reflect.ValueOf(key), value)
+				if !reflect.DeepEqual(m.MapIndex(k).Interface(), value.Interface()) {
+					m.SetMapIndex(k, value)
+					p.dirty[relPath] = true
+				}
 			}
 		}
 	}
@@ -355,35 +556,67 @@ func (p *inPlacePlan) projectCollection(c glxCollection, final, baseline *glxlib
 		return p.placeNewEntities(c, finalMap, finalKeys, owners)
 	}
 
-	baselineMap := c.mapOf(baseline)
-	var added []string
+	return p.projectVocabularyDefaults(c, finalMap, finalKeys, owners, home, c.mapOf(baseline))
+}
+
+// projectVocabularyDefaults handles the entries of vocabulary c that no file
+// owns: ones the command added, and standard-filled ones it changed or
+// removed. home is the first file defining c, or "" when none does.
+func (p *inPlacePlan) projectVocabularyDefaults(c glxCollection, finalMap reflect.Value, finalKeys []string, owners map[string]string, home string, baselineMap reflect.Value) error {
+	var changed []string
 	for _, key := range finalKeys {
-		if _, owned := owners[key]; !owned && !baselineMap.MapIndex(reflect.ValueOf(key)).IsValid() {
-			added = append(added, key)
+		if _, owned := owners[key]; owned {
+			continue
+		}
+		k := reflect.ValueOf(key)
+		if before := baselineMap.MapIndex(k); !before.IsValid() || !reflect.DeepEqual(before.Interface(), finalMap.MapIndex(k).Interface()) {
+			changed = append(changed, key)
 		}
 	}
-	if len(added) == 0 {
-		if home == "" {
+
+	// A type vocabulary no file defines holds the standard fill, so dropping
+	// one of its entries is a change too. A property vocabulary's standard
+	// entries come back on every load whatever the files say, so dropping one
+	// cannot be written and is not looked for.
+	fillReduced := false
+	if home == "" && !c.unionDefaults {
+		for _, key := range sortedMapKeys(baselineMap) {
+			if !finalMap.MapIndex(reflect.ValueOf(key)).IsValid() {
+				fillReduced = true
+
+				break
+			}
+		}
+	}
+
+	if len(changed) == 0 && !fillReduced {
+		if home == "" && !c.unionDefaults {
 			p.implicit[c.key] = c
 		}
 
 		return nil
 	}
 
-	if home != "" {
-		for _, key := range added {
-			c.setMapEntry(p.fragments[home], key, finalMap.MapIndex(reflect.ValueOf(key)))
+	target := home
+	if target == "" {
+		path, err := vocabularyPath(c.key)
+		if err != nil {
+			return err
 		}
-
-		return nil
+		target = path
 	}
+	fragment := p.fragmentFor(target)
 
-	// No file defines this vocabulary, so the loader filled it with the
-	// standard entries. Writing only the new ones would make the map
-	// non-empty on the next load, which turns that fill off and drops every
-	// standard entry the archive relies on; write the whole map instead.
-	fragment := p.fragmentFor(vocabularyPath(c.key))
-	for _, key := range finalKeys {
+	// Writing only the changed entries of a filled type vocabulary would make
+	// its map non-empty on the next load, which turns the fill off and drops
+	// every standard entry the archive relies on; write the whole map. A
+	// property vocabulary keeps its fill, so it gets the changed entries
+	// only, and the standard ones stay the standard set's to update.
+	keys := changed
+	if home == "" && !c.unionDefaults {
+		keys = finalKeys
+	}
+	for _, key := range keys {
 		c.setMapEntry(fragment, key, finalMap.MapIndex(reflect.ValueOf(key)))
 	}
 
@@ -432,7 +665,10 @@ func (p *inPlacePlan) placeNewEntities(c glxCollection, finalMap reflect.Value, 
 func (p *inPlacePlan) projectMetadata(serializer *glxlib.DefaultSerializer, final *glxlib.GLXFile) {
 	for _, relPath := range p.relPaths {
 		if fragment := p.fragments[relPath]; metadataHasContent(serializer, fragment.ImportMetadata) {
-			fragment.ImportMetadata = final.ImportMetadata
+			if !reflect.DeepEqual(fragment.ImportMetadata, final.ImportMetadata) {
+				fragment.ImportMetadata = final.ImportMetadata
+				p.dirty[relPath] = true
+			}
 
 			return
 		}
@@ -455,28 +691,51 @@ func metadataHasContent(serializer *glxlib.DefaultSerializer, metadata *glxlib.M
 	return err == nil && string(data) != emptyFragment
 }
 
+// canonicalOf returns the typed round-trip of an existing file's original
+// content: what it would hold if rewritten with nothing changed.
+func (p *inPlacePlan) canonicalOf(serializer *glxlib.DefaultSerializer, relPath string) ([]byte, error) {
+	if data, ok := p.canonical[relPath]; ok {
+		return data, nil
+	}
+	fragment, err := serializer.DeserializeSingleFileBytes(p.files[relPath])
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse %s: %w", relPath, err)
+	}
+	data, err := serializer.SerializeSingleFileBytes(fragment)
+	if err != nil {
+		return nil, fmt.Errorf("failed to serialize %s: %w", relPath, err)
+	}
+	p.canonical[relPath] = data
+
+	return data, nil
+}
+
 // fileOps serializes the planned fragments and returns an operation for each
 // file whose content changes: rewritten, deleted when nothing is left in it,
-// or created.
-func (p *inPlacePlan) fileOps(serializer *glxlib.DefaultSerializer, before map[string][]byte, policy rewritePolicy) ([]fileOp, error) {
+// or created. An existing file the projection did not touch is skipped
+// without being serialized, unless it holds a shimmed field.
+func (p *inPlacePlan) fileOps(serializer *glxlib.DefaultSerializer) ([]fileOp, error) {
 	var ops []fileOp
 	for _, relPath := range p.relPaths {
+		if !p.dirty[relPath] && !p.legacy[relPath] {
+			continue
+		}
 		after, err := serializer.SerializeSingleFileBytes(p.fragments[relPath])
 		if err != nil {
 			return nil, fmt.Errorf("failed to serialize %s: %w", relPath, err)
 		}
+		before, err := p.canonicalOf(serializer, relPath)
+		if err != nil {
+			return nil, err
+		}
 		if string(after) == emptyFragment {
-			if string(before[relPath]) != emptyFragment {
+			if string(before) != emptyFragment {
 				ops = append(ops, fileOp{relPath: relPath, oldData: p.files[relPath]})
 			}
 
 			continue
 		}
-		unchanged := bytes.Equal(before[relPath], after)
-		if policy == rewriteNormalized {
-			unchanged = sameYAMLContent(p.files[relPath], after)
-		}
-		if !unchanged {
+		if p.legacy[relPath] || !bytes.Equal(before, after) {
 			ops = append(ops, fileOp{relPath: relPath, oldData: p.files[relPath], newData: after})
 		}
 	}
@@ -490,15 +749,4 @@ func (p *inPlacePlan) fileOps(serializer *glxlib.DefaultSerializer, before map[s
 	}
 
 	return ops, nil
-}
-
-// sameYAMLContent reports whether two YAML documents decode to the same
-// data, ignoring formatting and comments.
-func sameYAMLContent(a, b []byte) bool {
-	var docA, docB any
-	if yaml.Unmarshal(a, &docA) != nil || yaml.Unmarshal(b, &docB) != nil {
-		return false
-	}
-
-	return reflect.DeepEqual(docA, docB)
 }

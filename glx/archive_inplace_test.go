@@ -18,6 +18,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -45,6 +46,18 @@ func loadForInPlace(t *testing.T, dir string) *glxlib.GLXFile {
 	require.NoError(t, err)
 
 	return archive
+}
+
+// writeArchiveInPlaceFresh writes archive over the files dir holds now, for a
+// test whose archive was built in memory or whose files have not changed
+// since it was loaded.
+func writeArchiveInPlaceFresh(dir string, archive *glxlib.GLXFile, policy rewritePolicy) error {
+	files, err := collectGLXFilesFromDir(dir)
+	if err != nil {
+		return err
+	}
+
+	return writeArchiveInPlace(dir, files, archive, policy)
 }
 
 func readArchiveFile(t *testing.T, dir, relPath string) string {
@@ -81,7 +94,7 @@ func TestWriteArchiveInPlace_KeepsHybridLayout(t *testing.T) {
 	delete(archive.Persons, "person-b")
 	archive.Persons["person-a"].Properties["primary_name"] = "Alice Smith"
 
-	require.NoError(t, writeArchiveInPlace(dir, archive, rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(dir, archive, rewriteChanged))
 
 	family := readArchiveFile(t, dir, "people/family.glx")
 	assert.Contains(t, family, "Alice Smith")
@@ -102,7 +115,7 @@ func TestWriteArchiveInPlace_KeepsHybridLayout(t *testing.T) {
 func TestWriteArchiveInPlace_NoChangeWritesNothing(t *testing.T) {
 	dir := stageInPlaceArchive(t, map[string]string{"people/family.glx": familyGLX})
 
-	require.NoError(t, writeArchiveInPlace(dir, loadForInPlace(t, dir), rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(dir, loadForInPlace(t, dir), rewriteChanged))
 
 	assert.Equal(t, familyGLX, readArchiveFile(t, dir, "people/family.glx"))
 }
@@ -116,7 +129,7 @@ func TestWriteArchiveInPlace_DeletesEmptiedFile(t *testing.T) {
 	archive := loadForInPlace(t, dir)
 	delete(archive.Persons, "person-b")
 
-	require.NoError(t, writeArchiveInPlace(dir, archive, rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(dir, archive, rewriteChanged))
 
 	assert.NoFileExists(t, filepath.Join(dir, "persons", "person-b.glx"))
 	assert.FileExists(t, filepath.Join(dir, "persons", "person-a.glx"))
@@ -128,7 +141,7 @@ func TestWriteArchiveInPlace_NewEntityGoesToCanonicalPath(t *testing.T) {
 	archive := loadForInPlace(t, dir)
 	archive.Events["Event-Birth-A"] = &glxlib.Event{Type: "birth"}
 
-	require.NoError(t, writeArchiveInPlace(dir, archive, rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(dir, archive, rewriteChanged))
 
 	assert.Contains(t, readArchiveFile(t, dir, "events/event-birth-a.glx"), "Event-Birth-A")
 	assert.Equal(t, familyGLX, readArchiveFile(t, dir, "people/family.glx"))
@@ -143,7 +156,7 @@ func TestWriteArchiveInPlace_NewEntityJoinsFileAtCanonicalPath(t *testing.T) {
 	archive := loadForInPlace(t, dir)
 	archive.Persons["person-new"] = &glxlib.Person{Properties: map[string]any{"primary_name": "New"}}
 
-	require.NoError(t, writeArchiveInPlace(dir, archive, rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(dir, archive, rewriteChanged))
 
 	joined := readArchiveFile(t, dir, "Persons/Person-New.glx")
 	assert.Contains(t, joined, "person-other")
@@ -158,7 +171,7 @@ func TestWriteArchiveInPlace_RefusesCaseOnlyCollisionWithNewEntity(t *testing.T)
 	archive := loadForInPlace(t, dir)
 	archive.Persons["Person-A"] = &glxlib.Person{}
 
-	err := writeArchiveInPlace(dir, archive, rewriteChanged)
+	err := writeArchiveInPlaceFresh(dir, archive, rewriteChanged)
 
 	require.ErrorIs(t, err, glxlib.ErrCaseInsensitiveCollision)
 	assert.Equal(t, familyGLX, readArchiveFile(t, dir, "people/family.glx"))
@@ -179,7 +192,7 @@ func TestWriteArchiveInPlace_DuplicateDefinitions(t *testing.T) {
 		archive := loadForInPlace(t, dir)
 		archive.Persons["person-a"].Properties["primary_name"] = "Updated"
 
-		require.NoError(t, writeArchiveInPlace(dir, archive, rewriteChanged))
+		require.NoError(t, writeArchiveInPlaceFresh(dir, archive, rewriteChanged))
 
 		assert.Contains(t, readArchiveFile(t, dir, "a/first.glx"), "Updated")
 		assert.Equal(t, shadow, readArchiveFile(t, dir, "b/second.glx"))
@@ -190,7 +203,7 @@ func TestWriteArchiveInPlace_DuplicateDefinitions(t *testing.T) {
 		archive := loadForInPlace(t, dir)
 		delete(archive.Persons, "person-a")
 
-		require.NoError(t, writeArchiveInPlace(dir, archive, rewriteChanged))
+		require.NoError(t, writeArchiveInPlaceFresh(dir, archive, rewriteChanged))
 
 		assert.NoFileExists(t, filepath.Join(dir, "a", "first.glx"))
 		assert.NoFileExists(t, filepath.Join(dir, "b", "second.glx"))
@@ -206,7 +219,7 @@ func TestWriteArchiveInPlace_NewVocabularyEntryJoinsDefiningFile(t *testing.T) {
 	archive := loadForInPlace(t, dir)
 	archive.EventTypes["confirmation"] = &glxlib.VocabularyEntry{Label: "Confirmation"}
 
-	require.NoError(t, writeArchiveInPlace(dir, archive, rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(dir, archive, rewriteChanged))
 
 	events := readArchiveFile(t, dir, "vocab/events.glx")
 	assert.Contains(t, events, "barmitzvah")
@@ -222,7 +235,7 @@ func TestWriteArchiveInPlace_StandardFilledVocabulary(t *testing.T) {
 	t.Run("untouched defaults are not written", func(t *testing.T) {
 		dir := stageInPlaceArchive(t, map[string]string{"people/family.glx": familyGLX})
 
-		require.NoError(t, writeArchiveInPlace(dir, loadForInPlace(t, dir), rewriteChanged))
+		require.NoError(t, writeArchiveInPlaceFresh(dir, loadForInPlace(t, dir), rewriteChanged))
 
 		assert.NoDirExists(t, filepath.Join(dir, "vocabularies"))
 	})
@@ -234,7 +247,7 @@ func TestWriteArchiveInPlace_StandardFilledVocabulary(t *testing.T) {
 		standardCount := len(archive.EventTypes)
 		archive.EventTypes["barmitzvah"] = &glxlib.VocabularyEntry{Label: "Bar Mitzvah"}
 
-		require.NoError(t, writeArchiveInPlace(dir, archive, rewriteChanged))
+		require.NoError(t, writeArchiveInPlaceFresh(dir, archive, rewriteChanged))
 
 		reloaded := loadForInPlace(t, dir)
 		assert.Contains(t, reloaded.EventTypes, "barmitzvah")
@@ -252,7 +265,7 @@ func TestWriteArchiveInPlace_Metadata(t *testing.T) {
 		archive := loadForInPlace(t, dir)
 		archive.ImportMetadata = &glxlib.Metadata{SourceSystem: "test"}
 
-		require.NoError(t, writeArchiveInPlace(dir, archive, rewriteChanged))
+		require.NoError(t, writeArchiveInPlaceFresh(dir, archive, rewriteChanged))
 
 		assert.Contains(t, readArchiveFile(t, dir, archiveMetadataFile), "test")
 	})
@@ -264,7 +277,7 @@ func TestWriteArchiveInPlace_Metadata(t *testing.T) {
 		archive := loadForInPlace(t, dir)
 		archive.ImportMetadata.SourceSystem = "new"
 
-		require.NoError(t, writeArchiveInPlace(dir, archive, rewriteChanged))
+		require.NoError(t, writeArchiveInPlaceFresh(dir, archive, rewriteChanged))
 
 		assert.Contains(t, readArchiveFile(t, dir, "people/family.glx"), "new")
 		assert.NoFileExists(t, filepath.Join(dir, archiveMetadataFile))
@@ -277,10 +290,10 @@ func TestWriteArchiveInPlace_NormalizedPolicyPersistsShimFolds(t *testing.T) {
 	legacy := "media:\n  media-1:\n    uri: files/a.jpg\n    description: A portrait\n"
 
 	dir := stageInPlaceArchive(t, map[string]string{"media/media-1.glx": legacy})
-	require.NoError(t, writeArchiveInPlace(dir, loadForInPlace(t, dir), rewriteChanged))
+	require.NoError(t, writeArchiveInPlaceFresh(dir, loadForInPlace(t, dir), rewriteChanged))
 	assert.Equal(t, legacy, readArchiveFile(t, dir, "media/media-1.glx"))
 
-	require.NoError(t, writeArchiveInPlace(dir, loadForInPlace(t, dir), rewriteNormalized))
+	require.NoError(t, writeArchiveInPlaceFresh(dir, loadForInPlace(t, dir), rewriteNormalized))
 	migrated := readArchiveFile(t, dir, "media/media-1.glx")
 	assert.Contains(t, migrated, "properties:")
 	assert.Contains(t, migrated, "A portrait")
@@ -428,7 +441,7 @@ func TestWriteArchiveInPlace_EmptyMetadataBlockDoesNotOwnMetadata(t *testing.T) 
 	t.Run("no-op leaves both files alone", func(t *testing.T) {
 		dir := stageInPlaceArchive(t, files)
 
-		require.NoError(t, writeArchiveInPlace(dir, loadForInPlace(t, dir), rewriteChanged))
+		require.NoError(t, writeArchiveInPlaceFresh(dir, loadForInPlace(t, dir), rewriteChanged))
 
 		assert.Equal(t, emptyMetaFirst, readArchiveFile(t, dir, "family/person-c.glx"))
 		assert.Equal(t, metadata, readArchiveFile(t, dir, "metadata.glx"))
@@ -439,7 +452,7 @@ func TestWriteArchiveInPlace_EmptyMetadataBlockDoesNotOwnMetadata(t *testing.T) 
 		archive := loadForInPlace(t, dir)
 		archive.ImportMetadata.SourceSystem = "Other Tree"
 
-		require.NoError(t, writeArchiveInPlace(dir, archive, rewriteChanged))
+		require.NoError(t, writeArchiveInPlaceFresh(dir, archive, rewriteChanged))
 
 		assert.Equal(t, emptyMetaFirst, readArchiveFile(t, dir, "family/person-c.glx"))
 		assert.Contains(t, readArchiveFile(t, dir, "metadata.glx"), "Other Tree")
@@ -455,4 +468,142 @@ func TestWriteArchiveInPlace_EmptyMetadataBlockDoesNotOwnMetadata(t *testing.T) 
 		assert.Equal(t, "My Tree", merged.ImportMetadata.SourceSystem)
 		assert.NotContains(t, readArchiveFile(t, dir, "family/person-c.glx"), "My Tree")
 	})
+}
+
+// The write compares the disk with the bytes the command loaded, not a fresh
+// read: an entity added after the load is neither deleted as though the
+// command removed it nor overwritten (#1247 review).
+func TestWriteArchiveInPlace_RefusesEditMadeAfterLoad(t *testing.T) {
+	dir := stageInPlaceArchive(t, map[string]string{"people/family.glx": familyGLX})
+	archive, _, loaded, err := loadArchiveForWrite(dir)
+	require.NoError(t, err)
+	delete(archive.Persons, "person-b")
+
+	edited := familyGLX + "  person-c:\n    properties:\n      primary_name: Carol\n"
+	writeSkipTestFile(t, filepath.Join(dir, "people", "family.glx"), edited)
+
+	err = writeArchiveInPlace(dir, loaded, archive, rewriteChanged)
+
+	require.ErrorIs(t, err, ErrRenameFileChanged)
+	assert.Equal(t, edited, readArchiveFile(t, dir, "people/family.glx"))
+	assert.NoFileExists(t, filepath.Join(dir, inPlaceJournalFile))
+}
+
+// A change to an entry the loader filled from the standard set reaches disk:
+// the type vocabulary is written whole, so the next load keeps the change
+// and every other standard entry.
+func TestWriteArchiveInPlace_ChangedStandardEntry(t *testing.T) {
+	t.Run("modified", func(t *testing.T) {
+		dir := stageInPlaceArchive(t, map[string]string{"people/family.glx": familyGLX})
+		archive := loadForInPlace(t, dir)
+		standardCount := len(archive.EventTypes)
+		archive.EventTypes["birth"] = &glxlib.VocabularyEntry{Label: "Birth (custom)"}
+
+		require.NoError(t, writeArchiveInPlaceFresh(dir, archive, rewriteChanged))
+
+		reloaded := loadForInPlace(t, dir)
+		assert.Equal(t, "Birth (custom)", reloaded.EventTypes["birth"].Label)
+		assert.Len(t, reloaded.EventTypes, standardCount)
+	})
+
+	t.Run("removed", func(t *testing.T) {
+		dir := stageInPlaceArchive(t, map[string]string{"people/family.glx": familyGLX})
+		archive := loadForInPlace(t, dir)
+		standardCount := len(archive.EventTypes)
+		delete(archive.EventTypes, "birth")
+
+		require.NoError(t, writeArchiveInPlaceFresh(dir, archive, rewriteChanged))
+
+		reloaded := loadForInPlace(t, dir)
+		assert.NotContains(t, reloaded.EventTypes, "birth")
+		assert.Len(t, reloaded.EventTypes, standardCount-1)
+	})
+}
+
+// A property vocabulary is always unioned with the standard set, so adding a
+// custom property writes that property alone: copying the standard ones in
+// would override them for good.
+func TestWriteArchiveInPlace_PropertyVocabularyWritesOnlyChanges(t *testing.T) {
+	dir := stageInPlaceArchive(t, map[string]string{"people/family.glx": familyGLX})
+	archive := loadForInPlace(t, dir)
+	require.NotEmpty(t, archive.PersonProperties, "the loader supplies the standard person properties")
+	standardCount := len(archive.PersonProperties)
+	archive.PersonProperties["clan"] = &glxlib.PropertyDefinition{Label: "Clan", ValueType: "string"}
+
+	require.NoError(t, writeArchiveInPlaceFresh(dir, archive, rewriteChanged))
+
+	files, err := collectGLXFilesFromDir(dir)
+	require.NoError(t, err)
+	var written *glxlib.GLXFile
+	for relPath, data := range files {
+		if strings.HasPrefix(filepath.ToSlash(relPath), "vocabularies/") {
+			written, err = createSerializer(false, false, "").DeserializeSingleFileBytes(data)
+			require.NoError(t, err)
+		}
+	}
+	require.NotNil(t, written, "the new property is written to a vocabulary file")
+	assert.Len(t, written.PersonProperties, 1)
+	assert.Contains(t, written.PersonProperties, "clan")
+	assert.Len(t, loadForInPlace(t, dir).PersonProperties, standardCount+1)
+}
+
+// rewriteNormalized rewrites only files holding a shimmed field: a file that
+// is merely formatted differently from the canonical form keeps its bytes.
+func TestWriteArchiveInPlace_NormalizedPolicyLeavesFormattingAlone(t *testing.T) {
+	handWritten := "# Notes on the census.\nsources:\n  source-1850:   {title: \"1850 Census\"}\n"
+	dir := stageInPlaceArchive(t, map[string]string{"sources/census.glx": handWritten})
+
+	require.NoError(t, writeArchiveInPlaceFresh(dir, loadForInPlace(t, dir), rewriteNormalized))
+
+	assert.Equal(t, handWritten, readArchiveFile(t, dir, "sources/census.glx"))
+}
+
+// A file deleted because it was left empty takes any directory it leaves
+// empty with it.
+func TestWriteArchiveInPlace_DeletingLastFileRemovesItsDirectory(t *testing.T) {
+	dir := stageInPlaceArchive(t, map[string]string{
+		"persons/person-a.glx":     "persons:\n  person-a: {}\n",
+		"people/old/person-b.glx": "persons:\n  person-b: {}\n",
+	})
+	archive := loadForInPlace(t, dir)
+	delete(archive.Persons, "person-b")
+
+	require.NoError(t, writeArchiveInPlaceFresh(dir, archive, rewriteChanged))
+
+	assert.NoDirExists(t, filepath.Join(dir, "people"))
+	assert.DirExists(t, filepath.Join(dir, "persons"))
+	assert.NoFileExists(t, filepath.Join(dir, inPlaceJournalFile))
+}
+
+// A journal left by an interrupted write refuses the next write until the
+// user has dealt with it.
+func TestWriteArchiveInPlace_RefusesWhileJournalPresent(t *testing.T) {
+	dir := stageInPlaceArchive(t, map[string]string{"people/family.glx": familyGLX})
+	writeSkipTestFile(t, filepath.Join(dir, inPlaceJournalFile), "[]\n")
+	archive := loadForInPlace(t, dir)
+	delete(archive.Persons, "person-b")
+
+	err := writeArchiveInPlaceFresh(dir, archive, rewriteChanged)
+
+	require.ErrorIs(t, err, ErrInterruptedInPlaceWrite)
+	assert.Equal(t, familyGLX, readArchiveFile(t, dir, "people/family.glx"))
+}
+
+// A failed write that rolls back cleanly removes the directories it created
+// and its journal.
+func TestExecuteInPlaceOps_RolledBackFailureTidiesUp(t *testing.T) {
+	dir := stageInPlaceArchive(t, map[string]string{"persons/person-a.glx": "persons:\n  person-a: {}\n"})
+	// A directory where a file is to be rewritten makes that write fail.
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "blocked.glx"), 0o755))
+	ops := []fileOp{
+		{relPath: filepath.Join("events", "new", "event-1.glx"), newData: []byte("events:\n  event-1: {}\n")},
+		{relPath: "blocked.glx", oldData: []byte("x"), newData: []byte("y")},
+	}
+
+	err := executeInPlaceOps(dir, ops)
+
+	require.Error(t, err)
+	require.NotErrorIs(t, err, errRollbackIncomplete)
+	assert.NoDirExists(t, filepath.Join(dir, "events"))
+	assert.NoFileExists(t, filepath.Join(dir, inPlaceJournalFile))
 }

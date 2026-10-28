@@ -125,10 +125,11 @@ func mergeArchives(srcPath, destPath string, preview bool, threshold float64) er
 	}
 
 	var dest *glxlib.GLXFile
+	var destFiles map[string][]byte
 	destIsDir := destInfo.IsDir()
 
 	if destIsDir {
-		loaded, dupes, loadErr := LoadArchiveWithOptions(destPath, false)
+		loaded, dupes, files, loadErr := loadArchiveForWrite(destPath)
 		if loadErr != nil {
 			return fmt.Errorf("failed to load destination archive: %w", loadErr)
 		}
@@ -136,6 +137,7 @@ func mergeArchives(srcPath, destPath string, preview bool, threshold float64) er
 			fmt.Fprintf(os.Stderr, "Warning (dest): %s\n", d)
 		}
 		dest = loaded
+		destFiles = files
 	} else {
 		loaded, loadErr := readSingleFileArchive(destPath, false)
 		if loadErr != nil {
@@ -238,7 +240,7 @@ func mergeArchives(srcPath, destPath string, preview bool, threshold float64) er
 	// write atomic with rollback (#1247). Single-file archives use
 	// os.WriteFile directly (not atomic; see #595).
 	if destIsDir {
-		if err := writeArchiveInPlace(destPath, dest, rewriteChanged); err != nil {
+		if err := writeArchiveInPlace(destPath, destFiles, dest, rewriteChanged); err != nil {
 			return err
 		}
 		copied, skipped, copyErr := executeMediaCopies(mediaPlan, destPath, dest)

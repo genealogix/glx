@@ -138,10 +138,11 @@ func migrateArchive(archivePath string) error {
 	}
 
 	var archive *glxlib.GLXFile
+	var loadedFiles map[string][]byte
 	isDir := info.IsDir()
 
 	if isDir {
-		loaded, duplicates, loadErr := LoadArchiveWithOptions(archivePath, false)
+		loaded, duplicates, files, loadErr := loadArchiveForWrite(archivePath)
 		if loadErr != nil {
 			return fmt.Errorf("failed to load archive: %w", loadErr)
 		}
@@ -149,6 +150,7 @@ func migrateArchive(archivePath string) error {
 			fmt.Fprintf(os.Stderr, "Warning: %s\n", d)
 		}
 		archive = loaded
+		loadedFiles = files
 	} else {
 		loaded, loadErr := readSingleFileArchive(archivePath, false)
 		if loadErr != nil {
@@ -259,7 +261,7 @@ func migrateArchive(archivePath string) error {
 	if isDir {
 		// rewriteNormalized: the description migrations are load-time
 		// shims, so only a comparison with the bytes on disk sees them.
-		if err := writeArchiveInPlace(archivePath, archive, rewriteNormalized); err != nil {
+		if err := writeArchiveInPlace(archivePath, loadedFiles, archive, rewriteNormalized); err != nil {
 			return fmt.Errorf("failed to write archive: %w", err)
 		}
 	} else {

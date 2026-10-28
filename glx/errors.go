@@ -166,4 +166,11 @@ var (
 	// placeholder (Windows, core.symlinks=false) and the on-disk file is
 	// really the placeholder.
 	ErrRenameFileChanged = errors.New("file changed on disk since the archive was loaded")
+
+	// ErrInterruptedInPlaceWrite is returned by an in-place archive write
+	// (glx merge, merge-persons, migrate) when the journal an earlier write
+	// leaves while it runs is still present: that write stopped part way, so
+	// some files may hold its result and others not. The journal records the
+	// prior content of every file the write touched.
+	ErrInterruptedInPlaceWrite = errors.New("an earlier in-place write to this archive was interrupted")
 )
