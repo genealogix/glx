@@ -74,7 +74,19 @@ func isManagedTopLevel(entry fs.DirEntry) bool {
 // shell in a deleted inode that no longer shows the archive (#1192). Non-archive
 // top-level entries (e.g., .git, README.md, CLAUDE.md, dotfiles) are therefore
 // never moved at all; see archiveManagedTopLevel.
-func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
+// archivePublicationError means new metadata may be active. Callers must retain
+// media until recovery confirms that the old metadata has been restored.
+type archivePublicationError struct{ error }
+
+func (err *archivePublicationError) Unwrap() error { return err.error }
+
+func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) (writeErr error) {
+	mayHavePublished := false
+	defer func() {
+		if writeErr != nil && mayHavePublished {
+			writeErr = &archivePublicationError{writeErr}
+		}
+	}()
 	// Resolve to absolute path so rename and cwd containment checks work
 	// reliably for relative paths like ".". mergeArchives does the same.
 	absPath, err := filepath.Abs(destPath)
@@ -159,7 +171,11 @@ func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
 	if err := removeStaleBackup(backupDir); err != nil {
 		return err
 	}
+	mayHavePublished = true
 	if err := swapManagedEntries(destPath, tmpDir, backupDir); err != nil {
+		if _, backupErr := os.Lstat(backupDir); os.IsNotExist(backupErr) {
+			mayHavePublished = false
+		}
 		return err
 	}
 

@@ -602,3 +602,26 @@ func TestMergeArchives_SingleFileDestWarnsAboutSourceBinaries(t *testing.T) {
 	assert.Contains(t, stderr, "single-file destination", "expected dangling-binary warning")
 	assert.Contains(t, stderr, "media/files")
 }
+
+func TestPublishMergedMultiFileArchive_PreservedEntryFailureKeepsReferencedMedia(t *testing.T) {
+	archiveDir := filepath.Join(t.TempDir(), "archive")
+	require.NoError(t, os.MkdirAll(archiveDir, dirPermissions))
+	writeSkipTestFile(t, filepath.Join(archiveDir, "persons", "alice.glx"), "persons:\n  person-1:\n    properties:\n      primary_name: Alice\n")
+	writeSkipTestFile(t, filepath.Join(archiveDir, ".drafts", "person-1.glx"), "persons: {}\n")
+	if err := os.Symlink(filepath.Join("..", ".drafts", "person-1.glx"), filepath.Join(archiveDir, "persons", "person-1.glx")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	archive, _, err := LoadArchive(archiveDir)
+	require.NoError(t, err)
+	source := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(source, "new.jpg"), []byte("new"), filePermissions))
+	media := &glxlib.Media{URI: "media/files/new.jpg"}
+	archive.Media = map[string]*glxlib.Media{"new": media}
+	plan := []plannedMediaCopy{{SrcPath: filepath.Join(source, "new.jpg"), SrcRoot: source, TargetName: "new.jpg", SrcMedia: map[string]*glxlib.Media{"new": media}}}
+	_, _, err = publishMergedMultiFileArchive(archiveDir, archive, plan)
+	require.ErrorIs(t, err, ErrPreservedEntryCollision)
+	require.Equal(t, []byte("new"), mustReadImportMedia(t, filepath.Join(archiveDir, "media", "files", "new.jpg")))
+	loaded, _, loadErr := LoadArchive(archiveDir)
+	require.NoError(t, loadErr)
+	require.Equal(t, "media/files/new.jpg", loaded.Media["new"].URI)
+}

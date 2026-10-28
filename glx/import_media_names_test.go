@@ -79,7 +79,7 @@ func TestReserveImportMediaDestinations_PreservesExistingFileAndReferences(t *te
 		{MediaID: "blob", SourceType: glxlib.MediaSourceBlob, TargetFilename: "photo.jpg"},
 	}
 
-	require.NoError(t, reserveImportMediaDestinations(glx, files, archiveDir))
+	require.NoError(t, allocateImportMediaDestinations(glx, files, archiveDir, "", nil))
 	require.Equal(t, "photo-2.jpg", files[0].TargetFilename)
 	require.Equal(t, "photo-3.jpg", files[1].TargetFilename)
 	require.Equal(t, "media/files/photo-2.jpg", glx.Media["file"].URI)
@@ -103,7 +103,7 @@ func TestReserveImportMediaDestinations_UsesVersionAwareOriginalName(t *testing.
 		OriginalFilename: "CharlotteBrontë.jpg", TargetFilename: encoded,
 	}}
 
-	require.NoError(t, reserveImportMediaDestinations(glx, files, archiveDir))
+	require.NoError(t, allocateImportMediaDestinations(glx, files, archiveDir, "", nil))
 	require.Equal(t, "CharlotteBront%C3%AB-2.jpg", files[0].TargetFilename)
 	require.Equal(t, glxlib.MediaFilesDir+"/CharlotteBront%C3%AB-2.jpg", media.URI)
 	require.Equal(t, "CharlotteBrontë.jpg", media.Properties[glxlib.MediaPropertyOriginalFilename])
@@ -111,11 +111,11 @@ func TestReserveImportMediaDestinations_UsesVersionAwareOriginalName(t *testing.
 
 func TestReserveImportMediaDestinations_UnoccupiedAndEmpty(t *testing.T) {
 	archiveDir := t.TempDir()
-	require.NoError(t, reserveImportMediaDestinations(nil, nil, archiveDir))
+	require.NoError(t, allocateImportMediaDestinations(nil, nil, archiveDir, "", nil))
 	media := &glxlib.Media{URI: "media/files/unique.jpg"}
 	glx := &glxlib.GLXFile{Media: map[string]*glxlib.Media{"file": media}}
 	files := []glxlib.MediaFileSource{{MediaID: "file", TargetFilename: "unique.jpg"}}
-	require.NoError(t, reserveImportMediaDestinations(glx, files, archiveDir))
+	require.NoError(t, allocateImportMediaDestinations(glx, files, archiveDir, "", nil))
 	require.Equal(t, "unique.jpg", files[0].TargetFilename)
 	require.Equal(t, "media/files/unique.jpg", media.URI)
 }
@@ -128,7 +128,7 @@ func TestReserveImportMediaDestinations_RejectsNonDirectoryMediaPath(t *testing.
 			require.NoError(t, os.MkdirAll(filepath.Dir(occupiedPath), dirPermissions))
 			require.NoError(t, os.WriteFile(occupiedPath, []byte("occupied"), filePermissions))
 			files := []glxlib.MediaFileSource{{MediaID: "file", TargetFilename: "photo.jpg"}}
-			require.Error(t, reserveImportMediaDestinations(&glxlib.GLXFile{}, files, archiveDir))
+			require.Error(t, allocateImportMediaDestinations(&glxlib.GLXFile{}, files, archiveDir, "", nil))
 		})
 	}
 }

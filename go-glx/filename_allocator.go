@@ -20,6 +20,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
 	"golang.org/x/text/cases"
 	"golang.org/x/text/unicode/norm"
@@ -28,6 +29,11 @@ import (
 // FilenameAllocator reserves basenames across case-insensitive filesystems and
 // Unicode normalization forms. It does not access the filesystem: callers seed
 // it with existing names before allocating new ones.
+// used reserves every collision key; seededName/remaining track reusable disk
+// spellings, while claimed/exhausted exclude allocations already handed out.
+// nextSuffix caches free-space probes; firstOpen caches reuse probes. The
+// seeded/seededSort index skips gaps without discarding unmatched disk entries.
+// Allocate and ClaimExisting update the same claim state as AllocateMatching.
 type FilenameAllocator struct {
 	used       map[string]string // normalized key -> first reserved spelling
 	nextSuffix map[string]int    // normalized basename -> next suffix worth trying
@@ -65,8 +71,13 @@ func NewFilenameAllocator(existing ...string) *FilenameAllocator {
 // FilenameCollisionKey folds case and canonical Unicode equivalents so names
 // that can address the same file on common Windows and macOS filesystems share
 // a reservation. Conservative extra collisions only cause a numbered suffix.
+var filenameCaseFolders = sync.Pool{New: func() any { return cases.Fold() }}
+
 func FilenameCollisionKey(name string) string {
-	return cases.Fold().String(norm.NFC.String(strings.TrimRight(name, ". ")))
+	folder := filenameCaseFolders.Get().(cases.Caser)
+	key := folder.String(norm.NFC.String(strings.TrimRight(name, ". ")))
+	filenameCaseFolders.Put(folder)
+	return key
 }
 
 // Existing returns the first reserved spelling equivalent to name, if any.
@@ -110,6 +121,8 @@ func (a *FilenameAllocator) recordExisting(name, key string) {
 func (a *FilenameAllocator) Allocate(basename string) string {
 	candidate, ordinal := a.NextAvailable(basename)
 	a.reserveKey(candidate, FilenameCollisionKey(candidate))
+	a.claimed[candidate] = true
+	a.exhausted[FilenameCollisionKey(candidate)] = true
 	if ordinal > 1 {
 		a.nextSuffix[FilenameCollisionKey(PortableFilename(basename))] = ordinal + 1
 	}
@@ -118,7 +131,7 @@ func (a *FilenameAllocator) Allocate(basename string) string {
 }
 
 // NextAvailable reports the spelling and ordinal Allocate would reserve,
-// without changing the allocator. Ordinal 1 is the unsuffixed basename.
+// without reserving a name. It caches occupied suffixes. Ordinal 1 is the unsuffixed basename.
 func (a *FilenameAllocator) NextAvailable(basename string) (string, int) {
 	basename = PortableFilename(basename)
 	key := FilenameCollisionKey(basename)
@@ -131,6 +144,7 @@ func (a *FilenameAllocator) NextAvailable(basename string) (string, int) {
 	for n := max(a.nextSuffix[key], 2); ; n++ {
 		candidate := fmt.Sprintf("%s-%d%s", stem, n, ext)
 		if _, occupied := a.used[FilenameCollisionKey(candidate)]; !occupied {
+			a.nextSuffix[key] = n
 			return candidate, n
 		}
 	}
@@ -205,23 +219,48 @@ func (a *FilenameAllocator) advanceFirstOpen(baseKey, basename, stem, ext string
 	a.firstOpen[baseKey] = n
 }
 
-func (a *FilenameAllocator) recordSeed(name string) {
-	// Parse the same portable spelling used by collision keys. An on-disk
-	// trailing dot or space must still be discoverable as a numbered seed.
-	name = strings.TrimRight(name, ". ")
-	ext := filepath.Ext(name)
-	stem := strings.TrimSuffix(name, ext)
+// NumberedFilenameSeed returns the collision key and ordinal of a canonical
+// <base>-N<ext> name. Noncanonical numbers such as -02 are separate basenames.
+func NumberedFilenameSeed(name string) (string, int, bool) {
+	trimmed := strings.TrimRight(name, ". ")
+	ext := filepath.Ext(trimmed)
+	stem := strings.TrimSuffix(trimmed, ext)
 	base, suffix, found := strings.CutLast(stem, "-")
 	if !found {
-		return
+		return "", 0, false
 	}
 	n, err := strconv.Atoi(suffix)
-	if err != nil || n < 2 {
+	if err != nil || n < 2 || FilenameCollisionKey(name) != FilenameCollisionKey(fmt.Sprintf("%s-%d%s", base, n, ext)) {
+		return "", 0, false
+	}
+	return FilenameCollisionKey(base + ext), n, true
+}
+
+func (a *FilenameAllocator) recordSeed(name string) {
+	key, n, ok := NumberedFilenameSeed(name)
+	if !ok {
 		return
 	}
-	key := FilenameCollisionKey(base + ext)
 	a.seeded[key] = append(a.seeded[key], n)
 	a.seededSort[key] = false
+}
+
+// ClaimExisting records an indexed content match using the same claim state as
+// AllocateMatching. It returns false when the spelling was already handed out.
+func (a *FilenameAllocator) ClaimExisting(basename, actual string) bool {
+	key, seeded := a.seededName[actual]
+	if !seeded || a.claimed[actual] {
+		return false
+	}
+	a.claimed[actual] = true
+	a.remaining[key]--
+	if a.remaining[key] == 0 {
+		a.exhausted[key] = true
+	}
+	basename = PortableFilename(basename)
+	ext := filepath.Ext(basename)
+	a.advanceFirstOpen(FilenameCollisionKey(basename), basename, strings.TrimSuffix(basename, ext), ext)
+	return true
 }
 
 func (a *FilenameAllocator) nextSeededSuffix(key string, atLeast int) int {
@@ -245,9 +284,9 @@ func PortableFilename(name string) string {
 	if name == "" {
 		return "unnamed"
 	}
-	if strings.ContainsAny(name, "<>:\"/\\|?*") {
+	{
 		name = strings.Map(func(r rune) rune {
-			if strings.ContainsRune("<>:\"/\\|?*", r) {
+			if r < 32 || strings.ContainsRune("<>:\"/\\|?*", r) {
 				return '-'
 			}
 
@@ -257,7 +296,7 @@ func PortableFilename(name string) string {
 	first, rest, hasDot := strings.Cut(name, ".")
 	stem := strings.ToUpper(strings.TrimRight(first, " ."))
 	switch stem {
-	case "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "COM¹", "COM²", "COM³", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9", "LPT¹", "LPT²", "LPT³":
+	case "CON", "PRN", "AUX", "NUL", "COM0", "LPT0", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "COM¹", "COM²", "COM³", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9", "LPT¹", "LPT²", "LPT³":
 		if hasDot {
 			return first + "-2." + rest
 		}

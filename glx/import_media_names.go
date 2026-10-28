@@ -23,7 +23,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
@@ -37,11 +36,6 @@ func importMediaDir(outputPath, format string) string {
 	}
 
 	return outputPath
-}
-
-// reserveImportMediaDestinations is retained for callers without source bytes.
-func reserveImportMediaDestinations(glx *glxlib.GLXFile, files []glxlib.MediaFileSource, archiveDir string) error {
-	return allocateImportMediaDestinations(glx, files, archiveDir, "", nil)
 }
 
 // allocateImportMediaDestinations reuses identical on-disk media and allocates
@@ -148,7 +142,7 @@ func indexMediaFamilies(names []string) map[string]*mediaFamilyIndex {
 	}
 	for _, name := range names {
 		add(glxlib.FilenameCollisionKey(name), name, 1)
-		if baseKey, ordinal, ok := numberedMediaSeed(name); ok {
+		if baseKey, ordinal, ok := glxlib.NumberedFilenameSeed(name); ok {
 			add(baseKey, name, ordinal)
 		}
 	}
@@ -163,22 +157,6 @@ func indexMediaFamilies(names []string) map[string]*mediaFamilyIndex {
 	}
 
 	return families
-}
-
-func numberedMediaSeed(name string) (string, int, bool) {
-	trimmed := strings.TrimRight(name, ". ")
-	ext := filepath.Ext(trimmed)
-	stem := strings.TrimSuffix(trimmed, ext)
-	base, suffix, found := strings.CutLast(stem, "-")
-	if !found {
-		return "", 0, false
-	}
-	ordinal, err := strconv.Atoi(suffix)
-	if err != nil || ordinal < 2 || glxlib.FilenameCollisionKey(name) != glxlib.FilenameCollisionKey(fmt.Sprintf("%s-%d%s", base, ordinal, ext)) {
-		return "", 0, false
-	}
-
-	return glxlib.FilenameCollisionKey(base + ext), ordinal, true
 }
 
 func (family *mediaFamilyIndex) allocate(requested string, firstFree int, allocator *glxlib.FilenameAllocator, matcher *importMediaMatcher) (string, bool, error) {
@@ -220,7 +198,7 @@ func (family *mediaFamilyIndex) allocate(requested string, firstFree int, alloca
 				chosen = name
 			}
 		}
-		if chosen != "" {
+		if chosen != "" && allocator.ClaimExisting(requested, chosen) {
 			return chosen, true, nil
 		}
 		family.cursor[matcher.sourceHash] = i

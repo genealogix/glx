@@ -208,7 +208,11 @@ func exportPerson(personID string, person *Person, expCtx *ExportContext) *GEDCO
 			if eventRecord != nil {
 				record.SubRecords = append(record.SubRecords, eventRecord)
 				hosts := eventHostIDs(event)
-				queueGEDCOM551EventAssociations(eventID, event, eventRecord.Tag, []string{personID}, func(p Participant) bool {
+				subjects := hosts
+				if !slices.Contains(subjects, personID) {
+					subjects = []string{personID}
+				}
+				queueGEDCOM551EventAssociations(eventID, event, eventRecord.Tag, subjects, []string{personID}, func(p Participant) bool {
 					return slices.Contains(hosts, p.Person)
 				}, expCtx)
 				expCtx.Stats.EventsProcessed++

@@ -101,6 +101,9 @@ type MediaFileSource struct {
 	// ReuseExisting means TargetFilename already contains identical bytes in
 	// the destination archive and does not need to be written again.
 	ReuseExisting bool
+
+	// originalFilenameRecorded tracks provenance added by this allocation, rather than supplied by the archive.
+	originalFilenameRecorded bool
 }
 
 // SetMediaURI updates the active media URI and records FILE provenance when
@@ -113,6 +116,9 @@ func (source *MediaFileSource) SetMediaURI(media *Media, filename string) {
 	}
 	if source.SourceType == MediaSourceFile && filename != requested {
 		source.RecordOriginalFilename(media)
+	} else if source.originalFilenameRecorded && isCanonicalMediaRef(source.RelativePath) {
+		delete(media.Properties, MediaPropertyOriginalFilename)
+		source.originalFilenameRecorded = false
 	}
 }
 
@@ -130,6 +136,7 @@ func (source *MediaFileSource) RecordOriginalFilename(media *Media) {
 		original = path.Base(source.RelativePath)
 	}
 	media.Properties[MediaPropertyOriginalFilename] = original
+	source.originalFilenameRecorded = true
 }
 
 // ImportResult contains statistics and information about the import

@@ -267,8 +267,8 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 			RequestedFilename: basename,
 			TargetFilename:    targetName,
 		}
-		conv.MediaFileSources = append(conv.MediaFileSources, source)
 		source.SetMediaURI(media, targetName)
+		conv.MediaFileSources = append(conv.MediaFileSources, source)
 		// Record the pre-rename basename: a collision rename (photo.jpg →
 		// photo-2.jpg) puts only the renamed form in the URI, which would
 		// otherwise lose the source filename entirely. A ref already pointing

@@ -15,6 +15,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -272,7 +273,10 @@ func publishMergedMultiFileArchive(destPath string, archive *glxlib.GLXFile, pla
 		return copied, skipped, fmt.Errorf("copying source media binaries: %w", err)
 	}
 	if err := safeWriteMultiFileArchive(destPath, archive); err != nil {
-		rollback()
+		var published *archivePublicationError
+		if !errors.As(err, &published) {
+			rollback()
+		}
 
 		return copied, skipped, err
 	}

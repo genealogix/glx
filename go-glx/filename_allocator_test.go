@@ -213,3 +213,50 @@ func BenchmarkFilenameAllocator_RepeatedBasename(b *testing.B) {
 		a.Allocate("photo.jpg")
 	}
 }
+
+func TestFilenameAllocator_DenseReuseCachesFreeSuffix(t *testing.T) {
+	names := make([]string, 1000)
+	names[0] = "photo.jpg"
+	for i := 1; i < len(names); i++ {
+		names[i] = fmt.Sprintf("photo-%d.jpg", i+1)
+	}
+	a := NewFilenameAllocator(names...)
+	for range names {
+		name, ordinal := a.NextAvailable("photo.jpg")
+		require.Equal(t, "photo-1001.jpg", name)
+		require.Equal(t, 1001, ordinal)
+		require.Equal(t, 1001, a.nextSuffix[FilenameCollisionKey("photo.jpg")])
+	}
+	require.Equal(t, "photo-1001.jpg", a.Allocate("photo.jpg"))
+	require.Equal(t, "photo-1002.jpg", a.Allocate("photo.jpg"))
+}
+
+func TestPortableFilename_ControlBytesAndZeroDevices(t *testing.T) {
+	require.Equal(t, "COM0-2.jpg", PortableFilename("COM0.jpg"))
+	require.Equal(t, "LPT0-2.jpg", PortableFilename("LPT0.jpg"))
+	require.Equal(t, "a-b.jpg", PortableFilename("a\x01b.jpg"))
+}
+
+func TestFilenameAllocator_IndexedClaimCannotBeReused(t *testing.T) {
+	a := NewFilenameAllocator("photo.jpg", "photo-2.jpg")
+	require.True(t, a.ClaimExisting("photo.jpg", "photo.jpg"))
+	require.False(t, a.ClaimExisting("photo.jpg", "photo.jpg"))
+	name, reused, err := a.AllocateMatching("photo.jpg", func(candidate string) (string, error) { return candidate, nil })
+	require.NoError(t, err)
+	require.True(t, reused)
+	require.Equal(t, "photo-2.jpg", name)
+	require.Equal(t, "photo-3.jpg", a.Allocate("photo.jpg"))
+}
+
+func TestMediaFileSource_ReallocationClearsOnlyGeneratedCanonicalProvenance(t *testing.T) {
+	source := MediaFileSource{SourceType: MediaSourceFile, RequestedFilename: "photo.jpg", OriginalFilename: "photo.jpg", RelativePath: "media/files/photo.jpg"}
+	media := &Media{}
+	source.SetMediaURI(media, "photo-2.jpg")
+	require.Equal(t, "photo.jpg", media.Properties[MediaPropertyOriginalFilename])
+	source.SetMediaURI(media, "photo.jpg")
+	require.NotContains(t, media.Properties, MediaPropertyOriginalFilename)
+	media.Properties[MediaPropertyOriginalFilename] = "supplied.jpg"
+	source.SetMediaURI(media, "photo-2.jpg")
+	source.SetMediaURI(media, "photo.jpg")
+	require.Equal(t, "supplied.jpg", media.Properties[MediaPropertyOriginalFilename])
+}

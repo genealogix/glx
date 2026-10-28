@@ -273,16 +273,20 @@ func importGEDZIPToMultiFileUsing(glx *glxlib.GLXFile, outputPath string, valida
 
 		return fmt.Errorf("validating reused media: %w", err)
 	}
-	_, err = normalizeImportMediaDir(outputPath)
+	rollbackNormalization, err := normalizeImportMediaDir(outputPath)
 	if err != nil {
 		rollbackMedia()
 
 		return fmt.Errorf("normalizing media directory: %w", err)
 	}
 
+	snapshot := snapshotImportMetadata(outputPath, files)
 	if err := writeFiles(outputPath, files); err != nil {
-		// writeFiles can publish some entity files before a later write fails.
-		// Keep the media those files may already reference.
+		if snapshot.unchanged(outputPath) {
+			rollbackNormalization()
+			rollbackMedia()
+		}
+		// Partial metadata writes may reference the new media, so retain it.
 		return err
 	}
 

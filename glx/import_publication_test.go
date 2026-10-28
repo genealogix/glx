@@ -386,3 +386,29 @@ func TestImport_ReusedMediaChangedBeforePublicationPreservesArchive(t *testing.T
 		}
 	}
 }
+
+func TestMultiFileImport_NoMetadataPublishedRollsBackMedia(t *testing.T) {
+	for _, input := range []string{"GEDCOM", "GEDZIP"} {
+		t.Run(input, func(t *testing.T) {
+			output := filepath.Join(t.TempDir(), "archive")
+			variant := filepath.Join(output, "Media", "Files")
+			require.NoError(t, os.MkdirAll(variant, dirPermissions))
+			require.NoError(t, os.WriteFile(filepath.Join(variant, "old.jpg"), []byte("old"), filePermissions))
+			source := t.TempDir()
+			require.NoError(t, os.WriteFile(filepath.Join(source, "new.jpg"), []byte("new"), filePermissions))
+			archive := &glxlib.GLXFile{Media: map[string]*glxlib.Media{"new": {URI: "media/files/new.jpg"}}}
+			media := []glxlib.MediaFileSource{{MediaID: "new", SourceType: glxlib.MediaSourceFile, RelativePath: "new.jpg", MemberPath: "new.jpg", TargetFilename: "new.jpg"}}
+			fail := func(string, map[string][]byte) error { return errTestLaterMetadataWrite }
+			var err error
+			if input == "GEDCOM" {
+				err = importToMultiFileUsing(archive, output, false, false, 0, media, source, io.Discard, fail)
+			} else {
+				err = importGEDZIPToMultiFileUsing(archive, output, false, false, 0, media, os.DirFS(source), io.Discard, fail)
+			}
+			require.ErrorIs(t, err, errTestLaterMetadataWrite)
+			require.Equal(t, []byte("old"), mustReadImportMedia(t, filepath.Join(variant, "old.jpg")))
+			require.NoFileExists(t, filepath.Join(variant, "new.jpg"))
+			require.NoFileExists(t, filepath.Join(output, "media", "files", "new.jpg"))
+		})
+	}
+}
