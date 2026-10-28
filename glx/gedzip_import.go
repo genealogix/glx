@@ -150,6 +150,7 @@ func importGEDZIPToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, 
 		return fmt.Errorf("creating staging directory: %w", err)
 	}
 	defer func() { _ = os.RemoveAll(stageDir) }()
+	defer trackTemp(stageDir)()
 
 	streams := SystemIOStreams()
 	copyCount, blobCount, warnCount, err := stageMediaFilesFromFS(streams, stageDir, mediaFiles, bundle)
@@ -164,6 +165,7 @@ func importGEDZIPToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, 
 	tempPath := tempFile.Name()
 	_ = tempFile.Close()
 	defer func() { _ = os.Remove(tempPath) }()
+	defer trackTemp(tempPath)()
 
 	if err := writeSingleFileArchive(tempPath, glx, validate); err != nil {
 		return formatValidationError(err, showFirstErrors)
@@ -221,6 +223,7 @@ func importGEDZIPToMultiFile(glx *glxlib.GLXFile, outputPath string, validate, v
 		return fmt.Errorf("creating staging directory: %w", mkdirErr)
 	}
 	defer func() { _ = os.RemoveAll(stageDir) }()
+	defer trackTemp(stageDir)()
 
 	streams := SystemIOStreams()
 	copyCount, blobCount, warnCount, err := stageMediaFilesFromFS(streams, stageDir, mediaFiles, bundle)
