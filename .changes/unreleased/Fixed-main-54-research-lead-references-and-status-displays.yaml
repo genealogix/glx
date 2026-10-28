@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**Research lead references and status displays** — `glx merge-persons` keeps lead candidate references unique in their original order, and `glx summary` preserves archive-defined lead statuses instead of counting them as active. The lead vocabulary test has a distinct name so it compiles alongside the research creation commands merged in #1348.'
+time: '2026-10-10T00:00:03Z'
+custom:
+  Issue: '#1347'

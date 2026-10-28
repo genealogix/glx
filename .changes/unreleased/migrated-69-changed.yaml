@@ -1,0 +1,6 @@
+kind: Changed
+body: |-
+  **`glx export` no longer requires the archive as a positional argument** — `export` was the only archive-taking command that made the archive a required positional (`Use: "export <glx-archive>"`, `cobra.ExactArgs(1)`), so running it from inside an archive — `glx export -f 70 -o out.ged` — failed with cobra's bare `accepts 1 arg(s), received 0` before any export ran. The positional is now optional and defaults to `.`, matching `stats`, `serve`, `validate`, `places`, and the `-a/--archive` flag on `add`; every existing invocation that named an archive keeps working unchanged, and the two spellings produce byte-identical output. `--output` is still required. In the same sweep, `join` and `split` keep both of their positionals — an output path has nothing sensible to default to — but their argument errors now name what is missing (`glx join: missing required argument(s): <output-file>`) instead of reporting only a count, via a new `exactNamedArgs` helper that replaces `cobra.ExactArgs` on both. New e2e cases in `glx/e2e/export_test.go` cover the default, the explicit-archive equivalence, the still-required `--output`, and the worded `join`/`split` errors.
+time: 2026-10-01T00:00:17Z
+custom:
+  Issue: "#1274"

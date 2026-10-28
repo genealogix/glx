@@ -1,0 +1,5 @@
+kind: Added
+body: '**Census page neighbors on census events** — Census events gain an optional `neighbors` list (`name` and/or `person` reference, `position` such as `previous_household`, `page`, `line`, `notes`) for FAN research; a `person` must exist. `glx census add` accepts `household.neighbors`, and `glx cluster` scores a neighbor linked to a person as a `census_neighbor` link (2 points), in both directions.'
+time: '2026-10-09T00:00:04Z'
+custom:
+  Issue: '#180'

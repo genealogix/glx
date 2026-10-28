@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**GEDCOM family fallback keeps rejected parent links excluded** — A surviving parent can no longer place a child into a marriage family with a parent explicitly disproven for that child. The accepted marriage remains exported, and when no eligible family exists the child gets a family containing only the surviving parent. Applies to GEDCOM 5.5.1 and 7.0.'
+time: '2026-10-09T00:00:10Z'
+custom:
+  Issue: '#1380'

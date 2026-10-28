@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**`glx timeline` no longer calls a guardian''s ward a parent** — A `guardian` relationship made the other person a "parent" unless the guardian held the `parent` role. `guardian`/`ward` roles are now recognized (as are the legacy `parent`/`child` ones), unknown role pairs are ambiguous rather than defaulting to "parent", and the entries read `Death of ward`/`Death of guardian`. Step relations read `Death of stepchild`/`Death of stepparent`.'
+time: '2026-10-07T00:00:28Z'
+custom:
+  Issue: '#1325'

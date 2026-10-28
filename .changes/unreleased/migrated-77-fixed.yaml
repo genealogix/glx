@@ -1,0 +1,6 @@
+kind: Fixed
+body: |-
+  **`glx census add` output validates without warnings** — Household members' ages were written to `age_at_event` as integers, while the standard vocabulary types that property as a string (it carries GEDCOM `AGE` values such as `3y 2m`). As a result, every archive a census import touched showed one `expected string value, got int` warning per member. Ages are now written as strings
+time: 2026-10-01T00:00:25Z
+custom:
+  Issue: "#1205"

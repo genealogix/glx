@@ -1,0 +1,5 @@
+kind: Changed
+body: '**Source builds identify their commit in `glx --version`** — a binary built with plain `go build` or `go install`, which injects no version, reported only `glx version dev`. It now falls back to the build information Go stamps into every binary: `glx version dev (ea402a5, 2026-10-01T14:46:10Z)` for a checkout (`-dirty` appended to the hash when it had uncommitted changes), and the module version for `go install ...@<tag>` or `@main`. Release builds (GoReleaser) and `make build-cli VERSION=...` print what they did before.'
+time: '2026-10-07T00:00:10Z'
+custom:
+  Issue: '#1337'

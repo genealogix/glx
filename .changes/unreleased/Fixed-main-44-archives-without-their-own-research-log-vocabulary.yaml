@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**Archives without their own research-log vocabulary files now get the standard ones** — `search_result_types` and `research_log_status_types` were the only standard vocabularies not filled in by default when an archive does not ship them, so commands that load an archive that way (`glx add`, `glx query`, ...) rejected `not_found` or `in_progress` on such archives.'
+time: '2026-10-09T00:00:16Z'
+custom:
+  Issue: '#1336'

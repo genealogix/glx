@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**`glx coverage` counts only the person''s own records** — A category was satisfied by any event the person took part in, so a witness at a father-in-law''s probate or a godparent at a godson''s baptism ticked "Probate/will" or "Church records". Only principal/subject (or unset), bride/groom, decedent and similar roles, and household roles on a census, now count; other appearances are listed under "Appears in" (`appears_in` in JSON). Someone else''s burial no longer infers the person''s death year'
+time: '2026-10-07T00:00:14Z'
+custom:
+  Issue: '#1329'

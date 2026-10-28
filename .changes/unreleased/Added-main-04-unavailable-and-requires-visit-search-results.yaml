@@ -1,0 +1,5 @@
+kind: Added
+body: '**`unavailable` and `requires_visit` search results** — `unavailable` records a source that was sought but does not survive, is restricted or is not accessible; `requires_visit` one that can only be searched on site or by request. `glx proof` now labels `unavailable` searches as a documented gap (with the search''s notes), and `not_searched`/`requires_visit` as outstanding; its JSON output gains each search''s `notes`.'
+time: '2026-10-07T00:00:04Z'
+custom:
+  Issue: '#1340'

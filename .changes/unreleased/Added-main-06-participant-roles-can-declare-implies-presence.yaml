@@ -1,0 +1,5 @@
+kind: Added
+body: '**Participant roles can declare `implies_presence`** — A new optional boolean on participant role vocabulary entries says whether a person in that role was at the event''s place. `glx migrations` reads it; without it, built-in defaults apply (grantor, grantee, legatee, heir, beneficiary, executor and similar roles do not imply presence). Schema and spec updated; the standard vocabulary is unchanged'
+time: '2026-10-07T00:00:06Z'
+custom:
+  Issue: '#1330'

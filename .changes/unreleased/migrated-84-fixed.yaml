@@ -1,0 +1,6 @@
+kind: Fixed
+body: |-
+  **`glx summary` now recognizes marriages recorded only as events** — `findSpouses()` read `archive.Relationships` only, so a marriage modeled as a `marriage` event with `bride`/`groom` participants — the shape `glx add event --help` gives as its own example — printed `Spouse: (none)` in the Family block while `glx timeline` displayed the same marriage on the same archive, and the auto-generated Life History narrative left the marriage out entirely. Spouses derived from marriage events are now unioned with the relationship-derived ones, carrying the event's own date and place, and deduped by person ID so an archive modeling a couple both ways lists them once. Only events that record a union count (`marriage`, plus `civil_union` and `common_law_marriage` for archives that extend the standard event-type vocabulary); `engagement`, `marriage_banns`, `marriage_license`, `marriage_contract`, and `marriage_settlement` record intent or paperwork rather than a union and are deliberately excluded. `glx serve`'s person view shares `findSpouses()` and gains the same fix. This does not settle the event-centric vs relationship-centric question in #557 — it makes `summary` and `timeline` agree in the meantime. Fixes #1275
+time: 2026-10-01T00:00:32Z
+custom:
+  Issue: "#1275"

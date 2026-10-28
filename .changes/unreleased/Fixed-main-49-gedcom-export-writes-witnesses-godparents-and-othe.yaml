@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**GEDCOM export writes witnesses, godparents and other event participants** — Participants who were not the event''s principal were dropped. GEDCOM 7.0 now exports them as event-level `ASSO` with `ROLE` (or `OTHER` with a `PHRASE`), honouring a role vocabulary `gedcom` value (#524). GEDCOM 5.5.1 uses standard person-level `ASSO` with `RELA` and event context in notes; family-event associations appear on each known spouse. These descriptive links do not reconstruct event participants on import; use 7.0 for structured association round trips. An event with no principal is written under its household participants, and unexported events are named in warnings. Import restores vocabulary roles from `ROLE OTHER` + `PHRASE` and `RELA` labels; other declared ROLE values are preserved rather than replaced by a coincidentally matching phrase'
+time: '2026-10-09T00:00:21Z'
+custom:
+  Issue: '#1321, #1352'
