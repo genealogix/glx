@@ -562,7 +562,7 @@ func TestWriteArchiveInPlace_NormalizedPolicyLeavesFormattingAlone(t *testing.T)
 // empty with it.
 func TestWriteArchiveInPlace_DeletingLastFileRemovesItsDirectory(t *testing.T) {
 	dir := stageInPlaceArchive(t, map[string]string{
-		"persons/person-a.glx":     "persons:\n  person-a: {}\n",
+		"persons/person-a.glx":    "persons:\n  person-a: {}\n",
 		"people/old/person-b.glx": "persons:\n  person-b: {}\n",
 	})
 	archive := loadForInPlace(t, dir)
