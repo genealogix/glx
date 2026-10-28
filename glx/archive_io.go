@@ -146,6 +146,7 @@ func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
 	// A completed swap leaves the temp dir empty; a failed one leaves only
 	// fresh output that can be regenerated. Either way it goes.
 	defer func() { _ = os.RemoveAll(tmpDir) }()
+	defer trackTemp(tmpDir)()
 
 	// Write the archive to temp
 	if err := writeMultiFileArchive(tmpDir, archive, false); err != nil {
@@ -159,6 +160,12 @@ func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
 	if err := removeStaleBackup(backupDir); err != nil {
 		return err
 	}
+	// From the first move into the backup until the last entry is carried
+	// back, the archive is split across destPath and backupDir. An interrupt
+	// waits for that to finish rather than leave a split for the user to
+	// reassemble.
+	release := holdInterrupts()
+	defer release()
 	if err := swapManagedEntries(destPath, tmpDir, backupDir); err != nil {
 		return err
 	}
