@@ -68,15 +68,19 @@ func NewFilenameAllocator(existing ...string) *FilenameAllocator {
 	return a
 }
 
-// FilenameCollisionKey folds case and canonical Unicode equivalents so names
-// that can address the same file on common Windows and macOS filesystems share
-// a reservation. Conservative extra collisions only cause a numbered suffix.
-var filenameCaseFolders = sync.Pool{New: func() any { return cases.Fold() }}
+var filenameCaseFolders = sync.Pool{New: func() any {
+	folder := cases.Fold()
 
+	return &folder
+}}
+
+// FilenameCollisionKey folds case and canonical Unicode equivalents so names
+// that address the same file on common filesystems share a reservation.
 func FilenameCollisionKey(name string) string {
-	folder := filenameCaseFolders.Get().(cases.Caser)
+	folder := filenameCaseFolders.Get().(*cases.Caser) //nolint:errcheck // the private pool only stores *cases.Caser
 	key := folder.String(norm.NFC.String(strings.TrimRight(name, ". ")))
 	filenameCaseFolders.Put(folder)
+
 	return key
 }
 
@@ -145,6 +149,7 @@ func (a *FilenameAllocator) NextAvailable(basename string) (string, int) {
 		candidate := fmt.Sprintf("%s-%d%s", stem, n, ext)
 		if _, occupied := a.used[FilenameCollisionKey(candidate)]; !occupied {
 			a.nextSuffix[key] = n
+
 			return candidate, n
 		}
 	}
@@ -233,6 +238,7 @@ func NumberedFilenameSeed(name string) (string, int, bool) {
 	if err != nil || n < 2 || FilenameCollisionKey(name) != FilenameCollisionKey(fmt.Sprintf("%s-%d%s", base, n, ext)) {
 		return "", 0, false
 	}
+
 	return FilenameCollisionKey(base + ext), n, true
 }
 
@@ -260,6 +266,7 @@ func (a *FilenameAllocator) ClaimExisting(basename, actual string) bool {
 	basename = PortableFilename(basename)
 	ext := filepath.Ext(basename)
 	a.advanceFirstOpen(FilenameCollisionKey(basename), basename, strings.TrimSuffix(basename, ext), ext)
+
 	return true
 }
 

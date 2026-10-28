@@ -113,7 +113,8 @@ func importToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, verbos
 		return fmt.Errorf("creating media staging directory: %w", err)
 	}
 	defer func() { _ = os.RemoveAll(stageDir) }()
-	if err := copyMediaFiles(SystemIOStreams(), stageDir, mediaFiles, gedcomDir, verbose); err != nil {
+	reportMedia, err := stageImportMedia(stageDir, mediaFiles, gedcomDir, verbose)
+	if err != nil {
 		return fmt.Errorf("failed to copy media files: %w", err)
 	}
 	tempFile, err := os.CreateTemp(archiveDir, ".glx-single-*.tmp")
@@ -148,6 +149,7 @@ func importToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, verbos
 		return fmt.Errorf("publishing archive: %w", err)
 	}
 
+	reportMedia()
 	printSuccessSingleFile("imported", outputPath)
 	printArchiveStatistics(glx)
 
@@ -180,7 +182,8 @@ func importToMultiFileUsing(glx *glxlib.GLXFile, outputPath string, validate, ve
 		return fmt.Errorf("creating media staging directory: %w", err)
 	}
 	defer func() { _ = os.RemoveAll(stageDir) }()
-	if err := copyMediaFiles(SystemIOStreams(), stageDir, mediaFiles, gedcomDir, verbose); err != nil {
+	reportMedia, err := stageImportMedia(stageDir, mediaFiles, gedcomDir, verbose)
+	if err != nil {
 		return fmt.Errorf("failed to copy media files: %w", err)
 	}
 	rollbackMedia, err := commitStagedMediaWithRollback(stageDir, outputPath)
@@ -208,6 +211,7 @@ func importToMultiFileUsing(glx *glxlib.GLXFile, outputPath string, validate, ve
 		return err
 	}
 
+	reportMedia()
 	printSuccessMultiFile("imported", outputPath)
 	printArchiveStatistics(glx)
 

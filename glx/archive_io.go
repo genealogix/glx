@@ -80,13 +80,17 @@ type archivePublicationError struct{ error }
 
 func (err *archivePublicationError) Unwrap() error { return err.error }
 
-func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) (writeErr error) {
+func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
 	mayHavePublished := false
-	defer func() {
-		if writeErr != nil && mayHavePublished {
-			writeErr = &archivePublicationError{writeErr}
-		}
-	}()
+	err := safeWriteMultiFileArchiveWithState(destPath, archive, &mayHavePublished)
+	if err != nil && mayHavePublished {
+		return &archivePublicationError{err}
+	}
+
+	return err
+}
+
+func safeWriteMultiFileArchiveWithState(destPath string, archive *glxlib.GLXFile, mayHavePublished *bool) error {
 	// Resolve to absolute path so rename and cwd containment checks work
 	// reliably for relative paths like ".". mergeArchives does the same.
 	absPath, err := filepath.Abs(destPath)
@@ -171,11 +175,10 @@ func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) (writeE
 	if err := removeStaleBackup(backupDir); err != nil {
 		return err
 	}
-	mayHavePublished = true
+	*mayHavePublished = true
 	if err := swapManagedEntries(destPath, tmpDir, backupDir); err != nil {
-		if _, backupErr := os.Lstat(backupDir); os.IsNotExist(backupErr) {
-			mayHavePublished = false
-		}
+		_, backupErr := os.Lstat(backupDir)
+		*mayHavePublished = !os.IsNotExist(backupErr)
 		return err
 	}
 

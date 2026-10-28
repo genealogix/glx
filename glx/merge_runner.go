@@ -273,8 +273,7 @@ func publishMergedMultiFileArchive(destPath string, archive *glxlib.GLXFile, pla
 		return copied, skipped, fmt.Errorf("copying source media binaries: %w", err)
 	}
 	if err := safeWriteMultiFileArchive(destPath, archive); err != nil {
-		var published *archivePublicationError
-		if !errors.As(err, &published) {
+		if _, published := errors.AsType[*archivePublicationError](err); !published {
 			rollback()
 		}
 

@@ -33,6 +33,22 @@ import (
 // Missing source files produce warnings on stdout (suppressible via --quiet),
 // not fatal errors.
 func copyMediaFiles(streams *IOStreams, archiveDir string, mediaFiles []glxlib.MediaFileSource, gedcomDir string, verbose bool) error {
+	return copyMediaFilesUsing(streams, archiveDir, mediaFiles, gedcomDir, func(copied, blobs, warnings int) { printImportMediaReport(streams, copied, blobs, warnings, verbose) })
+}
+
+// stageImportMedia keeps warnings immediate but defers the success count until
+// both media and archive references have been published.
+func stageImportMedia(archiveDir string, files []glxlib.MediaFileSource, sourceDir string, verbose bool) (func(), error) {
+	streams := SystemIOStreams()
+	report := func() {}
+	err := copyMediaFilesUsing(streams, archiveDir, files, sourceDir, func(copied, blobs, warnings int) {
+		report = func() { printImportMediaReport(streams, copied, blobs, warnings, verbose) }
+	})
+
+	return report, err
+}
+
+func copyMediaFilesUsing(streams *IOStreams, archiveDir string, mediaFiles []glxlib.MediaFileSource, gedcomDir string, report func(int, int, int)) error {
 	if len(mediaFiles) == 0 {
 		return nil
 	}
@@ -88,6 +104,12 @@ func copyMediaFiles(streams *IOStreams, archiveDir string, mediaFiles []glxlib.M
 		}
 	}
 
+	report(copyCount, blobCount, warnCount)
+
+	return nil
+}
+
+func printImportMediaReport(streams *IOStreams, copyCount, blobCount, warnCount int, verbose bool) {
 	if verbose || copyCount > 0 || blobCount > 0 {
 		streams.Printf("  Media files: %d copied, %d blobs written", copyCount, blobCount)
 		if warnCount > 0 {
@@ -95,8 +117,6 @@ func copyMediaFiles(streams *IOStreams, archiveDir string, mediaFiles []glxlib.M
 		}
 		streams.Println("")
 	}
-
-	return nil
 }
 
 // copyMediaFile copies a single media file from the GEDCOM source directory.

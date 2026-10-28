@@ -400,11 +400,14 @@ func TestMultiFileImport_NoMetadataPublishedRollsBackMedia(t *testing.T) {
 			media := []glxlib.MediaFileSource{{MediaID: "new", SourceType: glxlib.MediaSourceFile, RelativePath: "new.jpg", MemberPath: "new.jpg", TargetFilename: "new.jpg"}}
 			fail := func(string, map[string][]byte) error { return errTestLaterMetadataWrite }
 			var err error
-			if input == "GEDCOM" {
-				err = importToMultiFileUsing(archive, output, false, false, 0, media, source, io.Discard, fail)
-			} else {
-				err = importGEDZIPToMultiFileUsing(archive, output, false, false, 0, media, os.DirFS(source), io.Discard, fail)
-			}
+			stdout := captureStdout(t, func() {
+				if input == "GEDCOM" {
+					err = importToMultiFileUsing(archive, output, false, false, 0, media, source, io.Discard, fail)
+				} else {
+					err = importGEDZIPToMultiFileUsing(archive, output, false, false, 0, media, os.DirFS(source), io.Discard, fail)
+				}
+			})
+			require.NotContains(t, stdout, "Media files:")
 			require.ErrorIs(t, err, errTestLaterMetadataWrite)
 			require.Equal(t, []byte("old"), mustReadImportMedia(t, filepath.Join(variant, "old.jpg")))
 			require.NoFileExists(t, filepath.Join(variant, "new.jpg"))
