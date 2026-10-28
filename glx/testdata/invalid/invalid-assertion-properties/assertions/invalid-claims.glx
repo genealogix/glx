@@ -4,4 +4,6 @@ assertions:
       person: person-father
     property: nonexistent_property
     value: "some value"
+    citations:
+      - citation-record
     confidence: high

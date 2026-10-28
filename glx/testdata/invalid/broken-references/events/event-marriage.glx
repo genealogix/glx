@@ -8,4 +8,5 @@ events:
         role: groom
       - person: person-mary-brown-1852
         role: bride
-    description: "Marriage of John Smith and Mary Brown at St. Paul's Church, Leeds"
+    properties:
+      description: "Marriage of John Smith and Mary Brown at St. Paul's Church, Leeds"

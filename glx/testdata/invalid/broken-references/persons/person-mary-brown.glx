@@ -8,6 +8,3 @@ persons:
           surname: "Smith"
       sex: "female"
     notes: "Wife of John Smith. Dressmaker by trade."
-    tags:
-      - "ancestor"
-      - "brown-family"

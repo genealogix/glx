@@ -8,5 +8,3 @@ persons:
           surname: "Smith"
       sex: "female"
     notes: "Daughter of John Smith and Mary Brown."
-    tags:
-      - "descendant"
