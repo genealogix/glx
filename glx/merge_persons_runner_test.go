@@ -16,6 +16,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"maps"
 	"os"
@@ -356,7 +357,7 @@ func TestMergePersonsConfirmationAndDryRun(t *testing.T) {
 		{"no", "n\n", true, false, false, false, false},
 		{"blank", "\n", true, false, false, false, false},
 		{"EOF", "", true, false, false, false, false},
-		{"partial answer at EOF", "y", true, false, false, false, false},
+		{"partial answer at EOF", "y", true, false, false, true, false},
 		{"unrecognized", "maybe\n", true, false, false, false, false},
 		{"noninteractive", "y\n", false, false, false, false, true},
 		{"explicit yes", "", false, true, false, true, false},
@@ -419,7 +420,7 @@ func TestMergePersonsPreviewChangeRefusesWrite(t *testing.T) {
 	assert.Equal(t, changed, actual)
 }
 
-func TestMergePersonsYesDoesNotBypassValidation(t *testing.T) {
+func TestMergePersonsPreservesPreexistingValidationErrors(t *testing.T) {
 	dir := t.TempDir()
 	writeMergeFixture(t, dir)
 	path := filepath.Join(dir, "persons", "person-keep.glx")
@@ -427,8 +428,6 @@ func TestMergePersonsYesDoesNotBypassValidation(t *testing.T) {
 	require.NoError(t, err)
 	invalid := bytes.Replace(original, []byte("      sex:"), []byte("      born_on: 1750\n      sex:"), 1)
 	require.NoError(t, os.WriteFile(path, invalid, 0o644))
-	before, err := collectGLXFilesFromDir(dir)
-	require.NoError(t, err)
 	streams, _, errOut := TestIOStreams()
 	input := mergeTestReader(func([]byte) (int, error) {
 		t.Fatal("--yes must not read stdin")
@@ -436,12 +435,12 @@ func TestMergePersonsYesDoesNotBypassValidation(t *testing.T) {
 		return 0, io.EOF
 	})
 	err = mergePersonsWithIO(streams, input, false, dir, "person-keep", "person-drop", glxlib.MergePersonsOptions{}, false, true)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "removed")
-	assert.Empty(t, errOut.String())
-	after, err := collectGLXFilesFromDir(dir)
 	require.NoError(t, err)
-	assert.Equal(t, before, after)
+	assert.Empty(t, errOut.String())
+	loaded, _, err := LoadArchiveWithOptions(dir, false)
+	require.NoError(t, err)
+	assert.NotContains(t, loaded.Persons, "person-drop")
+	assert.NotEmpty(t, loaded.Validate().Errors, "the unrelated original error is retained")
 }
 
 func TestMergePersonsSingleFilePreservesMode(t *testing.T) {
@@ -799,6 +798,32 @@ research_logs:
 			require.NoError(t, err)
 			assert.Len(t, archive.ResearchLogs["log"].Leads, 2)
 			assert.Equal(t, []string{"retained"}, archive.ResearchLogs["log"].Leads[0].Assertions)
+		})
+	}
+}
+
+func TestMergePersonsMaterializesInheritedCollection(t *testing.T) {
+	for _, directory := range []bool{false, true} {
+		t.Run(fmt.Sprintf("directory=%v", directory), func(t *testing.T) {
+			root := t.TempDir()
+			file := filepath.Join(root, "archive.glx")
+			data := []byte("persons:\n  <<: &people\n    person-keep:\n      properties:\n        primary_name: Inherited\n    person-drop:\n      notes: [Retained]\n  person-keep:\n    properties:\n      primary_name: Explicit\n")
+			require.NoError(t, os.WriteFile(file, data, filePermissions))
+			path := file
+			if directory {
+				path = root
+			}
+			require.NoError(t, mergePersons(path, "person-keep", "person-drop", glxlib.MergePersonsOptions{}, true, false))
+			actual, err := os.ReadFile(file)
+			require.NoError(t, err)
+			require.Equal(t, data, actual)
+			require.NoError(t, mergePersons(path, "person-keep", "person-drop", glxlib.MergePersonsOptions{}, false, true))
+			files, err := readMergeFiles(path, directory)
+			require.NoError(t, err)
+			archive, err := loadMergeFiles(path, files, directory)
+			require.NoError(t, err)
+			require.NotContains(t, archive.Persons, "person-drop")
+			require.Equal(t, "Explicit", archive.Persons["person-keep"].Properties["primary_name"])
 		})
 	}
 }

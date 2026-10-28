@@ -49,6 +49,11 @@ func prepareMergeFiles(original map[string][]byte, archive *glxlib.GLXFile, resu
 	}
 	fallback := cloneMergeNode(dropParent.Content[dropIndex+1])
 	changedFiles := make(map[string]bool)
+	references := make(map[mergeFileEntityKey][]glxlib.MergeReferenceChange)
+	for _, reference := range result.ReferenceChanges {
+		key := mergeFileEntityKey{reference.EntityType, reference.ID}
+		references[key] = append(references[key], reference)
+	}
 	for _, change := range result.Changes {
 		path, parent, index, err := findMergeEntity(roots, change.EntityType, change.ID)
 		if err != nil {
@@ -75,7 +80,7 @@ func prepareMergeFiles(original map[string][]byte, archive *glxlib.GLXFile, resu
 		if change.EntityType == glxlib.EntityTypePersons && change.ID == keepID {
 			alternatives = fallback
 		}
-		context := mergeFileNodeContext(&change, result, keepID, dropID)
+		context := mergeFileNodeContext(references[mergeFileEntityKey{change.EntityType, change.ID}], keepID, dropID)
 		parent.Content[index+1] = patchMergeNode(parent.Content[index+1], &desired, alternatives, "", context)
 	}
 	for path := range changedFiles {
@@ -96,7 +101,7 @@ func prepareMergeFiles(original map[string][]byte, archive *glxlib.GLXFile, resu
 		}
 		files[path] = out.Bytes()
 	}
-	if err := verifyMergeFiles(files, archive, directory); err != nil {
+	if err := verifyMergeFiles(files, original, archive, directory); err != nil {
 		return nil, err
 	}
 
@@ -110,11 +115,14 @@ func materializeMergeCollections(roots map[string]*yaml.Node, changes []glxlib.E
 	for _, change := range changes {
 		for _, root := range roots {
 			collection := mergeMappingValue(root, string(change.EntityType))
-			if collection == nil || collection.Kind != yaml.AliasNode {
+			if collection == nil || (collection.Kind != yaml.AliasNode && !hasMergeCollectionKey(collection)) {
 				continue
 			}
 			expanded, err := expandMergeAlias(collection, nil, nil, make(map[*yaml.Node]bool), true)
 			if err != nil {
+				return err
+			}
+			if err := flattenMergeCollection(expanded); err != nil {
 				return err
 			}
 			if mergeMappingValue(expanded, change.ID) == nil {
@@ -133,6 +141,58 @@ func materializeMergeCollections(roots map[string]*yaml.Node, changes []glxlib.E
 			*collection = *expanded
 		}
 	}
+
+	return nil
+}
+
+func hasMergeCollectionKey(node *yaml.Node) bool {
+	if node.Kind != yaml.MappingNode {
+		return false
+	}
+	for i := 0; i < len(node.Content); i += 2 {
+		if node.Content[i].Tag == "!!merge" {
+			return true
+		}
+	}
+
+	return false
+}
+
+// YAML merge sources are ordered: explicit keys win, then the first inherited
+// occurrence. Flatten only the copied collection so deleting an inherited
+// entity cannot resurrect it or change another anchor consumer.
+func flattenMergeCollection(node *yaml.Node) error {
+	if node.Kind != yaml.MappingNode {
+		return fmt.Errorf("%w: entity collection is not a mapping", glxlib.ErrValidationFailed)
+	}
+	var explicit, sources []*yaml.Node
+	seen := make(map[string]bool)
+	for i := 0; i < len(node.Content); i += 2 {
+		key, value := node.Content[i], node.Content[i+1]
+		if key.Tag == "!!merge" {
+			if value.Kind == yaml.SequenceNode {
+				sources = append(sources, value.Content...)
+			} else {
+				sources = append(sources, value)
+			}
+		} else {
+			explicit = append(explicit, key, value)
+			seen[key.Value] = true
+		}
+	}
+	for _, source := range sources {
+		if err := flattenMergeCollection(source); err != nil {
+			return err
+		}
+		for i := 0; i < len(source.Content); i += 2 {
+			key := source.Content[i]
+			if !seen[key.Value] {
+				explicit = append(explicit, key, source.Content[i+1])
+				seen[key.Value] = true
+			}
+		}
+	}
+	node.Content = explicit
 
 	return nil
 }
@@ -237,10 +297,15 @@ func expandMergeAlias(node *yaml.Node, affected, outgoing, stack map[*yaml.Node]
 	return out, nil
 }
 
-func mergeFileNodeContext(change *glxlib.EntityChange, result *glxlib.MergePersonsResult, keepID, dropID string) mergeNodeContext {
+type mergeFileEntityKey struct {
+	kind glxlib.EntityType
+	id   string
+}
+
+func mergeFileNodeContext(references []glxlib.MergeReferenceChange, keepID, dropID string) mergeNodeContext {
 	context := mergeNodeContext{keepID: keepID, dropID: dropID, personPaths: make(map[string]bool)}
-	for _, reference := range result.ReferenceChanges {
-		if reference.EntityType == change.EntityType && reference.ID == change.ID && reference.TargetType == glxlib.EntityTypePersons {
+	for _, reference := range references {
+		if reference.TargetType == glxlib.EntityTypePersons {
 			path := reference.Path
 			if strings.HasSuffix(path, "]") {
 				path = path[:strings.LastIndex(path, "[")]
@@ -531,7 +596,7 @@ func matchingMergeNode(container, desired *yaml.Node, used map[*yaml.Node]bool) 
 	return nil
 }
 
-func verifyMergeFiles(files map[string][]byte, expected *glxlib.GLXFile, directory bool) error {
+func verifyMergeFiles(files, original map[string][]byte, expected *glxlib.GLXFile, directory bool) error {
 	for path, data := range files {
 		document, err := ParseYAMLFile(data)
 		if err != nil {
@@ -545,8 +610,22 @@ func verifyMergeFiles(files map[string][]byte, expected *glxlib.GLXFile, directo
 	if err != nil {
 		return err
 	}
-	if validation := actual.Validate(); len(validation.Errors) != 0 {
-		return fmt.Errorf("%w: %s", glxlib.ErrValidationFailed, validation.Errors[0].Message)
+	// The SDK has already checked the detached plan against the input. Existing
+	// unrelated errors must not turn a serialization check into a new merge ban.
+	// Reject only validation errors introduced by the round trip.
+	before, err := loadMergeFiles("", original, directory)
+	if err != nil {
+		return err
+	}
+	baseline := make(map[glxlib.ValidationError]int)
+	for _, issue := range before.Validate().Errors {
+		baseline[issue]++
+	}
+	for _, issue := range actual.Validate().Errors {
+		if baseline[issue] == 0 {
+			return fmt.Errorf("%w: %s", glxlib.ErrValidationFailed, issue.Message)
+		}
+		baseline[issue]--
 	}
 	// Canonical YAML treats omitted and empty optional maps/slices alike and
 	// normalizes SDK-only TemporalValue representations without retyping values.

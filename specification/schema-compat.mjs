@@ -134,7 +134,7 @@ function normalizeEnumWidening(oldRoot, newRoot) {
       if (DATA_VALUED_KEYWORDS.has(name)) continue;
       if (MAP_VALUED_KEYWORDS.has(name)) {
         for (const [entry, schema] of Object.entries(value || {})) {
-          visit(oldNode[name]?.[entry], schema, unsafe, `${path}/${name}/${entry}`);
+          visit(oldNode[name]?.[entry], schema, unsafe, `${path}/${name}/${entry.replaceAll("~", "~0").replaceAll("/", "~1")}`);
         }
       } else if (Array.isArray(value)) {
         value.forEach((schema, i) => visit(oldNode[name]?.[i], schema,

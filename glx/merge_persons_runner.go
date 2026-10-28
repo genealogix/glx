@@ -177,10 +177,7 @@ func confirmPersonMerge(streams *IOStreams, input io.Reader, interactive, yes bo
 	}
 	fmt.Fprint(streams.ErrOut, "Apply this merge? [y/N] ")
 	answer, err := bufio.NewReader(input).ReadString('\n')
-	if errors.Is(err, io.EOF) {
-		return false, nil
-	}
-	if err != nil {
+	if err != nil && !errors.Is(err, io.EOF) {
 		return false, fmt.Errorf("reading merge confirmation: %w", err)
 	}
 	answer = strings.ToLower(strings.TrimSpace(answer))
@@ -195,7 +192,7 @@ func printPersonMerge(streams *IOStreams, keepID, dropID string, result *glxlib.
 		streams.Printf("  Relationship removed: %s (possibly_same_person)\n", id)
 	}
 	for _, id := range result.RemovedAssertions {
-		streams.Printf("  Assertion removed: %s (depends on a removed relationship)\n", id)
+		streams.Printf("  Assertion removed: %s (depends on removed identity evidence)\n", id)
 	}
 	for _, reference := range result.ReferenceChanges {
 		streams.Printf("  Reference %s: %s[%s].%s: %v → %v\n", reference.Action, reference.EntityType, reference.ID, reference.Path, reference.OldValue, reference.NewValue)

@@ -125,7 +125,7 @@ func TestMergePersons_PreservesOtherRelationshipsAndEvidence(t *testing.T) {
 			{Person: "person-keep"}, {Person: "person-other"},
 		}},
 		"rel-group": {Type: RelationshipTypePossiblySamePerson, Participants: []Participant{
-			{Person: "person-drop"}, {Person: "person-keep"}, {Person: "person-other"},
+			{Person: "person-drop"}, {Person: "person-other"}, {Person: "person-other"},
 		}},
 		"rel-existing-self": {Type: RelationshipTypePossiblySamePerson, Participants: []Participant{
 			{Person: "person-drop"}, {Person: "person-drop"},

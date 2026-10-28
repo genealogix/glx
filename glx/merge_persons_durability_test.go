@@ -211,3 +211,30 @@ func TestMergePersonsReportsBackupRemovalSyncFailure(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, planned, actual, "installed data remains intact when cleanup durability is uncertain")
 }
+
+func TestMergePersonsBackupSyncFailureDoesNotBlockRetry(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "archive")
+	writeMergeFixture(t, dir)
+	original, err := collectGLXFilesFromDir(dir)
+	require.NoError(t, err)
+	planned := maps.Clone(original)
+	path := filepath.Join("persons", "person-keep.glx")
+	planned[path] = append([]byte("# merged\n"), original[path]...)
+	failed := false
+	err = installMergeFilesWithSync(dir, original, planned, robustRenameIn, func(file *os.File) error {
+		if strings.Contains(file.Name(), ".bak") {
+			failed = true
+
+			return fs.ErrInvalid
+		}
+
+		return nil
+	})
+	require.ErrorIs(t, err, fs.ErrInvalid)
+	require.True(t, failed)
+	require.NoDirExists(t, dir+".bak")
+	actual, err := collectGLXFilesFromDir(dir)
+	require.NoError(t, err)
+	require.Equal(t, original, actual)
+	require.NoError(t, installMergeFilesWithSync(dir, original, planned, robustRenameIn, func(*os.File) error { return nil }))
+}

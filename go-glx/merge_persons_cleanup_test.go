@@ -362,3 +362,42 @@ func TestMergePersons_PrunesRemovedClaimsFromResearchLeadsAndTypedProperties(t *
 	assert.True(t, prunedClaim)
 	assert.True(t, prunedLead)
 }
+
+func TestMergePersons_RefusesGroupIdentityWithoutMutation(t *testing.T) {
+	archive := newTwoPersonArchive()
+	archive.Persons["third"] = &Person{}
+	archive.Relationships = map[string]*Relationship{"group": {Type: RelationshipTypePossiblySamePerson, Participants: []Participant{{Person: "person-keep"}, {Person: "person-drop"}, {Person: "third"}}}}
+	before := cloneMergeArchive(archive)
+	_, err := MergePersons(archive, "person-keep", "person-drop", MergePersonsOptions{})
+	require.ErrorIs(t, err, ErrValidationFailed)
+	require.Contains(t, err.Error(), "group")
+	require.Equal(t, before, archive)
+}
+
+func TestMergePersons_OnlyDeduplicatesRewrittenLeadCandidates(t *testing.T) {
+	archive := newTwoPersonArchive()
+	archive.Persons["other"] = &Person{}
+	archive.ResearchLogs = map[string]*ResearchLog{"log": {Leads: []ResearchLead{
+		{Persons: []string{"other", "other"}},
+		{Persons: []string{"person-drop", "person-keep", "other", "other"}},
+	}}}
+	_, err := MergePersons(archive, "person-keep", "person-drop", MergePersonsOptions{})
+	require.NoError(t, err)
+	require.Equal(t, []string{"other", "other"}, archive.ResearchLogs["log"].Leads[0].Persons)
+	require.Equal(t, []string{"person-keep", "other", "other"}, archive.ResearchLogs["log"].Leads[1].Persons)
+}
+
+func TestMergePersons_InvalidReferenceCollectionDoesNotPanic(t *testing.T) {
+	archive := newTwoPersonArchive()
+	archive.PersonProperties = map[string]*PropertyDefinition{"bad": {ReferenceType: "metadata"}}
+	archive.Persons["person-keep"].Properties["bad"] = "anything"
+	require.NotPanics(t, func() { _, _ = MergePersons(archive, "person-keep", "person-drop", MergePersonsOptions{}) })
+}
+
+func TestCollectMergeAffectedPeople_FollowsEventBoundaries(t *testing.T) {
+	archive := &GLXFile{Events: map[string]*Event{"marriage": {}}, Relationships: map[string]*Relationship{"spouses": {StartEvent: "marriage", Participants: []Participant{{Person: "a"}, {Person: "b"}}}}}
+	people := make(map[string]bool)
+	collectMergeAffectedPeople(archive, &Assertion{Subject: EntityRef{Event: "marriage"}}, people)
+	require.True(t, people["a"])
+	require.True(t, people["b"])
+}

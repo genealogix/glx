@@ -418,7 +418,12 @@ func collectMergeAffectedPeople(archive *GLXFile, assertion *Assertion, people m
 	}
 	var participants []Participant
 	if event := archive.Events[assertion.Subject.Event]; event != nil {
-		participants = event.Participants
+		participants = append(participants, event.Participants...)
+		for _, relationship := range archive.Relationships {
+			if relationship != nil && (relationship.StartEvent == assertion.Subject.Event || relationship.EndEvent == assertion.Subject.Event) {
+				participants = append(participants, relationship.Participants...)
+			}
+		}
 	}
 	if relationship := archive.Relationships[assertion.Subject.Relationship]; relationship != nil {
 		participants = relationship.Participants

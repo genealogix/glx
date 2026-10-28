@@ -350,3 +350,17 @@ test("enum widening with nested schema resources is conservatively blocked", () 
   assert.equal(classify(base, next).breaking, true);
   assert.equal(classify(base, base).breaking, false);
 });
+
+test("unsafe reference traversal escapes map keys containing path separators", () => {
+  const base = {
+    $defs: { Target: { enum: ["a"] } },
+    not: { properties: {
+      "a/properties/b": {},
+      a: { properties: { b: { $ref: "#/$defs/Target" } } },
+    } },
+  };
+  const next = structuredClone(base);
+  next.$defs.Target.enum.push("b");
+  const result = classifySchemaChange({ path: PATH, baseContent: json(base), currentContent: json(next) });
+  assert.equal(result.breaking, true);
+});

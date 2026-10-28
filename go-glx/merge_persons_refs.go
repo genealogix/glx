@@ -549,6 +549,7 @@ func pruneRemovedAssertionReferences(archive, prepared *GLXFile, result *MergePe
 func rewriteMergedPersonReferences(archive, prepared *GLXFile, oldID, newID string, result *MergePersonsResult) int {
 	count := 0
 	forMergeEntities(archive, prepared, func(entity mergeEntity) {
+		changedLeads := mergeRewrittenLeadLimits(entity, oldID, newID)
 		record := func(path string, original, replacement any) {
 			count++
 			result.ReferenceChanges = append(result.ReferenceChanges, MergeReferenceChange{entity.kind, entity.id, path, EntityTypePersons, "rewritten", original, replacement})
@@ -567,7 +568,7 @@ func rewriteMergedPersonReferences(archive, prepared *GLXFile, oldID, newID stri
 			}
 		}
 		if entity.kind == EntityTypeResearchLogs {
-			deduplicateMergeLeadPersons(entity, result)
+			deduplicateMergeLeadPersons(entity, result, changedLeads, newID)
 		}
 		editMergeProperties(entity, func(kind EntityType, id, path string, original any) (string, bool) {
 			if kind == EntityTypePersons && id == oldID {
@@ -585,17 +586,44 @@ func rewriteMergedPersonReferences(archive, prepared *GLXFile, oldID, newID stri
 	return count
 }
 
-func deduplicateMergeLeadPersons(entity mergeEntity, result *MergePersonsResult) {
+func mergeRewrittenLeadLimits(entity mergeEntity, oldID, newID string) map[int]int {
+	changedLeads := make(map[int]int)
+	if entity.kind == EntityTypeResearchLogs {
+		log, _ := reflect.TypeAssert[*ResearchLog](entity.value.Addr())
+		for i := range log.Leads {
+			lead := &log.Leads[i]
+			oldCount, newCount := 0, 0
+			for _, id := range lead.Persons {
+				if id == oldID {
+					oldCount++
+				}
+				if id == newID {
+					newCount++
+				}
+			}
+			if oldCount > 0 {
+				changedLeads[i] = max(oldCount, newCount)
+			}
+		}
+	}
+
+	return changedLeads
+}
+
+func deduplicateMergeLeadPersons(entity mergeEntity, result *MergePersonsResult, changedLeads map[int]int, newID string) {
 	log, _ := reflect.TypeAssert[*ResearchLog](entity.value.Addr())
 	for i := range log.Leads {
+		if changedLeads[i] == 0 {
+			continue
+		}
 		lead := &log.Leads[i]
-		seen := make(map[string]bool)
+		seen := make(map[string]int)
 		kept := make([]string, 0, len(lead.Persons))
 		for j, id := range lead.Persons {
-			if seen[id] {
+			if id == newID && seen[id] >= changedLeads[i] {
 				result.ReferenceChanges = append(result.ReferenceChanges, MergeReferenceChange{entity.kind, entity.id, fmt.Sprintf("leads[%d].persons[%d]", i, j), EntityTypePersons, mergeReferencePruned, id, nil})
 			} else {
-				seen[id] = true
+				seen[id]++
 				kept = append(kept, id)
 			}
 		}
@@ -616,7 +644,7 @@ func missingMergeTargets(archive *GLXFile) (map[string]bool, error) {
 	missing := make(map[string]bool)
 	check := func(kind EntityType, id string) {
 		collection := mergeEntityCollection(archive, kind)
-		if !collection.IsValid() {
+		if !collection.IsValid() || collection.Kind() != reflect.Map {
 			return
 		} // Vocabulary values are not entity references.
 		value := collection.MapIndex(reflect.ValueOf(id))
@@ -643,7 +671,7 @@ func missingMergeTargets(archive *GLXFile) (map[string]bool, error) {
 }
 
 func validateMergeReferences(before, after *GLXFile) error {
-	oldMissing, err := missingMergeTargets(cloneMergeArchive(before))
+	oldMissing, err := missingMergeTargets(before)
 	if err != nil {
 		return err
 	}

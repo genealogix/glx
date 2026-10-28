@@ -95,6 +95,8 @@ func installMergeFilesWithSync(directory string, original, planned map[string][]
 		return err
 	}
 	if err := syncPreparedMergeBackup(backup, parent, backupName, paths, syncHandle); err != nil {
+		_ = parent.RemoveAll(backupName)
+
 		return err
 	}
 	if err := verifyMergeSnapshot(archive, original); err != nil {

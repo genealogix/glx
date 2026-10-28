@@ -139,9 +139,8 @@ func MergePersons(glx *GLXFile, keepID, dropID string, opts MergePersonsOptions)
 	if err := opts.Comparison.Validate(); err != nil {
 		return nil, err
 	}
-	prepared, err := researchArchive(glx)
-	if err != nil {
-		return nil, err
+	if glx == nil {
+		return nil, ErrNilArchive
 	}
 
 	if keepID == dropID {
@@ -168,10 +167,14 @@ func MergePersons(glx *GLXFile, keepID, dropID string, opts MergePersonsOptions)
 		return nil, err
 	}
 
+	if err := validateMergeIdentityGroups(glx, keepID, dropID); err != nil {
+		return nil, err
+	}
+
 	// Prepare a detached outcome. Validation/reporting failures must not leave
 	// the caller with a partly merged archive or mutated property values.
 	planned := cloneMergeArchive(glx)
-	prepared, err = researchArchive(planned)
+	prepared, err := researchArchive(planned)
 	if err != nil {
 		return nil, err
 	}
@@ -184,10 +187,6 @@ func MergePersons(glx *GLXFile, keepID, dropID string, opts MergePersonsOptions)
 	notesAdded := mergePersonNotes(keep, drop, opts.NotesStrategy)
 
 	delete(planned.Persons, dropID)
-	prepared, err = researchArchive(planned)
-	if err != nil {
-		return nil, err
-	}
 	result.RefsUpdated = rewriteMergedPersonReferences(planned, prepared, dropID, keepID, result)
 	if err := validateMergeReferences(glx, planned); err != nil {
 		return nil, err
@@ -200,6 +199,32 @@ func MergePersons(glx *GLXFile, keepID, dropID string, opts MergePersonsOptions)
 	*glx = *planned
 
 	return result, nil
+}
+
+// Refuse ambiguous group hypotheses rather than deleting other participants'
+// evidence or turning the resolved pair into a self-link.
+func validateMergeIdentityGroups(archive *GLXFile, keepID, dropID string) error {
+	ids := make([]string, 0, len(archive.Relationships))
+	for id := range archive.Relationships {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	for _, id := range ids {
+		relationship := archive.Relationships[id]
+		if relationship == nil || relationship.Type != RelationshipTypePossiblySamePerson || len(relationship.Participants) <= 2 {
+			continue
+		}
+		haveKeep, haveDrop := false, false
+		for _, participant := range relationship.Participants {
+			haveKeep = haveKeep || participant.Person == keepID
+			haveDrop = haveDrop || participant.Person == dropID
+		}
+		if haveKeep && haveDrop {
+			return fmt.Errorf("%w: relationship %s contains both persons and additional participants; resolve this identity hypothesis before merging", ErrValidationFailed, id)
+		}
+	}
+
+	return nil
 }
 
 // resolvedPersonRelationships finds only binary identity candidates for this
