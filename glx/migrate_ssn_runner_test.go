@@ -268,9 +268,10 @@ persons:
 }
 
 // TestMigrateArchive_SsnMultiFileRoundTrip mirrors the round-trip test against a
-// multi-file archive. The person data rename happens in memory; the standard
-// vocabulary file is regenerated from the embedded (post-#532) definitions on
-// write, so both the data and the on-disk vocabulary end up using national_id.
+// multi-file archive. The person data rename happens in memory and is written
+// back into the person's own file. The archive defines no vocabularies, so none
+// are written (#1247): the loader's standard (post-#532) definitions supply
+// national_id.
 func TestMigrateArchive_SsnMultiFileRoundTrip(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "persons"), 0o755))
@@ -294,16 +295,14 @@ func TestMigrateArchive_SsnMultiFileRoundTrip(t *testing.T) {
 	assert.Contains(t, string(personA), "national_id")
 	assert.NotContains(t, string(personA), "ssn")
 
-	// The regenerated standard vocabulary must define national_id, not ssn.
-	vocab, err := os.ReadFile(filepath.Join(dir, "vocabularies", "person-properties.glx"))
-	require.NoError(t, err)
-	assert.Contains(t, string(vocab), "national_id")
+	assert.NoDirExists(t, filepath.Join(dir, "vocabularies"))
 
 	reloaded, _, err := LoadArchiveWithOptions(dir, false)
 	require.NoError(t, err)
 	require.Len(t, reloaded.Persons, 1)
 	assert.Equal(t, "123-45-6789", reloaded.Persons["person-a"].Properties["national_id"])
 	assert.NotContains(t, reloaded.Persons["person-a"].Properties, "ssn")
+	assert.Contains(t, reloaded.PersonProperties, "national_id")
 
 	// Second invocation is a benign no-op.
 	require.NoError(t, migrateArchive(dir))
