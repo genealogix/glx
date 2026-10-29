@@ -143,6 +143,11 @@ func (s *sizeLimitedFile) Read(p []byte) (int, error) {
 
 // importGEDZIPToSingleFile writes the imported GLX data to a single file and copies media
 func importGEDZIPToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, verbose bool, showFirstErrors int, mediaFiles []glxlib.MediaFileSource, bundle fs.FS, out io.Writer) error {
+	return importGEDZIPToSingleFileUsing(glx, outputPath, validate, verbose, showFirstErrors, mediaFiles, bundle, out, robustRename)
+}
+
+// importGEDZIPToSingleFileUsing permits deterministic publication-outcome tests.
+func importGEDZIPToSingleFileUsing(glx *glxlib.GLXFile, outputPath string, validate, verbose bool, showFirstErrors int, mediaFiles []glxlib.MediaFileSource, bundle fs.FS, out io.Writer, rename func(string, string) error) error {
 	if verbose {
 		_, _ = fmt.Fprintf(out, "Writing single-file archive: %s\n", outputPath)
 	}
@@ -183,7 +188,12 @@ func importGEDZIPToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, 
 	}
 	tempPath := tempFile.Name()
 	_ = tempFile.Close()
-	defer func() { _ = os.Remove(tempPath) }()
+	retainStagedMetadata := false
+	defer func() {
+		if !retainStagedMetadata {
+			_ = os.Remove(tempPath)
+		}
+	}()
 
 	if err := writeSingleFileArchive(tempPath, glx, validate); err != nil {
 		return formatValidationError(err, showFirstErrors)
@@ -201,10 +211,15 @@ func importGEDZIPToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, 
 		return fmt.Errorf("validating reused media: %w", err)
 	}
 
-	if err := robustRename(tempPath, outputPath); err != nil {
-		rollbackMedia()
+	mayHavePublished, err := publishSingleFileImport(tempPath, outputPath, rename)
+	if err != nil {
+		if mayHavePublished {
+			retainStagedMetadata = true
+		} else {
+			rollbackMedia()
+		}
 
-		return fmt.Errorf("writing archive to %s: %w", outputPath, err)
+		return err
 	}
 
 	if verbose || copyCount > 0 || blobCount > 0 {
@@ -223,7 +238,7 @@ func importGEDZIPToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, 
 
 // importGEDZIPToMultiFile writes the imported GLX data to a multi-file directory and copies media
 func importGEDZIPToMultiFile(glx *glxlib.GLXFile, outputPath string, validate, verbose bool, showFirstErrors int, mediaFiles []glxlib.MediaFileSource, bundle fs.FS, out io.Writer) error {
-	return importGEDZIPToMultiFileUsing(glx, outputPath, validate, verbose, showFirstErrors, mediaFiles, bundle, out, writeFilesToDir)
+	return importGEDZIPToMultiFileUsing(glx, outputPath, validate, verbose, showFirstErrors, mediaFiles, bundle, out, writeImportFilesToDir)
 }
 
 // importGEDZIPToMultiFileUsing permits deterministic metadata-write failure tests.
@@ -254,6 +269,9 @@ func importGEDZIPToMultiFileUsing(glx *glxlib.GLXFile, outputPath string, valida
 		return fmt.Errorf("creating directory for %s: %w", outputPath, err)
 	}
 
+	if err := checkImportMediaMetadata(outputPath, files); err != nil {
+		return err
+	}
 	if len(mediaFiles) == 0 {
 		if err := writeFiles(outputPath, files); err != nil {
 			return err

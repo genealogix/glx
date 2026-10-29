@@ -17,7 +17,9 @@ package main
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"os"
+	"strings"
 )
 
 type importMetadataSnapshot struct {
@@ -110,4 +112,136 @@ func hashMetadataFile(root *os.Root, rel string) ([32]byte, error) {
 	digest, hashErr := hashReader(f)
 
 	return digest, errors.Join(hashErr, f.Close())
+}
+
+// publishSingleFileImport reconciles the filesystem after a rename error. NFS
+// can complete a rename and still report an error, so the error alone cannot
+// justify deleting media that the installed metadata may now reference.
+// mayHavePublished is false on failure only when the owned staged file remains
+// at its source and the destination is demonstrably a different file or absent.
+func publishSingleFileImport(staged, target string, rename func(string, string) error) (mayHavePublished bool, err error) {
+	owned, err := os.Lstat(staged)
+	if err != nil {
+		return true, fmt.Errorf("cannot verify staged archive %s before publication; media and staging retained: %w", staged, err)
+	}
+	if !owned.Mode().IsRegular() {
+		return true, fmt.Errorf("staged archive %s is not a regular file; media and staging retained: %w", staged, os.ErrInvalid)
+	}
+	renameErr := rename(staged, target)
+	if renameErr == nil {
+		return true, nil
+	}
+
+	// Stat follows a destination symlink: it may expose our staged metadata
+	// without moving it, in which case deleting that source is unsafe too.
+	destination, destinationErr := os.Stat(target)
+	if destinationErr == nil && os.SameFile(owned, destination) {
+		return true, fmt.Errorf("archive %s was published despite a rename error; media retained: %w", target, renameErr)
+	}
+	source, sourceErr := os.Lstat(staged)
+	if sourceErr == nil && os.SameFile(owned, source) && (destinationErr == nil || os.IsNotExist(destinationErr)) {
+		return false, fmt.Errorf("publishing archive %s: %w", target, renameErr)
+	}
+
+	return true, fmt.Errorf("archive publication outcome for %s is uncertain; media retained and any staged metadata is at %s: %w", target, staged, errors.Join(renameErr, sourceErr, destinationErr))
+}
+
+// hasImportMediaMetadata distinguishes Media YAML that needs a media directory
+// from an unrelated sibling media path in a truly media-free import.
+func hasImportMediaMetadata(files map[string][]byte) bool {
+	for rel := range files {
+		if strings.HasPrefix(rel, "media/") {
+			return true
+		}
+	}
+
+	return false
+}
+
+func checkImportMediaMetadata(rootDir string, files map[string][]byte) error {
+	if !hasImportMediaMetadata(files) {
+		return nil
+	}
+	root, err := os.OpenRoot(rootDir)
+	if err != nil {
+		return fmt.Errorf("opening archive for media metadata: %w", err)
+	}
+	defer func() { _ = root.Close() }()
+
+	return inspectImportMediaMetadata(root, files)
+}
+
+// inspectImportMediaMetadata ignores media/files: only the directory and files
+// the serializer will write are relevant, including URL-only Media entities.
+func inspectImportMediaMetadata(root *os.Root, files map[string][]byte) error {
+	info, err := root.Lstat("media")
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("inspecting media metadata directory: %w", err)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("media metadata directory must be a plain directory: %w", os.ErrInvalid)
+	}
+	for rel := range files {
+		if !strings.HasPrefix(rel, "media/") {
+			continue
+		}
+		info, err := root.Lstat(rel)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return fmt.Errorf("inspecting media metadata %s: %w", rel, err)
+		}
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("media metadata %s must be a regular file: %w", rel, os.ErrInvalid)
+		}
+	}
+
+	return nil
+}
+
+// writeImportFilesToDir confines Media metadata writes to the archive, including
+// after the preflight check. All other metadata uses the existing writer policy.
+func writeImportFilesToDir(rootDir string, files map[string][]byte) error {
+	if !hasImportMediaMetadata(files) {
+		return writeFilesToDir(rootDir, files)
+	}
+	if err := os.MkdirAll(rootDir, dirPermissions); err != nil {
+		return fmt.Errorf("creating output directory: %w", err)
+	}
+	root, err := os.OpenRoot(rootDir)
+	if err != nil {
+		return fmt.Errorf("opening archive for media metadata: %w", err)
+	}
+	defer func() { _ = root.Close() }()
+	if err := inspectImportMediaMetadata(root, files); err != nil {
+		return err
+	}
+	// Keep the established writer for non-Media paths without cloning any
+	// content bytes. Media paths alone use the confined root below.
+	otherFiles := make(map[string][]byte, len(files))
+	for rel, data := range files {
+		if !strings.HasPrefix(rel, "media/") {
+			otherFiles[rel] = data
+		}
+	}
+	if err := writeFilesToDir(rootDir, otherFiles); err != nil {
+		return err
+	}
+	if err := root.MkdirAll("media", dirPermissions); err != nil {
+		return fmt.Errorf("creating media metadata directory: %w", err)
+	}
+	for rel, data := range files {
+		if !strings.HasPrefix(rel, "media/") {
+			continue
+		}
+		if err := root.WriteFile(rel, data, filePermissions); err != nil {
+			return fmt.Errorf("writing media metadata %s: %w", rel, err)
+		}
+	}
+
+	return nil
 }

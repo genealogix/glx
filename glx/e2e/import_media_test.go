@@ -508,3 +508,62 @@ func TestImport_SharedCaseVariantDirectoryKeepsSiblingReferences(t *testing.T) {
 		})
 	}
 }
+
+func TestImport_URLOnlyMediaPreservesExternalMetadata(t *testing.T) {
+	for _, extension := range []string{"ged", "gdz"} {
+		for _, obstruction := range []string{"media-directory-link", "media-file-link"} {
+			t.Run(extension+"/"+obstruction, func(t *testing.T) {
+				work := t.TempDir()
+				output := filepath.Join(work, "archive")
+				require.NoError(t, os.MkdirAll(output, 0o755))
+				external := t.TempDir()
+				externalFile := filepath.Join(external, "media-1.glx")
+				require.NoError(t, os.WriteFile(externalFile, []byte("external metadata"), 0o600))
+				link := filepath.Join(output, "media")
+				target := external
+				if obstruction == "media-file-link" {
+					require.NoError(t, os.Mkdir(link, 0o755))
+					link = filepath.Join(link, "media-1.glx")
+					target = externalFile
+				}
+				if err := os.Symlink(target, link); err != nil {
+					t.Skipf("symlinks unavailable: %v", err)
+				}
+				version := "5.5.1"
+				if extension == "gdz" {
+					version = "7.0"
+				}
+				input := []byte(fmt.Sprintf("0 HEAD\n1 GEDC\n2 VERS %s\n0 @M1@ OBJE\n1 FILE https://example.com/photo.jpg\n2 FORM image/jpeg\n0 TRLR\n", version))
+				if extension == "gdz" {
+					var bundle bytes.Buffer
+					writer := zip.NewWriter(&bundle)
+					entry, err := writer.Create("gedcom.ged")
+					require.NoError(t, err)
+					_, err = entry.Write(input)
+					require.NoError(t, err)
+					require.NoError(t, writer.Close())
+					input = bundle.Bytes()
+				}
+				source := filepath.Join(work, "remote."+extension)
+				require.NoError(t, os.WriteFile(source, input, 0o600))
+				before, err := os.Lstat(link)
+				require.NoError(t, err)
+				result := runGLX(t, work, "import", source, "-o", output, "--format", "multi")
+				require.NotZero(t, result.exitCode)
+				require.Contains(t, result.stderr, "media metadata")
+				contents, err := os.ReadFile(externalFile)
+				require.NoError(t, err)
+				require.Equal(t, "external metadata", string(contents))
+				after, err := os.Lstat(link)
+				require.NoError(t, err)
+				require.True(t, os.SameFile(before, after))
+				actualTarget, err := os.Readlink(link)
+				require.NoError(t, err)
+				require.Equal(t, target, actualTarget)
+				entries, err := os.ReadDir(output)
+				require.NoError(t, err)
+				require.Len(t, entries, 1, "metadata refusal must precede other archive writes")
+			})
+		}
+	}
+}

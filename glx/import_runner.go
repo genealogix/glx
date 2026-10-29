@@ -95,6 +95,11 @@ func importGEDCOM(gedcomPath, outputPath, format string, validate, verbose bool,
 
 // importToSingleFile writes the imported GLX data to a single file
 func importToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, verbose bool, showFirstErrors int, mediaFiles []glxlib.MediaFileSource, gedcomDir string, out io.Writer) error {
+	return importToSingleFileUsing(glx, outputPath, validate, verbose, showFirstErrors, mediaFiles, gedcomDir, out, robustRename)
+}
+
+// importToSingleFileUsing permits deterministic publication-outcome tests.
+func importToSingleFileUsing(glx *glxlib.GLXFile, outputPath string, validate, verbose bool, showFirstErrors int, mediaFiles []glxlib.MediaFileSource, gedcomDir string, out io.Writer, rename func(string, string) error) error {
 	if verbose {
 		_, _ = fmt.Fprintf(out, "Writing single-file archive: %s\n", outputPath)
 	}
@@ -133,7 +138,12 @@ func importToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, verbos
 	}
 	tempPath := tempFile.Name()
 	_ = tempFile.Close()
-	defer func() { _ = os.Remove(tempPath) }()
+	retainStagedMetadata := false
+	defer func() {
+		if !retainStagedMetadata {
+			_ = os.Remove(tempPath)
+		}
+	}()
 	if err := writeSingleFileArchive(tempPath, glx, validate); err != nil {
 		return formatValidationError(err, showFirstErrors)
 	}
@@ -146,10 +156,15 @@ func importToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, verbos
 
 		return fmt.Errorf("validating reused media: %w", err)
 	}
-	if err := robustRename(tempPath, outputPath); err != nil {
-		rollbackMedia()
+	mayHavePublished, err := publishSingleFileImport(tempPath, outputPath, rename)
+	if err != nil {
+		if mayHavePublished {
+			retainStagedMetadata = true
+		} else {
+			rollbackMedia()
+		}
 
-		return fmt.Errorf("publishing archive: %w", err)
+		return err
 	}
 
 	reportMedia()
@@ -161,7 +176,7 @@ func importToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, verbos
 
 // importToMultiFile writes the imported GLX data to a multi-file directory
 func importToMultiFile(glx *glxlib.GLXFile, outputPath string, validate, verbose bool, showFirstErrors int, mediaFiles []glxlib.MediaFileSource, gedcomDir string, out io.Writer) error {
-	return importToMultiFileUsing(glx, outputPath, validate, verbose, showFirstErrors, mediaFiles, gedcomDir, out, writeFilesToDir)
+	return importToMultiFileUsing(glx, outputPath, validate, verbose, showFirstErrors, mediaFiles, gedcomDir, out, writeImportFilesToDir)
 }
 
 // importToMultiFileUsing permits deterministic metadata-write failure tests.
@@ -181,6 +196,9 @@ func importToMultiFileUsing(glx *glxlib.GLXFile, outputPath string, validate, ve
 	}
 	if err := os.MkdirAll(outputPath, dirPermissions); err != nil {
 		return fmt.Errorf("creating archive directory: %w", err)
+	}
+	if err := checkImportMediaMetadata(outputPath, files); err != nil {
+		return err
 	}
 	if len(mediaFiles) == 0 {
 		if err := writeFiles(outputPath, files); err != nil {

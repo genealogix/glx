@@ -30,6 +30,8 @@ import (
 
 var errTestLaterMetadataWrite = errors.New("later metadata write failed")
 
+var errTestRenameOutcome = errors.New("rename outcome reported as failure")
+
 func TestMultiFileImport_PartialMetadataWriteKeepsReferencedMedia(t *testing.T) {
 	for _, input := range []string{"GEDCOM", "GEDZIP"} {
 		t.Run(input, func(t *testing.T) {
@@ -435,4 +437,128 @@ func TestImportMetadataSnapshotDetectsPartialOverwrite(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "persons"), dirPermissions))
 	require.NoError(t, os.WriteFile(filepath.Join(root, "persons/new.glx"), []byte("partial"), filePermissions))
 	require.False(t, snapshot.unchanged(root))
+}
+
+func TestSingleFileImport_ReconcilesRenameErrorBeforeMediaRollback(t *testing.T) {
+	failure := errTestRenameOutcome
+	for _, input := range []string{"GEDCOM", "GEDZIP"} {
+		for _, outcome := range []string{"unpublished", "completed", "completed-temp-replaced", "unknown-copy", "unknown-moved", "unknown-inspection", "target-symlink", "target-hardlink"} {
+			t.Run(input+"/"+outcome, func(t *testing.T) {
+				work := t.TempDir()
+				if outcome == "unknown-inspection" || outcome == "target-symlink" {
+					probe := filepath.Join(work, "symlink-probe")
+					if err := os.Symlink("missing", probe); err != nil {
+						t.Skipf("symlinks unavailable: %v", err)
+					}
+					require.NoError(t, os.Remove(probe))
+				}
+				output := filepath.Join(work, "archive.glx")
+				previous := []byte("old archive")
+				require.NoError(t, os.WriteFile(output, previous, filePermissions))
+				source := t.TempDir()
+				require.NoError(t, os.WriteFile(filepath.Join(source, "photo.jpg"), []byte("new media"), filePermissions))
+				archive := &glxlib.GLXFile{Media: map[string]*glxlib.Media{"photo": {URI: "media/files/photo.jpg"}}}
+				files := []glxlib.MediaFileSource{{MediaID: "photo", SourceType: glxlib.MediaSourceFile, RelativePath: "photo.jpg", MemberPath: "photo.jpg", TargetFilename: "photo.jpg"}}
+				binary := filepath.Join(work, glxlib.MediaFilesDir, "photo.jpg")
+				var staged, recovery string
+				rename := func(from, to string) error {
+					staged = from
+					require.FileExists(t, binary, "the injected boundary follows binary publication")
+					switch outcome {
+					case "unpublished":
+					case "completed", "completed-temp-replaced":
+						require.NoError(t, os.Rename(from, to))
+						if outcome == "completed-temp-replaced" {
+							require.NoError(t, os.WriteFile(from, []byte("another writer's file"), filePermissions))
+						}
+					case "unknown-copy":
+						data, err := os.ReadFile(from)
+						require.NoError(t, err)
+						require.NoError(t, os.Remove(from))
+						require.NoError(t, os.WriteFile(to, data, filePermissions))
+					case "unknown-moved":
+						recovery = from + ".recovery"
+						require.NoError(t, os.Rename(from, recovery))
+					case "unknown-inspection":
+						require.NoError(t, os.Remove(to))
+						require.NoError(t, os.Symlink(filepath.Base(to), to))
+					case "target-symlink":
+						require.NoError(t, os.Remove(to))
+						require.NoError(t, os.Symlink(filepath.Base(from), to))
+					case "target-hardlink":
+						require.NoError(t, os.Remove(to))
+						require.NoError(t, os.Link(from, to))
+					}
+
+					return failure
+				}
+				var importErr error
+				stdout := captureStdout(t, func() {
+					if input == "GEDCOM" {
+						importErr = importToSingleFileUsing(archive, output, false, false, 0, files, source, io.Discard, rename)
+					} else {
+						importErr = importGEDZIPToSingleFileUsing(archive, output, false, false, 0, files, os.DirFS(source), io.Discard, rename)
+					}
+				})
+				require.ErrorIs(t, importErr, failure)
+				require.NotContains(t, stdout, "Media files:")
+				if outcome == "unpublished" {
+					require.Equal(t, previous, mustReadImportMedia(t, output))
+					require.NoFileExists(t, binary)
+					require.NoFileExists(t, staged)
+
+					return
+				}
+				require.Equal(t, []byte("new media"), mustReadImportMedia(t, binary))
+				switch outcome {
+				case "unknown-moved":
+					require.Contains(t, importErr.Error(), "uncertain")
+					require.Equal(t, previous, mustReadImportMedia(t, output))
+					require.Contains(t, string(mustReadImportMedia(t, recovery)), "media/files/photo.jpg")
+				case "unknown-inspection":
+					require.Contains(t, importErr.Error(), "uncertain")
+					require.Contains(t, string(mustReadImportMedia(t, staged)), "media/files/photo.jpg")
+				default:
+					installed, err := readSingleFileArchive(output, false)
+					require.NoError(t, err)
+					require.Equal(t, "media/files/photo.jpg", installed.Media["photo"].URI)
+					if outcome == "unknown-copy" {
+						require.Contains(t, importErr.Error(), "uncertain")
+					} else {
+						require.Contains(t, importErr.Error(), "was published")
+					}
+				}
+				if outcome == "completed-temp-replaced" {
+					require.Equal(t, []byte("another writer's file"), mustReadImportMedia(t, staged))
+				}
+			})
+		}
+	}
+}
+
+func TestPublishSingleFileImportRetainsMediaWhenStagedIdentityIsUnavailable(t *testing.T) {
+	for _, state := range []string{"moved", "nonregular"} {
+		t.Run(state, func(t *testing.T) {
+			dir := t.TempDir()
+			staged := filepath.Join(dir, "staged.glx")
+			target := filepath.Join(dir, "archive.glx")
+			data := []byte("media:\n  photo:\n    uri: media/files/photo.jpg\n")
+			require.NoError(t, os.WriteFile(staged, data, filePermissions))
+			require.NoError(t, os.Rename(staged, target))
+			if state == "nonregular" {
+				require.NoError(t, os.Mkdir(staged, dirPermissions))
+			}
+			called := false
+			mayHavePublished, err := publishSingleFileImport(staged, target, func(string, string) error {
+				called = true
+
+				return nil
+			})
+			require.Error(t, err)
+			require.True(t, mayHavePublished)
+			require.False(t, called)
+			require.Contains(t, err.Error(), "media and staging retained")
+			require.Equal(t, data, mustReadImportMedia(t, target))
+		})
+	}
 }

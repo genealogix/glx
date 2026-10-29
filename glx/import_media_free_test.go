@@ -102,3 +102,51 @@ func TestMediaFreeImportStillChecksRequiredMetadataDirectory(t *testing.T) {
 		})
 	}
 }
+
+func TestURLOnlyImportProtectsRequiredMediaMetadataPaths(t *testing.T) {
+	for _, input := range []string{"GEDCOM", "GEDZIP"} {
+		for _, obstruction := range []string{"directory-link", "leaf-link", "unrelated-files-link", "unrelated-files-file"} {
+			t.Run(input+"/"+obstruction, func(t *testing.T) {
+				dir := t.TempDir()
+				external := t.TempDir()
+				externalFile := filepath.Join(external, "media-1.glx")
+				require.NoError(t, os.WriteFile(externalFile, []byte("external metadata"), filePermissions))
+				if obstruction == "directory-link" {
+					if err := os.Symlink(external, filepath.Join(dir, "media")); err != nil {
+						t.Skipf("symlinks unavailable: %v", err)
+					}
+				} else {
+					require.NoError(t, os.Mkdir(filepath.Join(dir, "media"), dirPermissions))
+					switch obstruction {
+					case "leaf-link":
+						if err := os.Symlink(externalFile, filepath.Join(dir, "media", "media-1.glx")); err != nil {
+							t.Skipf("symlinks unavailable: %v", err)
+						}
+					case "unrelated-files-link":
+						if err := os.Symlink(external, filepath.Join(dir, glxlib.MediaFilesDir)); err != nil {
+							t.Skipf("symlinks unavailable: %v", err)
+						}
+					case "unrelated-files-file":
+						require.NoError(t, os.WriteFile(filepath.Join(dir, glxlib.MediaFilesDir), []byte("unrelated"), filePermissions))
+					}
+				}
+				before := snapshotDir(t, dir)
+				archive := &glxlib.GLXFile{Media: map[string]*glxlib.Media{"media-1": {URI: "https://example.com/photo.jpg"}}}
+				var err error
+				if input == "GEDCOM" {
+					err = importToMultiFile(archive, dir, false, false, 0, nil, "", io.Discard)
+				} else {
+					err = importGEDZIPToMultiFile(archive, dir, false, false, 0, nil, nil, io.Discard)
+				}
+				if obstruction == "directory-link" || obstruction == "leaf-link" {
+					require.ErrorIs(t, err, os.ErrInvalid)
+					require.Equal(t, before, snapshotDir(t, dir))
+				} else {
+					require.NoError(t, err)
+					require.Contains(t, string(mustReadImportMedia(t, filepath.Join(dir, "media", "media-1.glx"))), "https://example.com/photo.jpg")
+				}
+				require.Equal(t, []byte("external metadata"), mustReadImportMedia(t, externalFile))
+			})
+		}
+	}
+}
