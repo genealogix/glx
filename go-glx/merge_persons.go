@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"maps"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 
@@ -95,7 +96,9 @@ type MergePersonsResult struct {
 // Opaque metadata, ordinary strings and references to other types are retained.
 // Binary possibly_same_person relationships connecting keepID and dropID are
 // removed and reported in RemovedRelationships before references are rewritten.
-// Other relationships are retained, including candidates involving other people.
+// Other relationships are retained. If any of them contains both merge IDs,
+// the merge is refused before mutation rather than collapsing participants or
+// silently deleting evidence. Pre-existing self-links do not block a merge.
 // Whole assertions depending on removed relationships through their subject,
 // vocabulary-typed value or participant properties are deleted regardless of
 // status/confidence. This extends transitively through assertion-typed values
@@ -155,7 +158,6 @@ func MergePersons(glx *GLXFile, keepID, dropID string, opts MergePersonsOptions)
 	case NotesStrategyAppend, NotesStrategyPreferKeep, NotesStrategyPreferDrop:
 		// ok
 	default:
-
 		return nil, fmt.Errorf("%w: %q (want append | prefer-keep | prefer-drop)",
 			ErrMergeInvalidNotesStrat, opts.NotesStrategy)
 	}
@@ -167,7 +169,7 @@ func MergePersons(glx *GLXFile, keepID, dropID string, opts MergePersonsOptions)
 		return nil, err
 	}
 
-	if err := validateMergeIdentityGroups(glx, keepID, dropID); err != nil {
+	if err := validateMergeRelationshipCollapses(glx, keepID, dropID); err != nil {
 		return nil, err
 	}
 
@@ -201,17 +203,13 @@ func MergePersons(glx *GLXFile, keepID, dropID string, opts MergePersonsOptions)
 	return result, nil
 }
 
-// Refuse ambiguous group hypotheses rather than deleting other participants'
-// evidence or turning the resolved pair into a self-link.
-func validateMergeIdentityGroups(archive *GLXFile, keepID, dropID string) error {
-	ids := make([]string, 0, len(archive.Relationships))
-	for id := range archive.Relationships {
-		ids = append(ids, id)
-	}
-	sort.Strings(ids)
-	for _, id := range ids {
+// A relationship that contains both records would acquire a duplicate person
+// after the rewrite. Preserve its evidence and refuse, except the exact binary
+// identity candidates that the operation already removes and reports.
+func validateMergeRelationshipCollapses(archive *GLXFile, keepID, dropID string) error {
+	for _, id := range slices.Sorted(maps.Keys(archive.Relationships)) {
 		relationship := archive.Relationships[id]
-		if relationship == nil || relationship.Type != RelationshipTypePossiblySamePerson || len(relationship.Participants) <= 2 {
+		if relationship == nil || (relationship.Type == RelationshipTypePossiblySamePerson && len(relationship.Participants) == 2) {
 			continue
 		}
 		haveKeep, haveDrop := false, false
@@ -220,7 +218,7 @@ func validateMergeIdentityGroups(archive *GLXFile, keepID, dropID string) error 
 			haveDrop = haveDrop || participant.Person == dropID
 		}
 		if haveKeep && haveDrop {
-			return fmt.Errorf("%w: relationship %s contains both persons and additional participants; resolve this identity hypothesis before merging", ErrValidationFailed, id)
+			return fmt.Errorf("%w: relationship %s contains both merge persons; resolve it before merging to avoid collapsing participants", ErrValidationFailed, id)
 		}
 	}
 
@@ -456,13 +454,10 @@ func propertyYear(v any) int {
 	}
 	switch d := m[temporalDateField].(type) {
 	case string:
-
 		return ExtractFirstYear(d)
 	case DateString:
-
 		return d.Year()
 	default:
-
 		return 0
 	}
 }
@@ -517,7 +512,6 @@ func mergePersonNotes(keep, drop *Person, strategy NotesStrategy) int {
 
 		return count
 	case NotesStrategyPreferKeep:
-
 		return 0
 	}
 

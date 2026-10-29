@@ -51,7 +51,9 @@ func TestMergePersonsRetainsRecoveryWhenInstallationSyncFails(t *testing.T) {
 		return nil
 	})
 	require.ErrorIs(t, err, fs.ErrInvalid)
-	assert.FileExists(t, filepath.Join(dir+".bak", swapInProgressMarker))
+	assert.FileExists(t, filepath.Join(dir, inPlaceJournalFile))
+	require.ErrorIs(t, checkInPlaceJournal(dir), ErrInterruptedInPlaceWrite)
+	assert.FileExists(t, filepath.Join(dir+".bak", mergeBackupMarker))
 	backup, err := os.ReadFile(filepath.Join(dir+".bak", path))
 	require.NoError(t, err)
 	assert.Equal(t, original[path], backup)
@@ -132,8 +134,8 @@ func TestMergePersonsSyncsRecoveryAndRenamesBeforeCleanup(t *testing.T) {
 		if installed && name == filepath.Dir(dir) {
 			assert.NoDirExists(t, dir+".bak")
 			backupRemovalSynced = true
-		} else if installed {
-			assert.FileExists(t, filepath.Join(dir+".bak", swapInProgressMarker))
+		} else if installed && !backupRemovalSynced {
+			assert.FileExists(t, filepath.Join(dir+".bak", mergeBackupMarker))
 			if name == dir {
 				archiveSyncedAfterInstall = true
 			}
@@ -175,7 +177,9 @@ func TestMergePersonsRetainsBackupWhenRollbackSyncFails(t *testing.T) {
 		return syncMergeHandle(file)
 	})
 	require.ErrorIs(t, err, fs.ErrPermission)
-	assert.FileExists(t, filepath.Join(dir+".bak", swapInProgressMarker))
+	assert.FileExists(t, filepath.Join(dir, inPlaceJournalFile))
+	require.ErrorIs(t, checkInPlaceJournal(dir), ErrInterruptedInPlaceWrite)
+	assert.FileExists(t, filepath.Join(dir+".bak", mergeBackupMarker))
 	actual, err := collectGLXFilesFromDir(dir)
 	require.NoError(t, err)
 	assert.Equal(t, original, actual)
@@ -207,6 +211,10 @@ func TestMergePersonsReportsBackupRemovalSyncFailure(t *testing.T) {
 	require.ErrorIs(t, err, fs.ErrInvalid)
 	assert.True(t, observed)
 	assert.Contains(t, err.Error(), "syncing completed merge backup removal")
+	assert.FileExists(t, filepath.Join(dir, inPlaceJournalFile))
+	transactions, err := filepath.Glob(filepath.Join(dir, ".glx-merge-*"))
+	require.NoError(t, err)
+	assert.Len(t, transactions, 1, "retain original inodes while backup cleanup durability is uncertain")
 	actual, err := collectGLXFilesFromDir(dir)
 	require.NoError(t, err)
 	assert.Equal(t, planned, actual, "installed data remains intact when cleanup durability is uncertain")

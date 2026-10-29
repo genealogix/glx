@@ -31,9 +31,12 @@ After reporting and validation, Apply this merge? [y/N] defaults to cancellation
 --yes (-y) skips approval but still reports and validates. Noninteractive use
 requires --yes. --dry-run only reports, even with --yes, and never prompts.
 The preview remains visible with --quiet. A changed archive requires a new preview.
+Unrelated pre-existing validation errors are retained; an entity with structural
+errors cannot be edited safely and must be repaired first.
 Archives with duplicate entity IDs are refused, including in --dry-run;
-resolve the duplicates first. A possibly_same_person relationship containing
-both merge IDs and additional participants must be resolved before merging.
+resolve the duplicates first. Relationships containing both merge IDs must
+be resolved before merging, except the binary possibly_same_person candidates
+that this command removes and reports. It never silently collapses participants.
 Merges refuse changes to linked GLX files (including Windows Git
 symlink placeholders) before approval, preserving the link and its target.
 Unchanged linked files in directory archives are retained. Run with exclusive
@@ -53,8 +56,10 @@ Notes are combined per --notes-strategy (default: append).
 
 This is the natural follow-on to `glx duplicates`: once you've identified
 that two person records are the same individual, this command consolidates
-them. Single-file writes use atomic replacement; multi-file writes retain the
-existing rollback and interrupted-write recovery safeguards.
+them. Single-file writes use atomic replacement. Multi-file archives are updated
+in place: only changed files are rewritten in their original locations, and
+files left empty are deleted. Rollback and interrupted-write recovery safeguard
+the operation; unrelated files remain untouched.
 
 ```
 glx merge-persons <keep-id> <drop-id> [flags]

@@ -43,6 +43,9 @@ func prepareMergeFiles(original map[string][]byte, archive *glxlib.GLXFile, resu
 	if err := preserveMergeAliases(roots, result.Changes); err != nil {
 		return nil, err
 	}
+	if err := validateMergeEditedEntities(roots, result.Changes); err != nil {
+		return nil, err
+	}
 	_, dropParent, dropIndex, err := findMergeEntity(roots, glxlib.EntityTypePersons, dropID)
 	if err != nil {
 		return nil, err
@@ -112,38 +115,100 @@ func prepareMergeFiles(original map[string][]byte, archive *glxlib.GLXFile, resu
 // occurrences containing changed entities: editing the anchor's original node
 // would also alter snapshots and unrelated consumers of that collection.
 func materializeMergeCollections(roots map[string]*yaml.Node, changes []glxlib.EntityChange) error {
-	for _, change := range changes {
+	if err := materializeMergeRoots(roots, changes); err != nil {
+		return err
+	}
+	for i := range changes {
 		for _, root := range roots {
-			collection := mergeMappingValue(root, string(change.EntityType))
-			if collection == nil || (collection.Kind != yaml.AliasNode && !hasMergeCollectionKey(collection)) {
-				continue
-			}
-			if err := freezeMergeCollectionConsumers(roots, collection); err != nil {
+			if err := materializeMergeCollection(roots, root, &changes[i]); err != nil {
 				return err
 			}
-			expanded, err := expandMergeAlias(collection, nil, nil, make(map[*yaml.Node]bool), true)
-			if err != nil {
-				return err
-			}
-			if err := flattenMergeCollection(expanded); err != nil {
-				return err
-			}
-			if mergeMappingValue(expanded, change.ID) == nil {
-				continue
-			}
-			// Collection mappings are mutated in place; put occurrence comments
-			// on the containing key so the encoder retains them after edits.
-			for i := 0; i < len(root.Content); i += 2 {
-				if root.Content[i+1] == collection {
-					root.Content[i].HeadComment = strings.TrimSpace(root.Content[i].HeadComment + "\n" + expanded.HeadComment)
-					expanded.HeadComment = ""
-
-					break
-				}
-			}
-			*collection = *expanded
 		}
 	}
+
+	return nil
+}
+
+func materializeMergeRoots(roots map[string]*yaml.Node, changes []glxlib.EntityChange) error {
+	for _, root := range roots {
+		if !hasMergeCollectionKey(root) {
+			continue
+		}
+		needed, err := rootInheritsMergeChange(root, changes)
+		if err != nil {
+			return err
+		}
+		if !needed {
+			continue
+		}
+		if err := freezeMergeInheritedSources(roots, root); err != nil {
+			return err
+		}
+		if err := flattenMergeCollection(root); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Keep unrelated root inheritance and its aliases spelled exactly as before.
+func rootInheritsMergeChange(root *yaml.Node, changes []glxlib.EntityChange) (bool, error) {
+	expanded, err := expandMergeAlias(root, nil, nil, make(map[*yaml.Node]bool), true)
+	if err != nil {
+		return false, err
+	}
+	if err := flattenMergeCollection(expanded); err != nil {
+		return false, err
+	}
+	for _, change := range changes {
+		if mergeMappingValue(root, string(change.EntityType)) != nil {
+			continue
+		}
+		collection := mergeMappingValue(expanded, string(change.EntityType))
+		if collection == nil {
+			continue
+		}
+		if err := flattenMergeCollection(collection); err != nil {
+			return false, err
+		}
+		if mergeMappingValue(collection, change.ID) != nil {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+func materializeMergeCollection(roots map[string]*yaml.Node, root *yaml.Node, change *glxlib.EntityChange) error {
+	collection := mergeMappingValue(root, string(change.EntityType))
+	if collection == nil || (collection.Kind != yaml.AliasNode && !hasMergeCollectionKey(collection)) {
+		return nil
+	}
+	expanded, err := expandMergeAlias(collection, nil, nil, make(map[*yaml.Node]bool), true)
+	if err != nil {
+		return err
+	}
+	if err := flattenMergeCollection(expanded); err != nil {
+		return err
+	}
+	if mergeMappingValue(expanded, change.ID) == nil {
+		return nil
+	}
+	if err := freezeMergeCollectionConsumers(roots, collection); err != nil {
+		return err
+	}
+	// Collection mappings are mutated in place; attach occurrence comments to
+	// their key so the encoder retains them after the edit.
+	for i := 0; i < len(root.Content); i += 2 {
+		if root.Content[i+1] == collection {
+			root.Content[i].HeadComment = strings.TrimSpace(root.Content[i].HeadComment + "\n" + expanded.HeadComment)
+			expanded.HeadComment = ""
+
+			break
+		}
+	}
+	*collection = *expanded
 
 	return nil
 }
@@ -166,12 +231,31 @@ func freezeMergeCollectionConsumers(roots map[string]*yaml.Node, collection *yam
 	return nil
 }
 
+// Only anchors physically defined in a removed << value disappear. References
+// to sources defined elsewhere keep their original nodes and alias spelling.
+func freezeMergeInheritedSources(roots map[string]*yaml.Node, mapping *yaml.Node) error {
+	affected := make(map[*yaml.Node]bool)
+	outgoing := make(map[*yaml.Node]bool)
+	for i := 0; i < len(mapping.Content); i += 2 {
+		if mapping.Content[i].Tag == yamlMergeTag {
+			collectMergeAliases(mapping.Content[i+1], affected, outgoing)
+		}
+	}
+	for _, root := range roots {
+		if _, err := expandMergeAlias(root, affected, outgoing, make(map[*yaml.Node]bool), false); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func hasMergeCollectionKey(node *yaml.Node) bool {
 	if node.Kind != yaml.MappingNode {
 		return false
 	}
 	for i := 0; i < len(node.Content); i += 2 {
-		if node.Content[i].Tag == "!!merge" {
+		if node.Content[i].Tag == yamlMergeTag {
 			return true
 		}
 	}
@@ -187,10 +271,12 @@ func flattenMergeCollection(node *yaml.Node) error {
 		return fmt.Errorf("%w: entity collection is not a mapping", glxlib.ErrValidationFailed)
 	}
 	var explicit, sources []*yaml.Node
+	var mergeComments []string
 	seen := make(map[string]bool)
 	for i := 0; i < len(node.Content); i += 2 {
 		key, value := node.Content[i], node.Content[i+1]
-		if key.Tag == "!!merge" {
+		if key.Tag == yamlMergeTag {
+			mergeComments = append(mergeComments, key.HeadComment, key.LineComment, key.FootComment, value.HeadComment, value.LineComment, value.FootComment)
 			if value.Kind == yaml.SequenceNode {
 				sources = append(sources, value.Content...)
 			} else {
@@ -198,19 +284,29 @@ func flattenMergeCollection(node *yaml.Node) error {
 			}
 		} else {
 			explicit = append(explicit, key, value)
-			seen[key.Value] = true
+			seen[mergeNodeKey(key)] = true
 		}
 	}
 	for _, source := range sources {
-		if err := flattenMergeCollection(source); err != nil {
+		inherited, err := expandMergeAlias(source, nil, nil, make(map[*yaml.Node]bool), true)
+		if err != nil {
 			return err
 		}
-		for i := 0; i < len(source.Content); i += 2 {
-			key := source.Content[i]
-			if !seen[key.Value] {
-				explicit = append(explicit, key, source.Content[i+1])
-				seen[key.Value] = true
+		if err := flattenMergeCollection(inherited); err != nil {
+			return err
+		}
+		for i := 0; i < len(inherited.Content); i += 2 {
+			key := inherited.Content[i]
+			if !seen[mergeNodeKey(key)] {
+				explicit = append(explicit, key, inherited.Content[i+1])
+				seen[mergeNodeKey(key)] = true
 			}
+		}
+	}
+	if len(explicit) > 0 {
+		comments := strings.TrimSpace(strings.Join(mergeComments, "\n"))
+		if comments != "" {
+			explicit[0].HeadComment = strings.TrimSpace(comments + "\n" + explicit[0].HeadComment)
 		}
 	}
 	node.Content = explicit
@@ -456,7 +552,10 @@ func equalMergeNodes(a, b *yaml.Node) bool {
 	return reflect.DeepEqual(first, second)
 }
 
-const yamlStringTag = "!!str"
+const (
+	yamlStringTag = "!!str"
+	yamlMergeTag  = "!!merge"
+)
 
 type mergeNodeContext struct {
 	keepID, dropID string
@@ -617,15 +716,81 @@ func matchingMergeNode(container, desired *yaml.Node, used map[*yaml.Node]bool) 
 	return nil
 }
 
-func verifyMergeFiles(files, original map[string][]byte, expected *glxlib.GLXFile, directory bool) error {
-	for path, data := range files {
-		document, err := ParseYAMLFile(data)
+// Unknown structural fields on an edited/deleted entity cannot be discarded
+// by typed re-encoding. Refuse those edits while unrelated entities retain
+// their original bytes and pre-existing structural issues.
+func validateMergeEditedEntities(roots map[string]*yaml.Node, changes []glxlib.EntityChange) error {
+	for _, change := range changes {
+		_, parent, index, err := findMergeEntity(roots, change.EntityType, change.ID)
 		if err != nil {
 			return err
 		}
-		if issues := ValidateGLXFileStructure(document); len(issues) != 0 {
-			return fmt.Errorf("%w: %s: %s", glxlib.ErrValidationFailed, path, strings.Join(issues, "; "))
+		entity := parent.Content[index+1]
+		if hasMergeCollectionKey(entity) {
+			if err := flattenMergeCollection(entity); err != nil {
+				return err
+			}
 		}
+		collection := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map", Content: []*yaml.Node{{Kind: yaml.ScalarNode, Tag: yamlStringTag, Value: change.ID}, cloneMergeNode(entity)}}
+		fragment := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map", Content: []*yaml.Node{{Kind: yaml.ScalarNode, Tag: yamlStringTag, Value: string(change.EntityType)}, collection}}
+		data, err := yaml.Marshal(fragment)
+		if err != nil {
+			return err
+		}
+		issues, err := mergeStructureIssues(data)
+		if err != nil {
+			return err
+		}
+		if len(issues) > 0 {
+			return fmt.Errorf("%w: cannot safely edit %s[%s] with existing structural errors: %s", glxlib.ErrValidationFailed, change.EntityType, change.ID, strings.Join(issues, "; "))
+		}
+	}
+
+	return nil
+}
+
+func mergeStructureIssues(data []byte) ([]string, error) {
+	document, err := ParseYAMLFile(data)
+	if err != nil {
+		return nil, err
+	}
+
+	return ValidateGLXFileStructure(document), nil
+}
+
+func verifyMergeStructure(files, original map[string][]byte) error {
+	for path, data := range files {
+		if bytes.Equal(original[path], data) {
+			continue
+		}
+		baseline := make(map[string]int)
+		if old, exists := original[path]; exists {
+			issues, err := mergeStructureIssues(old)
+			if err != nil {
+				return err
+			}
+			for _, issue := range issues {
+				baseline[issue]++
+			}
+		}
+		issues, err := mergeStructureIssues(data)
+		if err != nil {
+			return err
+		}
+		for _, issue := range issues {
+			if baseline[issue] == 0 {
+				return fmt.Errorf("%w: %s: %s", glxlib.ErrValidationFailed, path, issue)
+			}
+			baseline[issue]--
+		}
+	}
+
+	return nil
+}
+
+func verifyMergeFiles(files, original map[string][]byte, expected *glxlib.GLXFile, directory bool) error {
+	if err := verifyMergeStructure(files, original); err != nil {
+		return err
 	}
 	actual, err := loadMergeFiles("", files, directory)
 	if err != nil {

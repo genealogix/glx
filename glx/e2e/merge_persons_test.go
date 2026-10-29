@@ -279,3 +279,18 @@ research_logs:
 	assert.Equal(t, "relationships", archive.PersonProperties["identity_case"].ReferenceType)
 	assertArchiveValid(t, dir)
 }
+
+func TestMergePersonsRefusesNewRelationshipSelfLink(t *testing.T) {
+	archive := archiveWithDuplicate(t)
+	path := filepath.Join(archive, "relationships", "rel-research.glx")
+	data := fmt.Sprintf("relationships:\n  rel-research:\n    type: marriage\n    notes: preserve original research\n    participants:\n      - person: %s\n      - person: %s\n", mergeKeepID, mergeDropID)
+	require.NoError(t, os.WriteFile(path, []byte(data), 0o600))
+	before := snapshotTree(t, archive)
+	for _, flags := range [][]string{{"--dry-run"}, {"--yes"}} {
+		args := append([]string{"merge-persons", mergeKeepID, mergeDropID}, flags...)
+		result := runGLX(t, archive, args...)
+		assertExitWithStderr(t, result, "collapsing participants")
+		assert.Contains(t, result.stderr, "rel-research")
+		assertTreeUnchanged(t, before, archive)
+	}
+}

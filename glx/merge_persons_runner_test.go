@@ -235,10 +235,11 @@ func TestMergePersonsInstallRestoresLateEditsToMovedOriginals(t *testing.T) {
 			current, err := collectGLXFilesFromDir(dir)
 			require.NoError(t, err)
 			assert.Equal(t, expected, current, "rollback must preserve the unpreviewed inode, including a deletion path")
-			assert.NoDirExists(t, dir+".bak")
+			assert.DirExists(t, dir+".bak")
+			assert.FileExists(t, filepath.Join(dir, inPlaceJournalFile))
 			transactions, err := filepath.Glob(filepath.Join(dir, ".glx-merge-*"))
 			require.NoError(t, err)
-			assert.Empty(t, transactions)
+			assert.Len(t, transactions, 1, "a restored late edit differs from the original snapshot, so recovery remains available")
 		})
 	}
 }
@@ -575,11 +576,14 @@ func TestMergePersonsInstallRejectsDirectorySymlinkRace(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, original[filepath.FromSlash("persons/person-keep.glx")], backup[filepath.FromSlash("persons/person-keep.glx")])
 	assert.Equal(t, original[filepath.FromSlash("persons/person-drop.glx")], backup[filepath.FromSlash("persons/person-drop.glx")])
-	require.ErrorIs(t, removeStaleBackup(dir+".bak"), ErrInterruptedSwap)
+	backupParent, err := os.OpenRoot(filepath.Dir(dir))
+	require.NoError(t, err)
+	defer func() { _ = backupParent.Close() }()
+	require.ErrorIs(t, removeStaleMergeBackup(backupParent, filepath.Base(dir)+".bak"), errMergeInterruptedBackup)
 }
 
 func TestMergePersonsStaleBackupPreservesRecoveryData(t *testing.T) {
-	for _, path := range []string{swapInProgressMarker, "README.txt", "persons/.drafts/record.glx", "persons/research.txt", "media/files/record.glx"} {
+	for _, path := range []string{mergeBackupMarker, "README.txt", "persons/.drafts/record.glx", "persons/research.txt", "media/files/record.glx"} {
 		t.Run(path, func(t *testing.T) {
 			parentDir := t.TempDir()
 			name := "archive.bak"

@@ -19,6 +19,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -26,6 +27,15 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+)
+
+// The backup marker retains its legacy spelling so interrupted merges made by
+// earlier versions are still recognized after the general writer migration.
+const mergeBackupMarker = ".glx-swap-in-progress"
+
+var (
+	errMergeInterruptedBackup = errors.New("a previous merge was interrupted; its backup may hold original files")
+	errMergeForeignBackup     = errors.New("merge backup contains non-archive files; inspect it before retrying")
 )
 
 // Install only changed files, using archive-scoped renames throughout. Original
@@ -46,6 +56,9 @@ func installMergeFilesWithSync(directory string, original, planned map[string][]
 	}
 	destination, err = filepath.EvalSymlinks(destination)
 	if err != nil {
+		return err
+	}
+	if err := checkInPlaceJournal(destination); err != nil {
 		return err
 	}
 	parent, err := os.OpenRoot(filepath.Dir(destination))
@@ -76,62 +89,178 @@ func installMergeFilesWithSync(directory string, original, planned map[string][]
 		return err
 	}
 	backupName := filepath.Base(destination) + ".bak"
-	if err := removeStaleMergeBackup(parent, backupName); err != nil {
-		return err
-	}
-	if err := makeMergePrivateDirectory(parent, backupName); err != nil {
-		return err
-	}
-	backup, err := parent.OpenRoot(backupName)
+	finishJournal, err := prepareMergeRecovery(archive, parent, transaction, backupName, paths, original, syncHandle)
 	if err != nil {
-		_ = parent.Remove(backupName)
-
 		return err
 	}
-	defer func() { _ = backup.Close() }()
-	if err := copyMergeBackupWithSync(archive, backup, transaction, paths, original, syncHandle); err != nil {
-		_ = parent.RemoveAll(backupName)
-
-		return err
-	}
-	if err := syncPreparedMergeBackup(backup, parent, backupName, paths, syncHandle); err != nil {
-		_ = parent.RemoveAll(backupName)
-
-		return err
-	}
-	if err := verifyMergeSnapshot(archive, original); err != nil {
-		_ = parent.RemoveAll(backupName)
-
-		return err
-	}
-	// All backup copies are durable before any live original moves. An
-	// unsuccessful rollback leaves both copies and the original inodes intact.
+	// All recovery copies and the shared journal are durable before any live
+	// original moves. From here on, retain recovery data unless restoration or
+	// installation and every cleanup operation complete durably.
 	removeTransaction = false
 	var backedUp, installed []string
-	rollback := func() {
-		if restoreMergeFilesDurably(archive, transaction, backedUp, installed, paths, planned, rename, syncHandle) {
-			removeTransaction = true
-			_ = parent.RemoveAll(backupName)
+	rollback := func(cause error) error {
+		if errors.Is(cause, errMergeRenameUncertain) {
+			return cause
 		}
+		if !restoreMergeFilesDurably(archive, transaction, backedUp, installed, paths, planned, rename, syncHandle) {
+			return cause
+		}
+		if err := verifyMergeSnapshot(archive, original); err != nil {
+			return errors.Join(cause, fmt.Errorf("verifying merge rollback; recovery data retained: %w", err))
+		}
+		if err := removeCompletedMergeRecovery(archive, parent, transaction, backupName, syncHandle); err != nil {
+			return errors.Join(cause, err)
+		}
+
+		return errors.Join(cause, finishJournal())
 	}
 	backedUp, err = moveMergeOriginals(archive, transaction, paths, original, rename)
 	if err != nil {
-		rollback()
-
-		return err
+		return rollback(err)
 	}
 	installed, err = placeMergeFiles(archive, transaction, paths, planned, rename)
 	if err != nil {
-		rollback()
-
-		return err
+		return rollback(err)
 	}
 	if err := syncInstalledMergeDirectories(archive, transaction, paths, planned, syncHandle); err != nil {
 		return fmt.Errorf("syncing installed merge; recovery data retained: %w", err)
 	}
-	removeTransaction = true
+	if err := removeEmptyMergeParents(archive, paths, planned, syncHandle); err != nil {
+		return fmt.Errorf("cleaning empty merge directories; recovery data retained: %w", err)
+	}
+	if err := removeCompletedMergeRecovery(archive, parent, transaction, backupName, syncHandle); err != nil {
+		return err
+	}
 
-	return removeCompletedMergeBackup(parent, backupName, syncHandle)
+	return finishJournal()
+}
+
+func prepareMergeRecovery(archive, parent *os.Root, transaction, backupName string, paths []string, original map[string][]byte, syncHandle func(*os.File) error) (func() error, error) {
+	if err := removeStaleMergeBackup(parent, backupName); err != nil {
+		return nil, err
+	}
+	if err := makeMergePrivateDirectory(parent, backupName); err != nil {
+		return nil, err
+	}
+	prepared := false
+	defer func() {
+		if !prepared {
+			_ = parent.RemoveAll(backupName)
+		}
+	}()
+	backup, err := parent.OpenRoot(backupName)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = backup.Close() }()
+	if err := copyMergeBackupWithSync(archive, backup, transaction, paths, original, syncHandle); err != nil {
+		return nil, err
+	}
+	if err := syncPreparedMergeBackup(backup, parent, backupName, paths, syncHandle); err != nil {
+		return nil, err
+	}
+	if err := verifyMergeSnapshot(archive, original); err != nil {
+		return nil, err
+	}
+	finish, err := prepareMergeJournal(archive, paths, original, syncHandle)
+	if err != nil {
+		return nil, err
+	}
+	prepared = true
+
+	return finish, nil
+}
+
+// Only prune real, empty ancestors of deleted archive files. Other entries
+// keep their directories in place, and no symlink component is followed.
+func removeEmptyMergeParents(archive *os.Root, paths []string, planned map[string][]byte, syncHandle func(*os.File) error) error {
+	directories := make(map[string]bool)
+	for _, path := range paths {
+		if _, exists := planned[path]; exists {
+			continue
+		}
+		for dir := filepath.Dir(path); dir != "."; dir = filepath.Dir(dir) {
+			directories[dir] = true
+		}
+	}
+	ordered := make([]string, 0, len(directories))
+	for dir := range directories {
+		ordered = append(ordered, dir)
+	}
+	slices.SortFunc(ordered, func(a, b string) int { return strings.Compare(b, a) })
+	removed := make([]string, 0, len(ordered))
+	for _, dir := range ordered {
+		realDirectory, err := isRealMergeDirectory(archive, dir)
+		if err != nil {
+			return err
+		}
+		if !realDirectory {
+			continue
+		}
+		empty, err := isEmptyMergeDirectory(archive, dir)
+		if err != nil {
+			return err
+		}
+		if !empty {
+			continue
+		}
+		if err := archive.Remove(dir); err != nil {
+			return fmt.Errorf("removing empty merge directory %s: %w", dir, err)
+		}
+		removed = append(removed, dir)
+	}
+	if len(removed) == 0 {
+		return nil
+	}
+
+	return syncMergeDirectories(archive, removed, syncHandle)
+}
+
+func isRealMergeDirectory(archive *os.Root, directory string) (bool, error) {
+	var path string
+	for part := range strings.SplitSeq(directory, string(filepath.Separator)) {
+		path = filepath.Join(path, part)
+		info, err := archive.Lstat(path)
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		if err != nil {
+			return false, err
+		}
+		if !info.IsDir() || isDotName(part) {
+			return false, nil
+		}
+	}
+
+	return true, nil
+}
+
+func isEmptyMergeDirectory(archive *os.Root, directory string) (bool, error) {
+	file, err := archive.Open(directory)
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = file.Close() }()
+	entries, err := file.ReadDir(1)
+	if err != nil && !errors.Is(err, io.EOF) {
+		return false, err
+	}
+
+	return len(entries) == 0, nil
+}
+
+func removeCompletedMergeRecovery(archive, parent *os.Root, transaction, backupName string, syncHandle func(*os.File) error) error {
+	if err := removeCompletedMergeBackup(parent, backupName, syncHandle); err != nil {
+		return err
+	}
+	if err := archive.RemoveAll(transaction); err != nil {
+		return fmt.Errorf("removing completed merge transaction: %w", err)
+	}
+	if err := syncMergeDirectories(archive, []string{transaction}, syncHandle); err != nil {
+		return fmt.Errorf("syncing completed merge transaction removal: %w", err)
+	}
+
+	return nil
 }
 
 func removeCompletedMergeBackup(parent *os.Root, backupName string, syncHandle func(*os.File) error) error {
@@ -152,10 +281,13 @@ func moveMergeOriginals(archive *os.Root, transaction string, paths []string, or
 		if err := archive.MkdirAll(filepath.Dir(target), dirPermissions); err != nil {
 			return moved, err
 		}
-		if err := rename(archive, path, target); err != nil {
+		applied, err := trackMergeRename(archive, path, target, rename)
+		if applied {
+			moved = append(moved, path)
+		}
+		if err != nil {
 			return moved, fmt.Errorf("backing up %s: %w", path, err)
 		}
-		moved = append(moved, path)
 		data, err := archive.ReadFile(target)
 		if err != nil {
 			return moved, fmt.Errorf("verifying moved original %s: %w", path, err)
@@ -174,10 +306,13 @@ func placeMergeFiles(archive *os.Root, transaction string, paths []string, plann
 		if _, exists := planned[path]; !exists {
 			continue
 		}
-		if err := rename(archive, filepath.Join(transaction, "new", path), path); err != nil {
+		applied, err := trackMergeRename(archive, filepath.Join(transaction, "new", path), path, rename)
+		if applied {
+			installed = append(installed, path)
+		}
+		if err != nil {
 			return installed, fmt.Errorf("installing %s: %w", path, err)
 		}
-		installed = append(installed, path)
 	}
 
 	return installed, nil
@@ -219,15 +354,15 @@ func removeStaleMergeBackup(parent *os.Root, name string) error {
 		return err
 	}
 	if !info.IsDir() {
-		return fmt.Errorf("%w: %s is not a directory", ErrStaleBackupForeignFile, name)
+		return fmt.Errorf("%w: %s is not a directory", errMergeForeignBackup, name)
 	}
 	backup, err := parent.OpenRoot(name)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = backup.Close() }()
-	if _, err := backup.Lstat(swapInProgressMarker); err == nil {
-		return fmt.Errorf("%w: %s holds original files; restore any missing files before removing it", ErrInterruptedSwap, name)
+	if _, err := backup.Lstat(mergeBackupMarker); err == nil {
+		return fmt.Errorf("%w: %s holds original files; restore any missing files before removing it", errMergeInterruptedBackup, name)
 	} else if !os.IsNotExist(err) {
 		return err
 	}
@@ -247,7 +382,7 @@ func removeStaleMergeBackup(parent *os.Root, name string) error {
 			foreign = true
 		}
 		if foreign {
-			return fmt.Errorf("%w: %s contains %q", ErrStaleBackupForeignFile, name, path)
+			return fmt.Errorf("%w: %s contains %q", errMergeForeignBackup, name, path)
 		}
 
 		return nil
@@ -330,7 +465,7 @@ func regularMergeFileInfo(archive *os.Root, path string) (os.FileInfo, error) {
 
 func copyMergeBackupWithSync(archive, backup *os.Root, transaction string, paths []string, original map[string][]byte, syncHandle func(*os.File) error) error {
 	marker := "glx: interrupted merge; original files are copied here; original inodes may remain in " + transaction + "/original\n"
-	if err := writeDurableMergeFileWithSync(backup, swapInProgressMarker, []byte(marker), filePermissions, syncHandle); err != nil {
+	if err := writeDurableMergeFileWithSync(backup, mergeBackupMarker, []byte(marker), filePermissions, syncHandle); err != nil {
 		return err
 	}
 	for _, path := range paths {
@@ -383,12 +518,14 @@ func writeDurableMergeCopyWithSync(root *os.Root, path string, data []byte, mode
 func rollbackMergeFiles(archive *os.Root, transaction string, backedUp, installed []string, rename func(*os.Root, string, string) error) bool {
 	restored := true
 	for _, path := range slices.Backward(installed) {
-		if err := rename(archive, path, filepath.Join(transaction, "new", path)); err != nil {
+		applied, err := trackMergeRename(archive, path, filepath.Join(transaction, "new", path), rename)
+		if err != nil && !applied {
 			restored = false
 		}
 	}
 	for _, path := range slices.Backward(backedUp) {
-		if err := rename(archive, filepath.Join(transaction, "original", path), path); err != nil {
+		applied, err := trackMergeRename(archive, filepath.Join(transaction, "original", path), path, rename)
+		if err != nil && !applied {
 			restored = false
 		}
 	}
@@ -460,7 +597,7 @@ func syncMergeDirectories(root *os.Root, entries []string, syncHandle func(*os.F
 }
 
 func syncPreparedMergeBackup(backup, parent *os.Root, backupName string, paths []string, syncHandle func(*os.File) error) error {
-	if err := syncMergeDirectories(backup, append(slices.Clone(paths), swapInProgressMarker), syncHandle); err != nil {
+	if err := syncMergeDirectories(backup, append(slices.Clone(paths), mergeBackupMarker), syncHandle); err != nil {
 		return fmt.Errorf("syncing merge backup: %w", err)
 	}
 	if err := syncMergeDirectories(parent, []string{backupName}, syncHandle); err != nil {

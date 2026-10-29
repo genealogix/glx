@@ -116,7 +116,7 @@ func TestMergePersons_PreservesOtherRelationshipsAndEvidence(t *testing.T) {
 			{Person: "person-other", Role: "child"},
 		}, Notes: NoteList{"family evidence"}},
 		"rel-pair-other-type": {Type: RelationshipTypeAssociate, Participants: []Participant{
-			{Person: "person-keep"}, {Person: "person-drop"},
+			{Person: "person-drop"}, {Person: "person-other"},
 		}},
 		"rel-other-candidate": {Type: RelationshipTypePossiblySamePerson, Participants: []Participant{
 			{Person: "person-drop"}, {Person: "person-other"},

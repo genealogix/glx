@@ -47,6 +47,11 @@ func mergePersonsWithIO(streams *IOStreams, input io.Reader, interactive bool, a
 	if err != nil {
 		return fmt.Errorf("cannot access path: %w", err)
 	}
+	if info.IsDir() {
+		if err := checkInPlaceJournal(archivePath); err != nil {
+			return err
+		}
+	}
 	original, err := readMergeFiles(archivePath, info.IsDir())
 	if err != nil {
 		return err

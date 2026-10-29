@@ -16,6 +16,7 @@ package glx
 
 import (
 	"fmt"
+	"maps"
 	"reflect"
 	"slices"
 	"strings"
@@ -38,10 +39,11 @@ type MergeReferenceChange struct {
 const mergeReferencePruned = "pruned"
 
 type mergeEntity struct {
-	kind        EntityType
-	id          string
-	value       reflect.Value
-	definitions map[string]*PropertyDefinition
+	kind                   EntityType
+	id                     string
+	value                  reflect.Value
+	definitions            map[string]*PropertyDefinition
+	participantDefinitions map[string]*PropertyDefinition
 }
 
 func cloneMergeArchive(archive *GLXFile) *GLXFile {
@@ -103,7 +105,6 @@ func cloneMergeValue(value reflect.Value) reflect.Value {
 
 		return out
 	default:
-
 		return value
 	}
 }
@@ -111,44 +112,55 @@ func cloneMergeValue(value reflect.Value) reflect.Value {
 func mergePropertyVocabulary(archive *GLXFile, kind EntityType) map[string]*PropertyDefinition {
 	switch kind {
 	case EntityTypePersons:
-
 		return archive.PersonProperties
 	case EntityTypeEvents:
-
 		return archive.EventProperties
 	case EntityTypeRelationships:
-
 		return archive.RelationshipProperties
 	case EntityTypePlaces:
-
 		return archive.PlaceProperties
 	case EntityTypeSources:
-
 		return archive.SourceProperties
 	case EntityTypeCitations:
-
 		return archive.CitationProperties
 	case EntityTypeRepositories:
-
 		return archive.RepositoryProperties
 	case EntityTypeMedia:
-
 		return archive.MediaProperties
 	default:
-
 		return nil // ResearchLog and Study properties are opaque metadata.
 	}
 }
 
+// Only actual entity collections participate in entity-reference validation.
+// Vocabulary maps and metadata are deliberately excluded.
 func mergeEntityCollection(archive *GLXFile, kind EntityType) reflect.Value {
-	root := reflect.ValueOf(archive).Elem()
-	for i := range root.NumField() {
-		if strings.Split(root.Type().Field(i).Tag.Get("yaml"), ",")[0] == string(kind) {
-			return root.Field(i)
-		}
+	switch kind {
+	case EntityTypePersons:
+		return reflect.ValueOf(archive.Persons)
+	case EntityTypeEvents:
+		return reflect.ValueOf(archive.Events)
+	case EntityTypeRelationships:
+		return reflect.ValueOf(archive.Relationships)
+	case EntityTypePlaces:
+		return reflect.ValueOf(archive.Places)
+	case EntityTypeSources:
+		return reflect.ValueOf(archive.Sources)
+	case EntityTypeCitations:
+		return reflect.ValueOf(archive.Citations)
+	case EntityTypeRepositories:
+		return reflect.ValueOf(archive.Repositories)
+	case EntityTypeAssertions:
+		return reflect.ValueOf(archive.Assertions)
+	case EntityTypeMedia:
+		return reflect.ValueOf(archive.Media)
+	case EntityTypeResearchLogs:
+		return reflect.ValueOf(archive.ResearchLogs)
+	case EntityTypeStudies:
+		return reflect.ValueOf(archive.Studies)
+	default:
+		return reflect.Value{}
 	}
-
-	return reflect.Value{}
 }
 
 func forMergeEntities(archive, prepared *GLXFile, visit func(mergeEntity)) {
@@ -166,11 +178,13 @@ func forMergeEntities(archive, prepared *GLXFile, visit func(mergeEntity)) {
 				continue
 			}
 			definitions := mergePropertyVocabulary(prepared, kind)
+			participantDefinitions := definitions
 			if kind == EntityTypeAssertions {
+				participantDefinitions = prepared.EventProperties
 				a, _ := reflect.TypeAssert[*Assertion](value)
 				definitions = mergePropertyVocabulary(prepared, a.Subject.Type())
 			}
-			visit(mergeEntity{kind, key.String(), value.Elem(), definitions})
+			visit(mergeEntity{kind, key.String(), value.Elem(), definitions, participantDefinitions})
 		}
 	}
 }
@@ -242,11 +256,45 @@ func walkMergeProperties(entity mergeEntity, visit func(map[string]any, string, 
 	if participants := value.FieldByName("Participants"); participants.IsValid() {
 		for i := range participants.Len() {
 			visit(mergePropertyMap(participants.Index(i).FieldByName("Properties")),
-				fmt.Sprintf("participants[%d].properties", i), entity.definitions)
+				fmt.Sprintf("participants[%d].properties", i), entity.participantDefinitions)
 		}
 	}
 	if participant := value.FieldByName("Participant"); participant.IsValid() && !participant.IsNil() {
-		visit(mergePropertyMap(participant.Elem().FieldByName("Properties")), "participant.properties", entity.definitions)
+		visit(mergePropertyMap(participant.Elem().FieldByName("Properties")), "participant.properties", entity.participantDefinitions)
+	}
+}
+
+// walkMergeTypedReferences visits declared reference occurrences without
+// modifying any map, slice or wrapper, including identity/no-op references.
+func walkMergeTypedReferences(entity mergeEntity, visit func(EntityType, string, string, any)) {
+	walkMergeProperties(entity, func(properties map[string]any, prefix string, definitions map[string]*PropertyDefinition) {
+		for _, key := range slices.Sorted(maps.Keys(properties)) {
+			definition := definitions[key]
+			if definition == nil || definition.ReferenceType == "" || properties[key] == nil {
+				continue
+			}
+			walkMergePropertyReferences(reflect.ValueOf(properties[key]), prefix+"."+key, func(id, path string, original any) {
+				visit(EntityType(definition.ReferenceType), id, path, original)
+			})
+		}
+	})
+}
+
+func walkMergePropertyReferences(value reflect.Value, path string, visit func(string, string, any)) {
+	switch value.Kind() {
+	case reflect.Interface, reflect.Pointer:
+		if !value.IsNil() {
+			walkMergePropertyReferences(value.Elem(), path, visit)
+		}
+	case reflect.Slice:
+		for i := range value.Len() {
+			walkMergePropertyReferences(value.Index(i), fmt.Sprintf("%s[%d]", path, i), visit)
+		}
+	default:
+		reference := mergeReferenceValue(value)
+		if reference.IsValid() && reference.Kind() == reflect.String {
+			visit(reference.String(), path, value.Interface())
+		}
 	}
 }
 
@@ -420,19 +468,9 @@ func removeMergeDependentAssertions(archive, prepared *GLXFile, removed map[stri
 				recordDependency("value", a.Value)
 			}
 		}
-		walkMergeProperties(entity, func(properties map[string]any, prefix string, definitions map[string]*PropertyDefinition) {
-			for key, value := range properties {
-				def := definitions[key]
-				if def == nil || def.ReferenceType != string(EntityTypeRelationships) || value == nil {
-					continue
-				}
-				_, _ = editMergeProperty(reflect.ValueOf(value), prefix+"."+key, func(id, path string, original any) (string, bool) {
-					if removed[id] {
-						recordDependency(path, original)
-					}
-
-					return id, false
-				})
+		walkMergeTypedReferences(entity, func(kind EntityType, id, path string, original any) {
+			if kind == EntityTypeRelationships && removed[id] {
+				recordDependency(path, original)
 			}
 		})
 		if dependent {
@@ -491,17 +529,9 @@ func walkMergeAssertionReferences(entity mergeEntity, prepared *GLXFile, visit f
 	if def := ConflictProperty(prepared, assertion.Subject, assertion.Property); def != nil && def.ReferenceType == string(EntityTypeAssertions) && assertion.Value != "" {
 		visit(assertion.Value, "value", assertion.Value)
 	}
-	walkMergeProperties(entity, func(properties map[string]any, prefix string, definitions map[string]*PropertyDefinition) {
-		for key, value := range properties {
-			def := definitions[key]
-			if def == nil || def.ReferenceType != string(EntityTypeAssertions) || value == nil {
-				continue
-			}
-			_, _ = editMergeProperty(reflect.ValueOf(value), prefix+"."+key, func(id, path string, original any) (string, bool) {
-				visit(id, path, original)
-
-				return id, false
-			})
+	walkMergeTypedReferences(entity, func(kind EntityType, id, path string, original any) {
+		if kind == EntityTypeAssertions {
+			visit(id, path, original)
 		}
 	})
 }
@@ -660,11 +690,7 @@ func missingMergeTargets(archive *GLXFile) (map[string]bool, error) {
 				check(EntityType(def.ReferenceType), a.Value)
 			}
 		}
-		editMergeProperties(entity, func(kind EntityType, id, _ string, _ any) (string, bool) {
-			check(kind, id)
-
-			return id, false
-		})
+		walkMergeTypedReferences(entity, func(kind EntityType, id, _ string, _ any) { check(kind, id) })
 	})
 
 	return missing, nil

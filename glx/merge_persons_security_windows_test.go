@@ -164,7 +164,7 @@ func TestMergeWindowsRecoveryPreservesOriginalDACL(t *testing.T) {
 				require.NoError(t, os.WriteFile(live, original[path], 0o600))
 				setMergeTestDACL(t, live, private)
 				expected := mergeTestDACL(t, live)
-				checkedStage, checkedBackup, checkedMarker, checkedOriginal := false, false, false, false
+				checkedStage, checkedBackup, checkedMarker, checkedOriginal, checkedJournal := false, false, false, false, false
 				failed := false
 				err = installMergeFilesWithSync(dir, original, planned, func(root *os.Root, from, to string) error {
 					if strings.Contains(from, string(filepath.Separator)+"new"+string(filepath.Separator)) {
@@ -182,6 +182,11 @@ func TestMergeWindowsRecoveryPreservesOriginalDACL(t *testing.T) {
 					return robustRenameIn(root, from, to)
 				}, func(file *os.File) error {
 					name := file.Name()
+					journal := filepath.Join(dir, inPlaceJournalFile)
+					if _, statErr := os.Stat(journal); statErr == nil {
+						assertMergeTestPrivateDACL(t, journal)
+						checkedJournal = true
+					}
 					if strings.Contains(name, string(filepath.Separator)+"new"+string(filepath.Separator)) {
 						descriptor, securityErr := windows.GetSecurityInfo(windows.Handle(file.Fd()), windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION)
 						require.NoError(t, securityErr)
@@ -194,7 +199,7 @@ func TestMergeWindowsRecoveryPreservesOriginalDACL(t *testing.T) {
 						checkedBackup = true
 						assertMergeTestPrivateDACL(t, dir+".bak")
 					}
-					marker := filepath.Join(dir+".bak", swapInProgressMarker)
+					marker := filepath.Join(dir+".bak", mergeBackupMarker)
 					if _, statErr := os.Stat(marker); statErr == nil {
 						assertMergeTestPrivateDACL(t, marker)
 						checkedMarker = true
@@ -219,6 +224,7 @@ func TestMergeWindowsRecoveryPreservesOriginalDACL(t *testing.T) {
 				assert.True(t, checkedOriginal)
 				assert.True(t, checkedBackup)
 				assert.True(t, checkedMarker)
+				assert.True(t, checkedJournal)
 				assert.Equal(t, expected, mergeTestDACL(t, live))
 				data, readErr := os.ReadFile(live)
 				require.NoError(t, readErr)
@@ -228,7 +234,8 @@ func TestMergeWindowsRecoveryPreservesOriginalDACL(t *testing.T) {
 					assert.Equal(t, original[path], data)
 				}
 				if failure == "rollback_failure" {
-					assert.FileExists(t, filepath.Join(dir+".bak", swapInProgressMarker))
+					assertMergeTestPrivateDACL(t, filepath.Join(dir, inPlaceJournalFile))
+					assert.FileExists(t, filepath.Join(dir+".bak", mergeBackupMarker))
 					assert.Equal(t, expected, mergeTestDACL(t, filepath.Join(dir+".bak", path)))
 				} else {
 					assert.NoDirExists(t, dir+".bak")

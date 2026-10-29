@@ -430,7 +430,11 @@ for the standard vocabulary. There is no direct GEDCOM mapping (see
 
 When a researcher chooses to merge these records, `MergePersons` removes every
 binary `possibly_same_person` relationship connecting that pair, in either
-participant order. It deletes whole assertions whose subject, declared
+participant order. Any other relationship containing both merge IDs is refused
+before mutation, including a group whose participants would become duplicates.
+Resolve that research explicitly first; the merge does not silently remove its
+evidence. Pre-existing self-links do not block an otherwise unrelated merge.
+It deletes whole assertions whose subject, declared
 relationship-reference value, or declared relationship-reference participant
 property depends on a removed relationship, regardless of status or confidence.
 This whole-claim deletion extends transitively to assertions whose declared
@@ -443,7 +447,8 @@ Research logs whose optional subject is removed lose only that subject; searches
 negative results, citations, conclusions, status, notes and other research remain.
 Research leads retain their content and surviving assertion references; references
 to deleted assertions are pruned from leads and declared assertion-reference
-properties. Candidate person lists remain unique after following the survivor.
+properties. Duplicates introduced into candidate person lists by following the survivor
+are pruned; unrelated pre-existing duplicate candidates are retained.
 Declared relationship-reference properties lose matching whole occurrences,
 including structured fields and dates, while retaining other values and order.
 Ordinary person references follow the survivor; opaque text is not a reference.
