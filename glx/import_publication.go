@@ -16,17 +16,18 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"os"
 )
 
 type importMetadataSnapshot struct {
-	contents map[string][]byte
+	contents map[string][32]byte
 	missing  map[string]bool
 	valid    bool
 }
 
 func snapshotImportMetadata(root string, files map[string][]byte) importMetadataSnapshot {
-	snapshot := importMetadataSnapshot{contents: make(map[string][]byte), missing: make(map[string]bool), valid: true}
+	snapshot := importMetadataSnapshot{contents: make(map[string][32]byte), missing: make(map[string]bool), valid: true}
 	handle, err := os.OpenRoot(root)
 	if err != nil {
 		snapshot.valid = false
@@ -35,7 +36,7 @@ func snapshotImportMetadata(root string, files map[string][]byte) importMetadata
 	}
 	defer func() { _ = handle.Close() }()
 	for rel := range files {
-		content, err := handle.ReadFile(rel)
+		content, err := hashMetadataFile(handle, rel)
 		switch {
 		case os.IsNotExist(err):
 			snapshot.missing[rel] = true
@@ -66,11 +67,47 @@ func (snapshot importMetadataSnapshot) unchanged(root string) bool {
 		}
 	}
 	for rel, original := range snapshot.contents {
-		content, err := handle.ReadFile(rel)
-		if err != nil || !bytes.Equal(original, content) {
+		content, err := hashMetadataFile(handle, rel)
+		if err != nil || original != content {
 			return false
 		}
 	}
 
 	return true
+}
+
+// mergeMetadataUnchanged confirms that the active archive still consists of the
+// metadata loaded before the merge. A partial write or unreadable state retains
+// media because active references may already use it.
+func mergeMetadataUnchanged(root string, loaded map[string][]byte) bool {
+	current, err := collectGLXFilesFromDir(root)
+	if err != nil || len(current) != len(loaded) {
+		return false
+	}
+	for rel, old := range loaded {
+		if !bytes.Equal(old, current[rel]) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// hashMetadataFile streams existing metadata so a successful import does not
+// keep a second archive's worth of bytes alive only for a failure check.
+func hashMetadataFile(root *os.Root, rel string) ([32]byte, error) {
+	f, err := root.Open(rel)
+	if err != nil {
+		return [32]byte{}, err
+	}
+	info, err := f.Stat()
+	if err != nil {
+		return [32]byte{}, errors.Join(err, f.Close())
+	}
+	if !info.Mode().IsRegular() {
+		return [32]byte{}, errors.Join(os.ErrInvalid, f.Close())
+	}
+	digest, hashErr := hashReader(f)
+
+	return digest, errors.Join(hashErr, f.Close())
 }

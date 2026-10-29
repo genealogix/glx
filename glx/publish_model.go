@@ -549,7 +549,9 @@ func sourceRefFromCitation(citID string, a *glxlib.Assertion, archive *glxlib.GL
 	}, citID + "|" + detail
 }
 
-// uniqueAnchor numbers collisions among sanitized ASCII anchor stems.
+// uniqueAnchor numbers collisions among sanitized lowercase ASCII stems. HTML
+// fragments use exact identifiers, not portable filesystem names; keeping this
+// policy separate preserves existing published fragment links.
 func uniqueAnchor(stem string, used map[string]bool) string {
 	if !used[stem] {
 		used[stem] = true

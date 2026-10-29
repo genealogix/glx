@@ -304,6 +304,10 @@ func orderFileOps(ops []fileOp) []fileOp {
 	return ordered
 }
 
+// errRollbackIncomplete marks an executeFileOps failure whose rollback did not
+// restore every file, so callers can tell a clean failure from a partial one.
+var errRollbackIncomplete = errors.New("rollback failed, archive may be inconsistent")
+
 // executeFileOps runs preflighted operations in the order given. Each write is
 // atomic (temp file + rename), so a failed write leaves its target untouched.
 // If any operation fails, every operation already applied is reverted from the
@@ -313,12 +317,13 @@ func orderFileOps(ops []fileOp) []fileOp {
 // Rollback state lives only in memory: a crash mid-plan can leave some
 // files updated and others not. That is a deliberate trade against the
 // directory-swap approach (#1192); per-file writes are atomic and the
-// archive is expected to be under version control for anything worse.
+// archive is expected to be under version control for anything worse. The
+// in-place writer (executeInPlaceOps) adds a journal on disk around it.
 func executeFileOps(rootDir string, ordered []fileOp) error {
 	for i := range ordered {
 		if err := executeFileOp(rootDir, &ordered[i]); err != nil {
 			if rbErr := rollbackFileOps(rootDir, ordered[:i]); rbErr != nil {
-				return fmt.Errorf("%w; rollback failed, archive may be inconsistent: %w", err, rbErr)
+				return fmt.Errorf("%w; %w: %w", err, errRollbackIncomplete, rbErr)
 			}
 
 			return fmt.Errorf("%w (all changes rolled back)", err)
@@ -480,7 +485,8 @@ func escapes(root, absPath string) bool {
 // absPath and reports ErrRenamePathEscapesArchive if that resolved directory
 // is outside realRoot (the archive root with its own symlinks resolved). The
 // file itself is checked separately by Lstat; this guards the directories
-// above it, which an archive could otherwise use to redirect a write.
+// above it, which an archive could otherwise use to redirect a write. A
+// parent that resolves somewhere the loader skips is ErrPathNotArchiveContent.
 func parentStaysInside(realRoot, absPath string) error {
 	dir := filepath.Dir(absPath)
 	for {
@@ -500,6 +506,23 @@ func parentStaysInside(realRoot, absPath string) error {
 	}
 	if realDir != realRoot && escapes(realRoot, realDir) {
 		return ErrRenamePathEscapesArchive
+	}
+
+	// The loader skips dot-prefixed directories (isDotName) and does not
+	// descend through directory symlinks, so a write that resolves under one
+	// (persons -> .drafts/persons) would vanish from the next load. The
+	// directories below the existing ancestor do not exist yet and are
+	// checked lexically.
+	resolvedRel, err := filepath.Rel(realRoot, realDir)
+	if err != nil {
+		return fmt.Errorf("resolving %s: %w", dir, err)
+	}
+	remainder, err := filepath.Rel(dir, filepath.Dir(absPath))
+	if err != nil {
+		return fmt.Errorf("resolving %s: %w", absPath, err)
+	}
+	if pathHasDotComponent(resolvedRel) || pathHasDotComponent(remainder) {
+		return ErrPathNotArchiveContent
 	}
 
 	return nil

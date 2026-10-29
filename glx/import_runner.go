@@ -102,11 +102,21 @@ func importToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, verbos
 	// Ensure .glx extension
 	outputPath = ensureGLXExtension(outputPath)
 	archiveDir := filepath.Dir(outputPath)
-	if _, err := importMediaFilesDir(archiveDir); err != nil {
-		return fmt.Errorf("inspecting media destination: %w", err)
-	}
+
 	if err := os.MkdirAll(archiveDir, dirPermissions); err != nil {
 		return fmt.Errorf("creating archive directory: %w", err)
+	}
+	if len(mediaFiles) == 0 {
+		if err := writeSingleFileArchive(outputPath, glx, validate); err != nil {
+			return formatValidationError(err, showFirstErrors)
+		}
+		printSuccessSingleFile("imported", outputPath)
+		printArchiveStatistics(glx)
+
+		return nil
+	}
+	if err := prepareImportMediaURIs(glx, mediaFiles, archiveDir); err != nil {
+		return fmt.Errorf("inspecting media destination: %w", err)
 	}
 	stageDir, err := os.MkdirTemp(archiveDir, ".glx-stage-*")
 	if err != nil {
@@ -136,14 +146,7 @@ func importToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, verbos
 
 		return fmt.Errorf("validating reused media: %w", err)
 	}
-	rollbackNormalization, err := normalizeImportMediaDir(archiveDir)
-	if err != nil {
-		rollbackMedia()
-
-		return fmt.Errorf("normalizing media directory: %w", err)
-	}
 	if err := robustRename(tempPath, outputPath); err != nil {
-		rollbackNormalization()
 		rollbackMedia()
 
 		return fmt.Errorf("publishing archive: %w", err)
@@ -166,16 +169,27 @@ func importToMultiFileUsing(glx *glxlib.GLXFile, outputPath string, validate, ve
 	if verbose {
 		_, _ = fmt.Fprintf(out, "Writing multi-file archive: %s\n", outputPath)
 	}
-	if _, err := importMediaFilesDir(outputPath); err != nil {
-		return fmt.Errorf("inspecting media destination: %w", err)
-	}
 
+	if len(mediaFiles) > 0 {
+		if err := prepareImportMediaURIs(glx, mediaFiles, outputPath); err != nil {
+			return fmt.Errorf("inspecting media destination: %w", err)
+		}
+	}
 	files, err := serializeMultiFileArchive(glx, validate)
 	if err != nil {
 		return formatValidationError(err, showFirstErrors)
 	}
 	if err := os.MkdirAll(outputPath, dirPermissions); err != nil {
 		return fmt.Errorf("creating archive directory: %w", err)
+	}
+	if len(mediaFiles) == 0 {
+		if err := writeFiles(outputPath, files); err != nil {
+			return err
+		}
+		printSuccessMultiFile("imported", outputPath)
+		printArchiveStatistics(glx)
+
+		return nil
 	}
 	stageDir, err := os.MkdirTemp(outputPath, ".glx-stage-*")
 	if err != nil {
@@ -195,19 +209,13 @@ func importToMultiFileUsing(glx *glxlib.GLXFile, outputPath string, validate, ve
 
 		return fmt.Errorf("validating reused media: %w", err)
 	}
-	rollbackNormalization, err := normalizeImportMediaDir(outputPath)
-	if err != nil {
-		rollbackMedia()
-
-		return fmt.Errorf("normalizing media directory: %w", err)
-	}
 	snapshot := snapshotImportMetadata(outputPath, files)
 	if err := writeFiles(outputPath, files); err != nil {
 		if snapshot.unchanged(outputPath) {
-			rollbackNormalization()
 			rollbackMedia()
 		}
 		// Partial metadata writes may reference the new media, so retain it.
+
 		return err
 	}
 

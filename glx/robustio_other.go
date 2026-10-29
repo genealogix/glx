@@ -25,9 +25,3 @@ import (
 func robustRename(oldpath, newpath string) error {
 	return os.Rename(oldpath, newpath)
 }
-
-// robustRenameIn is robustRename scoped to root: both paths are resolved
-// inside it, so no symlinked path component can redirect the rename outside.
-func robustRenameIn(root *os.Root, oldname, newname string) error {
-	return root.Rename(oldname, newname)
-}

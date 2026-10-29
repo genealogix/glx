@@ -752,7 +752,8 @@ func TestCommitStagedMedia_PublishesNewFiles(t *testing.T) {
 		"portrait.jpg": "portrait bytes",
 	})
 
-	require.NoError(t, commitStagedMedia(stageDir, targetDir))
+	_, commitErr := commitStagedMediaWithRollback(stageDir, targetDir)
+	require.NoError(t, commitErr)
 	for name, want := range map[string]string{
 		"photo.jpg":    "photo bytes",
 		"portrait.jpg": "portrait bytes",
@@ -852,7 +853,7 @@ func TestCommitStagedMedia_RejectsNonRegularStagedEntry(t *testing.T) {
 	stageDir := stageMediaInside(t, targetDir, nil)
 	require.NoError(t, os.Mkdir(filepath.Join(stageDir, glxlib.MediaFilesDir, "photo.jpg"), dirPermissions))
 
-	err := commitStagedMedia(stageDir, targetDir)
+	_, err := commitStagedMediaWithRollback(stageDir, targetDir)
 	require.ErrorIs(t, err, os.ErrInvalid)
 	require.NoDirExists(t, filepath.Join(targetDir, glxlib.MediaFilesDir, "photo.jpg"))
 }
@@ -873,7 +874,8 @@ func TestCommitStagedMedia_DoesNotReplaceLeafSymlink(t *testing.T) {
 	require.NoError(t, os.MkdirAll(targetFiles, dirPermissions))
 	require.NoError(t, os.Symlink(outside, filepath.Join(targetFiles, "photo.jpg")))
 
-	require.ErrorIs(t, commitStagedMedia(stageDir, targetDir), os.ErrExist)
+	_, commitErr := commitStagedMediaWithRollback(stageDir, targetDir)
+	require.ErrorIs(t, commitErr, os.ErrExist)
 
 	committed := filepath.Join(targetFiles, "photo.jpg")
 	info, err := os.Lstat(committed)
@@ -892,7 +894,8 @@ func TestCommitStagedMedia_DoesNotReplaceCaseEquivalentFile(t *testing.T) {
 	require.NoError(t, os.MkdirAll(targetFiles, dirPermissions))
 	require.NoError(t, os.WriteFile(filepath.Join(targetFiles, "Photo.JPG"), []byte("old bytes"), filePermissions))
 
-	require.ErrorIs(t, commitStagedMedia(stageDir, targetDir), os.ErrExist)
+	_, commitErr := commitStagedMediaWithRollback(stageDir, targetDir)
+	require.ErrorIs(t, commitErr, os.ErrExist)
 	actual, err := os.ReadFile(filepath.Join(targetFiles, "Photo.JPG"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("old bytes"), actual)
@@ -911,7 +914,7 @@ func TestCommitStagedMedia_RefusesSymlinkedMediaDirectory(t *testing.T) {
 	stageDir := stageMediaInside(t, targetDir, map[string]string{"photo.jpg": "staged bytes"})
 	require.NoError(t, os.Symlink(outside, filepath.Join(targetDir, "media")))
 
-	err := commitStagedMedia(stageDir, targetDir)
+	_, err := commitStagedMediaWithRollback(stageDir, targetDir)
 	require.Error(t, err, "a symlinked media/ directory must not be traversed")
 
 	entries, readErr := os.ReadDir(outside)
@@ -930,7 +933,7 @@ func TestCommitStagedMedia_RejectsStagingOutsideTarget(t *testing.T) {
 	require.NoError(t, os.MkdirAll(stagedFiles, dirPermissions))
 	require.NoError(t, os.WriteFile(filepath.Join(stagedFiles, "photo.jpg"), []byte("x"), filePermissions))
 
-	err := commitStagedMedia(stageDir, targetDir)
+	_, err := commitStagedMediaWithRollback(stageDir, targetDir)
 	require.ErrorIs(t, err, ErrPathEscapesDir)
 }
 
@@ -955,7 +958,7 @@ func TestCommitStagedMedia_PreservesExistingFileWhenCommitFails(t *testing.T) {
 	existing := filepath.Join(targetFiles, "photo.jpg")
 	require.NoError(t, os.WriteFile(existing, []byte("old photo"), filePermissions))
 
-	err := commitStagedMedia(stageDir, targetDir)
+	_, err := commitStagedMediaWithRollback(stageDir, targetDir)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "media destination blocked.jpg")
 
@@ -1131,7 +1134,8 @@ func TestCommitStagedMedia_NoStagedDirectoryIsNoOp(t *testing.T) {
 	stageDir := t.TempDir()
 	targetDir := filepath.Join(t.TempDir(), "archive")
 
-	require.NoError(t, commitStagedMedia(stageDir, targetDir))
+	_, commitErr := commitStagedMediaWithRollback(stageDir, targetDir)
+	require.NoError(t, commitErr)
 	require.NoDirExists(t, filepath.Join(targetDir, glxlib.MediaFilesDir))
 }
 

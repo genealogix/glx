@@ -386,3 +386,125 @@ func importedMediaEntity(t *testing.T, output, format, id string) *glxlib.Media 
 
 	return nil
 }
+
+func TestImport_MediaFreePreservesUnrelatedPaths(t *testing.T) {
+	for _, obstruction := range []string{"media-file", "MEDIA-file", "media-link", "media/files-file", "media/files-link"} {
+		for _, extension := range []string{"ged", "gdz"} {
+			for _, format := range []string{"single", "multi"} {
+				t.Run(obstruction+"/"+extension+"/"+format, func(t *testing.T) {
+					work := t.TempDir()
+					output := filepath.Join(work, "archive")
+					archiveDir := output
+					if format == "single" {
+						output += ".glx"
+						archiveDir = work
+					}
+					name := "media"
+					if obstruction == "MEDIA-file" {
+						name = "MEDIA"
+					} else if strings.HasPrefix(obstruction, "media/files") {
+						name = "media/files"
+					}
+					occupied := filepath.Join(archiveDir, filepath.FromSlash(name))
+					require.NoError(t, os.MkdirAll(filepath.Dir(occupied), 0o755))
+					if strings.HasSuffix(obstruction, "link") {
+						external := t.TempDir()
+						require.NoError(t, os.WriteFile(filepath.Join(external, "keep"), []byte("external"), 0o600))
+						if err := os.Symlink(external, occupied); err != nil {
+							t.Skipf("symlinks unavailable: %v", err)
+						}
+					} else {
+						require.NoError(t, os.WriteFile(occupied, []byte("unrelated"), 0o600))
+					}
+					before, err := os.Lstat(occupied)
+					require.NoError(t, err)
+					version := "5.5.1"
+					if extension == "gdz" {
+						version = "7.0"
+					}
+					gedcom := fmt.Sprintf("0 HEAD\n1 GEDC\n2 VERS %s\n0 @I1@ INDI\n1 NAME Test /Person/\n0 TRLR\n", version)
+					input := []byte(gedcom)
+					if extension == "gdz" {
+						var bundle bytes.Buffer
+						writer := zip.NewWriter(&bundle)
+						entry, createErr := writer.Create("gedcom.ged")
+						require.NoError(t, createErr)
+						_, err = entry.Write(input)
+						require.NoError(t, err)
+						require.NoError(t, writer.Close())
+						input = bundle.Bytes()
+					}
+					source := filepath.Join(work, "family."+extension)
+					require.NoError(t, os.WriteFile(source, input, 0o600))
+					result := runGLX(t, work, "import", source, "-o", output, "--format", format)
+					require.Equal(t, 0, result.exitCode, result.stderr)
+					after, err := os.Lstat(occupied)
+					require.NoError(t, err)
+					require.True(t, os.SameFile(before, after))
+					if after.Mode().IsRegular() {
+						contents, readErr := os.ReadFile(occupied)
+						require.NoError(t, readErr)
+						require.Equal(t, "unrelated", string(contents))
+					}
+				})
+			}
+		}
+	}
+}
+
+func TestImport_SharedCaseVariantDirectoryKeepsSiblingReferences(t *testing.T) {
+	for _, extension := range []string{"ged", "gdz"} {
+		t.Run(extension, func(t *testing.T) {
+			work := t.TempDir()
+			mediaDir := filepath.Join(work, "MEDIA", "FILES")
+			require.NoError(t, os.MkdirAll(mediaDir, 0o755))
+			require.NoError(t, os.WriteFile(filepath.Join(mediaDir, "old.jpg"), []byte("old media"), 0o600))
+			previous := filepath.Join(work, "previous.glx")
+			previousBytes := []byte("media:\n  old:\n    uri: MEDIA/FILES/old.jpg\n")
+			require.NoError(t, os.WriteFile(previous, previousBytes, 0o600))
+			version := "5.5.1"
+			if extension == "gdz" {
+				version = "7.0"
+			}
+			gedcom := []byte(fmt.Sprintf("0 HEAD\n1 GEDC\n2 VERS %s\n0 @M1@ OBJE\n1 FILE new.jpg\n2 FORM image/jpeg\n0 TRLR\n", version))
+			require.NoError(t, os.WriteFile(filepath.Join(work, "new.jpg"), []byte("new media"), 0o600))
+			input := gedcom
+			if extension == "gdz" {
+				var bundle bytes.Buffer
+				writer := zip.NewWriter(&bundle)
+				for name, data := range map[string][]byte{"gedcom.ged": gedcom, "new.jpg": []byte("new media")} {
+					entry, err := writer.Create(name)
+					require.NoError(t, err)
+					_, err = entry.Write(data)
+					require.NoError(t, err)
+				}
+				require.NoError(t, writer.Close())
+				input = bundle.Bytes()
+			}
+			source := filepath.Join(work, "new."+extension)
+			require.NoError(t, os.WriteFile(source, input, 0o600))
+			output := filepath.Join(work, "new.glx")
+			result := runGLX(t, work, "import", source, "-o", output, "--format", "single")
+			require.Equal(t, 0, result.exitCode, result.stderr)
+			oldArchive, err := os.ReadFile(previous)
+			require.NoError(t, err)
+			require.Equal(t, previousBytes, oldArchive)
+			var old glxlib.GLXFile
+			require.NoError(t, yaml.Unmarshal(oldArchive, &old))
+			oldMedia, err := os.ReadFile(filepath.Join(work, filepath.FromSlash(old.Media["old"].URI)))
+			require.NoError(t, err)
+			require.Equal(t, "old media", string(oldMedia))
+			data, err := os.ReadFile(output)
+			require.NoError(t, err)
+			var imported glxlib.GLXFile
+			require.NoError(t, yaml.Unmarshal(data, &imported))
+			require.Len(t, imported.Media, 1)
+			for _, media := range imported.Media {
+				require.Equal(t, "MEDIA/FILES/new.jpg", media.URI)
+				payload, readErr := os.ReadFile(filepath.Join(work, filepath.FromSlash(media.URI)))
+				require.NoError(t, readErr)
+				require.Equal(t, "new media", string(payload))
+			}
+		})
+	}
+}

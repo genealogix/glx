@@ -460,8 +460,8 @@ func TestMergeArchives_CaseVariantMediaDirectories(t *testing.T) {
 			destDir := t.TempDir()
 			srcDir := t.TempDir()
 			dest := &glxlib.GLXFile{Media: map[string]*glxlib.Media{
-				"media-dest-photo": {URI: "media/files/photo.jpg"},
-				"media-dest-same":  {URI: "media/files/same.jpg"},
+				"media-dest-photo": {URI: tc.destinationFiles + "/photo.jpg"},
+				"media-dest-same":  {URI: tc.destinationFiles + "/same.jpg"},
 			}}
 			src := &glxlib.GLXFile{Media: map[string]*glxlib.Media{
 				"media-src-photo":  {URI: "media/files/photo.jpg"},
@@ -482,22 +482,22 @@ func TestMergeArchives_CaseVariantMediaDirectories(t *testing.T) {
 			}
 
 			require.NoError(t, mergeArchives(srcDir, destDir, false, 0.6))
-			canonical := filepath.Join(destDir, glxlib.MediaFilesDir)
+			actualDir := filepath.Join(destDir, tc.destinationFiles)
 			for name, want := range map[string]string{
 				"photo.jpg": "DEST", "photo-2.jpg": "SOURCE", "same.jpg": "SAME", "unique.jpg": "UNIQUE",
 			} {
-				actual, err := os.ReadFile(filepath.Join(canonical, name))
+				actual, err := os.ReadFile(filepath.Join(actualDir, name))
 				require.NoError(t, err, name)
 				require.Equal(t, want, string(actual), name)
 			}
 			reloaded, _, err := LoadArchiveWithOptions(destDir, false)
 			require.NoError(t, err)
-			require.Equal(t, "media/files/photo-2.jpg", reloaded.Media["media-src-photo"].URI)
-			require.Equal(t, "media/files/same.jpg", reloaded.Media["media-src-same"].URI)
-			require.Equal(t, "media/files/unique.jpg", reloaded.Media["media-src-unique"].URI)
+			require.Equal(t, tc.destinationFiles+"/photo-2.jpg", reloaded.Media["media-src-photo"].URI)
+			require.Equal(t, tc.destinationFiles+"/same.jpg", reloaded.Media["media-src-same"].URI)
+			require.Equal(t, tc.destinationFiles+"/unique.jpg", reloaded.Media["media-src-unique"].URI)
 			dirs, err := mediaFilesDirsIn(destDir)
 			require.NoError(t, err)
-			require.Equal(t, []string{canonical}, dirs)
+			require.Equal(t, []string{actualDir}, dirs)
 			require.NoDirExists(t, destDir+".bak")
 		})
 	}

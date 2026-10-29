@@ -41,12 +41,12 @@ func importMediaDir(outputPath, format string) string {
 // allocateImportMediaDestinations reuses identical on-disk media and allocates
 // the rest from each source's original unnumbered basename.
 func allocateImportMediaDestinations(glx *glxlib.GLXFile, files []glxlib.MediaFileSource, archiveDir, sourceDir string, bundle fs.FS) error {
+	if len(files) == 0 {
+		return nil
+	}
 	filesDir, err := importMediaFilesDir(archiveDir)
 	if err != nil {
 		return err
-	}
-	if len(files) == 0 {
-		return nil
 	}
 	existing, err := listMediaFilenames(filesDir)
 	if err != nil {
@@ -107,6 +107,7 @@ func allocateImportMediaDestinations(glx *glxlib.GLXFile, files []glxlib.MediaFi
 		claimed[newName] = true
 		if media := glx.Media[mf.MediaID]; media != nil && activeURI[mf.MediaID] == glxlib.MediaFilesDir+"/"+oldName {
 			mf.SetMediaURI(media, newName)
+			media.URI = importMediaURI(archiveDir, filesDir, newName)
 		}
 		mf.TargetFilename = newName
 		mf.ReuseExisting = reused
@@ -171,8 +172,10 @@ func (family *mediaFamilyIndex) allocate(requested string, firstFree int, alloca
 	}
 	for family.indexed < len(family.seeds) && family.seeds[family.indexed].ordinal < firstFree {
 		seed := family.seeds[family.indexed]
-		if _, err := matcher.matchesFile(seed.name); err != nil {
-			return "", false, err
+		if _, ok := matcher.destinationHashes[seed.name]; !ok {
+			if _, err := matcher.matchesFile(seed.name); err != nil {
+				return "", false, err
+			}
 		}
 		if cached, ok := matcher.destinationHashes[seed.name]; ok {
 			family.byHash[cached.hash] = append(family.byHash[cached.hash], seed)
@@ -221,9 +224,21 @@ func indexedCandidateName(base string, ordinal int) string {
 // bytes just before the archive is published. Allocation and publication are
 // separate filesystem operations, so a sync process may change the file in
 // between; publishing its URI without this check would silently misattribute it.
+// Both sides are read again: ordinary files and generic fs.FS members can change
+// without a reliable size/mtime signal, so allocation digests are only hints.
 func validateReusedMedia(archiveDir string, files []glxlib.MediaFileSource, sourceDir string, bundle fs.FS) error {
+	var hasReuse bool
+	for i := range files {
+		hasReuse = hasReuse || files[i].ReuseExisting
+	}
+	if !hasReuse {
+		return nil
+	}
 	filesDir, err := importMediaFilesDir(archiveDir)
 	if err != nil {
+		return err
+	}
+	if err := checkMediaDirectory(filesDir); err != nil {
 		return err
 	}
 	for i := range files {
@@ -262,75 +277,36 @@ func importMediaFilesDir(archiveDir string) (string, error) {
 	if filesDir == "" {
 		filesDir = filepath.Join(archiveDir, glxlib.MediaFilesDir)
 	}
-	if _, err := listMediaFilenames(filesDir); err != nil {
-		return "", err
-	}
 
 	return filesDir, nil
 }
 
-// normalizeImportMediaDir makes the canonical media URI resolve on
-// case-sensitive filesystems. It runs after staged files and reuse checks, but
-// before metadata publication; the returned closure restores the old spelling
-// if publication fails.
-func normalizeImportMediaDir(archiveDir string) (func(), error) {
-	actual, err := importMediaFilesDir(archiveDir)
+// importMediaURI keeps a shared binary directory at its original spelling:
+// renaming it would break references in previously imported sibling archives.
+func importMediaURI(archiveDir, filesDir, name string) string {
+	rel, err := filepath.Rel(archiveDir, filesDir)
 	if err != nil {
-		return nil, err
-	}
-	canonical := filepath.Join(archiveDir, glxlib.MediaFilesDir)
-	if actual == canonical {
-		return func() {}, nil
-	}
-	actualRel, err := filepath.Rel(archiveDir, actual)
-	if err != nil {
-		return nil, err
-	}
-	actualRel = filepath.ToSlash(actualRel)
-	root, err := os.OpenRoot(archiveDir)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = root.Close() }()
-	actualInfo, err := root.Lstat(actualRel)
-	if err != nil {
-		return nil, err
-	}
-	if parent, err := root.Lstat("media"); err == nil {
-		if !parent.IsDir() {
-			return nil, fmt.Errorf("canonical media path is not a directory: %w", os.ErrInvalid)
-		}
-	} else if !os.IsNotExist(err) {
-		return nil, err
-	}
-	if canonicalInfo, err := root.Lstat(glxlib.MediaFilesDir); err == nil {
-		if os.SameFile(actualInfo, canonicalInfo) {
-			// A case-insensitive filesystem already resolves the canonical URI.
-			return func() {}, nil
-		}
-
-		return nil, fmt.Errorf("canonical media/files is occupied: %w", os.ErrExist)
-	} else if !os.IsNotExist(err) {
-		return nil, err
-	}
-	if err := root.MkdirAll("media", dirPermissions); err != nil {
-		return nil, fmt.Errorf("creating canonical media directory: %w", err)
-	}
-	if err := robustRenameIn(root, actualRel, glxlib.MediaFilesDir); err != nil {
-		return nil, fmt.Errorf("normalizing media/files directory: %w", err)
+		return glxlib.MediaFilesDir + "/" + name
 	}
 
-	return func() {
-		root, err := os.OpenRoot(archiveDir)
-		if err != nil {
-			return
+	return filepath.ToSlash(rel) + "/" + name
+}
+
+// prepareImportMediaURIs also serves writer callers that already have allocated
+// sources. Only conventional binary references are rewritten.
+func prepareImportMediaURIs(archive *glxlib.GLXFile, files []glxlib.MediaFileSource, archiveDir string) error {
+	filesDir, err := importMediaFilesDir(archiveDir)
+	if err != nil {
+		return err
+	}
+	for i := range files {
+		mf := &files[i]
+		if media := archive.Media[mf.MediaID]; media != nil && mediaURIBasename(media.URI) == mf.TargetFilename {
+			media.URI = importMediaURI(archiveDir, filesDir, mf.TargetFilename)
 		}
-		defer func() { _ = root.Close() }()
-		current, err := root.Lstat(glxlib.MediaFilesDir)
-		if err == nil && os.SameFile(current, actualInfo) {
-			_ = robustRenameIn(root, glxlib.MediaFilesDir, actualRel)
-		}
-	}, nil
+	}
+
+	return nil
 }
 
 type importMediaMatcher struct {
@@ -391,6 +367,8 @@ func (m *importMediaMatcher) matchesFile(name string) (bool, error) {
 	if !info.Mode().IsRegular() {
 		return false, nil
 	}
+	// A positive digest is never sufficient evidence for reuse: bytes may
+	// change in place while size and mtime stay the same. Cache only rejects.
 	if cached, ok := m.destinationHashes[name]; ok && os.SameFile(info, cached.info) &&
 		info.Size() == cached.info.Size() && info.ModTime().Equal(cached.info.ModTime()) &&
 		cached.hash != m.sourceHash {

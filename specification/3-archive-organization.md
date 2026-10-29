@@ -338,7 +338,7 @@ Entity IDs can be any unique identifier you choose, with the following constrain
 
 > **Note:** Examples in this documentation use prefixes (e.g., `person-abc123`) for readability. Prefixes are not required—any format meeting the requirements above is valid.
 >
-> **Multi-file naming:** In multi-file archives, the entity ID determines the filename. The serializer writes each entity to `<type>/<lowercased-id>.glx` (e.g., entity ID `person-John-Smith` → `persons/person-john-smith.glx`). This means filenames are stable across writes — pick descriptive IDs if you want readable diffs.
+> **Multi-file naming:** In multi-file archives, the entity ID determines the filename of a new entity. The serializer writes each entity to `<type>/<lowercased-id>.glx` (e.g., entity ID `person-John-Smith` → `persons/person-john-smith.glx`), and the CLI creates new entities at that path. An entity that already lives in another file stays there when it is changed (see [Writing an Archive](#writing-an-archive)). Filenames are stable across writes — pick descriptive IDs if you want readable diffs.
 
 **Example Formats:**
 
@@ -450,6 +450,27 @@ Two consequences for archive authors and tools:
 - A writer that rewrites an archive MUST preserve the dot-prefixed entries it
   finds. Because a parser never reads them, a writer that re-emits only what it
   read would silently destroy them.
+
+### Writing an Archive
+
+Because folder and file names are conventions, the layout of a multi-file
+archive belongs to its author. A tool that modifies an archive SHOULD keep it:
+
+- An entity, vocabulary entry, or metadata block that changes is rewritten in
+  the file it was read from.
+- One that is removed is removed from every file that defines it. A file left
+  with no content MAY be deleted.
+- A new entity is written to `<type>/<lowercased-id>.glx`, unless the tool lets
+  the user choose another location.
+- Every other file is left as it is: `.glx` files with nothing to change, media
+  binaries, dot-prefixed entries, and anything that is not a `.glx` file.
+
+A rewritten file is regenerated from its parsed content, so comments and
+formatting inside that file are not guaranteed to survive; files that are not
+rewritten keep theirs. The `glx` CLI follows these rules for every command that
+modifies a multi-file archive (`glx merge`, `glx merge-persons`, `glx migrate`,
+`glx rename`). Reorganizing an archive into the canonical layout is a separate,
+explicit operation (`glx join` followed by `glx split`).
 
 ## Git Workflow Integration
 

@@ -76,28 +76,28 @@ func TestFilesIdentical(t *testing.T) {
 	require.NoError(t, os.WriteFile(c, []byte("HELLO"), 0o644)) // same size, different bytes
 
 	t.Run("identical content", func(t *testing.T) {
-		same, err := filesIdentical(a, b)
+		same, err := filesIdenticalWithin(dir, a, dir, b)
 		require.NoError(t, err)
 		assert.True(t, same)
 	})
 	t.Run("different size short-circuits", func(t *testing.T) {
 		short := filepath.Join(dir, "short.bin")
 		require.NoError(t, os.WriteFile(short, []byte("hi"), 0o644))
-		same, err := filesIdentical(a, short)
+		same, err := filesIdenticalWithin(dir, a, dir, short)
 		require.NoError(t, err)
 		assert.False(t, same)
 	})
 	t.Run("same size different bytes", func(t *testing.T) {
-		same, err := filesIdentical(a, c)
+		same, err := filesIdenticalWithin(dir, a, dir, c)
 		require.NoError(t, err)
 		assert.False(t, same)
 	})
 	t.Run("missing left file returns error", func(t *testing.T) {
-		_, err := filesIdentical(filepath.Join(dir, "nope.bin"), a)
+		_, err := filesIdenticalWithin(dir, filepath.Join(dir, "nope.bin"), dir, a)
 		assert.Error(t, err)
 	})
 	t.Run("missing right file returns error", func(t *testing.T) {
-		_, err := filesIdentical(a, filepath.Join(dir, "nope.bin"))
+		_, err := filesIdenticalWithin(dir, a, dir, filepath.Join(dir, "nope.bin"))
 		assert.Error(t, err)
 	})
 }
@@ -214,13 +214,14 @@ func TestPlanSourceMediaCopies_CaseEquivalentDestination(t *testing.T) {
 			plan, err := planSourceMediaCopies(srcDir, destDir, src)
 			require.NoError(t, err)
 			if identical {
-				require.Empty(t, plan)
+				require.Len(t, plan, 1)
+				require.True(t, plan[0].ReuseExisting)
 				require.Equal(t, "media/files/Photo.JPG", src.Media["media-1"].URI)
 			} else {
 				require.Len(t, plan, 1)
 				require.Equal(t, "photo-2.jpg", plan[0].TargetName)
 				require.Equal(t, "media/files/photo-2.jpg", src.Media["media-1"].URI)
-				copied, _, copyErr := executeMediaCopies(plan, destDir, src)
+				copied, _, _, copyErr := executeMediaCopiesWithRollback(plan, destDir, src)
 				require.NoError(t, copyErr)
 				require.Equal(t, 1, copied)
 				actual, readErr := os.ReadFile(filepath.Join(destFiles, "photo-2.jpg"))
@@ -252,7 +253,8 @@ func TestPlanSourceMediaCopies_PrefersExactOnDiskSpelling(t *testing.T) {
 	src := &glxlib.GLXFile{Media: map[string]*glxlib.Media{"media-1": {URI: "media/files/photo.jpg"}}}
 	plan, err := planSourceMediaCopies(srcDir, destDir, src)
 	require.NoError(t, err)
-	require.Empty(t, plan)
+	require.Len(t, plan, 1)
+	require.True(t, plan[0].ReuseExisting)
 	require.Equal(t, "media/files/photo.jpg", src.Media["media-1"].URI)
 }
 
@@ -309,7 +311,7 @@ func TestPlanSourceMediaCopies_RejectsSymlinkedSourceFilesDir(t *testing.T) {
 }
 
 func TestExecuteMediaCopies_ZeroLengthPlan(t *testing.T) {
-	copied, skipped, err := executeMediaCopies(nil, t.TempDir(), &glxlib.GLXFile{})
+	copied, skipped, _, err := executeMediaCopiesWithRollback(nil, t.TempDir(), &glxlib.GLXFile{})
 	require.NoError(t, err)
 	assert.Zero(t, copied)
 	assert.Zero(t, skipped)
@@ -332,7 +334,7 @@ func TestExecuteMediaCopies_SkipsWhenAllReferencesDropped(t *testing.T) {
 	// merged has no surviving media-dropped entity.
 	merged := &glxlib.GLXFile{Media: map[string]*glxlib.Media{}}
 
-	copied, skipped, err := executeMediaCopies(plan, destDir, merged)
+	copied, skipped, _, err := executeMediaCopiesWithRollback(plan, destDir, merged)
 	require.NoError(t, err)
 	assert.Zero(t, copied)
 	assert.Equal(t, 1, skipped)
@@ -366,7 +368,7 @@ func TestExecuteMediaCopies_CopiesWhenAnyReferenceSurvives(t *testing.T) {
 		"media-survivor": survivorSrc,
 	}}
 
-	copied, skipped, err := executeMediaCopies(plan, destDir, merged)
+	copied, skipped, _, err := executeMediaCopiesWithRollback(plan, destDir, merged)
 	require.NoError(t, err)
 	assert.Equal(t, 1, copied)
 	assert.Zero(t, skipped)
@@ -392,7 +394,7 @@ func TestExecuteMediaCopies_DestinationAppearsAfterPlanning(t *testing.T) {
 	}}
 	merged := &glxlib.GLXFile{Media: map[string]*glxlib.Media{"photo": entity}}
 
-	copied, skipped, err := executeMediaCopies(plan, destDir, merged)
+	copied, skipped, _, err := executeMediaCopiesWithRollback(plan, destDir, merged)
 	require.ErrorIs(t, err, os.ErrExist)
 	assert.Zero(t, copied)
 	assert.Zero(t, skipped)
@@ -411,7 +413,7 @@ func TestExecuteMediaCopies_SourceDisappearsAfterPlanning(t *testing.T) {
 	}}
 	merged := &glxlib.GLXFile{Media: map[string]*glxlib.Media{"photo": entity}}
 
-	copied, skipped, err := executeMediaCopies(plan, destDir, merged)
+	copied, skipped, _, err := executeMediaCopiesWithRollback(plan, destDir, merged)
 	require.ErrorIs(t, err, os.ErrNotExist)
 	assert.Zero(t, copied)
 	assert.Zero(t, skipped)
@@ -436,7 +438,7 @@ func TestPublishMergedMultiFileArchive_CopyRacePreservesMetadataAndRollsBack(t *
 		{SrcPath: filepath.Join(srcDir, "b.jpg"), SrcRoot: srcDir, TargetName: "b.jpg", SrcMedia: map[string]*glxlib.Media{"b": b}},
 	}
 
-	_, _, err := publishMergedMultiFileArchive(destDir, merged, plan)
+	_, _, err := publishMergedMultiFileArchive(destDir, nil, merged, plan)
 	require.ErrorIs(t, err, os.ErrExist)
 	actualMetadata, readErr := os.ReadFile(filepath.Join(destDir, "metadata.glx"))
 	require.NoError(t, readErr)
@@ -449,8 +451,9 @@ func TestPublishMergedMultiFileArchive_CopyRacePreservesMetadataAndRollsBack(t *
 
 func TestPublishMergedMultiFileArchive_WriteFailureRollsBackCopiedMedia(t *testing.T) {
 	destDir := t.TempDir()
-	oldMetadata := []byte("old metadata")
+	oldMetadata := []byte("metadata: {}\n")
 	require.NoError(t, os.WriteFile(filepath.Join(destDir, "metadata.glx"), oldMetadata, filePermissions))
+	require.NoError(t, os.WriteFile(filepath.Join(destDir, inPlaceJournalFile), []byte("unrecovered write"), filePermissions))
 	staleMediaDir := filepath.Join(destDir+".bak", glxlib.MediaFilesDir)
 	require.NoError(t, os.MkdirAll(staleMediaDir, dirPermissions))
 	require.NoError(t, os.WriteFile(filepath.Join(staleMediaDir, "unrecovered.jpg"), []byte("keep"), filePermissions))
@@ -463,7 +466,7 @@ func TestPublishMergedMultiFileArchive_WriteFailureRollsBackCopiedMedia(t *testi
 		TargetName: "photo.jpg", SrcMedia: map[string]*glxlib.Media{"photo": media},
 	}}
 
-	_, _, err := publishMergedMultiFileArchive(destDir, merged, plan)
+	_, _, err := publishMergedMultiFileArchive(destDir, map[string][]byte{"metadata.glx": oldMetadata}, merged, plan)
 	require.Error(t, err)
 	actualMetadata, readErr := os.ReadFile(filepath.Join(destDir, "metadata.glx"))
 	require.NoError(t, readErr)
@@ -493,7 +496,7 @@ func TestPublishMergedMultiFileArchive_CaseVariantDirectoryDisappears(t *testing
 	require.Equal(t, "MEDIA/files", plan[0].TargetDir)
 	require.NoError(t, os.RemoveAll(variantFiles))
 
-	_, _, err = publishMergedMultiFileArchive(destDir, archive, plan)
+	_, _, err = publishMergedMultiFileArchive(destDir, nil, archive, plan)
 	require.ErrorIs(t, err, os.ErrInvalid)
 	actual, readErr := os.ReadFile(filepath.Join(destDir, "metadata.glx"))
 	require.NoError(t, readErr)
@@ -502,25 +505,20 @@ func TestPublishMergedMultiFileArchive_CaseVariantDirectoryDisappears(t *testing
 	require.NoDirExists(t, destDir+".bak")
 }
 
-func TestPublishMergedMultiFileArchive_AmbiguousDirectoryWithoutCopies(t *testing.T) {
+func TestPublishMergedMultiFileArchive_PreservesAmbiguousDirectoriesWithoutCopies(t *testing.T) {
 	destDir := t.TempDir()
 	if !fsCaseSensitive(t, destDir) {
-		t.Skip("needs a case-sensitive filesystem for distinct media directory spellings")
+		t.Skip("requires distinct directory spellings")
 	}
-	oldMetadata := []byte("old metadata")
-	require.NoError(t, os.WriteFile(filepath.Join(destDir, "metadata.glx"), oldMetadata, filePermissions))
 	for _, rel := range []string{glxlib.MediaFilesDir, "MEDIA/files"} {
-		filesDir := filepath.Join(destDir, rel)
-		require.NoError(t, os.MkdirAll(filesDir, dirPermissions))
-		require.NoError(t, os.WriteFile(filepath.Join(filesDir, "old.jpg"), []byte(rel), filePermissions))
+		require.NoError(t, os.MkdirAll(filepath.Join(destDir, rel), dirPermissions))
+		require.NoError(t, os.WriteFile(filepath.Join(destDir, rel, "old.jpg"), []byte(rel), filePermissions))
 	}
-
-	_, _, err := publishMergedMultiFileArchive(destDir, &glxlib.GLXFile{}, nil)
-	require.ErrorIs(t, err, ErrAmbiguousMediaFilesDirs)
-	actual, readErr := os.ReadFile(filepath.Join(destDir, "metadata.glx"))
-	require.NoError(t, readErr)
-	require.Equal(t, oldMetadata, actual)
-	require.NoDirExists(t, destDir+".bak")
+	_, _, err := publishMergedMultiFileArchive(destDir, nil, &glxlib.GLXFile{Persons: map[string]*glxlib.Person{"new": {}}}, nil)
+	require.NoError(t, err)
+	for _, rel := range []string{glxlib.MediaFilesDir, "MEDIA/files"} {
+		require.Equal(t, []byte(rel), mustReadImportMedia(t, filepath.Join(destDir, rel, "old.jpg")))
+	}
 }
 
 func TestExecuteMediaCopies_SkipsWhenSameIDButDestEntityKept(t *testing.T) {
@@ -547,7 +545,7 @@ func TestExecuteMediaCopies_SkipsWhenSameIDButDestEntityKept(t *testing.T) {
 		"media-shared": destEntity,
 	}}
 
-	copied, skipped, err := executeMediaCopies(plan, destDir, merged)
+	copied, skipped, _, err := executeMediaCopiesWithRollback(plan, destDir, merged)
 	require.NoError(t, err)
 	assert.Zero(t, copied)
 	assert.Equal(t, 1, skipped)
@@ -611,17 +609,88 @@ func TestPublishMergedMultiFileArchive_PreservedEntryFailureKeepsReferencedMedia
 	if err := os.Symlink(filepath.Join("..", ".drafts", "person-1.glx"), filepath.Join(archiveDir, "persons", "person-1.glx")); err != nil {
 		t.Skipf("symlinks unavailable: %v", err)
 	}
-	archive, _, err := LoadArchive(archiveDir)
+	archive, _, loadedFiles, err := loadArchiveForWrite(archiveDir)
 	require.NoError(t, err)
 	source := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(source, "new.jpg"), []byte("new"), filePermissions))
 	media := &glxlib.Media{URI: "media/files/new.jpg"}
 	archive.Media = map[string]*glxlib.Media{"new": media}
 	plan := []plannedMediaCopy{{SrcPath: filepath.Join(source, "new.jpg"), SrcRoot: source, TargetName: "new.jpg", SrcMedia: map[string]*glxlib.Media{"new": media}}}
-	_, _, err = publishMergedMultiFileArchive(archiveDir, archive, plan)
-	require.ErrorIs(t, err, ErrPreservedEntryCollision)
+	_, _, err = publishMergedMultiFileArchive(archiveDir, loadedFiles, archive, plan)
+	require.NoError(t, err)
 	require.Equal(t, []byte("new"), mustReadImportMedia(t, filepath.Join(archiveDir, "media", "files", "new.jpg")))
 	loaded, _, loadErr := LoadArchive(archiveDir)
 	require.NoError(t, loadErr)
 	require.Equal(t, "media/files/new.jpg", loaded.Media["new"].URI)
+}
+
+func TestPublishMergedMultiFileArchive_RechecksReusedMedia(t *testing.T) {
+	for _, mutation := range []string{"destination-changed", "destination-deleted", "source-changed"} {
+		t.Run(mutation, func(t *testing.T) {
+			source := t.TempDir()
+			dest := t.TempDir()
+			archive := &glxlib.GLXFile{Media: map[string]*glxlib.Media{"reuse": {URI: "media/files/photo.jpg"}, "fresh": {URI: "media/files/new.jpg"}}}
+			for _, root := range []string{source, dest} {
+				require.NoError(t, os.MkdirAll(filepath.Join(root, glxlib.MediaFilesDir), dirPermissions))
+				require.NoError(t, os.WriteFile(filepath.Join(root, glxlib.MediaFilesDir, "photo.jpg"), []byte("expected"), filePermissions))
+			}
+			require.NoError(t, os.WriteFile(filepath.Join(source, glxlib.MediaFilesDir, "new.jpg"), []byte("new"), filePermissions))
+			plan, err := planSourceMediaCopies(source, dest, archive)
+			require.NoError(t, err)
+			require.Len(t, plan, 2)
+			target := filepath.Join(dest, glxlib.MediaFilesDir, "photo.jpg")
+			if mutation == "source-changed" {
+				target = filepath.Join(source, glxlib.MediaFilesDir, "photo.jpg")
+			}
+			if mutation == "destination-deleted" {
+				require.NoError(t, os.Remove(target))
+			} else {
+				info, statErr := os.Stat(target)
+				require.NoError(t, statErr)
+				require.NoError(t, os.WriteFile(target, []byte("changed!"), filePermissions))
+				require.NoError(t, os.Chtimes(target, info.ModTime(), info.ModTime()))
+			}
+			_, _, err = publishMergedMultiFileArchive(dest, nil, archive, plan)
+			require.Error(t, err)
+			require.NoFileExists(t, filepath.Join(dest, "media/reuse.glx"))
+			require.NoFileExists(t, filepath.Join(dest, glxlib.MediaFilesDir, "new.jpg"))
+		})
+	}
+}
+
+func TestPlanSourceMediaCopiesIgnoresUnusedBinaryPaths(t *testing.T) {
+	source := t.TempDir()
+	external := t.TempDir()
+	if err := os.Symlink(external, filepath.Join(source, "media")); err != nil {
+		t.Skip(err)
+	}
+	for _, archive := range []*glxlib.GLXFile{{}, {Media: map[string]*glxlib.Media{"remote": {URI: "https://example.com/photo.jpg"}}}} {
+		plan, err := planSourceMediaCopies(source, t.TempDir(), archive)
+		require.NoError(t, err)
+		require.Empty(t, plan)
+	}
+	single := filepath.Join(t.TempDir(), "source.glx")
+	require.NoError(t, os.WriteFile(single, []byte("media: {}"), filePermissions))
+	plan, err := planSourceMediaCopies(single, t.TempDir(), &glxlib.GLXFile{Media: map[string]*glxlib.Media{"local": {URI: "media/files/photo.jpg"}}})
+	require.NoError(t, err)
+	require.Empty(t, plan)
+}
+
+func TestMergeArchives_UsesActualSourceAndDestinationMediaURIs(t *testing.T) {
+	source := t.TempDir()
+	dest := t.TempDir()
+	sourceDir := filepath.Join(source, "MEDIA", "FILES")
+	destDir := filepath.Join(dest, "Media", "Files")
+	require.NoError(t, os.MkdirAll(sourceDir, dirPermissions))
+	require.NoError(t, os.MkdirAll(destDir, dirPermissions))
+	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "photo.jpg"), []byte("source bytes"), filePermissions))
+	src := &glxlib.GLXFile{Media: map[string]*glxlib.Media{"source-photo": {URI: "MEDIA/FILES/photo.jpg"}}}
+	require.NoError(t, writeMultiFileArchive(source, src, false))
+	require.NoError(t, writeMultiFileArchive(dest, &glxlib.GLXFile{}, false))
+
+	require.NoError(t, mergeArchives(source, dest, false, 0.6))
+	merged, _, err := LoadArchiveWithOptions(dest, false)
+	require.NoError(t, err)
+	require.Equal(t, "Media/Files/photo.jpg", merged.Media["source-photo"].URI)
+	require.Equal(t, []byte("source bytes"), mustReadImportMedia(t, filepath.Join(dest, filepath.FromSlash(merged.Media["source-photo"].URI))))
 }

@@ -291,15 +291,13 @@ func PortableFilename(name string) string {
 	if name == "" {
 		return "unnamed"
 	}
-	{
-		name = strings.Map(func(r rune) rune {
-			if r < 32 || strings.ContainsRune("<>:\"/\\|?*", r) {
-				return '-'
-			}
+	name = strings.Map(func(r rune) rune {
+		if r < 32 || strings.ContainsRune("<>:\"/\\|?*", r) {
+			return '-'
+		}
 
-			return r
-		}, name)
-	}
+		return r
+	}, name)
 	first, rest, hasDot := strings.Cut(name, ".")
 	stem := strings.ToUpper(strings.TrimRight(first, " ."))
 	switch stem {

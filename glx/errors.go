@@ -48,11 +48,6 @@ var (
 	ErrMultipleFilesFailed        = errors.New("multiple files failed validation")
 	ErrInvalidExportFormat        = errors.New("invalid GEDCOM version format")
 	ErrInputNotFound              = errors.New("input path not found")
-	ErrStaleBackupForeignFile     = errors.New("stale backup contains non-archive file from a previous failed run; move or inspect it before retrying")
-	ErrInterruptedSwap            = errors.New("a previous write to this archive was interrupted mid-swap; the backup may hold the only copy of some entities")
-	ErrPreservedEntryCollision    = errors.New("an entry the loader skips collides with a file the archive writer produced; the backup is retained")
-	ErrAmbiguousMediaFilesDirs    = errors.New("archive holds more than one media/files directory differing only by case; merge them before writing")
-	ErrTopLevelGLXFile            = errors.New("archive has a top-level .glx file whose entities the multi-file writer would duplicate; move them into entity directories before writing")
 	ErrInvalidARK                 = errors.New("not a valid FamilySearch ARK")
 	ErrEmptyARK                   = errors.New("empty ARK")
 	ErrLinkSourceRequired         = errors.New("exactly one of --source or --create-source is required")
@@ -153,6 +148,12 @@ var (
 	// file path would resolve outside the archive root.
 	ErrRenamePathEscapesArchive = errors.New("planned file path escapes the archive root")
 
+	// ErrPathNotArchiveContent is returned when a planned write would land
+	// where the archive loader does not read, such as under a directory
+	// symlink that resolves into a dot-prefixed directory. The entities
+	// written there would be missing from the next load.
+	ErrPathNotArchiveContent = errors.New("planned file path resolves to a location the archive loader skips")
+
 	// ErrRenameDuplicatePlanPath is returned by glx rename when its write plan
 	// contains more than one operation for the same path. Applying both would
 	// make the second overwrite the first, and rollback could not restore the
@@ -165,4 +166,14 @@ var (
 	// placeholder (Windows, core.symlinks=false) and the on-disk file is
 	// really the placeholder.
 	ErrRenameFileChanged = errors.New("file changed on disk since the archive was loaded")
+
+	// ErrInterruptedInPlaceWrite is returned by an in-place archive write
+	// (glx merge, merge-persons, migrate) when the journal an earlier write
+	// leaves while it runs is still present: that write stopped part way, so
+	// some files may hold its result and others not. The journal records the
+	// prior content of every file the write touched.
+	ErrInterruptedInPlaceWrite = errors.New("an earlier in-place write to this archive was interrupted")
 )
+
+// ErrAmbiguousMediaFilesDirs marks multiple conventional binary directories.
+var ErrAmbiguousMediaFilesDirs = errors.New("ambiguous media/files directory spellings")

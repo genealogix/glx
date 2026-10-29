@@ -49,12 +49,6 @@ func robustRename(oldpath, newpath string) error {
 	return retryRename(func() error { return os.Rename(oldpath, newpath) })
 }
 
-// robustRenameIn is robustRename scoped to root: both paths are resolved
-// inside it, so no symlinked path component can redirect the rename outside.
-func robustRenameIn(root *os.Root, oldname, newname string) error {
-	return retryRename(func() error { return root.Rename(oldname, newname) })
-}
-
 // retryRename runs rename, retrying transient Windows lock failures with the
 // backoff described on robustRename.
 func retryRename(rename func() error) error {

@@ -27,15 +27,6 @@ import (
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
-// copyMediaFiles copies or writes media files into the archive's media/files/ directory.
-// gedcomDir is the source directory for resolving relative FILE paths.
-// archiveDir is the root of the output archive.
-// Missing source files produce warnings on stdout (suppressible via --quiet),
-// not fatal errors.
-func copyMediaFiles(streams *IOStreams, archiveDir string, mediaFiles []glxlib.MediaFileSource, gedcomDir string, verbose bool) error {
-	return copyMediaFilesUsing(streams, archiveDir, mediaFiles, gedcomDir, func(copied, blobs, warnings int) { printImportMediaReport(streams, copied, blobs, warnings, verbose) })
-}
-
 // stageImportMedia keeps warnings immediate but defers the success count until
 // both media and archive references have been published.
 func stageImportMedia(archiveDir string, files []glxlib.MediaFileSource, sourceDir string, verbose bool) (func(), error) {
@@ -206,4 +197,33 @@ func writeFileFrom(dst string, src io.Reader) error {
 	}
 
 	return nil
+}
+
+// mediaStatCloser is the opened descriptor whose identity cleanup must prove.
+type mediaStatCloser interface {
+	Stat() (os.FileInfo, error)
+	Close() error
+}
+
+// discardUnidentifiedMediaFile retries descriptor identity before cleanup after
+// a post-create Stat failure. If identity remains unavailable, retain the path
+// and report it: removing an unverified path could delete another writer's file.
+func discardUnidentifiedMediaFile(root *os.Root, name string, opened mediaStatCloser) error {
+	info, statErr := opened.Stat()
+	closeErr := opened.Close()
+	if statErr != nil {
+		return fmt.Errorf("new media %s may remain for recovery because its opened identity is unavailable: %w", name, errors.Join(statErr, closeErr))
+	}
+	current, err := root.Lstat(name)
+	if os.IsNotExist(err) {
+		return closeErr
+	}
+	if err != nil {
+		return errors.Join(closeErr, err)
+	}
+	if os.SameFile(info, current) {
+		return errors.Join(closeErr, root.Remove(name))
+	}
+
+	return closeErr
 }

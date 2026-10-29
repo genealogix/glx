@@ -81,9 +81,9 @@ func TestMultiFileImport_PartialMetadataWriteKeepsReferencedMedia(t *testing.T) 
 			}
 			require.ErrorIs(t, err, errTestLaterMetadataWrite)
 			require.NotEmpty(t, published)
-			require.Contains(t, string(mustReadImportMedia(t, filepath.Join(output, published))), glxlib.MediaFilesDir+"/photo-2.jpg")
-			require.Equal(t, []byte("new"), mustReadImportMedia(t, filepath.Join(output, glxlib.MediaFilesDir, "photo-2.jpg")))
-			require.Equal(t, []byte("old"), mustReadImportMedia(t, filepath.Join(output, glxlib.MediaFilesDir, "photo.jpg")))
+			require.Contains(t, string(mustReadImportMedia(t, filepath.Join(output, published))), "MEDIA/files/photo-2.jpg")
+			require.Equal(t, []byte("new"), mustReadImportMedia(t, filepath.Join(variant, "photo-2.jpg")))
+			require.Equal(t, []byte("old"), mustReadImportMedia(t, filepath.Join(variant, "photo.jpg")))
 		})
 	}
 }
@@ -137,14 +137,14 @@ func TestImport_CaseVariantMediaDirectory(t *testing.T) {
 						err = importGEDZIPToMultiFile(glx, output, false, false, 0, media, bundle, io.Discard)
 					}
 					require.NoError(t, err)
-					canonical := filepath.Join(archiveDir, glxlib.MediaFilesDir)
-					require.Equal(t, []byte("same"), mustReadImportMedia(t, filepath.Join(canonical, "photo.jpg")))
-					require.Equal(t, []byte("different"), mustReadImportMedia(t, filepath.Join(canonical, "photo-2.jpg")))
+					actualDir := filepath.Join(archiveDir, variant)
+					require.Equal(t, []byte("same"), mustReadImportMedia(t, filepath.Join(actualDir, "photo.jpg")))
+					require.Equal(t, []byte("different"), mustReadImportMedia(t, filepath.Join(actualDir, "photo-2.jpg")))
 					dirs, err := mediaFilesDirsIn(archiveDir)
 					require.NoError(t, err)
-					require.Equal(t, []string{canonical}, dirs)
-					require.Equal(t, glxlib.MediaFilesDir+"/photo.jpg", glx.Media["reuse"].URI)
-					require.Equal(t, glxlib.MediaFilesDir+"/photo-2.jpg", glx.Media["fresh"].URI)
+					require.Equal(t, []string{actualDir}, dirs)
+					require.Equal(t, variant+"/photo.jpg", glx.Media["reuse"].URI)
+					require.Equal(t, variant+"/photo-2.jpg", glx.Media["fresh"].URI)
 				})
 			}
 		}
@@ -319,7 +319,7 @@ func TestSingleFileImport_ArchivePublicationFailureRollsBackMedia(t *testing.T) 
 func TestImport_ReusedMediaChangedBeforePublicationPreservesArchive(t *testing.T) {
 	for _, input := range []string{"GEDCOM", "GEDZIP"} {
 		for _, format := range []string{FormatSingle, FormatMulti} {
-			for _, mutation := range []string{"replaced", "deleted"} {
+			for _, mutation := range []string{"replaced", "deleted", "source-changed"} {
 				t.Run(input+"/"+format+"/"+mutation, func(t *testing.T) {
 					work := t.TempDir()
 					output := filepath.Join(work, "archive")
@@ -355,9 +355,16 @@ func TestImport_ReusedMediaChangedBeforePublicationPreservesArchive(t *testing.T
 						require.NoError(t, allocateImportMediaDestinations(glx, media, archiveDir, "", os.DirFS(sourceDir)))
 					}
 					require.True(t, media[0].ReuseExisting)
-					if mutation == "deleted" {
+					switch mutation {
+					case "deleted":
 						require.NoError(t, os.Remove(filepath.Join(mediaDir, "photo.jpg")))
-					} else {
+					case "source-changed":
+						source := filepath.Join(sourceDir, "photo.jpg")
+						info, statErr := os.Stat(source)
+						require.NoError(t, statErr)
+						require.NoError(t, os.WriteFile(source, []byte("changed!"), filePermissions))
+						require.NoError(t, os.Chtimes(source, info.ModTime(), info.ModTime()))
+					default:
 						require.NoError(t, os.WriteFile(filepath.Join(mediaDir, "photo.jpg"), []byte("changed!"), filePermissions))
 					}
 
@@ -414,4 +421,18 @@ func TestMultiFileImport_NoMetadataPublishedRollsBackMedia(t *testing.T) {
 			require.NoFileExists(t, filepath.Join(output, "media", "files", "new.jpg"))
 		})
 	}
+}
+
+func TestImportMetadataSnapshotDetectsPartialOverwrite(t *testing.T) {
+	root := t.TempDir()
+	name := "metadata.glx"
+	require.NoError(t, os.WriteFile(filepath.Join(root, name), []byte("old bytes"), filePermissions))
+	snapshot := snapshotImportMetadata(root, map[string][]byte{name: []byte("new bytes"), "persons/new.glx": []byte("new")})
+	require.True(t, snapshot.unchanged(root))
+	require.NoError(t, os.WriteFile(filepath.Join(root, name), []byte("new"), filePermissions))
+	require.False(t, snapshot.unchanged(root), "partial writes must retain potentially referenced binaries")
+	require.NoError(t, os.WriteFile(filepath.Join(root, name), []byte("old bytes"), filePermissions))
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "persons"), dirPermissions))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "persons/new.glx"), []byte("partial"), filePermissions))
+	require.False(t, snapshot.unchanged(root))
 }
