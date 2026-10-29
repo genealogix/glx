@@ -276,6 +276,13 @@ func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOM
 		}
 	}
 
+	// EVEN + TYPE naming a vocabulary event type that has no tag of its own
+	// restores that type (#1320)
+	if eventRecord.Tag == GedcomTagEven {
+		resolveGenericEventType(event, conv.GEDCOMIndex)
+		eventType = event.Type
+	}
+
 	// Add principal participant
 	event.Participants = []Participant{
 		{
@@ -673,7 +680,7 @@ func extractCensusData(censRecord *GEDCOMRecord, conv *ConversionContext) census
 		case GedcomTagNote:
 			noteText = extractNoteText(sub, conv)
 		case GedcomTagSour:
-			// Handled by extractEvidence below
+			// Prepared below after census context has been extracted
 		case GedcomTagObje:
 			if mediaID := resolveOBJE(sub, conv); mediaID != "" {
 				mediaIDs = append(mediaIDs, mediaID)
@@ -685,27 +692,46 @@ func extractCensusData(censRecord *GEDCOMRecord, conv *ConversionContext) census
 		}
 	}
 
-	// Extract evidence from any SOUR sub-records
-	refs := extractEvidence(censRecord, conv)
+	// Prepare bare embedded sources as private drafts. Census notes and media
+	// are part of their final identity and must be added before registration.
+	var results []sourResult
+	hasCitations := false
+	for _, sub := range censRecord.SubRecords {
+		if sub.Tag != GedcomTagSour {
+			continue
+		}
+		result, err := prepareCitationFromSOUR(sub, conv)
+		if err != nil {
+			continue
+		}
+		results = append(results, result)
+		hasCitations = hasCitations || result.CitationID != ""
+	}
 
 	// When SOUR sub-records exist but we also have a NOTE, attach the note
 	// to existing citations so it's not silently lost (#30).
 	// If only bare source references exist (no citations), attach to sources.
-	if refs.hasEvidence() && noteText != "" {
-		if len(refs.CitationIDs) > 0 {
-			for _, citID := range refs.CitationIDs {
-				if cit, ok := conv.GLX.Citations[citID]; ok {
-					cit.Notes = append(cit.Notes, noteText)
-				}
-			}
-		} else if len(refs.SourceIDs) > 0 {
-			for _, srcID := range refs.SourceIDs {
-				if src, ok := conv.GLX.Sources[srcID]; ok {
-					src.Notes = append(src.Notes, noteText)
-				}
+	seenExplicitSources := make(map[string]bool)
+	for _, result := range results {
+		if hasCitations && noteText != "" {
+			if cit, ok := conv.GLX.Citations[result.CitationID]; ok {
+				cit.Notes = append(cit.Notes, noteText)
 			}
 		}
+		if source := result.bareSource(conv); source != nil {
+			if result.SourceID != "" {
+				if seenExplicitSources[result.SourceID] {
+					continue
+				}
+				seenExplicitSources[result.SourceID] = true
+			}
+			if !hasCitations && noteText != "" {
+				source.Notes = append(source.Notes, noteText)
+			}
+			source.Media = append(source.Media, mediaIDs...)
+		}
 	}
+	refs := finalizeGEDCOMEvidence(results, conv)
 
 	// If no SOUR sub-records, create a synthetic census source
 	if !refs.hasEvidence() {
@@ -742,6 +768,7 @@ func extractCensusData(censRecord *GEDCOMRecord, conv *ConversionContext) census
 
 			refs.CitationIDs = []string{citationID}
 		} else {
+			source.Media = append(source.Media, mediaIDs...)
 			refs.SourceIDs = []string{sourceID}
 		}
 	}
@@ -757,16 +784,12 @@ func extractCensusData(censRecord *GEDCOMRecord, conv *ConversionContext) census
 // applyCensusData applies extracted census data to a person: sets temporal
 // residence property and creates assertions backed by citations.
 func applyCensusData(personID string, person *Person, data *censusData, conv *ConversionContext) {
-	// Attach media to census citations and sources
+	// Bare source media is attached during extraction, before deduplication.
+	// Attach citation media here.
 	if len(data.mediaIDs) > 0 {
 		for _, citID := range data.evidence.CitationIDs {
 			if cit, ok := conv.GLX.Citations[citID]; ok {
 				cit.Media = append(cit.Media, data.mediaIDs...)
-			}
-		}
-		for _, srcID := range data.evidence.SourceIDs {
-			if src, ok := conv.GLX.Sources[srcID]; ok {
-				src.Media = append(src.Media, data.mediaIDs...)
 			}
 		}
 	}
@@ -899,24 +922,16 @@ func convertASSOToParticipant(assoRecord *GEDCOMRecord, conv *ConversionContext)
 	for _, sub := range assoRecord.SubRecords {
 		switch sub.Tag {
 		case GedcomTagRole:
+			var roleNotes []string
+			role, roleNotes = convertASSORole(sub, role, conv)
+			notes = append(notes, roleNotes...)
+		case GedcomTagRela:
+			// GEDCOM 5.5.1 RELA tag — map an enumeration value or a vocabulary
+			// role label (as glx export writes it), otherwise preserve in notes
 			glxRole, mapped := gedcomRoleToGLX[strings.ToUpper(sub.Value)]
-			if mapped {
-				role = glxRole
-			} else if sub.Value != "" {
-				// Unknown role — don't set as Role (would fail vocab validation).
-				// Use witness as default and preserve original in notes.
-				role = ParticipantRoleWitness
-				notes = append(notes, "GEDCOM ROLE: "+sub.Value)
+			if !mapped {
+				glxRole, mapped = lookupLabelIndex(conv.GEDCOMIndex.ParticipantRoles, sub.Value)
 			}
-			// Check for PHRASE sub-sub-record (GEDCOM 7.0)
-			for _, roleSub := range sub.SubRecords {
-				if roleSub.Tag == "PHRASE" && roleSub.Value != "" {
-					notes = append(notes, "Role: "+roleSub.Value)
-				}
-			}
-		case "RELA":
-			// GEDCOM 5.5.1 RELA tag — try to map, otherwise preserve in notes
-			glxRole, mapped := gedcomRoleToGLX[strings.ToUpper(sub.Value)]
 			if mapped {
 				role = glxRole
 			} else if sub.Value != "" {
@@ -941,6 +956,44 @@ func convertASSOToParticipant(assoRecord *GEDCOMRecord, conv *ConversionContext)
 	return participant
 }
 
+// convertASSORole maps a GEDCOM 7.0 ASSO ROLE to a GLX participant role,
+// returning fallback when the ROLE is empty, plus the notes that preserve what
+// the role could not carry.
+func convertASSORole(roleRecord *GEDCOMRecord, fallback string, conv *ConversionContext) (string, []string) {
+	var phrases []string
+	for _, roleSub := range roleRecord.SubRecords {
+		if roleSub.Tag == GedcomTagPhrase && roleSub.Value != "" {
+			phrases = append(phrases, roleSub.Value)
+		}
+	}
+
+	role := fallback
+	var notes []string
+	glxRole, mapped := gedcomRoleToGLX[strings.ToUpper(roleRecord.Value)]
+	if strings.EqualFold(roleRecord.Value, GedcomRoleOther) && len(phrases) == 1 {
+		// Only OTHER delegates its meaning to PHRASE. Other valid enums
+		// (NGHBR, FRIEND, MULTIPLE) must retain their declared role even when
+		// the phrase happens to name a vocabulary role.
+		if glxRole, mapped = lookupLabelIndex(conv.GEDCOMIndex.ParticipantRoles, phrases[0]); mapped {
+			phrases = nil
+		}
+	}
+	if mapped {
+		role = glxRole
+	} else if roleRecord.Value != "" {
+		// Unknown role — don't set as Role (would fail vocab validation).
+		// Use witness as default and preserve original in notes.
+		role = ParticipantRoleWitness
+		notes = append(notes, "GEDCOM ROLE: "+roleRecord.Value)
+	}
+	// PHRASE sub-sub-records not consumed as the role
+	for _, phrase := range phrases {
+		notes = append(notes, "Role: "+phrase)
+	}
+
+	return role, notes
+}
+
 // appendASSOParticipants scans an event record's sub-records for ASSO tags
 // and appends the resulting participants to the event. Used by both individual
 // and family event converters.
@@ -953,4 +1006,77 @@ func appendASSOParticipants(event *Event, eventRecord *GEDCOMRecord, conv *Conve
 			}
 		}
 	}
+}
+
+// resolveGenericEventType restores the event type of a generic EVEN whose
+// TYPE names a vocabulary event type with no GEDCOM tag of its own, the shape
+// glx export writes for such events (#1320). The TYPE is either the type's
+// label (or key), or "<label>: <subtype>", in which case the remainder is kept
+// as the event subtype. Any other TYPE stays the event subtype of a generic
+// event.
+func resolveGenericEventType(event *Event, gedcomIndex *GEDCOMIndex) {
+	subtypeKey, ok := gedcomIndex.EventProperties[GedcomTagType]
+	if !ok {
+		return
+	}
+	value, _ := event.Properties[subtypeKey].(string)
+	if value == "" {
+		return
+	}
+
+	if key, ok := lookupLabelIndex(gedcomIndex.GenericEventTypes, value); ok {
+		event.Type = key
+		delete(event.Properties, subtypeKey)
+
+		return
+	}
+
+	label, subtype, found := strings.Cut(value, genericEventSubtypeSeparator)
+	if !found {
+		return
+	}
+	if key, ok := lookupLabelIndex(gedcomIndex.GenericEventTypes, label); ok {
+		event.Type = key
+		if subtype = strings.TrimSpace(subtype); subtype != "" {
+			event.Properties[subtypeKey] = subtype
+		} else {
+			delete(event.Properties, subtypeKey)
+		}
+	}
+}
+
+// buildLabelIndexes indexes, by lowercased key and label, the event types
+// with no GEDCOM tag of their own and the participant roles.
+func buildLabelIndexes(glx *GLXFile) (genericEventTypes, participantRoles map[string]string) {
+	genericEventTypes = make(map[string]string)
+	for key, eventType := range glx.EventTypes {
+		if eventType != nil && eventType.GEDCOM == "" {
+			addLabelIndexEntry(genericEventTypes, key, eventType.Label)
+		}
+	}
+
+	participantRoles = make(map[string]string)
+	for key, role := range glx.ParticipantRoles {
+		if role != nil {
+			addLabelIndexEntry(participantRoles, key, role.Label)
+		}
+	}
+
+	return genericEventTypes, participantRoles
+}
+
+// addLabelIndexEntry indexes a vocabulary key under its lowercased key and
+// label, for case-insensitive lookup by either.
+func addLabelIndexEntry(index map[string]string, key, label string) {
+	index[strings.ToLower(key)] = key
+	if label != "" {
+		index[strings.ToLower(strings.TrimSpace(label))] = key
+	}
+}
+
+// lookupLabelIndex finds a vocabulary key by its key or label, ignoring case.
+func lookupLabelIndex(index map[string]string, value string) (string, bool) {
+	key, ok := index[strings.ToLower(strings.TrimSpace(value))]
+
+	return key, ok
 }

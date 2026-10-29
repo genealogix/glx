@@ -10,6 +10,27 @@ event_properties:
     value_type: string
     gedcom: "AGE"
 
+  named:
+    label: "Named in Source"
+    description: |
+      Participant-level only. false when the source counts this participant
+      without naming them: a tick mark in an age-and-sex bracket of a
+      head-only census (US 1790-1840 and similar), recorded in the event's
+      household tally. The identification of the person with the tick mark
+      is the researcher's inference, not something the record states.
+      Absent means named. Tools still treat the person as found in the
+      record (census coverage, analyze suggestions, glx households).
+    value_type: boolean
+
+  relationship_to_head:
+    label: "Relationship to Head"
+    description: |
+      Participant-level only. The participant's relationship to the head of
+      household as written in the source (head, wife, son, daughter,
+      boarder, servant...). Recorded by US federal censuses from 1880 and by
+      many other national censuses.
+    value_type: string
+
   cause:
     label: "Cause"
     description: "Cause of the event (e.g., cause of death)"

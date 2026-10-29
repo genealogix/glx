@@ -62,8 +62,8 @@ func mergePersons(archivePath, keepID, dropID string, opts glxlib.MergePersonsOp
 	fmt.Printf("  References rewritten: %d\n", result.RefsUpdated)
 
 	for _, c := range result.Conflicts {
-		fmt.Fprintf(os.Stderr, "  Conflict on %q: keep=%v drop=%v (%s)\n",
-			c.Property, c.KeepValue, c.DropValue, c.Resolution)
+		fmt.Fprintf(os.Stderr, "  Conflict on %q: keep=%v drop=%v (%s; %s)\n",
+			c.Property, glxlib.FormatPropertyValue(c.KeepValue), glxlib.FormatPropertyValue(c.DropValue), c.Resolution, c.Verdict)
 	}
 
 	if dryRun {

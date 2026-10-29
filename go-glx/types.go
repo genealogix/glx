@@ -18,7 +18,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // Metadata holds import metadata extracted from GEDCOM HEAD and SUBM records.
@@ -90,6 +90,7 @@ type GLXFile struct { //nolint:revive // GLXFile is the established name across 
 	GenderTypes            map[string]*VocabularyEntry `yaml:"gender_types,omitempty"`
 	SearchResultTypes      map[string]*VocabularyEntry `yaml:"search_result_types,omitempty"`
 	ResearchLogStatusTypes map[string]*VocabularyEntry `yaml:"research_log_status_types,omitempty"`
+	LeadStatuses           map[string]*VocabularyEntry `yaml:"lead_statuses,omitempty"`
 	StudyTypes             map[string]*VocabularyEntry `yaml:"study_types,omitempty"`
 	StudyStatuses          map[string]*VocabularyEntry `yaml:"study_statuses,omitempty"`
 	LegalStatuses          map[string]*VocabularyEntry `yaml:"legal_statuses,omitempty"`
@@ -124,10 +125,11 @@ type ValidationResult struct {
 	// Example: "persons" -> {"occupation" -> PropertyDefinition{...}}
 	PropertyVocabs map[string]map[string]*PropertyDefinition
 
-	// Errors is a slice of hard validation failures.
+	// Errors is a slice of hard validation failures, sorted by source entity
+	// type, then source ID, then message.
 	Errors []ValidationError
 
-	// Warnings is a slice of soft validation issues.
+	// Warnings is a slice of soft validation issues, in the same order as Errors.
 	Warnings []ValidationWarning
 
 	validated bool // Internal flag to check if validation has been run.
@@ -184,14 +186,57 @@ type Relationship struct {
 }
 
 // Event represents a genealogical event.
+//
+// Household and Neighbors are meaningful on census events only. Household is
+// the enumerated composition of the household as the schedule records it:
+// tick-mark tallies by sex, age bracket, and status for schedules (US
+// 1790–1840 and similar) that name only the head (#1332). Neighbors lists
+// households enumerated near this one on the census page, for FAN research
+// (#180).
 type Event struct {
-	Title        string         `yaml:"title,omitempty"` // Optional human-readable label (e.g., "1860 Census — Webb Household")
-	Type         string         `refType:"event_types"       yaml:"type"`
-	PlaceID      string         `refType:"places"            yaml:"place,omitempty"`
-	Date         DateString     `yaml:"date,omitempty"` // Date in GLX format: "1850", "ABT 1850", "BEF 1920-01-15", "BET 1880 AND 1890"
-	Participants []Participant  `yaml:"participants"`
-	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
-	Notes        NoteList       `yaml:"notes,omitempty"`
+	Title        string          `yaml:"title,omitempty"` // Optional human-readable label (e.g., "1860 Census — Webb Household")
+	Type         string          `refType:"event_types"       yaml:"type"`
+	PlaceID      string          `refType:"places"            yaml:"place,omitempty"`
+	Date         DateString      `yaml:"date,omitempty"` // Date in GLX format: "1850", "ABT 1850", "BEF 1920-01-15", "BET 1880 AND 1890"
+	Participants []Participant   `yaml:"participants"`
+	Household    *Household      `yaml:"household,omitempty"`
+	Neighbors    []EventNeighbor `yaml:"neighbors,omitempty"`
+	Properties   map[string]any  `yaml:"properties,omitempty"` // Vocabulary-defined properties
+	Notes        NoteList        `yaml:"notes,omitempty"`
+}
+
+// Household records the composition of a census household as enumerated.
+// A struct rather than a bare list so per-household columns (dwelling or
+// family number, totals) can be added later without reshaping the field.
+type Household struct {
+	// Tally holds one row per tick-mark column of the schedule.
+	Tally []HouseholdTallyRow `yaml:"tally,omitempty"`
+}
+
+// HouseholdTallyRow is one tick-mark column of a census household: Count
+// persons of the given sex whose age falls in [AgeFrom, AgeTo] (both
+// inclusive; either bound may be absent for open-ended brackets such as
+// "under 10" or "45 and upwards") and who share Status (e.g. "free white",
+// "enslaved", "foreigner not naturalized", "engaged in agriculture").
+type HouseholdTallyRow struct {
+	Sex     string   `yaml:"sex,omitempty"` // sex_types key; checked softly (warning), as for person sex
+	AgeFrom *int     `yaml:"age_from,omitempty"`
+	AgeTo   *int     `yaml:"age_to,omitempty"`
+	Count   int      `yaml:"count"`
+	Status  string   `yaml:"status,omitempty"`
+	Notes   NoteList `yaml:"notes,omitempty"`
+}
+
+// EventNeighbor is a household enumerated near the event's household on the
+// same census page or an adjacent one. Name is the head as written on the
+// page; Person optionally links it to a Person entity in the archive.
+type EventNeighbor struct {
+	Name     string   `yaml:"name,omitempty"`
+	Person   string   `refType:"persons"         yaml:"person,omitempty"`
+	Position string   `yaml:"position,omitempty"` // e.g. previous_household, next_household, same_page
+	Page     string   `yaml:"page,omitempty"`
+	Line     string   `yaml:"line,omitempty"`
+	Notes    NoteList `yaml:"notes,omitempty"`
 }
 
 // Place represents a geographical location.
@@ -271,6 +316,7 @@ type ResearchLog struct {
 	Objective   string         `yaml:"objective,omitempty"`
 	Status      string         `refType:"research_log_status_types" yaml:"status,omitempty"`
 	Searches    []Search       `yaml:"searches,omitempty"`
+	Leads       []ResearchLead `yaml:"leads,omitempty"`
 	Citations   []string       `refType:"citations"                 yaml:"citations,omitempty"`
 	Conclusions string         `yaml:"conclusions,omitempty"`
 	Properties  map[string]any `yaml:"properties,omitempty"`
@@ -288,6 +334,29 @@ type Search struct {
 	Result       string     `refType:"search_result_types" yaml:"result,omitempty"`
 	CitationID   string     `refType:"citations"           yaml:"citation,omitempty"`
 	Notes        NoteList   `yaml:"notes,omitempty"`
+}
+
+// ResearchLead is one competing hypothesis under investigation within a
+// ResearchLog, for example a candidate father for a person whose parentage is
+// unknown. Leads are embedded (not standalone entities): a brick-wall log
+// typically carries several, each weighed for and against and eventually
+// eliminated or confirmed. Persons lists candidate Person entities the lead is
+// about; Citations and Assertions optionally point at the structured evidence
+// behind the free-text EvidenceFor/EvidenceAgainst summaries.
+//
+// A lead tracks a research alternative, not a conclusion. Status is the lead's
+// own workflow state: changing it never changes the referenced Assertions,
+// which carry the conclusion and its confidence.
+type ResearchLead struct {
+	Description     string   `yaml:"description,omitempty"`
+	Persons         []string `refType:"persons"                 yaml:"persons,omitempty"`
+	Status          string   `refType:"lead_statuses"           yaml:"status,omitempty"`
+	EvidenceFor     []string `yaml:"evidence_for,omitempty"`
+	EvidenceAgainst []string `yaml:"evidence_against,omitempty"`
+	Citations       []string `refType:"citations"               yaml:"citations,omitempty"`
+	Assertions      []string `refType:"assertions"              yaml:"assertions,omitempty"`
+	NextSteps       []string `yaml:"next_steps,omitempty"`
+	Notes           NoteList `yaml:"notes,omitempty"`
 }
 
 // Study represents the formal scope of a research project — a One Place Study,
@@ -445,6 +514,11 @@ type VocabularyEntry struct {
 	// above lower ones. Pointer type so a legitimate `rank: 0` is distinguishable
 	// from an unset field; nil pointers are elided from YAML output.
 	Rank *int `yaml:"rank,omitempty"`
+	// ImpliesPresence is an optional flag on participant roles saying whether
+	// a person in this role was at the event's place (e.g. false for a
+	// grantor who sold land from another state). Unset leaves the decision to
+	// the built-in default for the role; see ClassifyParticipation.
+	ImpliesPresence *bool `yaml:"implies_presence,omitempty"`
 }
 
 // PropertyDefinition defines a property that can be used on entities.
@@ -530,6 +604,7 @@ func (g *GLXFile) Merge(other *GLXFile) (conflicts []string, identicalSkipped in
 	addDedup(mergeMapDedup("confidence_levels", g.ConfidenceLevels, other.ConfidenceLevels))
 	addDedup(mergeMapDedup("search_result_types", g.SearchResultTypes, other.SearchResultTypes))
 	addDedup(mergeMapDedup("research_log_status_types", g.ResearchLogStatusTypes, other.ResearchLogStatusTypes))
+	addDedup(mergeMapDedup("lead_statuses", g.LeadStatuses, other.LeadStatuses))
 	addDedup(mergeMapDedup("study_types", g.StudyTypes, other.StudyTypes))
 	addDedup(mergeMapDedup("study_statuses", g.StudyStatuses, other.StudyStatuses))
 
@@ -613,6 +688,9 @@ func (g *GLXFile) initMaps() {
 	}
 	if g.ResearchLogStatusTypes == nil {
 		g.ResearchLogStatusTypes = make(map[string]*VocabularyEntry)
+	}
+	if g.LeadStatuses == nil {
+		g.LeadStatuses = make(map[string]*VocabularyEntry)
 	}
 	if g.StudyTypes == nil {
 		g.StudyTypes = make(map[string]*VocabularyEntry)

@@ -119,6 +119,60 @@ func TestAdd_PersonBadVocabRejected(t *testing.T) {
 	}
 }
 
+// TestAdd_BadVocabErrorNamesValidValues covers the rejection message itself:
+// a caller who guessed wrong needs the accepted keys and the file that holds
+// them, not just the value that was refused.
+func TestAdd_BadVocabErrorNamesValidValues(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+	common := addCommonOptions{ArchivePath: dir}
+
+	if err := addPerson(io, &addPersonOptions{
+		addCommonOptions: common,
+		Given:            "Jane",
+		Surname:          "Doe",
+	}); err != nil {
+		t.Fatalf("addPerson: %v", err)
+	}
+
+	// Short vocabulary: every key is listed.
+	err := addAssertion(io, &addAssertionOptions{
+		addCommonOptions: common,
+		SubjectPerson:    "person-jane-doe",
+		Property:         "occupation",
+		Value:            "Laborer",
+		Confidence:       "0",
+	})
+	if !errors.Is(err, ErrAddVocabKeyUnknown) {
+		t.Fatalf("expected ErrAddVocabKeyUnknown, got %v", err)
+	}
+	for _, want := range []string{"high", "medium", "low", "vocabularies/confidence-levels.glx"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("confidence rejection %q does not mention %q", err, want)
+		}
+	}
+
+	// Long vocabulary: the list is truncated but still points at the file.
+	err = addEvent(io, &addEventOptions{
+		addCommonOptions: common,
+		Type:             "bogus",
+	})
+	if !errors.Is(err, ErrAddVocabKeyUnknown) {
+		t.Fatalf("expected ErrAddVocabKeyUnknown, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "more in vocabularies/event-types.glx") {
+		t.Errorf("event-type rejection %q does not defer to the vocabulary file", err)
+	}
+
+	// A vocabulary with no entries names the file rather than an empty list.
+	// Not reachable through the CLI — loading an archive merges the standard
+	// defaults in — so the hint is exercised directly.
+	empty := vocabKeyHint(glxlib.VocabConfidenceLevels, map[string]*glxlib.VocabularyEntry{})
+	if want := "no values defined in vocabularies/confidence-levels.glx"; empty != want {
+		t.Errorf("empty-vocabulary hint = %q, want %q", empty, want)
+	}
+}
+
 // =============================================================================
 // add place
 // =============================================================================
@@ -235,6 +289,103 @@ func TestAdd_EventRejectsBadParticipantFlag(t *testing.T) {
 	})
 	if !errors.Is(err, ErrAddParticipantFormat) {
 		t.Errorf("expected ErrAddParticipantFormat, got %v", err)
+	}
+}
+
+// An event with no participant fails the schema's minItems, so `glx validate`
+// would refuse the whole archive; add must refuse it and write nothing (#1373).
+func TestAdd_EventRequiresParticipant(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+	err := addEvent(io, &addEventOptions{
+		ArchivePath: dir,
+		Type:        "baptism",
+		Date:        "1643",
+	})
+	if !errors.Is(err, ErrAddEventParticipantsRequired) {
+		t.Fatalf("expected ErrAddEventParticipantsRequired, got %v", err)
+	}
+	if n := len(readBackArchive(t, dir).Events); n != 0 {
+		t.Errorf("rejected add wrote %d event(s)", n)
+	}
+}
+
+// Every date flag on every add subcommand is parsed with the GLX date grammar,
+// and a value it rejects (or a reversed range) fails the add, writing nothing,
+// rather than landing as a `glx validate` warning (#1373).
+func TestAdd_RejectsInvalidDates(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+	if err := addPerson(io, &addPersonOptions{ArchivePath: dir, OverrideID: "pa", Given: "A"}); err != nil {
+		t.Fatalf("addPerson: %v", err)
+	}
+	if err := addSource(io, &addSourceOptions{ArchivePath: dir, OverrideID: "s1", Title: "Register"}); err != nil {
+		t.Fatalf("addSource: %v", err)
+	}
+	if err := addResearchLog(io, &addResearchLogOptions{ArchivePath: dir, OverrideID: "log1", Title: "Log"}); err != nil {
+		t.Fatalf("addResearchLog: %v", err)
+	}
+	before := readBackArchive(t, dir)
+	counts := func(a *glxlib.GLXFile) [6]int {
+		searches := 0
+		for _, l := range a.ResearchLogs {
+			searches += len(l.Searches)
+		}
+
+		return [6]int{len(a.Events), len(a.Sources), len(a.Citations), len(a.Assertions), len(a.Studies), len(a.ResearchLogs) + searches}
+	}
+	want := counts(before)
+
+	event := func(date string) func() error {
+		return func() error {
+			return addEvent(io, &addEventOptions{ArchivePath: dir, Type: "baptism", Date: date, Principal: "pa"})
+		}
+	}
+	cases := map[string]func() error{
+		"event church-day text":   event("Dom. 12 Trin 1643"),
+		"event impossible day":    event("1643-02-30"),
+		"event julian impossible": event("JULIAN 1643-02-30"),
+		"event calendar suffix":   event("1702-01-02 JULIAN"),
+		"event reversed range":    event("BET 1700 AND 1650"),
+		"source --date":           func() error { return addSource(io, &addSourceOptions{ArchivePath: dir, Title: "Bad", Date: "1643-13"}) },
+		"citation --source-date": func() error {
+			return addCitation(io, &addCitationOptions{ArchivePath: dir, Source: "s1", Locator: "p. 1", SourceDate: "1643-02-30"})
+		},
+		"citation --accessed": func() error {
+			return addCitation(io, &addCitationOptions{ArchivePath: dir, Source: "s1", Locator: "p. 2", Accessed: "yesterday"})
+		},
+		"assertion --date": func() error {
+			return addAssertion(io, &addAssertionOptions{ArchivePath: dir, SubjectPerson: "pa", Property: "occupation", Value: "smith", Sources: []string{"s1"}, AssertionDate: "1643-02-30"})
+		},
+		"research-log --date": func() error {
+			return addResearchLog(io, &addResearchLogOptions{ArchivePath: dir, Title: "Bad", Date: "1643-02-30"})
+		},
+		"search --date": func() error {
+			return addSearch(io, &addSearchOptions{ArchivePath: dir, Log: "log1", Query: "Schepp", Date: "1643-02-30"})
+		},
+		"study --date-range": func() error {
+			return addStudy(io, &addStudyOptions{ArchivePath: dir, Title: "Bad", DateRange: "FROM 1822 TO 1750"})
+		},
+	}
+	for name, run := range cases {
+		t.Run(name, func(t *testing.T) {
+			if err := run(); !errors.Is(err, ErrAddDateInvalid) {
+				t.Errorf("expected ErrAddDateInvalid, got %v", err)
+			}
+		})
+	}
+	if got := counts(readBackArchive(t, dir)); got != want {
+		t.Errorf("rejected adds wrote entities: before %v, after %v", want, got)
+	}
+
+	// The error names the flag, the value and the grammar's reason.
+	err := event("1643-02-30")()
+	if msg := err.Error(); !strings.Contains(msg, `--date "1643-02-30"`) || !strings.Contains(msg, "day is not valid for the month") {
+		t.Errorf("error message: %q", msg)
+	}
+	// A valid Julian date is still accepted.
+	if err := event("JULIAN 1643-02-28")(); err != nil {
+		t.Errorf("valid JULIAN date rejected: %v", err)
 	}
 }
 
@@ -785,6 +936,67 @@ func TestAdd_DryRunWritesNothing(t *testing.T) {
 	}
 	if got := trailingLine(out.String()); got != "person-dryrun" {
 		t.Errorf("trailing line: got %q, want person-dryrun", got)
+	}
+}
+
+// TestAdd_ProgressLineUsesSingularWithSeparator pins the shape of the "Adding"
+// line printed by finalizeAdd. The plural EntityType value is the YAML key and
+// directory name, not an English noun, and running it straight into the ID read
+// as a list ("Adding assertions assertion-death-1807-date"). See issue #1276.
+func TestAdd_ProgressLineUsesSingularWithSeparator(t *testing.T) {
+	cases := []struct {
+		name string
+		add  func(*IOStreams, string) error
+		want string
+	}{
+		{
+			name: "person",
+			add: func(io *IOStreams, dir string) error {
+				return addPerson(io, &addPersonOptions{
+					ArchivePath: dir,
+					Given:       "Michael David",
+					Surname:     "Hollnagel",
+				})
+			},
+			want: "Adding person: person-michael-david-hollnagel\n",
+		},
+		{
+			name: "place",
+			add: func(io *IOStreams, dir string) error {
+				return addPlace(io, &addPlaceOptions{
+					ArchivePath: dir,
+					Name:        "Liepen",
+					Type:        "locality",
+				})
+			},
+			want: "Adding place: place-liepen\n",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := initArchiveDir(t)
+			io, out, _ := TestIOStreams()
+
+			if err := tc.add(io, dir); err != nil {
+				t.Fatalf("add %s: %v", tc.name, err)
+			}
+
+			if !strings.Contains(out.String(), tc.want) {
+				t.Errorf("progress line: got %q, want it to contain %q", out.String(), tc.want)
+			}
+		})
+	}
+}
+
+// TestAdd_EveryEntityTypeHasADisplayableSingular guards the label source used by
+// finalizeAdd: an EntityType with no Singular() entry would print
+// "Adding : person-x". See issue #1276.
+func TestAdd_EveryEntityTypeHasADisplayableSingular(t *testing.T) {
+	for _, et := range glxlib.AllEntityTypes {
+		if et.Singular() == "" {
+			t.Errorf("EntityType %s has no Singular(); finalizeAdd would print an empty label", et)
+		}
 	}
 }
 

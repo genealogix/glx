@@ -41,6 +41,33 @@ func TestAnalyzeGaps_MissingBirth(t *testing.T) {
 	}
 }
 
+// A dated baptism or christening of the person satisfies the birth check;
+// one the person only attended does not (#1365).
+func TestAnalyzeGaps_BaptismSatisfiesBirth(t *testing.T) {
+	for _, tc := range []struct {
+		eventType, role string
+		flagged         bool
+	}{
+		{glxlib.EventTypeBaptism, "principal", false},
+		{glxlib.EventTypeChristening, "principal", false},
+		{glxlib.EventTypeBaptism, glxlib.ParticipantRoleGodparent, true},
+	} {
+		archive := &glxlib.GLXFile{
+			Persons: map[string]*glxlib.Person{
+				"person-a": {Properties: map[string]any{}},
+			},
+			Events: map[string]*glxlib.Event{
+				"event-bapt-a": {Type: tc.eventType, Date: "1664-08-21", Participants: []glxlib.Participant{{Person: "person-a", Role: tc.role}}},
+			},
+		}
+
+		found := findIssue(analyzeGaps(archive), "person-a", "birth_event")
+		if (found != nil) != tc.flagged {
+			t.Errorf("%s as %s: flagged=%v, want %v", tc.eventType, tc.role, found != nil, tc.flagged)
+		}
+	}
+}
+
 func TestAnalyzeGaps_HasBirth(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
@@ -379,6 +406,39 @@ func TestAnalyzeEvidence_SingleSourcePerson(t *testing.T) {
 	}
 }
 
+// TestAnalyzeEvidence_SingleSourcePersonViaEvents: assertions about the
+// person's own events count toward their sources (#1211).
+func TestAnalyzeEvidence_SingleSourcePersonViaEvents(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-a":       {Properties: map[string]any{}},
+			"person-witness": {Properties: map[string]any{}},
+		},
+		Sources: map[string]*glxlib.Source{
+			"source-kb": {Title: "Kirchenbuch"},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-death": {Type: glxlib.EventTypeDeath, Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
+			"event-burial": {Type: glxlib.EventTypeBurial, Participants: []glxlib.Participant{
+				{Person: "person-a", Role: "principal"},
+				{Person: "person-witness", Role: "witness"},
+			}},
+		},
+		Assertions: map[string]*glxlib.Assertion{
+			"a-death":  {Subject: glxlib.EntityRef{Event: "event-death"}, Sources: []string{"source-kb"}},
+			"a-burial": {Subject: glxlib.EntityRef{Event: "event-burial"}, Sources: []string{"source-kb"}},
+		},
+	}
+
+	issues := analyzeEvidence(archive)
+	if findIssueByMessage(issues, "person-a", "single source") == nil {
+		t.Fatal("expected single-source issue for the decedent")
+	}
+	if findIssueByMessage(issues, "person-witness", "single source") != nil {
+		t.Error("a witness's evidence is not counted from someone else's record")
+	}
+}
+
 // --- Consistency Analysis ---
 
 func TestAnalyzeEvidence_UncitedNotes(t *testing.T) {
@@ -572,6 +632,7 @@ func TestAnalyzeConsistency_BurialAfterDeath_OK(t *testing.T) {
 
 func TestAnalyzeConflicts_DetectsConflicting(t *testing.T) {
 	archive := &glxlib.GLXFile{
+		PersonProperties: map[string]*glxlib.PropertyDefinition{"birthplace": {ReferenceType: glxlib.EntityTypePlaces.String()}},
 		Persons: map[string]*glxlib.Person{
 			"person-mary": {Properties: map[string]any{"name": "Mary Green"}},
 		},
@@ -587,7 +648,7 @@ func TestAnalyzeConflicts_DetectsConflicting(t *testing.T) {
 		},
 	}
 
-	issues := analyzeConflicts(archive)
+	issues := mustAnalyzeConflicts(archive)
 	found := findIssueByMessage(issues, "person-mary", "conflicting values")
 	if found == nil {
 		t.Fatal("expected conflict issue for birthplace")
@@ -598,8 +659,8 @@ func TestAnalyzeConflicts_DetectsConflicting(t *testing.T) {
 	if !containsSubstring(found.Message, "3 conflicting values") {
 		t.Errorf("expected 3 conflicting values in message: %s", found.Message)
 	}
-	if !containsSubstring(found.Message, "place-florida") {
-		t.Errorf("expected place ID 'place-florida' in message: %s", found.Message)
+	if !containsSubstring(found.Message, "Florida") {
+		t.Errorf("expected place name 'Florida' in message: %s", found.Message)
 	}
 }
 
@@ -614,9 +675,149 @@ func TestAnalyzeConflicts_NoConflictWhenSameValue(t *testing.T) {
 		},
 	}
 
-	issues := analyzeConflicts(archive)
+	issues := mustAnalyzeConflicts(archive)
 	if len(issues) != 0 {
 		t.Errorf("expected no conflicts when all values are the same, got %d", len(issues))
+	}
+}
+
+func temporalArchive(assertions map[string]*glxlib.Assertion) *glxlib.GLXFile {
+	temporal := true
+
+	return &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{"person-a": {Properties: map[string]any{"name": "Person A"}}},
+		PersonProperties: map[string]*glxlib.PropertyDefinition{
+			"residence":  {Temporal: &temporal},
+			"occupation": {Temporal: &temporal},
+		},
+		Assertions: assertions,
+	}
+}
+
+func temporalAssertion(property, value, date string) *glxlib.Assertion {
+	return &glxlib.Assertion{Subject: glxlib.EntityRef{Person: "person-a"}, Property: property, Value: value, Date: glxlib.DateString(date)}
+}
+
+func TestAnalyzeConflicts_TemporalNoOverlap(t *testing.T) {
+	tests := []struct {
+		name string
+		a, b string
+	}{
+		{"year before range", "1851", "FROM 1870 TO 1920"},
+		{"one undated", "1851", ""},
+		{"both undated", "", ""},
+		{"no year", "1851", "spring"},
+		{"adjacent years", "1851", "1852"},
+		{"adjacent months", "1851-03", "1851-04"},
+		{"adjacent days", "1851-03-15", "1851-03-16"},
+		{"before open-ended range", "1851", "FROM 1870"},
+		{"after open-start range", "1900", "TO 1860"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			archive := temporalArchive(map[string]*glxlib.Assertion{
+				"a-1": temporalAssertion("residence", "place-leeds", tt.a),
+				"a-2": temporalAssertion("residence", "place-london", tt.b),
+			})
+
+			require.Empty(t, mustAnalyzeConflicts(archive))
+		})
+	}
+}
+
+func TestAnalyzeConflicts_TemporalOverlap(t *testing.T) {
+	tests := []struct {
+		name string
+		a, b string
+	}{
+		{"same day", "1851-03-15", "1851-03-15"},
+		{"year within range", "1851", "FROM 1850 TO 1860"},
+		{"month within year", "1851-03", "1851"},
+		{"day within month", "1851-03-15", "1851-03"},
+		{"overlapping ranges", "BET 1840 AND 1855", "FROM 1850 TO 1860"},
+		{"inside open-ended range", "1900", "FROM 1870"},
+		{"inside open-start range", "1851", "TO 1860"},
+		{"qualified point", "ABT 1851", "1851"},
+		{"tolerated spelling", "Abt 1851", "1851"},
+		{"after open point", "AFT 1900", "1950"},
+		{"before open point", "BEF 1900", "1880"},
+		{"inverted range", "FROM 1920 TO 1870", "1900"},
+		{"inverted between", "BET 1920 AND 1870", "1900"},
+		{"range end without year", "FROM 1850 TO spring", "1900"},
+		{"range end without year at known start", "FROM 1850 TO spring", "1850"},
+		{"range start without year", "FROM spring TO 1850", "1800"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			archive := temporalArchive(map[string]*glxlib.Assertion{
+				"a-1": temporalAssertion("residence", "place-leeds", tt.a),
+				"a-2": temporalAssertion("residence", "place-london", tt.b),
+			})
+
+			issues := mustAnalyzeConflicts(archive)
+			require.Len(t, issues, 1)
+			require.Equal(t, "residence", issues[0].Property)
+			require.Contains(t, issues[0].Message, "2 conflicting values")
+			require.Contains(t, issues[0].Message, "place-leeds, place-london")
+		})
+	}
+}
+
+func TestAnalyzeConflicts_TemporalListsOverlappingOnly(t *testing.T) {
+	archive := temporalArchive(map[string]*glxlib.Assertion{
+		"a-1": temporalAssertion("occupation", "miller", "1950"),
+		"a-2": temporalAssertion("occupation", "driver", "1950"),
+		"a-3": temporalAssertion("occupation", "farmer", "1970"),
+		"a-4": temporalAssertion("occupation", "miller", "1980"),
+	})
+
+	issues := mustAnalyzeConflicts(archive)
+	require.Len(t, issues, 1)
+	require.Equal(t, "Person A — possible — check: occupation has 2 conflicting values: driver, miller", issues[0].Message)
+}
+
+func TestAnalyzeConflicts_TemporalPropertiesExample(t *testing.T) {
+	archive, err := loadArchiveForAnalyze("../docs/examples/temporal-properties")
+	require.NoError(t, err)
+
+	require.Empty(t, mustAnalyzeConflicts(archive))
+}
+
+func TestAnalyzeConflicts_TemporalPropertiesExampleSingleFile(t *testing.T) {
+	archive, err := loadArchiveForAnalyze("../docs/examples/temporal-properties/archive.glx")
+	require.NoError(t, err)
+
+	require.Empty(t, mustAnalyzeConflicts(archive))
+}
+
+// Non-temporal properties must keep the date-blind comparison: two different
+// values conflict no matter how far apart their dates are. Only a property
+// whose definition says temporal: true gets the overlap check.
+func TestAnalyzeConflicts_NonTemporalIgnoresDates(t *testing.T) {
+	temporalFalse := false
+	tests := []struct {
+		name       string
+		definition *glxlib.PropertyDefinition
+	}{
+		{"undefined property", nil},
+		{"temporal false", &glxlib.PropertyDefinition{Temporal: &temporalFalse}},
+		{"temporal unset", &glxlib.PropertyDefinition{}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			archive := temporalArchive(map[string]*glxlib.Assertion{
+				"a-1": temporalAssertion("birthplace", "place-leeds", "1851"),
+				"a-2": temporalAssertion("birthplace", "place-london", "1901"),
+			})
+			if tt.definition != nil {
+				archive.PersonProperties["birthplace"] = tt.definition
+			}
+
+			issues := mustAnalyzeConflicts(archive)
+			require.Len(t, issues, 1)
+			require.Equal(t, "birthplace", issues[0].Property)
+			require.Contains(t, issues[0].Message, "2 conflicting values")
+		})
 	}
 }
 
@@ -627,7 +828,7 @@ func TestAnalyzeConsistency_DuplicateSiblingNames(t *testing.T) {
 		Persons: map[string]*glxlib.Person{
 			"person-parent": {Properties: map[string]any{"name": "James Green"}},
 			"person-mary-1": {Properties: map[string]any{"name": "Mary Green"}},
-			"person-mary-2": {Properties: map[string]any{"name": "Mary Elizabeth Green"}},
+			"person-mary-2": {Properties: map[string]any{"name": "Mary Green"}},
 			"person-john":   {Properties: map[string]any{"name": "John Green"}},
 		},
 		Relationships: map[string]*glxlib.Relationship{
@@ -663,6 +864,73 @@ func TestAnalyzeConsistency_DuplicateSiblingNames(t *testing.T) {
 	}
 	if !containsSubstring(found.Message, "Mary") {
 		t.Errorf("expected capitalized 'Mary' in message: %s", found.Message)
+	}
+}
+
+// siblingNamesArchive builds one parent with the given children, each a
+// person ID mapped to its name property, under parent_child relationships.
+func siblingNamesArchive(children map[string]any) *glxlib.GLXFile {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-parent": {Properties: map[string]any{"name": "Johann Georg Schöpff"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{},
+		Events:        map[string]*glxlib.Event{},
+	}
+	for id, name := range children {
+		archive.Persons[id] = &glxlib.Person{Properties: map[string]any{"name": name}}
+		archive.Relationships["rel-"+id] = &glxlib.Relationship{
+			Type: "parent_child",
+			Participants: []glxlib.Participant{
+				{Person: "person-parent", Role: "parent"},
+				{Person: id, Role: "child"},
+			},
+		}
+	}
+
+	return archive
+}
+
+// schopffName is a structured name with the given name in its own field.
+func schopffName(given string) map[string]any {
+	return map[string]any{
+		"value":  given + " Schöpff",
+		"fields": map[string]any{"given": given, "surname": "Schöpff"},
+	}
+}
+
+func TestAnalyzeConsistency_CompoundGivenNamesNotShared(t *testing.T) {
+	// #1366: sons all baptized Johann, known by the second name.
+	archive := siblingNamesArchive(map[string]any{
+		"person-wilhelm": schopffName("Johann Wilhelm"),
+		"person-conrad":  schopffName("Johann Conrad"),
+		"person-mary":    "Mary Green",
+		"person-mary-e":  "Mary Elizabeth Green",
+	})
+
+	for _, issue := range analyzeConsistency(archive) {
+		if containsSubstring(issue.Message, "share given name") {
+			t.Errorf("different full given names flagged as shared: %s", issue.Message)
+		}
+	}
+}
+
+func TestAnalyzeConsistency_FullGivenNameSharedCaseFolded(t *testing.T) {
+	archive := siblingNamesArchive(map[string]any{
+		"person-jw-1": schopffName("Johann Wilhelm"),
+		"person-jw-2": schopffName("johann  wilhelm"),
+		"person-jc":   schopffName("Johann Conrad"),
+	})
+
+	found := findIssueByMessage(analyzeConsistency(archive), "person-parent", "share given name")
+	if found == nil {
+		t.Fatal("expected the two Johann Wilhelms to be flagged")
+	}
+	if !containsSubstring(found.Message, `"Johann Wilhelm"`) && !containsSubstring(found.Message, `"johann wilhelm"`) {
+		t.Errorf("expected the whole given name in the message: %s", found.Message)
+	}
+	if containsSubstring(found.Message, "person-jc") {
+		t.Errorf("Johann Conrad does not share the name: %s", found.Message)
 	}
 }
 
@@ -1066,6 +1334,9 @@ func TestSuggestChildCensus_OrphanWithNoChildren(t *testing.T) {
 }
 
 func TestSuggestChildCensus_BrickwallWithChildren(t *testing.T) {
+	// This case is about census-year logic, not the country gate, so it opts
+	// into the US schedule the way --country "United States" would (#186).
+	setCensusFallback(t, countryUnitedStates)
 	// James has no parents (brickwall) but has children Mary and Joseph
 	// Should suggest searching children's 1880+ census records
 	archive := &glxlib.GLXFile{
@@ -1206,6 +1477,9 @@ func TestSuggestChildCensus_DeadChildNotSuggested(t *testing.T) {
 // --- Suggestion Analysis ---
 
 func TestAnalyzeSuggestions_MissingCensus(t *testing.T) {
+	// This case is about census-year logic, not the country gate, so it opts
+	// into the US schedule the way --country "United States" would (#186).
+	setCensusFallback(t, countryUnitedStates)
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
 			"person-a": {Properties: map[string]any{}},
@@ -1217,9 +1491,9 @@ func TestAnalyzeSuggestions_MissingCensus(t *testing.T) {
 	}
 
 	issues := analyzeSuggestions(archive)
-	found := findIssueByMessage(issues, "person-a", "1850 census")
+	found := findIssueByMessage(issues, "person-a", "1850 US census")
 	if found == nil {
-		t.Fatal("expected suggestion to search 1850 census")
+		t.Fatal("expected suggestion to search 1850 US census")
 	}
 	if found.Category != "suggestion" {
 		t.Errorf("got category=%s, want suggestion", found.Category)
@@ -1227,6 +1501,9 @@ func TestAnalyzeSuggestions_MissingCensus(t *testing.T) {
 }
 
 func TestAnalyzeSuggestions_BEFDeathExcludesYear(t *testing.T) {
+	// This case is about census-year logic, not the country gate, so it opts
+	// into the US schedule the way --country "United States" would (#186).
+	setCensusFallback(t, countryUnitedStates)
 	// "BEF 1870" means died before 1870 — should NOT suggest 1870 census
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
@@ -1239,10 +1516,10 @@ func TestAnalyzeSuggestions_BEFDeathExcludesYear(t *testing.T) {
 	}
 
 	issues := analyzeSuggestions(archive)
-	if found := findIssueByMessage(issues, "person-a", "1860 census"); found == nil {
+	if found := findIssueByMessage(issues, "person-a", "1860 US census"); found == nil {
 		t.Error("expected suggestion for 1860 census (before BEF year)")
 	}
-	if found := findIssueByMessage(issues, "person-a", "1870 census"); found != nil {
+	if found := findIssueByMessage(issues, "person-a", "1870 US census"); found != nil {
 		t.Error("should NOT suggest 1870 census (died BEF 1870)")
 	}
 }
@@ -1293,13 +1570,16 @@ func TestAnalyzeSuggestions_HasCensus(t *testing.T) {
 	}
 
 	issues := analyzeSuggestions(archive)
-	found := findIssueByMessage(issues, "person-a", "1850 census")
+	found := findIssueByMessage(issues, "person-a", "1850 US census")
 	if found != nil {
 		t.Error("should not suggest 1850 census when one already exists")
 	}
 }
 
 func TestAnalyzeSuggestions_CitationCoversCensus(t *testing.T) {
+	// This case is about census-year logic, not the country gate, so it opts
+	// into the US schedule the way --country "United States" would (#186).
+	setCensusFallback(t, countryUnitedStates)
 	// Census year covered via citation/source (no census event entity).
 	// Analyze should NOT suggest searching for it.
 	archive := &glxlib.GLXFile{
@@ -1331,11 +1611,11 @@ func TestAnalyzeSuggestions_CitationCoversCensus(t *testing.T) {
 	}
 
 	issues := analyzeSuggestions(archive)
-	if found := findIssueByMessage(issues, "person-a", "1880 census"); found != nil {
+	if found := findIssueByMessage(issues, "person-a", "1880 US census"); found != nil {
 		t.Error("should NOT suggest 1880 census when covered by citation/source")
 	}
 	// But 1870 (not covered) should still be suggested
-	if found := findIssueByMessage(issues, "person-a", "1870 census"); found == nil {
+	if found := findIssueByMessage(issues, "person-a", "1870 US census"); found == nil {
 		t.Error("expected suggestion for 1870 census (not covered)")
 	}
 }
@@ -1370,7 +1650,7 @@ func TestAnalyzeSuggestions_CitationCoversViaTitleFallback(t *testing.T) {
 	}
 
 	issues := analyzeSuggestions(archive)
-	if found := findIssueByMessage(issues, "person-a", "1880 census"); found != nil {
+	if found := findIssueByMessage(issues, "person-a", "1880 US census"); found != nil {
 		t.Error("should NOT suggest 1880 census when title mentions the year")
 	}
 }
@@ -1403,7 +1683,7 @@ func TestAnalyzeSuggestions_DirectSourceCoversCensus(t *testing.T) {
 	}
 
 	issues := analyzeSuggestions(archive)
-	if found := findIssueByMessage(issues, "person-a", "1860 census"); found != nil {
+	if found := findIssueByMessage(issues, "person-a", "1860 US census"); found != nil {
 		t.Error("should NOT suggest 1860 census when covered by direct source")
 	}
 }
@@ -1429,6 +1709,9 @@ func TestAnalyzeSuggestions_VitalRecords(t *testing.T) {
 }
 
 func TestAnalyzeSuggestions_MaxLifespanCap(t *testing.T) {
+	// This case is about census-year logic, not the country gate, so it opts
+	// into the US schedule the way --country "United States" would (#186).
+	setCensusFallback(t, countryUnitedStates)
 	// Person born 1832, no death date — should NOT suggest 1940+ census
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
@@ -1442,18 +1725,21 @@ func TestAnalyzeSuggestions_MaxLifespanCap(t *testing.T) {
 	issues := analyzeSuggestions(archive)
 
 	// Should suggest 1840-1930 (birth+100=1932, so 1930 is last valid)
-	if found := findIssueByMessage(issues, "person-a", "1930 census"); found == nil {
+	if found := findIssueByMessage(issues, "person-a", "1930 US census"); found == nil {
 		t.Error("expected suggestion for 1930 census")
 	}
-	if found := findIssueByMessage(issues, "person-a", "1940 census"); found != nil {
+	if found := findIssueByMessage(issues, "person-a", "1940 US census"); found != nil {
 		t.Error("should NOT suggest 1940 census (beyond max lifespan)")
 	}
-	if found := findIssueByMessage(issues, "person-a", "1950 census"); found != nil {
+	if found := findIssueByMessage(issues, "person-a", "1950 US census"); found != nil {
 		t.Error("should NOT suggest 1950 census (beyond max lifespan)")
 	}
 }
 
 func TestAnalyzeSuggestions_BurialInfersDeath(t *testing.T) {
+	// This case is about census-year logic, not the country gate, so it opts
+	// into the US schedule the way --country "United States" would (#186).
+	setCensusFallback(t, countryUnitedStates)
 	// Person born 1832, no death event, but has burial event in 1863
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
@@ -1472,15 +1758,18 @@ func TestAnalyzeSuggestions_BurialInfersDeath(t *testing.T) {
 	issues := analyzeSuggestions(archive)
 
 	// Should suggest 1840-1860 but NOT 1870+
-	if found := findIssueByMessage(issues, "person-a", "1860 census"); found == nil {
+	if found := findIssueByMessage(issues, "person-a", "1860 US census"); found == nil {
 		t.Error("expected suggestion for 1860 census (before burial)")
 	}
-	if found := findIssueByMessage(issues, "person-a", "1870 census"); found != nil {
+	if found := findIssueByMessage(issues, "person-a", "1870 US census"); found != nil {
 		t.Error("should NOT suggest 1870 census (after burial/inferred death)")
 	}
 }
 
 func TestAnalyzeSuggestions_1890Note(t *testing.T) {
+	// This case is about census-year logic, not the country gate, so it opts
+	// into the US schedule the way --country "United States" would (#186).
+	setCensusFallback(t, countryUnitedStates)
 	// Person alive during 1890 should get a note about the destroyed census
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
@@ -1493,7 +1782,7 @@ func TestAnalyzeSuggestions_1890Note(t *testing.T) {
 	}
 
 	issues := analyzeSuggestions(archive)
-	found := findIssueByMessage(issues, "person-a", "1890 census")
+	found := findIssueByMessage(issues, "person-a", "1890 US census")
 	if found == nil {
 		t.Fatal("expected 1890 census suggestion")
 	}
@@ -1505,6 +1794,9 @@ func TestAnalyzeSuggestions_1890Note(t *testing.T) {
 // --- Suggestion Consolidation (parent + minor child same census year) ---
 
 func TestAnalyzeSuggestions_ConsolidateParentAndMinorChild(t *testing.T) {
+	// This case is about census-year logic, not the country gate, so it opts
+	// into the US schedule the way --country "United States" would (#186).
+	setCensusFallback(t, countryUnitedStates)
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
 			"person-parent": {Properties: map[string]any{"name": "Parent Green"}},
@@ -1526,7 +1818,7 @@ func TestAnalyzeSuggestions_ConsolidateParentAndMinorChild(t *testing.T) {
 
 	issues := analyzeSuggestions(archive)
 
-	parent1830 := findIssueByMessage(issues, "person-parent", "1830 census")
+	parent1830 := findIssueByMessage(issues, "person-parent", "1830 US census")
 	require.NotNil(t, parent1830, "expected parent to have a 1830 census suggestion")
 	if !containsSubstring(parent1830.Message, "would also cover") {
 		t.Errorf("expected parent 1830 message to contain consolidation note; got %q", parent1830.Message)
@@ -1535,12 +1827,15 @@ func TestAnalyzeSuggestions_ConsolidateParentAndMinorChild(t *testing.T) {
 		t.Errorf("expected parent 1830 message to mention child age ~5; got %q", parent1830.Message)
 	}
 
-	if child1830 := findIssueByMessage(issues, "person-child", "1830 census"); child1830 != nil {
+	if child1830 := findIssueByMessage(issues, "person-child", "1830 US census"); child1830 != nil {
 		t.Errorf("child 1830 suggestion should be suppressed; got %q", child1830.Message)
 	}
 }
 
 func TestAnalyzeSuggestions_ConsolidateAdultChildNotIncluded(t *testing.T) {
+	// This case is about census-year logic, not the country gate, so it opts
+	// into the US schedule the way --country "United States" would (#186).
+	setCensusFallback(t, countryUnitedStates)
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
 			"person-parent": {Properties: map[string]any{"name": "Parent Green"}},
@@ -1562,17 +1857,20 @@ func TestAnalyzeSuggestions_ConsolidateAdultChildNotIncluded(t *testing.T) {
 
 	issues := analyzeSuggestions(archive)
 
-	parent1850 := findIssueByMessage(issues, "person-parent", "1850 census")
+	parent1850 := findIssueByMessage(issues, "person-parent", "1850 US census")
 	require.NotNil(t, parent1850, "expected parent 1850 census suggestion")
 	if containsSubstring(parent1850.Message, "would also cover") {
 		t.Errorf("parent 1850 should NOT consolidate child (age 22); got %q", parent1850.Message)
 	}
-	if child1850 := findIssueByMessage(issues, "person-child", "1850 census"); child1850 == nil {
+	if child1850 := findIssueByMessage(issues, "person-child", "1850 US census"); child1850 == nil {
 		t.Error("expected adult child to keep independent 1850 census suggestion")
 	}
 }
 
 func TestAnalyzeSuggestions_ConsolidateChildIndependentWhenParentHasCensus(t *testing.T) {
+	// This case is about census-year logic, not the country gate, so it opts
+	// into the US schedule the way --country "United States" would (#186).
+	setCensusFallback(t, countryUnitedStates)
 	// Parent already has the 1850 census, so produces no parent suggestion for 1850.
 	// The minor child still needs its own 1850 suggestion (no parent suggestion to fold into).
 	archive := &glxlib.GLXFile{
@@ -1600,15 +1898,18 @@ func TestAnalyzeSuggestions_ConsolidateChildIndependentWhenParentHasCensus(t *te
 
 	issues := analyzeSuggestions(archive)
 
-	if parent1850 := findIssueByMessage(issues, "person-parent", "1850 census"); parent1850 != nil {
+	if parent1850 := findIssueByMessage(issues, "person-parent", "1850 US census"); parent1850 != nil {
 		t.Errorf("parent should NOT have 1850 suggestion when census event exists; got %q", parent1850.Message)
 	}
-	if child1850 := findIssueByMessage(issues, "person-child", "1850 census"); child1850 == nil {
+	if child1850 := findIssueByMessage(issues, "person-child", "1850 US census"); child1850 == nil {
 		t.Error("child should keep independent 1850 census suggestion when parent already has the census")
 	}
 }
 
 func TestAnalyzeSuggestions_ConsolidateMultipleMinorChildrenSorted(t *testing.T) {
+	// This case is about census-year logic, not the country gate, so it opts
+	// into the US schedule the way --country "United States" would (#186).
+	setCensusFallback(t, countryUnitedStates)
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
 			"person-parent":      {Properties: map[string]any{"name": "Parent Green"}},
@@ -1635,7 +1936,7 @@ func TestAnalyzeSuggestions_ConsolidateMultipleMinorChildrenSorted(t *testing.T)
 
 	issues := analyzeSuggestions(archive)
 
-	parent1830 := findIssueByMessage(issues, "person-parent", "1830 census")
+	parent1830 := findIssueByMessage(issues, "person-parent", "1830 US census")
 	require.NotNil(t, parent1830, "expected parent 1830 census suggestion")
 	want := "would also cover: Alpha Green (~5), Beta Green (~4), Gamma Green (~3)"
 	if !containsSubstring(parent1830.Message, want) {
@@ -1643,13 +1944,16 @@ func TestAnalyzeSuggestions_ConsolidateMultipleMinorChildrenSorted(t *testing.T)
 	}
 
 	for _, childID := range []string{"person-child-alpha", "person-child-beta", "person-child-gamma"} {
-		if found := findIssueByMessage(issues, childID, "1830 census"); found != nil {
+		if found := findIssueByMessage(issues, childID, "1830 US census"); found != nil {
 			t.Errorf("child %s 1830 suggestion should be suppressed; got %q", childID, found.Message)
 		}
 	}
 }
 
 func TestAnalyzeSuggestions_ConsolidateChildBirthYearUnknown(t *testing.T) {
+	// This case is about census-year logic, not the country gate, so it opts
+	// into the US schedule the way --country "United States" would (#186).
+	setCensusFallback(t, countryUnitedStates)
 	// Child has no birth event, so neither participates in consolidation
 	// nor produces independent census suggestions of its own.
 	archive := &glxlib.GLXFile{
@@ -1671,17 +1975,20 @@ func TestAnalyzeSuggestions_ConsolidateChildBirthYearUnknown(t *testing.T) {
 
 	issues := analyzeSuggestions(archive)
 
-	parent1830 := findIssueByMessage(issues, "person-parent", "1830 census")
+	parent1830 := findIssueByMessage(issues, "person-parent", "1830 US census")
 	require.NotNil(t, parent1830, "expected parent 1830 census suggestion")
 	if containsSubstring(parent1830.Message, "would also cover") {
 		t.Errorf("parent 1830 should have no consolidation note when child birth year unknown; got %q", parent1830.Message)
 	}
-	if found := findIssueByMessage(issues, "person-child", "1830 census"); found != nil {
+	if found := findIssueByMessage(issues, "person-child", "1830 US census"); found != nil {
 		t.Errorf("child without birth year should produce no census suggestion; got %q", found.Message)
 	}
 }
 
 func TestAnalyzeSuggestions_ConsolidateBothParentsMissingSameYear(t *testing.T) {
+	// This case is about census-year logic, not the country gate, so it opts
+	// into the US schedule the way --country "United States" would (#186).
+	setCensusFallback(t, countryUnitedStates)
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
 			"person-father": {Properties: map[string]any{"name": "Father Green"}},
@@ -1704,24 +2011,27 @@ func TestAnalyzeSuggestions_ConsolidateBothParentsMissingSameYear(t *testing.T) 
 
 	issues := analyzeSuggestions(archive)
 
-	father1830 := findIssueByMessage(issues, "person-father", "1830 census")
+	father1830 := findIssueByMessage(issues, "person-father", "1830 US census")
 	require.NotNil(t, father1830, "expected father 1830 census suggestion")
 	if !containsSubstring(father1830.Message, "Child Green (~5)") {
 		t.Errorf("father 1830 message should mention child; got %q", father1830.Message)
 	}
 
-	mother1830 := findIssueByMessage(issues, "person-mother", "1830 census")
+	mother1830 := findIssueByMessage(issues, "person-mother", "1830 US census")
 	require.NotNil(t, mother1830, "expected mother 1830 census suggestion")
 	if !containsSubstring(mother1830.Message, "Child Green (~5)") {
 		t.Errorf("mother 1830 message should mention child; got %q", mother1830.Message)
 	}
 
-	if found := findIssueByMessage(issues, "person-child", "1830 census"); found != nil {
+	if found := findIssueByMessage(issues, "person-child", "1830 US census"); found != nil {
 		t.Errorf("child 1830 should be suppressed when either parent consolidates; got %q", found.Message)
 	}
 }
 
 func TestAnalyzeSuggestions_ConsolidateStepParentNotYetMarried(t *testing.T) {
+	// This case is about census-year logic, not the country gate, so it opts
+	// into the US schedule the way --country "United States" would (#186).
+	setCensusFallback(t, countryUnitedStates)
 	// step_parent relationship begins at 1860 marriage event, so the
 	// step-parent's 1830 census suggestion must not consolidate the child
 	// (who was not yet living in their household).
@@ -1751,17 +2061,20 @@ func TestAnalyzeSuggestions_ConsolidateStepParentNotYetMarried(t *testing.T) {
 
 	issues := analyzeSuggestions(archive)
 
-	step1830 := findIssueByMessage(issues, "person-stepfather", "1830 census")
+	step1830 := findIssueByMessage(issues, "person-stepfather", "1830 US census")
 	require.NotNil(t, step1830, "expected stepfather 1830 census suggestion")
 	if containsSubstring(step1830.Message, "would also cover") {
 		t.Errorf("stepfather 1830 must not consolidate child before step relationship started; got %q", step1830.Message)
 	}
-	if child1830 := findIssueByMessage(issues, "person-child", "1830 census"); child1830 == nil {
+	if child1830 := findIssueByMessage(issues, "person-child", "1830 US census"); child1830 == nil {
 		t.Error("child 1830 should be emitted independently when step-parent relationship had not yet started")
 	}
 }
 
 func TestAnalyzeSuggestions_ConsolidateRelationshipEnded(t *testing.T) {
+	// This case is about census-year logic, not the country gate, so it opts
+	// into the US schedule the way --country "United States" would (#186).
+	setCensusFallback(t, countryUnitedStates)
 	// Foster parent-child relationship ended at 1840, so the foster parent's
 	// 1850 census suggestion must not consolidate the (still-minor) child.
 	archive := &glxlib.GLXFile{
@@ -1790,17 +2103,20 @@ func TestAnalyzeSuggestions_ConsolidateRelationshipEnded(t *testing.T) {
 
 	issues := analyzeSuggestions(archive)
 
-	foster1850 := findIssueByMessage(issues, "person-foster", "1850 census")
+	foster1850 := findIssueByMessage(issues, "person-foster", "1850 US census")
 	require.NotNil(t, foster1850, "expected foster 1850 census suggestion")
 	if containsSubstring(foster1850.Message, "would also cover") {
 		t.Errorf("foster 1850 must not consolidate child after relationship ended; got %q", foster1850.Message)
 	}
-	if child1850 := findIssueByMessage(issues, "person-child", "1850 census"); child1850 == nil {
+	if child1850 := findIssueByMessage(issues, "person-child", "1850 US census"); child1850 == nil {
 		t.Error("child 1850 should be emitted independently after foster relationship ended")
 	}
 }
 
 func TestAnalyzeSuggestions_ConsolidateBoundsViaStartedOnProperty(t *testing.T) {
+	// This case is about census-year logic, not the country gate, so it opts
+	// into the US schedule the way --country "United States" would (#186).
+	setCensusFallback(t, countryUnitedStates)
 	// Adoptive relationship's started_on property places the start at 1860,
 	// so the 1830 suggestion for the adoptive parent must not consolidate
 	// the child even though the relationship has no StartEvent.
@@ -1829,17 +2145,20 @@ func TestAnalyzeSuggestions_ConsolidateBoundsViaStartedOnProperty(t *testing.T) 
 
 	issues := analyzeSuggestions(archive)
 
-	adopt1830 := findIssueByMessage(issues, "person-adoptive", "1830 census")
+	adopt1830 := findIssueByMessage(issues, "person-adoptive", "1830 US census")
 	require.NotNil(t, adopt1830, "expected adoptive parent 1830 census suggestion")
 	if containsSubstring(adopt1830.Message, "would also cover") {
 		t.Errorf("adoptive parent 1830 must not consolidate child before adoption (started_on 1860); got %q", adopt1830.Message)
 	}
-	if child1830 := findIssueByMessage(issues, "person-child", "1830 census"); child1830 == nil {
+	if child1830 := findIssueByMessage(issues, "person-child", "1830 US census"); child1830 == nil {
 		t.Error("child 1830 should be emitted independently before adoptive relationship started")
 	}
 }
 
 func TestAnalyzeSuggestions_ConsolidateBoundsViaEndedOnProperty(t *testing.T) {
+	// This case is about census-year logic, not the country gate, so it opts
+	// into the US schedule the way --country "United States" would (#186).
+	setCensusFallback(t, countryUnitedStates)
 	// Foster relationship's ended_on property places the end at 1840, so
 	// the 1850 suggestion for the foster parent must not consolidate the
 	// (still-minor) child even though the relationship has no EndEvent.
@@ -1868,17 +2187,20 @@ func TestAnalyzeSuggestions_ConsolidateBoundsViaEndedOnProperty(t *testing.T) {
 
 	issues := analyzeSuggestions(archive)
 
-	foster1850 := findIssueByMessage(issues, "person-foster", "1850 census")
+	foster1850 := findIssueByMessage(issues, "person-foster", "1850 US census")
 	require.NotNil(t, foster1850, "expected foster 1850 census suggestion")
 	if containsSubstring(foster1850.Message, "would also cover") {
 		t.Errorf("foster 1850 must not consolidate child after ended_on=1840; got %q", foster1850.Message)
 	}
-	if child1850 := findIssueByMessage(issues, "person-child", "1850 census"); child1850 == nil {
+	if child1850 := findIssueByMessage(issues, "person-child", "1850 US census"); child1850 == nil {
 		t.Error("child 1850 should be emitted independently after ended_on relationship boundary")
 	}
 }
 
 func TestAnalyzeSuggestions_ConsolidateBoundsAFTOnStart(t *testing.T) {
+	// This case is about census-year logic, not the country gate, so it opts
+	// into the US schedule the way --country "United States" would (#186).
+	setCensusFallback(t, countryUnitedStates)
 	// Step-parent relationship started "AFT 1850". The named year (1850) is
 	// not in the active window — the relationship begins strictly after.
 	// The step-parent's 1850 census must therefore not consolidate the
@@ -1909,17 +2231,20 @@ func TestAnalyzeSuggestions_ConsolidateBoundsAFTOnStart(t *testing.T) {
 
 	issues := analyzeSuggestions(archive)
 
-	step1850 := findIssueByMessage(issues, "person-step", "1850 census")
+	step1850 := findIssueByMessage(issues, "person-step", "1850 US census")
 	require.NotNil(t, step1850, "expected step parent 1850 census suggestion")
 	if containsSubstring(step1850.Message, "would also cover") {
 		t.Errorf("step parent 1850 must not consolidate child whose relationship starts AFT 1850; got %q", step1850.Message)
 	}
-	if child1850 := findIssueByMessage(issues, "person-child", "1850 census"); child1850 == nil {
+	if child1850 := findIssueByMessage(issues, "person-child", "1850 US census"); child1850 == nil {
 		t.Error("child 1850 should be emitted independently when step relationship starts AFT 1850")
 	}
 }
 
 func TestAnalyzeSuggestions_ConsolidateBoundsBEFOnEnd(t *testing.T) {
+	// This case is about census-year logic, not the country gate, so it opts
+	// into the US schedule the way --country "United States" would (#186).
+	setCensusFallback(t, countryUnitedStates)
 	// Foster relationship ended "BEF 1850". The named year (1850) is not in
 	// the active window — the relationship had already ended. The foster
 	// parent's 1850 census must therefore not consolidate the (still-minor)
@@ -1950,17 +2275,20 @@ func TestAnalyzeSuggestions_ConsolidateBoundsBEFOnEnd(t *testing.T) {
 
 	issues := analyzeSuggestions(archive)
 
-	foster1850 := findIssueByMessage(issues, "person-foster", "1850 census")
+	foster1850 := findIssueByMessage(issues, "person-foster", "1850 US census")
 	require.NotNil(t, foster1850, "expected foster 1850 census suggestion")
 	if containsSubstring(foster1850.Message, "would also cover") {
 		t.Errorf("foster 1850 must not consolidate child whose relationship ended BEF 1850; got %q", foster1850.Message)
 	}
-	if child1850 := findIssueByMessage(issues, "person-child", "1850 census"); child1850 == nil {
+	if child1850 := findIssueByMessage(issues, "person-child", "1850 US census"); child1850 == nil {
 		t.Error("child 1850 should be emitted independently when foster relationship ended BEF 1850")
 	}
 }
 
 func TestAnalyzeSuggestions_ConsolidateBoundsAFTOnStartedOnProperty(t *testing.T) {
+	// This case is about census-year logic, not the country gate, so it opts
+	// into the US schedule the way --country "United States" would (#186).
+	setCensusFallback(t, countryUnitedStates)
 	// Same AFT-on-start case as the StartEvent variant, but driven by the
 	// started_on property fallback. Ensures qualifier handling applies in
 	// both the event and property paths.
@@ -1989,17 +2317,20 @@ func TestAnalyzeSuggestions_ConsolidateBoundsAFTOnStartedOnProperty(t *testing.T
 
 	issues := analyzeSuggestions(archive)
 
-	step1850 := findIssueByMessage(issues, "person-step", "1850 census")
+	step1850 := findIssueByMessage(issues, "person-step", "1850 US census")
 	require.NotNil(t, step1850, "expected step parent 1850 census suggestion")
 	if containsSubstring(step1850.Message, "would also cover") {
 		t.Errorf("step parent 1850 must not consolidate when started_on=AFT 1850; got %q", step1850.Message)
 	}
-	if child1850 := findIssueByMessage(issues, "person-child", "1850 census"); child1850 == nil {
+	if child1850 := findIssueByMessage(issues, "person-child", "1850 US census"); child1850 == nil {
 		t.Error("child 1850 should be emitted independently when started_on AFT 1850")
 	}
 }
 
 func TestAnalyzeSuggestions_ConsolidateBoundsAFTOnEnd(t *testing.T) {
+	// This case is about census-year logic, not the country gate, so it opts
+	// into the US schedule the way --country "United States" would (#186).
+	setCensusFallback(t, countryUnitedStates)
 	// Foster relationship ended "AFT 1840". The named year (1840) is still
 	// in the active window (the relationship had not yet ended), but we
 	// have no evidence about how long after — the window must therefore
@@ -2033,16 +2364,16 @@ func TestAnalyzeSuggestions_ConsolidateBoundsAFTOnEnd(t *testing.T) {
 
 	issues := analyzeSuggestions(archive)
 
-	foster1850 := findIssueByMessage(issues, "person-foster", "1850 census")
+	foster1850 := findIssueByMessage(issues, "person-foster", "1850 US census")
 	require.NotNil(t, foster1850, "expected foster 1850 census suggestion")
 	if containsSubstring(foster1850.Message, "would also cover") {
 		t.Errorf("foster 1850 must not consolidate when EndEvent=AFT 1840 (post-boundary year unconfirmed); got %q", foster1850.Message)
 	}
-	if child1850 := findIssueByMessage(issues, "person-child", "1850 census"); child1850 == nil {
+	if child1850 := findIssueByMessage(issues, "person-child", "1850 US census"); child1850 == nil {
 		t.Error("child 1850 should be emitted independently when foster relationship ended AFT 1840")
 	}
 
-	foster1840 := findIssueByMessage(issues, "person-foster", "1840 census")
+	foster1840 := findIssueByMessage(issues, "person-foster", "1840 US census")
 	require.NotNil(t, foster1840, "expected foster 1840 census suggestion")
 	if !containsSubstring(foster1840.Message, "would also cover") {
 		t.Errorf("foster 1840 should consolidate child (named year of AFT is still active); got %q", foster1840.Message)
@@ -2050,6 +2381,9 @@ func TestAnalyzeSuggestions_ConsolidateBoundsAFTOnEnd(t *testing.T) {
 }
 
 func TestAnalyzeSuggestions_ConsolidateBoundsAFTWithCalendarPrefix(t *testing.T) {
+	// This case is about census-year logic, not the country gate, so it opts
+	// into the US schedule the way --country "United States" would (#186).
+	setCensusFallback(t, countryUnitedStates)
 	// GLX dates can carry a calendar prefix in front of the qualifier:
 	// "JULIAN AFT 1850" means the relationship started after 1850 in the
 	// Julian calendar. The qualifier handling must strip the calendar
@@ -2086,17 +2420,17 @@ func TestAnalyzeSuggestions_ConsolidateBoundsAFTWithCalendarPrefix(t *testing.T)
 	// calendar-prefix stripping the qualifier matcher would miss "JULIAN
 	// AFT 1850" entirely and treat 1850 as inside the active window,
 	// falsely consolidating the child.
-	step1850 := findIssueByMessage(issues, "person-step", "1850 census")
+	step1850 := findIssueByMessage(issues, "person-step", "1850 US census")
 	require.NotNil(t, step1850, "expected step parent 1850 census suggestion")
 	if containsSubstring(step1850.Message, "would also cover") {
 		t.Errorf("step parent 1850 must not consolidate when JULIAN AFT 1850 start; got %q", step1850.Message)
 	}
-	if child1850 := findIssueByMessage(issues, "person-child", "1850 census"); child1850 == nil {
+	if child1850 := findIssueByMessage(issues, "person-child", "1850 US census"); child1850 == nil {
 		t.Error("child 1850 should be emitted independently when relationship starts JULIAN AFT 1850")
 	}
 
 	// 1860 census: relationship active (any year > 1850 is in the window).
-	step1860 := findIssueByMessage(issues, "person-step", "1860 census")
+	step1860 := findIssueByMessage(issues, "person-step", "1860 US census")
 	require.NotNil(t, step1860, "expected step parent 1860 census suggestion")
 	if !containsSubstring(step1860.Message, "would also cover") {
 		t.Errorf("step parent 1860 should consolidate child after JULIAN AFT 1850 start; got %q", step1860.Message)
@@ -2104,6 +2438,9 @@ func TestAnalyzeSuggestions_ConsolidateBoundsAFTWithCalendarPrefix(t *testing.T)
 }
 
 func TestAnalyzeSuggestions_ConsolidateBoundsBEFOnEndedOnProperty(t *testing.T) {
+	// This case is about census-year logic, not the country gate, so it opts
+	// into the US schedule the way --country "United States" would (#186).
+	setCensusFallback(t, countryUnitedStates)
 	// Same BEF-on-end case as the EndEvent variant, but driven by the
 	// ended_on property fallback. Ensures qualifier handling applies in
 	// both the event and property paths.
@@ -2132,12 +2469,12 @@ func TestAnalyzeSuggestions_ConsolidateBoundsBEFOnEndedOnProperty(t *testing.T) 
 
 	issues := analyzeSuggestions(archive)
 
-	foster1850 := findIssueByMessage(issues, "person-foster", "1850 census")
+	foster1850 := findIssueByMessage(issues, "person-foster", "1850 US census")
 	require.NotNil(t, foster1850, "expected foster 1850 census suggestion")
 	if containsSubstring(foster1850.Message, "would also cover") {
 		t.Errorf("foster 1850 must not consolidate when ended_on=BEF 1850; got %q", foster1850.Message)
 	}
-	if child1850 := findIssueByMessage(issues, "person-child", "1850 census"); child1850 == nil {
+	if child1850 := findIssueByMessage(issues, "person-child", "1850 US census"); child1850 == nil {
 		t.Error("child 1850 should be emitted independently when ended_on BEF 1850")
 	}
 }

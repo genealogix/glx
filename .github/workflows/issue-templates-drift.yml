@@ -18,6 +18,7 @@ on:
       - '.github/issue-areas.yml'
       - '.github/workflows/issue-labeler.yml'
       - '.github/workflows/issue-templates-drift.yml'
+      - '.github/requirements/issue-templates-drift.txt'
   push:
     branches: [main]
     paths:
@@ -25,6 +26,7 @@ on:
       - '.github/issue-areas.yml'
       - '.github/workflows/issue-labeler.yml'
       - '.github/workflows/issue-templates-drift.yml'
+      - '.github/requirements/issue-templates-drift.txt'
 
 permissions:
   contents: read
@@ -41,7 +43,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -52,12 +54,15 @@ jobs:
       # THIS file (structural navigation of the template body), while the
       # labeler's flat .areas[] read moved to the manifest-pinned yq.
       - name: Set up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.13'
 
+      # Hash-pinned (Scorecard Pinned-Dependencies): --require-hashes refuses any
+      # artifact whose sha256 is not listed, and --no-deps is safe because PyYAML
+      # has no dependencies. Dependabot's pip ecosystem keeps the file current.
       - name: Install PyYAML
-        run: pip install pyyaml
+        run: pip install --require-hashes --no-deps -r .github/requirements/issue-templates-drift.txt
 
       - name: Compare each template's Area dropdown to the canonical list
         run: |

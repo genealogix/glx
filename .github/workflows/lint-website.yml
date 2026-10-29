@@ -5,10 +5,12 @@ on:
     branches: [main]
     paths:
       - 'website/**'
+      - 'scripts/hooks/**'
       - '.github/workflows/lint-website.yml'
   pull_request:
     paths:
       - 'website/**'
+      - 'scripts/hooks/**'
       - '.github/workflows/lint-website.yml'
 
 permissions:
@@ -34,11 +36,11 @@ jobs:
       run:
         working-directory: website
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24'
           cache: 'npm'
@@ -51,3 +53,6 @@ jobs:
         # Same command `make lint` runs; --max-warnings 0 lives in the npm
         # script itself so local and CI strictness can't drift.
         run: npm run lint
+
+      - name: Test staged lint hooks
+        run: node --test ../scripts/hooks/staged.test.mjs

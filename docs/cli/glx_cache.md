@@ -29,6 +29,10 @@ in that case. The archive's git commit and clean state are also recorded and
 shown by 'glx cache status', but do not affect staleness. Only multi-file
 (directory) archives are supported.
 
+```
+glx cache [flags]
+```
+
 ### Examples
 
 ```

@@ -20,14 +20,22 @@ Subcommands:
   add citation       Create a citation
   add relationship   Create a relationship
   add assertion      Create an assertion
+  add research-log   Create a research log
+  add search         Append one search to an existing research log
+  add study          Create a study
 
 Every subcommand validates supplied values against the archive's vocabularies
-and entity references before writing. The created entity ID is echoed on its
-own line as the final stdout output so it can be captured with shell
-substitution:
+and entity references, and every date flag against the GLX date grammar,
+before writing. The created entity ID is the only
+thing written to stdout (progress goes to stderr), so it can be captured with
+shell substitution (add search echoes the ID of the log it appended to):
 
     person_id=$(glx add person --given Johann --surname Jungk --archive .)
     glx add event --type christening --principal "$person_id" --archive .
+
+```
+glx add [flags]
+```
 
 ### Options
 
@@ -51,5 +59,8 @@ substitution:
 * [glx add place](glx_add_place.md)	 - Create a place entity
 * [glx add relationship](glx_add_relationship.md)	 - Create a relationship entity
 * [glx add repository](glx_add_repository.md)	 - Create a repository entity
+* [glx add research-log](glx_add_research-log.md)	 - Create a research log entity
+* [glx add search](glx_add_search.md)	 - Append a search to a research log
 * [glx add source](glx_add_source.md)	 - Create a source entity
+* [glx add study](glx_add_study.md)	 - Create a study entity
 

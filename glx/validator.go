@@ -20,11 +20,13 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"slices"
 	"strings"
 	"sync"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
-	"gopkg.in/yaml.v3"
+	"github.com/santhosh-tekuri/jsonschema/v6/kind"
+	"go.yaml.in/yaml/v3"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 	schema "github.com/genealogix/glx/specification/schema/v1"
@@ -394,6 +396,10 @@ func ValidateGLXFileStructure(doc map[string]any) []string {
 		}
 	}
 
+	// Both schema causes and entity IDs can arrive in map iteration order.
+	// Sort at the source so every validation path can safely take a prefix.
+	slices.Sort(issues)
+
 	return issues
 }
 
@@ -406,6 +412,11 @@ func flattenValidationErrors(ve *jsonschema.ValidationError) []string {
 	for _, unit := range out.Errors {
 		if unit.Error == nil {
 			continue
+		}
+		// The validator also collects unknown property names from a map.
+		// Canonicalize that list before rendering the diagnostic itself.
+		if additional, ok := unit.Error.Kind.(*kind.AdditionalProperties); ok {
+			slices.Sort(additional.Properties)
 		}
 		loc := unit.InstanceLocation
 		if loc == "" {

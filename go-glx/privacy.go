@@ -211,7 +211,7 @@ func buildPersonLifeEventIndex(archive *GLXFile) map[string]personLifeEvents {
 //     participant, scrubs Properties and Notes on those participant entries
 //     so per-participant fields such as name_as_recorded do not leak.
 //   - Removes every assertion whose Subject.Person or Participant.Person is a
-//     living person.
+//     living person, or whose Subject.Event was fully redacted.
 func PrivatizeLiving(archive *GLXFile, now time.Time, thresholdYears int) *PrivatizeResult {
 	result := &PrivatizeResult{}
 	if archive == nil {
@@ -228,7 +228,7 @@ func PrivatizeLiving(archive *GLXFile, now time.Time, thresholdYears int) *Priva
 	fullyRedactedEvents := eventsWithLivingSubject(archive, living)
 	result.RelationshipsRedacted = redactRelationshipsWithLivingParticipants(archive, living, fullyRedactedEvents)
 	result.EventsRedacted, result.EventsScrubbed = redactAndScrubEvents(archive, living, fullyRedactedEvents)
-	result.AssertionsDropped = dropAssertionsReferencingLivingPersons(archive, living)
+	result.AssertionsDropped = dropAssertionsReferencingLivingPersons(archive, living, fullyRedactedEvents)
 
 	return result
 }
@@ -328,13 +328,18 @@ func redactAndScrubEvents(archive *GLXFile, living, fullyRedactedEvents map[stri
 			event.PlaceID = ""
 			event.Notes = nil
 			event.Properties = nil
+			event.Household = nil
+			event.Neighbors = nil
 			scrubLivingParticipants(event.Participants, living)
 			redacted++
 
 			continue
 		}
+		neighborScrubbed := scrubLivingNeighbors(event.Neighbors, living)
 		if participantsIncludeLivingPerson(event.Participants, living) {
 			scrubLivingParticipants(event.Participants, living)
+			scrubbed++
+		} else if neighborScrubbed {
 			scrubbed++
 		}
 	}
@@ -343,16 +348,17 @@ func redactAndScrubEvents(archive *GLXFile, living, fullyRedactedEvents map[stri
 }
 
 // dropAssertionsReferencingLivingPersons removes every assertion whose
-// Subject.Person or Participant.Person is a living person and returns the
-// count dropped.
-func dropAssertionsReferencingLivingPersons(archive *GLXFile, living map[string]bool) int {
+// Subject.Person or Participant.Person is a living person, or whose event was
+// fully redacted. Retaining event evidence would expose its citation text and
+// media when publishing the redacted person's profile.
+func dropAssertionsReferencingLivingPersons(archive *GLXFile, living, fullyRedactedEvents map[string]bool) int {
 	if len(archive.Assertions) == 0 {
 		return 0
 	}
 	dropped := 0
 	retained := make(map[string]*Assertion, len(archive.Assertions))
 	for id, assertion := range archive.Assertions {
-		if assertion != nil && assertionReferencesLivingPerson(assertion, living) {
+		if assertion != nil && (assertionReferencesLivingPerson(assertion, living) || fullyRedactedEvents[assertion.Subject.Event]) {
 			dropped++
 
 			continue
@@ -399,6 +405,25 @@ func scrubLivingParticipants(participants []Participant, living map[string]bool)
 			participants[i].Notes = nil
 		}
 	}
+}
+
+// scrubLivingNeighbors replaces the name of every census neighbor linked to a
+// living person with the redacted "Living" placeholder and clears its notes,
+// page, and line (#180). The person reference is kept, like a living
+// participant's, so the link survives. Reports whether anything was scrubbed.
+func scrubLivingNeighbors(neighbors []EventNeighbor, living map[string]bool) bool {
+	scrubbed := false
+	for i := range neighbors {
+		if neighbors[i].Person != "" && living[neighbors[i].Person] {
+			neighbors[i].Name = "Living"
+			neighbors[i].Notes = nil
+			neighbors[i].Page = ""
+			neighbors[i].Line = ""
+			scrubbed = true
+		}
+	}
+
+	return scrubbed
 }
 
 // eventHasLivingSubject reports whether any participant of the event acts in a

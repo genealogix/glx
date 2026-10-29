@@ -320,6 +320,14 @@
       },
       "additionalProperties": false
     },
+    "lead_statuses": {
+      "type": "object",
+      "description": "Lead status vocabulary (states of a hypothesis inside a research log)",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/lead-statuses.schema.json#/$defs/LeadStatusDefinition" }
+      },
+      "additionalProperties": false
+    },
     "research_log_status_types": {
       "type": "object",
       "description": "Research log status type vocabulary",

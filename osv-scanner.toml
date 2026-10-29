@@ -1,0 +1,66 @@
+# osv-scanner configuration for the GLX root Go module.
+#
+# Entries here suppress an OSV advisory for this repository only. Every entry
+# must state why the advisory does not apply, must carry an `ignoreUntil` expiry
+# so the reasoning is re-verified on a schedule, and must be removed as soon as
+# the reasoning stops holding. This file is not a general allowlist: advisories
+# that do apply are fixed by upgrading the dependency, not ignored here.
+#
+# Consumed by:
+#   - `osv-scanner`, and transitively the OpenSSF Scorecard `Vulnerabilities`
+#     check (.github/workflows/scorecard.yml), which runs osv-scanner over the
+#     repository;
+#   - scripts/filter-govulncheck-sarif.py, which applies the same list to the
+#     govulncheck SARIF upload in .github/workflows/security.yml.
+# The filter understands only `[[IgnoredVulns]]` entries with `id`,
+# `ignoreUntil` and `reason`, and refuses to run on anything else, so the two
+# scanners cannot silently disagree about what is suppressed.
+#
+# Scope: osv-scanner applies an osv-scanner.toml only to manifests in its own
+# directory, so this file covers ./go.mod and nothing else. ci-tools/go.mod is
+# scanned without any suppressions; it does not depend on golang.org/x/crypto.
+# A suppression it ever needs goes in ci-tools/osv-scanner.toml, not here.
+#
+# The reasoning for each entry lives here and only here; SECURITY-POSTURE.md
+# ("Vulnerability suppression") states the policy and points at this file.
+
+[[IgnoredVulns]]
+id = "GO-2026-5932"
+ignoreUntil = 2027-04-14
+reason = """
+Advisory scope is golang.org/x/crypto/openpgp (and its subpackages), which GLX
+does not import. The advisory has no fixed version -- it marks those packages as
+unmaintained rather than patching a defect -- so upgrading cannot clear it.
+
+golang.org/x/crypto is an indirect dependency, reached entirely through
+github.com/go-git/go-git/v5 and its dependencies. As of 2026-10-14 the build
+graph (including tests) uses these x/crypto packages:
+
+    ssh, ssh/agent, ssh/knownhosts, ssh/internal/bcrypt_pbkdf, blowfish
+        go-git's SSH transport, github.com/skeema/knownhosts,
+        github.com/xanzy/ssh-agent
+    cast5, argon2, sha3, hkdf
+        github.com/ProtonMail/go-crypto/openpgp, the maintained OpenPGP
+        replacement go-git uses for signing
+    cryptobyte, curve25519, chacha20, blake2b, internal/*
+        github.com/cloudflare/circl and the packages above
+
+None of them is openpgp. Verified with:
+
+    for os in linux darwin windows; do GOOS=$os go list -deps -test ./...; done \
+      | grep golang.org/x/crypto/openpgp   # no matches
+
+`-test` includes test-only imports; the GOOS loop covers files behind OS build
+constraints. Re-run it before renewing `ignoreUntil`; drop the entry if
+golang.org/x/crypto/openpgp ever enters the build graph, and fix the import
+instead.
+
+Known limit: osv-scanner matches this entry by advisory ID only and cannot
+scope it to a Go package. If GO-2026-5932 is ever revised to cover another
+x/crypto package -- cast5 and blowfish above are deprecated too -- osv-scanner
+would hide that as well until `ignoreUntil` passes. govulncheck is the backstop:
+it reads the advisory's current package list, and the SARIF filter keeps any
+finding that reaches an imported package (level `warning`) or a called symbol
+(`error`). Before renewing, also re-read the advisory's affected packages at
+https://pkg.go.dev/vuln/GO-2026-5932.
+"""

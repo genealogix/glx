@@ -50,7 +50,10 @@ type siteModel struct {
 	Persons   []*personPage
 	Sources   []sourceRow
 	Places    []placeRow
-	Search    []searchEntry
+	// PlaceMap is the map drawn above the place index; nil when fewer than
+	// two places carry coordinates.
+	PlaceMap *placeMap
+	Search   []searchEntry
 }
 
 // siteStats holds entity counts for the landing page.
@@ -69,7 +72,10 @@ type personLink struct {
 	ID    string
 	File  string // unique HTML filename of the target page (collision-safe)
 	Name  string
-	Dates string // e.g. "1850–1920", "b. 1850", or "" when unknown
+	Dates string // e.g. "1850–1920", "b. c. 1850", or "" when unknown; see formatLifeSpan
+	// Hypothetical marks a relative linked only by a relationship the
+	// archive records as a hypothesis; the page shows it with "(?)".
+	Hypothetical bool
 }
 
 // personPage is the presentation model for a single person profile page.
@@ -81,28 +87,50 @@ type personPage struct {
 	AltNames   []string
 	Sex        string
 	Gender     string
-	LifeSpan   string // "1850–1920", "b. 1850", "d. 1920", or ""
+	LifeSpan   string // "1850–1920", "1756/1774 – 1826/1830", "b. c. 1850", or ""; see formatLifeSpan
 	Living     bool
 	BirthDate  string
 	BirthPlace string
 	DeathDate  string
 	DeathPlace string
 	Timeline   []timelineRow
-	Parents    []personLink
-	Spouses    []personLink
-	Children   []personLink
-	Siblings   []personLink
-	Notes      []string
-	Sources    []personSourceRef
-	Media      []*mediaItem
+	// TimelineStrip is the visual timeline drawn above the timeline list; nil
+	// when the person's dated events do not span at least two distinct years.
+	TimelineStrip *timelineStrip
+	Parents       []personLink
+	Spouses       []personLink
+	Children      []personLink
+	Siblings      []personLink
+	Notes         []string
+	Sources       []personSourceRef
+	Media         []*mediaItem
+	// Pedigree and Descendancy are the inline SVG charts drawn on the
+	// profile; either is nil when the person has no relatives in that
+	// direction.
+	Pedigree    *personChart
+	Descendancy *personChart
+
+	// Step-relatives and half-siblings are listed apart from the plain
+	// family groups (#1331).
+	StepParents  []personLink
+	StepChildren []personLink
+	HalfSiblings []personLink
+	StepSiblings []personLink
 }
 
-// timelineRow is a single chronological entry on a person page.
+// timelineRow is a single chronological entry on a person page. Year is the
+// entry's first parseable year (0 when the date carries none), which is what
+// the visual timeline strip plots. Calendar preserves the recorded calendar
+// prefix (empty for Gregorian), so unrelated year systems do not share a scale.
 type timelineRow struct {
-	Date    string
-	Label   string
-	Detail  string
-	Undated bool
+	Date     string
+	Label    string
+	Detail   string
+	Year     int
+	Calendar string
+	// Unparsed means the recovered year has no reliable calendar/scale.
+	Unparsed bool
+	Undated  bool
 }
 
 // personSourceRef is a source/citation supporting a person, resolved to
@@ -135,7 +163,9 @@ type placeRow struct {
 	FullName   string // hierarchical "Boston, Massachusetts, United States"
 	Type       string
 	HasCoords  bool
-	MapURL     string // OpenStreetMap link when coordinates are present
+	Lat        float64 // only meaningful when HasCoords
+	Lon        float64 // only meaningful when HasCoords
+	MapURL     string  // OpenStreetMap link when coordinates are present
 	EventCount int
 }
 
@@ -192,6 +222,7 @@ func buildSiteModel(archive *glxlib.GLXFile, opts siteModelOptions) *siteModel {
 	model.Persons = buildPersonPages(archive, idx)
 	model.Sources = buildSourceRows(archive)
 	model.Places = buildPlaceRows(archive, idx)
+	model.PlaceMap = buildPlaceMap(model.Places)
 	model.Search = buildSearchIndex(model)
 
 	return model
@@ -212,12 +243,24 @@ func buildStats(archive *glxlib.GLXFile) siteStats {
 
 // siteIndex holds derived lookups computed once and shared across page builds.
 type siteIndex struct {
-	archive  *glxlib.GLXFile
+	archive *glxlib.GLXFile
+	// family is the parent-child graph with disproven links set aside and
+	// step/hypothetical links flagged; the family groups read it.
+	family *familyLinks
+	// parents and children hold birth-family (non-step, non-disproven)
+	// links only; the pedigree and descendancy charts walk them.
 	parents  map[string][]string // child ID -> parent IDs
 	children map[string][]string // parent ID -> child IDs
-	spouses  map[string][]string // person ID -> spouse IDs
+	// hypotheticalEdges marks parent → child edges known only as a hypothesis.
+	hypotheticalEdges map[[2]string]bool
+	spouses           map[string][]string // person ID -> spouse IDs
+	// hypotheticalSpouses marks spouse pairs known only as a hypothesis.
+	hypotheticalSpouses map[[2]string]bool
+	// standings classifies each relationship's support in the archive.
+	standings *glxlib.RelationshipStandingIndex
 	// assertionsByPerson maps a person ID to assertions that reference the
-	// person as subject or as the asserted participant.
+	// person as subject or as the asserted participant, or that are about an
+	// event that is the person's own record (glxlib.AssertionPersons).
 	assertionsByPerson map[string][]*glxlib.Assertion
 	// eventsByPlace counts events referencing each place ID.
 	eventsByPlace map[string]int
@@ -229,24 +272,30 @@ type siteIndex struct {
 
 // newSiteIndex precomputes relationship, assertion, place, and filename lookups.
 func newSiteIndex(archive *glxlib.GLXFile) *siteIndex {
+	family := newFamilyLinks(archive)
 	idx := &siteIndex{
-		archive:            archive,
-		parents:            map[string][]string{},
-		children:           map[string][]string{},
-		spouses:            map[string][]string{},
-		assertionsByPerson: map[string][]*glxlib.Assertion{},
-		eventsByPlace:      map[string]int{},
-		files:              assignPersonFiles(sortedKeys(archive.Persons)),
+		archive:             archive,
+		family:              family,
+		standings:           family.standings,
+		parents:             map[string][]string{},
+		children:            map[string][]string{},
+		hypotheticalEdges:   map[[2]string]bool{},
+		spouses:             map[string][]string{},
+		hypotheticalSpouses: map[[2]string]bool{},
+		assertionsByPerson:  map[string][]*glxlib.Assertion{},
+		eventsByPlace:       map[string]int{},
+		files:               assignPersonFiles(sortedKeys(archive.Persons)),
 	}
 
 	for _, relID := range sortedKeys(archive.Relationships) {
 		rel := archive.Relationships[relID]
-		idx.indexRelationship(rel)
+		idx.indexRelationship(relID, rel)
 	}
+	idx.indexParentChild()
 
 	for _, aID := range sortedKeys(archive.Assertions) {
 		a := archive.Assertions[aID]
-		idx.indexAssertion(a)
+		idx.indexAssertion(a, archive)
 	}
 
 	for _, evID := range sortedKeys(archive.Events) {
@@ -259,44 +308,61 @@ func newSiteIndex(archive *glxlib.GLXFile) *siteIndex {
 	return idx
 }
 
-// indexRelationship records parent/child and spouse edges for one relationship.
-func (idx *siteIndex) indexRelationship(rel *glxlib.Relationship) {
-	switch {
-	case isParentChildType(rel.Type):
-		var parentIDs, childIDs []string
-		for _, p := range rel.Participants {
-			switch p.Role {
-			case glxlib.ParticipantRoleParent:
-				parentIDs = append(parentIDs, p.Person)
-			case glxlib.ParticipantRoleChild:
-				childIDs = append(childIDs, p.Person)
-			}
+// indexParentChild records the birth-family edges the charts walk: surviving,
+// non-step parent-child links, so a disproven candidate father or a
+// step-parent is never drawn as an ancestor. An edge is hypothetical only when
+// no accepted link backs it.
+func (idx *siteIndex) indexParentChild() {
+	accepted := map[[2]string]bool{}
+	for _, link := range idx.family.surviving {
+		if link.Step {
+			continue
 		}
-		for _, c := range childIDs {
-			for _, par := range parentIDs {
-				idx.parents[c] = appendUnique(idx.parents[c], par)
-				idx.children[par] = appendUnique(idx.children[par], c)
-			}
-		}
-	case isMarriageType(rel.Type):
-		var people []string
-		for _, p := range rel.Participants {
-			if p.Person != "" {
-				people = append(people, p.Person)
-			}
-		}
-		for _, a := range people {
-			for _, b := range people {
-				if a != b {
-					idx.spouses[a] = appendUnique(idx.spouses[a], b)
-				}
-			}
+		edge := [2]string{link.ParentID, link.ChildID}
+		idx.parents[link.ChildID] = appendUnique(idx.parents[link.ChildID], link.ParentID)
+		idx.children[link.ParentID] = appendUnique(idx.children[link.ParentID], link.ChildID)
+		if link.Standing == glxlib.RelationshipStandingAccepted {
+			accepted[edge] = true
+			delete(idx.hypotheticalEdges, edge)
+		} else if !accepted[edge] {
+			idx.hypotheticalEdges[edge] = true
 		}
 	}
 }
 
-// indexAssertion records which persons an assertion references.
-func (idx *siteIndex) indexAssertion(a *glxlib.Assertion) {
+// indexRelationship records spouse edges for one relationship, leaving out
+// unions the archive has disproven and flagging hypothetical ones.
+func (idx *siteIndex) indexRelationship(relID string, rel *glxlib.Relationship) {
+	if !isMarriageType(rel.Type) {
+		return
+	}
+	var people []string
+	for _, p := range rel.Participants {
+		if p.Person != "" {
+			people = append(people, p.Person)
+		}
+	}
+	for _, a := range people {
+		for _, b := range people {
+			if a == b {
+				continue
+			}
+			standing := idx.standings.Link(relID, a, b)
+			if standing == glxlib.RelationshipStandingDisproven {
+				continue
+			}
+			if standing == glxlib.RelationshipStandingHypothetical {
+				idx.hypotheticalSpouses[[2]string{a, b}] = true
+			}
+			idx.spouses[a] = appendUnique(idx.spouses[a], b)
+		}
+	}
+}
+
+// indexAssertion records which persons an assertion references. An assertion
+// about a person's baptism or burial is evidence on that person's page: a
+// parish register entry has no other shape (#1211).
+func (idx *siteIndex) indexAssertion(a *glxlib.Assertion, archive *glxlib.GLXFile) {
 	seen := map[string]bool{}
 	add := func(personID string) {
 		if personID == "" || seen[personID] {
@@ -306,8 +372,8 @@ func (idx *siteIndex) indexAssertion(a *glxlib.Assertion) {
 		idx.assertionsByPerson[personID] = append(idx.assertionsByPerson[personID], a)
 	}
 
-	if a.Subject.Person != "" {
-		add(a.Subject.Person)
+	for _, personID := range glxlib.AssertionPersons(a, archive) {
+		add(personID)
 	}
 	if a.Participant != nil {
 		add(a.Participant.Person)
@@ -369,12 +435,12 @@ func buildPersonPage(id string, person *glxlib.Person, archive *glxlib.GLXFile, 
 	page.LifeSpan = lifeSpan(birth, death)
 
 	page.Timeline = buildTimelineRows(id, archive)
-	page.Parents = personLinks(idx.parents[id], archive, idx.files)
-	page.Spouses = personLinks(idx.spouses[id], archive, idx.files)
-	page.Children = personLinks(idx.children[id], archive, idx.files)
-	page.Siblings = personLinks(siblingIDs(id, idx), archive, idx.files)
+	page.TimelineStrip = buildTimelineStrip(page.Timeline)
+	buildFamilyGroups(page, id, archive, idx)
 	page.Sources = buildPersonSources(id, archive, idx)
 	page.Media = buildPersonMedia(id, archive, idx)
+	page.Pedigree = buildPersonChart(id, chartAncestors, archive, idx)
+	page.Descendancy = buildPersonChart(id, chartDescendants, archive, idx)
 
 	return page
 }
@@ -385,11 +451,17 @@ func buildTimelineRows(personID string, archive *glxlib.GLXFile) []timelineRow {
 	entries := collectTimelineEntries(personID, archive, true)
 	rows := make([]timelineRow, 0, len(entries))
 	for _, e := range entries {
+		// Parsing preserves a recoverable year and calendar even when the
+		// archive carries a date whose remaining text cannot be interpreted.
+		date, err := glxlib.DateString(e.Date).Parse()
 		rows = append(rows, timelineRow{
-			Date:    displayDate(e.Date),
-			Label:   e.Label,
-			Detail:  e.Detail,
-			Undated: e.SortKey == "\xff",
+			Date:     displayDate(e.Date),
+			Label:    e.Label,
+			Detail:   e.Detail,
+			Year:     date.Year(),
+			Calendar: date.CalendarName(),
+			Unparsed: err != nil,
+			Undated:  e.SortKey == "\xff",
 		})
 	}
 
@@ -537,6 +609,8 @@ func buildPlaceRows(archive *glxlib.GLXFile, idx *siteIndex) []placeRow {
 		}
 		if place.Latitude != nil && place.Longitude != nil {
 			row.HasCoords = true
+			row.Lat = *place.Latitude
+			row.Lon = *place.Longitude
 			row.MapURL = openStreetMapURL(*place.Latitude, *place.Longitude)
 		}
 		rows = append(rows, row)
@@ -623,20 +697,59 @@ func personLinks(ids []string, archive *glxlib.GLXFile, files map[string]string)
 	return links
 }
 
-// siblingIDs returns the other children of this person's parents, excluding self.
-func siblingIDs(personID string, idx *siteIndex) []string {
-	var out []string
-	seen := map[string]bool{personID: true}
-	for _, parentID := range idx.parents[personID] {
-		for _, childID := range idx.children[parentID] {
-			if !seen[childID] {
-				seen[childID] = true
-				out = append(out, childID)
-			}
-		}
+// buildFamilyGroups fills a page's family groups from the shared family graph:
+// parents and children apart from step-parents and stepchildren, and siblings
+// apart from half- and step-siblings. Disproven links are already gone;
+// hypothetical relatives are flagged for the "(?)" marker.
+func buildFamilyGroups(page *personPage, id string, archive *glxlib.GLXFile, idx *siteIndex) {
+	ownParents, stepParents := splitStep(idx.family.parents(id))
+	ownChildren, stepChildren := splitStep(idx.family.children(id))
+	page.Parents = familyEdgeLinks(ownParents, archive, idx)
+	page.StepParents = familyEdgeLinks(stepParents, archive, idx)
+	page.Children = familyEdgeLinks(ownChildren, archive, idx)
+	page.StepChildren = familyEdgeLinks(stepChildren, archive, idx)
+
+	page.Spouses = personLinks(idx.spouses[id], archive, idx.files)
+	for i := range page.Spouses {
+		page.Spouses[i].Hypothetical = idx.hypotheticalSpouses[[2]string{id, page.Spouses[i].ID}]
 	}
 
-	return out
+	hypo := map[string]bool{}
+	var full, half, step []string
+	for _, sib := range idx.family.siblings(id) {
+		hypo[sib.PersonID] = sib.Hypothetical
+		switch sib.Kind {
+		case siblingKindHalf:
+			half = append(half, sib.PersonID)
+		case siblingKindStep:
+			step = append(step, sib.PersonID)
+		default:
+			full = append(full, sib.PersonID)
+		}
+	}
+	page.Siblings = flagHypothetical(personLinks(full, archive, idx.files), hypo)
+	page.HalfSiblings = flagHypothetical(personLinks(half, archive, idx.files), hypo)
+	page.StepSiblings = flagHypothetical(personLinks(step, archive, idx.files), hypo)
+}
+
+// familyEdgeLinks resolves family edges to navigation links (sorted by name,
+// as personLinks sorts them), carrying each edge's hypothetical flag.
+func familyEdgeLinks(edges []familyEdge, archive *glxlib.GLXFile, idx *siteIndex) []personLink {
+	hypo := make(map[string]bool, len(edges))
+	for _, e := range edges {
+		hypo[e.PersonID] = e.Hypothetical
+	}
+
+	return flagHypothetical(personLinks(edgeIDs(edges), archive, idx.files), hypo)
+}
+
+// flagHypothetical sets each link's Hypothetical flag from hypo, keyed by ID.
+func flagHypothetical(links []personLink, hypo map[string]bool) []personLink {
+	for i := range links {
+		links[i].Hypothetical = hypo[links[i].ID]
+	}
+
+	return links
 }
 
 // vitalEvents returns the person's birth and death events, if present. It uses
@@ -651,39 +764,19 @@ func vitalEvents(personID string, archive *glxlib.GLXFile) (birth, death *glxlib
 	return birth, death
 }
 
-// lifeSpan renders a compact life span from birth/death events.
+// lifeSpan renders a compact life span from birth/death events, keeping date
+// qualifiers and ranges ("c. 1765 – 1830", "1756/1774 – 1826/1830"); see
+// formatLifeSpan.
 func lifeSpan(birth, death *glxlib.Event) string {
 	var b, d string
 	if birth != nil {
-		b = eventYear(string(birth.Date))
+		b = string(birth.Date)
 	}
 	if death != nil {
-		d = eventYear(string(death.Date))
-	}
-	switch {
-	case b != "" && d != "":
-		return b + "–" + d
-	case b != "":
-		return "b. " + b
-	case d != "":
-		return "d. " + d
-	default:
-		return ""
-	}
-}
-
-// eventYear extracts the year of a GLX date for display ("1850", "44 BCE"),
-// or "" if none can be determined.
-func eventYear(date string) string {
-	year := glxlib.ExtractFirstYear(date)
-	switch {
-	case year == 0:
-		return ""
-	case year < 0:
-		return strconv.Itoa(-year) + " BCE"
+		d = string(death.Date)
 	}
 
-	return strconv.Itoa(year)
+	return formatLifeSpan(b, d)
 }
 
 // placeFullName builds a hierarchical place name by walking parent places,

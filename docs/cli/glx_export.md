@@ -14,7 +14,8 @@ Export a GLX archive to GEDCOM or JSON-LD format.
 Supports GEDCOM 5.5.1, GEDCOM 7.0, and JSON-LD output formats.
 
 The input can be either a single-file GLX archive (.glx) or a multi-file
-archive directory.
+archive directory. It is optional and defaults to the current directory, so
+"glx export -o out.ged" works from inside an archive.
 
 GEDCOM output (--format 551 or 70) includes:
 - All individuals (INDI records)
@@ -57,13 +58,16 @@ structure are preserved (GEDCOM FAM / FAMS / FAMC still reconstruct; JSON-LD
 Relationship and Participation nodes still link) so the export stays valid.
 
 ```
-glx export <glx-archive> [flags]
+glx export [glx-archive] [flags]
 ```
 
 ### Examples
 
 ```
-  # Export to GEDCOM 5.5.1 (default)
+  # Export the archive in the current directory to GEDCOM 5.5.1 (default)
+  glx export -o family.ged
+
+  # Export a named archive
   glx export family-archive -o family.ged
 
   # Export a single-file archive

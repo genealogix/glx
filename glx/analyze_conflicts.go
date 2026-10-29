@@ -16,144 +16,54 @@ package main
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
-// analyzeConflicts detects assertions with conflicting values for the same
-// person/property combination.
-// conflictPropKey identifies a person+property combination for conflict detection.
-type conflictPropKey struct {
-	personID string
-	property string
-}
+const (
+	conflictCategory           = "conflict"
+	analysisGapCategory        = "gap"
+	analysisSuggestionCategory = "suggestion"
+	severityLow                = "low"
+	conflictsCheck             = "conflicts"
+)
 
-// conflictValueInfo holds a value and its confidence level.
-type conflictValueInfo struct {
-	value      string
-	confidence string
-}
-
-func analyzeConflicts(archive *glxlib.GLXFile) []AnalysisIssue {
-	propValues := make(map[conflictPropKey][]conflictValueInfo)
-
-	ids := sortedKeys(archive.Assertions)
-	for _, id := range ids {
-		a := archive.Assertions[id]
-		if a == nil {
-			continue
-		}
-		personID := a.Subject.Person
-		if personID == "" || a.Property == "" || a.Value == "" {
-			continue
-		}
-
-		key := conflictPropKey{personID: personID, property: a.Property}
-		propValues[key] = append(propValues[key], conflictValueInfo{
-			value:      a.Value,
-			confidence: a.Confidence,
-		})
+// analyzeConflicts reports shared-engine conflicts on each person's facts.
+func analyzeConflictsWithOptions(archive *glxlib.GLXFile, opts glxlib.ComparisonOptions) ([]AnalysisIssue, error) {
+	findings, err := glxlib.AnalyzeConflicts(archive, glxlib.ConflictAnalysisOptions{Comparison: opts})
+	if err != nil {
+		return nil, err
 	}
-
 	var issues []AnalysisIssue
-
-	// Collect and sort keys for deterministic output order
-	var keys []conflictPropKey
-	for key := range propValues {
-		keys = append(keys, key)
-	}
-	sort.Slice(keys, func(i, j int) bool {
-		if keys[i].personID != keys[j].personID {
-			return keys[i].personID < keys[j].personID
+	for i := range findings {
+		finding := &findings[i]
+		personID, c := finding.PersonID, &finding.Conflict
+		qualifier := ""
+		if c.Verdict == glxlib.VerdictPossible {
+			qualifier = "possible — check: "
 		}
-
-		return keys[i].property < keys[j].property
-	})
-
-	// Find properties with multiple distinct values
-	for _, key := range keys {
-		values := propValues[key]
-		distinct := distinctValues(values)
-		if len(distinct) < 2 {
-			continue
+		if c.Verdict == glxlib.VerdictDisputed {
+			qualifier = "known dispute: "
 		}
-
-		name := personName(archive, key.personID)
 		var parts []string
-		for _, d := range distinct {
-			entry := resolveConflictValue(d.value, key.property, archive)
-			if d.confidence != "" {
-				entry += " [" + d.confidence + "]"
+		for _, v := range c.Values {
+			entry := v.Value
+			if v.Confidence != "" {
+				entry += " [" + v.Confidence + "]"
 			}
 			parts = append(parts, entry)
 		}
-
-		issues = append(issues, AnalysisIssue{
-			Category: "conflict",
-			Severity: "high",
-			Person:   key.personID,
-			Property: key.property,
-			Message: fmt.Sprintf("%s — %s has %d conflicting values: %s",
-				name, key.property, len(distinct), strings.Join(parts, ", ")),
-		})
+		subject, label := c.Subject, c.Property
+		if subject == glxlib.EntityTypePersons.String()+":"+personID {
+			subject = ""
+		}
+		if subject != "" {
+			label = subject + " " + label
+		}
+		issues = append(issues, AnalysisIssue{Subject: subject, Category: conflictCategory, Severity: finding.Severity, Person: personID, Property: c.Property, Message: fmt.Sprintf("%s — %s%s has %d conflicting values: %s", personName(archive, personID), qualifier, label, len(c.Values), strings.Join(parts, ", "))})
 	}
-
 	sortIssues(issues)
 
-	return issues
-}
-
-// resolveConflictValue converts entity IDs to display names for place-reference
-// properties. For other properties, returns the raw value. Uses the shared
-// placeRefProperties set from places_runner.go to stay in sync.
-func resolveConflictValue(value, property string, archive *glxlib.GLXFile) string {
-	if placeRefProperties[property] {
-		if place, ok := archive.Places[value]; ok && place != nil {
-			return place.Name
-		}
-	}
-
-	return value
-}
-
-// distinctValues returns unique values from a list, preserving the highest
-// confidence level for each distinct value.
-func distinctValues(values []conflictValueInfo) []conflictValueInfo {
-	seen := make(map[string]string) // value → best confidence
-	var order []string
-
-	for _, v := range values {
-		if _, exists := seen[v.value]; !exists {
-			order = append(order, v.value)
-			seen[v.value] = v.confidence
-		} else if confidenceRank(v.confidence) < confidenceRank(seen[v.value]) {
-			seen[v.value] = v.confidence
-		}
-	}
-
-	sort.Strings(order)
-	result := make([]conflictValueInfo, len(order))
-	for i, val := range order {
-		result[i] = conflictValueInfo{value: val, confidence: seen[val]}
-	}
-
-	return result
-}
-
-// confidenceRank returns a numeric rank for confidence levels (lower = higher confidence).
-func confidenceRank(c string) int {
-	switch strings.ToLower(c) {
-	case "high":
-		return 0
-	case "medium-high":
-		return 1
-	case "medium":
-		return 2
-	case "low":
-		return 3
-	default:
-		return 4
-	}
+	return issues, nil
 }

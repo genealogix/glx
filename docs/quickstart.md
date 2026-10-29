@@ -55,7 +55,7 @@ glx init
 glx init --single-file
 ```
 
-This creates a directory structure with folders for all [entity types](../specification/4-entity-types/README.md), standard [vocabularies](../specification/4-entity-types/vocabularies.md), a `.gitignore`, and a `README.md`. See the [`glx init` reference](cli/glx_init.md) for the full layout and [Archive Organization](../specification/3-archive-organization.md) for how archives are structured.
+This creates a directory structure with folders for all [entity types](../specification/4-entity-types/README.md), standard [vocabularies](../specification/4-entity-types/vocabularies.md), a `.gitignore`, and a `README.md`, and makes the directory a Git repository so the `.gitignore` takes effect immediately. Nothing is staged or committed — the first commit is yours to shape (see [Step 9](#step-9-version-control-with-git)). Pass `--no-git` to skip repository creation; an archive created inside an existing repository is left to that repository. See the [`glx init` reference](cli/glx_init.md) for the full layout and [Archive Organization](../specification/3-archive-organization.md) for how archives are structured.
 
 ## Step 3: Add Your First Person
 
@@ -201,10 +201,9 @@ This is the complete **evidence chain**: Source → Citation → Assertion. It t
 
 GLX is designed to work naturally with Git for version control and [collaboration](../specification/2-core-concepts.md#collaboration). Track your research:
 
-```bash
-# Initialize git repository (if not already done)
-git init
+`glx init` already made this directory a Git repository (unless you passed `--no-git`), with nothing committed yet:
 
+```bash
 # Check what files you've created
 git status
 

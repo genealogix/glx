@@ -45,7 +45,7 @@ Standard vocabularies provide:
 
 ### Event Types
 
-Defines lifecycle events (birth, death, marriage, adoption), religious events (baptism, confirmation, bar/bat mitzvah), legal events (annulment, probate, will), and migration events (immigration, emigration, naturalization).
+Defines lifecycle events (birth, death, marriage, adoption), religious events (baptism, confirmation, bar/bat mitzvah), legal events (annulment, probate, will, land_transaction), and migration events (immigration, emigration, naturalization).
 
 <YamlFile
   :content="vocabularies['event-types']"
@@ -175,7 +175,7 @@ Defines controlled values for the `gender` person property — self-identified g
 
 ### Search Result Types
 
-Defines the outcome of each search recorded in a [research log](../4-entity-types/research-log.md) (found, not found, inconclusive, partial, not searched). Negative evidence (`not_found`) is a first-class outcome, supporting a "reasonably exhaustive search" per the Genealogical Proof Standard.
+Defines the outcome of each search recorded in a [research log](../4-entity-types/research-log.md) (found, not found, inconclusive, partial, not searched, unavailable, requires visit). Negative evidence (`not_found`) is a first-class outcome, supporting a "reasonably exhaustive search" per the Genealogical Proof Standard.
 
 <YamlFile
   :content="vocabularies['search-result-types']"
@@ -196,6 +196,19 @@ Defines the lifecycle status of a [research log](../4-entity-types/research-log.
 />
 
 **View Source:** [research-log-status-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/research-log-status-types.glx) | **See Also:** [ResearchLog Entity Documentation](../4-entity-types/research-log.md) | [Vocabularies Specification](../4-entity-types/vocabularies.md#research-log-status-types-vocabulary)
+
+---
+
+### Lead Statuses
+
+Defines the status of a lead, a competing hypothesis inside a [research log](../4-entity-types/research-log.md#researchlead) (active, eliminated, confirmed).
+
+<YamlFile
+  :content="vocabularies['lead-statuses']"
+  title="vocabularies/lead-statuses.glx"
+/>
+
+**View Source:** [lead-statuses.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/lead-statuses.glx) | **See Also:** [ResearchLog Entity Documentation](../4-entity-types/research-log.md) | [Vocabularies Specification](../4-entity-types/vocabularies.md#lead-statuses-vocabulary)
 
 ---
 
@@ -304,6 +317,8 @@ Defines standard and custom properties for event entities.
 **Standard Properties Include:**
 
 - `age_at_event` - Age of the person at the time of the event (GEDCOM: AGE)
+- `named` - Participant-level: `false` when the source counts the participant without naming them (head-only census tick marks)
+- `relationship_to_head` - Participant-level: relationship to the head of household as recorded
 - `cause` - Cause of the event, e.g., cause of death (GEDCOM: CAUS)
 - `event_subtype` - Further classification of the event type (GEDCOM: TYPE)
 - `description` - Event description

@@ -15,12 +15,19 @@ Performs comprehensive validation including:
 - YAML syntax correctness
 - Required fields presence
 - Entity ID format validation
-- Cross-reference integrity (directories only)
+- Cross-reference integrity (directories and single-file archives)
 - Duplicate ID detection (directories only)
 - Vocabulary validation (if vocabularies/ exists)
 
 Validation behavior:
-- Single file: Validates file structure only, skips cross-reference checks
+- Single file holding a whole archive: full validation, cross-references
+  included. A file counts as a whole archive when it carries its own
+  vocabularies alongside its entities (what glx join writes) or declares every
+  entity collection (what glx init --single-file scaffolds)
+- Single file holding a fragment of a multi-file archive: structure and the
+  semantic checks that stand on their own; cross-reference and place-hierarchy
+  checks are skipped, because the entities those references name live in the
+  fragment's siblings, which are not being validated
 - Directory: Validates all .glx files with full cross-reference validation
 - No arguments: Validates current directory with full cross-reference validation
 - Several paths (directories, .glx files, or a mix): Loaded together as one
@@ -37,6 +44,9 @@ archive content and are skipped when a directory is walked, including symlinks
 that point into them. A dot-prefixed .glx file named explicitly on the command
 line is validated. An
 archive whose own root directory is dot-named is still validated normally.
+
+Use --show-first-errors N to limit each error list in any validation mode,
+including --stdin (default 10, 0 for all). Warnings are always listed in full.
 
 Use --report to generate a confidence summary showing assertion coverage
 and highlighting unsupported claims. The archive is validated first, so
@@ -58,8 +68,11 @@ glx validate [paths...] [flags]
   # Validate multiple paths (with cross-reference checks)
   glx validate persons/ events/ places/
 
-  # Validate single file (structure only, no cross-reference checks)
+  # Validate a single-file archive (with cross-reference checks)
   glx validate archive.glx
+
+  # Validate one file of a multi-file archive (structure only)
+  glx validate events/event-births.glx
 
   # Generate confidence summary report
   glx validate --report
@@ -69,10 +82,11 @@ glx validate [paths...] [flags]
 ### Options
 
 ```
-      --entity-type string   Entity or vocabulary type for --stdin — an entity singular (person, event, place, source, citation, repository, media, relationship, assertion, research-log, study) or a vocabulary collection key (e.g. event_types, place_types, confidence_levels, participant_roles)
-  -h, --help                 help for validate
-      --report               Generate confidence summary report
-      --stdin                Read one entity as YAML on stdin and validate it against its entity-type schema (no path args)
+      --entity-type string      Entity or vocabulary type for --stdin — an entity singular (person, event, place, source, citation, repository, media, relationship, assertion, research-log, study) or a vocabulary collection key (e.g. event_types, place_types, confidence_levels, participant_roles)
+  -h, --help                    help for validate
+      --report                  Generate confidence summary report
+      --show-first-errors int   Number of validation errors to show (0 for all) (default 10)
+      --stdin                   Read one entity as YAML on stdin and validate it against its entity-type schema (no path args)
 ```
 
 ### Options inherited from parent commands

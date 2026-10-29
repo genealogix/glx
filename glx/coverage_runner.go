@@ -18,58 +18,40 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
-// US federal census years.
-var usCensusYears = []int{
-	1790, 1800, 1810, 1820, 1830, 1840, 1850, 1860, 1870, 1880,
-	1890, 1900, 1910, 1920, 1930, 1940, 1950,
-}
-
-// maxLifespan is the assumed maximum lifespan for capping census suggestions
-// when no death date is known.
-const maxLifespan = 100
-
-// coverageRecord represents one expected record in the coverage checklist.
-type coverageRecord struct {
-	Category    string `json:"category"`
-	Label       string `json:"label"`
-	Found       bool   `json:"found"`
-	SourceRef   string `json:"source_ref,omitempty"`
-	Priority    string `json:"priority,omitempty"`
-	Description string `json:"description,omitempty"`
-}
-
-// coverageResult holds the full coverage output for a person.
-type coverageResult struct {
-	PersonID   string           `json:"person_id"`
-	PersonName string           `json:"person_name"`
-	BirthDate  string           `json:"birth_date,omitempty"`
-	BirthPlace string           `json:"birth_place,omitempty"`
-	DeathDate  string           `json:"death_date,omitempty"`
-	DeathPlace string           `json:"death_place,omitempty"`
-	Records    []coverageRecord `json:"records"`
-	Found      int              `json:"found"`
-	Expected   int              `json:"expected"`
-}
+// Coverage checklist categories, as they appear in the JSON output and as the
+// headings printCoverageText groups by. coverageCategoryCensus shares the
+// literal value of EventTypeCensus.
+const (
+	coverageCategoryCensus = "census"
+	coverageCategoryVital  = "vital"
+	coverageCategoryOther  = "other"
+)
 
 // showCoverage loads an archive and displays source coverage for a person.
-func showCoverage(archivePath, personQuery string, jsonOutput bool) error {
+func showCoverage(archivePath, personQuery, country string, jsonOutput bool) error {
+	if err := applyCensusCountry(country); err != nil {
+		return err
+	}
+
 	archive, err := loadArchiveForCoverage(archivePath)
 	if err != nil {
 		return err
 	}
 
-	personID, person, err := findPersonForCoverage(archive, personQuery)
+	personID, _, err := findPersonForCoverage(archive, personQuery)
 	if err != nil {
 		return err
 	}
 
-	result := buildCoverage(personID, person, archive)
+	result, err := glxlib.BuildCoverage(archive, personID, glxlib.CoverageOptions{CensusCountry: censusCountryFallback})
+	if err != nil {
+		return err
+	}
 
 	if jsonOutput {
 		return printCoverageJSON(result)
@@ -134,469 +116,6 @@ func findPersonForCoverage(archive *glxlib.GLXFile, query string) (string, *glxl
 	}
 }
 
-// buildCoverage generates the coverage checklist for a person.
-func buildCoverage(personID string, person *glxlib.Person, archive *glxlib.GLXFile) *coverageResult {
-	var birthDate, birthPlace, deathDate, deathPlace string
-	if _, birthEvent := glxlib.FindPersonEvent(archive, personID, glxlib.EventTypeBirth); birthEvent != nil {
-		birthDate = string(birthEvent.Date)
-		birthPlace = birthEvent.PlaceID
-	}
-	if _, deathEvent := glxlib.FindPersonEvent(archive, personID, glxlib.EventTypeDeath); deathEvent != nil {
-		deathDate = string(deathEvent.Date)
-		deathPlace = deathEvent.PlaceID
-	}
-
-	birthYear := glxlib.ExtractFirstYear(birthDate)
-	deathYear := deathYearUpperBound(deathDate)
-
-	// Build indexes: what sources/citations/events reference this person
-	personSources := collectPersonSources(personID, archive)
-	personEvents := collectPersonEvents(personID, archive)
-
-	// Infer death year from burial event if death_date is not set
-	if deathYear == 0 {
-		deathYear = inferDeathYearFromEvents(personEvents)
-	}
-
-	var records []coverageRecord
-
-	// Federal census records
-	records = append(records, buildCensusRecords(birthYear, deathYear, personSources, personEvents)...)
-
-	// State census records
-	states := collectPersonStates(person, archive, personEvents)
-	records = append(records, buildStateCensusRecords(birthYear, deathYear, states, personSources, personEvents, archive)...)
-
-	// Vital records
-	records = append(records, buildVitalRecords(personID, archive, personSources, personEvents)...)
-
-	// Other record types — probate is high priority when person has an explicit death
-	// date (not just inferred from burial) and known family
-	probateHighPriority := deathDate != "" && hasFamily(personID, archive)
-	records = append(records, buildOtherRecords(personSources, personEvents, probateHighPriority)...)
-
-	found := 0
-	for _, r := range records {
-		if r.Found {
-			found++
-		}
-	}
-
-	birthPlaceName := coverageResolvePlaceName(birthPlace, archive)
-	deathPlaceName := coverageResolvePlaceName(deathPlace, archive)
-
-	return &coverageResult{
-		PersonID:   personID,
-		PersonName: glxlib.PersonDisplayName(person),
-		BirthDate:  birthDate,
-		BirthPlace: birthPlaceName,
-		DeathDate:  deathDate,
-		DeathPlace: deathPlaceName,
-		Records:    records,
-		Found:      found,
-		Expected:   len(records),
-	}
-}
-
-// personSourceInfo tracks a source or citation found for a person.
-type personSourceInfo struct {
-	Ref       string // source or citation ID
-	Type      string // source type
-	Title     string
-	EventType string // if found via an event
-	PlaceID   string // place reference (events only)
-	Year      int
-}
-
-// collectPersonSources gathers all sources and citations that reference a person
-// via assertions.
-func collectPersonSources(personID string, archive *glxlib.GLXFile) []personSourceInfo {
-	var sources []personSourceInfo
-	seen := make(map[string]bool)
-
-	// From assertions about this person
-	for _, assertion := range archive.Assertions {
-		if assertion == nil || assertion.Subject.ID() != personID {
-			continue
-		}
-		for _, citID := range assertion.Citations {
-			if seen[citID] {
-				continue
-			}
-			seen[citID] = true
-			cit := archive.Citations[citID]
-			if cit == nil {
-				continue
-			}
-			src := archive.Sources[cit.SourceID]
-			info := personSourceInfo{Ref: citID}
-			if src != nil {
-				info.Type = src.Type
-				info.Title = src.Title
-				info.Year = glxlib.ExtractFirstYear(string(src.Date))
-			}
-			sources = append(sources, info)
-		}
-		for _, srcID := range assertion.Sources {
-			if seen[srcID] {
-				continue
-			}
-			seen[srcID] = true
-			src := archive.Sources[srcID]
-			if src == nil {
-				continue
-			}
-			sources = append(sources, personSourceInfo{
-				Ref:   srcID,
-				Type:  src.Type,
-				Title: src.Title,
-				Year:  glxlib.ExtractFirstYear(string(src.Date)),
-			})
-		}
-	}
-
-	return sources
-}
-
-// collectPersonEvents gathers all events this person participates in.
-func collectPersonEvents(personID string, archive *glxlib.GLXFile) []personSourceInfo {
-	var events []personSourceInfo
-
-	for eventID, event := range archive.Events {
-		if event == nil {
-			continue
-		}
-		for _, p := range event.Participants {
-			if p.Person == personID {
-				events = append(events, personSourceInfo{
-					Ref:       eventID,
-					EventType: event.Type,
-					Year:      glxlib.ExtractFirstYear(string(event.Date)),
-					Title:     event.Title,
-					PlaceID:   event.PlaceID,
-				})
-
-				break
-			}
-		}
-	}
-
-	return events
-}
-
-// buildCensusRecords generates expected census records based on birth/death years.
-func buildCensusRecords(birthYear, deathYear int, sources, events []personSourceInfo) []coverageRecord {
-	if birthYear == 0 {
-		return nil
-	}
-
-	// Cap at max lifespan when no death year is known
-	upperBound := deathYear
-	if upperBound == 0 {
-		upperBound = birthYear + maxLifespan
-	}
-
-	var records []coverageRecord
-
-	for _, year := range usCensusYears {
-		if year < birthYear {
-			continue
-		}
-		if year > upperBound {
-			break
-		}
-		// Approximate age at this census year (may be 0 if census year == birth year)
-		age := year - birthYear
-
-		label := fmt.Sprintf("%d US Census (age ~%d)", year, age)
-
-		rec := coverageRecord{
-			Category: "census",
-			Label:    label,
-		}
-
-		// 1890 census was mostly destroyed in a 1921 fire
-		if year == 1890 {
-			rec.Description = "mostly destroyed (1921 fire)"
-		}
-
-		// Check if we have this census
-		ref := findCensusMatch(year, sources, events)
-		if ref != "" {
-			rec.Found = true
-			rec.SourceRef = ref
-		}
-
-		// Census-specific annotations (always added, even when found)
-		rec.Description = appendCensusAnnotation(rec.Description, year, age)
-
-		// Priority annotations for missing records
-		if !rec.Found {
-			if year == 1880 {
-				rec.Priority = "high"
-			} else if age >= 14 && age <= 25 {
-				rec.Priority = "high"
-				// Avoid duplicating parents-household note when 1850 minor annotation already applies
-				if year != 1850 || age >= 18 {
-					rec.Description = appendDescription(rec.Description, "may show in parents' household")
-				}
-			}
-		}
-
-		records = append(records, rec)
-	}
-
-	return records
-}
-
-// findCensusMatch checks if a census for a given year exists in sources or events.
-func findCensusMatch(year int, sources, events []personSourceInfo) string {
-	for _, e := range events {
-		if e.EventType == glxlib.EventTypeCensus && e.Year == year {
-			return e.Ref
-		}
-	}
-	for _, s := range sources {
-		if s.Type == glxlib.SourceTypeCensus && s.Year == year {
-			return s.Ref
-		}
-		// Also check title for census year mentions
-		if s.Type == glxlib.SourceTypeCensus && strings.Contains(s.Title, strconv.Itoa(year)) {
-			return s.Ref
-		}
-	}
-
-	return ""
-}
-
-// buildVitalRecords generates expected vital records.
-func buildVitalRecords(personID string, archive *glxlib.GLXFile, sources, events []personSourceInfo) []coverageRecord {
-	var records []coverageRecord
-
-	// Birth record
-	birthFound := hasEventType(events, glxlib.EventTypeBirth) || hasSourceType(sources, glxlib.SourceTypeVitalRecord, "birth")
-	records = append(records, coverageRecord{
-		Category:  "vital",
-		Label:     "Birth record",
-		Found:     birthFound,
-		SourceRef: findEventRef(events, glxlib.EventTypeBirth),
-		Priority:  boolPriority(!birthFound, "high"),
-	})
-
-	// Death record
-	deathFound := hasEventType(events, glxlib.EventTypeDeath) || hasSourceType(sources, glxlib.SourceTypeVitalRecord, "death")
-	records = append(records, coverageRecord{
-		Category:  "vital",
-		Label:     "Death record",
-		Found:     deathFound,
-		SourceRef: findEventRef(events, glxlib.EventTypeDeath),
-		Priority:  boolPriority(!deathFound, "medium"),
-	})
-
-	// Marriage records — check relationships for spouse
-	marriageRecords := buildMarriageRecords(personID, archive, events)
-	records = append(records, marriageRecords...)
-
-	return records
-}
-
-// buildMarriageRecords checks for marriage events linked to spouse relationships.
-func buildMarriageRecords(personID string, archive *glxlib.GLXFile, events []personSourceInfo) []coverageRecord {
-	var records []coverageRecord
-
-	// Find spouse relationships
-	for _, rel := range archive.Relationships {
-		if rel == nil {
-			continue
-		}
-		if !glxlib.IsCoupleRelationshipType(rel.Type) {
-			continue
-		}
-
-		var spouseID string
-		isParticipant := false
-		for _, p := range rel.Participants {
-			if p.Person == personID {
-				isParticipant = true
-			} else {
-				spouseID = p.Person
-			}
-		}
-		if !isParticipant {
-			continue
-		}
-
-		spouseName := ""
-		if spouse, ok := archive.Persons[spouseID]; ok && spouse != nil {
-			spouseName = glxlib.PersonDisplayName(spouse)
-		}
-		if spouseName == "" {
-			spouseName = spouseID
-		}
-
-		label := "Marriage record — " + spouseName
-
-		// Check if there's a marriage event for this relationship
-		found := false
-		ref := ""
-		if rel.StartEvent != "" {
-			if ev, ok := archive.Events[rel.StartEvent]; ok && ev != nil && ev.Type == glxlib.EventTypeMarriage {
-				found = true
-				ref = rel.StartEvent
-			}
-		}
-		if !found {
-			// Fall back to checking for a marriage event that involves both this person and this spouse
-			for eventID, ev := range archive.Events {
-				if ev == nil || ev.Type != glxlib.EventTypeMarriage {
-					continue
-				}
-				hasPerson := false
-				hasSpouse := false
-				for _, ep := range ev.Participants {
-					if ep.Person == personID {
-						hasPerson = true
-					}
-					if ep.Person == spouseID {
-						hasSpouse = true
-					}
-				}
-				if hasPerson && hasSpouse {
-					found = true
-					ref = eventID
-
-					break
-				}
-			}
-		}
-
-		rec := coverageRecord{
-			Category:  "vital",
-			Label:     label,
-			Found:     found,
-			SourceRef: ref,
-			Priority:  boolPriority(!found, "medium"),
-		}
-		records = append(records, rec)
-	}
-
-	return records
-}
-
-// buildOtherRecords generates records for probate, land, military, church.
-// When probateHighPriority is true (person died with known family), probate
-// is elevated to HIGH priority because probate records name heirs.
-func buildOtherRecords(sources, events []personSourceInfo, probateHighPriority bool) []coverageRecord {
-	var records []coverageRecord
-
-	// Probate/will
-	probateFound := hasEventType(events, glxlib.EventTypeProbate) || hasEventType(events, glxlib.EventTypeWill) ||
-		hasSourceType(sources, glxlib.SourceTypeProbate, "")
-	rec := coverageRecord{
-		Category:  "other",
-		Label:     "Probate/will",
-		Found:     probateFound,
-		SourceRef: findEventRef(events, glxlib.EventTypeProbate),
-	}
-	if !probateFound && probateHighPriority {
-		rec.Priority = "high"
-		rec.Description = "often names heirs (children) and surviving spouse"
-	}
-	records = append(records, rec)
-
-	// Land records
-	landFound := hasSourceType(sources, glxlib.SourceTypeLand, "")
-	records = append(records, coverageRecord{
-		Category:  "other",
-		Label:     "Land records",
-		Found:     landFound,
-		SourceRef: findSourceRef(sources, glxlib.SourceTypeLand),
-	})
-
-	// Military records
-	militaryFound := hasSourceType(sources, glxlib.SourceTypeMilitary, "")
-	records = append(records, coverageRecord{
-		Category:  "other",
-		Label:     "Military records",
-		Found:     militaryFound,
-		SourceRef: findSourceRef(sources, glxlib.SourceTypeMilitary),
-	})
-
-	// Church records
-	churchFound := hasSourceType(sources, glxlib.SourceTypeChurchRegister, "") ||
-		hasEventType(events, glxlib.EventTypeBaptism) || hasEventType(events, glxlib.EventTypeChristening)
-	records = append(records, coverageRecord{
-		Category:  "other",
-		Label:     "Church records",
-		Found:     churchFound,
-		SourceRef: findEventRef(events, glxlib.EventTypeBaptism),
-	})
-
-	return records
-}
-
-// coverageResolvePlaceName returns the place name for a place ID, or the raw string.
-func coverageResolvePlaceName(placeRef string, archive *glxlib.GLXFile) string {
-	if placeRef == "" {
-		return ""
-	}
-	if place, ok := archive.Places[placeRef]; ok && place != nil {
-		return place.Name
-	}
-
-	return placeRef
-}
-
-func hasEventType(events []personSourceInfo, eventType string) bool {
-	for _, e := range events {
-		if e.EventType == eventType {
-			return true
-		}
-	}
-
-	return false
-}
-
-func hasSourceType(sources []personSourceInfo, sourceType, titleKeyword string) bool {
-	for _, s := range sources {
-		if s.Type == sourceType {
-			if titleKeyword == "" || strings.Contains(strings.ToLower(s.Title), titleKeyword) {
-				return true
-			}
-		}
-	}
-
-	return false
-}
-
-func findEventRef(events []personSourceInfo, eventType string) string {
-	for _, e := range events {
-		if e.EventType == eventType {
-			return e.Ref
-		}
-	}
-
-	return ""
-}
-
-func findSourceRef(sources []personSourceInfo, sourceType string) string {
-	for _, s := range sources {
-		if s.Type == sourceType {
-			return s.Ref
-		}
-	}
-
-	return ""
-}
-
-func boolPriority(condition bool, priority string) string {
-	if condition {
-		return priority
-	}
-
-	return ""
-}
-
 // printCoverageText prints coverage in a human-readable format.
 func printCoverageText(result *coverageResult) {
 	name := result.PersonName
@@ -633,9 +152,9 @@ func printCoverageText(result *coverageResult) {
 		key   string
 		label string
 	}{
-		{"census", "Census Records"},
-		{"vital", "Vital Records"},
-		{"other", "Other Records"},
+		{coverageCategoryCensus, "Census Records"},
+		{coverageCategoryVital, "Vital Records"},
+		{coverageCategoryOther, "Other Records"},
 	}
 
 	for _, cat := range categories {
@@ -676,6 +195,28 @@ func printCoverageText(result *coverageResult) {
 
 	fmt.Printf("\n  Coverage: %d of %d expected records found (%d%%)\n",
 		result.Found, result.Expected, coveragePercent(result.Found, result.Expected))
+	printCoverageAppearances(result.AppearsIn)
+}
+
+// printCoverageAppearances lists the other people's records the person
+// appears in, which the checklist above does not count.
+func printCoverageAppearances(appearances []coverageAppearance) {
+	if len(appearances) == 0 {
+		return
+	}
+
+	fmt.Println("\n  Appears in (other people's records, not counted above):")
+	for _, a := range appearances {
+		line := "    " + a.Label
+		if a.Role != "" {
+			line += " (" + a.Role + ")"
+		}
+		line += " -- " + a.EventID
+		if a.Date != "" {
+			line += ", " + a.Date
+		}
+		fmt.Println(line)
+	}
 }
 
 func coveragePercent(found, expected int) int {
@@ -684,88 +225,6 @@ func coveragePercent(found, expected int) int {
 	}
 
 	return (found * 100) / expected
-}
-
-// inferDeathYearFromEvents returns a death year inferred from burial events.
-// When multiple burial events exist, returns the earliest year.
-// Returns 0 if no burial event with a date is found.
-func inferDeathYearFromEvents(events []personSourceInfo) int {
-	earliest := 0
-	for _, e := range events {
-		if e.EventType == glxlib.EventTypeBurial && e.Year > 0 {
-			if earliest == 0 || e.Year < earliest {
-				earliest = e.Year
-			}
-		}
-	}
-
-	return earliest
-}
-
-// appendDescription appends text to an existing description, using "; " as separator.
-func appendDescription(existing, addition string) string {
-	if existing == "" {
-		return addition
-	}
-
-	return existing + "; " + addition
-}
-
-// appendCensusAnnotation adds research-relevant notes for specific census years.
-func appendCensusAnnotation(desc string, year, age int) string {
-	switch year {
-	case 1850:
-		desc = appendDescription(desc, "first census to list individual names")
-		if age < 18 {
-			desc = appendDescription(desc, "likely in parents' household")
-		}
-	case 1880:
-		desc = appendDescription(desc, "first census to list parents' birthplaces")
-	}
-
-	return desc
-}
-
-// hasFamily returns true if the person has any spouse or child relationships.
-func hasFamily(personID string, archive *glxlib.GLXFile) bool {
-	for _, rel := range archive.Relationships {
-		if rel == nil {
-			continue
-		}
-
-		isParticipant := false
-		for _, p := range rel.Participants {
-			if p.Person == personID {
-				isParticipant = true
-
-				break
-			}
-		}
-		if !isParticipant {
-			continue
-		}
-
-		// Check for spouse/partner relationship — require spouse role to avoid
-		// counting witnesses/officiants as family
-		if glxlib.IsCoupleRelationshipType(rel.Type) {
-			for _, p := range rel.Participants {
-				if p.Person == personID && p.Role == glxlib.ParticipantRoleSpouse {
-					return true
-				}
-			}
-		}
-
-		// Check for parent-child where this person is the parent
-		if isParentChildType(rel.Type) {
-			for _, p := range rel.Participants {
-				if p.Person == personID && p.Role == glxlib.ParticipantRoleParent {
-					return true
-				}
-			}
-		}
-	}
-
-	return false
 }
 
 // printCoverageJSON outputs the result as JSON.
@@ -778,3 +237,9 @@ func printCoverageJSON(result *coverageResult) error {
 
 	return nil
 }
+
+type (
+	coverageRecord     = glxlib.CoverageRecord
+	coverageResult     = glxlib.CoverageResult
+	coverageAppearance = glxlib.CoverageAppearance
+)

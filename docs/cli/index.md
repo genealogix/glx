@@ -43,7 +43,7 @@ For installation instructions, see [`glx/README.md`](../../glx/README.md). For a
 
 - [`glx census`](glx_census.md) — census tooling (see subcommands)
 - [`glx census add`](glx_census_add.md) — generate entities from a census template
-- [`glx add`](glx_add.md) — create person, place, event, source, citation, relationship, or assertion entities from flags
+- [`glx add`](glx_add.md) — create entities (person, place, event, source, citation, repository, relationship, assertion, and more) from flags; `glx add --help` lists every entity type
 - [`glx link`](glx_link.md) — create a FamilySearch citation (and source/repository scaffolding) from an ARK URL
 
 ### Analysis
@@ -51,11 +51,12 @@ For installation instructions, see [`glx/README.md`](../../glx/README.md). For a
 - [`glx stats`](glx_stats.md) — entity-count and confidence dashboard
 - [`glx places`](glx_places.md) — place data quality issues
 - [`glx cluster`](glx_cluster.md) — FAN-club analysis
+- [`glx households`](glx_households.md) — reconstruct census households for a person or a place
 - [`glx analyze`](glx_analyze.md) — gap, conflict, and suggestion analysis
 - [`glx duplicates`](glx_duplicates.md) — detect duplicate entities
 - [`glx coverage`](glx_coverage.md) — research coverage report
 - [`glx diff`](glx_diff.md) — diff two archives
-- [`glx evidence`](glx_evidence.md) — lay out every assertion for one person+property side-by-side
+- [`glx evidence`](glx_evidence.md) — lay out every assertion for one subject+property side-by-side
 - [`glx proof`](glx_proof.md) — compile a Genealogical Proof Standard summary for a research question
 - [`glx migrations`](glx_migrations.md) — trace a person's geographic movement over time
 

@@ -55,29 +55,36 @@ glx stats
 
 ```text
 Entity counts:
-  Persons:       791
-  Events:        961
+  Persons:       792
+  Events:        986
   Relationships: 822
-  Places:        108
-  Sources:       9
-  Citations:     247
+  Places:        107
+  Sources:       11
+  Citations:     269
   Repositories:  4
   Media:         0
-  Assertions:    1808
+  Assertions:    1929
 
 Assertion confidence:
-  high         1406  ( 77.8%)
-  medium        365  ( 20.2%)
-  low            37  (  2.0%)
+  high         1509  ( 78.2%)
+  medium        381  ( 19.8%)
+  low            39  (  2.0%)
 
-Entity coverage (referenced by assertions):
-  Persons         623/791  (78.8%)
-  Events          55/961  (5.7%)
+Direct assertion references (entity is an assertion's subject):
+  Persons         631/792  (79.7%)
+  Events          126/986  (12.8%)
   Relationships   6/822  (0.7%)
-  Places          0/108  (0.0%)
+  Places          0/107  (0.0%)
+
+Evidence coverage (assertion reachability):
+  Includes unsourced or disproven assertions and place ancestors; percentages do not measure sourcing or proof.
+  Persons         653/792  (82.4%)
+  Events          126/986  (12.8%)
+  Relationships   6/822  (0.7%)
+  Places          44/107  (41.1%)
 ```
 
-This tells you the archive has nearly 800 persons with 1,800+ assertions, and that 78% of persons are backed by at least one assertion. The coverage gaps in events and places suggest areas for future research.
+This tells you the archive has nearly 800 persons with 1,900+ assertions. The two coverage blocks answer different questions. "Direct assertion references" counts only entities an assertion names as its subject. "Evidence coverage" measures assertion reachability: a person is covered when an assertion names them as a participant or targets an event or relationship they take part in, and a place is covered when an assertion names it as a value (an event's `place`, a `residence`), when an asserted event happens there, or when it contains such a place. Every assertion counts, including unsourced or disproven assertions. Place ancestors count as gazetteer scaffolding, so reaching a county also reaches its state and country without independent assertions about them. These percentages measure assertion reach rather than sourcing or proof. Here no assertion targets a place directly, yet 41% of places are reached through asserted events. The remaining gaps in events and places suggest areas for future research.
 
 ### `glx places` — Analyze place data quality
 
@@ -147,6 +154,35 @@ glx analyze --check consistency
 # JSON output for tooling
 glx analyze --format json
 ```
+
+#### Which censuses get suggested
+
+Census suggestions are tied to the country a person's places name. `glx`
+walks each event's place up its `parent` chain to the first place with
+`type: country`, and suggests that country's census years — US federal
+censuses for someone in Illinois, UK censuses for someone in Bath. A person
+whose places span a move gets both countries' schedules.
+
+If the country has no schedule in `glx` (the table currently covers the
+United States, the United Kingdom, Canada and Ireland), no census is
+suggested for that person. Suggesting the 1790 US census to someone who
+never left Mecklenburg is worse than suggesting nothing.
+
+When nothing in the archive names a country for a person — place hierarchies
+that stop at a city, say — no census is suggested either. `glx` does not guess
+a country from silence. Give it one with `--country` when you know where the
+archive is rooted:
+
+```bash
+# Assume UK censuses where the archive names no country
+glx analyze --country "United Kingdom"
+glx coverage "Jane Webb" --country "United Kingdom"
+```
+
+Adding a `type: country` place to the hierarchy is the durable fix, since it
+also tells everyone else reading the archive where these people lived.
+
+The same rules govern the census rows in `glx coverage`.
 
 ### `glx proof` — Structured proof summary for a research question
 
@@ -392,7 +428,7 @@ glx timeline "Eddard Stark" --no-family
 
 ### `glx migrations` — Geographic movement
 
-Trace where a person was over time and when they moved. Observations come from the person's events, their children's birth events (a child's birthplace is evidence of the parent's residence), and `residence` property values; each change of region is reported as a movement:
+Trace where a person was over time and when they moved. Observations come from the person's events, their children's birth events (a child's birthplace is evidence of the parent's residence), and `residence` property values; each change of place is reported as a movement, named at the highest level where the two places differ (two states, or two villages of one district). A parent named on a child's burial is shown but not counted, since the burial places the child:
 
 ```bash
 glx migrations "Eddard Stark"
@@ -443,7 +479,7 @@ glx summary "Eddard Stark"
   Siblings:         Benjen Stark, Brandon Stark, Lyanna Stark
 
 ── Relationships ─────────────────────────────────
-  Hand Of The King: Robert Baratheon I
+  King:             Robert Baratheon I
   Ward:             Theon Greyjoy
 
 ── Life History ──────────────────────────────────
@@ -576,7 +612,7 @@ When you hit a brickwall, the FAN (Friends, Associates, Neighbors) club techniqu
 glx cluster person-eddard-stark
 ```
 
-Associates are scored by how they connect: census co-residence is worth 3 points, shared event participation 2 points, and place overlap 1 point. The stronger the connection, the higher the score.
+Associates are scored by how they connect: census co-residence is worth 3 points, a census page neighbor or shared event participation 2 points, and place overlap 1 point. The stronger the connection, the higher the score. Page neighbors come from the `neighbors` list on census events (see `glx households` under Adding Census Records below); only neighbors linked to a person can be scored.
 
 Narrow the results to a specific place and time period:
 
@@ -595,6 +631,34 @@ glx cluster person-eddard-stark --json
 ::: tip
 The FAN club technique is most powerful when combined with `glx timeline` and `glx query assertions`. Find the associates, then check the timeline and evidence chains to understand *how* they were connected.
 :::
+
+## Logging Research
+
+### `glx add research-log`, `glx add search`, `glx add study` — Record searches as you go
+
+A [research log](../../specification/4-entity-types/research-log.md) records every search you make, including the ones that found nothing. That negative evidence is what shows a "reasonably exhaustive search", and it stops you repeating a fruitless query next session. Open a log once, then append one search per lookup:
+
+```bash
+# Open a log about a person
+glx add research-log --id rl-jon-snow-mother --subject-person person-jon-snow \
+  --objective "Identify Jon Snow's mother" --status in_progress
+
+# Append searches as you make them
+glx add search --log rl-jon-snow-mother --collection "Winterfell household rolls" \
+  --query "Snow, 280-284" --result not_found --date 2026-09-17
+
+glx add search --log rl-jon-snow-mother --collection "Tower of Joy accounts" \
+  --result not_searched --note "Next session"
+```
+
+Each `add search` validates `--result` against the archive's `search_result_types` vocabulary, checks that `--source`, `--repository` and `--citation` exist, and rewrites only the log's own file. A `--citation` is also rolled up into the log's `citations` list.
+
+A [study](../../specification/4-entity-types/study.md) sets the scope of a larger project:
+
+```bash
+glx add study --title "Stark household, 260-300 AC" --type family_reconstruction \
+  --status active --place place-winterfell --date-range "FROM 260 TO 300"
+```
 
 ## Adding Census Records
 
@@ -651,7 +715,12 @@ Census Import Summary
 (dry run — no files written)
 ```
 
-Notice it matched Rickard and Lyarra Stark to existing archive persons by name — no `person_id` needed. When you're satisfied, run without `--dry-run`:
+Notice it matched Rickard and Lyarra Stark to existing archive persons by name — no `person_id` needed.
+
+`census.source.title` is optional. Left out, the title is built from the year,
+the `census.type` and the location — `type: federal` gives "1860 Federal Census
+— Marion County, Florida", and no type at all gives "1860 Census — …". The
+country is never assumed: put it in `source.title` when you want it named. When you're satisfied, run without `--dry-run`:
 
 ```bash
 glx census add --from 1860-census-stark.yaml --archive .
@@ -668,8 +737,68 @@ The generated assertions include:
 Each assertion cites the census citation, building a proper evidence chain from source to conclusion.
 
 ::: tip
-Use the `fan.notes` field to record neighbors — the FAN (Friends, Associates, Neighbors) club technique pairs well with `glx cluster` for brickwall research.
+Use `household.neighbors` to record the households enumerated next to this one (`name`, optional `person`, `position` such as `previous_household`, `page`, `line`). They are written to the census event's `neighbors` list, shown by `glx households --neighbors`, and counted by `glx cluster` when linked to a person. The older free-text `fan.notes` field still works and becomes an event note.
 :::
+
+#### Head-only schedules (1790–1840)
+
+Before 1850 the US census named only the head of household; everyone else is a tick mark in an age-and-sex column. Record the columns under `household.tally`, and add any household member you have identified with a tick mark with `named: false`:
+
+```yaml
+census:
+  year: 1820
+  type: federal
+  location:
+    place_id: place-wythe-county-va
+  household:
+    members:
+      - name: "James Little"
+        person_id: person-james-little
+        role: principal
+      - name: "Elizabeth Starr"
+        person_id: person-elizabeth-starr
+        named: false
+      - name: "Mary Little"
+        person_id: person-mary-little
+        named: false
+    tally:
+      - { sex: male, age_from: 45, count: 1, status: free white }
+      - { sex: female, age_from: 45, count: 1, status: free white }
+      - { sex: female, age_from: 10, age_to: 15, count: 2, status: free white }
+      - { count: 1, status: engaged in agriculture }
+```
+
+Bracket bounds are inclusive: "of 10 and under 16" is `age_from: 10, age_to: 15`; leave out `age_from` for "under N" and `age_to` for "N and upwards". The first member must be named. A `named: false` member gets role `household_member` and only a low-confidence residence assertion, since the schedule states nothing about them individually (age, birthplace, occupation, and properties are rejected for such a member; the bracket goes in the tally). They count as found in that census: `glx analyze` stops suggesting it and `glx coverage` ticks it.
+
+### `glx households` — Reconstruct census households
+
+`households` shows each census household a person appears in, head first and the rest by age:
+
+```bash
+glx households person-mary-little
+```
+
+```text
+Households for Mary Little (person-mary-little):
+
+  1820 Census — Little Household — Wythe County, Virginia  [event-1820-census-little]
+    James Little (person-james-little) — head
+    Elizabeth Starr (person-elizabeth-starr) — household member, counted, not named
+    Mary Little (person-mary-little) — household member, counted, not named
+    Tally (as enumerated):
+      1 male 45+ (free white)
+      1 female 45+ (free white)
+      2 female 10–15 (free white)
+      1 engaged in agriculture
+```
+
+List every household enumerated at a place (including places inside it) in one year, add the page neighbors, or get JSON:
+
+```bash
+glx households --place place-wythe-county-va --year 1820
+glx households person-mary-little --neighbors
+glx households person-mary-little --format json
+```
 
 ## Format Conversion
 

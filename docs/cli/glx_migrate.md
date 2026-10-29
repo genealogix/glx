@@ -56,7 +56,7 @@ year remains recoverable from the event's `date` field, where it
 belongs (#1032).
 
 ```
-glx migrate [archive] [flags]
+glx migrate <archive> [flags]
 ```
 
 ### Examples

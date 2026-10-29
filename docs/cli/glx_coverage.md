@@ -16,9 +16,22 @@ showing which census records, vital records, and other documents have been found
 versus which are still missing.
 
 Record categories:
-  - Census: US federal census records the person should appear in
+  - Census: national and state census records the person should appear in,
+    on the schedules of the countries their places name
   - Vital: Birth, death, and marriage records
   - Other: Probate, land, military, and church records
+
+A record counts as found only when evidence backs it: a source about the person,
+or an event whose assertion references a citation, source, or media object.
+An event on its own is a conclusion, not a record, so it is reported without
+counting toward the score -- an estimated birth date reckoned back from a death
+entry does not mean a birth record exists.
+
+Only the person's own records count: an event in which they are the principal
+or subject (or bride, groom, decedent, ...), or a census on which they are a
+member of the household. Events in which they appear in another role -- a
+witness, godparent, legatee, grantor -- are someone else's record; they are
+listed separately under "Appears in" and do not satisfy a category.
 
 Missing high-priority records are flagged to guide research efforts.
 
@@ -42,12 +55,16 @@ glx coverage <person> [flags]
 
   # Specify archive path
   glx coverage "Jane Miller" --archive my-archive
+
+  # Assume UK censuses where the archive names no country
+  glx coverage "Jane Miller" --country "United Kingdom"
 ```
 
 ### Options
 
 ```
   -a, --archive string   Archive path (directory or single file) (default ".")
+      --country string   Country whose census schedule to assume for persons whose places name no country (default "none", which suggests no census records)
   -h, --help             help for coverage
       --json             Output as JSON
 ```

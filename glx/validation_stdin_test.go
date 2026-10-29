@@ -69,7 +69,7 @@ func TestRunValidateStdinReportExclusive(t *testing.T) {
 func TestValidateStdinEntity(t *testing.T) {
 	// valid entity → success message, no error.
 	s, out, _ := newTestStreams()
-	if err := validateStdinEntity(s, "person", nil, strings.NewReader("properties: {}")); err != nil {
+	if err := validateStdinEntity(s, "person", nil, strings.NewReader("properties: {}"), defaultShowFirstErrors); err != nil {
 		t.Fatalf("valid person: unexpected error %v", err)
 	}
 	if !strings.Contains(out.String(), "structurally valid") {
@@ -78,7 +78,7 @@ func TestValidateStdinEntity(t *testing.T) {
 
 	// invalid entity → ErrStructuralValidationFailed + error output.
 	s, _, errOut := newTestStreams()
-	if err := validateStdinEntity(s, "person", nil, strings.NewReader("bogus_field: 1")); err == nil {
+	if err := validateStdinEntity(s, "person", nil, strings.NewReader("bogus_field: 1"), defaultShowFirstErrors); err == nil {
 		t.Error("expected error for invalid person")
 	}
 	if !strings.Contains(errOut.String(), "structural error") {
@@ -87,13 +87,13 @@ func TestValidateStdinEntity(t *testing.T) {
 
 	// positional args are rejected with --stdin.
 	s, _, _ = newTestStreams()
-	if err := validateStdinEntity(s, "person", []string{"file.glx"}, strings.NewReader("")); err == nil {
+	if err := validateStdinEntity(s, "person", []string{"file.glx"}, strings.NewReader(""), defaultShowFirstErrors); err == nil {
 		t.Error("expected error when path args are passed with --stdin")
 	}
 
 	// unknown entity-type is rejected.
 	s, _, _ = newTestStreams()
-	if err := validateStdinEntity(s, "nope", nil, strings.NewReader("x: 1")); err == nil {
+	if err := validateStdinEntity(s, "nope", nil, strings.NewReader("x: 1"), defaultShowFirstErrors); err == nil {
 		t.Error("expected error for unknown entity-type")
 	}
 }
@@ -151,6 +151,11 @@ func TestValidateEntitySnippet(t *testing.T) {
 		{"valid place type, place-only category", "place_types", "label: City\ncategory: administrative", false, false},
 		{"event type rejects place category", "event_types", "label: Birth\ncategory: administrative", false, true},
 		{"vocab missing required label", "event_types", "description: no label", false, true},
+		{"role omitted contexts", "participant_roles", "label: Custom", false, false},
+		{"role empty contexts", "participant_roles", "label: Custom\napplies_to: []", false, false},
+		{"role both contexts", "participant_roles", "label: Custom\napplies_to: [event, relationship]", false, false},
+		{"role unknown context", "participant_roles", "label: Custom\napplies_to: [person]", false, true},
+		{"role duplicate contexts", "participant_roles", "label: Custom\napplies_to: [event, event]", false, true},
 		{"unknown entity-type", "nonsense", "x: 1", true, false},
 		{"blank entity-type", "", "x: 1", true, false},
 		{"empty stdin", "person", "   \n  ", true, false},

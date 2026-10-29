@@ -22,7 +22,11 @@ import (
 
 // Command validation errors
 var (
+	ErrInvalidApproximation       = glxlib.ErrInvalidApproximation
+	ErrMissingArguments           = errors.New("missing required argument(s)")
+	ErrTooManyArguments           = errors.New("too many arguments")
 	ErrMediaFileNotFound          = errors.New("file not found")
+	ErrUnknownCensusCountry       = glxlib.ErrUnknownCensusCountry
 	ErrValidationWithErrors       = errors.New("validation failed with errors")
 	ErrInvalidFormat              = errors.New("invalid format (must be 'single' or 'multi')")
 	ErrGEDCOMFileNotFound         = errors.New("GEDCOM file not found")
@@ -33,6 +37,7 @@ var (
 	ErrInputFileNotFound          = errors.New("input file not found")
 	ErrOutputDirectoryExists      = errors.New("output directory already exists (please remove it first)")
 	ErrStructuralValidationFailed = errors.New("structural validation failed")
+	ErrNothingToValidate          = errors.New("nothing to validate")
 	ErrValidationFailed           = errors.New("validation failed")
 	ErrYAMLNotObject              = errors.New("YAML document is not an object")
 	ErrPathNotFound               = errors.New("path not found")
@@ -44,6 +49,7 @@ var (
 	ErrInvalidExportFormat        = errors.New("invalid GEDCOM version format")
 	ErrInputNotFound              = errors.New("input path not found")
 	ErrStaleBackupForeignFile     = errors.New("stale backup contains non-archive file from a previous failed run; move or inspect it before retrying")
+	ErrInterruptedSwap            = errors.New("a previous write to this archive was interrupted mid-swap; the backup may hold the only copy of some entities")
 	ErrPreservedEntryCollision    = errors.New("an entry the loader skips collides with a file the archive writer produced; the backup is retained")
 	ErrAmbiguousMediaFilesDirs    = errors.New("archive holds more than one media/files directory differing only by case; merge them before writing")
 	ErrTopLevelGLXFile            = errors.New("archive has a top-level .glx file whose entities the multi-file writer would duplicate; move them into entity directories before writing")
@@ -63,6 +69,12 @@ var (
 	ErrGEDZIPEntryTooLarge        = errors.New("gedzip archive entry exceeds the per-entry decompressed size limit")
 	ErrGEDZIPUnsupportedAlgorithm = glxlib.ErrGEDZIPUnsupportedAlgorithm
 
+	// Person lookup errors, shared by the commands that take a person argument.
+	// ErrNoPersonMatch is wrapped with the unresolved query so callers that
+	// accept more than a person (e.g. `glx evidence`) can recognize the
+	// no-match case and report their own wider vocabulary instead.
+	ErrNoPersonMatch = errors.New("no person found matching")
+
 	// `glx add` errors
 	ErrAddEntityExists                     = errors.New("entity ID already exists (use --force to overwrite)")
 	ErrAddInvalidID                        = errors.New("entity ID is not a safe filename")
@@ -79,14 +91,40 @@ var (
 	ErrAddRelationshipParticipantsRequired = errors.New("a relationship needs at least two participants (use --parent/--child or --participant)")
 	ErrAddPlaceNameRequired                = errors.New("--name is required")
 	ErrAddEventTypeRequired                = errors.New("--type is required")
+	ErrAddEventParticipantsRequired        = errors.New("an event needs at least one participant (use --principal or --participant)")
+	ErrAddDateInvalid                      = errors.New("not a valid GLX date")
 	ErrAddRepositoryNameRequired           = errors.New("--name is required")
 	ErrAddSourceTitleRequired              = errors.New("--title is required")
 	ErrAddCitationSourceRequired           = errors.New("--source is required")
 	ErrAddCitationDistinguisherRequired    = errors.New("at least one of --url, --locator, --text-from-source, or --id is required (otherwise citation IDs would not be idempotent)")
 	ErrAddRelationshipTypeRequired         = errors.New("--type is required")
+	ErrAddResearchLogDescriptorRequired    = errors.New("at least one of --title, --subject-*, --objective, or --id is required")
+	ErrAddSearchLogRequired                = errors.New("--log is required")
+	ErrAddSearchWhatRequired               = errors.New("a search needs at least one of --source, --repository, --collection, --query, or --citation")
+	ErrAddSearchLogAmbiguous               = errors.New("research log is defined in more than one file")
+	ErrAddStudyTitleRequired               = errors.New("--title is required")
+	ErrAddPropertyFormat                   = errors.New("--property must be in the form key=value")
+	ErrAddPropertyUnknown                  = errors.New("property not defined in the vocabulary")
+	ErrAddPropertyRepeated                 = errors.New("property given more than once but is not multi-value")
 
 	// `glx evidence` errors
 	ErrEvidenceUnknownFormat = errors.New("unknown output format (must be 'text' or 'json')")
+	// ErrEvidenceNoSubject is wrapped with the unresolved query. It replaces the
+	// old person-only "no person found matching" for `glx evidence`, which read
+	// as "that person does not exist" rather than "this command takes a person"
+	// and is now simply wrong: events, places, and relationships resolve too.
+	ErrEvidenceNoSubject = errors.New("no person, event, place, or relationship found matching")
+	// ErrEvidenceSubjectAmbiguous reports a query that is the entity ID of more
+	// than one subject type, which only a hand-edited archive can produce.
+	ErrEvidenceSubjectAmbiguous = errors.New("ID belongs to more than one entity")
+
+	// `glx census add` errors
+	ErrCensusNeighborUnknownPerson = errors.New("census neighbor references a person not in the archive or the template")
+
+	// `glx households` errors
+	ErrHouseholdsNoTarget      = errors.New("give a person, or --place to list every census household at a place")
+	ErrHouseholdsUnknownFormat = errors.New("unknown output format (must be 'text' or 'json')")
+	ErrHouseholdsPlaceNotFound = errors.New("place not found")
 
 	// `glx migrations` errors
 	ErrMigrationsUnknownFormat     = errors.New("unknown output format (must be 'text' or 'json')")

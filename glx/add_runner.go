@@ -17,17 +17,24 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	glxlib "github.com/genealogix/glx/go-glx"
+	"github.com/genealogix/glx/go-glx/glxdate"
 )
 
 // maxAddIDCollisions bounds the -2, -3, ... suffix search for derived IDs.
 const maxAddIDCollisions = 1000
+
+// maxVocabKeysInError bounds how many accepted keys a vocabulary rejection
+// lists inline before it defers to the vocabulary file.
+const maxVocabKeysInError = 12
 
 // addCommonOptions holds the flags shared by every `glx add` subcommand.
 // Per-subcommand option structs embed it.
@@ -155,10 +162,34 @@ func validateVocabKey(archive *glxlib.GLXFile, vocabName, value string) error {
 		return fmt.Errorf("%w: unknown vocabulary %q", ErrAddVocabKeyUnknown, vocabName)
 	}
 	if _, ok := vocab[value]; !ok {
-		return fmt.Errorf("%w: %s=%q", ErrAddVocabKeyUnknown, vocabName, value)
+		return fmt.Errorf("%w: %s=%q; %s", ErrAddVocabKeyUnknown, vocabName, value, vocabKeyHint(vocabName, vocab))
 	}
 
 	return nil
+}
+
+// vocabKeyHint renders the accepted keys of a vocabulary for a rejection
+// message. Long vocabularies (event types, source types) are truncated so the
+// rejected value stays readable, and the file that holds the full list is
+// always named so the caller can read or extend it.
+func vocabKeyHint(vocabName string, vocab map[string]*glxlib.VocabularyEntry) string {
+	file := "vocabularies/" + strings.ReplaceAll(vocabName, "_", "-") + ".glx"
+	if len(vocab) == 0 {
+		return "no values defined in " + file
+	}
+
+	keys := make([]string, 0, len(vocab))
+	for key := range vocab {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	if len(keys) > maxVocabKeysInError {
+		return fmt.Sprintf("valid values: %s and %d more in %s",
+			strings.Join(keys[:maxVocabKeysInError], ", "), len(keys)-maxVocabKeysInError, file)
+	}
+
+	return fmt.Sprintf("valid values: %s (see %s)", strings.Join(keys, ", "), file)
 }
 
 // pickVocab returns the requested vocabulary map by name.
@@ -184,9 +215,46 @@ func pickVocab(archive *glxlib.GLXFile, vocabName string) map[string]*glxlib.Voc
 		return archive.ParticipantRoles
 	case glxlib.VocabMediaTypes:
 		return archive.MediaTypes
+	case glxlib.VocabResearchLogStatusTypes:
+		return archive.ResearchLogStatusTypes
+	case glxlib.VocabSearchResultTypes:
+		return archive.SearchResultTypes
+	case glxlib.VocabStudyTypes:
+		return archive.StudyTypes
+	case glxlib.VocabStudyStatuses:
+		return archive.StudyStatuses
+	case glxlib.VocabSourceNatures:
+		return archive.SourceNatures
+	case glxlib.VocabInformationTypes:
+		return archive.InformationTypes
 	default:
 		return nil
 	}
+}
+
+// validateDateFlag rejects a date the GLX date grammar does not accept, so a
+// value typed at the prompt is caught by the add that writes it rather than
+// surfacing later as a `glx validate` warning (#1373). `flag` names the flag in
+// the error. An empty value is a no-op (optional field).
+func validateDateFlag(flag, value string) error {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil
+	}
+	parsed, err := glxdate.Parse(value)
+	if err != nil {
+		reason := err.Error()
+		if perr, ok := errors.AsType[*glxdate.ParseError](err); ok {
+			reason = perr.Reason
+		}
+
+		return fmt.Errorf("%w: %s %q: %s", ErrAddDateInvalid, flag, value, reason)
+	}
+	if parsed.Timing().Reversed {
+		return fmt.Errorf("%w: %s %q: range end precedes its start", ErrAddDateInvalid, flag, value)
+	}
+
+	return nil
 }
 
 // validateRefExists ensures `id` is a key in the archive's named entity map.
@@ -225,6 +293,10 @@ func entityIDExists(archive *glxlib.GLXFile, entityType glxlib.EntityType, id st
 		return mapHas(archive.Assertions, id)
 	case glxlib.EntityTypeMedia:
 		return mapHas(archive.Media, id)
+	case glxlib.EntityTypeResearchLogs:
+		return mapHas(archive.ResearchLogs, id)
+	case glxlib.EntityTypeStudies:
+		return mapHas(archive.Studies, id)
 	default:
 		return false
 	}
@@ -320,7 +392,8 @@ func installPartial(archive, partial *glxlib.GLXFile) []addedEntity {
 	archive.InvalidateCache()
 	total := len(partial.Persons) + len(partial.Events) + len(partial.Relationships) +
 		len(partial.Places) + len(partial.Sources) + len(partial.Citations) +
-		len(partial.Repositories) + len(partial.Assertions) + len(partial.Media)
+		len(partial.Repositories) + len(partial.Assertions) + len(partial.Media) +
+		len(partial.ResearchLogs) + len(partial.Studies)
 	added := make([]addedEntity, 0, total)
 	added = append(added, copyEntities(&archive.Persons, partial.Persons, glxlib.EntityTypePersons)...)
 	added = append(added, copyEntities(&archive.Events, partial.Events, glxlib.EntityTypeEvents)...)
@@ -331,6 +404,8 @@ func installPartial(archive, partial *glxlib.GLXFile) []addedEntity {
 	added = append(added, copyEntities(&archive.Repositories, partial.Repositories, glxlib.EntityTypeRepositories)...)
 	added = append(added, copyEntities(&archive.Assertions, partial.Assertions, glxlib.EntityTypeAssertions)...)
 	added = append(added, copyEntities(&archive.Media, partial.Media, glxlib.EntityTypeMedia)...)
+	added = append(added, copyEntities(&archive.ResearchLogs, partial.ResearchLogs, glxlib.EntityTypeResearchLogs)...)
+	added = append(added, copyEntities(&archive.Studies, partial.Studies, glxlib.EntityTypeStudies)...)
 
 	return added
 }
@@ -395,6 +470,10 @@ func uninstallPartial(archive *glxlib.GLXFile, added []addedEntity) {
 			restoreOrDelete(archive.Assertions, e)
 		case glxlib.EntityTypeMedia:
 			restoreOrDelete(archive.Media, e)
+		case glxlib.EntityTypeResearchLogs:
+			restoreOrDelete(archive.ResearchLogs, e)
+		case glxlib.EntityTypeStudies:
+			restoreOrDelete(archive.Studies, e)
 		}
 	}
 }
@@ -429,7 +508,10 @@ func finalizeAdd(io *IOStreams, opts *addCommonOptions, ctx *addContext, entityT
 		}
 	}
 
-	io.Printf("Adding %s %s\n", entityType, entityID)
+	// Print the singular form with a separator: entityType's own value is the
+	// plural YAML key / directory name ("persons"), which reads as a list when
+	// run straight into the ID. See issue #1276.
+	io.Printf("Adding %s: %s\n", entityType.Singular(), entityID)
 	if opts.DryRun {
 		io.Println("(dry run — no files written)")
 		fmt.Fprintln(io.MachineOut, entityID)
@@ -462,6 +544,7 @@ type addPersonOptions struct {
 	Gender        string
 	Occupation    string
 	Residence     string
+	ExternalIDs   []string
 }
 
 // addPerson mints a Person entity from the supplied flags.
@@ -486,6 +569,11 @@ func addPerson(io *IOStreams, opts *addPersonOptions) error {
 		return err
 	}
 
+	externalIDs, err := buildExternalIDs(opts.ExternalIDs)
+	if err != nil {
+		return err
+	}
+
 	base := glxlib.EntityID(glxlib.EntityIDPrefixPerson, opts.Given+" "+opts.Surname)
 	id, err := deriveOrOverrideID(base, opts.OverrideID, idSet(ctx.archive.Persons), opts.Force)
 	if err != nil {
@@ -507,6 +595,9 @@ func addPerson(io *IOStreams, opts *addPersonOptions) error {
 	}
 	if opts.Residence != "" {
 		person.Properties[glxlib.PersonPropertyResidence] = opts.Residence
+	}
+	if len(externalIDs) > 0 {
+		person.Properties["external_ids"] = externalIDs
 	}
 	if len(opts.Notes) > 0 {
 		person.Notes = glxlib.NoteList(opts.Notes)
@@ -621,6 +712,7 @@ type addEventOptions struct {
 	Title        string
 	Principal    string
 	Participants []string
+	Properties   []string
 }
 
 // addEvent mints an Event entity from the supplied flags. Participants are
@@ -644,10 +736,22 @@ func addEvent(io *IOStreams, opts *addEventOptions) error {
 	if err := validateRefExists(ctx.archive, glxlib.EntityTypePersons, opts.Principal); err != nil {
 		return err
 	}
+	if err := validateDateFlag("--date", opts.Date); err != nil {
+		return err
+	}
 
 	participants, err := buildEventParticipants(ctx.archive, opts)
 	if err != nil {
 		return err
+	}
+	props, err := buildEventPropertyFlags(opts.Properties, ctx.archive.EventProperties)
+	if err != nil {
+		return err
+	}
+	// The schema requires at least one participant; an event written without
+	// one leaves an archive that `glx validate` refuses to load (#1373).
+	if len(participants) == 0 {
+		return ErrAddEventParticipantsRequired
 	}
 
 	descriptor := opts.Principal
@@ -670,6 +774,7 @@ func addEvent(io *IOStreams, opts *addEventOptions) error {
 		PlaceID:      opts.Place,
 		Date:         glxlib.DateString(opts.Date),
 		Participants: participants,
+		Properties:   props,
 	}
 	if len(opts.Notes) > 0 {
 		event.Notes = glxlib.NoteList(opts.Notes)
@@ -781,13 +886,18 @@ func addRepository(io *IOStreams, opts *addRepositoryOptions) error {
 
 type addSourceOptions struct {
 	addCommonOptions
-	Title       string
-	Type        string
-	Repository  string
-	Authors     []string
-	Date        string
-	Description string
-	Language    string
+	Title           string
+	Type            string
+	Repository      string
+	Authors         []string
+	Date            string
+	Description     string
+	Language        string
+	URL             string
+	PublicationInfo string
+	CallNumber      string
+	SourceNature    string
+	InformationType string
 }
 
 // addSource mints a Source entity from the supplied flags.
@@ -806,6 +916,15 @@ func addSource(io *IOStreams, opts *addSourceOptions) error {
 	if err := validateRefExists(ctx.archive, glxlib.EntityTypeRepositories, opts.Repository); err != nil {
 		return err
 	}
+	if err := validateVocabKey(ctx.archive, glxlib.VocabSourceNatures, opts.SourceNature); err != nil {
+		return err
+	}
+	if err := validateVocabKey(ctx.archive, glxlib.VocabInformationTypes, opts.InformationType); err != nil {
+		return err
+	}
+	if err := validateDateFlag("--date", opts.Date); err != nil {
+		return err
+	}
 
 	base := glxlib.EntityID(glxlib.EntityIDPrefixSource, opts.Title)
 	id, err := deriveOrOverrideID(base, opts.OverrideID, idSet(ctx.archive.Sources), opts.Force)
@@ -821,8 +940,8 @@ func addSource(io *IOStreams, opts *addSourceOptions) error {
 		RepositoryID: opts.Repository,
 		Language:     opts.Language,
 	}
-	if opts.Description != "" {
-		source.Properties = map[string]any{"description": opts.Description}
+	if props := sourcePropertiesFromFlags(opts); len(props) > 0 {
+		source.Properties = props
 	}
 	if len(opts.Notes) > 0 {
 		source.Notes = glxlib.NoteList(opts.Notes)
@@ -831,6 +950,26 @@ func addSource(io *IOStreams, opts *addSourceOptions) error {
 	partial := &glxlib.GLXFile{Sources: map[string]*glxlib.Source{id: source}}
 
 	return finalizeAdd(io, &opts.addCommonOptions, ctx, glxlib.EntityTypeSources, id, partial)
+}
+
+// sourcePropertiesFromFlags collects the source_properties set by flags. The
+// keys are the source_properties vocabulary keys.
+func sourcePropertiesFromFlags(opts *addSourceOptions) map[string]any {
+	props := map[string]any{}
+	for key, value := range map[string]string{
+		"description":      opts.Description,
+		"url":              opts.URL,
+		"publication_info": opts.PublicationInfo,
+		"call_number":      opts.CallNumber,
+		"source_nature":    opts.SourceNature,
+		"information_type": opts.InformationType,
+	} {
+		if value != "" {
+			props[key] = value
+		}
+	}
+
+	return props
 }
 
 // =============================================================================
@@ -865,6 +1004,12 @@ func addCitation(io *IOStreams, opts *addCitationOptions) error {
 		return err
 	}
 	if err := validateRefExists(ctx.archive, glxlib.EntityTypeRepositories, opts.Repository); err != nil {
+		return err
+	}
+	if err := validateDateFlag("--accessed", opts.Accessed); err != nil {
+		return err
+	}
+	if err := validateDateFlag("--source-date", opts.SourceDate); err != nil {
 		return err
 	}
 
@@ -952,6 +1097,99 @@ func buildExternalIDs(flags []string) ([]any, error) {
 	}
 
 	return out, nil
+}
+
+// parsePropertyFlag splits "key=value" on the first "=". The key is trimmed
+// and required; the value is kept verbatim but must not be blank.
+func parsePropertyFlag(s string) (key, value string, err error) {
+	key, value, ok := strings.Cut(s, "=")
+	key = strings.TrimSpace(key)
+	if !ok || key == "" || strings.TrimSpace(value) == "" {
+		return "", "", fmt.Errorf("%w: %q", ErrAddPropertyFormat, s)
+	}
+
+	return key, value, nil
+}
+
+// buildEventPropertyFlags turns repeated --property key=value flags into an
+// event properties map. Each key must be defined in the event_properties
+// vocabulary. Integer and boolean properties are stored
+// as typed values; a key given more than once becomes a list when the
+// property is multi_value and is rejected otherwise. Value-level checks
+// (vocabulary_type, reference_type) are left to whole-archive validation.
+func buildEventPropertyFlags(flags []string, vocab map[string]*glxlib.PropertyDefinition) (map[string]any, error) {
+	const vocabName = "event_properties"
+	if len(flags) == 0 {
+		return nil, nil
+	}
+	props := make(map[string]any, len(flags))
+	for _, flag := range flags {
+		key, raw, err := parsePropertyFlag(flag)
+		if err != nil {
+			return nil, err
+		}
+		def, ok := vocab[key]
+		if !ok || def == nil {
+			return nil, fmt.Errorf("%w: %s %q; %s", ErrAddPropertyUnknown, vocabName, key, propertyKeyHint(vocabName, vocab))
+		}
+		value, err := typedPropertyValue(key, raw, def)
+		if err != nil {
+			return nil, err
+		}
+		existing, seen := props[key]
+		switch {
+		case !seen:
+			props[key] = value
+		case def.MultiValue == nil || !*def.MultiValue:
+			return nil, fmt.Errorf("%w: %s", ErrAddPropertyRepeated, key)
+		default:
+			list, isList := existing.([]any)
+			if !isList {
+				list = []any{existing}
+			}
+			props[key] = append(list, value)
+		}
+	}
+
+	return props, nil
+}
+
+// typedPropertyValue converts a raw flag value to the property's value_type.
+func typedPropertyValue(key, raw string, def *glxlib.PropertyDefinition) (any, error) {
+	switch def.ValueType {
+	case "integer":
+		n, err := strconv.Atoi(strings.TrimSpace(raw))
+		if err != nil {
+			return nil, fmt.Errorf("%w: %s=%q is not an integer", ErrAddPropertyFormat, key, raw)
+		}
+
+		return n, nil
+	case "boolean":
+		b, err := strconv.ParseBool(strings.TrimSpace(raw))
+		if err != nil {
+			return nil, fmt.Errorf("%w: %s=%q is not a boolean", ErrAddPropertyFormat, key, raw)
+		}
+
+		return b, nil
+	case "date":
+		if err := validateDateFlag("--property "+key, raw); err != nil {
+			return nil, err
+		}
+
+		return raw, nil
+	default:
+		return raw, nil
+	}
+}
+
+// propertyKeyHint lists the defined property keys for a rejection message.
+func propertyKeyHint(vocabName string, vocab map[string]*glxlib.PropertyDefinition) string {
+	entries := make(map[string]*glxlib.VocabularyEntry, len(vocab))
+	for key := range vocab {
+		entries[key] = nil
+	}
+
+	return vocabKeyHint(vocabName, entries)
 }
 
 // =============================================================================
@@ -1109,6 +1347,9 @@ func addAssertion(io *IOStreams, opts *addAssertionOptions) error {
 		return err
 	}
 	if err := validateVocabKey(ctx.archive, glxlib.VocabConfidenceLevels, opts.Confidence); err != nil {
+		return err
+	}
+	if err := validateDateFlag("--date", opts.AssertionDate); err != nil {
 		return err
 	}
 	participant, err := resolveAssertionParticipant(ctx.archive, opts)
@@ -1311,6 +1552,8 @@ func stripEntityPrefix(id string) string {
 		glxlib.EntityIDPrefixRepository,
 		glxlib.EntityIDPrefixAssertion,
 		glxlib.EntityIDPrefixMedia,
+		glxlib.EntityTypeResearchLogs.IDPrefix(),
+		glxlib.EntityTypeStudies.IDPrefix(),
 	}
 	for _, prefix := range prefixes {
 		if rest, ok := strings.CutPrefix(id, prefix); ok {

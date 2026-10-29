@@ -170,10 +170,11 @@ func TestValidatePaths_FileArgumentsFormOneArchive(t *testing.T) {
 func TestValidatePaths_MultiPathErrors(t *testing.T) {
 	root := writeMultiPathArchive(t)
 
-	t.Run("a missing path fails structurally", func(t *testing.T) {
+	t.Run("a missing path fails before anything is loaded", func(t *testing.T) {
 		streams, _, errOut := newTestStreams()
 		err := validatePaths(streams, []string{filepath.Join(root, "persons"), filepath.Join(root, "nope.glx")})
-		require.ErrorIs(t, err, ErrStructuralValidationFailed)
+		require.ErrorIs(t, err, ErrNothingToValidate)
+		assert.Contains(t, errOut.String(), "cannot access path")
 		assert.Contains(t, errOut.String(), "nope.glx")
 	})
 

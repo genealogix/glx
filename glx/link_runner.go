@@ -149,7 +149,10 @@ func buildLinkEntities(archive *glxlib.GLXFile, ark *ARK, opts *linkOptions) (*g
 		RepositoryID: repoFamilySearchID,
 		Properties: map[string]any{
 			"url":                  ark.CanonicalURL,
-			"accessed":             time.Now().UTC().Format("2006-01-02"),
+			// The researcher's calendar date, not UTC's: a US evening is
+			// already tomorrow in UTC, and the record would claim an access
+			// date that had not happened yet where the researcher sat.
+			"accessed":             time.Now().Format("2006-01-02"),
 			externalIDsPropertyKey: []any{glxlib.NewExternalIDEntry(ark.NOID, arkTypeURI)},
 		},
 	}

@@ -343,40 +343,23 @@ func confidenceRows(a *glxlib.GLXFile) []confidenceRowDTO {
 	return rows
 }
 
-// coverageRows reports how many persons/events/relationships/places are
-// referenced by at least one assertion (same metric as `glx stats`).
+// coverageRows reports how many persons/events/relationships/places the
+// archive's assertions reach, directly or through the events,
+// relationships, participants, and places they name (the "Evidence coverage"
+// block of `glx stats`, #713). Unsourced and disproven assertions still count;
+// these percentages measure reachability rather than sourcing or proof.
 func coverageRows(a *glxlib.GLXFile) []coverageRowDTO {
 	if len(a.Assertions) == 0 {
 		return []coverageRowDTO{}
 	}
 
-	persons := map[string]struct{}{}
-	events := map[string]struct{}{}
-	rels := map[string]struct{}{}
-	places := map[string]struct{}{}
-	for _, assertion := range a.Assertions {
-		if assertion == nil {
-			continue
-		}
-		if assertion.Subject.Person != "" {
-			persons[assertion.Subject.Person] = struct{}{}
-		}
-		if assertion.Subject.Event != "" {
-			events[assertion.Subject.Event] = struct{}{}
-		}
-		if assertion.Subject.Relationship != "" {
-			rels[assertion.Subject.Relationship] = struct{}{}
-		}
-		if assertion.Subject.Place != "" {
-			places[assertion.Subject.Place] = struct{}{}
-		}
-	}
+	evidence := glxlib.ComputeAssertionCoverage(a).Evidence
 
 	return []coverageRowDTO{
-		coverageRow("Persons", len(persons), len(a.Persons)),
-		coverageRow("Events", len(events), len(a.Events)),
-		coverageRow("Relationships", len(rels), len(a.Relationships)),
-		coverageRow("Places", len(places), len(a.Places)),
+		coverageRow("Persons", countCovered(evidence.Persons, a.Persons), len(a.Persons)),
+		coverageRow("Events", countCovered(evidence.Events, a.Events), len(a.Events)),
+		coverageRow("Relationships", countCovered(evidence.Relationships, a.Relationships), len(a.Relationships)),
+		coverageRow("Places", countCovered(evidence.Places, a.Places), len(a.Places)),
 	}
 }
 
@@ -399,6 +382,7 @@ type personListItemDTO struct {
 	Sex       string `json:"sex,omitempty"`
 	BirthYear int    `json:"birthYear,omitempty"`
 	DeathYear int    `json:"deathYear,omitempty"`
+	Lifespan  string `json:"lifespan,omitempty"`
 }
 
 func (s *viewerServer) handlePersons(w http.ResponseWriter, _ *http.Request) {
@@ -407,6 +391,7 @@ func (s *viewerServer) handlePersons(w http.ResponseWriter, _ *http.Request) {
 	for _, id := range sortedKeys(a.Persons) {
 		person := a.Persons[id]
 		birth, death := s.personVitalYears(id)
+		lifespan := s.personLifespan(id)
 		// person may be nil for a malformed archive entry (e.g. `person-x: null`);
 		// extractPersonName already tolerates nil, so only the property read needs
 		// guarding.
@@ -420,6 +405,7 @@ func (s *viewerServer) handlePersons(w http.ResponseWriter, _ *http.Request) {
 			Sex:       sex,
 			BirthYear: birth,
 			DeathYear: death,
+			Lifespan:  lifespan,
 		})
 	}
 
@@ -467,6 +453,7 @@ type personRefDTO struct {
 	Name      string `json:"name"`
 	BirthYear int    `json:"birthYear,omitempty"`
 	DeathYear int    `json:"deathYear,omitempty"`
+	Lifespan  string `json:"lifespan,omitempty"`
 	Detail    string `json:"detail,omitempty"`
 }
 
@@ -590,7 +577,7 @@ func (s *viewerServer) personFamily(id string) familyDTO {
 	fam := familyDTO{
 		Parents:  s.personRefs(parentIDs),
 		Children: s.personRefs(findChildIDs(id, a)),
-		Siblings: s.personRefs(findSiblingIDs(id, parentIDs, a)),
+		Siblings: s.personRefs(findSiblingIDs(id, a)),
 		Spouses:  []personRefDTO{},
 	}
 	for _, sp := range findSpouses(id, a) {
@@ -621,7 +608,7 @@ func (s *viewerServer) personRef(id string) personRefDTO {
 		name = extractPersonName(person)
 	}
 
-	return personRefDTO{ID: id, Name: name, BirthYear: birth, DeathYear: death}
+	return personRefDTO{ID: id, Name: name, BirthYear: birth, DeathYear: death, Lifespan: s.personLifespan(id)}
 }
 
 // personAssertions returns assertions whose subject is this person, with their
@@ -686,6 +673,7 @@ type treeNodeDTO struct {
 	Name      string         `json:"name"`
 	BirthYear int            `json:"birthYear,omitempty"`
 	DeathYear int            `json:"deathYear,omitempty"`
+	Lifespan  string         `json:"lifespan,omitempty"`
 	Sex       string         `json:"sex,omitempty"`
 	Children  []*treeNodeDTO `json:"children,omitempty"`
 }
@@ -724,31 +712,18 @@ type treeRelIndex struct {
 }
 
 // buildTreeRelIndex scans the parent-child relationships once and records both
-// directions. It mirrors findParentIDs/findChildIDs: parents keep first-seen
+// directions, leaving out disproven links. It mirrors findParentIDs/findChildIDs: parents keep first-seen
 // order; children are ordered by birth year (then ID) for a stable chart.
 func buildTreeRelIndex(a *glxlib.GLXFile) *treeRelIndex {
 	idx := &treeRelIndex{parents: map[string][]string{}, children: map[string][]string{}}
-	for _, relID := range sortedKeys(a.Relationships) {
-		rel := a.Relationships[relID]
-		if rel == nil || !parentChildRelTypes[strings.ToLower(rel.Type)] {
+	for _, link := range glxlib.ParentChildLinks(a, nil) {
+		// A link the archive has disproven is a rejected alternative, not
+		// family; it stays out of the chart.
+		if link.Standing == glxlib.RelationshipStandingDisproven {
 			continue
 		}
-
-		var parents, children []string
-		for _, p := range rel.Participants {
-			switch strings.ToLower(p.Role) {
-			case glxlib.ParticipantRoleParent:
-				parents = append(parents, p.Person)
-			case glxlib.ParticipantRoleChild:
-				children = append(children, p.Person)
-			}
-		}
-		for _, childID := range children {
-			for _, parentID := range parents {
-				idx.children[parentID] = appendUniqueString(idx.children[parentID], childID)
-				idx.parents[childID] = appendUniqueString(idx.parents[childID], parentID)
-			}
-		}
+		idx.children[link.ParentID] = appendUniqueString(idx.children[link.ParentID], link.ChildID)
+		idx.parents[link.ChildID] = appendUniqueString(idx.parents[link.ChildID], link.ParentID)
 	}
 
 	for parentID := range idx.children {
@@ -797,7 +772,7 @@ func (s *viewerServer) buildTree(idx *treeRelIndex, id, direction string, depth,
 		name = extractPersonName(person)
 		sex = propertyString(person.Properties, glxlib.PersonPropertySex)
 	}
-	node := &treeNodeDTO{ID: id, Name: name, BirthYear: birth, DeathYear: death, Sex: sex}
+	node := &treeNodeDTO{ID: id, Name: name, BirthYear: birth, DeathYear: death, Lifespan: s.personLifespan(id), Sex: sex}
 
 	// depth is 0-based and the root counts as the first generation, so a request
 	// for maxGen generations renders nodes at depths 0..maxGen-1. Stopping at
@@ -969,10 +944,13 @@ func participantRole(personID string, participants []glxlib.Participant) string 
 	return roleAbsent
 }
 
-// vitalYears holds a person's birth and death years (0 when unknown).
+// vitalYears holds a person's birth and death years (0 when unknown) and the
+// raw birth and death dates the display lifespan is built from.
 type vitalYears struct {
-	birth int
-	death int
+	birth     int
+	death     int
+	birthDate string
+	deathDate string
 }
 
 // personVitalYears returns the person's birth and death years (0 when unknown).
@@ -985,6 +963,16 @@ func (s *viewerServer) personVitalYears(personID string) (birth, death int) {
 	vy := s.vitalIndex[personID]
 
 	return vy.birth, vy.death
+}
+
+// personLifespan returns the person's one-line display lifespan, keeping date
+// qualifiers and ranges ("c. 1765 – 1830", "1756/1774 – 1826/1830"; #1328).
+// The numeric years from personVitalYears stay in the API for sorting.
+func (s *viewerServer) personLifespan(personID string) string {
+	s.vitalOnce.Do(func() { s.vitalIndex = buildVitalYearIndex(s.archive) })
+	vy := s.vitalIndex[personID]
+
+	return formatLifeSpan(vy.birthDate, vy.deathDate)
 }
 
 // buildVitalYearIndex makes a single pass over the archive's events and records,
@@ -1018,9 +1006,11 @@ func buildVitalYearIndex(a *glxlib.GLXFile) map[string]vitalYears {
 			switch {
 			case isBirth && !haveBirth[p.Person]:
 				vy.birth = glxlib.ExtractFirstYear(string(event.Date))
+				vy.birthDate = string(event.Date)
 				haveBirth[p.Person] = true
 			case isDeath && !haveDeath[p.Person]:
 				vy.death = glxlib.ExtractFirstYear(string(event.Date))
+				vy.deathDate = string(event.Date)
 				haveDeath[p.Person] = true
 			}
 			idx[p.Person] = vy

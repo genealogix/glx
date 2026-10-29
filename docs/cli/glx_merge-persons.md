@@ -15,10 +15,13 @@ then the drop-id person file is removed.
 
 Property merging:
   - Properties present only on drop are copied verbatim.
-  - Multi-value (list) properties are unioned with deep-equal deduplication.
-  - Single-value conflicts default to keep's value (recorded in the conflict
-    report). Pass --keep-newest or --keep-oldest to resolve dated conflicts
-    by date instead.
+  - Identical values agree silently.
+  - Temporal properties combine non-conflicting dated and undated history,
+    including mixed scalar, structured, and list representations.
+  - Other multi-value lists are unioned with deep-equal deduplication.
+  - Genuine conflicts default to keep's value. --keep-newest or --keep-oldest
+    resolves dated collisions while preserving unrelated history.
+  - Approximate date values use ±2 years; --approximation-years overrides it.
 
 Notes are combined per --notes-strategy (default: append).
 
@@ -49,12 +52,13 @@ glx merge-persons <keep-id> <drop-id> [flags]
 ### Options
 
 ```
-  -a, --archive string          Path to GLX archive (default ".")
-      --dry-run                 Show what would change without writing
-  -h, --help                    help for merge-persons
-      --keep-newest             For conflicting temporal properties, keep the entry with the later date
-      --keep-oldest             For conflicting temporal properties, keep the entry with the earlier date
-      --notes-strategy string   How to combine notes: append | prefer-keep | prefer-drop (default "append")
+      --approximation-years int   Tolerance in years for ABT, EST and CAL date values (0–10000) (default 2)
+  -a, --archive string            Path to GLX archive (default ".")
+      --dry-run                   Show what would change without writing
+  -h, --help                      help for merge-persons
+      --keep-newest               For conflicting temporal properties, keep the entry with the later date
+      --keep-oldest               For conflicting temporal properties, keep the entry with the earlier date
+      --notes-strategy string     How to combine notes: append | prefer-keep | prefer-drop (default "append")
 ```
 
 ### Options inherited from parent commands

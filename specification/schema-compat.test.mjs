@@ -46,6 +46,36 @@ test("identical schema is backward compatible", () => {
   assert.equal(r.breaking, false);
 });
 
+test("changing descriptions while relaxing minItems is backward compatible", () => {
+  const base = {
+    ...BASE,
+    description: "Original description",
+    properties: {
+      ...BASE.properties,
+      applies_to: { type: "array", minItems: 1, description: "Nonempty contexts" },
+    },
+  };
+  const next = {
+    ...base,
+    description: "Updated description",
+    properties: {
+      ...base.properties,
+      applies_to: { type: "array", minItems: 0, description: "Empty contexts are unrestricted" },
+    },
+  };
+  const r = classifySchemaChange({ path: PATH, baseContent: json(base), currentContent: json(next) });
+  assert.equal(r.status, "compatible");
+  assert.equal(r.breaking, false);
+});
+
+test("changing descriptions does not hide tightened minItems", () => {
+  const base = { type: "array", minItems: 0, description: "Original description" };
+  const next = { type: "array", minItems: 1, description: "Updated description" };
+  const r = classifySchemaChange({ path: PATH, baseContent: json(base), currentContent: json(next) });
+  assert.equal(r.status, "breaking");
+  assert.equal(r.breaking, true);
+});
+
 test("adding an optional property is backward compatible", () => {
   const next = { ...BASE, properties: { ...BASE.properties, note: { type: "string" } } };
   const r = classifySchemaChange({ path: PATH, baseContent: json(BASE), currentContent: json(next) });
@@ -158,4 +188,41 @@ test("normalizeDialect leaves property NAMES that look like keywords alone", () 
 test("normalizeDialect copies enum/const values verbatim", () => {
   const s = { type: "object", enum: [{ $defs: 1 }], const: { dependentRequired: true } };
   assert.deepEqual(normalizeDialect(s), s);
+});
+
+test("normalizeDialect omits schema descriptions but preserves data named description", () => {
+  const s = {
+    type: "object",
+    description: "Object annotation",
+    properties: { description: { type: "string", description: "Property annotation" } },
+    enum: [{ description: "Enum data" }],
+    const: { description: "Const data" },
+  };
+  assert.deepEqual(normalizeDialect(s), {
+    type: "object",
+    properties: { description: { type: "string" } },
+    enum: s.enum,
+    const: s.const,
+  });
+});
+
+test("removing a property named description is still breaking", () => {
+  const base = { ...BASE, properties: { ...BASE.properties, description: { type: "string" } } };
+  const r = classifySchemaChange({ path: PATH, baseContent: json(base), currentContent: json(BASE) });
+  assert.equal(r.status, "breaking");
+  assert.equal(r.breaking, true);
+});
+
+test("tightening a dependency named description is still breaking", () => {
+  const base = {
+    ...BASE,
+    required: [],
+    properties: { ...BASE.properties, description: { type: "string" } },
+    dependencies: { description: ["name"] },
+  };
+  const next = { ...base, dependencies: { description: ["name", "id"] } };
+  assert.deepEqual(normalizeDialect(base), base);
+  const r = classifySchemaChange({ path: PATH, baseContent: json(base), currentContent: json(next) });
+  assert.equal(r.status, "breaking");
+  assert.equal(r.breaking, true);
 });

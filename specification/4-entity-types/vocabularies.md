@@ -34,6 +34,7 @@ The standard vocabulary files are:
 - `repository-types.glx`
 - `search-result-types.glx`
 - `research-log-status-types.glx`
+- `lead-statuses.glx`
 - `person-properties.glx`
 - `event-properties.glx`
 - `relationship-properties.glx`
@@ -100,7 +101,7 @@ event_types:
 
 ### Standard Event Types
 
-**Standard Event Types**: GENEALOGIX provides standardized event type codes including lifecycle events (birth, death, marriage, adoption), religious events (baptism, confirmation, bar/bat mitzvah), legal events (annulment, probate, will), and migration events (immigration, emigration, naturalization).
+**Standard Event Types**: GENEALOGIX provides standardized event type codes including lifecycle events (birth, death, marriage, adoption), religious events (baptism, confirmation, bar/bat mitzvah), legal events (annulment, probate, will, land_transaction), and migration events (immigration, emigration, naturalization).
 
 **Complete List**: See [Standard Vocabularies - Event Types](../5-standard-vocabularies/#event-types) for the complete default vocabulary file with all standard types.
 
@@ -230,9 +231,9 @@ place_types:
     category: "religious"
   
   # Additional place types
-  plantation:
-    label: "Plantation"
-    description: "Agricultural estate or plantation"
+  battlefield:
+    label: "Battlefield"
+    description: "Site of a battle or military engagement"
     category: "geographic"
 ```
 
@@ -246,7 +247,7 @@ place_types:
 
 ### Standard Place Types
 
-**Standard Place Types**: GENEALOGIX provides standardized place type codes including administrative divisions (country, state, county, city, town, township, district), geographic features (region, locality, neighborhood, street, building), religious divisions (parish, church), and institutions (hospital, cemetery).
+**Standard Place Types**: GENEALOGIX provides standardized place type codes including administrative divisions (country, state, territory, county, city, town, village, hamlet, township, district, reservation), geographic features (region, locality, neighborhood, street, building, estate, farm, plantation, port), religious divisions (parish, church), and institutions (hospital, cemetery, workhouse, poorhouse, asylum, prison, fort, military_base, school).
 
 **Complete List**: See [Standard Vocabularies - Place Types](../5-standard-vocabularies/#place-types) for the complete default vocabulary file with all standard types.
 
@@ -259,9 +260,9 @@ place_types:
   # ... standard types ...
 
   # Additional types
-  plantation:
-    label: "Plantation"
-    description: "Agricultural estate or plantation"
+  battlefield:
+    label: "Battlefield"
+    description: "Site of a battle or military engagement"
     category: "geographic"
 
   mission:
@@ -557,25 +558,28 @@ participant_roles:
     applies_to:
       - event
   
-  # Relationship roles
+  # Event and relationship roles
   spouse:
     label: "Spouse"
     description: "Marriage partner"
     applies_to:
+      - event
       - relationship
-  
+
   parent:
     label: "Parent"
-    description: "Parent in parent-child relationship"
+    description: "Parent in a parent-child relationship, or a parent named in an event"
+    applies_to:
+      - event
+      - relationship
+
+  # Relationship roles
+  sibling:
+    label: "Sibling"
+    description: "Brother or sister"
     applies_to:
       - relationship
-  
-  child:
-    label: "Child"
-    description: "Child in parent-child relationship"
-    applies_to:
-      - relationship
-  
+
   # Additional roles
   godparent:
     label: "Godparent"
@@ -591,12 +595,34 @@ participant_roles:
 |-------|----------|-------------|
 | `label` | Yes | Human-readable label |
 | `description` | No | Detailed description |
-| `applies_to` | No | Array of entity types (event, relationship) |
-| `gedcom` | No | GEDCOM `ASSO ROLE` tag value emitted/consumed for round-trip (#524) |
+| `applies_to` | No | Array of contexts the role is meant for (`event`, `relationship`). Omitted means all contexts; see [applies_to semantics](#applies_to-semantics) |
+| `gedcom` | No | GEDCOM 7.0 `ASSO.ROLE` enumeration value (e.g., `WITN`, `CLERGY`) emitted on export, overriding the built-in mapping (#524). Roles without one export as `ROLE OTHER` with a `PHRASE` naming the role |
+| `implies_presence` | No | Boolean. Whether a person in this role was at the event's place on its date. Set `false` for roles that name a person without placing them there, such as a grantor selling land from another state or an absent legatee. When omitted, tools fall back to a built-in default (see below) |
+
+#### Role semantics in tooling
+
+Tools that reason about a person's records distinguish three kinds of participation:
+
+- **Own record**: the event is a record of this person. `principal`, `subject` (or no role), `bride`, `groom`, `godchild`, `adopted_child`, `decedent` and `testator` on any event; the legacy `child` role on a birth, baptism or christening; `spouse` (or `husband`/`wife`) on a marriage-type event; and any household role (`subject`, `household_head`, `head`, `wife`, `son`, ...) on a `census` event. `glx coverage` counts only these toward a record category.
+- **Present**: the person was at the event's place but it is someone else's record (`witness`, `officiant`, `informant`, `godparent`, `parent`, and any role not otherwise listed).
+- **Mentioned**: named without being placed there. Built-in defaults: `grantor`, `grantee`, `adjoining_owner`, `legatee`, `devisee`, `beneficiary`, `heir`, `executor`, `administrator`, `creditor`, `debtor`, `mentioned`, `neighbor`. `glx migrations` shows these events but does not count their place as a movement.
+
+Own-record status and presence are independent. `implies_presence` overrides only the present/not-present default for a role, so an archive can classify its own roles without changing whose record the event is.
+
+### applies_to Semantics
+
+`applies_to` lists the contexts in which a role is meant to be used:
+
+- `event`: the role may appear in an event's `participants`, or on the participant of an assertion whose subject is an event.
+- `relationship`: the role may appear in a relationship's `participants`, or on the participant of an assertion whose subject is a relationship.
+
+When `applies_to` is **omitted** (or empty), the role applies to **all contexts**. Custom roles written before the field was checked therefore stay valid everywhere, and no existing archive changes meaning. Every standard role declares `applies_to` explicitly, and archives should do the same for their own roles.
+
+`glx validate` emits a **warning**, not an error, when a role is used in a context its `applies_to` excludes (for example `subject` on a relationship, or `sibling` on an event). A role that is not in the vocabulary at all remains an error. The check is a warning so that existing archives still validate while their authors move the participant to a better-fitting role or widen the role's `applies_to` in their own vocabulary.
 
 ### Standard Participant Roles
 
-Common event roles:
+Event roles:
 
 - `principal` - Primary person in the event. Canonical role; this is what `glx init` and GEDCOM import emit.
 - `subject` - Accepted synonym of `principal`. Tooling treats both as equivalent (no data migration needed).
@@ -604,14 +630,38 @@ Common event roles:
 - `witness` - Event witness
 - `officiant` - Ceremony officiant
 - `informant` - Person providing information
+- `enumerator` - Census taker who recorded the household
+- `attending_physician` - Physician or medical attendant named on a birth or death record
+- `registrar` - Official who registered or filed a vital or civil record
+- `bondsman` - Surety on a marriage, guardian, administration or executor's bond
+- `testator` - Person whose will is made, proved or executed
+- `executor` - Executor or administrator of an estate
+- `legatee` - Person named in a will to receive a bequest
+- `beneficiary` - Person receiving property or benefit other than a will's bequest (intestate heir, insurance or pension beneficiary, trust beneficiary)
+- `grantor`, `grantee` - Parties conveying and receiving land in a deed, entry, patent or grant (see [land transactions](event.md#property-records-probate-will-and-land-transaction))
+- `adjoining_owner` - Neighbouring landowner named only in a land record's boundary description
 
-Common relationship roles:
+`legatee` and `beneficiary` are both standard. `legatee` is the precise term for a person a will names to receive a bequest, and is what will abstracts use; `beneficiary` covers the cases a will does not, such as heirs in an intestate division or the beneficiary of a policy. Use `legatee` when the record is a will.
 
-- `spouse` - Marriage partner
-- `parent` - Parent in parent-child relationship
-- `child` - Child in parent-child relationship
+Roles for both events and relationships:
+
+- `spouse` - Marriage partner, in a marriage relationship or named in an event (GEDCOM import emits it on marriage and divorce events)
+- `parent`, `child` - In a parent-child relationship, or named in an event (the parents in a baptism entry)
+- `godparent`, `godchild` - Baptismal sponsor and the person sponsored
+- `guardian`, `ward` - Legal guardianship, in a `guardian` relationship or a guardianship event such as a guardian's bond
+- `household_head` - The head named in a census or other household enumeration event, or the householder in a boarder relationship
+- `boarder` - Boarder, lodger or servant, in a boarder relationship or enumerated in a census event
+
+Relationship roles:
+
 - `adoptive_parent`, `adopted_child` - Adoption roles
+- `foster_parent`, `foster_child` - Foster care roles
+- `step_parent`, `step_child` - Step-family through marriage
 - `sibling` - Brother or sister
+- `enslaver`, `enslaved_person` - Enslavement roles
+- `associate` - FAN-club associate
+
+`household_head` and `boarder` apply to events as well as relationships: a census names them in its relationship-to-head column, and recording that on the census event is natural. In a census event the head may equally be recorded as `principal`, which is what `glx census add` writes.
 
 ---
 
@@ -621,7 +671,7 @@ Common relationship roles:
 
 **Used By**: [ResearchLog Entity](research-log.md#search-results)
 
-**Purpose**: Defines the outcome of each search recorded in a research log (found, not found, inconclusive, partial, not searched). Negative evidence (`not_found`) is a first-class outcome, supporting the [Genealogical Proof Standard](https://bcgcertification.org/ethics-standards/) requirement for a "reasonably exhaustive search."
+**Purpose**: Defines the outcome of each search recorded in a research log (found, not found, inconclusive, partial, not searched, unavailable, requires visit). Negative evidence (`not_found`) is a first-class outcome, supporting the [Genealogical Proof Standard](https://bcgcertification.org/ethics-standards/) requirement for a "reasonably exhaustive search."
 
 **Standard Templates**: See [Standard Vocabularies - Search Result Types](../5-standard-vocabularies/#search-result-types) for the complete default vocabulary with all standard search result types.
 
@@ -648,6 +698,14 @@ search_result_types:
   not_searched:
     label: "Not Searched"
     description: "Search is planned but has not yet been performed."
+
+  unavailable:
+    label: "Unavailable"
+    description: "The source was sought but does not survive, is restricted, or is not accessible."
+
+  requires_visit:
+    label: "Requires Visit"
+    description: "The source exists but can only be searched on site or by request."
 ```
 
 ### Fields
@@ -704,6 +762,46 @@ research_log_status_types:
 ### Standard Research Log Status Types
 
 See [ResearchLog Entity - Status lifecycle](research-log.md#status-lifecycle) for the standard status values and the investigation lifecycle.
+
+---
+
+## Lead Statuses Vocabulary
+
+**Default file**: `vocabularies/lead-statuses.glx`
+
+**Used By**: [ResearchLog Entity](research-log.md#researchlead) (each lead's `status`)
+
+**Purpose**: Records whether a lead (a competing hypothesis inside a research log) is still being pursued, has been ruled out, or has been confirmed. A lead status is research workflow state: changing it never changes the assertions the lead references.
+
+**Standard Templates**: See [Standard Vocabularies - Lead Statuses](../5-standard-vocabularies/#lead-statuses) for the complete default vocabulary.
+
+### Structure
+
+```yaml
+lead_statuses:
+  active:
+    label: "Active"
+    description: "Hypothesis is still being pursued; evidence neither rules it in nor out yet."
+
+  eliminated:
+    label: "Eliminated"
+    description: "Hypothesis has been ruled out by contradicting evidence."
+
+  confirmed:
+    label: "Confirmed"
+    description: "The research has settled on this hypothesis. Setting this status changes no assertion; record the conclusion in assertions and relationships separately."
+```
+
+### Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `label` | Yes | Human-readable label |
+| `description` | No | Detailed description |
+
+### Standard Lead Statuses
+
+See [ResearchLog Entity - Leads](research-log.md#researchlead) for guidance on recording and eliminating leads.
 
 ---
 
@@ -978,6 +1076,8 @@ Event properties are generally less common than person properties, since most ev
 - `event_subtype` - Further classification of the event type (GEDCOM: TYPE)
 - `marriage_type` - Free-text `MARR TYPE` value preserved on import (civil, religious, common law, …)
 - `name_as_recorded` - **Participant-level only**: set under `event.participants[].properties`, not `event.properties`. The participant's name as written in the source (structured, with name fields)
+- `named` - **Participant-level only**: boolean; `false` when the source counts the participant without naming them (a tick mark in a head-only census household). See [Census Households](event.md#census-households)
+- `relationship_to_head` - **Participant-level only**: relationship to the head of household as written in the source (head, wife, son, boarder...)
 - `description` - Event description
 
 **Note:** Event timing and location are handled by the `date` and `place` fields directly on the event, not as properties. The `notes` field is a standard entity field available on all entity types, not a property.
@@ -1591,6 +1691,18 @@ The following issues generate warnings but don't fail validation:
          gender: two-spirit  # WARNING: not in gender_types vocabulary
    ```
 
+4. **Participant role used outside its `applies_to`**: A role whose `applies_to` excludes the context it is used in (see [applies_to semantics](#applies_to-semantics))
+
+   ```yaml
+   # Warning: 'subject' applies_to [event], used on a relationship
+   relationships:
+     rel-same:
+       type: possibly_same_person
+       participants:
+         - person: person-a
+           role: subject  # WARNING: role not meant for relationships
+   ```
+
 Warnings allow flexibility for emerging properties and rapid data entry while still notifying researchers of potential issues.
 
 ### Example Validation Output
@@ -1747,6 +1859,7 @@ Each vocabulary type has a corresponding JSON Schema for validation:
 | Study Statuses | [study-statuses.schema.json](../schema/v1/vocabularies/study-statuses.schema.json) |
 | Search Result Types | [search-result-types.schema.json](../schema/v1/vocabularies/search-result-types.schema.json) |
 | Research Log Status Types | [research-log-status-types.schema.json](../schema/v1/vocabularies/research-log-status-types.schema.json) |
+| Lead Statuses | [lead-statuses.schema.json](../schema/v1/vocabularies/lead-statuses.schema.json) |
 | Person Properties | [person-properties.schema.json](../schema/v1/vocabularies/person-properties.schema.json) |
 | Event Properties | [event-properties.schema.json](../schema/v1/vocabularies/event-properties.schema.json) |
 | Relationship Properties | [relationship-properties.schema.json](../schema/v1/vocabularies/relationship-properties.schema.json) |

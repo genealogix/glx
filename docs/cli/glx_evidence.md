@@ -9,24 +9,36 @@ Show all evidence for a property, grouped by value
 
 ### Synopsis
 
-Display every assertion for one person+property side-by-side, grouped by
+Display every assertion for one subject+property side-by-side, grouped by
 value, with the supporting citations and confidence for each.
 
 Where "glx analyze" emits a one-line conflict warning and "glx proof" summarizes
 a resolved question, "glx evidence" is for questions still in active research:
 it lays out the conflicting answers so you can weigh them. For each value it
 shows the supporting reports (citation and source), counts them, and reports the
-best confidence; the closing line highlights the best-supported value, or notes
-when the leading values tie.
+best confidence. Time-varying properties show dated history, with undated claims
+in their own section. Best evidence is chosen only among claims whose periods
+could overlap. Disproven claims are excluded. Other properties highlight the
+best-supported value, or note when the leading values tie.
 
-The person argument can be an exact entity ID (e.g., person-jane-webb) or a
-name to search for (e.g., "Jane Miller"). If the name matches multiple persons,
-all matches are listed for disambiguation. The property is matched exactly, with
-a case-insensitive fallback when no exact match exists. Place, person, and event
-reference values resolve to the referenced entity's name.
+All comparisons use the same rules as analyze, proof and merge-persons: precision
+and place-hierarchy refinements agree; approximate date values use ±2 years by
+default (--approximation-years overrides this). Distinct place IDs stay distinct.
+
+The subject is any entity an assertion can be about — a person, event, place, or
+relationship — matching what "glx add assertion" accepts. That matters because
+the two properties most likely to have conflicting answers, date and place, are
+normally asserted on the event rather than on the person.
+
+A subject is resolved by exact entity ID first (e.g., event-death-1807), then,
+for persons only, by name search (e.g., "Jane Miller"); if the name matches
+multiple persons, all matches are listed for disambiguation. The property is
+matched exactly, with a case-insensitive fallback when no exact match exists.
+Place, person, and event reference values resolve to the referenced entity's
+name.
 
 ```
-glx evidence <person> <property> [flags]
+glx evidence <subject> <property> [flags]
 ```
 
 ### Examples
@@ -34,6 +46,12 @@ glx evidence <person> <property> [flags]
 ```
   # All recorded values for a birthplace property, by ID
   glx evidence person-jane-webb born_at
+
+  # The contested date of an event
+  glx evidence event-death-1807 date
+
+  # Every recorded name for a place
+  glx evidence place-liepen name
 
   # Look the person up by name
   glx evidence "Jane Miller" residence
@@ -48,9 +66,10 @@ glx evidence <person> <property> [flags]
 ### Options
 
 ```
-  -a, --archive string   Archive path (directory or single file) (default ".")
-      --format string    Output format: text or json (default "text")
-  -h, --help             help for evidence
+      --approximation-years int   Tolerance in years for ABT, EST and CAL date values (0–10000) (default 2)
+  -a, --archive string            Archive path (directory or single file) (default ".")
+      --format string             Output format: text or json (default "text")
+  -h, --help                      help for evidence
 ```
 
 ### Options inherited from parent commands

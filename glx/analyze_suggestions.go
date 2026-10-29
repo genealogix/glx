@@ -79,12 +79,6 @@ func extractDateString(raw any) string {
 	return ""
 }
 
-// usFederalCensusYears lists U.S. Federal Census years.
-var usFederalCensusYears = []int{
-	1790, 1800, 1810, 1820, 1830, 1840, 1850, 1860, 1870,
-	1880, 1890, 1900, 1910, 1920, 1930, 1940, 1950,
-}
-
 // analyzeSuggestions generates research recommendations based on archive data.
 func analyzeSuggestions(archive *glxlib.GLXFile) []AnalysisIssue {
 	var issues []AnalysisIssue
@@ -128,17 +122,32 @@ func suggestCensusSearches(archive *glxlib.GLXFile) []AnalysisIssue {
 
 	addCensusYearFromSources(archive, personCensusYears)
 	personBurialYear := buildBurialYearIndex(archive)
+	personPlaces := buildPersonPlaceIndex(archive)
+	personDatedPlaces := buildPersonDatedPlaceIndex(archive)
 
-	plans := buildCensusSuggestionPlans(archive, personCensusYears, personBurialYear)
+	plans := buildCensusSuggestionPlans(archive, personCensusYears, personBurialYear, personPlaces, personDatedPlaces)
 	parentExtras, suppressed := consolidateParentChildCensus(archive, plans)
 
 	return emitCensusSuggestions(archive, plans, parentExtras, suppressed)
 }
 
-// censusSuggestionPlan is the missing-year set computed for one person.
+// censusYearRef identifies one census: a country's schedule and a year on it.
+// Suggestions are keyed by the pair rather than by year alone, because a
+// person whose places span two countries can be missing two different
+// censuses taken in the same year.
+type censusYearRef struct {
+	schedule *censusSchedule
+	year     int
+}
+
+// censusSuggestionPlan is the missing-census set computed for one person.
 type censusSuggestionPlan struct {
 	birthYear int
-	missing   []int
+	missing   []censusYearRef
+	// lossNotes annotates the missing censuses whose schedules are lost
+	// for some of the states or territories the person may have been in
+	// (#1333).
+	lossNotes map[censusYearRef]string
 }
 
 // coveredChild records a minor child whose census suggestion is rolled up
@@ -149,15 +158,22 @@ type coveredChild struct {
 }
 
 // buildCensusSuggestionPlans returns, for every person with a known birth
-// year, the set of US federal census years between birth and death (capped at
-// maxLifespan when death is unknown) that are not already represented by a
-// census event or census source for that person.
+// year, the censuses between birth and death (capped at maxLifespan when
+// death is unknown) that are not already represented by a census event or
+// census source for that person. Which censuses those are depends on where
+// the person's places put them: a person whose places name a country with no
+// census schedule gets no plan at all (#186). A census whose schedules are
+// lost for every state or territory the person can be placed in around that
+// year is left out, since it can never be found (#1333).
 func buildCensusSuggestionPlans(
 	archive *glxlib.GLXFile,
 	personCensusYears map[string]map[int]bool,
 	personBurialYear map[string]int,
+	personPlaces map[string][]string,
+	personDatedPlaces map[string][]datedPlace,
 ) map[string]*censusSuggestionPlan {
 	plans := make(map[string]*censusSuggestionPlan)
+	schedulesByCountry := make(map[string]*censusSchedule)
 	for _, id := range sortedPersonIDs(archive.Persons) {
 		if archive.Persons[id] == nil {
 			continue
@@ -178,19 +194,40 @@ func buildCensusSuggestionPlans(
 		}
 
 		existing := personCensusYears[id]
-		var missing []int
-		for _, censusYear := range usFederalCensusYears {
-			if censusYear < birthYear || censusYear > upperBound || existing[censusYear] {
-				continue
+		plan := &censusSuggestionPlan{birthYear: birthYear, lossNotes: make(map[censusYearRef]string)}
+		for _, schedule := range censusSchedulesForPlaces(personPlaces[id], archive) {
+			// Plan keys share one snapshot per country within this analysis run.
+			if known := schedulesByCountry[schedule.Country]; known != nil {
+				schedule = known
+			} else {
+				schedulesByCountry[schedule.Country] = schedule
 			}
-			missing = append(missing, censusYear)
+			plan.addMissingCensuses(archive, schedule, upperBound, existing, personDatedPlaces[id])
 		}
-		if len(missing) > 0 {
-			plans[id] = &censusSuggestionPlan{birthYear: birthYear, missing: missing}
+		if len(plan.missing) > 0 {
+			plans[id] = plan
 		}
 	}
 
 	return plans
+}
+
+// addMissingCensuses keeps only searchable census years within a person's life.
+func (plan *censusSuggestionPlan) addMissingCensuses(archive *glxlib.GLXFile, schedule *censusSchedule, upperBound int, existing map[int]bool, places []datedPlace) {
+	for _, year := range schedule.Years {
+		if year < plan.birthYear || year > upperBound || existing[year] {
+			continue
+		}
+		survival := schedule.Survival(year, places, archive)
+		if survival.Lost {
+			continue
+		}
+		ref := censusYearRef{schedule: schedule, year: year}
+		plan.missing = append(plan.missing, ref)
+		if survival.Note != "" {
+			plan.lossNotes[ref] = survival.Note
+		}
+	}
 }
 
 // parentChildBound is the time window of one parent-child relationship
@@ -212,10 +249,10 @@ type parentChildBound struct {
 func consolidateParentChildCensus(
 	archive *glxlib.GLXFile,
 	plans map[string]*censusSuggestionPlan,
-) (parentExtras map[string]map[int][]coveredChild, suppressed map[string]map[int]bool) {
+) (parentExtras map[string]map[censusYearRef][]coveredChild, suppressed map[string]map[censusYearRef]bool) {
 	parentChildBounds := buildParentChildBoundsIndex(archive)
-	parentExtras = make(map[string]map[int][]coveredChild)
-	suppressed = make(map[string]map[int]bool)
+	parentExtras = make(map[string]map[censusYearRef][]coveredChild)
+	suppressed = make(map[string]map[censusYearRef]bool)
 
 	for _, parentID := range sortedPersonIDs(archive.Persons) {
 		parentPlan := plans[parentID]
@@ -226,7 +263,7 @@ func consolidateParentChildCensus(
 		if len(childMap) == 0 {
 			continue
 		}
-		parentMissing := yearSet(parentPlan.missing)
+		parentMissing := censusRefSet(parentPlan.missing)
 
 		childIDs := make([]string, 0, len(childMap))
 		for cid := range childMap {
@@ -242,11 +279,12 @@ func consolidateParentChildCensus(
 	return parentExtras, suppressed
 }
 
-// yearSet turns a list of years into a presence map for cheap membership tests.
-func yearSet(years []int) map[int]bool {
-	set := make(map[int]bool, len(years))
-	for _, y := range years {
-		set[y] = true
+// censusRefSet turns a list of census references into a presence map for
+// cheap membership tests.
+func censusRefSet(refs []censusYearRef) map[censusYearRef]bool {
+	set := make(map[censusYearRef]bool, len(refs))
+	for _, ref := range refs {
+		set[ref] = true
 	}
 
 	return set
@@ -400,33 +438,33 @@ func wasActiveInYear(bounds []parentChildBound, year int) bool {
 func recordConsolidatedChild(
 	childPlan *censusSuggestionPlan,
 	childID, parentID string,
-	parentMissing map[int]bool,
+	parentMissing map[censusYearRef]bool,
 	bounds []parentChildBound,
-	parentExtras map[string]map[int][]coveredChild,
-	suppressed map[string]map[int]bool,
+	parentExtras map[string]map[censusYearRef][]coveredChild,
+	suppressed map[string]map[censusYearRef]bool,
 ) {
 	if childPlan == nil {
 		return
 	}
-	for _, year := range childPlan.missing {
-		if !parentMissing[year] {
+	for _, ref := range childPlan.missing {
+		if !parentMissing[ref] {
 			continue
 		}
-		if !wasActiveInYear(bounds, year) {
+		if !wasActiveInYear(bounds, ref.year) {
 			continue
 		}
-		age := year - childPlan.birthYear
+		age := ref.year - childPlan.birthYear
 		if age < 0 || age >= minorAgeUnder {
 			continue
 		}
 		if parentExtras[parentID] == nil {
-			parentExtras[parentID] = make(map[int][]coveredChild)
+			parentExtras[parentID] = make(map[censusYearRef][]coveredChild)
 		}
-		parentExtras[parentID][year] = append(parentExtras[parentID][year], coveredChild{id: childID, age: age})
+		parentExtras[parentID][ref] = append(parentExtras[parentID][ref], coveredChild{id: childID, age: age})
 		if suppressed[childID] == nil {
-			suppressed[childID] = make(map[int]bool)
+			suppressed[childID] = make(map[censusYearRef]bool)
 		}
-		suppressed[childID][year] = true
+		suppressed[childID][ref] = true
 	}
 }
 
@@ -436,8 +474,8 @@ func recordConsolidatedChild(
 func emitCensusSuggestions(
 	archive *glxlib.GLXFile,
 	plans map[string]*censusSuggestionPlan,
-	parentExtras map[string]map[int][]coveredChild,
-	suppressed map[string]map[int]bool,
+	parentExtras map[string]map[censusYearRef][]coveredChild,
+	suppressed map[string]map[censusYearRef]bool,
 ) []AnalysisIssue {
 	var issues []AnalysisIssue
 	for _, id := range sortedPersonIDs(archive.Persons) {
@@ -446,15 +484,18 @@ func emitCensusSuggestions(
 			continue
 		}
 		name := personName(archive, id)
-		for _, year := range plan.missing {
-			if suppressed[id][year] {
+		for _, ref := range plan.missing {
+			if suppressed[id][ref] {
 				continue
 			}
-			note := fmt.Sprintf("%s — search %d census (alive, no census event)", name, year)
-			if year == 1890 {
-				note += " — mostly destroyed (1921 fire)"
+			note := fmt.Sprintf("%s — search %s (alive, no census event)", name, ref.schedule.SuggestionLabel(ref.year))
+			if yearNote := ref.schedule.Notes[ref.year]; yearNote.Note != "" {
+				note += " — " + yearNote.Note
 			}
-			if extras := parentExtras[id][year]; len(extras) > 0 {
+			if lossNote := plan.lossNotes[ref]; lossNote != "" {
+				note += " — " + lossNote
+			}
+			if extras := parentExtras[id][ref]; len(extras) > 0 {
 				parts := make([]string, 0, len(extras))
 				for _, c := range extras {
 					parts = append(parts, fmt.Sprintf("%s (~%d)", personName(archive, c.id), c.age))
@@ -503,29 +544,27 @@ func buildBurialYearIndex(archive *glxlib.GLXFile) map[string]int {
 
 // addCensusYearFromSources indexes census years from citations and sources
 // referenced by assertions, so that persons documented only via citations
-// (not full census events) are not flagged as missing.
+// (not full census events) are not flagged as missing. An assertion about an
+// event counts for the people whose own record the event is (#1211).
 func addCensusYearFromSources(archive *glxlib.GLXFile, personCensusYears map[string]map[int]bool) {
 	for _, assertion := range archive.Assertions {
 		if assertion == nil {
 			continue
 		}
-		personID := assertion.Subject.Person
-		if personID == "" {
-			continue
-		}
-
-		// Check citations → sources
-		for _, citID := range assertion.Citations {
-			cit := archive.Citations[citID]
-			if cit == nil {
-				continue
+		for _, personID := range glxlib.AssertionPersons(assertion, archive) {
+			// Check citations → sources
+			for _, citID := range assertion.Citations {
+				cit := archive.Citations[citID]
+				if cit == nil {
+					continue
+				}
+				indexCensusSource(archive.Sources[cit.SourceID], personID, personCensusYears)
 			}
-			indexCensusSource(archive.Sources[cit.SourceID], personID, personCensusYears)
-		}
 
-		// Check direct sources
-		for _, srcID := range assertion.Sources {
-			indexCensusSource(archive.Sources[srcID], personID, personCensusYears)
+			// Check direct sources
+			for _, srcID := range assertion.Sources {
+				indexCensusSource(archive.Sources[srcID], personID, personCensusYears)
+			}
 		}
 	}
 }
@@ -550,7 +589,7 @@ func indexCensusSource(src *glxlib.Source, personID string, personCensusYears ma
 	}
 
 	// Fall back to matching any census year in the title
-	for _, censusYear := range usFederalCensusYears {
+	for _, censusYear := range allCensusYears() {
 		if strings.Contains(src.Title, strconv.Itoa(censusYear)) {
 			if personCensusYears[personID] == nil {
 				personCensusYears[personID] = make(map[int]bool)
@@ -560,26 +599,47 @@ func indexCensusSource(src *glxlib.Source, personID string, personCensusYears ma
 	}
 }
 
+// vitalRecordSourceTypes are the source types that count as a vital record
+// for the purposes of the suggestion below. Civil registration is neither
+// universal nor old: parish registers are the birth, marriage and death
+// record for most of Europe before it, and civil population registers are in
+// several countries after it. Treating only `vital_record` as evidence told
+// researchers working outside the US to go find a certificate that was never
+// issued (#186).
+var vitalRecordSourceTypes = map[string]bool{
+	glxlib.SourceTypeVitalRecord:        true,
+	glxlib.SourceTypeChurchRegister:     true,
+	glxlib.SourceTypePopulationRegister: true,
+}
+
+// isVitalRecordSource reports whether a source stands in for a vital record.
+func isVitalRecordSource(source *glxlib.Source) bool {
+	return source != nil && vitalRecordSourceTypes[source.Type]
+}
+
 // suggestVitalRecords recommends searching for vital records when a person has
-// approximate birth/death dates but no vital_record source type is cited.
+// approximate birth/death dates but cites no vital record — or the parish or
+// population register that serves as one where no civil certificate exists.
+// A record cited on an assertion about the person's own event (their birth,
+// baptism, burial) counts as theirs; one cited on an event they only witnessed
+// does not (#1211).
 func suggestVitalRecords(archive *glxlib.GLXFile) []AnalysisIssue {
-	// Build set of persons who have a vital_record source
+	// Build set of persons who have a vital record source
 	personsWithVitals := make(map[string]bool)
 
 	for _, assertion := range archive.Assertions {
 		if assertion == nil {
 			continue
 		}
-		personID := assertion.Subject.Person
-		if personID == "" {
+		persons := glxlib.AssertionPersons(assertion, archive)
+		if len(persons) == 0 {
 			continue
 		}
 
 		hasVitalSource := false
 
 		for _, sourceID := range assertion.Sources {
-			source := archive.Sources[sourceID]
-			if source != nil && source.Type == glxlib.SourceTypeVitalRecord {
+			if isVitalRecordSource(archive.Sources[sourceID]) {
 				hasVitalSource = true
 
 				break
@@ -592,8 +652,7 @@ func suggestVitalRecords(archive *glxlib.GLXFile) []AnalysisIssue {
 				if cit == nil {
 					continue
 				}
-				source := archive.Sources[cit.SourceID]
-				if source != nil && source.Type == glxlib.SourceTypeVitalRecord {
+				if isVitalRecordSource(archive.Sources[cit.SourceID]) {
 					hasVitalSource = true
 
 					break
@@ -602,7 +661,9 @@ func suggestVitalRecords(archive *glxlib.GLXFile) []AnalysisIssue {
 		}
 
 		if hasVitalSource {
-			personsWithVitals[personID] = true
+			for _, personID := range persons {
+				personsWithVitals[personID] = true
+			}
 		}
 	}
 
@@ -631,7 +692,7 @@ func suggestVitalRecords(archive *glxlib.GLXFile) []AnalysisIssue {
 			Category: "suggestion",
 			Severity: "info",
 			Person:   id,
-			Message:  name + " — search vital records (dates exist but no vital record source)",
+			Message:  name + " — search vital records (dates exist but no vital, parish or population register source)",
 		})
 	}
 

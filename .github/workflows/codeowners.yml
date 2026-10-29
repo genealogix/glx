@@ -60,12 +60,13 @@ jobs:
     env:
       OWNERS_PAT: ${{ secrets.CODEOWNERS_VALIDATOR_TOKEN }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: Validate CODEOWNERS (syntax, duppatterns, files, shadowing)
-        uses: mszostok/codeowners-validator@7f3f5e28c6d7b8dfae5731e54ce2272ca384592f # v0.7.4 -- only vX.Y.Z tags published, no floating v0; do not "tidy" to @v0.7
+        # Only vX.Y.Z tags are published, no floating v0; do not "tidy" to @v0.7.
+        uses: mszostok/codeowners-validator@7f3f5e28c6d7b8dfae5731e54ce2272ca384592f # v0.7.4
         with:
           checks: 'files,duppatterns,syntax'
           experimental_checks: 'avoid-shadowing'
@@ -101,12 +102,13 @@ jobs:
 
       - name: Validate owners have write access (needs read:org PAT)
         if: env.OWNERS_PAT != ''
-        uses: mszostok/codeowners-validator@7f3f5e28c6d7b8dfae5731e54ce2272ca384592f # v0.7.4 -- only vX.Y.Z tags published, no floating v0; do not "tidy" to @v0.7
+        # Only vX.Y.Z tags are published, no floating v0; do not "tidy" to @v0.7.
+        uses: mszostok/codeowners-validator@7f3f5e28c6d7b8dfae5731e54ce2272ca384592f # v0.7.4
         with:
           checks: 'owners'
           github_access_token: ${{ env.OWNERS_PAT }}
 
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
           cache: false

@@ -7,8 +7,8 @@
     "build": "npm run copy-static && vitepress build",
     "preview": "vitepress preview",
     "copy-static": "node scripts/copy-static.mjs",
-    "lint": "eslint '.vitepress/**/*.{js,vue}' --max-warnings 0",
-    "lint:fix": "eslint '.vitepress/**/*.{js,vue}' --fix",
+    "lint": "eslint . --max-warnings 0",
+    "lint:fix": "eslint . --fix",
     "format": "prettier --write \"**/*.{js,vue,json,md}\""
   },
   "keywords": [
@@ -21,10 +21,10 @@
   "license": "Apache-2.0",
   "devDependencies": {
     "@eslint/js": "^10.0.0",
-    "eslint": "^10.10.0",
+    "eslint": "^10.13.0",
     "eslint-plugin-vue": "^10.11.0",
-    "globals": "^17.12.0",
-    "prettier": "^3.9.6",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.10",
     "vitepress": "^2.0.0-alpha.20"
   }
 }

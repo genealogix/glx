@@ -38,7 +38,7 @@ func FindPersonEvent(archive *GLXFile, personID, eventType string) (string, *Eve
 			continue
 		}
 		for _, p := range event.Participants {
-			if p.Person == personID && isSubjectRole(p.Role) {
+			if p.Person == personID && (isSubjectRole(p.Role) || isResearchPrincipal(event.Type, p.Role)) {
 				return id, event
 			}
 		}

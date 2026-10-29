@@ -73,3 +73,18 @@ func TestGenerateTestData(t *testing.T) {
 		})
 	}
 }
+
+// Checks the generator's whole type and role table against the standard
+// vocabularies. A test that generates an archive and validates it catches a
+// bad entry only when the random draw happens to pick it; this cannot miss.
+func TestTestDataVocabularyIsStandard(t *testing.T) {
+	vocab := &GLXFile{}
+	require.NoError(t, LoadStandardVocabulariesIntoGLX(vocab))
+
+	for _, relType := range testDataRelationshipTypes {
+		assert.Contains(t, vocab.RelationshipTypes, relType, "relationship type %q is not in relationship_types", relType)
+		for _, role := range testDataRoles(relType) {
+			assert.Contains(t, vocab.ParticipantRoles, role, "role %q (for %q) is not in participant_roles", role, relType)
+		}
+	}
+}

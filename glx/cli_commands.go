@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -28,24 +29,14 @@ import (
 //
 //	go build -ldflags "-X main.version=1.2.3 -X main.commit=abc123 -X main.date=2025-01-01" ./glx
 //
-// GoReleaser sets these automatically. For local builds they default to "dev"/""/"".
+// GoReleaser sets these automatically. For local builds they default to "dev"/""/"",
+// and versionString (version.go) falls back to the module version and VCS stamp
+// Go records in the binary.
 var (
 	version = "dev"
 	commit  = ""
 	date    = ""
 )
-
-func versionString() string {
-	v := version
-	if commit != "" {
-		v += " (" + commit[:min(len(commit), 7)] + ")"
-	}
-	if date != "" {
-		v += " " + date
-	}
-
-	return v
-}
 
 // Root command
 var rootCmd = &cobra.Command{
@@ -62,6 +53,15 @@ Use GLX to initialize new archives, validate files, and ensure data quality.`,
 	PersistentPreRun: func(cmd *cobra.Command, _ []string) {
 		cmd.SilenceUsage = true
 	},
+}
+
+// showHelp is the RunE of a parent command that only groups subcommands (add,
+// cache, census). Paired with Args: cobra.NoArgs it makes an unknown
+// subcommand an error: Cobra treats a command without a Run as help-only and
+// returns before validating arguments, so `glx add bogus` used to print help
+// and exit 0, letting a typo in a script pass silently.
+func showHelp(cmd *cobra.Command, _ []string) error {
+	return cmd.Help()
 }
 
 // silentExitError is returned from a Cobra RunE to terminate the process with
@@ -88,8 +88,7 @@ func (e *silentExitError) Error() string {
 // every runner's returned error funnels through.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		var silent *silentExitError
-		if errors.As(err, &silent) {
+		if silent, ok := errors.AsType[*silentExitError](err); ok {
 			os.Exit(silent.code)
 		}
 		fmt.Fprintln(os.Stderr, sanitizeForTerminal(err.Error()))
@@ -120,6 +119,26 @@ func exitCodeForError(err error) int {
 	}
 }
 
+// exactNamedArgs returns a cobra.PositionalArgs accepting exactly the named
+// positional arguments, naming the missing ones when the count is short.
+// cobra.ExactArgs reports only a count ("accepts 2 arg(s), received 0"), and
+// the Usage: line that does carry the names sits above the flag block in
+// --help, which is easy to scroll past (#1274).
+func exactNamedArgs(names ...string) cobra.PositionalArgs {
+	return func(cmd *cobra.Command, args []string) error {
+		switch {
+		case len(args) == len(names):
+			return nil
+		case len(args) > len(names):
+			return fmt.Errorf("%s: %w: accepts %d (%s), received %d", cmd.CommandPath(),
+				ErrTooManyArguments, len(names), strings.Join(names, " "), len(args))
+		default:
+			return fmt.Errorf("%s: %w: %s", cmd.CommandPath(),
+				ErrMissingArguments, strings.Join(names[len(args):], " "))
+		}
+	}
+}
+
 func init() {
 	rootCmd.SetVersionTemplate("glx version {{.Version}}\n")
 	rootCmd.PersistentFlags().BoolVarP(&quietOutput, "quiet", "q", false,
@@ -143,6 +162,7 @@ func init() {
 	rootCmd.AddCommand(evidenceCmd)
 	rootCmd.AddCommand(censusCmd)
 	rootCmd.AddCommand(clusterCmd)
+	rootCmd.AddCommand(householdsCmd)
 	rootCmd.AddCommand(pathCmd)
 	rootCmd.AddCommand(duplicatesCmd)
 	rootCmd.AddCommand(coverageCmd)
@@ -244,14 +264,15 @@ var (
 )
 
 var exportCmd = &cobra.Command{
-	Use:   "export <glx-archive>",
+	Use:   "export [glx-archive]",
 	Short: "Export a GLX archive to GEDCOM or JSON-LD format",
 	Long: `Export a GLX archive to GEDCOM or JSON-LD format.
 
 Supports GEDCOM 5.5.1, GEDCOM 7.0, and JSON-LD output formats.
 
 The input can be either a single-file GLX archive (.glx) or a multi-file
-archive directory.
+archive directory. It is optional and defaults to the current directory, so
+"glx export -o out.ged" works from inside an archive.
 
 GEDCOM output (--format 551 or 70) includes:
 - All individuals (INDI records)
@@ -292,7 +313,10 @@ Redaction operates on the loaded archive before either exporter runs, so the
 same guarantees apply to GEDCOM and JSON-LD output. Event types and family
 structure are preserved (GEDCOM FAM / FAMS / FAMC still reconstruct; JSON-LD
 Relationship and Participation nodes still link) so the export stays valid.`,
-	Example: `  # Export to GEDCOM 5.5.1 (default)
+	Example: `  # Export the archive in the current directory to GEDCOM 5.5.1 (default)
+  glx export -o family.ged
+
+  # Export a named archive
   glx export family-archive -o family.ged
 
   # Export a single-file archive
@@ -309,7 +333,7 @@ Relationship and Participation nodes still link) so the export stays valid.`,
 
   # Export with verbose output
   glx export family-archive -o family.ged --verbose`,
-	Args: cobra.ExactArgs(1),
+	Args: cobra.MaximumNArgs(1),
 	RunE: runExport,
 }
 
@@ -323,11 +347,16 @@ func init() {
 }
 
 func runExport(_ *cobra.Command, args []string) error {
+	path := "."
+	if len(args) > 0 {
+		path = args[0]
+	}
+
 	switch exportFormat {
 	case ExportFormatJSONLD:
-		return exportToJSONLD(args[0], exportOutput, exportVerbose, exportPrivatizeLiving)
+		return exportToJSONLD(path, exportOutput, exportVerbose, exportPrivatizeLiving)
 	default:
-		return exportToGEDCOM(args[0], exportOutput, exportFormat, exportVerbose, exportPrivatizeLiving)
+		return exportToGEDCOM(path, exportOutput, exportFormat, exportVerbose, exportPrivatizeLiving)
 	}
 }
 
@@ -338,6 +367,7 @@ func runExport(_ *cobra.Command, args []string) error {
 var (
 	initSingleFile bool
 	createTestData int
+	initNoGit      bool
 )
 
 var initCmd = &cobra.Command{
@@ -352,7 +382,12 @@ By default, creates a multi-file archive with separate directories for each
 entity type (persons/, events/, places/, etc.) along with standard vocabulary
 files and supporting documentation.
 
-Use --single-file to create a single archive.glx file instead.`,
+Use --single-file to create a single archive.glx file instead.
+
+The new archive directory is made a Git repository (no files staged, no commit
+made) so the generated .gitignore takes effect and the archive is ready for
+version control. An archive created inside an existing repository is left to
+that repository. Use --no-git to skip this entirely.`,
 	Example: `  # Initialize in a new directory
   glx init my-family-archive
 
@@ -360,7 +395,10 @@ Use --single-file to create a single archive.glx file instead.`,
   glx init my-family-archive --single-file
 
   # Initialize with test data in a new directory
-  glx init my-family-archive --create-test-data 10`,
+  glx init my-family-archive --create-test-data 10
+
+  # Initialize without making the directory a Git repository
+  glx init my-family-archive --no-git`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runInitCmd,
 }
@@ -368,6 +406,7 @@ Use --single-file to create a single archive.glx file instead.`,
 func init() {
 	initCmd.Flags().BoolVarP(&initSingleFile, "single-file", "s", false, "create a single-file archive instead of multi-file")
 	initCmd.Flags().IntVarP(&createTestData, "create-test-data", "t", 0, "number of persons to generate test data for")
+	initCmd.Flags().BoolVar(&initNoGit, "no-git", false, "skip initializing a Git repository in the archive directory")
 }
 
 func runInitCmd(_ *cobra.Command, args []string) error {
@@ -378,7 +417,11 @@ func runInitCmd(_ *cobra.Command, args []string) error {
 		targetDir = "."
 	}
 
-	return runInit(targetDir, initSingleFile, createTestData)
+	return runInit(targetDir, initOptions{
+		singleFile:  initSingleFile,
+		numTestData: createTestData,
+		noGit:       initNoGit,
+	})
 }
 
 // ============================================================================
@@ -389,6 +432,7 @@ var (
 	validateReport          bool
 	validateStdin           bool
 	validateEntityType      string
+	validateShowFirstErrors int
 	errReportTooManyArgs    = errors.New("--report accepts at most one path argument")
 	errStdinReportExclusive = errors.New("--stdin and --report are mutually exclusive")
 )
@@ -402,12 +446,19 @@ Performs comprehensive validation including:
 - YAML syntax correctness
 - Required fields presence
 - Entity ID format validation
-- Cross-reference integrity (directories only)
+- Cross-reference integrity (directories and single-file archives)
 - Duplicate ID detection (directories only)
 - Vocabulary validation (if vocabularies/ exists)
 
 Validation behavior:
-- Single file: Validates file structure only, skips cross-reference checks
+- Single file holding a whole archive: full validation, cross-references
+  included. A file counts as a whole archive when it carries its own
+  vocabularies alongside its entities (what glx join writes) or declares every
+  entity collection (what glx init --single-file scaffolds)
+- Single file holding a fragment of a multi-file archive: structure and the
+  semantic checks that stand on their own; cross-reference and place-hierarchy
+  checks are skipped, because the entities those references name live in the
+  fragment's siblings, which are not being validated
 - Directory: Validates all .glx files with full cross-reference validation
 - No arguments: Validates current directory with full cross-reference validation
 - Several paths (directories, .glx files, or a mix): Loaded together as one
@@ -425,6 +476,9 @@ that point into them. A dot-prefixed .glx file named explicitly on the command
 line is validated. An
 archive whose own root directory is dot-named is still validated normally.
 
+Use --show-first-errors N to limit each error list in any validation mode,
+including --stdin (default 10, 0 for all). Warnings are always listed in full.
+
 Use --report to generate a confidence summary showing assertion coverage
 and highlighting unsupported claims. The archive is validated first, so
 --report fails on an archive that plain validate rejects.`,
@@ -437,8 +491,11 @@ and highlighting unsupported claims. The archive is validated first, so
   # Validate multiple paths (with cross-reference checks)
   glx validate persons/ events/ places/
 
-  # Validate single file (structure only, no cross-reference checks)
+  # Validate a single-file archive (with cross-reference checks)
   glx validate archive.glx
+
+  # Validate one file of a multi-file archive (structure only)
+  glx validate events/event-births.glx
 
   # Generate confidence summary report
   glx validate --report
@@ -448,6 +505,7 @@ and highlighting unsupported claims. The archive is validated first, so
 
 func init() {
 	validateCmd.Flags().BoolVar(&validateReport, "report", false, "Generate confidence summary report")
+	validateCmd.Flags().IntVar(&validateShowFirstErrors, "show-first-errors", defaultShowFirstErrors, "Number of validation errors to show (0 for all)")
 	validateCmd.Flags().BoolVar(&validateStdin, "stdin", false,
 		"Read one entity as YAML on stdin and validate it against its entity-type schema (no path args)")
 	validateCmd.Flags().StringVar(&validateEntityType, "entity-type", "",
@@ -462,13 +520,13 @@ func runValidate(_ *cobra.Command, args []string) error {
 		return errStdinReportExclusive
 	}
 	if validateStdin {
-		return validateStdinEntity(SystemIOStreams(), validateEntityType, args, os.Stdin)
+		return validateStdinEntity(SystemIOStreams(), validateEntityType, args, os.Stdin, validateShowFirstErrors)
 	}
 	if validateReport {
-		return validateAndReport(SystemIOStreams(), args)
+		return validateAndReport(SystemIOStreams(), args, validateShowFirstErrors)
 	}
 
-	return validatePaths(SystemIOStreams(), args)
+	return validatePathsShowing(SystemIOStreams(), args, validateShowFirstErrors)
 }
 
 // ============================================================================
@@ -504,7 +562,7 @@ Each entity file uses standard GLX structure with the entity ID as the map key.`
 
   # Split without validation
   glx split family.glx family-archive --no-validate`,
-	Args: cobra.ExactArgs(2),
+	Args: exactNamedArgs("<input-file>", "<output-directory>"),
 	RunE: runSplit,
 }
 
@@ -553,7 +611,7 @@ Entity IDs are read from the map key in each file.`,
 
   # Join without validation
   glx join family-archive family.glx --no-validate`,
-	Args: cobra.ExactArgs(2),
+	Args: exactNamedArgs("<input-directory>", "<output-file>"),
 	RunE: runJoin,
 }
 
@@ -634,7 +692,8 @@ var queryCmd = &cobra.Command{
 	Long: `Filter and list entities from a GENEALOGIX archive.
 
 Supported entity types: persons, events, assertions, sources,
-relationships, places, citations, repositories, media.
+relationships, places, citations, repositories, media, research_logs,
+studies.
 
 Filters vary by entity type:
   persons:       --name, --born-before, --born-after, --birthplace
@@ -644,6 +703,8 @@ Filters vary by entity type:
   relationships: --type
   places:        --name
   repositories:  --name
+  research_logs: --status, --subject (the log's subject or a lead's
+                 candidate person, by ID or name substring)
 
 All entity types support --archive to specify the archive path.`,
 	Example: `  # Find persons born before 1850
@@ -663,6 +724,9 @@ All entity types support --archive to specify the archive path.`,
 
   # Find persons by name in a specific archive
   glx query persons --name "Smith" --archive my-archive
+
+  # Find research logs about a person (as subject or as a lead candidate)
+  glx query research_logs --subject person-mary-green
 
   # List all sources
   glx query sources`,
@@ -692,10 +756,10 @@ func init() {
 	queryCmd.Flags().IntVar(&queryBefore, "before", 0, "Filter events with date before this year")
 	queryCmd.Flags().IntVar(&queryAfter, "after", 0, "Filter events with date after this year")
 	queryCmd.Flags().StringVar(&queryConfidence, "confidence", "", "Filter assertions by confidence level")
-	queryCmd.Flags().StringVar(&queryStatus, "status", "", "Filter assertions by status")
+	queryCmd.Flags().StringVar(&queryStatus, "status", "", "Filter assertions or research logs by status")
 	queryCmd.Flags().StringVar(&querySource, "source", "", "Filter assertions by source ID (direct or via citation)")
 	queryCmd.Flags().StringVar(&queryCitation, "citation", "", "Filter assertions by citation ID")
-	queryCmd.Flags().StringVar(&querySubject, "subject", "", "Filter assertions by subject entity ID or person name substring")
+	queryCmd.Flags().StringVar(&querySubject, "subject", "", "Filter assertions or research logs by subject entity ID or person name substring")
 	queryCmd.Flags().StringVar(&queryBirthplace, "birthplace", "", "Filter persons by birthplace (place ID or name substring)")
 }
 
@@ -729,6 +793,16 @@ var statsCmd = &cobra.Command{
 
 Shows entity counts, assertion confidence distribution, and entity coverage
 metrics for quick feedback on archive health.
+
+Coverage is shown two ways. "Direct assertion references" counts entities
+that are an assertion's subject. "Evidence coverage" measures assertion
+reachability: a person is covered when an assertion targets them, names them as a
+participant, or targets an event or relationship they take part in; a place
+is covered when an assertion targets it or names it as a value (an event's
+place, a residence), when a covered event happens there, or when it contains
+such a place. Every assertion counts, including unsourced or disproven assertions.
+Place ancestors count as gazetteer scaffolding. These percentages measure
+assertion reach, rather than the proportion of entities sourced or proven.
 
 Accepts either a multi-file directory or a single .glx file.
 If no path is given, uses the current directory.`,
@@ -898,7 +972,10 @@ Sections displayed:
   - Life Events: census, immigration, naturalization, military service, etc.
   - Family: spouse(s) with marriage info, parents, siblings
   - Relationships: godparent, neighbor, household, employment, etc.
-  - Life History: auto-generated biographical narrative`,
+  - Life History: auto-generated biographical narrative
+  - Research: research logs about the person (as subject or as a lead
+    candidate) with objective, status, planned searches, and open leads
+    with their recorded statuses`,
 	Example: `  # Summary by person ID
   glx summary person-abc123
 
@@ -938,8 +1015,12 @@ var publishCmd = &cobra.Command{
 with family who won't install tools or read YAML.
 
 The site includes a person profile page for everyone in the archive (with
-vital facts, a life timeline, linked family members, supporting sources, and
-a media gallery), plus source and place indexes and a client-side search.
+vital facts, a life timeline plotted to scale, pedigree and descendancy
+charts, linked family members, supporting sources, and a media gallery), plus
+source and place indexes — the place index maps everywhere the archive records
+coordinates for — and a client-side search.
+The timeline strip is shown when parsed dates span distinct years in one
+recorded calendar; mixed-calendar events remain in the chronological list.
 The output is a plain directory of HTML/CSS/JS with no server, database, or
 build tooling required — open index.html directly with file:// or host it
 anywhere (GitHub Pages, S3, Netlify).
@@ -1048,14 +1129,28 @@ place observation: events they participated in (birth, census, marriage, ...),
 their children's birth events (a child's birthplace is evidence of the
 parent's residence), and residence property values.
 
-Observations are sorted chronologically and each change of region is reported
-as a movement (e.g. "Florida → Wisconsin"). Regions compare at the
-state/region level of the place hierarchy, and pre-statehood territories
-match their successor states ("Florida Territory" equals "Florida").
+Observations are sorted chronologically and each change of place is reported
+as a movement, named at the highest level of the place hierarchy where the
+two places differ: "Florida → Wisconsin" between two states, "Niederkleen →
+Pohl-Göns" between two villages of one district. A place and a place inside
+it (a state and one of its towns) are not a move. Country and continent
+levels are skipped, and pre-statehood territories match their successor
+states ("Florida Territory" equals "Florida").
+
+Not every observation counts toward a movement. An event in which the
+person's role does not put them at its place (a grantor or grantee of a deed,
+a legatee or heir of an estate, someone merely mentioned) is shown but not
+counted, and so is a parent named on a child's death or burial, which places
+the child rather than the parent's household; an archive can mark its own roles with implies_presence in the
+participant roles vocabulary. A bounded residence value overrides an event
+elsewhere only when the event's whole possible date span fits within that
+residence: the event remains visible but is not counted as a move. Open-ended
+event spans remain included. Dates in different calendars are not compared
+without conversion.
 
 With --pattern, searches all persons in the archive for a migration pattern
 instead: a comma-separated list of places that must appear in chronological
-order in a person's region sequence. Knowing who else made the same move
+order in a person's sequence of places. Knowing who else made the same move
 narrows the search for a person's family.
 
 The person argument can be an exact entity ID (e.g., person-jane-webb) or a
@@ -1160,25 +1255,43 @@ var (
 )
 
 var evidenceCmd = &cobra.Command{
-	Use:   "evidence <person> <property>",
+	Use:   "evidence <subject> <property>",
 	Short: "Show all evidence for a property, grouped by value",
-	Long: `Display every assertion for one person+property side-by-side, grouped by
+	Long: `Display every assertion for one subject+property side-by-side, grouped by
 value, with the supporting citations and confidence for each.
 
 Where "glx analyze" emits a one-line conflict warning and "glx proof" summarizes
 a resolved question, "glx evidence" is for questions still in active research:
 it lays out the conflicting answers so you can weigh them. For each value it
 shows the supporting reports (citation and source), counts them, and reports the
-best confidence; the closing line highlights the best-supported value, or notes
-when the leading values tie.
+best confidence. Time-varying properties show dated history, with undated claims
+in their own section. Best evidence is chosen only among claims whose periods
+could overlap. Disproven claims are excluded. Other properties highlight the
+best-supported value, or note when the leading values tie.
 
-The person argument can be an exact entity ID (e.g., person-jane-webb) or a
-name to search for (e.g., "Jane Miller"). If the name matches multiple persons,
-all matches are listed for disambiguation. The property is matched exactly, with
-a case-insensitive fallback when no exact match exists. Place, person, and event
-reference values resolve to the referenced entity's name.`,
+All comparisons use the same rules as analyze, proof and merge-persons: precision
+and place-hierarchy refinements agree; approximate date values use ±2 years by
+default (--approximation-years overrides this). Distinct place IDs stay distinct.
+
+The subject is any entity an assertion can be about — a person, event, place, or
+relationship — matching what "glx add assertion" accepts. That matters because
+the two properties most likely to have conflicting answers, date and place, are
+normally asserted on the event rather than on the person.
+
+A subject is resolved by exact entity ID first (e.g., event-death-1807), then,
+for persons only, by name search (e.g., "Jane Miller"); if the name matches
+multiple persons, all matches are listed for disambiguation. The property is
+matched exactly, with a case-insensitive fallback when no exact match exists.
+Place, person, and event reference values resolve to the referenced entity's
+name.`,
 	Example: `  # All recorded values for a birthplace property, by ID
   glx evidence person-jane-webb born_at
+
+  # The contested date of an event
+  glx evidence event-death-1807 date
+
+  # Every recorded name for a place
+  glx evidence place-liepen name
 
   # Look the person up by name
   glx evidence "Jane Miller" residence
@@ -1197,8 +1310,13 @@ func init() {
 	evidenceCmd.Flags().StringVar(&evidenceFormat, "format", "text", "Output format: text or json")
 }
 
-func runEvidence(_ *cobra.Command, args []string) error {
-	return showEvidence(SystemIOStreams(), evidenceArchive, args[0], args[1], evidenceFormat)
+func runEvidence(cmd *cobra.Command, args []string) error {
+	opts, err := commandComparisonOptions(cmd)
+	if err != nil {
+		return err
+	}
+
+	return showEvidence(SystemIOStreams(), evidenceArchive, args[0], args[1], evidenceFormat, opts)
 }
 
 // ============================================================================
@@ -1212,6 +1330,8 @@ var censusCmd = &cobra.Command{
 
 Subcommands:
   add    Import a census template into the archive`,
+	Args: cobra.NoArgs,
+	RunE: showHelp,
 }
 
 var (
@@ -1237,6 +1357,14 @@ The template format uses a simple YAML structure describing the census
 year, location, household members, and citation details. Members can
 reference existing persons by ID or by name (matched against the archive).
 
+Head-only schedules (US 1790-1840 and similar) are supported: list the
+tick-mark columns under household.tally (sex, age_from, age_to, count,
+status), and add any known household member the schedule counts but does
+not name with named: false. Such members get role household_member and a
+low-confidence residence assertion, and are treated as found in that census
+by analyze, coverage, and households. household.neighbors records nearby
+households on the page (name, person, position, page, line).
+
 Use --dry-run to preview what would be generated without writing files.`,
 	Example: `  # Import a census template
   glx census add --from 1860-census-lane.yaml --archive my-archive
@@ -1246,6 +1374,7 @@ Use --dry-run to preview what would be generated without writing files.`,
 
   # Verbose output
   glx census add --from 1860-census-lane.yaml --archive my-archive --verbose`,
+	Args: cobra.NoArgs,
 	RunE: runCensusAdd,
 }
 
@@ -1262,6 +1391,84 @@ func init() {
 
 func runCensusAdd(_ *cobra.Command, _ []string) error {
 	return censusAdd(censusAddFrom, censusAddArchive, censusAddDryRun, censusAddVerbose)
+}
+
+// ============================================================================
+// Households Command (census household reconstruction)
+// ============================================================================
+
+var (
+	householdsArchive   string
+	householdsPlace     string
+	householdsYear      int
+	householdsNeighbors bool
+	householdsFormat    string
+)
+
+var householdsCmd = &cobra.Command{
+	Use:   "households [person]",
+	Short: "Reconstruct census households",
+	Long: `Reconstruct census households from the archive. Every census event is one
+household: the people enumerated in it, with their role, relationship to the
+head, and age at the census (participant property age_at_event).
+
+Members are listed head first, then by age, oldest first. The head is the
+participant whose relationship_to_head is "head", otherwise the first named
+participant in a principal/subject role. Members a head-only schedule counts
+without naming (participant property named: false) are marked "counted, not
+named", and the event's household tally (the tick-mark columns of 1790-1840
+style schedules) is printed under the members.
+
+With a person, lists each census household that person appears in. With
+--place, lists every census household at that place or any place inside it;
+combine with --year to look at a single enumeration. --neighbors adds the
+households recorded as page neighbors on each census event.
+
+The person argument can be an exact entity ID or a name to search for.`,
+	Example: `  # Every census household a person appears in
+  glx households person-robert-webb
+
+  # One census year only
+  glx households person-robert-webb --year 1860
+
+  # Every household enumerated at a place in 1860
+  glx households --place place-millbrook-hartford --year 1860
+
+  # Include page neighbors, for FAN research
+  glx households person-abram-baker --neighbors
+
+  # Machine-readable output
+  glx households person-robert-webb --format json`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runHouseholds,
+}
+
+func init() {
+	householdsCmd.Flags().StringVarP(&householdsArchive, "archive", "a", ".", "Archive path (directory or single file)")
+	householdsCmd.Flags().StringVar(&householdsPlace, "place", "", "Only households at this place ID (includes descendant places)")
+	householdsCmd.Flags().IntVar(&householdsYear, "year", 0, "Only households from this census year")
+	householdsCmd.Flags().BoolVar(&householdsNeighbors, "neighbors", false, "Show the page neighbors recorded on each census event")
+	householdsCmd.Flags().StringVar(&householdsFormat, "format", "text", "Output format: text or json")
+}
+
+func runHouseholds(_ *cobra.Command, args []string) error {
+	return householdsFromArgs(SystemIOStreams(), args)
+}
+
+// householdsFromArgs maps the positional person argument and flags onto
+// showHouseholds.
+func householdsFromArgs(io *IOStreams, args []string) error {
+	opts := householdsOptions{
+		PlaceID:   householdsPlace,
+		Year:      householdsYear,
+		Neighbors: householdsNeighbors,
+		Format:    householdsFormat,
+	}
+	if len(args) > 0 {
+		opts.PersonQuery = args[0]
+	}
+
+	return showHouseholds(io, householdsArchive, opts)
 }
 
 // ============================================================================
@@ -1284,12 +1491,14 @@ club analysis — the primary methodology for breaking genealogical brickwalls.
 
 Cross-references the archive to find people connected to the target through:
 - Census households: people enumerated in the same census events
+- Census neighbors: households recorded as page neighbors on a census event
+  (the event's neighbors list), when the neighbor is linked to a person
 - Shared events: co-participants in marriages, baptisms, land records, etc.
 - Place overlap: people associated with the same places in the same time period
 
 Associates are ranked by connection strength: census household links (3 points),
-shared event links (2 points), and place overlap links (1 point). Multiple
-connections compound for higher scores.
+census neighbor and shared event links (2 points), and place overlap links
+(1 point). Multiple connections compound for higher scores.
 
 The person argument can be an exact entity ID (e.g., person-d-lane) or a
 name to search for (e.g., "Mary Green"). If the name matches multiple
@@ -1329,9 +1538,10 @@ func runCluster(_ *cobra.Command, args []string) error {
 // ============================================================================
 
 var (
-	pathArchive string
-	pathMaxHops int
-	pathJSON    bool
+	pathArchive      string
+	pathMaxHops      int
+	pathAcceptedOnly bool
+	pathJSON         bool
 )
 
 var pathCmd = &cobra.Command{
@@ -1346,6 +1556,13 @@ godparent, neighbor, etc.) to find the shortest connection.
 Each hop shows the relationship type and the destination person's role.
 Use --max-hops to limit search depth (default 10).
 
+A relationship whose assertions are all disproven is a rejected alternative
+and is never followed. A hop along a relationship recorded only as a
+hypothesis (low confidence, or a speculative, unresearched, or disputed
+status, with no proven assertion) is marked "(?)", and among equally short
+paths the one with the fewest such hops is shown. Use --accepted-only to
+follow no hypothetical relationships at all.
+
 Person arguments can be exact entity IDs or name substrings.`,
 	Example: `  # Find path between two persons by ID
   glx path person-mary-lane person-louenza-mortimer
@@ -1355,6 +1572,9 @@ Person arguments can be exact entity IDs or name substrings.`,
 
   # Limit search depth
   glx path "Mary Lane" "John Smith" --max-hops 5
+
+  # Follow no relationship recorded only as a hypothesis
+  glx path "Mary Lane" "John Smith" --accepted-only
 
   # JSON output
   glx path "Mary Lane" "John Smith" --json
@@ -1368,11 +1588,12 @@ Person arguments can be exact entity IDs or name substrings.`,
 func init() {
 	pathCmd.Flags().StringVarP(&pathArchive, "archive", "a", ".", "Archive path (directory or single file)")
 	pathCmd.Flags().IntVar(&pathMaxHops, "max-hops", 10, "Maximum number of hops to search")
+	pathCmd.Flags().BoolVar(&pathAcceptedOnly, "accepted-only", false, "Follow only relationships not recorded as a hypothesis")
 	pathCmd.Flags().BoolVar(&pathJSON, "json", false, "Output as JSON")
 }
 
 func runPath(_ *cobra.Command, args []string) error {
-	return showPath(pathArchive, args[0], args[1], pathMaxHops, pathJSON)
+	return showPath(pathArchive, args[0], args[1], pathMaxHops, pathAcceptedOnly, pathJSON)
 }
 
 // ============================================================================
@@ -1445,6 +1666,7 @@ func runDuplicates(_ *cobra.Command, args []string) error {
 var (
 	coverageArchive string
 	coverageJSON    bool
+	coverageCountry string
 )
 
 var coverageCmd = &cobra.Command{
@@ -1457,9 +1679,22 @@ showing which census records, vital records, and other documents have been found
 versus which are still missing.
 
 Record categories:
-  - Census: US federal census records the person should appear in
+  - Census: national and state census records the person should appear in,
+    on the schedules of the countries their places name
   - Vital: Birth, death, and marriage records
   - Other: Probate, land, military, and church records
+
+A record counts as found only when evidence backs it: a source about the person,
+or an event whose assertion references a citation, source, or media object.
+An event on its own is a conclusion, not a record, so it is reported without
+counting toward the score -- an estimated birth date reckoned back from a death
+entry does not mean a birth record exists.
+
+Only the person's own records count: an event in which they are the principal
+or subject (or bride, groom, decedent, ...), or a census on which they are a
+member of the household. Events in which they appear in another role -- a
+witness, godparent, legatee, grantor -- are someone else's record; they are
+listed separately under "Appears in" and do not satisfy a category.
 
 Missing high-priority records are flagged to guide research efforts.
 
@@ -1474,7 +1709,10 @@ The person argument can be an exact entity ID or a name substring.`,
   glx coverage "Jane Miller" --json
 
   # Specify archive path
-  glx coverage "Jane Miller" --archive my-archive`,
+  glx coverage "Jane Miller" --archive my-archive
+
+  # Assume UK censuses where the archive names no country
+  glx coverage "Jane Miller" --country "United Kingdom"`,
 	Args: cobra.ExactArgs(1),
 	RunE: runCoverage,
 }
@@ -1482,10 +1720,11 @@ The person argument can be an exact entity ID or a name substring.`,
 func init() {
 	coverageCmd.Flags().StringVarP(&coverageArchive, "archive", "a", ".", "Archive path (directory or single file)")
 	coverageCmd.Flags().BoolVar(&coverageJSON, "json", false, "Output as JSON")
+	coverageCmd.Flags().StringVar(&coverageCountry, "country", "", censusCountryFlagUsage)
 }
 
 func runCoverage(_ *cobra.Command, args []string) error {
-	return showCoverage(coverageArchive, args[0], coverageJSON)
+	return showCoverage(coverageArchive, args[0], coverageCountry, coverageJSON)
 }
 
 // ============================================================================
@@ -1497,6 +1736,7 @@ var (
 	analyzeCheck   string
 	analyzeFormat  string
 	analyzePerson  string
+	analyzeCountry string
 )
 
 var analyzeCmd = &cobra.Command{
@@ -1509,11 +1749,18 @@ Analysis categories:
   gaps          Missing data that should be findable (no birth, no parents, etc.)
   evidence      Unsupported or weakly supported claims (no citations, single source)
   consistency   Chronological cross-checks (death before birth, implausible lifespan)
+  conflicts     Definite conflicts, possible overlaps, and known disputes
   suggestions   Research recommendations (census years to search, vital records)
 
 Use --check to run a single category. By default, all categories are analyzed.
 
-Use --format json for machine-readable output.`,
+Conflicts include assertions on the person, their events and relationships,
+and competing dates/places on duplicate birth or death events. Definite conflicts
+are HIGH, possible overlaps MEDIUM, and known disputes LOW. Disproven claims and
+undated temporal values are excluded. Touching periods are history.
+
+Use --approximation-years to change the default ±2-year tolerance for approximate
+date values. Use --format json for machine-readable output.`,
 	Example: `  # Full analysis of current directory
   glx analyze
 
@@ -1527,25 +1774,33 @@ Use --format json for machine-readable output.`,
   glx analyze --format json
 
   # Analyze a specific archive
-  glx analyze --archive my-archive`,
+  glx analyze --archive my-archive
+
+  # Assume UK censuses where the archive names no country
+  glx analyze --country "United Kingdom"`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runAnalyze,
 }
 
 func init() {
 	analyzeCmd.Flags().StringVarP(&analyzeArchive, "archive", "a", ".", "Archive path (directory or single file)")
-	analyzeCmd.Flags().StringVarP(&analyzeCheck, "check", "c", "", "Run a single analysis category (gaps, evidence, consistency, suggestions)")
+	analyzeCmd.Flags().StringVarP(&analyzeCheck, "check", "c", "", "Run a single analysis category (gaps, evidence, consistency, conflicts, suggestions)")
 	analyzeCmd.Flags().StringVarP(&analyzeFormat, "format", "f", "", "Output format (json for machine-readable)")
 	analyzeCmd.Flags().StringVarP(&analyzePerson, "person", "p", "", "Filter results to a specific person (ID or name)")
+	analyzeCmd.Flags().StringVar(&analyzeCountry, "country", "", censusCountryFlagUsage)
 }
 
-func runAnalyze(_ *cobra.Command, args []string) error {
+func runAnalyze(cmd *cobra.Command, args []string) error {
+	opts, err := commandComparisonOptions(cmd)
+	if err != nil {
+		return err
+	}
 	person := analyzePerson
 	if len(args) == 1 {
 		person = args[0]
 	}
 
-	return showAnalysis(analyzeArchive, person, analyzeCheck, analyzeFormat)
+	return showAnalysis(analyzeArchive, person, analyzeCheck, analyzeFormat, analyzeCountry, opts)
 }
 
 // ============================================================================
@@ -1579,6 +1834,11 @@ Supported research questions:
   marriage    Whom did the person marry?
   identity    Who was the person (name)?
 
+Only definite unresolved conflicts make a conclusion CONFLICTED. Possible
+conflicts are marked "possible — check" and reduce support. Undated temporal
+claims appear separately. Date precision and place hierarchy refinements agree;
+--approximation-years controls the default ±2-year tolerance for approximate dates.
+
 The person argument can be an exact entity ID or a name substring.`,
 	Example: `  # Proof summary for a person's parentage
   glx proof person-jane-webb --question parentage
@@ -1602,8 +1862,13 @@ func init() {
 	_ = proofCmd.MarkFlagRequired("question")
 }
 
-func runProof(_ *cobra.Command, args []string) error {
-	return showProof(SystemIOStreams(), proofArchive, args[0], proofQuestion, proofFormat)
+func runProof(cmd *cobra.Command, args []string) error {
+	opts, err := commandComparisonOptions(cmd)
+	if err != nil {
+		return err
+	}
+
+	return showProof(SystemIOStreams(), proofArchive, args[0], proofQuestion, proofFormat, opts)
 }
 
 // ============================================================================
@@ -1855,10 +2120,13 @@ then the drop-id person file is removed.
 
 Property merging:
   - Properties present only on drop are copied verbatim.
-  - Multi-value (list) properties are unioned with deep-equal deduplication.
-  - Single-value conflicts default to keep's value (recorded in the conflict
-    report). Pass --keep-newest or --keep-oldest to resolve dated conflicts
-    by date instead.
+  - Identical values agree silently.
+  - Temporal properties combine non-conflicting dated and undated history,
+    including mixed scalar, structured, and list representations.
+  - Other multi-value lists are unioned with deep-equal deduplication.
+  - Genuine conflicts default to keep's value. --keep-newest or --keep-oldest
+    resolves dated collisions while preserving unrelated history.
+  - Approximate date values use ±2 years; --approximation-years overrides it.
 
 Notes are combined per --notes-strategy (default: append).
 
@@ -1891,8 +2159,13 @@ func init() {
 		"How to combine notes: append | prefer-keep | prefer-drop")
 }
 
-func runMergePersons(_ *cobra.Command, args []string) error {
+func runMergePersons(cmd *cobra.Command, args []string) error {
+	comparison, err := commandComparisonOptions(cmd)
+	if err != nil {
+		return err
+	}
 	opts := glxlib.MergePersonsOptions{
+		Comparison:    comparison,
 		NotesStrategy: glxlib.NotesStrategy(mergePersonsNotesStrategy),
 		KeepNewest:    mergePersonsKeepNewest,
 		KeepOldest:    mergePersonsKeepOldest,
@@ -2073,6 +2346,8 @@ shown by 'glx cache status', but do not affect staleness. Only multi-file
 
   # Run a command with auto-build on cache miss
   GLX_CACHE=auto glx summary "Jane Webb"`,
+	Args: cobra.NoArgs,
+	RunE: showHelp,
 }
 
 var cacheBuildCmd = &cobra.Command{

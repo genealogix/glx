@@ -110,10 +110,21 @@ before each commit:
 make install-hooks
 ```
 
-When Go files are staged the hook runs `golangci-lint` (flagging only issues
-introduced since `HEAD`, mirroring CI's `only-new-issues: true`); when JS/Vue
-files under `website/.vitepress/` are staged it runs `eslint` on those staged
-files. Skip once with `LEFTHOOK=0 git commit ...` if needed.
+Both jobs lint the staged content, not the working copy, with the settings CI
+uses (scripts in `scripts/hooks/`):
+
+- When Go files are staged, `golangci-lint` runs on the packages your branch
+  changes and reports issues new since the branch point with `origin/main`,
+  mirroring CI's `only-new-issues: true`. It requires the version pinned in
+  `.golangci-lint-version` and tells you how to install it if yours differs.
+- When `.js`, `.mjs`, `.cjs` or `.vue` files under `website/` are staged,
+  `eslint` runs on them with `--max-warnings 0`, like `npm run lint`. Run
+  `make install-deps` first so `website/node_modules` exists.
+
+Skip the hooks for one commit with `git commit --no-verify`, which works in
+every shell. `LEFTHOOK=0 git commit ...` also works in a POSIX shell (in
+PowerShell, set `$env:LEFTHOOK=0` and clear it afterwards with
+`Remove-Item Env:LEFTHOOK`).
 
 ### Makefile Reference
 
@@ -268,6 +279,7 @@ Every PR runs these checks automatically:
 | **Lint Markdown / markdownlint-cli2** | Structural markdown validation for `specification/`, `docs/`, root `*.md` |
 | **Lint Website / eslint** | eslint over `website/.vitepress` JS/Vue (the website half of `make lint`) |
 | **Security** | gosec, govulncheck, and npm audit |
+| **Workflow Lint / zizmor**, **Workflow Lint / actionlint** | Security and correctness analysis of GitHub Actions workflows; runs only when a PR touches `.github/workflows/`, `.github/dependabot.yml` or the tools' pins. Run locally with `make lint-workflows` |
 | **lint-pr-title** | PR title follows conventional commits format |
 | **dependency-review** | Blocks PRs introducing vulnerable dependencies |
 
@@ -478,6 +490,29 @@ Assisted-by: Claude <noreply@anthropic.com>
 ```
 
 `Co-authored-by` trailers added automatically by AI coding tools are also acceptable.
+
+### Tool Attribution and Private Links
+
+Never put a link to an AI tool's private session, chat, or project thread in a
+commit message, PR title or body, review comment, code comment, or any other
+pushed artifact. URLs such as `https://claude.ai/code/session_...` and
+`https://claude.ai/code/project/...` resolve only for the operator who ran the
+tool, so they are dead ends for every reader and they disclose where the work
+happened. The `Claude-Session:` trailer is the same rule.
+
+Tool-generated attribution blocks do not belong in a PR body either, link or
+no link: no "Requested by *name*" credit line, no machine-readable marker
+comment, no "Generated with *tool*" footer. Git records who authored the
+commits and the PR records who opened it, so the block adds nothing a reader
+cannot already see.
+
+Both rules hold even when the tool's own boilerplate supplies the line — strip
+it before pushing.
+
+This is about attribution a tool adds for itself. The trailers this project
+asks for are unaffected: `Signed-off-by` is required on every commit by the
+[DCO](#developer-certificate-of-origin-dco), and `Assisted-by:` above is how to
+disclose AI assistance. Both stay, and neither needs a link.
 
 ### Enforcement
 

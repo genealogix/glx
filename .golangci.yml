@@ -135,12 +135,14 @@ linters:
 
     misspell:
       locale: US
-      # GEDCOM 5.5/7 tag tokens that the misspell linter would otherwise
-      # "correct" to ordinary English words. They are part of the GEDCOM
+      # Words the misspell linter would otherwise "correct" to ordinary
+      # English. Most are GEDCOM 5.5/7 tag tokens, part of the GEDCOM
       # specification — see https://gedcom.io/specifications/FamilySearchGEDCOMv7.html
-      # and the 5.5.1 spec under docs/gedcom-spec/. Without this allow-list,
-      # an editor-driven `golangci-lint --fix` pass silently rewrites e.g.
-      # `"WITN"` → `"WITH"` and breaks GEDCOM import compatibility.
+      # and the 5.5.1 spec under docs/gedcom-spec/; the rest are historical
+      # terms that appear verbatim in the records GLX describes. Without this
+      # allow-list, an editor-driven `golangci-lint --fix` pass silently
+      # rewrites e.g. `"WITN"` → `"WITH"` and breaks GEDCOM import
+      # compatibility.
       ignore-rules:
         - WITN # ASSO.ROLE — witness
         - RELA # ASSO.RELA — relationship descriptor
@@ -182,6 +184,7 @@ linters:
         - COPR # copyright
         - CHAR # character set
         - LANG # language
+        - gaol # British and Irish spelling of "jail" (Kilmainham Gaol)
 
     goconst:
       min-len: 3

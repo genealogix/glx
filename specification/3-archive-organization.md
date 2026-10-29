@@ -131,6 +131,7 @@ Across all files in an archive, the validator checks:
 
 - Unknown properties (not defined in property vocabularies) generate warnings
 - Unknown assertion properties (not defined in property vocabularies) generate warnings
+- Reversed date ranges (an end before the start) generate warnings. Conflicting evidence remains valid data; validation does not adjudicate claims.
 - Temporal consistency issues generate warnings:
   - Death year before birth year
   - Parent born after child (in parent-child relationships)

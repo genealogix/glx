@@ -9,35 +9,45 @@ them and point at them, and public docs must never link to a `CLAUDE.md`.
 When a convention changes, change the project file first; update the summary
 here afterwards.
 
-## GitHub Actions pinning: SHA-pin third-party, floats only for first-party
+## GitHub Actions pinning: SHA-pin everything, no exceptions
 
-<!-- Last reviewed: 2026-09-17 (#1022) -->
+<!-- Last reviewed: 2026-09-18 (#1022, reversed) -->
 
 **Source of truth: the "Action pinning" section of `../SECURITY-POSTURE.md`.**
 Read it before changing any `uses:` line, and record any change to the
 convention there — not here. This is a summary for applying the rule, and
 nothing in it may contradict that section.
 
-| What you're editing | Pin form |
-|---|---|
-| Third-party action (`github/*` counts as third-party) | Full commit SHA + trailing version comment |
-| First-party `actions/*` | Floating major tag (`@v7`, …) — deliberate, #1022 |
-| `actions/attest` (the one first-party exception) | Full commit SHA |
-| `ossf/scorecard-action` (#779) | Full commit SHA (publishes no floating major) |
-| `mszostok/codeowners-validator` | Full commit SHA (publishes no floating major) |
-| `sigstore/cosign-installer` (#938) | Exact patch tag `@v4.1.2` (publishes no floating major) |
+Every `uses:` reference — third-party, `github/*`, and first-party `actions/*`
+alike — is a full commit SHA with a trailing version comment:
+
+```yaml
+uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+```
+
+The rule is namespace-blind. There is no first-party carve-out: the floating
+`actions/*` majors were removed in #1022 (reversing that issue's original
+"accept the floats" close), because a major tag is a mutable ref no matter who
+publishes it.
 
 Practical consequences:
 
-- Never "tidy" a SHA pin down to a bare tag, and never "correct" a tier-3 pin
-  to `@vN` — the latter fails with `Unable to resolve action <owner>/<repo>@vN`.
-- Never SHA-pin a first-party `actions/*` piecemeal. The float is deliberate
-  and Dependabot keeps it fresh weekly; re-opening it is a change to
-  `../SECURITY-POSTURE.md`, not a drive-by edit here.
-- Before editing any `uses:` line, check what the action actually publishes:
+- Never "tidy" a SHA pin down to a bare tag. Any bare `@vN` in a workflow diff
+  is a defect, whatever the namespace.
+- Three actions publish no floating major at all — `ossf/scorecard-action`
+  (#779), `mszostok/codeowners-validator`, `sigstore/cosign-installer` (#938).
+  Each carries a "do not tidy to @vN" note in the comment directly above its
+  `uses:` line; "correcting" them fails with
+  `Unable to resolve action <owner>/<repo>@vN`.
+- Keep the trailing comment on a `uses:` line a bare `# vX.Y.Z`. Extra text
+  after the version stops Dependabot from rewriting the comment, leaving the
+  SHA and comment out of sync after a bump (#1415). Put notes on the line above.
+- Dependabot sustains the pins: it bumps the SHA and rewrites the `# vX.Y.Z`
+  comment together, weekly, via the `github-actions` ecosystem entry.
+- To find the SHA for a tag (this dereferences annotated tags correctly):
 
   ```bash
-  gh api repos/<owner>/<repo>/tags --jq '.[].name' | head
+  gh api repos/<owner>/<repo>/commits/<tag> --jq .sha
   ```
 
 ## Release pipeline: never move a published tag — cut a new patch tag
@@ -154,5 +164,15 @@ workflow passes.
   workflows (`security.yml`, `validate-spec.yml`) can populate; a poisoned
   cache entry would taint the build *upstream* of signing, and provenance/
   signatures won't catch it. Hence `cache: false` on `actions/setup-go` in
-  `release.yml` (#1051) — do not "tidy" it back to `true`. Wiring zizmor's
-  `cache-poisoning` audit into CI (#928) would catch regressions generically.
+  `release.yml` (#1051) — do not "tidy" it back to `true`. zizmor's
+  `cache-poisoning` audit in `workflow-lint.yml` (#928) catches regressions.
+
+## `workflow-lint.yml`: zizmor + actionlint gate every workflow edit
+
+Any PR touching `.github/workflows/` runs zizmor and actionlint, and both
+fail on any finding (source of truth: the "Static analysis of CI workflow
+definitions" row in `../SECURITY-POSTURE.md`). Run `make lint-workflows`
+before pushing a workflow change. Fix a finding rather than suppressing it;
+where a suppression is genuinely right (e.g. shellcheck SC2016 on a
+single-quoted GraphQL document), put it on the one command with a comment
+saying why.

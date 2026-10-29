@@ -1,0 +1,1063 @@
+[
+  {
+    "name": "after excludes named year",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "AFT 1900"
+      },
+      {
+        "value": "London",
+        "date": "1900"
+      }
+    ],
+    "verdict": "history"
+  },
+  {
+    "name": "before excludes named year",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "BEF 1900"
+      },
+      {
+        "value": "London",
+        "date": "1900"
+      }
+    ],
+    "verdict": "history"
+  },
+  {
+    "name": "after includes the following year",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "AFT 1900"
+      },
+      {
+        "value": "London",
+        "date": "1901"
+      }
+    ],
+    "verdict": "possible"
+  },
+  {
+    "name": "before includes the preceding year",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "BEF 1900"
+      },
+      {
+        "value": "London",
+        "date": "1899"
+      }
+    ],
+    "verdict": "possible"
+  },
+  {
+    "name": "two befores",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "BEF 1900"
+      },
+      {
+        "value": "London",
+        "date": "BEF 1850"
+      }
+    ],
+    "verdict": "possible"
+  },
+  {
+    "name": "two afters",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "AFT 1900"
+      },
+      {
+        "value": "London",
+        "date": "AFT 1950"
+      }
+    ],
+    "verdict": "possible"
+  },
+  {
+    "name": "after then later before",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "AFT 1900"
+      },
+      {
+        "value": "London",
+        "date": "BEF 1950"
+      }
+    ],
+    "verdict": "possible"
+  },
+  {
+    "name": "after past an earlier before",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "AFT 1950"
+      },
+      {
+        "value": "London",
+        "date": "BEF 1900"
+      }
+    ],
+    "verdict": "history"
+  },
+  {
+    "name": "after and next-year before are adjacent",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "AFT 1900"
+      },
+      {
+        "value": "London",
+        "date": "BEF 1901"
+      }
+    ],
+    "verdict": "history"
+  },
+  {
+    "name": "after and before two years on share a year",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "AFT 1900"
+      },
+      {
+        "value": "London",
+        "date": "BEF 1902"
+      }
+    ],
+    "verdict": "possible"
+  },
+  {
+    "name": "after day excludes that day",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "AFT 1900-03-15"
+      },
+      {
+        "value": "London",
+        "date": "1900-03-15"
+      }
+    ],
+    "verdict": "history"
+  },
+  {
+    "name": "after day includes the next day",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "AFT 1900-03-15"
+      },
+      {
+        "value": "London",
+        "date": "1900-03-16"
+      }
+    ],
+    "verdict": "possible"
+  },
+  {
+    "name": "after mid-month still overlaps that month",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "AFT 1900-03-15"
+      },
+      {
+        "value": "London",
+        "date": "1900-03"
+      }
+    ],
+    "verdict": "possible"
+  },
+  {
+    "name": "after january first still covers the year",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "AFT 1900-01-01"
+      },
+      {
+        "value": "London",
+        "date": "1900"
+      }
+    ],
+    "verdict": "possible"
+  },
+  {
+    "name": "after month excludes its last day",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "AFT 1900-03"
+      },
+      {
+        "value": "London",
+        "date": "1900-03-31"
+      }
+    ],
+    "verdict": "history"
+  },
+  {
+    "name": "after month includes the first of the next",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "AFT 1900-03"
+      },
+      {
+        "value": "London",
+        "date": "1900-04-01"
+      }
+    ],
+    "verdict": "possible"
+  },
+  {
+    "name": "after december excludes its own year",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "AFT 1900-12"
+      },
+      {
+        "value": "London",
+        "date": "1900"
+      }
+    ],
+    "verdict": "history"
+  },
+  {
+    "name": "after december overlaps the next year",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "AFT 1900-12"
+      },
+      {
+        "value": "London",
+        "date": "1901"
+      }
+    ],
+    "verdict": "possible"
+  },
+  {
+    "name": "before month excludes its first day",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "BEF 1900-03"
+      },
+      {
+        "value": "London",
+        "date": "1900-03-01"
+      }
+    ],
+    "verdict": "history"
+  },
+  {
+    "name": "before month includes the previous month",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "BEF 1900-03"
+      },
+      {
+        "value": "London",
+        "date": "1900-02"
+      }
+    ],
+    "verdict": "possible"
+  },
+  {
+    "name": "before month includes the last day of the previous",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "BEF 1900-03"
+      },
+      {
+        "value": "London",
+        "date": "1900-02-28"
+      }
+    ],
+    "verdict": "possible"
+  },
+  {
+    "name": "before day excludes that day",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "BEF 1900-03-15"
+      },
+      {
+        "value": "London",
+        "date": "1900-03-15"
+      }
+    ],
+    "verdict": "history"
+  },
+  {
+    "name": "before day includes the previous day",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "BEF 1900-03-15"
+      },
+      {
+        "value": "London",
+        "date": "1900-03-14"
+      }
+    ],
+    "verdict": "possible"
+  },
+  {
+    "name": "before january first excludes that year",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "BEF 1900-01-01"
+      },
+      {
+        "value": "London",
+        "date": "1900"
+      }
+    ],
+    "verdict": "history"
+  },
+  {
+    "name": "before january first includes the previous year",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "BEF 1900-01-01"
+      },
+      {
+        "value": "London",
+        "date": "1899"
+      }
+    ],
+    "verdict": "possible"
+  },
+  {
+    "name": "after year meets open-start range ending that year",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "AFT 1900"
+      },
+      {
+        "value": "London",
+        "date": "TO 1900"
+      }
+    ],
+    "verdict": "history"
+  },
+  {
+    "name": "after year overlaps open-start range ending next year",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "AFT 1900"
+      },
+      {
+        "value": "London",
+        "date": "TO 1901"
+      }
+    ],
+    "verdict": "possible"
+  },
+  {
+    "name": "before year meets open-ended range starting that year",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "BEF 1900"
+      },
+      {
+        "value": "London",
+        "date": "FROM 1900"
+      }
+    ],
+    "verdict": "history"
+  },
+  {
+    "name": "before year overlaps open-ended range starting the year before",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "BEF 1900"
+      },
+      {
+        "value": "London",
+        "date": "FROM 1899"
+      }
+    ],
+    "verdict": "possible"
+  },
+  {
+    "name": "after year against one-year closed range",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "AFT 1900"
+      },
+      {
+        "value": "London",
+        "date": "FROM 1900 TO 1900"
+      }
+    ],
+    "verdict": "history"
+  },
+  {
+    "name": "after year against between range reaching next year",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "AFT 1900"
+      },
+      {
+        "value": "London",
+        "date": "BET 1900 AND 1901"
+      }
+    ],
+    "verdict": "possible"
+  },
+  {
+    "name": "julian after is open on the far side",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "JULIAN AFT 1900"
+      },
+      {
+        "value": "London",
+        "date": "JULIAN 1950"
+      }
+    ],
+    "verdict": "possible"
+  },
+  {
+    "name": "julian after excludes its named year",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "JULIAN AFT 1900"
+      },
+      {
+        "value": "London",
+        "date": "JULIAN 1900"
+      }
+    ],
+    "verdict": "history"
+  },
+  {
+    "name": "julian before excludes its named year",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "JULIAN BEF 1900"
+      },
+      {
+        "value": "London",
+        "date": "JULIAN 1900"
+      }
+    ],
+    "verdict": "history"
+  },
+  {
+    "name": "lower-case before is still a qualifier",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "bef 1900"
+      },
+      {
+        "value": "London",
+        "date": "1900"
+      }
+    ],
+    "verdict": "history"
+  },
+  {
+    "name": "spelled-out after is still a qualifier",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "AFTER 1900"
+      },
+      {
+        "value": "London",
+        "date": "1900"
+      }
+    ],
+    "verdict": "history"
+  },
+  {
+    "name": "spelled-out before is still a qualifier",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "before 1900"
+      },
+      {
+        "value": "London",
+        "date": "1900"
+      }
+    ],
+    "verdict": "history"
+  },
+  {
+    "name": "about is not widened",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "ABT 1900"
+      },
+      {
+        "value": "London",
+        "date": "1901"
+      }
+    ],
+    "verdict": "history"
+  },
+  {
+    "name": "estimated is not widened",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "EST 1900"
+      },
+      {
+        "value": "London",
+        "date": "1901"
+      }
+    ],
+    "verdict": "history"
+  },
+  {
+    "name": "after and about the same year do not meet",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "AFT 1900"
+      },
+      {
+        "value": "London",
+        "date": "ABT 1900"
+      }
+    ],
+    "verdict": "history"
+  },
+  {
+    "name": "before and about the previous year do meet",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "BEF 1901"
+      },
+      {
+        "value": "London",
+        "date": "ABT 1900"
+      }
+    ],
+    "verdict": "possible"
+  },
+  {
+    "name": "touching periods",
+    "property": "residence",
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "FROM 1850 TO 1870"
+      },
+      {
+        "value": "London",
+        "date": "FROM 1870 TO 1920"
+      }
+    ],
+    "verdict": "history",
+    "temporal": true
+  },
+  {
+    "name": "different years",
+    "property": "residence",
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "1851"
+      },
+      {
+        "value": "London",
+        "date": "1875"
+      }
+    ],
+    "verdict": "history",
+    "temporal": true
+  },
+  {
+    "name": "year certainly inside duration",
+    "property": "residence",
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "FROM 1850 TO 1880"
+      },
+      {
+        "value": "London",
+        "date": "1875"
+      }
+    ],
+    "verdict": "definite",
+    "temporal": true
+  },
+  {
+    "name": "same coarse year",
+    "property": "residence",
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "1851"
+      },
+      {
+        "value": "London",
+        "date": "1851"
+      }
+    ],
+    "verdict": "possible",
+    "temporal": true
+  },
+  {
+    "name": "undated name",
+    "property": "name",
+    "values": [
+      {
+        "value": "Mary Smith",
+        "date": ""
+      },
+      {
+        "value": "Mary Jones",
+        "date": "1890"
+      }
+    ],
+    "verdict": "history",
+    "temporal": true
+  },
+  {
+    "name": "backwards range",
+    "property": "residence",
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "FROM 1920 TO 1870"
+      },
+      {
+        "value": "London",
+        "date": "1900"
+      }
+    ],
+    "verdict": "possible",
+    "temporal": true
+  },
+  {
+    "name": "date refinement",
+    "property": "date",
+    "values": [
+      {
+        "value": "1850",
+        "date": ""
+      },
+      {
+        "value": "1850-03-02",
+        "date": ""
+      }
+    ],
+    "verdict": "refinement",
+    "kind": "date"
+  },
+  {
+    "name": "approximate 1851",
+    "property": "date",
+    "values": [
+      {
+        "value": "ABT 1850",
+        "date": ""
+      },
+      {
+        "value": "1851",
+        "date": ""
+      }
+    ],
+    "verdict": "refinement",
+    "kind": "date"
+  },
+  {
+    "name": "approximate 1852",
+    "property": "date",
+    "values": [
+      {
+        "value": "ABT 1850",
+        "date": ""
+      },
+      {
+        "value": "1852",
+        "date": ""
+      }
+    ],
+    "verdict": "refinement",
+    "kind": "date"
+  },
+  {
+    "name": "approximate 1853",
+    "property": "date",
+    "values": [
+      {
+        "value": "ABT 1850",
+        "date": ""
+      },
+      {
+        "value": "1853",
+        "date": ""
+      }
+    ],
+    "verdict": "definite",
+    "kind": "date"
+  },
+  {
+    "name": "override width",
+    "property": "date",
+    "values": [
+      {
+        "value": "ABT 1850",
+        "date": ""
+      },
+      {
+        "value": "1853",
+        "date": ""
+      }
+    ],
+    "verdict": "refinement",
+    "kind": "date",
+    "width": 3
+  },
+  {
+    "name": "zero width",
+    "property": "date",
+    "values": [
+      {
+        "value": "ABT 1850",
+        "date": ""
+      },
+      {
+        "value": "1851",
+        "date": ""
+      }
+    ],
+    "verdict": "definite",
+    "kind": "date",
+    "width": 0
+  },
+  {
+    "name": "free text",
+    "property": "occupation",
+    "values": [
+      {
+        "value": "Blacksmith",
+        "date": "1850"
+      },
+      {
+        "value": "blacksmith.",
+        "date": "1850"
+      }
+    ],
+    "verdict": "agree",
+    "temporal": true
+  },
+  {
+    "name": "punctuation whitespace",
+    "property": "residence",
+    "values": [
+      {
+        "value": "St.   John",
+        "date": "1850"
+      },
+      {
+        "value": "st john",
+        "date": "1850"
+      }
+    ],
+    "verdict": "agree",
+    "temporal": true
+  },
+  {
+    "name": "birth disagreement",
+    "property": "date",
+    "values": [
+      {
+        "value": "1850",
+        "date": ""
+      },
+      {
+        "value": "1852",
+        "date": ""
+      }
+    ],
+    "verdict": "definite",
+    "kind": "date"
+  },
+  {
+    "name": "place refinement",
+    "property": "place",
+    "values": [
+      {
+        "value": "hartford",
+        "date": ""
+      },
+      {
+        "value": "connecticut",
+        "date": ""
+      }
+    ],
+    "verdict": "refinement",
+    "reference": "places"
+  },
+  {
+    "name": "namesake places",
+    "property": "place",
+    "values": [
+      {
+        "value": "springfield-il",
+        "date": ""
+      },
+      {
+        "value": "springfield-ma",
+        "date": ""
+      }
+    ],
+    "verdict": "definite",
+    "reference": "places"
+  },
+  {
+    "name": "disproven alternative",
+    "property": "date",
+    "values": [
+      {
+        "value": "1850",
+        "date": "",
+        "status": "proven"
+      },
+      {
+        "value": "1852",
+        "date": "",
+        "status": "disproven"
+      }
+    ],
+    "verdict": "resolved",
+    "kind": "date"
+  },
+  {
+    "name": "known dispute",
+    "property": "date",
+    "values": [
+      {
+        "value": "1850",
+        "date": "",
+        "status": "disputed"
+      },
+      {
+        "value": "1852",
+        "date": ""
+      }
+    ],
+    "verdict": "known-dispute",
+    "kind": "date"
+  },
+  {
+    "name": "same vocabulary value",
+    "property": "sex",
+    "values": [
+      {
+        "value": "male",
+        "date": ""
+      },
+      {
+        "value": "male",
+        "date": ""
+      }
+    ],
+    "verdict": "agree",
+    "vocabulary": "gender_types"
+  },
+  {
+    "name": "vocabulary stays exact",
+    "property": "sex",
+    "values": [
+      {
+        "value": "male",
+        "date": "1850"
+      },
+      {
+        "value": "Male",
+        "date": "1850"
+      }
+    ],
+    "verdict": "possible",
+    "vocabulary": "gender_types",
+    "temporal": true
+  },
+  {
+    "name": "non temporal gate",
+    "property": "fixed",
+    "values": [
+      {
+        "value": "first",
+        "date": "1850"
+      },
+      {
+        "value": "second",
+        "date": "1950"
+      }
+    ],
+    "verdict": "definite"
+  },
+  {
+    "name": "precise same day",
+    "property": "occupation",
+    "values": [
+      {
+        "value": "miller",
+        "date": "1851-03-15"
+      },
+      {
+        "value": "driver",
+        "date": "1851-03-15"
+      }
+    ],
+    "verdict": "definite",
+    "temporal": true
+  },
+  {
+    "name": "different calendars JULIAN 1900-03-01 / 1900-03-14",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "JULIAN 1900-03-01"
+      },
+      {
+        "value": "London",
+        "date": "1900-03-14"
+      }
+    ],
+    "verdict": "possible"
+  },
+  {
+    "name": "different calendars FROM 1900 TO 1950 / HEBREW 5650",
+    "property": "residence",
+    "temporal": true,
+    "values": [
+      {
+        "value": "Leeds",
+        "date": "FROM 1900 TO 1950"
+      },
+      {
+        "value": "London",
+        "date": "HEBREW 5650"
+      }
+    ],
+    "verdict": "possible"
+  }
+]

@@ -49,6 +49,7 @@ const (
 	EventTypeOrdination         = "ordination"
 	EventTypeProbate            = "probate"
 	EventTypeWill               = "will"
+	EventTypeLandTransaction    = "land_transaction" // Deed, patent, grant, entry, mortgage, etc.; kind in event_subtype
 	EventTypeLegalSeparation    = "legal_separation"
 	EventTypeTaxation           = "taxation"
 	EventTypeVoterRegistration  = "voter_registration"
@@ -116,7 +117,56 @@ const (
 	ParticipantRoleAssociate      = "associate"
 	ParticipantRoleHouseholdHead  = "household_head"
 	ParticipantRoleBoarder        = "boarder"
+	// ParticipantRoleHouseholdMember is a census household member other than
+	// the head, named on the schedule or (with participant property
+	// named: false) counted only as a tick mark (#1332).
+	ParticipantRoleHouseholdMember = "household_member"
+
+	ParticipantRoleEnumerator         = "enumerator"
+	ParticipantRoleAttendingPhysician = "attending_physician"
+	ParticipantRoleRegistrar          = "registrar"
+	ParticipantRoleBondsman           = "bondsman"
+	ParticipantRoleTestator           = "testator"
+	ParticipantRoleExecutor           = "executor"
+	ParticipantRoleLegatee            = "legatee"
+	ParticipantRoleBeneficiary        = "beneficiary"
+	ParticipantRoleGrantor            = "grantor"
+	ParticipantRoleGrantee            = "grantee"
+	ParticipantRoleAdjoiningOwner     = "adjoining_owner"
+	ParticipantRoleGuardian           = "guardian"
+	ParticipantRoleWard               = "ward"
+	ParticipantRoleFosterParent       = "foster_parent"
+	ParticipantRoleFosterChild        = "foster_child"
+	ParticipantRoleStepParent         = "step_parent"
+	ParticipantRoleStepChild          = "step_child"
 )
+
+// Participant role contexts - values of a participant role's applies_to list.
+const (
+	RoleContextEvent        = "event"
+	RoleContextRelationship = "relationship"
+)
+
+// Participant-level event properties used by census households (#1332, #119).
+const (
+	// ParticipantPropertyAgeAtEvent is the participant's age as recorded.
+	ParticipantPropertyAgeAtEvent = "age_at_event"
+	// ParticipantPropertyNamed is false when the source counts the person in
+	// the household without naming them (a tick mark in an age bracket).
+	ParticipantPropertyNamed = "named"
+	// ParticipantPropertyRelationshipToHead is the participant's relationship
+	// to the head of household as recorded (head, wife, son, boarder...).
+	ParticipantPropertyRelationshipToHead = "relationship_to_head"
+)
+
+// IsUnnamedParticipant reports whether a participant was counted in the
+// event's household without being named in the source (participant property
+// named: false). Absent or any other value means named.
+func IsUnnamedParticipant(p Participant) bool {
+	v, ok := p.Properties[ParticipantPropertyNamed].(bool)
+
+	return ok && !v
+}
 
 // Standard Person Property Names - commonly used properties on Person entities
 const (
@@ -256,8 +306,29 @@ const (
 
 // GEDCOM Tags - Associations
 const (
-	GedcomTagAsso = "ASSO" // Association (links person to event/individual with role)
-	GedcomTagRole = "ROLE" // Role in association
+	GedcomTagAsso   = "ASSO"   // Association (links person to event/individual with role)
+	GedcomTagRole   = "ROLE"   // Role in association (GEDCOM 7.0)
+	GedcomTagRela   = "RELA"   // Relation to the associated person (GEDCOM 5.5.1)
+	GedcomTagPhrase = "PHRASE" // Free-text phrase qualifying an enumerated value (GEDCOM 7.0)
+)
+
+// GEDCOM 7.0 ROLE enumeration values (g7:enumset-ROLE)
+const (
+	GedcomRoleChil       = "CHIL"
+	GedcomRoleClergy     = "CLERGY"
+	GedcomRoleFath       = "FATH"
+	GedcomRoleFriend     = "FRIEND"
+	GedcomRoleGodp       = "GODP"
+	GedcomRoleHusb       = "HUSB"
+	GedcomRoleMoth       = "MOTH"
+	GedcomRoleMultiple   = "MULTIPLE"
+	GedcomRoleNghbr      = "NGHBR"
+	GedcomRoleOfficiator = "OFFICIATOR"
+	GedcomRoleOther      = "OTHER"
+	GedcomRoleParent     = "PARENT"
+	GedcomRoleSpou       = "SPOU"
+	GedcomRoleWife       = "WIFE"
+	GedcomRoleWitn       = "WITN"
 )
 
 // gedcomRoleToGLX maps GEDCOM ROLE enumeration values to GLX participant roles.
@@ -265,17 +336,17 @@ const (
 // Roles without a vocabulary match (NGHBR, FRIEND, MULTIPLE) are stored in
 // participant notes instead of the role field to avoid validation errors.
 var gedcomRoleToGLX = map[string]string{
-	"WITN":       ParticipantRoleWitness,
-	"OFFICIATOR": ParticipantRoleOfficiant,
-	"CLERGY":     ParticipantRoleOfficiant,
-	"GODP":       ParticipantRoleGodparent,
-	"CHIL":       ParticipantRoleChild,
-	"FATH":       ParticipantRoleParent,
-	"MOTH":       ParticipantRoleParent,
-	"HUSB":       ParticipantRoleSpouse,
-	"WIFE":       ParticipantRoleSpouse,
-	"PARENT":     ParticipantRoleParent,
-	"SPOU":       ParticipantRoleSpouse,
+	GedcomRoleWitn:       ParticipantRoleWitness,
+	GedcomRoleOfficiator: ParticipantRoleOfficiant,
+	GedcomRoleClergy:     ParticipantRoleOfficiant,
+	GedcomRoleGodp:       ParticipantRoleGodparent,
+	GedcomRoleChil:       ParticipantRoleChild,
+	GedcomRoleFath:       ParticipantRoleParent,
+	GedcomRoleMoth:       ParticipantRoleParent,
+	GedcomRoleHusb:       ParticipantRoleSpouse,
+	GedcomRoleWife:       ParticipantRoleSpouse,
+	GedcomRoleParent:     ParticipantRoleParent,
+	GedcomRoleSpou:       ParticipantRoleSpouse,
 }
 
 // GEDCOM Tags - Family Events
@@ -406,6 +477,12 @@ const (
 	SearchResultInconclusive = "inconclusive"
 	SearchResultPartial      = "partial"
 	SearchResultNotSearched  = "not_searched"
+	// SearchResultUnavailable records a source that was sought but does not
+	// survive, is restricted, or is not accessible: a documented, permanent gap.
+	SearchResultUnavailable = "unavailable"
+	// SearchResultRequiresVisit records a source that exists but can only be
+	// searched on site or by request: outstanding work of a different kind.
+	SearchResultRequiresVisit = "requires_visit"
 )
 
 // Standard Research Log Status Types - from research-log-status-types.glx vocabulary.
@@ -415,6 +492,15 @@ const (
 	ResearchLogStatusInProgress = "in_progress"
 	ResearchLogStatusComplete   = "complete"
 	ResearchLogStatusBlocked    = "blocked"
+)
+
+// Standard Lead Statuses - from lead-statuses.glx vocabulary.
+// Used by ResearchLead.Status to record whether a hypothesis inside a
+// ResearchLog is still being pursued, has been ruled out, or has been proven.
+const (
+	LeadStatusActive     = "active"
+	LeadStatusEliminated = "eliminated"
+	LeadStatusConfirmed  = "confirmed"
 )
 
 // Standard Source Types - from source-types.glx vocabulary
@@ -636,6 +722,7 @@ const (
 	VocabGenderTypes            = "gender_types"
 	VocabSearchResultTypes      = "search_result_types"
 	VocabResearchLogStatusTypes = "research_log_status_types"
+	VocabLeadStatuses           = "lead_statuses"
 	VocabStudyTypes             = "study_types"
 	VocabStudyStatuses          = "study_statuses"
 	VocabLegalStatuses          = "legal_statuses"
@@ -674,16 +761,31 @@ const (
 	PropSourceProperties       = "source_properties"
 )
 
-// Place Types - used by inferPlaceType function
+// Place Types - used by inferPlaceType function. These are keys from
+// specification/5-standard-vocabularies/place-types.glx; that file holds
+// more types than are listed here, because not every type can be inferred
+// from a GEDCOM place name.
 const (
-	PlaceTypeCemetery = "cemetery"
-	PlaceTypeChurch   = "church"
-	PlaceTypeHospital = "hospital"
-	PlaceTypeCounty   = "county"
-	PlaceTypeState    = "state"
-	PlaceTypeCity     = "city"
-	PlaceTypeCountry  = "country"
-	PlaceTypeLocality = "locality"
+	PlaceTypeCemetery     = "cemetery"
+	PlaceTypeChurch       = "church"
+	PlaceTypeHospital     = "hospital"
+	PlaceTypeCounty       = "county"
+	PlaceTypeState        = "state"
+	PlaceTypeTerritory    = "territory" // State-level: treat like PlaceTypeState wherever state is special-cased
+	PlaceTypeCity         = "city"
+	PlaceTypeCountry      = "country"
+	PlaceTypeLocality     = "locality"
+	PlaceTypeVillage      = "village"
+	PlaceTypeEstate       = "estate"
+	PlaceTypeFarm         = "farm"
+	PlaceTypePlantation   = "plantation"
+	PlaceTypeReservation  = "reservation"
+	PlaceTypeWorkhouse    = "workhouse"
+	PlaceTypePoorhouse    = "poorhouse"
+	PlaceTypeAsylum       = "asylum"
+	PlaceTypePrison       = "prison"
+	PlaceTypeMilitaryBase = "military_base"
+	PlaceTypeSchool       = "school"
 )
 
 // Repository Types - used by inferRepositoryType and mapRepositoryType. The

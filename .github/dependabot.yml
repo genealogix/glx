@@ -46,6 +46,26 @@ updates:
     labels:
       - dependencies
 
+  # Hash-pinned Python requirements of CI workflows (Scorecard
+  # Pinned-Dependencies). Dependabot regenerates the --hash lines on a bump.
+  - package-ecosystem: pip
+    directory: /.github/requirements
+    schedule:
+      interval: weekly
+      day: wednesday
+      time: "09:00"
+      timezone: America/Chicago
+    # Cooldown (#929), same tiers as the gomod and npm ecosystems above.
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
+      semver-minor-days: 7
+      semver-patch-days: 3
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - dependencies
+
   - package-ecosystem: github-actions
     directory: /
     schedule:
