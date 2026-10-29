@@ -32,10 +32,11 @@ func mergePersons(archivePath, keepID, dropID string, opts glxlib.MergePersonsOp
 	}
 
 	var archive *glxlib.GLXFile
+	var loadedFiles map[string][]byte
 	isDir := info.IsDir()
 
 	if isDir {
-		loaded, duplicates, loadErr := LoadArchiveWithOptions(archivePath, false)
+		loaded, duplicates, files, loadErr := loadArchiveForWrite(archivePath)
 		if loadErr != nil {
 			return fmt.Errorf("failed to load archive: %w", loadErr)
 		}
@@ -43,6 +44,7 @@ func mergePersons(archivePath, keepID, dropID string, opts glxlib.MergePersonsOp
 			fmt.Fprintf(os.Stderr, "Warning: %s\n", d)
 		}
 		archive = loaded
+		loadedFiles = files
 	} else {
 		loaded, loadErr := readSingleFileArchive(archivePath, false)
 		if loadErr != nil {
@@ -73,7 +75,7 @@ func mergePersons(archivePath, keepID, dropID string, opts glxlib.MergePersonsOp
 	}
 
 	if isDir {
-		return safeWriteMultiFileArchive(archivePath, archive)
+		return writeArchiveInPlace(archivePath, loadedFiles, archive, rewriteChanged)
 	}
 
 	return writeSingleFileArchive(archivePath, archive, false)
