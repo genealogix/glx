@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -120,12 +121,27 @@ func hashMetadataFile(root *os.Root, rel string) ([32]byte, error) {
 // mayHavePublished is false on failure only when the owned staged file remains
 // at its source and the destination is demonstrably a different file or absent.
 func publishSingleFileImport(staged, target string, rename func(string, string) error) (mayHavePublished bool, err error) {
-	owned, err := os.Lstat(staged)
+	entry, err := os.Lstat(staged)
 	if err != nil {
 		return true, fmt.Errorf("cannot verify staged archive %s before publication; media and staging retained: %w", staged, err)
 	}
-	if !owned.Mode().IsRegular() {
+	if !entry.Mode().IsRegular() {
 		return true, fmt.Errorf("staged archive %s is not a regular file; media and staging retained: %w", staged, os.ErrInvalid)
+	}
+	opened, err := openWithin(filepath.Dir(staged), staged)
+	if err != nil {
+		return true, fmt.Errorf("cannot open staged archive %s before publication; media and staging retained: %w", staged, err)
+	}
+	// Windows path-based FileInfo loads identity lazily in SameFile. File.Stat
+	// captures it from the open handle now, before this path moves or is reused.
+	// Close the handle before rename so Windows can replace the target.
+	owned, statErr := opened.Stat()
+	closeErr := opened.Close()
+	if err := errors.Join(statErr, closeErr); err != nil {
+		return true, fmt.Errorf("cannot capture staged archive identity for %s; media and staging retained: %w", staged, err)
+	}
+	if !owned.Mode().IsRegular() || !os.SameFile(entry, owned) {
+		return true, fmt.Errorf("staged archive %s changed while opening; media and staging retained: %w", staged, os.ErrInvalid)
 	}
 	renameErr := rename(staged, target)
 	if renameErr == nil {

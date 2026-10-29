@@ -537,7 +537,7 @@ func TestSingleFileImport_ReconcilesRenameErrorBeforeMediaRollback(t *testing.T)
 }
 
 func TestPublishSingleFileImportRetainsMediaWhenStagedIdentityIsUnavailable(t *testing.T) {
-	for _, state := range []string{"moved", "nonregular"} {
+	for _, state := range []string{"moved", "nonregular", "symlink"} {
 		t.Run(state, func(t *testing.T) {
 			dir := t.TempDir()
 			staged := filepath.Join(dir, "staged.glx")
@@ -545,8 +545,13 @@ func TestPublishSingleFileImportRetainsMediaWhenStagedIdentityIsUnavailable(t *t
 			data := []byte("media:\n  photo:\n    uri: media/files/photo.jpg\n")
 			require.NoError(t, os.WriteFile(staged, data, filePermissions))
 			require.NoError(t, os.Rename(staged, target))
-			if state == "nonregular" {
+			switch state {
+			case "nonregular":
 				require.NoError(t, os.Mkdir(staged, dirPermissions))
+			case "symlink":
+				if err := os.Symlink(filepath.Base(target), staged); err != nil {
+					t.Skipf("symlinks unavailable: %v", err)
+				}
 			}
 			called := false
 			mayHavePublished, err := publishSingleFileImport(staged, target, func(string, string) error {
