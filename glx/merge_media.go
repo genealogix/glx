@@ -197,6 +197,7 @@ func matchingMergeMediaName(sourceRoot, sourceFile, destRoot, destDir, requested
 			}
 		}
 	}
+
 	return "", nil
 }
 
