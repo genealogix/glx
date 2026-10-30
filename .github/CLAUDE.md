@@ -83,17 +83,10 @@ know which one you're about to trip before you push:
 
 - **Edit a CLI command** → run `make docs-cli` and commit the regenerated
   `docs/cli/**` (`docs-drift.yml`, hard-fail).
-- **Change a JSON schema** → `drift-checks.yml` runs two checks, both now
-  HARD-fail: schema backward-compat (a breaking change invalidates existing
-  archives), and spec-schema field parity (#309), which since the
-  `DRIFT_STRICT=1` flip goes red when a PR's schema properties and
-  `specification/4-entity-types/*.md` field tables disagree. Edit the schema
-  and the spec table in the same PR. Reproduce locally with
-  `DRIFT_STRICT=1 node scripts/drift-checks/spec-schema-drift.mjs`; run it
-  bare for a non-blocking report. Note neither job's context sits in the Main
-  Protection ruleset's `required_status_checks` (only `test-conformance`,
-  `validate-examples`, `validate-schemas` do), so a red drift job is visible
-  but does not itself hold the merge button — don't merge past it.
+- **Change a JSON schema** → update its spec field table in the same PR.
+  The required `validate-schemas` job checks spec↔schema parity (#309);
+  `drift-checks.yml` checks schema backward compatibility. See
+  `../scripts/drift-checks/README.md` for the gate policy and local commands.
 - **Add or rename an issue Area** → edit `.github/issue-areas.yml` first
   (the single source of truth), then update the `Area` dropdown in every
   `ISSUE_TEMPLATE/*.yml` form (each must keep its `id: area` key) or
