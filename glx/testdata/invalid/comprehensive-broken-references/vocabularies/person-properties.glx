@@ -13,6 +13,5 @@ person_properties:
         description: "Family name"
   birth_place:
     label: "Birth Place"
-    value_type: reference
     reference_type: places
 
