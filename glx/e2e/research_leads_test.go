@@ -73,6 +73,27 @@ func TestResearchLeads_MergeCandidatesRemainsValid(t *testing.T) {
   person-keep: {properties: {name: John Green}}
   person-other: {properties: {name: Ann Green}}
   person-drop: {properties: {name: John Green}}
+relationship_types:
+  possibly_same_person: {label: Possible identity}
+relationships:
+  relationship-identity:
+    type: possibly_same_person
+    participants: [{person: person-keep}, {person: person-drop}]
+source_types:
+  vital_record: {label: Vital record}
+sources:
+  source-register: {title: Parish register, type: vital_record}
+assertions:
+  assertion-identity:
+    subject: {relationship: relationship-identity}
+    property: type
+    value: possibly_same_person
+    sources: [source-register]
+  assertion-name:
+    subject: {person: person-keep}
+    property: name
+    value: John Green
+    sources: [source-register]
 lead_statuses:
   active: {label: Active}
 research_logs:
@@ -81,12 +102,17 @@ research_logs:
       - description: Candidate family
         persons: [person-drop, person-other, person-keep]
         status: active
+        assertions: [assertion-identity, assertion-name]
         evidence_for: [The records may describe the same person]
 `)
 	require.NoError(t, os.WriteFile(file, doc, 0o600))
 	v := runGLX(t, dir, "validate", "archive.glx")
 	require.Equal(t, 0, v.exitCode, v.stdout+v.stderr)
-	merged := runGLX(t, dir, "merge-persons", "person-keep", "person-drop", "--archive", file)
+	before := snapshotTree(t, dir)
+	preview := runGLX(t, dir, "merge-persons", "person-keep", "person-drop", "--archive", file, "--dry-run")
+	require.Equal(t, 0, preview.exitCode, preview.stdout+preview.stderr)
+	assertTreeUnchanged(t, before, dir)
+	merged := runGLX(t, dir, "merge-persons", "person-keep", "person-drop", "--archive", file, "--yes")
 	require.Equal(t, 0, merged.exitCode, merged.stdout+merged.stderr)
 	v = runGLX(t, dir, "validate", "archive.glx")
 	require.Equal(t, 0, v.exitCode, v.stdout+v.stderr)
@@ -96,6 +122,9 @@ research_logs:
 	require.NoError(t, yaml.Unmarshal(data, &archive))
 	lead := archive.ResearchLogs["research-log-parents"].Leads[0]
 	assert.Equal(t, []string{"person-keep", "person-other"}, lead.Persons)
+	assert.Equal(t, []string{"assertion-name"}, lead.Assertions)
+	assert.Equal(t, "active", lead.Status)
+	assert.NotContains(t, archive.Assertions, "assertion-identity")
 	assert.Equal(t, []string{"The records may describe the same person"}, lead.EvidenceFor)
 }
 

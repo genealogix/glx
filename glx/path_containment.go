@@ -141,6 +141,12 @@ func walkGLXFilesUnder(rootDir, start string, visit func(relPath string, data []
 	}
 	defer func() { _ = root.Close() }()
 
+	return walkGLXFilesUnderRoot(root, rootDir, start, visit)
+}
+
+// An already-open root keeps a writer's final snapshot anchored to the archive
+// it staged, even if an ancestor directory is renamed during the operation.
+func walkGLXFilesUnderRoot(root *os.Root, rootDir, start string, visit func(relPath string, data []byte, err error) error) error {
 	// Resolved root for symlink-target containment checks. If the root itself
 	// cannot be resolved, fall back to the literal path: os.Root still
 	// enforces containment at read time, so the only thing lost is the

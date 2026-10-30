@@ -282,6 +282,12 @@ func atomicWriteFile(path string, data []byte, perm os.FileMode) error {
 // hold the whole serialized form in memory. The target file ends up with either
 // the old content or the new content, never a partial write.
 func atomicWriteStream(path string, perm os.FileMode, write func(w io.Writer) error) error {
+	return atomicWriteStreamChecked(path, perm, write, nil)
+}
+
+// atomicWriteStreamChecked can reject a stale plan after staging is complete.
+// The check does not provide exclusion against concurrent external writers.
+func atomicWriteStreamChecked(path string, perm os.FileMode, write func(w io.Writer) error, beforeReplace func() error) error {
 	dir := filepath.Dir(path)
 	tmp, err := os.CreateTemp(dir, ".glx-tmp-*")
 	if err != nil {
@@ -313,6 +319,11 @@ func atomicWriteStream(path string, perm os.FileMode, write func(w io.Writer) er
 	}
 	if err := os.Chmod(tmpPath, perm); err != nil {
 		return fmt.Errorf("setting file permissions: %w", err)
+	}
+	if beforeReplace != nil {
+		if err := beforeReplace(); err != nil {
+			return err
+		}
 	}
 	if err := robustRename(tmpPath, path); err != nil {
 		return fmt.Errorf("replacing target file: %w", err)

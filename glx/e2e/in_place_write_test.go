@@ -66,7 +66,7 @@ func TestMergePersons_HybridLayoutIsRewrittenInPlace(t *testing.T) {
 	before := snapshotTree(t, archive)
 	dirBefore := statDir(t, archive)
 
-	res := runGLX(t, archive, "merge-persons", "person-a", "person-b")
+	res := runGLX(t, archive, "merge-persons", "person-a", "person-b", "--yes")
 
 	require.Equal(t, 0, res.exitCode, res.stderr)
 	diff := diffTrees(before, snapshotTree(t, archive))
