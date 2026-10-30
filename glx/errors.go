@@ -174,3 +174,6 @@ var (
 	// prior content of every file the write touched.
 	ErrInterruptedInPlaceWrite = errors.New("an earlier in-place write to this archive was interrupted")
 )
+
+// ErrAmbiguousMediaFilesDirs marks multiple conventional binary directories.
+var ErrAmbiguousMediaFilesDirs = errors.New("ambiguous media/files directory spellings")

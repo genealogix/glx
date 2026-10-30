@@ -281,10 +281,11 @@ func TestSafeMediaBase(t *testing.T) {
 }
 
 func TestOutputName_CollisionSuffix(t *testing.T) {
-	r := &mediaResolver{assigned: map[string]string{}, usedNames: map[string]bool{}}
+	r := &mediaResolver{assigned: map[string]string{}, usedNames: glxlib.NewFilenameAllocator()}
 
 	first := r.outputName("/a/photo.jpg", "photo.jpg")
 	second := r.outputName("/b/photo.jpg", "photo.jpg") // same basename, different source
+	third := r.outputName("/c/PHOTO.JPG", "PHOTO.JPG")  // publish sanitizes case before allocation
 	reuse := r.outputName("/a/photo.jpg", "photo.jpg")  // same source path -> same name
 
 	if first != "photo.jpg" {
@@ -292,6 +293,9 @@ func TestOutputName_CollisionSuffix(t *testing.T) {
 	}
 	if second != "photo-2.jpg" {
 		t.Errorf("second = %q, want photo-2.jpg", second)
+	}
+	if third != "photo-3.jpg" {
+		t.Errorf("third = %q, want photo-3.jpg", third)
 	}
 	if reuse != first {
 		t.Errorf("reuse = %q, want %q", reuse, first)

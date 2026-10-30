@@ -23,6 +23,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
@@ -49,7 +51,7 @@ func TestCopyMediaFiles_FileCopy(t *testing.T) {
 		},
 	}
 
-	err := copyMediaFiles(SystemIOStreams(), destDir, mediaFiles, srcDir, false)
+	err := copyMediaFilesUsing(SystemIOStreams(), destDir, mediaFiles, srcDir, func(int, int, int) {})
 	if err != nil {
 		t.Fatalf("copyMediaFiles failed: %v", err)
 	}
@@ -62,6 +64,38 @@ func TestCopyMediaFiles_FileCopy(t *testing.T) {
 	if !bytes.Equal(copied, testContent) {
 		t.Errorf("Copied content mismatch: got %q, want %q", string(copied), string(testContent))
 	}
+}
+
+func TestCopyMediaFiles_DoesNotReplaceExistingDestination(t *testing.T) {
+	srcDir := t.TempDir()
+	destDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "photo.jpg"), []byte("new bytes"), 0o600))
+	filesDir := filepath.Join(destDir, glxlib.MediaFilesDir)
+	require.NoError(t, os.MkdirAll(filesDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(filesDir, "photo.jpg"), []byte("old bytes"), 0o600))
+
+	err := copyMediaFilesUsing(SystemIOStreams(), destDir, []glxlib.MediaFileSource{{
+		MediaID: "media-1", SourceType: glxlib.MediaSourceFile, RelativePath: "photo.jpg", TargetFilename: "photo.jpg",
+	}}, srcDir, func(int, int, int) {})
+	require.ErrorIs(t, err, os.ErrExist)
+	actual, readErr := os.ReadFile(filepath.Join(filesDir, "photo.jpg"))
+	require.NoError(t, readErr)
+	require.Equal(t, []byte("old bytes"), actual)
+}
+
+func TestCopyMediaFiles_RejectsCaseEquivalentDuplicateDestinations(t *testing.T) {
+	srcDir := t.TempDir()
+	destDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "Photo.JPG"), []byte("first bytes"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "second.jpg"), []byte("second bytes"), 0o600))
+	err := copyMediaFilesUsing(SystemIOStreams(), destDir, []glxlib.MediaFileSource{
+		{MediaID: "media-1", SourceType: glxlib.MediaSourceFile, RelativePath: "Photo.JPG", TargetFilename: "Photo.JPG"},
+		{MediaID: "media-2", SourceType: glxlib.MediaSourceFile, RelativePath: "second.jpg", TargetFilename: "photo.jpg"},
+	}, srcDir, func(int, int, int) {})
+	require.ErrorIs(t, err, os.ErrExist)
+	actual, readErr := os.ReadFile(filepath.Join(destDir, glxlib.MediaFilesDir, "Photo.JPG"))
+	require.NoError(t, readErr)
+	require.Equal(t, []byte("first bytes"), actual)
 }
 
 func TestCopyMediaFiles_BlobWrite(t *testing.T) {
@@ -77,7 +111,7 @@ func TestCopyMediaFiles_BlobWrite(t *testing.T) {
 		},
 	}
 
-	err := copyMediaFiles(SystemIOStreams(), destDir, mediaFiles, "", false)
+	err := copyMediaFilesUsing(SystemIOStreams(), destDir, mediaFiles, "", func(int, int, int) {})
 	if err != nil {
 		t.Fatalf("copyMediaFiles failed: %v", err)
 	}
@@ -123,7 +157,7 @@ func TestCopyMediaFiles_RelativePathNormalized(t *testing.T) {
 
 	destDir := t.TempDir()
 	streams, _, _ := TestIOStreams()
-	if err := copyMediaFiles(streams, destDir, result.MediaFiles, srcDir, false); err != nil {
+	if err := copyMediaFilesUsing(streams, destDir, result.MediaFiles, srcDir, func(int, int, int) {}); err != nil {
 		t.Fatalf("copyMediaFiles failed: %v", err)
 	}
 
@@ -151,7 +185,7 @@ func TestCopyMediaFiles_MissingSourceWarns(t *testing.T) {
 
 	streams, out, _ := TestIOStreams()
 
-	err := copyMediaFiles(streams, destDir, mediaFiles, srcDir, false)
+	err := copyMediaFilesUsing(streams, destDir, mediaFiles, srcDir, func(int, int, int) {})
 	if err != nil {
 		t.Fatalf("copyMediaFiles should not fail for missing files: %v", err)
 	}
@@ -307,7 +341,7 @@ func TestCopyMediaFiles_EmptyList(t *testing.T) {
 	destDir := t.TempDir()
 
 	// Empty list should be a no-op (no media/files directory created)
-	err := copyMediaFiles(SystemIOStreams(), destDir, nil, "", false)
+	err := copyMediaFilesUsing(SystemIOStreams(), destDir, nil, "", func(int, int, int) {})
 	if err != nil {
 		t.Fatalf("copyMediaFiles should succeed for empty list: %v", err)
 	}
@@ -366,7 +400,7 @@ func TestE2E_TortureTest_MediaFileCopy(t *testing.T) {
 	// Step 3: Copy media files (CLI layer)
 	destDir := t.TempDir()
 	streams, out, _ := TestIOStreams()
-	err = copyMediaFiles(streams, destDir, result.MediaFiles, gedcomDir, false)
+	err = copyMediaFilesUsing(streams, destDir, result.MediaFiles, gedcomDir, func(int, int, int) {})
 	if err != nil {
 		t.Fatalf("copyMediaFiles failed: %v", err)
 	}
@@ -517,4 +551,48 @@ func TestE2E_TortureTest_MediaFileCopy(t *testing.T) {
 	if !strings.Contains(warnings, "could not decode BLOB") {
 		t.Error("Expected BLOB decode warning for malformed torture test blob data")
 	}
+}
+
+func TestDiscardUnidentifiedMediaFile(t *testing.T) {
+	for _, replaced := range []bool{false, true} {
+		t.Run(map[bool]string{false: "same file", true: "replacement"}[replaced], func(t *testing.T) {
+			dir := t.TempDir()
+			root, err := os.OpenRoot(dir)
+			require.NoError(t, err)
+			defer func() { _ = root.Close() }()
+			opened, err := root.OpenFile("photo.jpg", os.O_WRONLY|os.O_CREATE|os.O_EXCL, filePermissions)
+			require.NoError(t, err)
+			if replaced {
+				require.NoError(t, root.Remove("photo.jpg"))
+				require.NoError(t, root.WriteFile("photo.jpg", []byte("replacement"), filePermissions))
+			}
+			require.NoError(t, discardUnidentifiedMediaFile(root, "photo.jpg", opened))
+			if replaced {
+				require.Equal(t, []byte("replacement"), mustReadImportMedia(t, filepath.Join(dir, "photo.jpg")))
+			} else {
+				require.NoFileExists(t, filepath.Join(dir, "photo.jpg"))
+			}
+		})
+	}
+}
+
+type unavailableMediaIdentity struct{ file *os.File }
+
+func (f *unavailableMediaIdentity) Stat() (os.FileInfo, error) { return nil, os.ErrPermission }
+func (f *unavailableMediaIdentity) Close() error               { return f.file.Close() }
+
+func TestDiscardUnidentifiedMediaFileRetainsUncertainIdentity(t *testing.T) {
+	dir := t.TempDir()
+	root, err := os.OpenRoot(dir)
+	require.NoError(t, err)
+	defer func() { _ = root.Close() }()
+	opened, err := root.OpenFile("photo.jpg", os.O_WRONLY|os.O_CREATE|os.O_EXCL, filePermissions)
+	require.NoError(t, err)
+	_, err = opened.WriteString("recoverable")
+	require.NoError(t, err)
+
+	err = discardUnidentifiedMediaFile(root, "photo.jpg", &unavailableMediaIdentity{opened})
+	require.ErrorIs(t, err, os.ErrPermission)
+	require.Contains(t, err.Error(), "photo.jpg may remain for recovery")
+	require.Equal(t, []byte("recoverable"), mustReadImportMedia(t, filepath.Join(dir, "photo.jpg")))
 }
