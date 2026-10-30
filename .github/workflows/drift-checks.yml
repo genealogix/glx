@@ -3,12 +3,10 @@ name: Drift checks
 # Deterministic drift detection (no LLM). The on-demand check-* skills handle
 # the semantic remainder locally; this workflow catches the mechanical cases.
 
-# Pull-request only: both checks are PR-diff gates (schema-compat diffs against
-# the PR base; spec-schema-parity reports on the changed tree). A push-to-main run
-# has no meaningful base — origin/main...HEAD is empty — so it would be a no-op.
-# A direct push to main therefore bypasses the backward-compat gate; that is
-# acceptable because the repo ruleset requires changes to land via PR (where this
-# gate runs), so no schema change reaches main without passing it.
+# Pull-request only: schema-compat diffs against the PR base. A push-to-main
+# run has no meaningful base — origin/main...HEAD is empty. The spec↔schema
+# parity check runs in the required validate-schemas job of validate-spec.yml;
+# see scripts/drift-checks/README.md for the gate policy.
 on:
   pull_request:
     paths:
@@ -24,23 +22,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  spec-schema-parity:
-    name: spec ↔ schema field parity (#309)
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 24
-      # Warn-first: reports field drift but does not block. #309 stays open to
-      # track the flip to blocking — set DRIFT_STRICT=1 here once the table parser
-      # is proven (the spec-schema-drift.test.mjs fixtures are that proof in
-      # progress). The flip is intentionally a separate, reviewable change.
-      - run: node scripts/drift-checks/spec-schema-drift.mjs
-
   schema-compat:
     name: schema ↔ schema backward-compat (#311)
     runs-on: ubuntu-latest

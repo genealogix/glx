@@ -6,11 +6,10 @@
 #
 # Drift-check ownership split (#1043): diff-independent, deterministic drift
 # checks that can run on push AND pull_request live here (check-code-drift,
-# check-memory-drift, check-drift-allowlist, and the drift-script unit tests).
-# PR-diff-based drift gates — which need a base branch to diff against — live
-# in drift-checks.yml (spec-schema-parity #309, schema-compat #311). The unit
-# tests for those scripts run here because the specification npm deps and Node
-# are already set up in validate-schemas.
+# check-memory-drift, check-drift-allowlist, spec-schema parity, and the
+# drift-script unit tests). The PR-diff-based schema-compat gate lives in
+# drift-checks.yml. The Node script tests run here because the specification
+# npm deps and Node are already set up in validate-schemas.
 name: CI
 
 on:
@@ -196,6 +195,13 @@ jobs:
 
       - name: Validate JSON Schemas
         run: make check-schemas
+
+      # This job is a required merge context and runs on every PR. Keep this
+      # check here so path-filtered workflows cannot leave the gate pending.
+      - name: Check spec ↔ schema field parity (#309)
+        run: node scripts/drift-checks/spec-schema-drift.mjs
+        env:
+          DRIFT_STRICT: "1"
 
       - name: Validate drift allowlist
         run: make check-drift-allowlist

@@ -7,15 +7,12 @@
 // additionalProperties is false — the validator then rejects data the spec
 // says is valid.
 //
-// WARN-FIRST: this is deterministic but the markdown-table parser can have
-// edge cases, so it reports and exits 0 by default. Set DRIFT_STRICT=1 to make
-// it exit non-zero on any mismatch. #309 stays OPEN until the parser is proven
-// and this flips to blocking; the parser is unit-tested in
-// spec-schema-drift.test.mjs, which is the "prove it" step toward that flip.
+// CI runs this with DRIFT_STRICT=1 in the required validate-schemas job, so
+// drift fails that merge gate (#309). A bare local run reports and exits 0.
+// The parser and filesystem scan are covered by spec-schema-drift.test.mjs.
 //
-// The parsing/comparison core (parseSpecFields, compareEntity) is exported and
-// has no I/O, so it is exercised directly by fixtures in the test file; main()
-// is the thin filesystem/console wrapper, run only when invoked as a script.
+// The parsing/comparison core (parseSpecFields, compareEntity) has no I/O.
+// scanTree accepts fixture directories and a logger for integration tests.
 
 import { readFileSync, readdirSync } from "fs";
 import { join, dirname, basename } from "path";
@@ -28,6 +25,19 @@ const SCHEMA_DIR = join(ROOT, "specification/schema/v1");
 // Field names that appear in the spec field tables but are structural notes,
 // not entity properties (e.g. the map-key row).
 const NON_FIELD_ROWS = new Set(["entity id (map key)"]);
+
+// Spec pages under 4-entity-types/ that legitimately have no
+// <stem>.schema.json. Anything else missing a schema is drift, not an
+// exemption: since the check became blocking (#309) a skipped entity would be
+// a silent hole — every documented field unvalidated, which is exactly the
+// `additionalProperties:false` hazard this script exists to catch.
+const SPEC_PAGES_WITHOUT_SCHEMA = new Set(["vocabularies"]);
+
+// Schemas that legitimately have no page under 4-entity-types/: glx-file is the
+// archive container, documented elsewhere, not an entity type. Any other schema
+// without a spec page is drift — an entity the validator accepts but nobody
+// documented.
+const SCHEMAS_WITHOUT_SPEC_PAGE = new Set(["glx-file"]);
 
 // Parse the TOP-LEVEL field tables and return the set of backtick-wrapped
 // field names. Across the entity specs the top-level entity fields always sit
@@ -120,67 +130,160 @@ export function compareEntity(specMd, schema) {
   };
 }
 
-function main() {
-  const specFiles = readdirSync(SPEC_DIR)
-    .filter((f) => f.endsWith(".md") && f !== "README.md");
-
+// Walk a spec directory and its schema directory and report the drift found.
+// The directories are parameters (not the module constants) so the test file
+// can drive the whole scan — including the pairing rules below — against
+// fixture trees; run() supplies the real ones.
+export function scanTree({ specDir = SPEC_DIR, schemaDir = SCHEMA_DIR, log = console } = {}) {
   let mismatches = 0;
   let checked = 0;
+  let specFiles;
+  let schemaFiles;
+  try {
+    specFiles = readdirSync(specDir)
+      .filter((f) => f.endsWith(".md") && f !== "README.md");
+  } catch (err) {
+    log.error(`✗ cannot read the spec directory (${specDir}): ${err.code || err.message}`);
+    mismatches++;
+  }
+  try {
+    schemaFiles = readdirSync(schemaDir)
+      .filter((f) => f.endsWith(".schema.json"));
+  } catch (err) {
+    log.error(`✗ cannot read the schema directory (${schemaDir}): ${err.code || err.message}`);
+    mismatches++;
+  }
 
-  for (const file of specFiles) {
+  // Every stem that has a spec page, whether or not its schema loaded — the
+  // orphan sweep below must not double-report a schema already reported as
+  // unreadable.
+  const documentedStems = new Set();
+
+  // If either directory cannot be listed, individual pairing claims would be
+  // misleading. The directory failure already counts as drift.
+  for (const file of specFiles && schemaFiles ? specFiles : []) {
     const stem = basename(file, ".md");
-    const schemaPath = join(SCHEMA_DIR, `${stem}.schema.json`);
+    documentedStems.add(stem);
+    let specMd;
+    try {
+      specMd = readFileSync(join(specDir, file), "utf8");
+    } catch (err) {
+      log.error(`✗ ${stem}: cannot read spec page (${file}: ${err.code || err.message}) — its fields are unchecked`);
+      mismatches++;
+      continue;
+    }
+    const schemaPath = join(schemaDir, `${stem}.schema.json`);
+    let raw;
+    try {
+      raw = readFileSync(schemaPath, "utf8");
+    } catch (err) {
+      // Only an absent file can be an allowlisted "this page has no schema".
+      // A read error on a schema that exists is drift even for an allowlisted
+      // page — otherwise a broken vocabularies.schema.json would slip through.
+      if (err.code === "ENOENT" && SPEC_PAGES_WITHOUT_SCHEMA.has(stem)) {
+        log.warn(`⚠️  ${stem}: no schema expected for this page — skipped`);
+      } else {
+        log.error(
+          `✗ ${stem}: spec page has no readable schema (${stem}.schema.json: ${err.code || err.message}) — its documented fields are unchecked`,
+        );
+        mismatches++;
+      }
+      continue;
+    }
+
     let schema;
     try {
-      schema = JSON.parse(readFileSync(schemaPath, "utf8"));
-    } catch {
-      console.warn(`⚠️  ${stem}: spec file has no matching schema (${stem}.schema.json) — skipped`);
+      schema = JSON.parse(raw);
+    } catch (err) {
+      log.error(`✗ ${stem}: ${stem}.schema.json is not valid JSON (${err.message})`);
+      mismatches++;
+      continue;
+    }
+    if (
+      schema === null || typeof schema !== "object" || Array.isArray(schema) ||
+      (schema.properties !== undefined &&
+        (schema.properties === null || typeof schema.properties !== "object" || Array.isArray(schema.properties))) ||
+      (schema.required !== undefined &&
+        (!Array.isArray(schema.required) || !schema.required.every((field) => typeof field === "string")))
+    ) {
+      log.error(`✗ ${stem}: ${stem}.schema.json is not an entity schema object with valid properties and required fields`);
+      mismatches++;
       continue;
     }
     checked++;
 
-    const r = compareEntity(readFileSync(join(SPEC_DIR, file), "utf8"), schema);
+    const r = compareEntity(specMd, schema);
 
     if (
       r.inSpecNotSchema.length === 0 && r.inSchemaNotSpec.length === 0 &&
       r.specRequiredNotSchema.length === 0 && r.specOptionalButSchemaRequired.length === 0
     ) {
-      console.log(`✓ ${stem}: ${r.schemaFieldCount} fields match (presence + required/optional)`);
+      log.log(`✓ ${stem}: ${r.schemaFieldCount} fields match (presence + required/optional)`);
       continue;
     }
 
     for (const f of r.inSpecNotSchema) {
-      console.error(
+      log.error(
         `✗ ${stem}: field \`${f}\` is documented in the spec but missing from the schema` +
           (r.apFalse ? " (additionalProperties:false → the validator rejects it)" : ""),
       );
       mismatches++;
     }
     for (const f of r.inSchemaNotSpec) {
-      console.error(`✗ ${stem}: field \`${f}\` is in the schema but undocumented in the spec`);
+      log.error(`✗ ${stem}: field \`${f}\` is in the schema but undocumented in the spec`);
       mismatches++;
     }
     for (const f of r.specRequiredNotSchema) {
-      console.error(`✗ ${stem}: field \`${f}\` is under "Required Fields" in the spec but is not in the schema's required[]`);
+      log.error(`✗ ${stem}: field \`${f}\` is under "Required Fields" in the spec but is not in the schema's required[]`);
       mismatches++;
     }
     for (const f of r.specOptionalButSchemaRequired) {
-      console.error(`✗ ${stem}: field \`${f}\` is under "Optional Fields" in the spec but the schema marks it required`);
+      log.error(`✗ ${stem}: field \`${f}\` is under "Optional Fields" in the spec but the schema marks it required`);
       mismatches++;
     }
   }
 
-  console.log(
-    `\nspec↔schema parity: ${checked} entity types checked, ${mismatches} field mismatch(es).`,
+  // The loop above is driven by spec pages, so a schema with no page of its own
+  // would never be looked at: an entity the validator accepts but nobody
+  // documented. Sweep the schema directory for those too.
+  for (const file of specFiles && schemaFiles ? schemaFiles : []) {
+    const stem = basename(file, ".schema.json");
+    if (documentedStems.has(stem) || SCHEMAS_WITHOUT_SPEC_PAGE.has(stem)) continue;
+    log.error(
+      `✗ ${stem}: ${file} has no spec page (${stem}.md) — its fields are undocumented`,
+    );
+    mismatches++;
+  }
+
+  // Do not report an empty run on top of a specific read or parse failure.
+  if (checked === 0 && mismatches === 0) {
+    log.error(
+      `✗ no entity spec/schema pairs found under ${specDir} — the check verified nothing`,
+    );
+    mismatches++;
+  }
+
+  log.log(
+    `\nspec↔schema parity: ${checked} entity types checked, ${mismatches} drift finding(s).`,
   );
 
-  if (mismatches > 0 && process.env.DRIFT_STRICT === "1") {
-    process.exit(1);
-  }
+  return { checked, mismatches };
+}
+
+// The strict gate itself: drift fails the process only under DRIFT_STRICT=1,
+// which CI sets (.github/workflows/validate-spec.yml). Exported so the exit
+// policy is unit-tested rather than implied by the one call site.
+export function exitCodeFor(mismatches, env = process.env) {
+  return mismatches > 0 && env.DRIFT_STRICT === "1" ? 1 : 0;
+}
+
+export function run({ env = process.env, ...options } = {}) {
+  const { mismatches } = scanTree(options);
+  return exitCodeFor(mismatches, env);
 }
 
 // Run the filesystem walk only when invoked as a script, not when imported by
 // the test file (which calls the exported pure functions against fixtures).
 if (import.meta.url === pathToFileURL(process.argv[1] || "").href) {
-  main();
+  process.exitCode = run();
 }

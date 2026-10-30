@@ -83,10 +83,10 @@ know which one you're about to trip before you push:
 
 - **Edit a CLI command** → run `make docs-cli` and commit the regenerated
   `docs/cli/**` (`docs-drift.yml`, hard-fail).
-- **Change a JSON schema** → `drift-checks.yml` runs two checks with
-  different teeth: schema backward-compat is HARD-fail (a breaking change
-  invalidates existing archives); spec-schema field parity is WARN-only
-  (#309). A green "spec-schema" job does NOT mean parity is enforced.
+- **Change a JSON schema** → update its spec field table in the same PR.
+  The required `validate-schemas` job checks spec↔schema parity (#309);
+  `drift-checks.yml` checks schema backward compatibility. See
+  `../scripts/drift-checks/README.md` for the gate policy and local commands.
 - **Add or rename an issue Area** → edit `.github/issue-areas.yml` first
   (the single source of truth), then update the `Area` dropdown in every
   `ISSUE_TEMPLATE/*.yml` form (each must keep its `id: area` key) or
