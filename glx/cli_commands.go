@@ -2261,12 +2261,14 @@ func runLink(_ *cobra.Command, args []string) error {
 var (
 	serveHost string
 	servePort int
+	serveEdit bool
 )
 
 var serveCmd = &cobra.Command{
 	Use:   "serve [path]",
 	Short: "Serve a local browser-based viewer for a GLX archive (prints a URL to open)",
-	Long: `Serve a read-only, browser-based viewer for a GENEALOGIX archive.
+	Long: `Serve a browser-based viewer for a GENEALOGIX archive, read-only unless
+--edit is given.
 
 Starts a small local web server and prints a URL to open in your browser
 (it does not open the browser for you). The viewer is interactive and shows:
@@ -2278,6 +2280,12 @@ Starts a small local web server and prints a URL to open in your browser
 The server binds to localhost by default so the archive stays on your machine.
 The archive is loaded once at startup; restart the server to pick up external
 edits made by the CLI or a text editor.
+
+With --edit, the viewer can also add people, edit a person's name, sex and
+gender, and add parent, child and spouse relationships. Additions go through
+the same checks as 'glx add person' and 'glx add relationship' and write the
+same files; an edit rewrites only that person's file, and is refused if the
+file changed since the page loaded. Editing needs a multi-file directory.
 
 Accepts either a multi-file directory or a single .glx file.
 If no path is given, the current directory is used.`,
@@ -2291,7 +2299,10 @@ If no path is given, the current directory is used.`,
   glx serve family.glx --port 9000
 
   # Pick any free port (printed on startup)
-  glx serve --port 0`,
+  glx serve --port 0
+
+  # Allow adding and editing people in the browser
+  glx serve my-family-archive --edit`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runServe,
 }
@@ -2299,6 +2310,7 @@ If no path is given, the current directory is used.`,
 func init() {
 	serveCmd.Flags().StringVar(&serveHost, "host", serveDefaultHost, "Host/interface to bind (use 127.0.0.1 to keep the viewer local)")
 	serveCmd.Flags().IntVarP(&servePort, "port", "p", serveDefaultPort, "Port to listen on (0 picks any free port)")
+	serveCmd.Flags().BoolVar(&serveEdit, "edit", false, "Allow adding and editing people and relationships (directory archives only)")
 }
 
 func runServe(_ *cobra.Command, args []string) error {
@@ -2311,6 +2323,7 @@ func runServe(_ *cobra.Command, args []string) error {
 		ArchivePath: path,
 		Host:        serveHost,
 		Port:        servePort,
+		Edit:        serveEdit,
 	})
 }
 

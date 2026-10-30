@@ -1,7 +1,8 @@
 // Copyright 2025 Oracynth, Inc.
 // Licensed under the Apache License, Version 2.0.
 //
-// Read-only single-page viewer for `glx serve` (issue #93, Phase 1).
+// Single-page viewer for `glx serve` (issue #93): read-only by default, with
+// person and relationship editing when the server runs with --edit (Phase 2).
 // Vanilla JS, no build step, no external dependencies. Hash-based routing so
 // the Go file server only ever serves the static shell; data comes from /api.
 
@@ -94,6 +95,41 @@ async function api(path) {
     throw new Error(detail);
   }
   return res.json();
+}
+
+// apiSend makes a write request. The server accepts only same-origin JSON, so
+// the Content-Type here is required, not decorative.
+async function apiSend(method, path, body) {
+  const res = await fetch(path, {
+    method,
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  let data = null;
+  try { data = await res.json(); } catch (_) { /* empty body */ }
+  if (!res.ok) throw new Error((data && data.error) || res.statusText);
+  return data;
+}
+
+// isEditable reports whether the server was started with --edit. Asked once
+// per page load; the answer cannot change while the server runs.
+let editablePromise = null;
+function isEditable() {
+  if (!editablePromise) {
+    editablePromise = api("/api/overview").then((o) => {
+      if (o.editable) {
+        document.querySelector(".footer .muted").textContent = "Editing enabled · glx serve --edit";
+      }
+      return Boolean(o.editable);
+    }).catch(() => false);
+  }
+  return editablePromise;
+}
+
+let editOptionsPromise = null;
+function editOptions() {
+  if (!editOptionsPromise) editOptionsPromise = api("/api/edit/options");
+  return editOptionsPromise;
 }
 
 // ---------------------------------------------------------------------------
@@ -223,8 +259,12 @@ async function viewPersons() {
       h("th", null, "Name"), h("th", null, "Lifespan"), h("th", null, "Sex"))),
     tbody);
 
+  const editable = await isEditable();
+
   render(h("div", null,
     h("h1", null, "People"),
+    editable ? h("div", { class: "toolbar" },
+      h("a", { class: "btn", href: "#/new-person" }, "+ Add person")) : null,
     persons.length ? search : null,
     persons.length ? table : h("p", { class: "muted" }, "No people in this archive.")));
 }
@@ -235,7 +275,10 @@ async function viewPersons() {
 
 async function viewPerson(id) {
   setActiveNav("persons");
-  const p = await api(`/api/persons/${encodeURIComponent(id)}`);
+  const [p, editable] = await Promise.all([
+    api(`/api/persons/${encodeURIComponent(id)}`),
+    isEditable(),
+  ]);
 
   const badges = h("div", { class: "badges" });
   if (p.sex) badges.appendChild(h("span", { class: `badge ${sexClass(p.sex)}` }, p.sex));
@@ -250,7 +293,8 @@ async function viewPerson(id) {
     altNames.length ? h("p", { class: "subtitle" }, "Also: " + altNames.join(" · ")) : null,
     badges,
     h("div", { class: "toolbar" },
-      h("a", { class: "btn", href: `#/tree/${encodeURIComponent(id)}` }, "🌳 View family tree")),
+      h("a", { class: "btn", href: `#/tree/${encodeURIComponent(id)}` }, "🌳 View family tree"),
+      editable ? h("a", { class: "btn", href: `#/edit/${encodeURIComponent(id)}` }, "✎ Edit") : null),
   ];
 
   if (p.vitals && p.vitals.length) {
@@ -259,6 +303,7 @@ async function viewPerson(id) {
   }
 
   sections.push(familySection(p.family));
+  if (editable) sections.push(await addRelativeSection(id));
 
   if (p.events && p.events.length) {
     sections.push(h("h2", null, `Timeline (${p.events.length})`));
@@ -345,6 +390,164 @@ function evidenceRow(ev) {
 
 function prettyProperty(p) {
   return p.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+// ---------------------------------------------------------------------------
+// Editing (glx serve --edit)
+// ---------------------------------------------------------------------------
+
+// NAME_FIELDS are the structured name parts, in display order, keyed as the
+// /api person form keys them.
+const NAME_FIELDS = [
+  ["prefix", "Prefix"], ["given", "Given name"], ["nickname", "Nickname"],
+  ["surnamePrefix", "Surname prefix"], ["surname", "Surname"], ["suffix", "Suffix"],
+];
+
+// Relationship types the "add relative" form offers for each relation; only
+// those the archive's vocabulary defines are shown.
+const RELATION_TYPES = {
+  parent: ["biological_parent_child", "parent_child", "adoptive_parent_child", "foster_parent_child", "step_parent", "guardian", "godparent"],
+  child: ["biological_parent_child", "parent_child", "adoptive_parent_child", "foster_parent_child", "step_parent", "guardian", "godparent"],
+  spouse: ["marriage", "civil_union", "common_law_marriage", "partner"],
+};
+
+function field(label, input) {
+  return h("label", { class: "field" }, h("span", null, label), input);
+}
+
+function vocabSelect(name, options, value, disabled) {
+  const known = options.some((o) => o.key === value);
+  return h("select", { name, disabled: disabled ? "disabled" : null },
+    h("option", { value: "" }, "(not set)"),
+    !known && value ? h("option", { value, selected: "selected" }, value) : null,
+    options.map((o) => h("option", { value: o.key, selected: o.key === value ? "selected" : null }, o.label)));
+}
+
+function formError(form) {
+  let box = form.querySelector(".error");
+  if (!box) {
+    box = h("div", { class: "error", role: "alert" });
+    form.prepend(box);
+  }
+  return box;
+}
+
+// personForm renders the name/sex/gender form shared by "add" and "edit".
+// state is the server's form state (or blank for a new person).
+function personForm(state, options, submitLabel, onSubmit) {
+  const nameInputs = NAME_FIELDS.map(([key, label]) =>
+    field(label, h("input", {
+      name: key, type: "text", value: (state.name && state.name[key]) || "",
+      disabled: state.nameEditable === false ? "disabled" : null,
+    })));
+
+  let nameNote = null;
+  if (state.nameEditable === false) {
+    nameNote = "This person has more than one name. Edit names in a text editor; the other fields can still be changed here.";
+  } else if (state.nameValue && !state.nameStructured) {
+    nameNote = `The name is stored as “${state.nameValue}” without separate parts. Leave the parts empty to keep it; filling them in replaces it.`;
+  }
+
+  const form = h("form", { class: "panel edit-form" },
+    nameNote ? h("p", { class: "muted" }, nameNote) : null,
+    h("div", { class: "field-grid" }, nameInputs),
+    h("div", { class: "field-grid" },
+      field("Sex", vocabSelect("sex", options.sex, state.sex || "", state.sexEditable === false)),
+      field("Gender", vocabSelect("gender", options.gender, state.gender || "", state.genderEditable === false))),
+    h("div", { class: "toolbar" }, h("button", { class: "btn primary", type: "submit" }, submitLabel)));
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const button = form.querySelector("button[type=submit]");
+    button.disabled = true;
+    const name = {};
+    for (const [key] of NAME_FIELDS) name[key] = form.elements[key].value;
+    try {
+      await onSubmit({ name, sex: form.elements.sex.value, gender: form.elements.gender.value });
+    } catch (err) {
+      formError(form).textContent = err.message || String(err);
+      button.disabled = false;
+    }
+  });
+  return form;
+}
+
+async function viewNewPerson() {
+  setActiveNav("persons");
+  const options = await editOptions();
+  render(h("div", null,
+    h("div", { class: "crumbs" }, h("a", { href: "#/persons" }, "People"), " / New person"),
+    h("h1", null, "Add person"),
+    personForm({}, options, "Add person", async (body) => {
+      const created = await apiSend("POST", "/api/persons", body);
+      navigate(`#/person/${encodeURIComponent(created.id)}`);
+    })));
+}
+
+async function viewEditPerson(id) {
+  setActiveNav("persons");
+  const [state, options] = await Promise.all([
+    api(`/api/persons/${encodeURIComponent(id)}/edit`),
+    editOptions(),
+  ]);
+  const back = `#/person/${encodeURIComponent(id)}`;
+  render(h("div", null,
+    h("div", { class: "crumbs" }, h("a", { href: back }, id), " / Edit"),
+    h("h1", null, "Edit person"),
+    h("p", { class: "subtitle" }, `Saves to persons/${id.toLowerCase()}.glx`),
+    personForm(state, options, "Save", async (body) => {
+      await apiSend("PUT", `/api/persons/${encodeURIComponent(id)}`, { version: state.version, ...body });
+      navigate(back);
+    })));
+}
+
+// addRelativeSection is the person page's "add parent / child / spouse" form,
+// linking the person to someone already in the archive.
+async function addRelativeSection(id) {
+  const [options, people] = await Promise.all([editOptions(), api("/api/persons")]);
+  const others = (people.persons || []).filter((p) => p.id !== id);
+  const vocab = new Map(options.relationshipTypes.map((o) => [o.key, o.label]));
+
+  const typeSelect = h("select", { name: "type" });
+  const relationSelect = h("select", {
+    name: "relation",
+    onchange: () => fillTypes(),
+  }, ["parent", "child", "spouse"].map((r) => h("option", { value: r }, r)));
+  function fillTypes() {
+    const keys = RELATION_TYPES[relationSelect.value].filter((k) => vocab.has(k));
+    typeSelect.replaceChildren(...keys.map((k) => h("option", { value: k }, vocab.get(k))));
+  }
+  fillTypes();
+
+  const relativeSelect = h("select", { name: "relative" },
+    others.map((p) => h("option", { value: p.id },
+      [p.name, lifespan(p) && `(${lifespan(p)})`, `· ${p.id}`].filter(Boolean).join(" "))));
+
+  const form = h("form", { class: "panel edit-form" },
+    h("div", { class: "field-grid" },
+      field("Add a", relationSelect),
+      field("Who", relativeSelect),
+      field("Relationship type", typeSelect)),
+    h("div", { class: "toolbar" },
+      h("button", { class: "btn primary", type: "submit", disabled: others.length ? null : "disabled" }, "Add relationship"),
+      h("a", { class: "btn", href: "#/new-person" }, "+ New person first")));
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    try {
+      await apiSend("POST", "/api/relationships", {
+        type: typeSelect.value,
+        personId: id,
+        relativeId: relativeSelect.value,
+        relation: relationSelect.value,
+      });
+      route();
+    } catch (err) {
+      formError(form).textContent = err.message || String(err);
+    }
+  });
+
+  return h("div", null, h("h2", null, "Add relative"), form);
 }
 
 // ---------------------------------------------------------------------------
@@ -576,6 +779,8 @@ function route() {
     case "": view = viewDashboard(); break;
     case "persons": view = viewPersons(); break;
     case "person": view = viewPerson(id); break;
+    case "new-person": view = viewNewPerson(); break;
+    case "edit": view = viewEditPerson(id); break;
     case "tree": view = viewTree(id); break;
     case "sources": view = viewSources(); break;
     case "source": view = viewSource(id); break;
