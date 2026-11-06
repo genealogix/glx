@@ -12,6 +12,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import Ajv2020 from "ajv/dist/2020.js";
 import { classifySchemaChange, normalizeDialect } from "./schema-compat.mjs";
 
 const PATH = "specification/schema/v1/thing.schema.json";
@@ -225,4 +226,141 @@ test("tightening a dependency named description is still breaking", () => {
   const r = classifySchemaChange({ path: PATH, baseContent: json(base), currentContent: json(next) });
   assert.equal(r.status, "breaking");
   assert.equal(r.breaking, true);
+});
+
+// Enum additions relax ordinary constraints. Normalize only schema enums so
+// dependency fields and literal data named enum remain checked strictly.
+const classify = (base, next) => classifySchemaChange({
+  path: PATH, baseContent: json(base), currentContent: json(next),
+});
+
+test("adding enum values in a positive property constraint is compatible", () => {
+  const base = { properties: { target: { enum: ["persons"] } }, not: { required: ["forbidden"] } };
+  const next = { ...base, properties: { target: { enum: ["persons", "assertions"] } } };
+  assert.equal(classify(base, next).breaking, false);
+});
+
+test("enum removals and replacements remain breaking", () => {
+  for (const next of [["persons"], ["persons", "assertions"]]) {
+    assert.equal(classify({ enum: ["persons", "places"] }, { enum: next }).breaking, true);
+  }
+});
+
+test("enum additions do not hide simultaneous restrictions", () => {
+  const base = { type: "string", enum: ["persons", "places"] };
+  assert.equal(classify(base, { ...base, enum: [...base.enum, "assertions"], pattern: "^p" }).breaking, true);
+});
+
+test("enum widening in negation, exclusive alternatives and conditionals is conservative", () => {
+  for (const keyword of ["not", "if", "oneOf", "contains"]) {
+    const wrap = (schema) => ({ [keyword]: keyword === "oneOf" ? [schema, { type: "number" }] : schema });
+    const result = classify(wrap({ enum: ["a"] }), wrap({ enum: ["a", "b"] }));
+    assert.equal(result.breaking, true, keyword);
+    assert.match(result.message, /non-monotone/);
+  }
+});
+
+test("negated local references cannot hide enum widening in definitions", () => {
+  const base = { not: { $ref: "#/$defs/Target" }, $defs: { Target: { enum: ["a"] } } };
+  const next = { ...base, $defs: { Target: { enum: ["a", "b"] } } };
+  assert.equal(classify(base, next).breaking, true);
+});
+
+test("positive local references permit safe enum widening in definitions", () => {
+  const base = { properties: { target: { $ref: "#/$defs/Target" } }, $defs: { Target: { enum: ["a"] } } };
+  const next = { ...base, $defs: { Target: { enum: ["a", "b"] } } };
+  assert.equal(classify(base, next).breaking, false);
+});
+
+test("enum-shaped literal data is not traversed as a schema", () => {
+  const base = { const: { not: { enum: ["a"] } } };
+  const next = { const: { not: { enum: ["a", "b"] } } };
+  assert.equal(classify(base, next).breaking, true);
+  assert.doesNotMatch(classify(base, next).message, /non-monotone/);
+});
+
+test("structured enum values cannot be changed through nested enum-shaped data", () => {
+  const base = { enum: [{ enum: ["a"] }] };
+  const next = { enum: [{ enum: ["a", "b"] }] };
+  assert.equal(classify(base, next).breaking, true);
+});
+
+test("cyclic references terminate while checking a definition reused under negation", () => {
+  const target = { properties: { nested: { $ref: "#/$defs/Target" }, tag: { enum: ["a"] } } };
+  const base = { not: { $ref: "#/$defs/Target" }, $defs: { Target: target } };
+  const next = { ...base, $defs: { Target: { ...target, properties: {
+    ...target.properties, tag: { enum: ["a", "b"] },
+  } } } };
+  assert.equal(classify(base, next).breaking, true);
+});
+
+test("unresolved references in negation conservatively block enum widening", () => {
+  for (const ref of ["#target", "external.schema.json#target", "#/$defs/Missing"]) {
+    const base = { not: { $ref: ref }, $defs: { Target: { $anchor: "target", enum: ["a"] } } };
+    const next = { ...base, $defs: { Target: { $anchor: "target", enum: ["a", "b"] } } };
+    const result = classify(base, next);
+    assert.equal(result.breaking, true, ref);
+    assert.match(result.message, /unresolved reference/);
+    assert.equal(classify(base, base).breaking, false, "unchanged enums remain compatible");
+  }
+});
+
+
+test("dynamic and recursive references in unsafe contexts block enum widening", () => {
+  for (const keyword of ["$dynamicRef", "$recursiveRef"]) {
+    const base = { not: { [keyword]: "#target" }, $defs: { Target: { enum: ["a"] } } };
+    const next = { ...base, $defs: { Target: { enum: ["a", "b"] } } };
+    assert.equal(classify(base, next).breaking, true, keyword);
+  }
+});
+
+test("a dependency named enum must not bypass required-field restrictions", () => {
+  for (const keyword of ["dependencies", "dependentRequired"]) {
+    const base = {
+      type: "object",
+      properties: { enum: { type: "string" }, a: {}, b: {} },
+      [keyword]: { enum: ["a"] },
+    };
+    const next = { ...base, [keyword]: { enum: ["a", "b"] } };
+    assert.equal(classify(base, next).breaking, true, keyword);
+    // A separate genuine enum relaxation must not hide the dependency tightening.
+    const withEnum = { ...base, properties: { ...base.properties, kind: { enum: ["old"] } } };
+    const both = { ...next, properties: { ...withEnum.properties, kind: { enum: ["old", "new"] } } };
+    assert.equal(classify(withEnum, both).breaking, true, keyword);
+  }
+});
+
+test("enum widening with nested schema resources is conservatively blocked", () => {
+  const base = {
+    $id: "https://example.org/root",
+    $defs: { Target: { enum: ["root"] } },
+    properties: {
+      embedded: {
+        $id: "embedded",
+        not: { $ref: "#/$defs/Target" },
+        $defs: { Target: { enum: ["a"] } },
+      },
+    },
+  };
+  const next = structuredClone(base);
+  next.properties.embedded.$defs.Target.enum.push("b");
+  const compile = (schema) => new Ajv2020({ strict: false }).compile(schema);
+  assert.equal(compile(base)({ embedded: "b" }), true);
+  assert.equal(compile(next)({ embedded: "b" }), false);
+  assert.equal(classify(base, next).breaking, true);
+  assert.equal(classify(base, base).breaking, false);
+});
+
+test("unsafe reference traversal escapes map keys containing path separators", () => {
+  const base = {
+    $defs: { Target: { enum: ["a"] } },
+    not: { properties: {
+      "a/properties/b": {},
+      a: { properties: { b: { $ref: "#/$defs/Target" } } },
+    } },
+  };
+  const next = structuredClone(base);
+  next.$defs.Target.enum.push("b");
+  const result = classifySchemaChange({ path: PATH, baseContent: json(base), currentContent: json(next) });
+  assert.equal(result.breaking, true);
 });
