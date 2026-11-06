@@ -1,0 +1,6 @@
+kind: Changed
+body: |-
+  **A parish or population register now counts as a vital record in `glx analyze`** — The "search vital records" suggestion fired for anyone with no `vital_record` source, including researchers whose evidence is a `church_register` — which is the birth, marriage and death record for most of Europe before civil registration — or a `population_register`. Both now satisfy the suggestion, and its wording says so.
+time: 2026-10-01T00:00:11Z
+custom:
+  Issue: "#186"

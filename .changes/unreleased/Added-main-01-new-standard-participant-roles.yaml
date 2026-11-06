@@ -1,0 +1,5 @@
+kind: Added
+body: '**New standard participant roles** — `participant-roles.glx` adds event roles `enumerator`, `attending_physician`, `registrar`, `bondsman`, `testator`, `executor`, `legatee`, `beneficiary`, `grantor`, `grantee` and `adjoining_owner`; `guardian`/`ward` for both events and relationships; and relationship roles `foster_parent`/`foster_child` and `step_parent`/`step_child`. `legatee` (a will''s bequest) and `beneficiary` (intestate heirs, insurance, trusts) are both standard. Every standard role now declares `applies_to` explicitly.'
+time: '2026-10-07T00:00:01Z'
+custom:
+  Issue: '#526'

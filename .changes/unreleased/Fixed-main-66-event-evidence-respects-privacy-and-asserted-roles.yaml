@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**Event evidence respects privacy and asserted roles** — Publishing with `--living` drops assertions about fully redacted events so their citation text and media cannot reappear on a person''s page. Participant assertions use the role asserted by the source, even when it differs from the event''s conclusion; witness-only evidence no longer counts as the person''s own record.'
+time: '2026-10-11T00:00:11Z'
+custom:
+  Issue: 'PR #1382'

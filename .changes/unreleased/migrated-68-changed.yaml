@@ -1,0 +1,6 @@
+kind: Changed
+body: |-
+  **Toolchain bump to Go 1.27 and golangci-lint v2.13.2, with `nolintlint` unused-directive enforcement** — `go.mod` and `ci-tools/go.mod` now declare `go 1.27.0` / `toolchain go1.27.1`, the devcontainer image moves to `go:1.27`, and `.golangci-lint-version` pins `v2.13.2`. The 35 `//nolint` directives that no longer suppressed anything (mostly `//nolint:mnd` on numbers already in `ignored-numbers`, plus stale `errcheck`/`nilerr`/`goconst`/`revive`/`gocyclo` directives) were removed, and `nolintlint`'s `allow-unused` is set to `false` so redundant suppressions are caught from now on. Contributors need Go 1.27+, and so do downstream projects importing `github.com/genealogix/glx/go-glx`.
+time: 2026-10-01T00:00:16Z
+custom:
+  Issue: "#902"

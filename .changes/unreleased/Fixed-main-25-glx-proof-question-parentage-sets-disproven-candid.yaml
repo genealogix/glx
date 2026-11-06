@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**`glx proof --question parentage` sets disproven candidates apart and flags competing fathers** — Parents recorded only in disproven relationships are listed under a new **Alternatives Excluded** heading (`alternatives_excluded` in JSON), not among the parents identified, and no longer feed the conclusion. Two or more surviving birth `parent_child` relationships naming different fathers (or different mothers) are now an unresolved conflict. Step-parents are not parentage candidates.'
+time: '2026-10-07T00:00:25Z'
+custom:
+  Issue: '#1327'

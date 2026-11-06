@@ -1,0 +1,6 @@
+kind: Fixed
+body: |-
+  **`glx init --create-test-data` always produces a valid archive** — The generator drew relationship types at random, and two of them didn't fit the standard vocabularies. `friend` isn't a relationship type, and neither `partner` nor `friend` is a participant role. Depending on the draw, the freshly generated archive therefore failed `glx validate`. Partners are now `spouse` participants, and the `friend` type is replaced by the vocabulary's `associate` type and role
+time: 2026-10-01T00:00:26Z
+custom:
+  Issue: "#1205"

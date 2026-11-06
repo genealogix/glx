@@ -1,0 +1,5 @@
+kind: Added
+body: '**`glx households`** — Reconstructs census households: for a person, every census event they appear in, members listed head first and then by age (from `age_at_event`), with relationship to head, unnamed tick-mark members marked, and the household tally; `--place` (with descendant places) and `--year` list every household enumerated there; `--neighbors` adds page neighbors; `--format json` for tooling.'
+time: '2026-10-09T00:00:05Z'
+custom:
+  Issue: '#119'

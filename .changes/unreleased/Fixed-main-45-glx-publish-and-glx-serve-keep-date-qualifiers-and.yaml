@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**`glx publish` and `glx serve` keep date qualifiers and ranges in one-line lifespans** — The lifespan in a person page header, the "(b. YEAR)" in family lists, and the pedigree/descendancy chart boxes used only the first year of a date, so `BET 1756 AND 1774` / `BET 1826-05-16 AND 1830` read as a precise `1756–1826`. They now keep a short form of the qualifier: `ABT 1765` → `c. 1765`, `BEF`/`AFT` → `bef.`/`aft.`, `EST`/`CAL` → `est.`/`cal.`, `BET`/`FROM…TO` ranges → `1756/1774` (a single year when both ends share it), open `FROM`/`TO` → `from 1850`/`to 1860`. When either end is more than a bare year the two ends are joined with a spaced en dash (`1756/1774 – 1826/1830`) so the separator cannot be read as part of a range. `glx serve`''s person, reference, and tree JSON gain a `lifespan` string the viewer now displays; the numeric `birthYear`/`deathYear` fields are unchanged. Tree node tooltips include the complete lifespan even when long date ranges are truncated in the box.'
+time: '2026-10-09T00:00:17Z'
+custom:
+  Issue: '#1328'

@@ -1,0 +1,6 @@
+kind: Fixed
+body: |-
+  **`id=$(glx add …)` now captures just the ID** — Every `glx add` subcommand printed its `Adding person person-…` progress line to stdout ahead of the ID. The capture the `add` help documents (`person_id=$(glx add person …)`) therefore got two lines unless you also passed `--quiet`. Progress now goes to stderr and stdout carries only the created ID; `--quiet` still silences the progress line
+time: 2026-10-01T00:00:22Z
+custom:
+  Issue: "#1205"
