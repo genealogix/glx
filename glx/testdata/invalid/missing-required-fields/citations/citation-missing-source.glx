@@ -1,5 +1,6 @@
 citations:
   citation-missing-source:
-    locator: "Page 1"
+    properties:
+      locator: "Page 1"
 
 
