@@ -61,11 +61,13 @@ This example uses **descriptive IDs** to make the archive more human-readable:
 - `events/event-deaths.glx` - 3 death events
 - `events/event-marriage.glx` - 1 marriage event
 
-### Places (3 files)
+### Places (5 files)
 
 - `places/place-england.glx` - England (country)
 - `places/place-yorkshire.glx` - Yorkshire (county, parent: England)
-- `places/place-leeds.glx` - Leeds (city, parent: Yorkshire)
+- `places/place-west-riding.glx` - West Riding (district, parent: Yorkshire)
+- `places/place-leeds.glx` - Leeds (city, parent: West Riding), with population at the 1851 and 1901 censuses
+- `places/place-st-pauls-leeds.glx` - St. Paul's Church (church, parent: Leeds), where the 1875 marriage took place
 
 ### Sources (2 files)
 
@@ -150,7 +152,7 @@ Should validate successfully with no errors.
 - **Descriptive IDs**: Human-readable entity identifiers
 - **Evidence Chains**: Complete provenance from repository to conclusion
 - **Confidence Levels**: Assertions express certainty
-- **Hierarchical Places**: England → Yorkshire → Leeds
+- **Hierarchical Places**: England → Yorkshire → West Riding → Leeds → St. Paul's Church
 - **Cross-References**: All entities properly linked and validated
 - **Multi-Generation Family**: Parents and children with relationships
 - **Flexible Files**: Some files have one entity, some have multiple
