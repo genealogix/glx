@@ -139,6 +139,11 @@ var ResearchLogStatusTypes []byte
 //go:embed lead-statuses.glx
 var LeadStatuses []byte
 
+// PersonStatuses contains the embedded person-statuses.glx vocabulary file.
+//
+//go:embed person-statuses.glx
+var PersonStatuses []byte
+
 // StudyTypes contains the embedded study-types.glx vocabulary file.
 //
 //go:embed study-types.glx
@@ -175,6 +180,7 @@ var Files = map[string][]byte{
 	"search-result-types.glx":       SearchResultTypes,
 	"research-log-status-types.glx": ResearchLogStatusTypes,
 	"lead-statuses.glx":             LeadStatuses,
+	"person-statuses.glx":           PersonStatuses,
 	"study-types.glx":               StudyTypes,
 	"study-statuses.glx":            StudyStatuses,
 }
