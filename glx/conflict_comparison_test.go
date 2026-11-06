@@ -221,9 +221,11 @@ func TestComparisonCommandHandlersForwardWidth(t *testing.T) {
     properties: {name: Mary, birth_fact: "1853"}
 person_properties:
   birth_fact: {label: Birth fact, value_type: date}
+sources:
+  register: {title: Birth register}
 assertions:
-  a: {subject: {person: p}, property: born_on, value: ABT 1850}
-  b: {subject: {person: p}, property: born_on, value: "1853"}
+  a: {subject: {person: p}, property: born_on, value: ABT 1850, sources: [register]}
+  b: {subject: {person: p}, property: born_on, value: "1853", sources: [register]}
 `)
 	require.NoError(t, os.WriteFile(path, original, 0o600))
 	setString := func(target *string, value string) {

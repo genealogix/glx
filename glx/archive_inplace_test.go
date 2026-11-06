@@ -462,7 +462,7 @@ func TestWriteArchiveInPlace_EmptyMetadataBlockDoesNotOwnMetadata(t *testing.T) 
 		dir := stageInPlaceArchive(t, files)
 		requireValidArchive(t, dir)
 
-		require.NoError(t, mergePersons(dir, "person-keep", "person-drop", glxlib.MergePersonsOptions{}, false))
+		require.NoError(t, mergePersons(dir, "person-keep", "person-drop", glxlib.MergePersonsOptions{}, false, true))
 
 		merged := requireValidArchive(t, dir)
 		assert.Equal(t, "My Tree", merged.ImportMetadata.SourceSystem)

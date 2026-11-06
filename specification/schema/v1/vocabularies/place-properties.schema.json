@@ -54,7 +54,8 @@
             "sources",
             "citations",
             "repositories",
-            "media"
+            "media",
+            "assertions"
           ],
           "description": "Entity type for reference properties"
         },
