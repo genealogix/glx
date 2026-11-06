@@ -16,6 +16,7 @@ package main
 
 import (
 	"archive/zip"
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -79,6 +80,7 @@ func importGEDZIP(gedzipPath, outputPath, format string, validate, verbose bool,
 		// the error is returned as-is rather than re-wrapped against a guessed
 		// entry name (the GEDCOM need not be "gedcom.ged" — see the fallback
 		// discovery in glxlib.ImportGEDZIP).
+
 		return err
 	}
 
@@ -88,12 +90,15 @@ func importGEDZIP(gedzipPath, outputPath, format string, validate, verbose bool,
 			_, _ = fmt.Fprintf(output, "Warning: %s\n", w.Message)
 		}
 	}
-
-	if format == FormatSingle {
-		return importGEDZIPToSingleFile(glx, outputPath, validate, verbose, showFirstErrors, result.MediaFiles, zr, output)
+	if err := allocateImportMediaDestinations(glx, result.MediaFiles, importMediaDir(outputPath, format), "", limitedBundle); err != nil {
+		return fmt.Errorf("reserving media destinations: %w", err)
 	}
 
-	return importGEDZIPToMultiFile(glx, outputPath, validate, verbose, showFirstErrors, result.MediaFiles, zr, output)
+	if format == FormatSingle {
+		return importGEDZIPToSingleFile(glx, outputPath, validate, verbose, showFirstErrors, result.MediaFiles, limitedBundle, output)
+	}
+
+	return importGEDZIPToMultiFile(glx, outputPath, validate, verbose, showFirstErrors, result.MediaFiles, limitedBundle, output)
 }
 
 // sizeLimitedFS wraps an fs.FS to enforce maxGEDZIPEntryBytes on any opened file.
@@ -138,122 +143,38 @@ func (s *sizeLimitedFile) Read(p []byte) (int, error) {
 
 // importGEDZIPToSingleFile writes the imported GLX data to a single file and copies media
 func importGEDZIPToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, verbose bool, showFirstErrors int, mediaFiles []glxlib.MediaFileSource, bundle fs.FS, out io.Writer) error {
-	if verbose {
-		_, _ = fmt.Fprintf(out, "Writing single-file archive: %s\n", outputPath)
-	}
+	return importGEDZIPToSingleFileUsing(glx, outputPath, validate, verbose, showFirstErrors, mediaFiles, bundle, out, robustRename)
+}
 
-	outputPath = ensureGLXExtension(outputPath)
-	archiveDir := filepath.Dir(outputPath)
-
-	stageDir, err := os.MkdirTemp(archiveDir, ".glx-stage-*")
-	if err != nil {
-		return fmt.Errorf("creating staging directory: %w", err)
-	}
-	defer func() { _ = os.RemoveAll(stageDir) }()
-
-	streams := SystemIOStreams()
-	copyCount, blobCount, warnCount, err := stageMediaFilesFromFS(streams, stageDir, mediaFiles, bundle)
-	if err != nil {
-		return fmt.Errorf("failed to copy media files: %w", err)
-	}
-
-	tempFile, err := os.CreateTemp(archiveDir, ".glx-single-*.tmp")
-	if err != nil {
-		return fmt.Errorf("creating temporary archive: %w", err)
-	}
-	tempPath := tempFile.Name()
-	_ = tempFile.Close()
-	defer func() { _ = os.Remove(tempPath) }()
-
-	if err := writeSingleFileArchive(tempPath, glx, validate); err != nil {
-		return formatValidationError(err, showFirstErrors)
-	}
-
-	// Media is committed before the archive is published so that any media
-	// failure leaves an existing target archive untouched.
-	if err := commitStagedMedia(stageDir, archiveDir); err != nil {
-		return fmt.Errorf("failed to commit media files: %w", err)
-	}
-
-	if verbose || copyCount > 0 || blobCount > 0 {
-		streams.Printf("  Media files: %d copied, %d blobs written", copyCount, blobCount)
-		if warnCount > 0 {
-			streams.Printf(", %d warnings", warnCount)
-		}
-		streams.Println("")
-	}
-
-	if err := robustRename(tempPath, outputPath); err != nil {
-		return fmt.Errorf("writing archive to %s: %w", outputPath, err)
-	}
-
-	printSuccessSingleFile("imported", outputPath)
-	printArchiveStatistics(glx)
-
-	return nil
+// importGEDZIPToSingleFileUsing permits deterministic publication-outcome tests.
+func importGEDZIPToSingleFileUsing(glx *glxlib.GLXFile, outputPath string, validate, verbose bool, showFirstErrors int, mediaFiles []glxlib.MediaFileSource, bundle fs.FS, out io.Writer, rename func(string, string) error) error {
+	return publishSingleFileImportArchive(glx, outputPath, validate, verbose, showFirstErrors, mediaFiles, gedzipMediaSource(mediaFiles, bundle, verbose), out, rename)
 }
 
 // importGEDZIPToMultiFile writes the imported GLX data to a multi-file directory and copies media
 func importGEDZIPToMultiFile(glx *glxlib.GLXFile, outputPath string, validate, verbose bool, showFirstErrors int, mediaFiles []glxlib.MediaFileSource, bundle fs.FS, out io.Writer) error {
-	if verbose {
-		_, _ = fmt.Fprintf(out, "Writing multi-file archive: %s\n", outputPath)
+	return importGEDZIPToMultiFileUsing(glx, outputPath, validate, verbose, showFirstErrors, mediaFiles, bundle, out, writeImportFilesToDir)
+}
+
+// importGEDZIPToMultiFileUsing permits deterministic metadata-write failure tests.
+func importGEDZIPToMultiFileUsing(glx *glxlib.GLXFile, outputPath string, validate, verbose bool, showFirstErrors int, mediaFiles []glxlib.MediaFileSource, bundle fs.FS, out io.Writer, writeFiles func(string, map[string][]byte) error) error {
+	return publishMultiFileImportArchive(glx, outputPath, validate, verbose, showFirstErrors, mediaFiles, gedzipMediaSource(mediaFiles, bundle, verbose), out, writeFiles)
+}
+
+// gedzipMediaSource stages media from an opened GEDZIP bundle.
+func gedzipMediaSource(mediaFiles []glxlib.MediaFileSource, bundle fs.FS, verbose bool) importMediaSource {
+	return importMediaSource{
+		bundle: bundle,
+		stage: func(stageDir string) (func(), error) {
+			streams := SystemIOStreams()
+			copyCount, blobCount, warnCount, err := stageMediaFilesFromFS(streams, stageDir, mediaFiles, bundle)
+			if err != nil {
+				return nil, err
+			}
+
+			return func() { printImportMediaReport(streams, copyCount, blobCount, warnCount, verbose) }, nil
+		},
 	}
-
-	// Serialize and validate up front, before anything touches the filesystem.
-	// Media has to commit before the entity files are written (see below), so
-	// the failure mode to rule out is a validation or serialization error
-	// surfacing after media is already in place: get it out of the way while
-	// the import is still side-effect free.
-	files, err := serializeMultiFileArchive(glx, validate)
-	if err != nil {
-		return formatValidationError(err, showFirstErrors)
-	}
-
-	// Stage inside the archive directory itself: commitStagedMedia resolves
-	// every path through an os.Root scoped to the archive, which only reaches
-	// paths beneath it. Same filesystem too, so the commit is always a rename.
-	if err := os.MkdirAll(outputPath, dirPermissions); err != nil {
-		return fmt.Errorf("creating directory for %s: %w", outputPath, err)
-	}
-
-	stageDir, mkdirErr := os.MkdirTemp(outputPath, ".glx-stage-*")
-	if mkdirErr != nil {
-		return fmt.Errorf("creating staging directory: %w", mkdirErr)
-	}
-	defer func() { _ = os.RemoveAll(stageDir) }()
-
-	streams := SystemIOStreams()
-	copyCount, blobCount, warnCount, err := stageMediaFilesFromFS(streams, stageDir, mediaFiles, bundle)
-	if err != nil {
-		return fmt.Errorf("failed to copy media files: %w", err)
-	}
-
-	// Media is committed before the archive is written, matching the
-	// single-file path: a media failure then leaves an existing target archive
-	// untouched instead of replacing it and only afterwards discovering that
-	// the media URIs it now references cannot be satisfied. writeFilesToDir
-	// only creates and overwrites the entity files it manages, so media/files/
-	// survives the archive write.
-	if err := commitStagedMedia(stageDir, outputPath); err != nil {
-		return fmt.Errorf("failed to commit media files: %w", err)
-	}
-
-	if err := writeFilesToDir(outputPath, files); err != nil {
-		return err
-	}
-
-	if verbose || copyCount > 0 || blobCount > 0 {
-		streams.Printf("  Media files: %d copied, %d blobs written", copyCount, blobCount)
-		if warnCount > 0 {
-			streams.Printf(", %d warnings", warnCount)
-		}
-		streams.Println("")
-	}
-
-	printSuccessMultiFile("imported", outputPath)
-	printArchiveStatistics(glx)
-
-	return nil
 }
 
 // stageMediaFilesFromFS copies media files into a temporary staging directory.
@@ -268,8 +189,21 @@ func stageMediaFilesFromFS(streams *IOStreams, stageDir string, mediaFiles []glx
 	}
 
 	var copyCount, blobCount, warnCount int
+	reserved := glxlib.NewFilenameAllocator()
 
 	for _, mf := range mediaFiles {
+		if mf.ReuseExisting {
+			continue
+		}
+		if mf.KeepExisting {
+			warnKeptMedia(streams, &mf)
+			warnCount++
+
+			continue
+		}
+		if !reserved.Reserve(mf.TargetFilename) {
+			return 0, 0, 0, fmt.Errorf("%w: duplicate staged media destination %s", os.ErrExist, mf.TargetFilename)
+		}
 		destPath := filepath.Join(filesDir, mf.TargetFilename)
 
 		switch mf.SourceType {
@@ -304,7 +238,7 @@ func stageMediaFilesFromFS(streams *IOStreams, stageDir string, mediaFiles []glx
 
 				continue
 			}
-			if err := os.WriteFile(destPath, decoded, filePermissions); err != nil {
+			if err := writeFileFrom(destPath, bytes.NewReader(decoded)); err != nil {
 				streams.Printf("Warning: could not write BLOB file %s: %v\n", destPath, err)
 				warnCount++
 
@@ -317,52 +251,164 @@ func stageMediaFilesFromFS(streams *IOStreams, stageDir string, mediaFiles []glx
 	return copyCount, blobCount, warnCount, nil
 }
 
-// commitStagedMedia moves the media staged under stageDir into targetDir's
+// commitStagedMediaWithRollback moves the media staged under stageDir into targetDir's
 // media/files/ directory.
 //
 // stageDir must live inside targetDir. Every path is then resolved through an
 // os.Root scoped to targetDir, so no symlinked component can redirect a write
 // outside the archive — not the leaf media/files/<name>, and not a "media" or
 // "media/files" directory that a bare os.MkdirAll would happily follow. Each
-// file lands by rename, which replaces the destination atomically without
-// following a symlink there and leaves any existing file intact if the commit
-// fails partway.
-func commitStagedMedia(stageDir, targetDir string) error {
+// file lands by an exclusive hard link (or exclusive copy when links are not
+// supported), so even a destination created after allocation is never replaced.
+func commitStagedMediaWithRollback(stageDir, targetDir string) (func(), error) {
+	return commitStagedMediaUsing(stageDir, targetDir, commitStagedFile)
+}
+
+// commitPreparedMedia commits staged media only if targetDir's media directory
+// is still the one the archive's URIs were prepared against. On a case-sensitive
+// filesystem a spelling change in between would otherwise land the binaries
+// beside dangling references.
+func commitPreparedMedia(stageDir, targetDir, preparedFilesDir string) (func(), error) {
+	currentFilesDir, err := importMediaFilesDir(targetDir)
+	if err != nil {
+		return nil, err
+	}
+	if currentFilesDir != preparedFilesDir {
+		return nil, fmt.Errorf("media directory changed from %s to %s during import: %w", preparedFilesDir, currentFilesDir, os.ErrInvalid)
+	}
+
+	return commitStagedMediaWithRollback(stageDir, targetDir)
+}
+
+type committedMediaFile struct {
+	name string
+	info os.FileInfo
+}
+
+// commitStagedMediaUsing permits deterministic failure injection in rollback tests.
+func commitStagedMediaUsing(stageDir, targetDir string, publish func(*os.Root, string, string) (os.FileInfo, error)) (rollback func(), commitErr error) {
 	stagedFilesDir := filepath.Join(stageDir, glxlib.MediaFilesDir)
 	entries, err := os.ReadDir(stagedFilesDir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil
+			return func() {}, nil
 		}
 
-		return fmt.Errorf("reading staged media directory: %w", err)
+		return nil, fmt.Errorf("reading staged media directory: %w", err)
 	}
 
+	if len(entries) == 0 {
+		return func() {}, nil
+	}
 	stageRel, ok := relWithin(stageDir, targetDir)
 	if !ok {
-		return fmt.Errorf("%w: staging directory %s is not inside %s", ErrPathEscapesDir, stageDir, targetDir)
+		return nil, fmt.Errorf("%w: staging directory %s is not inside %s", ErrPathEscapesDir, stageDir, targetDir)
 	}
+	targetFilesDir, err := importMediaFilesDir(targetDir)
+	if err != nil {
+		return nil, err
+	}
+	targetRel, err := filepath.Rel(targetDir, targetFilesDir)
+	if err != nil {
+		return nil, fmt.Errorf("resolving media destination: %w", err)
+	}
+	targetRel = filepath.ToSlash(targetRel)
 
 	root, err := os.OpenRoot(targetDir)
 	if err != nil {
-		return fmt.Errorf("opening archive directory: %w", err)
+		return nil, fmt.Errorf("opening archive directory: %w", err)
 	}
 	defer func() { _ = root.Close() }()
 
-	if err := root.MkdirAll(glxlib.MediaFilesDir, dirPermissions); err != nil {
-		return fmt.Errorf("creating media/files directory: %w", err)
+	if err := checkMediaDirectory(targetFilesDir); err != nil {
+		return nil, err
 	}
-
-	stagedRel := path.Join(filepath.ToSlash(stageRel), glxlib.MediaFilesDir)
+	if err := root.MkdirAll(targetRel, dirPermissions); err != nil {
+		return nil, fmt.Errorf("creating media/files directory: %w", err)
+	}
+	targetFiles, err := root.Open(targetRel)
+	if err != nil {
+		return nil, fmt.Errorf("opening media/files directory: %w", err)
+	}
+	existing, readErr := targetFiles.Readdirnames(-1)
+	closeErr := targetFiles.Close()
+	if readErr != nil {
+		return nil, fmt.Errorf("reading media/files directory: %w", readErr)
+	}
+	if closeErr != nil {
+		return nil, fmt.Errorf("closing media/files directory: %w", closeErr)
+	}
+	reserved := glxlib.NewFilenameAllocator(existing...)
 	for _, entry := range entries {
-		src := path.Join(stagedRel, entry.Name())
-		dst := path.Join(glxlib.MediaFilesDir, entry.Name())
-		if err := robustRenameIn(root, src, dst); err != nil {
-			return fmt.Errorf("committing media file %s: %w", entry.Name(), err)
+		if !entry.Type().IsRegular() {
+			return nil, fmt.Errorf("%w: staged media %s is not a regular file", os.ErrInvalid, entry.Name())
+		}
+		if !reserved.Reserve(entry.Name()) {
+			return nil, fmt.Errorf("%w: media destination %s", os.ErrExist, entry.Name())
 		}
 	}
 
-	return nil
+	stagedRel := path.Join(filepath.ToSlash(stageRel), glxlib.MediaFilesDir)
+	committed := make([]committedMediaFile, 0, len(entries))
+	defer func() {
+		if commitErr != nil {
+			rollbackCommittedMedia(root, committed)
+		}
+	}()
+	for _, entry := range entries {
+		src := path.Join(stagedRel, entry.Name())
+		dst := path.Join(targetRel, entry.Name())
+		info, err := publish(root, src, dst)
+		if err != nil {
+			return nil, fmt.Errorf("committing media file %s: %w", entry.Name(), err)
+		}
+		committed = append(committed, committedMediaFile{dst, info})
+	}
+
+	return func() {
+		root, err := os.OpenRoot(targetDir)
+		if err != nil {
+			return
+		}
+		defer func() { _ = root.Close() }()
+		rollbackCommittedMedia(root, committed)
+	}, nil
+}
+
+func rollbackCommittedMedia(root *os.Root, files []committedMediaFile) {
+	for _, file := range files {
+		current, err := root.Lstat(file.name)
+		if err == nil && current.Mode().IsRegular() && os.SameFile(current, file.info) {
+			_ = root.Remove(file.name)
+		}
+	}
+}
+
+// commitStagedFile publishes a staged regular file without replacing an
+// existing destination. Both paths stay confined to root. Hard links preserve
+// atomic visibility; exclusive copying is a fallback for filesystems without
+// hard-link support.
+func commitStagedFile(root *os.Root, src, dst string) (os.FileInfo, error) {
+	stagedInfo, err := root.Lstat(src)
+	if err != nil {
+		return nil, err
+	}
+	if !stagedInfo.Mode().IsRegular() {
+		return nil, os.ErrInvalid
+	}
+	if err := root.Link(src, dst); err == nil {
+		return stagedInfo, nil
+	} else if errors.Is(err, os.ErrExist) {
+		return nil, err
+	}
+
+	input, err := root.Open(src)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = input.Close() }()
+
+	return copyExclusive(root, dst, input)
 }
 
 // errGEDZIPNonRegularEntry marks a bundle member that is a symlink or a
@@ -402,7 +448,7 @@ func copyMemberFile(bundle fs.FS, memberPath, destPath string) error {
 // destination is removed so the next caller cannot observe a truncated or
 // oversized file.
 func writeStreamEntry(src io.Reader, name, destPath string) error {
-	dst, err := os.OpenFile(filepath.Clean(destPath), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, filePermissions)
+	dst, err := os.OpenFile(filepath.Clean(destPath), os.O_WRONLY|os.O_CREATE|os.O_EXCL, filePermissions)
 	if err != nil {
 		return fmt.Errorf("creating destination file for %q: %w", name, err)
 	}
@@ -452,6 +498,7 @@ func (l *entrySizeLimitReader) Read(p []byte) (int, error) {
 
 	if l.remaining == 0 {
 		// Budget exhausted — see the type doc for the N+1 convention.
+
 		return n, ErrGEDZIPEntryTooLarge
 	}
 
