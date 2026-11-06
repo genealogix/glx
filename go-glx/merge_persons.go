@@ -112,6 +112,8 @@ type MergePersonsResult struct {
 //
 // Property-merge rules:
 //   - Missing properties are copied, and identical values agree silently.
+//   - An unresolved placeholder status (hypothetical, predicted) does not survive
+//     a merge with an identified person, whichever side is kept.
 //   - TemporalValue, []TemporalValue and mixed lists are normalized to GLX
 //     value/date objects before comparison; pointer forms are also accepted.
 //   - Fixed-property refinements retain the narrower date or descendant place.
@@ -263,6 +265,12 @@ func mergePersonProperties(archive *GLXFile, keep, drop *Person, opts MergePerso
 	for property, value := range keep.Properties {
 		keep.Properties[property] = normalizeTemporalProperty(value)
 	}
+	// Merging an unresolved placeholder with an identified person resolves it,
+	// so the survivor must not stay marked as (or become) a placeholder (#191).
+	keepOpen, dropOpen := IsUnresolvedPlaceholder(keep), IsUnresolvedPlaceholder(drop)
+	if keepOpen && !dropOpen {
+		delete(keep.Properties, PersonPropertyStatus)
+	}
 	if len(drop.Properties) == 0 {
 		return 0, nil
 	}
@@ -275,6 +283,9 @@ func mergePersonProperties(archive *GLXFile, keep, drop *Person, opts MergePerso
 	}
 	sort.Strings(properties)
 	for _, prop := range properties {
+		if prop == PersonPropertyStatus && dropOpen && !keepOpen {
+			continue
+		}
 		dropVal := normalizeTemporalProperty(drop.Properties[prop])
 		keepVal, exists := keep.Properties[prop]
 		if !exists {

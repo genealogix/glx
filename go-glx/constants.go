@@ -176,6 +176,7 @@ const (
 	PersonPropertyResidence  = "residence"
 	PersonPropertyOccupation = "occupation"
 	PersonPropertyLiving     = "living" // Boolean; opt-in marker honored by export privacy filters
+	PersonPropertyStatus     = "status" // Research placeholder state from the person_statuses vocabulary
 )
 
 // Standard Relationship Property Names - commonly used properties on Relationship entities
@@ -503,6 +504,16 @@ const (
 	LeadStatusConfirmed  = "confirmed"
 )
 
+// Standard Person Statuses - from person-statuses.glx vocabulary.
+// Used by the person `status` property to mark a research placeholder for
+// someone who has not been identified. A person with no status is an ordinary
+// person.
+const (
+	PersonStatusHypothetical = "hypothetical"
+	PersonStatusPredicted    = "predicted"
+	PersonStatusResolved     = "resolved"
+)
+
 // Standard Source Types - from source-types.glx vocabulary
 const (
 	SourceTypeVitalRecord        = "vital_record"        // Birth, marriage, death certificates
@@ -723,6 +734,7 @@ const (
 	VocabSearchResultTypes      = "search_result_types"
 	VocabResearchLogStatusTypes = "research_log_status_types"
 	VocabLeadStatuses           = "lead_statuses"
+	VocabPersonStatuses         = "person_statuses"
 	VocabStudyTypes             = "study_types"
 	VocabStudyStatuses          = "study_statuses"
 	VocabLegalStatuses          = "legal_statuses"

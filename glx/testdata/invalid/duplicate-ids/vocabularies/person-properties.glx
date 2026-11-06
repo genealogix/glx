@@ -139,3 +139,9 @@ person_properties:
     value_type: boolean
     # No GEDCOM equivalent — GLX-specific privacy marker.
 
+  status:
+    label: "Status"
+    description: "Marks a research placeholder for someone not yet identified: hypothetical, predicted, or resolved. Leave unset for an ordinary person. Confidence belongs on assertions, not here."
+    vocabulary_type: person_statuses
+    # No GEDCOM equivalent — written as a NOTE on export while the placeholder is unresolved.
+

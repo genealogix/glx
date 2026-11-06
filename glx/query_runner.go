@@ -87,7 +87,7 @@ func validateQueryFlags(entityType glxlib.EntityType, opts *queryOpts) error {
 
 	// Map each entity type to its supported flags.
 	supported := map[glxlib.EntityType]map[string]bool{
-		glxlib.EntityTypePersons:       {"--name": true, "--phonetic": true, "--born-before": true, "--born-after": true, "--birthplace": true},
+		glxlib.EntityTypePersons:       {"--name": true, "--phonetic": true, "--born-before": true, "--born-after": true, "--birthplace": true, "--status": true},
 		glxlib.EntityTypeEvents:        {"--type": true, "--before": true, "--after": true},
 		glxlib.EntityTypeAssertions:    {"--confidence": true, "--status": true, "--source": true, "--citation": true, "--subject": true},
 		glxlib.EntityTypeSources:       {"--name": true, "--type": true},
@@ -205,6 +205,11 @@ func queryPersons(archive *glxlib.GLXFile, opts queryOpts) error {
 			continue
 		}
 
+		status := glxlib.PersonStatus(person)
+		if opts.Status != "" && !strings.EqualFold(status, opts.Status) {
+			continue
+		}
+
 		allNames := extractAllNames(person)
 
 		if opts.Name != "" {
@@ -266,6 +271,9 @@ func queryPersons(archive *glxlib.GLXFile, opts queryOpts) error {
 		}
 
 		detail := name
+		if status != "" {
+			detail += " [" + status + "]"
+		}
 		switch {
 		case bornOn != "" && diedOn != "":
 			detail += fmt.Sprintf("  (%s – %s)", bornOn, diedOn)

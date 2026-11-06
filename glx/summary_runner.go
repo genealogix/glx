@@ -319,6 +319,10 @@ func printIdentitySection(person *glxlib.Person) {
 		fmt.Printf("  %-18s%s\n", "Gender:", identity)
 	}
 
+	if status := glxlib.PersonStatus(person); status != "" {
+		fmt.Printf("  %-18s%s\n", "Status:", sanitizeForTerminal(status))
+	}
+
 	variants := extractAllNameVariants(person)
 	if len(variants) > 1 {
 		fmt.Printf("  Alternate Names:\n")
