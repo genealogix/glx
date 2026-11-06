@@ -177,6 +177,10 @@ func TestMergePersonsRetainsBackupWhenRollbackSyncFails(t *testing.T) {
 		return syncMergeHandle(file)
 	})
 	require.ErrorIs(t, err, fs.ErrPermission)
+	require.ErrorIs(t, err, errMergeRollbackUnsynced)
+	require.ErrorIs(t, err, fs.ErrInvalid)
+	require.NotErrorIs(t, err, errMergeRollbackIncomplete)
+	assertMergeRecoveryLocations(t, err, dir)
 	assert.FileExists(t, filepath.Join(dir, inPlaceJournalFile))
 	require.ErrorIs(t, checkInPlaceJournal(dir), ErrInterruptedInPlaceWrite)
 	assert.FileExists(t, filepath.Join(dir+".bak", mergeBackupMarker))
@@ -245,4 +249,18 @@ func TestMergePersonsBackupSyncFailureDoesNotBlockRetry(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, original, actual)
 	require.NoError(t, installMergeFilesWithSync(dir, original, planned, robustRenameIn, func(*os.File) error { return nil }))
+}
+
+// assertMergeRecoveryLocations requires a failure to name every artifact it
+// retained. The archive path is resolved the way installation resolves it.
+func assertMergeRecoveryLocations(t *testing.T, err error, dir string) {
+	t.Helper()
+	resolved, resolveErr := filepath.EvalSymlinks(dir)
+	require.NoError(t, resolveErr)
+	transactions, globErr := filepath.Glob(filepath.Join(resolved, ".glx-merge-*"))
+	require.NoError(t, globErr)
+	require.Len(t, transactions, 1)
+	require.ErrorContains(t, err, filepath.Join(transactions[0], "original"))
+	require.ErrorContains(t, err, resolved+".bak")
+	require.ErrorContains(t, err, filepath.Join(resolved, inPlaceJournalFile))
 }

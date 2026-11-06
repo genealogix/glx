@@ -36,6 +36,10 @@ const mergeBackupMarker = ".glx-swap-in-progress"
 var (
 	errMergeInterruptedBackup = errors.New("a previous merge was interrupted; its backup may hold original files")
 	errMergeForeignBackup     = errors.New("merge backup contains non-archive files; inspect it before retrying")
+	// errMergeRollbackIncomplete means at least one live file may be missing.
+	errMergeRollbackIncomplete = errors.New("merge rollback failed; the live archive may be missing files")
+	// errMergeRollbackUnsynced means files were restored but may not survive a crash.
+	errMergeRollbackUnsynced = errors.New("merge rollback restored the files but could not confirm they are durable")
 )
 
 // Install only changed files, using archive-scoped renames throughout. Original
@@ -98,15 +102,16 @@ func installMergeFilesWithSync(directory string, original, planned map[string][]
 	// installation and every cleanup operation complete durably.
 	removeTransaction = false
 	var backedUp, installed []string
+	locations := mergeRecoveryLocations(destination, transaction, backupName)
 	rollback := func(cause error) error {
 		if errors.Is(cause, errMergeRenameUncertain) {
-			return cause
+			return fmt.Errorf("%w (%s)", cause, locations)
 		}
-		if !restoreMergeFilesDurably(archive, transaction, backedUp, installed, paths, planned, rename, syncHandle) {
-			return cause
+		if err := restoreMergeFilesDurably(archive, transaction, backedUp, installed, paths, planned, rename, syncHandle); err != nil {
+			return errors.Join(cause, fmt.Errorf("%w; recovery data retained (%s)", err, locations))
 		}
 		if err := verifyMergeSnapshot(archive, original); err != nil {
-			return errors.Join(cause, fmt.Errorf("verifying merge rollback; recovery data retained: %w", err))
+			return errors.Join(cause, fmt.Errorf("verifying merge rollback; recovery data retained (%s): %w", locations, err))
 		}
 		if err := removeCompletedMergeRecovery(archive, parent, transaction, backupName, syncHandle); err != nil {
 			return errors.Join(cause, err)
@@ -123,16 +128,25 @@ func installMergeFilesWithSync(directory string, original, planned map[string][]
 		return rollback(err)
 	}
 	if err := syncInstalledMergeDirectories(archive, transaction, paths, planned, syncHandle); err != nil {
-		return fmt.Errorf("syncing installed merge; recovery data retained: %w", err)
+		return fmt.Errorf("syncing installed merge; recovery data retained (%s): %w", locations, err)
 	}
 	if err := removeEmptyMergeParents(archive, paths, planned, syncHandle); err != nil {
-		return fmt.Errorf("cleaning empty merge directories; recovery data retained: %w", err)
+		return fmt.Errorf("cleaning empty merge directories; recovery data retained (%s): %w", locations, err)
 	}
 	if err := removeCompletedMergeRecovery(archive, parent, transaction, backupName, syncHandle); err != nil {
 		return err
 	}
 
 	return finishJournal()
+}
+
+// mergeRecoveryLocations names everything a failed installation leaves behind,
+// so a user can tell an unsafe failure from a cleanly rolled-back merge.
+func mergeRecoveryLocations(destination, transaction, backupName string) string {
+	return fmt.Sprintf("original files in %s, copies in %s, journal at %s",
+		filepath.Join(destination, transaction, "original"),
+		filepath.Join(filepath.Dir(destination), backupName),
+		filepath.Join(destination, inPlaceJournalFile))
 }
 
 func prepareMergeRecovery(archive, parent *os.Root, transaction, backupName string, paths []string, original map[string][]byte, syncHandle func(*os.File) error) (func() error, error) {
@@ -515,22 +529,22 @@ func writeDurableMergeCopyWithSync(root *os.Root, path string, data []byte, mode
 	return nil
 }
 
-func rollbackMergeFiles(archive *os.Root, transaction string, backedUp, installed []string, rename func(*os.Root, string, string) error) bool {
-	restored := true
+func rollbackMergeFiles(archive *os.Root, transaction string, backedUp, installed []string, rename func(*os.Root, string, string) error) error {
+	var failures []error
 	for _, path := range slices.Backward(installed) {
 		applied, err := trackMergeRename(archive, path, filepath.Join(transaction, "new", path), rename)
 		if err != nil && !applied {
-			restored = false
+			failures = append(failures, fmt.Errorf("removing installed %s: %w", path, err))
 		}
 	}
 	for _, path := range slices.Backward(backedUp) {
 		applied, err := trackMergeRename(archive, filepath.Join(transaction, "original", path), path, rename)
 		if err != nil && !applied {
-			restored = false
+			failures = append(failures, fmt.Errorf("restoring %s: %w", path, err))
 		}
 	}
 
-	return restored
+	return errors.Join(failures...)
 }
 
 // Sync contents on every platform. Windows read-only directory handles cannot
@@ -607,6 +621,13 @@ func syncPreparedMergeBackup(backup, parent *os.Root, backupName string, paths [
 	return nil
 }
 
-func restoreMergeFilesDurably(archive *os.Root, transaction string, backedUp, installed, paths []string, planned map[string][]byte, rename func(*os.Root, string, string) error, syncHandle func(*os.File) error) bool {
-	return rollbackMergeFiles(archive, transaction, backedUp, installed, rename) && syncInstalledMergeDirectories(archive, transaction, paths, planned, syncHandle) == nil
+func restoreMergeFilesDurably(archive *os.Root, transaction string, backedUp, installed, paths []string, planned map[string][]byte, rename func(*os.Root, string, string) error, syncHandle func(*os.File) error) error {
+	if err := rollbackMergeFiles(archive, transaction, backedUp, installed, rename); err != nil {
+		return fmt.Errorf("%w: %w", errMergeRollbackIncomplete, err)
+	}
+	if err := syncInstalledMergeDirectories(archive, transaction, paths, planned, syncHandle); err != nil {
+		return fmt.Errorf("%w: %w", errMergeRollbackUnsynced, err)
+	}
+
+	return nil
 }
