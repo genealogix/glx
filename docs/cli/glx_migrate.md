@@ -17,6 +17,10 @@ For each person with deprecated properties:
 - Never overwrites existing event data
 - Converts assertions to reference the event instead of the person property
 
+A multi-file archive is updated in place: each file holding something that
+changes is rewritten where it is, a created event gets its own file at
+`events/<id>.glx`, and files with nothing to migrate are left untouched.
+
 With --rename-gender-to-sex, also renames the legacy `gender` person
 property (and any related assertions and inlined vocabulary entries) to
 `sex`, completing the two-field-model split introduced in #528.

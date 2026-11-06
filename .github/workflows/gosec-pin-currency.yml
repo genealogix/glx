@@ -22,13 +22,6 @@ concurrency:
   group: gosec-pin-currency-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  GIT_CONFIG_COUNT: 2
-  GIT_CONFIG_KEY_0: init.defaultBranch
-  GIT_CONFIG_VALUE_0: main
-  GIT_CONFIG_KEY_1: advice.detachedHead
-  GIT_CONFIG_VALUE_1: "false"
-
 jobs:
   gosec-pin-currency:
     name: gosec Pin Currency

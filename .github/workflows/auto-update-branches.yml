@@ -21,6 +21,15 @@ jobs:
       group: branch-maintenance
       cancel-in-progress: false
     steps:
+      # Runtime egress monitoring (#350). First step of the job so it sees every
+      # later step's network traffic. Audit mode only logs; it blocks nothing.
+      # Move to egress-policy: block with an explicit allowed-endpoints list
+      # once the audit runs have established this job's baseline.
+      - name: Harden runner
+        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        with:
+          egress-policy: audit
+
       - name: Generate GitHub App token
         id: app-token
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0

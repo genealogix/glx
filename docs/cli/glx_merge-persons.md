@@ -29,6 +29,10 @@ This is the natural follow-on to `glx duplicates`: once you've identified
 that two person records are the same individual, this command consolidates
 them in a single atomic operation.
 
+A multi-file archive is updated in place: only the files that define or
+reference either person are rewritten, where they are, and a file left with
+nothing in it is deleted. Other files are left untouched.
+
 ```
 glx merge-persons <keep-id> <drop-id> [flags]
 ```

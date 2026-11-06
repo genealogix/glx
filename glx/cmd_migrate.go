@@ -43,6 +43,10 @@ For each person with deprecated properties:
 - Never overwrites existing event data
 - Converts assertions to reference the event instead of the person property
 
+A multi-file archive is updated in place: each file holding something that
+changes is rewritten where it is, a created event gets its own file at
+` + "`events/<id>.glx`" + `, and files with nothing to migrate are left untouched.
+
 With --rename-gender-to-sex, also renames the legacy ` + "`gender`" + ` person
 property (and any related assertions and inlined vocabulary entries) to
 ` + "`sex`" + `, completing the two-field-model split introduced in #528.
@@ -134,10 +138,11 @@ func migrateArchive(archivePath string) error {
 	}
 
 	var archive *glxlib.GLXFile
+	var loadedFiles map[string][]byte
 	isDir := info.IsDir()
 
 	if isDir {
-		loaded, duplicates, loadErr := LoadArchiveWithOptions(archivePath, false)
+		loaded, duplicates, files, loadErr := loadArchiveForWrite(archivePath)
 		if loadErr != nil {
 			return fmt.Errorf("failed to load archive: %w", loadErr)
 		}
@@ -145,6 +150,7 @@ func migrateArchive(archivePath string) error {
 			fmt.Fprintf(os.Stderr, "Warning: %s\n", d)
 		}
 		archive = loaded
+		loadedFiles = files
 	} else {
 		loaded, loadErr := readSingleFileArchive(archivePath, false)
 		if loadErr != nil {
@@ -253,7 +259,9 @@ func migrateArchive(archivePath string) error {
 
 	// Write the migrated archive back.
 	if isDir {
-		if err := safeWriteMultiFileArchive(archivePath, archive); err != nil {
+		// rewriteNormalized: the description migrations are load-time
+		// shims, so only a comparison with the bytes on disk sees them.
+		if err := writeArchiveInPlace(archivePath, loadedFiles, archive, rewriteNormalized); err != nil {
 			return fmt.Errorf("failed to write archive: %w", err)
 		}
 	} else {
