@@ -134,6 +134,20 @@ func TestSuggestCensusNeighbors_TiedNeighborsCleared(t *testing.T) {
 		assert.Len(t, suggestCensusNeighbors(archive), 1)
 	})
 
+	t.Run("a tie to a nonresident does not count", func(t *testing.T) {
+		archive := neighborArchive(henry)
+		census := archive.Events["event-census-1850"]
+		census.Participants = append(census.Participants, glxlib.Participant{Person: "person-james", Role: "enumerator"})
+		archive.Events["event-other"] = &glxlib.Event{
+			Type: glxlib.EventTypeMarriage,
+			Participants: []glxlib.Participant{
+				{Person: "person-james", Role: "groom"},
+				{Person: "person-henry", Role: "witness"},
+			},
+		}
+		assert.Len(t, suggestCensusNeighbors(archive), 1)
+	})
+
 	t.Run("only the untied neighbor is listed", func(t *testing.T) {
 		archive := neighborArchive(henry, glxlib.EventNeighbor{Person: "person-james"})
 		archive.Events["event-wedding"] = wedding("person-henry")
@@ -154,6 +168,11 @@ func TestSuggestCensusNeighbors_SkipsWhatItCannotAttribute(t *testing.T) {
 			Participants: []glxlib.Participant{{Person: "person-abram", Role: glxlib.ParticipantRolePrincipal}},
 			Neighbors:    neighbors,
 		}
+		assert.Empty(t, suggestCensusNeighbors(archive))
+	})
+
+	t.Run("neighbor with neither name nor person", func(t *testing.T) {
+		archive := neighborArchive(glxlib.EventNeighbor{Position: "next_household"})
 		assert.Empty(t, suggestCensusNeighbors(archive))
 	})
 
