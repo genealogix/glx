@@ -35,7 +35,7 @@ jobs:
           persist-credentials: false
 
       - name: Lint markdown
-        uses: DavidAnson/markdownlint-cli2-action@21c1be1b93ad9ed58fa840aacc3f279cde2a72ff # v24.2.0
+        uses: DavidAnson/markdownlint-cli2-action@696eb3f2509270d7b882d2aa68347bc676e7af34 # v25.0.0
         with:
           # Mirrors the globs in .markdownlint-cli2.jsonc so the workflow scope is
           # explicit and does not depend on the action's default glob (`*.{md,markdown}`).
