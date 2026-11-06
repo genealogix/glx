@@ -17,7 +17,8 @@ Analysis categories:
   evidence      Unsupported or weakly supported claims (no citations, single source)
   consistency   Chronological cross-checks (death before birth, implausible lifespan)
   conflicts     Definite conflicts, possible overlaps, and known disputes
-  suggestions   Research recommendations (census years to search, vital records)
+  suggestions   Research recommendations (census years to search, vital records,
+                census page neighbors to cross-reference)
 
 Use --check to run a single category. By default, all categories are analyzed.
 

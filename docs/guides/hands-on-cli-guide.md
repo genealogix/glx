@@ -737,7 +737,7 @@ The generated assertions include:
 Each assertion cites the census citation, building a proper evidence chain from source to conclusion.
 
 ::: tip
-Use `household.neighbors` to record the households enumerated next to this one (`name`, optional `person`, `position` such as `previous_household`, `page`, `line`). They are written to the census event's `neighbors` list, shown by `glx households --neighbors`, and counted by `glx cluster` when linked to a person. The older free-text `fan.notes` field still works and becomes an event note.
+Use `household.neighbors` to record the households enumerated next to this one (`name`, optional `person`, `position` such as `previous_household`, `page`, `line`). They are written to the census event's `neighbors` list, shown by `glx households --neighbors`, counted by `glx cluster` when linked to a person, and suggested for cross-referencing by `glx analyze` until tied to the household. The older free-text `fan.notes` field still works and becomes an event note.
 :::
 
 #### Head-only schedules (1790–1840)

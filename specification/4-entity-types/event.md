@@ -315,7 +315,7 @@ events:
 | `line` | string | No | Line number on the page |
 | `notes` | string \| string[] | No | Notes about the neighbor |
 
-`glx households --neighbors` shows them, and `glx cluster` counts a neighbor linked to a person as an associate.
+`glx households --neighbors` shows them, `glx cluster` counts a neighbor linked to a person as an associate, and `glx analyze` suggests cross-referencing any neighbor not yet tied to the household by a relationship or a shared non-census event.
 
 ## File Organization
 
