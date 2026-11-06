@@ -15,9 +15,11 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -77,7 +79,16 @@ func (e *silentExitError) Error() string {
 	return fmt.Sprintf("silent exit %d", e.code)
 }
 
-// Execute runs the root command.
+// Execute runs the root command. Two plugin-related interceptions run before
+// cobra parses args (see plugins.go for the full rationale):
+//
+//   - `glx --plugins` is short-circuited here to list discovered plugins.
+//     Attaching a RunE to rootCmd to read the flag instead would make root
+//     "runnable" and suppress cobra's standard "unknown command" error for
+//     real typos — a UX regression we explicitly avoid.
+//   - `glx <name>` falls back to executing `glx-<name>` from PATH when <name>
+//     is not a built-in command (git/kubectl plugin model, #95 Phase 1).
+//     Cobra-internal __complete* commands and built-ins are never replaced.
 //
 // A *silentExitError returned by a RunE means "exit with this code, do not
 // print a message" — see runMergeDriverCmd for the canonical use. Any other
@@ -87,6 +98,31 @@ func (e *silentExitError) Error() string {
 // an entity ID from a reference error), and this is the one print site that
 // every runner's returned error funnels through.
 func Execute() {
+	args := os.Args[1:]
+	pathEnv, pathExt := os.Getenv("PATH"), os.Getenv("PATHEXT")
+	isWindows := runtime.GOOS == osWindows
+
+	// Materialize cobra's lazy help/completion subcommands once so both branches
+	// below see them when enumerating known command names.
+	ensureBuiltinSubcommands(rootCmd)
+
+	if pluginsFlagRequested(args) {
+		listPlugins(
+			discoverPlugins(pathEnv, pathExt),
+			knownCommandNames(rootCmd),
+			quietFlagRequested(args),
+			os.Stdout,
+		)
+
+		return
+	}
+
+	if p, rest, ok := pluginDispatchTarget(rootCmd, args, pathEnv, pathExt, isWindows); ok {
+		os.Exit(runPlugin(context.Background(), p, rest, os.Stdin, os.Stdout, os.Stderr))
+	}
+	// No plugin to dispatch: fall through so cobra handles built-ins, prints
+	// help, or emits its standard "unknown command" error for typos.
+
 	if err := rootCmd.Execute(); err != nil {
 		if silent, ok := errors.AsType[*silentExitError](err); ok {
 			os.Exit(silent.code)
@@ -143,6 +179,10 @@ func init() {
 	rootCmd.SetVersionTemplate("glx version {{.Version}}\n")
 	rootCmd.PersistentFlags().BoolVarP(&quietOutput, "quiet", "q", false,
 		"Suppress non-error output (where supported)")
+	// `--plugins` is registered for --help and docs visibility only; the flag is
+	// handled in Execute() before cobra parses, because making rootCmd runnable
+	// to read it via RunE would suppress cobra's "unknown command" error for typos.
+	rootCmd.Flags().Bool("plugins", false, "List discovered glx-<name> plugins found on PATH")
 	rootCmd.AddCommand(importCmd)
 	rootCmd.AddCommand(exportCmd)
 	rootCmd.AddCommand(initCmd)
