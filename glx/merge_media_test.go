@@ -344,6 +344,33 @@ func TestExecuteMediaCopies_SkipsWhenAllReferencesDropped(t *testing.T) {
 	assert.True(t, os.IsNotExist(statErr))
 }
 
+func TestExecuteMediaCopies_ReusedBinaryIsNotCountedAsSkipped(t *testing.T) {
+	destDir := t.TempDir()
+	srcBinary := filepath.Join(t.TempDir(), "same.jpg")
+	require.NoError(t, os.WriteFile(srcBinary, []byte("SAME"), 0o644))
+	plan := []plannedMediaCopy{{
+		SrcPath:       srcBinary,
+		TargetName:    "same.jpg",
+		ReuseExisting: true,
+		SrcMedia:      map[string]*glxlib.Media{"media-conflict": {URI: "media/files/same.jpg"}},
+	}}
+
+	copied, skipped, _, err := executeMediaCopiesWithRollback(plan, destDir, &glxlib.GLXFile{Media: map[string]*glxlib.Media{}})
+	require.NoError(t, err)
+	assert.Zero(t, copied)
+	assert.Zero(t, skipped, "a reused binary never needed copying, so its conflict skips nothing")
+}
+
+func TestWarnOrphanSourceMedia_ResolvesCaseVariantDirectory(t *testing.T) {
+	srcDir := t.TempDir()
+	filesDir := filepath.Join(srcDir, "MEDIA", "files")
+	require.NoError(t, os.MkdirAll(filesDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(filesDir, "photo.jpg"), []byte("PHOTO"), 0o644))
+
+	stderr := captureStderr(t, func() { warnOrphanSourceMedia(srcDir) })
+	assert.Contains(t, stderr, "source has 1 file(s)")
+}
+
 func TestExecuteMediaCopies_CopiesWhenAnyReferenceSurvives(t *testing.T) {
 	// When several src Media entities point at the same binary and at least
 	// one survives the merge (same pointer ends up in merged.Media), the

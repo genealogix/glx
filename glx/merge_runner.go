@@ -305,7 +305,10 @@ func publishMergedMultiFileArchive(destPath string, loaded map[string][]byte, ar
 // dangle in this case; the warning lets the user decide whether to convert the
 // destination to multi-file or accept the dangling references.
 func warnOrphanSourceMedia(srcPath string) {
-	srcFiles := filepath.Join(srcPath, glxlib.MediaFilesDir)
+	srcFiles, err := archiveMediaFilesDir(srcPath)
+	if err != nil || srcFiles == "" {
+		return
+	}
 	entries, err := os.ReadDir(srcFiles)
 	if err != nil || len(entries) == 0 {
 		return

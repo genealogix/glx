@@ -17,6 +17,7 @@ package main
 import (
 	"bytes"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -87,7 +88,7 @@ func allocateImportMediaDestinations(glx *glxlib.GLXFile, files []glxlib.MediaFi
 			byKey: byKey, claimed: claimed, destinationHashes: destinationHashes,
 		}
 		var newName string
-		var reused bool
+		var reused, keep bool
 		var err error
 		portable := glxlib.PortableFilename(requested)
 		familyKey := glxlib.FilenameCollisionKey(portable)
@@ -95,10 +96,13 @@ func allocateImportMediaDestinations(glx *glxlib.GLXFile, files []glxlib.MediaFi
 		familyUses[familyKey]++
 		// Keep the first source's short-circuit match cheap; repeated imports
 		// through a dense occupied family use the content index.
-		if family != nil && len(family.seeds) >= mediaFamilyIndexThreshold && familyUses[familyKey] > 1 {
+		switch name := matcher.unverifiableExisting(oldName); {
+		case name != "" && allocator.ClaimExisting(portable, name):
+			newName, keep = name, true
+		case family != nil && len(family.seeds) >= mediaFamilyIndexThreshold && familyUses[familyKey] > 1:
 			_, firstFree := allocator.NextAvailable(portable)
 			newName, reused, err = family.allocate(portable, firstFree, allocator, matcher)
-		} else {
+		default:
 			newName, reused, err = allocator.AllocateMatching(requested, matcher.match)
 		}
 		if err != nil {
@@ -111,6 +115,10 @@ func allocateImportMediaDestinations(glx *glxlib.GLXFile, files []glxlib.MediaFi
 		}
 		mf.TargetFilename = newName
 		mf.ReuseExisting = reused
+		mf.KeepExisting = keep
+		if reused {
+			mf.ReuseDigest = matcher.sourceHash
+		}
 	}
 
 	return nil
@@ -161,8 +169,7 @@ func indexMediaFamilies(names []string) map[string]*mediaFamilyIndex {
 }
 
 func (family *mediaFamilyIndex) allocate(requested string, firstFree int, allocator *glxlib.FilenameAllocator, matcher *importMediaMatcher) (string, bool, error) {
-	matcher.sourceHash, matcher.haveSource = importSourceHash(matcher.source, matcher.sourceDir, matcher.bundle)
-	matcher.checked = true
+	matcher.loadSource()
 	if !matcher.haveSource {
 		return allocator.Allocate(requested), false, nil
 	}
@@ -224,8 +231,9 @@ func indexedCandidateName(base string, ordinal int) string {
 // bytes just before the archive is published. Allocation and publication are
 // separate filesystem operations, so a sync process may change the file in
 // between; publishing its URI without this check would silently misattribute it.
-// Both sides are read again: ordinary files and generic fs.FS members can change
-// without a reliable size/mtime signal, so allocation digests are only hints.
+// The destination is always read again, because bytes can change without a
+// reliable size/mtime signal. The source is not: its allocation digest is what
+// this import means by "the source's bytes".
 func validateReusedMedia(archiveDir string, files []glxlib.MediaFileSource, sourceDir string, bundle fs.FS) error {
 	var hasReuse bool
 	for i := range files {
@@ -246,9 +254,13 @@ func validateReusedMedia(archiveDir string, files []glxlib.MediaFileSource, sour
 		if !mf.ReuseExisting {
 			continue
 		}
-		sourceHash, available := importSourceHash(mf, sourceDir, bundle)
-		if !available {
-			return fmt.Errorf("reused media source %s is no longer readable: %w", mf.TargetFilename, os.ErrInvalid)
+		sourceHash := mf.ReuseDigest
+		if sourceHash == ([32]byte{}) {
+			var hashErr error
+			sourceHash, hashErr = importSourceHash(mf, sourceDir, bundle)
+			if hashErr != nil {
+				return fmt.Errorf("reused media source %s is no longer readable: %w", mf.TargetFilename, errors.Join(os.ErrInvalid, hashErr))
+			}
 		}
 		matcher := &importMediaMatcher{
 			archiveDir: archiveDir, filesDir: filesDir, sourceHash: sourceHash,
@@ -267,8 +279,9 @@ func validateReusedMedia(archiveDir string, files []glxlib.MediaFileSource, sour
 }
 
 // importMediaFilesDir resolves the single on-disk case variant used by an
-// archive. The URI remains canonical; publication normalizes the directory
-// before publishing metadata.
+// archive, or the canonical path when none exists. The directory is never
+// renamed, and URIs follow its spelling (see importMediaURI) so they resolve on
+// case-sensitive filesystems.
 func importMediaFilesDir(archiveDir string) (string, error) {
 	filesDir, err := archiveMediaFilesDir(archiveDir)
 	if err != nil {
@@ -293,11 +306,12 @@ func importMediaURI(archiveDir, filesDir, name string) string {
 }
 
 // prepareImportMediaURIs also serves writer callers that already have allocated
-// sources. Only conventional binary references are rewritten.
-func prepareImportMediaURIs(archive *glxlib.GLXFile, files []glxlib.MediaFileSource, archiveDir string) error {
+// sources. Only conventional binary references are rewritten. It returns the
+// directory those URIs name, which the media commit must still resolve to.
+func prepareImportMediaURIs(archive *glxlib.GLXFile, files []glxlib.MediaFileSource, archiveDir string) (string, error) {
 	filesDir, err := importMediaFilesDir(archiveDir)
 	if err != nil {
-		return err
+		return "", err
 	}
 	for i := range files {
 		mf := &files[i]
@@ -306,7 +320,7 @@ func prepareImportMediaURIs(archive *glxlib.GLXFile, files []glxlib.MediaFileSou
 		}
 	}
 
-	return nil
+	return filesDir, nil
 }
 
 type importMediaMatcher struct {
@@ -320,6 +334,7 @@ type importMediaMatcher struct {
 	destinationHashes map[string]mediaHashCache
 	checked           bool
 	haveSource        bool
+	sourceErr         error
 	sourceHash        [32]byte
 }
 
@@ -328,15 +343,52 @@ type mediaHashCache struct {
 	hash [32]byte
 }
 
+// loadSource hashes the source at most once per allocation.
+func (m *importMediaMatcher) loadSource() {
+	if !m.checked {
+		m.sourceHash, m.sourceErr = importSourceHash(m.source, m.sourceDir, m.bundle)
+		m.haveSource = m.sourceErr == nil
+		m.checked = true
+	}
+}
+
+// unverifiableExisting returns the unclaimed on-disk spelling of name when the
+// source cannot be read. Such a file cannot be proved identical, but allocating
+// a new name would replace a working reference with one to a file this import
+// cannot write, so a refresh keeps the existing reference instead.
+func (m *importMediaMatcher) unverifiableExisting(name string) string {
+	variants := m.byKey[glxlib.FilenameCollisionKey(name)]
+	if len(variants) == 0 {
+		return ""
+	}
+	m.loadSource()
+	// An over-limit bundle entry is readable and rejected, not unavailable:
+	// leave it to staging, which fails the import with the limit error.
+	if m.haveSource || errors.Is(m.sourceErr, ErrGEDZIPEntryTooLarge) {
+		return ""
+	}
+	var first string
+	for _, variant := range variants {
+		if m.claimed[variant] {
+			continue
+		}
+		if variant == name {
+			return variant
+		}
+		if first == "" {
+			first = variant
+		}
+	}
+
+	return first
+}
+
 func (m *importMediaMatcher) match(candidate string) (string, error) {
 	variants := m.byKey[glxlib.FilenameCollisionKey(candidate)]
 	if len(variants) == 0 {
 		return "", nil
 	}
-	if !m.checked {
-		m.sourceHash, m.haveSource = importSourceHash(m.source, m.sourceDir, m.bundle)
-		m.checked = true
-	}
+	m.loadSource()
 	if !m.haveSource {
 		return "", nil
 	}
@@ -367,12 +419,12 @@ func (m *importMediaMatcher) matchesFile(name string) (bool, error) {
 	if !info.Mode().IsRegular() {
 		return false, nil
 	}
-	// A positive digest is never sufficient evidence for reuse: bytes may
-	// change in place while size and mtime stay the same. Cache only rejects.
+	// Trusting an unchanged file's digest is safe in both directions here: bytes
+	// that change in place without touching size or mtime are caught by
+	// validateReusedMedia, which rereads the destination with an empty cache.
 	if cached, ok := m.destinationHashes[name]; ok && os.SameFile(info, cached.info) &&
-		info.Size() == cached.info.Size() && info.ModTime().Equal(cached.info.ModTime()) &&
-		cached.hash != m.sourceHash {
-		return false, nil
+		info.Size() == cached.info.Size() && info.ModTime().Equal(cached.info.ModTime()) {
+		return cached.hash == m.sourceHash, nil
 	}
 	f, err := openWithin(m.archiveDir, fullPath)
 	if err != nil {
@@ -402,48 +454,48 @@ func (m *importMediaMatcher) matchesFile(name string) (bool, error) {
 	return hash == m.sourceHash, nil
 }
 
-func importSourceHash(mf *glxlib.MediaFileSource, sourceDir string, bundle fs.FS) ([32]byte, bool) {
+func importSourceHash(mf *glxlib.MediaFileSource, sourceDir string, bundle fs.FS) ([32]byte, error) {
 	var reader io.ReadCloser
 	switch mf.SourceType {
 	case glxlib.MediaSourceFile:
 		switch {
 		case bundle != nil:
 			if mf.MemberPath == "" {
-				return [32]byte{}, false
+				return [32]byte{}, fmt.Errorf("media %s has no resolved bundle member: %w", mf.MediaID, os.ErrNotExist)
 			}
 			f, err := bundle.Open(mf.MemberPath)
 			if err != nil {
-				return [32]byte{}, false
+				return [32]byte{}, err
 			}
 			info, err := f.Stat()
-			if err != nil || !info.Mode().IsRegular() {
-				_ = f.Close()
-
-				return [32]byte{}, false
+			if err != nil {
+				return [32]byte{}, errors.Join(err, f.Close())
+			}
+			if !info.Mode().IsRegular() {
+				return [32]byte{}, errors.Join(errGEDZIPNonRegularEntry, f.Close())
 			}
 			reader = f
 		case sourceDir != "":
 			f, err := openMediaSourceFile(sourceDir, mf.RelativePath)
 			if err != nil {
-				return [32]byte{}, false
+				return [32]byte{}, err
 			}
 			reader = f
 		default:
-			return [32]byte{}, false
+			return [32]byte{}, fmt.Errorf("media %s has no source location: %w", mf.MediaID, os.ErrNotExist)
 		}
 	case glxlib.MediaSourceBlob:
 		data, err := glxlib.DecodeGEDCOMBlob(mf.BlobData)
 		if err != nil {
-			return [32]byte{}, false
+			return [32]byte{}, err
 		}
 		reader = io.NopCloser(bytes.NewReader(data))
 	default:
-		return [32]byte{}, false
+		return [32]byte{}, fmt.Errorf("media %s has an unknown source type: %w", mf.MediaID, os.ErrInvalid)
 	}
 	defer func() { _ = reader.Close() }()
-	hash, err := hashReader(reader)
 
-	return hash, err == nil
+	return hashReader(reader)
 }
 
 func hashReader(r io.Reader) ([32]byte, error) {

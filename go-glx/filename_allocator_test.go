@@ -64,6 +64,8 @@ func TestFilenameAllocator_WindowsAliasesAndReservedNames(t *testing.T) {
 	assert.Equal(t, "CON-2.jpg", a.Allocate("CON.jpg"))
 	assert.Equal(t, "CON-2.foo.jpg", a.Allocate("CON.foo.jpg"))
 	assert.Equal(t, "NUL-2", a.Allocate("NUL"))
+	assert.Equal(t, "CONOUT$-2", a.Allocate("CONOUT$"))
+	assert.Equal(t, "conin$-2.jpg", a.Allocate("conin$.jpg"))
 	assert.Equal(t, "COM¹-2.jpg", a.Allocate("COM¹.jpg"))
 	assert.Equal(t, "a-b.jpg", a.Allocate("a:b.jpg"))
 	assert.Equal(t, FilenameCollisionKey("photo.jpg"), FilenameCollisionKey("PHOTO.JPG. "))

@@ -387,6 +387,49 @@ func importedMediaEntity(t *testing.T, output, format, id string) *glxlib.Media 
 	return nil
 }
 
+func TestImport_SingleFileDoesNotCreateMissingParents(t *testing.T) {
+	work := t.TempDir()
+	source := filepath.Join(work, "family.ged")
+	require.NoError(t, os.WriteFile(source, []byte("0 HEAD\n1 GEDC\n2 VERS 5.5.1\n0 @I1@ INDI\n1 NAME Test /Person/\n0 TRLR\n"), 0o600))
+
+	res := runGLX(t, work, "import", source, "-o", filepath.Join("typo", "dir", "out.glx"), "--format", "single")
+
+	require.NotEqual(t, 0, res.exitCode)
+	require.NoDirExists(t, filepath.Join(work, "typo"))
+}
+
+func TestImport_RefreshWithMovedImagesKeepsWorkingReference(t *testing.T) {
+	for _, format := range []string{"single", "multi"} {
+		t.Run(format, func(t *testing.T) {
+			work := t.TempDir()
+			imageDir := filepath.Join(work, "images")
+			require.NoError(t, os.MkdirAll(imageDir, 0o755))
+			image := filepath.Join(imageDir, "photo.jpg")
+			require.NoError(t, os.WriteFile(image, []byte("original image"), 0o600))
+			source := filepath.Join(work, "family.ged")
+			gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n0 @O1@ OBJE\n1 FILE images/photo.jpg\n0 TRLR\n"
+			require.NoError(t, os.WriteFile(source, []byte(gedcom), 0o600))
+			output := filepath.Join(work, "archive")
+			archiveDir := output
+			if format == "single" {
+				output += ".glx"
+				archiveDir = work
+			}
+			first := runGLX(t, work, "import", source, "-o", output, "--format", format)
+			require.Equal(t, 0, first.exitCode, first.stderr)
+			require.NoError(t, os.Remove(image))
+
+			refresh := runGLX(t, work, "import", source, "-o", output, "--format", format)
+
+			require.Equal(t, 0, refresh.exitCode, refresh.stderr)
+			require.Contains(t, refresh.stdout+refresh.stderr, "keeping the existing media/files/photo.jpg")
+			require.NoFileExists(t, filepath.Join(archiveDir, "media", "files", "photo-2.jpg"))
+			validation := runGLX(t, work, "validate", output)
+			require.Equal(t, 0, validation.exitCode, validation.stderr)
+		})
+	}
+}
+
 func TestImport_MediaFreePreservesUnrelatedPaths(t *testing.T) {
 	for _, obstruction := range []string{"media-file", "MEDIA-file", "media-link", "media/files-file", "media/files-link"} {
 		for _, extension := range []string{"ged", "gdz"} {

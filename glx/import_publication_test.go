@@ -381,6 +381,16 @@ func TestImport_ReusedMediaChangedBeforePublicationPreservesArchive(t *testing.T
 					default:
 						err = importGEDZIPToMultiFile(glx, output, false, false, 0, media, os.DirFS(sourceDir), io.Discard)
 					}
+					if mutation == "source-changed" {
+						// The destination still holds the bytes matched at
+						// allocation, which is the import's view of the source.
+						require.NoError(t, err)
+						kept, readErr := os.ReadFile(filepath.Join(mediaDir, "photo.jpg"))
+						require.NoError(t, readErr)
+						require.Equal(t, []byte("expected"), kept)
+
+						return
+					}
 					if mutation == "deleted" {
 						require.ErrorIs(t, err, os.ErrNotExist)
 					} else {

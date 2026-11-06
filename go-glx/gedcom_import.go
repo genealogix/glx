@@ -102,6 +102,16 @@ type MediaFileSource struct {
 	// the destination archive and does not need to be written again.
 	ReuseExisting bool
 
+	// ReuseDigest is the SHA-256 of the source bytes matched by ReuseExisting.
+	// The destination is rechecked against it before publication, so the source
+	// need not be read again. A zero value makes the CLI hash the source instead.
+	ReuseDigest [32]byte
+
+	// KeepExisting means the source could not be read while TargetFilename is
+	// already occupied. The reference to that file is kept, unverified, and
+	// nothing is written.
+	KeepExisting bool
+
 	// originalFilenameRecorded tracks provenance added by this allocation, rather than supplied by the archive.
 	originalFilenameRecorded bool
 }

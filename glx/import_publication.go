@@ -18,10 +18,174 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
+
+	glxlib "github.com/genealogix/glx/go-glx"
 )
+
+// importMediaSource is what differs between GEDCOM and GEDZIP publication: where
+// the bytes come from. stage writes them under stageDir and returns a report to
+// print once both media and archive references have been published.
+type importMediaSource struct {
+	stage     func(stageDir string) (report func(), err error)
+	sourceDir string
+	bundle    fs.FS
+}
+
+// commitImportMedia lands staged media in archiveDir and rechecks reused files.
+// It returns a rollback for the binaries it created.
+func commitImportMedia(stageDir, archiveDir, preparedFilesDir string, mediaFiles []glxlib.MediaFileSource, source importMediaSource) (func(), error) {
+	rollback, err := commitPreparedMedia(stageDir, archiveDir, preparedFilesDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to commit media files: %w", err)
+	}
+	if err := validateReusedMedia(archiveDir, mediaFiles, source.sourceDir, source.bundle); err != nil {
+		rollback()
+
+		return nil, fmt.Errorf("validating reused media: %w", err)
+	}
+
+	return rollback, nil
+}
+
+// publishSingleFileImportArchive writes a single-file archive. Media commits
+// before the archive is published, so a media failure leaves an existing target
+// untouched. The output's parent directory must already exist.
+func publishSingleFileImportArchive(glx *glxlib.GLXFile, outputPath string, validate, verbose bool, showFirstErrors int, mediaFiles []glxlib.MediaFileSource, source importMediaSource, out io.Writer, rename func(string, string) error) error {
+	if verbose {
+		_, _ = fmt.Fprintf(out, "Writing single-file archive: %s\n", outputPath)
+	}
+	outputPath = ensureGLXExtension(outputPath)
+	archiveDir := filepath.Dir(outputPath)
+	if len(mediaFiles) == 0 {
+		if err := writeSingleFileArchive(outputPath, glx, validate); err != nil {
+			return formatValidationError(err, showFirstErrors)
+		}
+		printSuccessSingleFile("imported", outputPath)
+		printArchiveStatistics(glx)
+
+		return nil
+	}
+	preparedFilesDir, err := prepareImportMediaURIs(glx, mediaFiles, archiveDir)
+	if err != nil {
+		return fmt.Errorf("inspecting media destination: %w", err)
+	}
+	stageDir, err := os.MkdirTemp(archiveDir, ".glx-stage-*")
+	if err != nil {
+		return fmt.Errorf("creating media staging directory: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(stageDir) }()
+	reportMedia, err := source.stage(stageDir)
+	if err != nil {
+		return fmt.Errorf("failed to copy media files: %w", err)
+	}
+	tempFile, err := os.CreateTemp(archiveDir, ".glx-single-*.tmp")
+	if err != nil {
+		return fmt.Errorf("creating temporary archive: %w", err)
+	}
+	tempPath := tempFile.Name()
+	_ = tempFile.Close()
+	retainStagedMetadata := false
+	defer func() {
+		if !retainStagedMetadata {
+			_ = os.Remove(tempPath)
+		}
+	}()
+	if err := writeSingleFileArchive(tempPath, glx, validate); err != nil {
+		return formatValidationError(err, showFirstErrors)
+	}
+	rollbackMedia, err := commitImportMedia(stageDir, archiveDir, preparedFilesDir, mediaFiles, source)
+	if err != nil {
+		return err
+	}
+	mayHavePublished, err := publishSingleFileImport(tempPath, outputPath, rename)
+	if err != nil {
+		if mayHavePublished {
+			retainStagedMetadata = true
+		} else {
+			rollbackMedia()
+		}
+
+		return err
+	}
+
+	reportMedia()
+	printSuccessSingleFile("imported", outputPath)
+	printArchiveStatistics(glx)
+
+	return nil
+}
+
+// publishMultiFileImportArchive writes a multi-file archive. It serializes and
+// validates before touching the filesystem, then commits media before writing
+// entity files, so a media failure leaves an existing archive untouched. Stage
+// directories live inside the archive: commits resolve through an os.Root scoped
+// to it, and the same filesystem allows exclusive hard-link commits.
+func publishMultiFileImportArchive(glx *glxlib.GLXFile, outputPath string, validate, verbose bool, showFirstErrors int, mediaFiles []glxlib.MediaFileSource, source importMediaSource, out io.Writer, writeFiles func(string, map[string][]byte) error) error {
+	if verbose {
+		_, _ = fmt.Fprintf(out, "Writing multi-file archive: %s\n", outputPath)
+	}
+	var preparedFilesDir string
+	if len(mediaFiles) > 0 {
+		var err error
+		preparedFilesDir, err = prepareImportMediaURIs(glx, mediaFiles, outputPath)
+		if err != nil {
+			return fmt.Errorf("inspecting media destination: %w", err)
+		}
+	}
+	files, err := serializeMultiFileArchive(glx, validate)
+	if err != nil {
+		return formatValidationError(err, showFirstErrors)
+	}
+	if err := os.MkdirAll(outputPath, dirPermissions); err != nil {
+		return fmt.Errorf("creating archive directory: %w", err)
+	}
+	if err := checkImportMediaMetadata(outputPath, files); err != nil {
+		return err
+	}
+	if len(mediaFiles) == 0 {
+		if err := writeFiles(outputPath, files); err != nil {
+			return err
+		}
+		printSuccessMultiFile("imported", outputPath)
+		printArchiveStatistics(glx)
+
+		return nil
+	}
+	stageDir, err := os.MkdirTemp(outputPath, ".glx-stage-*")
+	if err != nil {
+		return fmt.Errorf("creating media staging directory: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(stageDir) }()
+	reportMedia, err := source.stage(stageDir)
+	if err != nil {
+		return fmt.Errorf("failed to copy media files: %w", err)
+	}
+	rollbackMedia, err := commitImportMedia(stageDir, outputPath, preparedFilesDir, mediaFiles, source)
+	if err != nil {
+		return err
+	}
+	snapshot := snapshotImportMetadata(outputPath, files)
+	if err := writeFiles(outputPath, files); err != nil {
+		// Partial metadata writes may reference the new media, so retain it
+		// unless the write demonstrably published nothing.
+		if snapshot.unchanged(outputPath) {
+			rollbackMedia()
+		}
+
+		return err
+	}
+
+	reportMedia()
+	printSuccessMultiFile("imported", outputPath)
+	printArchiveStatistics(glx)
+
+	return nil
+}
 
 type importMetadataSnapshot struct {
 	contents map[string][32]byte

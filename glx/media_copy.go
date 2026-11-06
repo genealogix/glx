@@ -39,6 +39,16 @@ func stageImportMedia(archiveDir string, files []glxlib.MediaFileSource, sourceD
 	return report, err
 }
 
+// gedcomMediaSource stages media referenced relative to a GEDCOM file.
+func gedcomMediaSource(mediaFiles []glxlib.MediaFileSource, gedcomDir string, verbose bool) importMediaSource {
+	return importMediaSource{
+		sourceDir: gedcomDir,
+		stage: func(stageDir string) (func(), error) {
+			return stageImportMedia(stageDir, mediaFiles, gedcomDir, verbose)
+		},
+	}
+}
+
 func copyMediaFilesUsing(streams *IOStreams, archiveDir string, mediaFiles []glxlib.MediaFileSource, gedcomDir string, report func(int, int, int)) error {
 	if len(mediaFiles) == 0 {
 		return nil
@@ -54,6 +64,12 @@ func copyMediaFilesUsing(streams *IOStreams, archiveDir string, mediaFiles []glx
 
 	for _, mf := range mediaFiles {
 		if mf.ReuseExisting {
+			continue
+		}
+		if mf.KeepExisting {
+			warnKeptMedia(streams, &mf)
+			warnCount++
+
 			continue
 		}
 		if !reserved.Reserve(mf.TargetFilename) {
@@ -98,6 +114,11 @@ func copyMediaFilesUsing(streams *IOStreams, archiveDir string, mediaFiles []glx
 	report(copyCount, blobCount, warnCount)
 
 	return nil
+}
+
+// warnKeptMedia reports a reference retained because its source is unreadable.
+func warnKeptMedia(streams *IOStreams, mf *glxlib.MediaFileSource) {
+	streams.Printf("Warning: could not read the source of media %s; keeping the existing %s/%s, whose contents were not verified\n", mf.MediaID, glxlib.MediaFilesDir, mf.TargetFilename)
 }
 
 func printImportMediaReport(streams *IOStreams, copyCount, blobCount, warnCount int, verbose bool) {
@@ -197,6 +218,32 @@ func writeFileFrom(dst string, src io.Reader) error {
 	}
 
 	return nil
+}
+
+// copyExclusive streams src into a new file at dst under root and returns the
+// created file's identity. It never replaces an existing destination, and on
+// failure removes only the file it created.
+func copyExclusive(root *os.Root, dst string, src io.Reader) (os.FileInfo, error) {
+	out, err := root.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_EXCL, filePermissions)
+	if err != nil {
+		return nil, err
+	}
+	created, statErr := out.Stat()
+	if statErr != nil {
+		return nil, errors.Join(statErr, discardUnidentifiedMediaFile(root, dst, out))
+	}
+	_, copyErr := io.Copy(out, src)
+	closeErr := out.Close()
+	if copyErr != nil || closeErr != nil {
+		current, err := root.Lstat(dst)
+		if err == nil && os.SameFile(current, created) {
+			_ = root.Remove(dst)
+		}
+
+		return nil, errors.Join(copyErr, closeErr)
+	}
+
+	return created, nil
 }
 
 // mediaStatCloser is the opened descriptor whose identity cleanup must prove.

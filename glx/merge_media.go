@@ -15,9 +15,7 @@
 package main
 
 import (
-	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"os"
 	"path"
@@ -226,11 +224,11 @@ func mediaFilesDirsIn(dir string) ([]string, error) {
 
 // childDirsCaseInsensitive returns the names of dir's real subdirectories that
 // match name case-insensitively, the exact match first when present. With
-// allowLink set, a symlink of that name is matched as well: the final
-// media/files component may be a link to storage elsewhere, and renaming a
-// link moves the link itself, not its target, so preserving it is safe where
-// renaming *through* a linked intermediate directory would not be. A missing
-// dir yields no names; any other listing failure is returned.
+// allowLink set, a symlink of that name is matched as well, so a linked final
+// media/files component is resolved here and then refused by
+// openMediaDirectory: imports and merges do not read or write through
+// media-directory symlinks. A missing dir yields no names; any other listing
+// failure is returned.
 func childDirsCaseInsensitive(dir, name string, allowLink bool) ([]string, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -297,6 +295,11 @@ func executeMediaCopiesWithRollback(plan []plannedMediaCopy, destPath string, me
 	}()
 	for i := range plan {
 		p := &plan[i]
+		// A reused binary never needed copying, so it is neither copied nor
+		// skipped; MediaFilesPlanned excludes it too.
+		if p.ReuseExisting {
+			continue
+		}
 		// Copy the binary if at least one src Media entity for this plan
 		// entry made it into the merged archive (same pointer, since Merge()
 		// preserves the src entity by reference when there's no conflict).
@@ -311,9 +314,6 @@ func executeMediaCopiesWithRollback(plan []plannedMediaCopy, destPath string, me
 		if !referenced {
 			skipped++
 
-			continue
-		}
-		if p.ReuseExisting {
 			continue
 		}
 		file, err := copyPlannedMedia(root, p)
@@ -345,26 +345,12 @@ func copyPlannedMedia(root *os.Root, p *plannedMediaCopy) (committedMediaFile, e
 		return committedMediaFile{}, fmt.Errorf("opening source media %s: %w", p.SrcPath, err)
 	}
 	defer func() { _ = src.Close() }()
-	out, err := root.OpenFile(dst, os.O_CREATE|os.O_EXCL|os.O_WRONLY, filePermissions)
+	info, err := copyExclusive(root, dst, src)
 	if err != nil {
-		return committedMediaFile{}, fmt.Errorf("creating destination media %s: %w", dst, err)
-	}
-	createdInfo, statErr := out.Stat()
-	if statErr != nil {
-		return committedMediaFile{}, fmt.Errorf("inspecting destination media %s: %w", dst, errors.Join(statErr, discardUnidentifiedMediaFile(root, dst, out)))
-	}
-	_, copyErr := io.Copy(out, src)
-	closeErr := out.Close()
-	if copyErr != nil || closeErr != nil {
-		current, err := root.Lstat(dst)
-		if err == nil && os.SameFile(current, createdInfo) {
-			_ = root.Remove(dst)
-		}
-
-		return committedMediaFile{}, fmt.Errorf("copying %s: %w", p.SrcPath, errors.Join(copyErr, closeErr))
+		return committedMediaFile{}, fmt.Errorf("copying %s to %s: %w", p.SrcPath, dst, err)
 	}
 
-	return committedMediaFile{dst, createdInfo}, nil
+	return committedMediaFile{dst, info}, nil
 }
 
 // validateReusedMergeMedia compares current bytes through confined roots at
@@ -517,7 +503,7 @@ func openMediaDirectory(dir string) (*os.File, error) {
 		}
 		if !info.IsDir() {
 			if info.Mode()&os.ModeSymlink != 0 {
-				return nil, fmt.Errorf("media directory %s is a symlink; imports and merges cannot write through media-directory symlinks: %w", filepath.Join(base, current), os.ErrInvalid)
+				return nil, fmt.Errorf("media directory %s is a symlink; imports and merges do not follow media-directory symlinks, so replace it with a real directory: %w", filepath.Join(base, current), os.ErrInvalid)
 			}
 
 			return nil, fmt.Errorf("media path %s is not a directory: %w", filepath.Join(base, current), os.ErrInvalid)
