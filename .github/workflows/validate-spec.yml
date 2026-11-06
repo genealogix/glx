@@ -191,18 +191,21 @@ jobs:
 
       # This job is a required merge context and runs on every PR. Keep this
       # check here so path-filtered workflows cannot leave the gate pending.
+      # This step and the two after it run even if an earlier one failed, so one
+      # CI run shows every failure instead of revealing them one push at a time.
       - name: Check spec ↔ schema field parity (#309)
-        run: node scripts/drift-checks/spec-schema-drift.mjs
-        env:
-          DRIFT_STRICT: "1"
+        if: ${{ !cancelled() }}
+        run: make check-spec-schema-drift
 
       - name: Validate drift allowlist
+        if: ${{ !cancelled() }}
         run: make check-drift-allowlist
 
       # Unit-test the Node drift-check scripts (spec-schema parser, schema-compat
       # classifier). Runs here because specification deps (json-schema-diff-validator)
       # are already installed above and Node is set up.
       - name: Unit-test drift-check scripts
+        if: ${{ !cancelled() }}
         run: make test-scripts
 
   build-cli:

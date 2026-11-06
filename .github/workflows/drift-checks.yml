@@ -37,5 +37,7 @@ jobs:
       - run: npm ci
         working-directory: specification
       # Hard-fail: a backward-incompatible schema change would invalidate
-      # existing archives, so it blocks the merge.
+      # existing archives, so it fails this job. This context is not required by
+      # the Main Protection ruleset, so a red result does not itself hold a merge;
+      # check it before merging. See scripts/drift-checks/README.md.
       - run: node specification/schema-compat.mjs
