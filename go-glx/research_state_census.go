@@ -44,8 +44,16 @@ var stateCensusYears = map[string][]int{
 }
 
 // resolveStateFromPlace walks the place hierarchy to find the US state name.
-// Returns the empty string if no state-type ancestor is found.
+// Returns the empty string if no state-type ancestor is found. It follows
+// each place's default parent.
 func resolveStateFromPlace(placeRef string, archive *GLXFile) string {
+	return resolveStateFromPlaceAt(placeRef, "", archive)
+}
+
+// resolveStateFromPlaceAt is resolveStateFromPlace for the hierarchy as it
+// stood at date (#225): a county that was in a territory on that date has no
+// state ancestor then. An empty date uses default parents.
+func resolveStateFromPlaceAt(placeRef string, date DateString, archive *GLXFile) string {
 	if placeRef == "" || archive == nil {
 		return ""
 	}
@@ -62,7 +70,7 @@ func resolveStateFromPlace(placeRef string, archive *GLXFile) string {
 		if place.Type == PlaceTypeState {
 			return place.Name
 		}
-		current = place.ParentID
+		current = place.ParentAt(date)
 	}
 
 	return ""
@@ -91,7 +99,7 @@ func collectPersonStates(archive *GLXFile, events []personSourceInfo) []string {
 		if ev.PlaceID == "" {
 			continue
 		}
-		if s := resolveStateFromPlace(ev.PlaceID, archive); s != "" {
+		if s := resolveStateFromPlaceAt(ev.PlaceID, ev.Date, archive); s != "" {
 			stateSet[s] = true
 		}
 	}
@@ -196,7 +204,7 @@ func findStateCensusMatch(year int, state string, sources, events []personSource
 		}
 		// Place-based matching: resolve event place to this state
 		if archive != nil && e.PlaceID != "" {
-			if resolveStateFromPlace(e.PlaceID, archive) == state {
+			if resolveStateFromPlaceAt(e.PlaceID, e.Date, archive) == state {
 				return e.Ref
 			}
 		}
