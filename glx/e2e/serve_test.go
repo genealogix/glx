@@ -193,3 +193,75 @@ func TestServe_Errors(t *testing.T) {
 	assertExitWithStderr(t, runGLX(t, work, "serve", "does-not-exist"), "cannot access path")
 	assertExitWithStderr(t, runGLX(t, work, "serve", "a", "b"), "accepts at most 1 arg(s), received 2")
 }
+
+// sendJSON makes a same-origin JSON write request, as the editor UI does, and
+// decodes the response.
+func (v *servedViewer) sendJSON(t *testing.T, method, path string, payload any) (int, map[string]any) {
+	t.Helper()
+	data, err := json.Marshal(payload)
+	require.NoError(t, err)
+	req, err := http.NewRequestWithContext(t.Context(), method, v.url+path, bytes.NewReader(data))
+	require.NoError(t, err)
+	req.Header.Set("Origin", v.url)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+	var decoded map[string]any
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&decoded))
+
+	return resp.StatusCode, decoded
+}
+
+func TestServe_EditWritesOnlyTheTouchedFiles(t *testing.T) {
+	archive := copyExample(t, "basic-family")
+	before := snapshotTree(t, archive)
+
+	v := startServe(t, archive, "--edit")
+	assert.Contains(t, v.stdout.String(), "Editing enabled")
+
+	_, form := v.getJSON(t, "/api/persons/person-robert-thompson/edit")
+	status, body := v.sendJSON(t, http.MethodPut, "/api/persons/person-robert-thompson", map[string]any{
+		"version": form.(map[string]any)["version"],
+		"name":    map[string]any{"given": "Robert", "surname": "Thompson", "suffix": "Sr."},
+		"sex":     "male",
+	})
+	require.Equal(t, http.StatusOK, status, body)
+
+	status, body = v.sendJSON(t, http.MethodPost, "/api/persons", map[string]any{
+		"name": map[string]any{"given": "Eliza", "surname": "Thompson"},
+		"sex":  "female",
+	})
+	require.Equal(t, http.StatusCreated, status, body)
+	newID, _ := body["id"].(string)
+	require.NotEmpty(t, newID)
+
+	status, body = v.sendJSON(t, http.MethodPost, "/api/relationships", map[string]any{
+		"type": "biological_parent_child", "personId": "person-robert-thompson",
+		"relativeId": newID, "relation": "child",
+	})
+	require.Equal(t, http.StatusCreated, status, body)
+	relID, _ := body["id"].(string)
+
+	// snapshotTree keys are slash-separated on every OS.
+	diff := diffTrees(before, snapshotTree(t, archive))
+	assert.Equal(t, []string{"persons/person-robert-thompson.glx"}, diff.changed)
+	assert.ElementsMatch(t, []string{
+		"persons/" + newID + ".glx",
+		"relationships/" + relID + ".glx",
+	}, diff.created)
+	assert.Empty(t, diff.removed)
+
+	// The served snapshot reflects the writes without a restart.
+	_, detail := v.getJSON(t, "/api/persons/person-robert-thompson")
+	assert.Equal(t, "Robert Thompson Sr.", detail.(map[string]any)["names"].([]any)[0])
+
+	// The CLI reads the edited archive as valid.
+	assertArchiveValid(t, archive)
+}
+
+func TestServe_EditRefusesSingleFileArchive(t *testing.T) {
+	archive := copyExample(t, "single-file")
+
+	assertExitWithStderr(t, runGLX(t, archive, "serve", "--edit", "archive.glx"), "needs a multi-file (directory) archive")
+}
