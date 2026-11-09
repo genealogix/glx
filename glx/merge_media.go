@@ -200,7 +200,7 @@ func matchingMergeMediaName(sourceRoot, sourceFile, destRoot, destDir, requested
 }
 
 // mediaFilesDirsIn resolves conventional media/files directories while keeping
-// their actual spelling. Intermediate directory symlinks are not followed;
+// their actual spelling. Intermediate directory symlinks are rejected, not followed;
 // callers reject ambiguous spellings before writing.
 func mediaFilesDirsIn(dir string) ([]string, error) {
 	parts := strings.Split(filepath.ToSlash(glxlib.MediaFilesDir), "/")
@@ -228,7 +228,8 @@ func mediaFilesDirsIn(dir string) ([]string, error) {
 // media/files component is resolved here and then refused by
 // openMediaDirectory: imports and merges do not read or write through
 // media-directory symlinks. A missing dir yields no names; any other listing
-// failure is returned.
+// failure is returned. Matching intermediate symlinks are rejected even when
+// their spelling differs, rather than being mistaken for absent media.
 func childDirsCaseInsensitive(dir, name string, allowLink bool) ([]string, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -241,6 +242,9 @@ func childDirsCaseInsensitive(dir, name string, allowLink bool) ([]string, error
 	var names []string
 	for _, e := range entries {
 		isLink := e.Type()&fs.ModeSymlink != 0
+		if isLink && !allowLink && strings.EqualFold(e.Name(), name) {
+			return nil, fmt.Errorf("media directory %s is a symlink; imports and merges do not follow media-directory symlinks, so replace it with a real directory: %w", filepath.Join(dir, e.Name()), os.ErrInvalid)
+		}
 		if !e.Type().IsDir() && (!allowLink || !isLink) {
 			continue
 		}

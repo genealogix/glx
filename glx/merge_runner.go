@@ -306,11 +306,21 @@ func publishMergedMultiFileArchive(destPath string, loaded map[string][]byte, ar
 // destination to multi-file or accept the dangling references.
 func warnOrphanSourceMedia(srcPath string) {
 	srcFiles, err := archiveMediaFilesDir(srcPath)
-	if err != nil || srcFiles == "" {
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: could not inspect source media/files: %v; single-file destination cannot hold binaries, so they will not be copied. Merged Media URIs may dangle.\n", err)
+
+		return
+	}
+	if srcFiles == "" {
 		return
 	}
 	entries, err := os.ReadDir(srcFiles)
-	if err != nil || len(entries) == 0 {
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: could not read source media/files: %v; single-file destination cannot hold binaries, so they will not be copied. Merged Media URIs may dangle.\n", err)
+
+		return
+	}
+	if len(entries) == 0 {
 		return
 	}
 	fmt.Fprintf(os.Stderr,

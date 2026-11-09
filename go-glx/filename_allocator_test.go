@@ -262,3 +262,20 @@ func TestMediaFileSource_ReallocationClearsOnlyGeneratedCanonicalProvenance(t *t
 	source.SetMediaURI(media, "photo.jpg")
 	require.Equal(t, "supplied.jpg", media.Properties[MediaPropertyOriginalFilename])
 }
+
+func TestFilenameCollisionKey_CanonicalCaseFolding(t *testing.T) {
+	for _, pair := range [][2]string{
+		{"\u0390.jpg", "\u03aa\u0301.jpg"},
+		{"\u03b0.jpg", "\u03ab\u0301.jpg"},
+		{"\u03b1\u0345\u0301.jpg", "\u0386\u03b9.jpg"},
+	} {
+		t.Run(pair[0], func(t *testing.T) {
+			require.Equal(t, FilenameCollisionKey(pair[0]), FilenameCollisionKey(pair[1]))
+			for i := range 2 {
+				requested := pair[1-i]
+				allocator := NewFilenameAllocator(pair[i])
+				require.Equal(t, requested[:len(requested)-4]+"-2.jpg", allocator.Allocate(requested))
+			}
+		})
+	}
+}

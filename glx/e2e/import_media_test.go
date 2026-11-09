@@ -48,6 +48,7 @@ func TestImport_MediaFilenameCollisionsPreserveBytes(t *testing.T) {
 		{"case equivalent", []string{"Photo.jpg", "photo.jpg"}, []string{"Photo.jpg", "photo-2.jpg"}},
 		{"extension case", []string{"photo.JPG", "photo.jpg"}, []string{"photo.JPG", "photo-2.jpg"}},
 		{"unicode normalization", []string{"Caf\u00e9.jpg", "Cafe\u0301.jpg"}, []string{"Caf\u00e9.jpg", "Cafe\u0301-2.jpg"}},
+		{"unicode case folding", []string{"\u0390.jpg", "\u03aa\u0301.jpg"}, []string{"\u0390.jpg", "\u03aa\u0301-2.jpg"}},
 	}
 	for _, tt := range tests {
 		for _, extension := range []string{"ged", "gdz"} {

@@ -78,7 +78,9 @@ var filenameCaseFolders = sync.Pool{New: func() any {
 // that address the same file on common filesystems share a reservation.
 func FilenameCollisionKey(name string) string {
 	folder := filenameCaseFolders.Get().(*cases.Caser) //nolint:errcheck // the private pool only stores *cases.Caser
-	key := folder.String(norm.NFC.String(strings.TrimRight(name, ". ")))
+	// Canonical caseless matching requires decomposition on both sides of
+	// folding: folding itself can introduce a different normalization form.
+	key := norm.NFD.String(folder.String(norm.NFD.String(strings.TrimRight(name, ". "))))
 	filenameCaseFolders.Put(folder)
 
 	return key
