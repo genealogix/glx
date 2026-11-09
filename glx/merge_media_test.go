@@ -721,3 +721,34 @@ func TestMergeArchives_UsesActualSourceAndDestinationMediaURIs(t *testing.T) {
 	require.Equal(t, "Media/Files/photo.jpg", merged.Media["source-photo"].URI)
 	require.Equal(t, []byte("source bytes"), mustReadImportMedia(t, filepath.Join(dest, filepath.FromSlash(merged.Media["source-photo"].URI))))
 }
+
+func TestWarnOrphanSourceMedia_ReportsInspectionErrors(t *testing.T) {
+	t.Run("ambiguous spellings", func(t *testing.T) {
+		source := t.TempDir()
+		if !fsCaseSensitive(t, source) {
+			t.Skip("requires a case-sensitive filesystem")
+		}
+		for _, spelling := range []string{"media", "MEDIA"} {
+			require.NoError(t, os.MkdirAll(filepath.Join(source, spelling, "files"), dirPermissions))
+		}
+
+		stderr := captureStderr(t, func() { warnOrphanSourceMedia(source) })
+
+		assert.Contains(t, stderr, "could not inspect source media/files")
+		assert.Contains(t, stderr, ErrAmbiguousMediaFilesDirs.Error())
+		assert.Contains(t, stderr, "Merged Media URIs may dangle")
+	})
+	t.Run("directory listing fails", func(t *testing.T) {
+		source := t.TempDir()
+		require.NoError(t, os.Mkdir(filepath.Join(source, "media"), dirPermissions))
+		require.NoError(t, os.WriteFile(filepath.Join(source, "not-a-directory"), []byte("file"), filePermissions))
+		if err := os.Symlink("../not-a-directory", filepath.Join(source, glxlib.MediaFilesDir)); err != nil {
+			t.Skipf("symlinks unavailable: %v", err)
+		}
+
+		stderr := captureStderr(t, func() { warnOrphanSourceMedia(source) })
+
+		assert.Contains(t, stderr, "could not read source media/files")
+		assert.Contains(t, stderr, "Merged Media URIs may dangle")
+	})
+}
