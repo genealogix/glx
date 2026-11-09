@@ -752,3 +752,20 @@ func TestWarnOrphanSourceMedia_ReportsInspectionErrors(t *testing.T) {
 		assert.Contains(t, stderr, "Merged Media URIs may dangle")
 	})
 }
+
+func TestWarnOrphanSourceMedia_RejectsFinalDirectorySymlink(t *testing.T) {
+	source := t.TempDir()
+	external := t.TempDir()
+	require.NoError(t, os.Mkdir(filepath.Join(source, "media"), dirPermissions))
+	require.NoError(t, os.WriteFile(filepath.Join(external, "photo.jpg"), []byte("external photo"), filePermissions))
+	if err := os.Symlink(external, filepath.Join(source, glxlib.MediaFilesDir)); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+
+	stderr := captureStderr(t, func() { warnOrphanSourceMedia(source) })
+
+	assert.Contains(t, stderr, "could not read source media/files")
+	assert.Contains(t, stderr, "symlink")
+	assert.Contains(t, stderr, "Merged Media URIs may dangle")
+	assert.NotContains(t, stderr, "source has", "do not count entries through the linked directory")
+}

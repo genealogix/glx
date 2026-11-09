@@ -314,7 +314,7 @@ func warnOrphanSourceMedia(srcPath string) {
 	if srcFiles == "" {
 		return
 	}
-	entries, err := os.ReadDir(srcFiles)
+	entries, err := listMediaFilenames(srcFiles)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: could not read source media/files: %v; single-file destination cannot hold binaries, so they will not be copied. Merged Media URIs may dangle.\n", err)
 
