@@ -15,8 +15,6 @@
 package glx
 
 import (
-	"crypto/md5"  //nolint:gosec // only its digest size is read
-	"crypto/sha1" //nolint:gosec // only its digest size is read
 	"crypto/sha256"
 	"crypto/sha512"
 	"fmt"
@@ -63,11 +61,18 @@ var mediaHashPattern = regexp.MustCompile(`^([A-Za-z0-9][A-Za-z0-9-]*):([0-9A-Fa
 // hexDigitsPerByte is how many hex digits spell one byte of a digest.
 const hexDigitsPerByte = 2
 
+// Digest sizes of md5 and sha1, which are not imported for them: gosec
+// blocklists both packages, though only their sizes would be read.
+const (
+	md5DigestBytes  = 16
+	sha1DigestBytes = 20
+)
+
 // mediaHashHexDigits is the digest length, in hex digits, of the algorithms
 // whose length is fixed. Other algorithm names are accepted at any length.
 var mediaHashHexDigits = map[string]int{
-	"md5":    md5.Size * hexDigitsPerByte,
-	"sha1":   sha1.Size * hexDigitsPerByte,
+	"md5":    md5DigestBytes * hexDigitsPerByte,
+	"sha1":   sha1DigestBytes * hexDigitsPerByte,
 	"sha224": sha256.Size224 * hexDigitsPerByte,
 	"sha256": sha256.Size * hexDigitsPerByte,
 	"sha384": sha512.Size384 * hexDigitsPerByte,
