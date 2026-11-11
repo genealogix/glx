@@ -92,7 +92,7 @@ func renameEntities(archivePath, oldID, newID string, dryRun bool) error {
 		return fmt.Errorf("entity %q conflicts with existing %q: %w", newID, existing, glxlib.ErrCaseInsensitiveCollision)
 	}
 
-	ops, err := planRenameWrites(files, result.EntityType, oldID, newID, newName)
+	ops, err := planRenameWrites(files, whole, result.EntityType, oldID, newID, newName)
 	if err != nil {
 		return err
 	}
@@ -182,7 +182,7 @@ func (op *fileOp) perm() os.FileMode {
 // operation. A single-entity file named after oldID is renamed to newName
 // (the canonical filename for newID) by emitting a delete of the old path and
 // a create of the new one.
-func planRenameWrites(files map[string][]byte, entityType glxlib.EntityType, oldID, newID, newName string) ([]fileOp, error) {
+func planRenameWrites(files map[string][]byte, whole *glxlib.GLXFile, entityType glxlib.EntityType, oldID, newID, newName string) ([]fileOp, error) {
 	serializer := createSerializer(false, true, "  ")
 
 	// Walk in sorted order so the plan (and therefore any rollback) is
@@ -205,7 +205,7 @@ func planRenameWrites(files map[string][]byte, entityType glxlib.EntityType, old
 			return nil, fmt.Errorf("failed to parse %s: %w", relPath, err)
 		}
 
-		if glxlib.RenameInFragment(fragment, entityType, oldID, newID) == 0 {
+		if glxlib.RenameInFragment(fragment, whole, entityType, oldID, newID) == 0 {
 			continue
 		}
 		// The fragment held the selected entity (not merely a reference, and

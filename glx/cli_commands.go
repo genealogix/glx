@@ -1979,6 +1979,12 @@ var renameCmd = &cobra.Command{
 	Long: `Rename an entity ID throughout the archive, atomically updating all
 cross-references in events, relationships, assertions, citations, and other entities.
 
+Only typed references are rewritten: fields that refer to an entity of the
+renamed type, and properties whose vocabulary definition declares that
+reference_type (for example residence, which refers to places). A free-text
+property that happens to equal the old ID, or a reference to a same-ID entity
+of another type, is left as written.
+
 Works with any entity type: persons, events, relationships, places, sources,
 citations, repositories, assertions, and media.`,
 	Example: `  # Rename a person

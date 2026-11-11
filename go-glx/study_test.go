@@ -251,9 +251,10 @@ func TestRenameEntity_StudyMapKey(t *testing.T) {
 	assert.Equal(t, "Pohl-Göns One Place Study", glx.Studies["study-new"].Title)
 }
 
-// TestRenameEntity_StudyRefs covers the updateAllRefs branch that rewrites
-// place, source, and property references stored on Studies, including the
-// nil-entry guard that skips empty map slots.
+// TestRenameEntity_StudyRefs covers the place and source references stored on
+// Studies, including the nil-entry guard that skips empty map slots. Study
+// properties have no vocabulary, so nothing in them is a declared reference
+// and they are left as written (#1440).
 func TestRenameEntity_StudyRefs(t *testing.T) {
 	glx := &GLXFile{
 		Places: map[string]*Place{
@@ -278,7 +279,7 @@ func TestRenameEntity_StudyRefs(t *testing.T) {
 	_, err := RenameEntity(glx, "place-old", "place-new")
 	require.NoError(t, err)
 	assert.Equal(t, "place-new", glx.Studies["study-1"].Places[0])
-	assert.Equal(t, "place-new", glx.Studies["study-1"].Properties["primary_place"])
+	assert.Equal(t, "place-old", glx.Studies["study-1"].Properties["primary_place"])
 
 	_, err = RenameEntity(glx, "source-old", "source-new")
 	require.NoError(t, err)
