@@ -588,35 +588,17 @@ func (g *GLXFile) Merge(other *GLXFile) (conflicts []string, identicalSkipped in
 		identicalSkipped += s
 	}
 
-	// Merge vocabularies — silently skip identical entries, report only true conflicts
-	addDedup(mergeMapDedup("event_types", g.EventTypes, other.EventTypes))
-	addDedup(mergeMapDedup("relationship_types", g.RelationshipTypes, other.RelationshipTypes))
-	addDedup(mergeMapDedup("place_types", g.PlaceTypes, other.PlaceTypes))
-	addDedup(mergeMapDedup("source_types", g.SourceTypes, other.SourceTypes))
-	addDedup(mergeMapDedup("repository_types", g.RepositoryTypes, other.RepositoryTypes))
-	addDedup(mergeMapDedup("media_types", g.MediaTypes, other.MediaTypes))
-	addDedup(mergeMapDedup("sex_types", g.SexTypes, other.SexTypes))
-	addDedup(mergeMapDedup("gender_types", g.GenderTypes, other.GenderTypes))
-	addDedup(mergeMapDedup("legal_statuses", g.LegalStatuses, other.LegalStatuses))
-	addDedup(mergeMapDedup("source_natures", g.SourceNatures, other.SourceNatures))
-	addDedup(mergeMapDedup("information_types", g.InformationTypes, other.InformationTypes))
-	addDedup(mergeMapDedup("participant_roles", g.ParticipantRoles, other.ParticipantRoles))
-	addDedup(mergeMapDedup("confidence_levels", g.ConfidenceLevels, other.ConfidenceLevels))
-	addDedup(mergeMapDedup("search_result_types", g.SearchResultTypes, other.SearchResultTypes))
-	addDedup(mergeMapDedup("research_log_status_types", g.ResearchLogStatusTypes, other.ResearchLogStatusTypes))
-	addDedup(mergeMapDedup("lead_statuses", g.LeadStatuses, other.LeadStatuses))
-	addDedup(mergeMapDedup("study_types", g.StudyTypes, other.StudyTypes))
-	addDedup(mergeMapDedup("study_statuses", g.StudyStatuses, other.StudyStatuses))
-
-	// Merge property vocabularies — same dedup behavior
-	addDedup(mergeMapDedup("person_properties", g.PersonProperties, other.PersonProperties))
-	addDedup(mergeMapDedup("event_properties", g.EventProperties, other.EventProperties))
-	addDedup(mergeMapDedup("relationship_properties", g.RelationshipProperties, other.RelationshipProperties))
-	addDedup(mergeMapDedup("place_properties", g.PlaceProperties, other.PlaceProperties))
-	addDedup(mergeMapDedup("media_properties", g.MediaProperties, other.MediaProperties))
-	addDedup(mergeMapDedup("repository_properties", g.RepositoryProperties, other.RepositoryProperties))
-	addDedup(mergeMapDedup("citation_properties", g.CitationProperties, other.CitationProperties))
-	addDedup(mergeMapDedup("source_properties", g.SourceProperties, other.SourceProperties))
+	// Merge vocabularies — silently skip identical entries, report only true
+	// conflicts. Both lists come from the same table, so index i names the
+	// same vocabulary on g and other.
+	otherVocabs := other.vocabFields()
+	for i, f := range g.vocabFields() {
+		addDedup(mergeMapDedup(f.Key, *f.Map, *otherVocabs[i].Map))
+	}
+	otherProps := other.propertyFields()
+	for i, f := range g.propertyFields() {
+		addDedup(mergeMapDedup(f.Key, *f.Map, *otherProps[i].Map))
+	}
 
 	return conflicts, identicalSkipped
 }
@@ -659,83 +641,15 @@ func (g *GLXFile) initMaps() {
 	if g.Studies == nil {
 		g.Studies = make(map[string]*Study)
 	}
-	if g.EventTypes == nil {
-		g.EventTypes = make(map[string]*VocabularyEntry)
+	for _, f := range g.vocabFields() {
+		if *f.Map == nil {
+			*f.Map = make(map[string]*VocabularyEntry)
+		}
 	}
-	if g.RelationshipTypes == nil {
-		g.RelationshipTypes = make(map[string]*VocabularyEntry)
-	}
-	if g.PlaceTypes == nil {
-		g.PlaceTypes = make(map[string]*VocabularyEntry)
-	}
-	if g.SourceTypes == nil {
-		g.SourceTypes = make(map[string]*VocabularyEntry)
-	}
-	if g.RepositoryTypes == nil {
-		g.RepositoryTypes = make(map[string]*VocabularyEntry)
-	}
-	if g.MediaTypes == nil {
-		g.MediaTypes = make(map[string]*VocabularyEntry)
-	}
-	if g.SexTypes == nil {
-		g.SexTypes = make(map[string]*VocabularyEntry)
-	}
-	if g.GenderTypes == nil {
-		g.GenderTypes = make(map[string]*VocabularyEntry)
-	}
-	if g.SearchResultTypes == nil {
-		g.SearchResultTypes = make(map[string]*VocabularyEntry)
-	}
-	if g.ResearchLogStatusTypes == nil {
-		g.ResearchLogStatusTypes = make(map[string]*VocabularyEntry)
-	}
-	if g.LeadStatuses == nil {
-		g.LeadStatuses = make(map[string]*VocabularyEntry)
-	}
-	if g.StudyTypes == nil {
-		g.StudyTypes = make(map[string]*VocabularyEntry)
-	}
-	if g.StudyStatuses == nil {
-		g.StudyStatuses = make(map[string]*VocabularyEntry)
-	}
-	if g.LegalStatuses == nil {
-		g.LegalStatuses = make(map[string]*VocabularyEntry)
-	}
-	if g.SourceNatures == nil {
-		g.SourceNatures = make(map[string]*VocabularyEntry)
-	}
-	if g.InformationTypes == nil {
-		g.InformationTypes = make(map[string]*VocabularyEntry)
-	}
-	if g.ParticipantRoles == nil {
-		g.ParticipantRoles = make(map[string]*VocabularyEntry)
-	}
-	if g.ConfidenceLevels == nil {
-		g.ConfidenceLevels = make(map[string]*VocabularyEntry)
-	}
-	if g.PersonProperties == nil {
-		g.PersonProperties = make(map[string]*PropertyDefinition)
-	}
-	if g.EventProperties == nil {
-		g.EventProperties = make(map[string]*PropertyDefinition)
-	}
-	if g.RelationshipProperties == nil {
-		g.RelationshipProperties = make(map[string]*PropertyDefinition)
-	}
-	if g.PlaceProperties == nil {
-		g.PlaceProperties = make(map[string]*PropertyDefinition)
-	}
-	if g.MediaProperties == nil {
-		g.MediaProperties = make(map[string]*PropertyDefinition)
-	}
-	if g.RepositoryProperties == nil {
-		g.RepositoryProperties = make(map[string]*PropertyDefinition)
-	}
-	if g.CitationProperties == nil {
-		g.CitationProperties = make(map[string]*PropertyDefinition)
-	}
-	if g.SourceProperties == nil {
-		g.SourceProperties = make(map[string]*PropertyDefinition)
+	for _, f := range g.propertyFields() {
+		if *f.Map == nil {
+			*f.Map = make(map[string]*PropertyDefinition)
+		}
 	}
 }
 

@@ -15,6 +15,7 @@
 package glx
 
 import (
+	"bytes"
 	"fmt"
 	"path"
 	"sort"
@@ -49,7 +50,8 @@ type SerializerOptions struct {
 	// Pretty determines whether to use pretty-print formatting (indentation, etc.)
 	Pretty bool
 
-	// Indent specifies the indentation string for YAML output (default: "  ")
+	// Indent is the indentation of YAML output, as a run of spaces (default:
+	// two). Empty means the default.
 	Indent string
 }
 
@@ -101,7 +103,7 @@ func (s *DefaultSerializer) SerializeSingleFileBytes(glx *GLXFile) ([]byte, erro
 	}
 
 	// Marshal to YAML
-	yamlBytes, err := yaml.Marshal(glx)
+	yamlBytes, err := marshalYAML(glx, s.Options.Indent)
 
 	glx.ImportMetadata = origMetadata
 
@@ -141,7 +143,7 @@ func (s *DefaultSerializer) SerializeMultiFileToMap(glx *GLXFile) (map[string][]
 	// Serialize metadata if present and non-empty
 	if glx.ImportMetadata != nil && glx.ImportMetadata.hasContent() {
 		metaWrapper := map[string]*Metadata{"metadata": glx.ImportMetadata}
-		yamlBytes, err := yaml.Marshal(metaWrapper)
+		yamlBytes, err := marshalYAML(metaWrapper, s.Options.Indent)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal metadata: %w", err)
 		}
@@ -192,27 +194,27 @@ func (s *DefaultSerializer) serializeEntitiesToMap(entities any, dirName, entity
 	// Type switch to handle different entity map types
 	switch typedEntities := entities.(type) {
 	case map[string]*Person:
-		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
+		return serializeEntitiesWrapped(typedEntities, dirName, entityType, s.Options.Indent, files)
 	case map[string]*Event:
-		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
+		return serializeEntitiesWrapped(typedEntities, dirName, entityType, s.Options.Indent, files)
 	case map[string]*Relationship:
-		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
+		return serializeEntitiesWrapped(typedEntities, dirName, entityType, s.Options.Indent, files)
 	case map[string]*Place:
-		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
+		return serializeEntitiesWrapped(typedEntities, dirName, entityType, s.Options.Indent, files)
 	case map[string]*Source:
-		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
+		return serializeEntitiesWrapped(typedEntities, dirName, entityType, s.Options.Indent, files)
 	case map[string]*Citation:
-		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
+		return serializeEntitiesWrapped(typedEntities, dirName, entityType, s.Options.Indent, files)
 	case map[string]*Repository:
-		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
+		return serializeEntitiesWrapped(typedEntities, dirName, entityType, s.Options.Indent, files)
 	case map[string]*Media:
-		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
+		return serializeEntitiesWrapped(typedEntities, dirName, entityType, s.Options.Indent, files)
 	case map[string]*Assertion:
-		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
+		return serializeEntitiesWrapped(typedEntities, dirName, entityType, s.Options.Indent, files)
 	case map[string]*ResearchLog:
-		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
+		return serializeEntitiesWrapped(typedEntities, dirName, entityType, s.Options.Indent, files)
 	case map[string]*Study:
-		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
+		return serializeEntitiesWrapped(typedEntities, dirName, entityType, s.Options.Indent, files)
 	default:
 		return fmt.Errorf("%w: %T", ErrUnsupportedEntityType, entities)
 	}
@@ -220,7 +222,7 @@ func (s *DefaultSerializer) serializeEntitiesToMap(entities any, dirName, entity
 
 // serializeEntitiesWrapped serializes each entity as a standard GLX file:
 // {collectionKey: {entityID: entity}}. Derives filenames deterministically from entity IDs.
-func serializeEntitiesWrapped[T any](entities map[string]T, dirName, entityType string, files map[string][]byte) error {
+func serializeEntitiesWrapped[T any](entities map[string]T, dirName, entityType, indent string, files map[string][]byte) error {
 	lowercaseToID := make(map[string]string, len(entities))
 
 	for entityID, entity := range entities {
@@ -241,7 +243,7 @@ func serializeEntitiesWrapped[T any](entities map[string]T, dirName, entityType 
 		}
 
 		// Marshal to YAML
-		yamlBytes, err := yaml.Marshal(wrapper)
+		yamlBytes, err := marshalYAML(wrapper, indent)
 		if err != nil {
 			return fmt.Errorf("failed to marshal %s %s: %w", entityType, entityID, err)
 		}
@@ -253,6 +255,30 @@ func serializeEntitiesWrapped[T any](entities map[string]T, dirName, entityType 
 	}
 
 	return nil
+}
+
+// defaultYAMLIndent is the indentation glx writes when SerializerOptions.Indent
+// is empty: two spaces, as in the specification and the examples (#1427).
+const defaultYAMLIndent = 2
+
+// marshalYAML encodes v as YAML indented by indent, a run of spaces. yaml.v3's
+// Marshal always indents by four, which is why Indent used to have no effect.
+func marshalYAML(v any, indent string) ([]byte, error) {
+	width := len(indent)
+	if width == 0 || strings.Trim(indent, " ") != "" {
+		width = defaultYAMLIndent
+	}
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(width)
+	if err := enc.Encode(v); err != nil {
+		return nil, err
+	}
+	if err := enc.Close(); err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
 }
 
 // DeserializeSingleFileBytes loads a GLX archive from YAML bytes (single-file format).
@@ -277,47 +303,8 @@ func (s *DefaultSerializer) DeserializeSingleFileBytes(data []byte) (*GLXFile, e
 // DeserializeMultiFileFromMap loads a GLX archive from a map of relative paths to file contents.
 // Returns the loaded archive, a list of duplicate entity IDs, and any error.
 func (s *DefaultSerializer) DeserializeMultiFileFromMap(files map[string][]byte) (*GLXFile, []string, error) {
-	glx := &GLXFile{
-		Persons:       make(map[string]*Person),
-		Events:        make(map[string]*Event),
-		Relationships: make(map[string]*Relationship),
-		Places:        make(map[string]*Place),
-		Sources:       make(map[string]*Source),
-		Citations:     make(map[string]*Citation),
-		Repositories:  make(map[string]*Repository),
-		Media:         make(map[string]*Media),
-		Assertions:    make(map[string]*Assertion),
-		ResearchLogs:  make(map[string]*ResearchLog),
-		Studies:       make(map[string]*Study),
-
-		EventTypes:             make(map[string]*VocabularyEntry),
-		ParticipantRoles:       make(map[string]*VocabularyEntry),
-		ConfidenceLevels:       make(map[string]*VocabularyEntry),
-		RelationshipTypes:      make(map[string]*VocabularyEntry),
-		PlaceTypes:             make(map[string]*VocabularyEntry),
-		SourceTypes:            make(map[string]*VocabularyEntry),
-		RepositoryTypes:        make(map[string]*VocabularyEntry),
-		MediaTypes:             make(map[string]*VocabularyEntry),
-		SexTypes:               make(map[string]*VocabularyEntry),
-		GenderTypes:            make(map[string]*VocabularyEntry),
-		SearchResultTypes:      make(map[string]*VocabularyEntry),
-		ResearchLogStatusTypes: make(map[string]*VocabularyEntry),
-		LeadStatuses:           make(map[string]*VocabularyEntry),
-		StudyTypes:             make(map[string]*VocabularyEntry),
-		StudyStatuses:          make(map[string]*VocabularyEntry),
-		LegalStatuses:          make(map[string]*VocabularyEntry),
-		SourceNatures:          make(map[string]*VocabularyEntry),
-		InformationTypes:       make(map[string]*VocabularyEntry),
-
-		PersonProperties:       make(map[string]*PropertyDefinition),
-		EventProperties:        make(map[string]*PropertyDefinition),
-		RelationshipProperties: make(map[string]*PropertyDefinition),
-		PlaceProperties:        make(map[string]*PropertyDefinition),
-		MediaProperties:        make(map[string]*PropertyDefinition),
-		RepositoryProperties:   make(map[string]*PropertyDefinition),
-		CitationProperties:     make(map[string]*PropertyDefinition),
-		SourceProperties:       make(map[string]*PropertyDefinition),
-	}
+	glx := &GLXFile{}
+	glx.initMaps()
 
 	var allConflicts []string
 

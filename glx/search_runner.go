@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 
@@ -706,27 +705,9 @@ func showSearch(archivePath, query string, caseSensitive bool, typeFilter string
 		}
 	}
 
-	info, err := os.Stat(archivePath)
+	archive, err := loadArchiveForQuery(archivePath)
 	if err != nil {
-		return fmt.Errorf("cannot access path: %w", err)
-	}
-
-	var archive *glxlib.GLXFile
-	if info.IsDir() {
-		loaded, duplicates, loadErr := LoadArchiveCached(archivePath)
-		if loadErr != nil {
-			return fmt.Errorf("failed to load archive: %w", loadErr)
-		}
-		for _, d := range duplicates {
-			fmt.Fprintf(os.Stderr, "Warning: %s\n", d)
-		}
-		archive = loaded
-	} else {
-		loaded, loadErr := readSingleFileArchive(archivePath, false)
-		if loadErr != nil {
-			return loadErr
-		}
-		archive = loaded
+		return err
 	}
 
 	results := searchArchive(archive, query, caseSensitive, typeFilter)

@@ -81,32 +81,14 @@ func LoadStandardVocabulariesIntoGLX(glx *GLXFile) error {
 		return cachedVocabsErr
 	}
 
-	glx.EventTypes = maps.Clone(cachedVocabs.EventTypes)
-	glx.RelationshipTypes = maps.Clone(cachedVocabs.RelationshipTypes)
-	glx.PlaceTypes = maps.Clone(cachedVocabs.PlaceTypes)
-	glx.SourceTypes = maps.Clone(cachedVocabs.SourceTypes)
-	glx.RepositoryTypes = maps.Clone(cachedVocabs.RepositoryTypes)
-	glx.ParticipantRoles = maps.Clone(cachedVocabs.ParticipantRoles)
-	glx.MediaTypes = maps.Clone(cachedVocabs.MediaTypes)
-	glx.ConfidenceLevels = maps.Clone(cachedVocabs.ConfidenceLevels)
-	glx.SexTypes = maps.Clone(cachedVocabs.SexTypes)
-	glx.GenderTypes = maps.Clone(cachedVocabs.GenderTypes)
-	glx.SearchResultTypes = maps.Clone(cachedVocabs.SearchResultTypes)
-	glx.ResearchLogStatusTypes = maps.Clone(cachedVocabs.ResearchLogStatusTypes)
-	glx.LeadStatuses = maps.Clone(cachedVocabs.LeadStatuses)
-	glx.StudyTypes = maps.Clone(cachedVocabs.StudyTypes)
-	glx.StudyStatuses = maps.Clone(cachedVocabs.StudyStatuses)
-	glx.LegalStatuses = maps.Clone(cachedVocabs.LegalStatuses)
-	glx.SourceNatures = maps.Clone(cachedVocabs.SourceNatures)
-	glx.InformationTypes = maps.Clone(cachedVocabs.InformationTypes)
-	glx.PersonProperties = maps.Clone(cachedVocabs.PersonProperties)
-	glx.EventProperties = maps.Clone(cachedVocabs.EventProperties)
-	glx.RelationshipProperties = maps.Clone(cachedVocabs.RelationshipProperties)
-	glx.PlaceProperties = maps.Clone(cachedVocabs.PlaceProperties)
-	glx.MediaProperties = maps.Clone(cachedVocabs.MediaProperties)
-	glx.RepositoryProperties = maps.Clone(cachedVocabs.RepositoryProperties)
-	glx.CitationProperties = maps.Clone(cachedVocabs.CitationProperties)
-	glx.SourceProperties = maps.Clone(cachedVocabs.SourceProperties)
+	cachedTypes := cachedVocabs.vocabFields()
+	for i, f := range glx.vocabFields() {
+		*f.Map = maps.Clone(*cachedTypes[i].Map)
+	}
+	cachedProps := cachedVocabs.propertyFields()
+	for i, f := range glx.propertyFields() {
+		*f.Map = maps.Clone(*cachedProps[i].Map)
+	}
 
 	return nil
 }
@@ -127,59 +109,15 @@ func LoadVocabulariesFromMap(vocabFiles map[string][]byte, glx *GLXFile) error {
 // loadVocabulary parses a single vocabulary file and assigns its contents to the
 // appropriate field on the GLXFile. Unrecognized filenames are silently skipped.
 func loadVocabulary(filename string, data []byte, glx *GLXFile) error {
-	switch filename {
-	case "event-types.glx":
-		return unmarshalVocab(filename, data, "event_types", &glx.EventTypes)
-	case "relationship-types.glx":
-		return unmarshalVocab(filename, data, "relationship_types", &glx.RelationshipTypes)
-	case "place-types.glx":
-		return unmarshalVocab(filename, data, "place_types", &glx.PlaceTypes)
-	case "source-types.glx":
-		return unmarshalVocab(filename, data, "source_types", &glx.SourceTypes)
-	case "repository-types.glx":
-		return unmarshalVocab(filename, data, "repository_types", &glx.RepositoryTypes)
-	case "participant-roles.glx":
-		return unmarshalVocab(filename, data, "participant_roles", &glx.ParticipantRoles)
-	case "media-types.glx":
-		return unmarshalVocab(filename, data, "media_types", &glx.MediaTypes)
-	case "confidence-levels.glx":
-		return unmarshalVocab(filename, data, "confidence_levels", &glx.ConfidenceLevels)
-	case "sex-types.glx":
-		return unmarshalVocab(filename, data, "sex_types", &glx.SexTypes)
-	case "gender-types.glx":
-		return unmarshalVocab(filename, data, "gender_types", &glx.GenderTypes)
-	case "search-result-types.glx":
-		return unmarshalVocab(filename, data, "search_result_types", &glx.SearchResultTypes)
-	case "research-log-status-types.glx":
-		return unmarshalVocab(filename, data, "research_log_status_types", &glx.ResearchLogStatusTypes)
-	case "lead-statuses.glx":
-		return unmarshalVocab(filename, data, "lead_statuses", &glx.LeadStatuses)
-	case "study-types.glx":
-		return unmarshalVocab(filename, data, "study_types", &glx.StudyTypes)
-	case "study-statuses.glx":
-		return unmarshalVocab(filename, data, "study_statuses", &glx.StudyStatuses)
-	case "legal-statuses.glx":
-		return unmarshalVocab(filename, data, "legal_statuses", &glx.LegalStatuses)
-	case "source-natures.glx":
-		return unmarshalVocab(filename, data, "source_natures", &glx.SourceNatures)
-	case "information-types.glx":
-		return unmarshalVocab(filename, data, "information_types", &glx.InformationTypes)
-	case "person-properties.glx":
-		return unmarshalVocab(filename, data, "person_properties", &glx.PersonProperties)
-	case "event-properties.glx":
-		return unmarshalVocab(filename, data, "event_properties", &glx.EventProperties)
-	case "relationship-properties.glx":
-		return unmarshalVocab(filename, data, "relationship_properties", &glx.RelationshipProperties)
-	case "place-properties.glx":
-		return unmarshalVocab(filename, data, "place_properties", &glx.PlaceProperties)
-	case "media-properties.glx":
-		return unmarshalVocab(filename, data, "media_properties", &glx.MediaProperties)
-	case "repository-properties.glx":
-		return unmarshalVocab(filename, data, "repository_properties", &glx.RepositoryProperties)
-	case "citation-properties.glx":
-		return unmarshalVocab(filename, data, "citation_properties", &glx.CitationProperties)
-	case "source-properties.glx":
-		return unmarshalVocab(filename, data, "source_properties", &glx.SourceProperties)
+	for _, f := range glx.vocabFields() {
+		if f.Filename() == filename {
+			return unmarshalVocab(filename, data, f.Key, f.Map)
+		}
+	}
+	for _, f := range glx.propertyFields() {
+		if f.Filename() == filename {
+			return unmarshalVocab(filename, data, f.Key, f.Map)
+		}
 	}
 
 	return nil

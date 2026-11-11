@@ -118,24 +118,9 @@ func (glx *GLXFile) buildEntityMaps(result *ValidationResult) {
 
 // buildVocabularyMaps builds maps of all vocabulary values for quick lookup.
 func (glx *GLXFile) buildVocabularyMaps(result *ValidationResult) {
-	result.Vocabularies[VocabEventTypes] = buildIDSet(glx.EventTypes)
-	result.Vocabularies[VocabRelationshipTypes] = buildIDSet(glx.RelationshipTypes)
-	result.Vocabularies[VocabPlaceTypes] = buildIDSet(glx.PlaceTypes)
-	result.Vocabularies[VocabRepositoryTypes] = buildIDSet(glx.RepositoryTypes)
-	result.Vocabularies[VocabParticipantRoles] = buildIDSet(glx.ParticipantRoles)
-	result.Vocabularies[VocabMediaTypes] = buildIDSet(glx.MediaTypes)
-	result.Vocabularies[VocabConfidenceLevels] = buildIDSet(glx.ConfidenceLevels)
-	result.Vocabularies[VocabSourceTypes] = buildIDSet(glx.SourceTypes)
-	result.Vocabularies[VocabSexTypes] = buildIDSet(glx.SexTypes)
-	result.Vocabularies[VocabGenderTypes] = buildIDSet(glx.GenderTypes)
-	result.Vocabularies[VocabSearchResultTypes] = buildIDSet(glx.SearchResultTypes)
-	result.Vocabularies[VocabResearchLogStatusTypes] = buildIDSet(glx.ResearchLogStatusTypes)
-	result.Vocabularies[VocabLeadStatuses] = buildIDSet(glx.LeadStatuses)
-	result.Vocabularies[VocabStudyTypes] = buildIDSet(glx.StudyTypes)
-	result.Vocabularies[VocabStudyStatuses] = buildIDSet(glx.StudyStatuses)
-	result.Vocabularies[VocabLegalStatuses] = buildIDSet(glx.LegalStatuses)
-	result.Vocabularies[VocabSourceNatures] = buildIDSet(glx.SourceNatures)
-	result.Vocabularies[VocabInformationTypes] = buildIDSet(glx.InformationTypes)
+	for _, f := range glx.vocabFields() {
+		result.Vocabularies[f.Key] = buildIDSet(*f.Map)
+	}
 }
 
 // buildPropertyVocabMaps builds maps of property vocabularies.
