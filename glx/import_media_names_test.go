@@ -388,3 +388,89 @@ func TestAllocateImportMediaDestinations_KeepsExistingReferenceForUnreadableSour
 		})
 	}
 }
+
+// allocationFixture writes on-disk media (name -> content) and one source per
+// entry of incoming (content), all requesting photo.jpg, and returns the
+// allocated sources.
+func allocationFixture(t *testing.T, onDisk map[string]string, incoming []string) []glxlib.MediaFileSource {
+	t.Helper()
+	archiveDir := t.TempDir()
+	sourceDir := t.TempDir()
+	filesDir := filepath.Join(archiveDir, glxlib.MediaFilesDir)
+	require.NoError(t, os.MkdirAll(filesDir, dirPermissions))
+	for name, content := range onDisk {
+		require.NoError(t, os.WriteFile(filepath.Join(filesDir, name), []byte(content), filePermissions))
+	}
+	archive := &glxlib.GLXFile{Media: make(map[string]*glxlib.Media)}
+	files := make([]glxlib.MediaFileSource, 0, len(incoming))
+	for i, content := range incoming {
+		id := fmt.Sprintf("incoming-%d", i)
+		require.NoError(t, os.WriteFile(filepath.Join(sourceDir, id), []byte(content), filePermissions))
+		archive.Media[id] = &glxlib.Media{URI: glxlib.MediaFilesDir + "/photo.jpg"}
+		files = append(files, glxlib.MediaFileSource{
+			MediaID: id, SourceType: glxlib.MediaSourceFile, RelativePath: id,
+			RequestedFilename: "photo.jpg", TargetFilename: "photo.jpg",
+		})
+	}
+	require.NoError(t, allocateImportMediaDestinations(archive, files, archiveDir, sourceDir, nil))
+
+	return files
+}
+
+func allocatedNames(files []glxlib.MediaFileSource) []string {
+	names := make([]string, len(files))
+	for i := range files {
+		names[i] = files[i].TargetFilename
+		if files[i].ReuseExisting {
+			names[i] += " (reused)"
+		}
+	}
+
+	return names
+}
+
+// One allocation path for every family size (#1442): these cases used to run
+// through FilenameAllocator.AllocateMatching or the content index depending on
+// how many numbered names a family had.
+func TestAllocateImportMediaDestinations_OnePath(t *testing.T) {
+	t.Run("lowest ordinal match first, then the next free name", func(t *testing.T) {
+		files := allocationFixture(t, map[string]string{"photo.jpg": "a", "photo-2.jpg": "a"}, []string{"a", "a", "a"})
+		require.Equal(t, []string{"photo.jpg (reused)", "photo-2.jpg (reused)", "photo-3.jpg"}, allocatedNames(files))
+	})
+
+	t.Run("a free gap is used before a later match", func(t *testing.T) {
+		files := allocationFixture(t, map[string]string{"photo.jpg": "x", "photo-3.jpg": "c"}, []string{"new", "new2", "c"})
+		require.Equal(t, []string{"photo-2.jpg", "photo-4.jpg", "photo-3.jpg (reused)"}, allocatedNames(files))
+	})
+
+	t.Run("a sparse high name does not slow the gap below it", func(t *testing.T) {
+		incoming := make([]string, 1000)
+		want := make([]string, 1000)
+		for i := range incoming {
+			incoming[i] = fmt.Sprintf("new %d", i)
+			want[i] = fmt.Sprintf("photo-%d.jpg", i+2)
+		}
+		files := allocationFixture(t, map[string]string{"photo.jpg": "x", "photo-1000000000.jpg": "y"}, incoming)
+		require.Equal(t, want, allocatedNames(files))
+	})
+
+	t.Run("a dense refresh reuses every file in order", func(t *testing.T) {
+		const count = 500
+		onDisk := make(map[string]string, count)
+		incoming := make([]string, 0, count+1)
+		want := make([]string, 0, count+1)
+		for n := 1; n <= count; n++ {
+			name := "photo.jpg"
+			if n > 1 {
+				name = fmt.Sprintf("photo-%d.jpg", n)
+			}
+			onDisk[name] = fmt.Sprintf("content %d", n)
+			incoming = append(incoming, fmt.Sprintf("content %d", n))
+			want = append(want, name+" (reused)")
+		}
+		incoming = append(incoming, "something new")
+		want = append(want, fmt.Sprintf("photo-%d.jpg", count+1))
+		files := allocationFixture(t, onDisk, incoming)
+		require.Equal(t, want, allocatedNames(files))
+	})
+}
