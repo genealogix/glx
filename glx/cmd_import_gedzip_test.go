@@ -1170,3 +1170,98 @@ func TestImportGEDZIP_VerboseSingleFileWithMedia(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []byte("jpeg-content"), copied)
 }
+
+// A media read failure must not be downgraded to an unavailable-source warning
+// merely because a previous import already has the same destination basename.
+func TestImportGEDZIP_InvalidMediaPreservesExistingArchive(t *testing.T) {
+	for _, corruption := range []string{"checksum", "compression"} {
+		for _, format := range []string{FormatMulti, FormatSingle} {
+			t.Run(corruption+"/"+format, func(t *testing.T) {
+				output := filepath.Join(t.TempDir(), "archive")
+				original := buildGEDZIP(t, map[string][]byte{
+					"gedcom.ged":      []byte(gedcom7WithMedia),
+					"media/photo.jpg": []byte("old photo"),
+				})
+				require.NoError(t, importGEDCOM(original, output, format, true, false, defaultShowFirstErrors))
+				root := importMediaDir(output, format)
+				before := snapshotDir(t, root)
+
+				err := importGEDCOM(buildInvalidMediaGEDZIP(t, corruption), output, format, true, false, defaultShowFirstErrors)
+				if corruption == "checksum" {
+					require.ErrorIs(t, err, zip.ErrChecksum)
+				} else {
+					require.ErrorIs(t, err, ErrGEDZIPUnsupportedAlgorithm)
+				}
+				require.Equal(t, before, snapshotDir(t, root), "failed refresh must preserve metadata and binaries")
+			})
+		}
+	}
+}
+
+func buildInvalidMediaGEDZIP(t *testing.T, corruption string) string {
+	t.Helper()
+	var bundle bytes.Buffer
+	writer := zip.NewWriter(&bundle)
+	entry, err := writer.Create("gedcom.ged")
+	require.NoError(t, err)
+	_, err = entry.Write([]byte(gedcom7WithMedia))
+	require.NoError(t, err)
+	method := zip.Store
+	if corruption == "compression" {
+		registerUnsupportedZipCompressor(t)
+		method = unsupportedZipMethod
+	}
+	entry, err = writer.CreateHeader(&zip.FileHeader{Name: "media/photo.jpg", Method: method})
+	require.NoError(t, err)
+	payload := []byte("new media with invalid encoding")
+	_, err = entry.Write(payload)
+	require.NoError(t, err)
+	require.NoError(t, writer.Close())
+	data := bundle.Bytes()
+	if corruption == "checksum" {
+		offset := bytes.Index(data, payload)
+		require.NotEqual(t, -1, offset)
+		data[offset] ^= 1
+	}
+	filename := filepath.Join(t.TempDir(), "invalid-media.gdz")
+	require.NoError(t, os.WriteFile(filename, data, filePermissions))
+
+	return filename
+}
+
+func TestImportGEDZIP_UnreadableBlobKeepsExistingReference(t *testing.T) {
+	for _, format := range []string{FormatMulti, FormatSingle} {
+		t.Run(format, func(t *testing.T) {
+			output := filepath.Join(t.TempDir(), "archive")
+			for _, blob := range []string{"....", "!!!!"} {
+				gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n0 @M1@ OBJE\n1 BLOB " + blob + "\n0 TRLR\n"
+				input := buildGEDZIP(t, map[string][]byte{"gedcom.ged": []byte(gedcom)})
+				var err error
+				stdout := captureStdout(t, func() {
+					err = importGEDCOM(input, output, format, true, false, defaultShowFirstErrors)
+				})
+				require.NoError(t, err)
+				if blob == "!!!!" {
+					require.Contains(t, stdout, "keeping the existing")
+				}
+			}
+			var archive *glxlib.GLXFile
+			var err error
+			if format == FormatSingle {
+				archive, err = readSingleFileArchive(ensureGLXExtension(output), false)
+			} else {
+				archive, _, err = LoadArchiveWithOptions(output, false)
+			}
+			require.NoError(t, err)
+			require.Len(t, archive.Media, 1)
+			require.Equal(t, "media/files/blob-media-1.bin", archive.Media["media-1"].URI)
+			filesDir := filepath.Join(importMediaDir(output, format), glxlib.MediaFilesDir)
+			actual, err := os.ReadFile(filepath.Join(filesDir, "blob-media-1.bin"))
+			require.NoError(t, err)
+			require.Equal(t, []byte{0, 0, 0}, actual)
+			entries, err := os.ReadDir(filesDir)
+			require.NoError(t, err)
+			require.Len(t, entries, 1)
+		})
+	}
+}
