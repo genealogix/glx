@@ -78,7 +78,15 @@ jobs:
         # Only vX.Y.Z tags are published, no floating v4; do not "tidy" to @v4 (#938).
         uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
         with:
-          cosign-release: 'v3.0.6'   # pin: --bundle output format is part of our release verification contract
+          # Pin: the --bundle output format is part of our release verification
+          # contract. Keep it EQUAL to the installer's own bootstrap version, so
+          # the installer uses its digest-checked bootstrap binary as-is instead
+          # of downloading a second release plus a public key from
+          # raw.githubusercontent.com to verify it. release-cosign-install.yml
+          # fails a PR (e.g. a Dependabot installer bump) that lets them diverge,
+          # and runs this step with these inputs, since this workflow runs only
+          # on a tag push.
+          cosign-release: 'v3.1.4'
 
       # GoReleaser's `sboms:` stanza shells out to syft, which is not preinstalled
       # on ubuntu-latest. Without this step the release fails at the SBOM pipe
