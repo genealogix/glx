@@ -57,6 +57,13 @@ const (
 	quietShortFlag = "-q"
 )
 
+// rootFlagPlugins and rootFlagQuiet are the dash-less flag names rootBoolFlag
+// reports, so callers can tell which root flag a token set.
+const (
+	rootFlagPlugins = "plugins"
+	rootFlagQuiet   = "quiet"
+)
+
 // quietValuePrefixes are the value-attached spellings pflag accepts for the
 // boolean quiet flag. pflag's short-argument parser checks for an `=` before it
 // falls back to a bool's implicit "true", so `-q=true` and `-q=false` are both
@@ -173,15 +180,76 @@ func discoverPlugins(pathEnv, pathExt string) []Plugin {
 	return plugins
 }
 
-// findPlugin returns the discovered plugin for the given subcommand name, if any.
+// findPlugin resolves the plugin for the given subcommand name, if any, with
+// the same answer discoverPlugins would give for that name — first PATH
+// directory wins, and within a directory the earliest PATHEXT extension wins —
+// but without listing any directory. The dispatch path (`glx <name>`) needs
+// exactly one candidate, so it stats `glx-<name>` (on Windows,
+// `glx-<name><ext>` for each PATHEXT extension in order) in each PATH
+// directory instead of reading every entry of every directory, which on a
+// typical PATH means walking /usr/bin and friends on every invocation.
+// discoverPlugins remains the implementation behind `glx --plugins`.
+//
+// Because the name is joined onto a directory rather than matched against a
+// listing, a name that is not a single path component (one containing a
+// separator, or on Windows a drive/stream colon) is rejected up front: a listing
+// could never have produced it, and joining it would reach files outside the
+// PATH directory itself.
 func findPlugin(name, pathEnv, pathExt string) (Plugin, bool) {
-	for _, p := range discoverPlugins(pathEnv, pathExt) {
-		if p.Name == name {
-			return p, true
+	isWindows := runtime.GOOS == osWindows
+	if !isPluginLookupName(name, isWindows) {
+		return Plugin{}, false
+	}
+	candidates := []string{pluginPrefix + name}
+	if isWindows {
+		exts := parsePathExt(pathExt, isWindows)
+		candidates = make([]string, 0, len(exts))
+		for _, ext := range exts {
+			candidates = append(candidates, pluginPrefix+name+ext)
+		}
+	}
+	for _, dir := range filepath.SplitList(pathEnv) {
+		if dir == "" {
+			continue
+		}
+		// Same normalization as discoverPlugins: an absolute Plugin.Path that
+		// does not depend on CWD at exec time.
+		absDir, err := filepath.Abs(dir)
+		if err != nil {
+			continue
+		}
+		for _, fn := range candidates {
+			path := filepath.Join(absDir, fn)
+			// os.Stat follows symlinks, so a PATH shim qualifies when its target
+			// is a regular executable file, exactly as in pluginNameFromEntry.
+			info, err := os.Stat(path)
+			if err != nil || !info.Mode().IsRegular() {
+				continue
+			}
+			if !isWindows && info.Mode()&0o111 == 0 {
+				continue
+			}
+
+			return Plugin{Name: name, Path: path}, true
 		}
 	}
 
 	return Plugin{}, false
+}
+
+// isPluginLookupName reports whether name can be looked up as a single file
+// name `glx-<name>` inside a PATH directory: non-empty, no NUL, no path
+// separator, and on Windows no `\` or `:` (which would address a drive or an
+// NTFS alternate data stream).
+func isPluginLookupName(name string, isWindows bool) bool {
+	if name == "" || strings.ContainsAny(name, "/\x00") {
+		return false
+	}
+	if isWindows && strings.ContainsAny(name, `\:`) {
+		return false
+	}
+
+	return !strings.ContainsRune(name, filepath.Separator)
 }
 
 // pluginNameFromEntry extracts a plugin's logical name from an entry in the PATH
@@ -255,10 +323,12 @@ func pluginNameFromEntry(dir string, e os.DirEntry, exts []string, isWindows boo
 // resolveRegularFile returns the FileInfo that governs whether e (an entry in
 // dir) may be exec'd as a plugin, following symlinks to do so.
 //
-// os.DirEntry.Info reports the link's own metadata (lstat semantics), so a
-// symlink needs an explicit os.Stat of the joined path to inspect what it points
-// at. os.Stat walks the whole link chain and returns an error for dangling links
-// and cycles, so both are rejected here. Anything that is not ultimately a
+// Whether os.DirEntry.Info follows symlinks is implementation-dependent, so
+// this does not rely on it either way: whenever the entry's info still reports
+// a symlink, the joined path is os.Stat'd to inspect what it points at, and
+// when Info has already resolved the link that step is simply skipped. os.Stat
+// walks the whole link chain and returns an error for dangling links and
+// cycles, so both are rejected here. Anything that is not ultimately a
 // regular file — a directory, device, socket, or FIFO, whether named directly or
 // reached through a link — is rejected as well.
 func resolveRegularFile(dir string, e os.DirEntry) (fs.FileInfo, bool) {
@@ -398,10 +468,20 @@ func knownCommandNames(root *cobra.Command) map[string]bool {
 	return out
 }
 
+// endOfFlags is the conventional end-of-options marker. pflag stops parsing
+// flags at it and cobra's subcommand lookup (stripFlags) stops there too, so
+// every token after it is positional and none of them names a subcommand.
+const endOfFlags = "--"
+
 // firstSubcommandToken returns the first non-flag token in args (the candidate
 // subcommand name) and the args that follow it. Tokens starting with "-" are
 // skipped on the way to the first positional argument; this matches how git
 // resolves its subcommand when global flags appear before it.
+//
+// The scan stops at the `--` end-of-flags marker and reports no subcommand,
+// matching cobra: `glx -- foo` does not run a `foo` subcommand, so it must not
+// dispatch a `glx-foo` plugin either, and `glx -- --plugins` must not be read
+// as the --plugins flag.
 //
 // IMPORTANT (tripwire for future contributors): this helper assumes every
 // global/root flag is a boolean (no value follows it). If a value-taking
@@ -409,12 +489,18 @@ func knownCommandNames(root *cobra.Command) map[string]bool {
 // misread the value as the subcommand. Adding such a flag MUST be paired with
 // teaching this function to consult `rootCmd.PersistentFlags()` so it can skip
 // past the value of value-taking flags. Today's root flags (`-q`/`--quiet`,
-// `--plugins`) are both booleans, so the simple scan is correct.
+// `--plugins`) are both booleans, so the simple scan is correct. Note that a
+// boolean flag never consumes a following token: pflag gives bool flags an
+// implicit value, so `glx --quiet false` sets quiet and treats `false` as the
+// subcommand (cobra reports `unknown command "false"`). This scan agrees.
 //
 // Args before the resolved token are NOT forwarded to a plugin in Phase 1 — a
 // deliberate simplification that mirrors git's behavior with global flags.
 func firstSubcommandToken(args []string) (name string, rest []string, ok bool) {
 	for i, a := range args {
+		if a == endOfFlags {
+			return "", nil, false
+		}
 		if a == "" || strings.HasPrefix(a, "-") {
 			continue
 		}
@@ -425,59 +511,86 @@ func firstSubcommandToken(args []string) (name string, rest []string, ok bool) {
 	return "", nil, false
 }
 
-// pluginsFlagRequested reports whether the user invoked `glx --plugins` with no
-// subcommand attached. Both the bare flag form (`--plugins`) and the
-// value-attached forms cobra accepts for bool flags (`--plugins=true`,
-// `--plugins=1`, etc.) are recognized; falsey values fall through so they
-// reach cobra's normal flag parsing path. The check runs before cobra parses
-// args because rootCmd has no Run handler — making it runnable to read the
-// flag via RunE would suppress cobra's standard "unknown command" error for
-// typos. When a subcommand IS present, --plugins is ignored and the
-// subcommand wins.
-func pluginsFlagRequested(args []string) bool {
-	if _, _, hasSub := firstSubcommandToken(args); hasSub {
-		return false
+// rootBoolFlag recognizes one spelling of the root command's boolean flags as
+// pflag would parse it: the bare forms (`--plugins`, `--quiet`, `-q`) and the
+// value-attached forms (`--plugins=<bool>`, `--quiet=<bool>`, `-q=<bool>`).
+// It returns the flag's long name without dashes and the value pflag would
+// assign. ok is false for anything else — a positional token, `--`, an
+// unrecognized flag, or a value-attached form whose value pflag would reject
+// (which cobra reports as an invalid argument).
+func rootBoolFlag(a string) (name string, value, ok bool) {
+	switch a {
+	case pluginsFlag:
+		return rootFlagPlugins, true, true
+	case quietFlag, quietShortFlag:
+		return rootFlagQuiet, true, true
 	}
-	for _, a := range args {
-		if a == pluginsFlag {
-			return true
-		}
-		if rest, ok := strings.CutPrefix(a, pluginsFlag+"="); ok {
-			if b, err := strconv.ParseBool(rest); err == nil && b {
-				return true
-			}
+	if raw, found := strings.CutPrefix(a, pluginsFlag+"="); found {
+		b, err := strconv.ParseBool(raw)
+
+		return rootFlagPlugins, b, err == nil
+	}
+	for _, prefix := range quietValuePrefixes {
+		if raw, found := strings.CutPrefix(a, prefix); found {
+			b, err := strconv.ParseBool(raw)
+
+			return rootFlagQuiet, b, err == nil
 		}
 	}
 
-	return false
+	return "", false, false
 }
 
-// quietFlagRequested reports whether `-q`, `--quiet`, or a truthy value-attached
-// form (`--quiet=true|1|t|...`, `-q=true|1|t|...`) was passed in args. Both the
-// long and shorthand value-attached spellings are recognized because pflag
-// accepts both; matching only the long one would make `glx -q=true --plugins`
-// print the empty-case notice that `-q` is supposed to suppress.
+// pluginsFlagRequested reports whether `glx <args>` is a request to list
+// plugins: --plugins resolves to true and nothing else on the command line
+// would make cobra do something different. Every token must be a recognized
+// spelling of a root boolean flag (see rootBoolFlag); a subcommand, the `--`
+// marker, an unknown flag (`glx --plugins --bogus`), or an unparseable value
+// makes this return false so cobra reports the problem with its usual error
+// instead of the listing silently swallowing it. When a flag is repeated the
+// last occurrence wins, as it does in pflag (`--plugins --plugins=false` does
+// not list).
+//
+// The check runs before cobra parses args because rootCmd has no Run handler —
+// making it runnable to read the flag via RunE would suppress cobra's standard
+// "unknown command" error for typos.
+func pluginsFlagRequested(args []string) bool {
+	requested := false
+	for _, a := range args {
+		name, value, ok := rootBoolFlag(a)
+		if !ok {
+			return false
+		}
+		if name == rootFlagPlugins {
+			requested = value
+		}
+	}
+
+	return requested
+}
+
+// quietFlagRequested reports the value pflag would give --quiet for args: each
+// recognized spelling (`-q`, `--quiet`, `--quiet=<bool>`, `-q=<bool>`) sets it,
+// and the last one wins, so `-q --quiet=false` is not quiet. Both the long and
+// shorthand value-attached spellings are recognized because pflag accepts
+// both. Scanning stops at the `--` end-of-flags marker, after which pflag reads
+// nothing as a flag.
 //
 // Used by Execute() to honor the established `--quiet` contract for the
 // `glx --plugins` listing path, which runs before cobra parses flags into the
 // package-level quietOutput variable.
 func quietFlagRequested(args []string) bool {
+	quiet := false
 	for _, a := range args {
-		if a == quietShortFlag || a == quietFlag {
-			return true
+		if a == endOfFlags {
+			break
 		}
-		for _, prefix := range quietValuePrefixes {
-			rest, ok := strings.CutPrefix(a, prefix)
-			if !ok {
-				continue
-			}
-			if b, err := strconv.ParseBool(rest); err == nil && b {
-				return true
-			}
+		if name, value, ok := rootBoolFlag(a); ok && name == rootFlagQuiet {
+			quiet = value
 		}
 	}
 
-	return false
+	return quiet
 }
 
 // pluginDispatchTarget decides whether `glx <args>` should be redirected to a

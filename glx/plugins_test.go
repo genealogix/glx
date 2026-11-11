@@ -357,6 +357,91 @@ func TestFindPlugin_HitAndMiss(t *testing.T) {
 	}
 }
 
+func TestFindPlugin_RejectsMultiComponentNames(t *testing.T) {
+	dir := t.TempDir()
+	// dir/glx-a/b is an executable file: joining the name "a/b" onto dir would
+	// reach it, but no PATH listing could ever have named it, so it must not
+	// be dispatchable.
+	sub := filepath.Join(dir, "glx-a")
+	if err := os.Mkdir(sub, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	makeFakePluginFile(t, sub, "b", "echo nope")
+	for _, name := range []string{"a/b", "a" + string(filepath.Separator) + "b", "", "a\x00b"} {
+		if p, ok := findPlugin(name, dir, defaultPathExtForTest()); ok {
+			t.Errorf("findPlugin(%q) = %+v, true; want false", name, p)
+		}
+	}
+}
+
+func TestIsPluginLookupName(t *testing.T) {
+	tests := []struct {
+		name      string
+		isWindows bool
+		want      bool
+	}{
+		{"hello", false, true},
+		{"hello.world", false, true},
+		{"__foo", false, true},
+		{"", false, false},
+		{"a/b", false, false},
+		{"a\x00b", false, false},
+		{"hello", true, true},
+		{"a/b", true, false},
+		{`a\b`, true, false},
+		{"c:evil", true, false},
+		{"foo:stream", true, false},
+	}
+	for _, tt := range tests {
+		if got := isPluginLookupName(tt.name, tt.isWindows); got != tt.want {
+			t.Errorf("isPluginLookupName(%q, %v) = %v; want %v", tt.name, tt.isWindows, got, tt.want)
+		}
+	}
+}
+
+// TestFindPlugin_AgreesWithDiscovery pins that the targeted lookup used for
+// dispatch resolves every name to the same Plugin the full listing reports,
+// including first-PATH-dir-wins precedence, and that a directory named like a
+// plugin resolves in neither.
+func TestFindPlugin_AgreesWithDiscovery(t *testing.T) {
+	first, second := t.TempDir(), t.TempDir()
+	makeFakePluginFile(t, first, "glx-alpha", "echo first-alpha")
+	makeFakePluginFile(t, second, "glx-alpha", "echo second-alpha")
+	makeFakePluginFile(t, second, "glx-beta", "echo beta")
+	if err := os.WriteFile(filepath.Join(first, "README"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(first, pluginFileName("glx-gamma")), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	pathEnv := first + string(os.PathListSeparator) + second
+	ext := defaultPathExtForTest()
+
+	discovered := discoverPlugins(pathEnv, ext)
+	if len(discovered) != 2 {
+		t.Fatalf("discoverPlugins = %+v; want alpha and beta", discovered)
+	}
+	if filepath.Dir(discovered[0].Path) != first {
+		t.Fatalf("discoverPlugins alpha = %+v; want it from the first PATH dir", discovered[0])
+	}
+	for _, want := range discovered {
+		got, ok := findPlugin(want.Name, pathEnv, ext)
+		if !ok {
+			t.Errorf("findPlugin(%q) ok=false; discovery found %+v", want.Name, want)
+
+			continue
+		}
+		// EqualFold: on Windows the lookup builds the lowercased name, while
+		// discovery reports the on-disk spelling; both name the same file.
+		if got.Name != want.Name || !strings.EqualFold(got.Path, want.Path) {
+			t.Errorf("findPlugin(%q) = %+v; discovery says %+v", want.Name, got, want)
+		}
+	}
+	if _, ok := findPlugin("gamma", pathEnv, ext); ok {
+		t.Errorf("findPlugin(gamma) ok=true; a directory must not resolve as a plugin")
+	}
+}
+
 func TestFirstSubcommandToken(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -374,6 +459,17 @@ func TestFirstSubcommandToken(t *testing.T) {
 		{"global flag then sub", []string{"-q", "foo", "bar"}, "foo", []string{"bar"}, true},
 		{"long global then sub", []string{"--quiet", "validate"}, "validate", []string{}, true},
 		{"cobra-internal __complete", []string{"__complete", "validate"}, "__complete", []string{"validate"}, true},
+		// `--` ends flag parsing and cobra finds no subcommand after it, so
+		// neither may this scan: `glx -- foo` must not dispatch glx-foo.
+		{"-- then positional", []string{"--", "foo"}, "", nil, false},
+		{"-- then --plugins", []string{"--", "--plugins"}, "", nil, false},
+		{"flag, --, positional", []string{"-q", "--", "foo"}, "", nil, false},
+		{"sub before -- keeps -- in rest", []string{"foo", "--", "x"}, "foo", []string{"--", "x"}, true},
+		// pflag never consumes a token after a bool flag (it has an implicit
+		// value), so cobra reads `glx --quiet false` as subcommand "false".
+		{"--quiet false: value token is the subcommand", []string{"--quiet", "false", "foo"}, "false", []string{"foo"}, true},
+		{"-q false: value token is the subcommand", []string{"-q", "false"}, "false", []string{}, true},
+		{"--plugins true: value token is the subcommand", []string{"--plugins", "true"}, "true", []string{}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -402,6 +498,23 @@ func TestPluginsFlagRequested(t *testing.T) {
 		{"--plugins before a subcommand → subcommand wins", []string{"--plugins", "foo"}, false},
 		{"--plugins after a subcommand", []string{"foo", "--plugins"}, false},
 		{"unrelated invocation", []string{"validate", "/some/dir"}, false},
+		{"--plugins with -q=true", []string{"--plugins", "-q=true"}, true},
+		{"--plugins with --quiet=false", []string{"--quiet=false", "--plugins"}, true},
+		// Anything cobra would reject or treat differently falls through so
+		// cobra reports it instead of the listing swallowing it.
+		{"--plugins with unknown flag", []string{"--plugins", "--bogus"}, false},
+		{"--plugins with unknown short flag", []string{"-x", "--plugins"}, false},
+		{"--plugins with --help", []string{"--plugins", "--help"}, false},
+		{"--plugins with unparseable -q value", []string{"--plugins", "-q=garbage"}, false},
+		{"--plugins after --", []string{"--", "--plugins"}, false},
+		{"--plugins before --", []string{"--plugins", "--"}, false},
+		// pflag does not consume a space-separated bool value: `true` is a
+		// subcommand to cobra (unknown command "true"), so no listing.
+		{"--plugins true (space-separated value)", []string{"--plugins", "true"}, false},
+		{"--plugins false (space-separated value)", []string{"--plugins", "false"}, false},
+		// Last occurrence wins, as in pflag.
+		{"--plugins then --plugins=false", []string{"--plugins", "--plugins=false"}, false},
+		{"--plugins=false then --plugins", []string{"--plugins=false", "--plugins"}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -433,6 +546,17 @@ func TestQuietFlagRequested(t *testing.T) {
 		{"-q=garbage", []string{"-q=garbage"}, false},
 		{"-q=true before --plugins", []string{"-q=true", "--plugins"}, true},
 		{"-q before --plugins", []string{"-q", "--plugins"}, true},
+		// Last occurrence wins, as in pflag.
+		{"-q then --quiet=false", []string{"-q", "--quiet=false"}, false},
+		{"--quiet=false then -q", []string{"--quiet=false", "-q"}, true},
+		{"-q=true then -q=false", []string{"-q=true", "-q=false", "--plugins"}, false},
+		// A space-separated value is not consumed by pflag: `-q false` is
+		// quiet with a positional "false" (which cobra then rejects).
+		{"-q false (space-separated value)", []string{"-q", "false"}, true},
+		{"--quiet false (space-separated value)", []string{"--quiet", "false"}, true},
+		// Nothing after `--` is a flag.
+		{"-q after --", []string{"--", "-q"}, false},
+		{"-q before --", []string{"-q", "--", "x"}, true},
 		{"unrelated", []string{"validate", "/path"}, false},
 	}
 	for _, tt := range tests {
