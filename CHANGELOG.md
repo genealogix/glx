@@ -84,6 +84,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Fixed
 
+- **Media imports and merges preserve integrity across filesystem aliases** — Corrupt or unsupported GEDZIP media now fails an import even when an older destination file exists. Case-variant intermediate media symlinks are rejected, single-file merges report media inspection failures and dangling-reference risks, and canonical Unicode case-folding collisions receive distinct filenames. Follow-up to #1391. (#1447)
+
 - **`glx merge` warns about source media under a case-variant directory** — The warning for a single-file destination now finds `MEDIA/files` as well as `media/files`. (#1391)
 - **Media-free imports ignore unrelated sibling media paths** — GEDCOM and GEDZIP imports in both layouts skip binary staging and validation when no source media needs copying. Case-variant binary directories retain their existing names so references in sibling archives continue to resolve. Media entity YAML still rejects linked destination directories and files. Metadata failure snapshots use streaming hashes instead of retaining a second archive in memory. (#1391)
 - **Failed media publication retains binaries referenced by partially installed metadata** — GEDCOM and GEDZIP imports roll back newly committed media only when nonpublication is confirmed, including after metadata rename errors; merge failures retain binaries whenever metadata rollback is incomplete. Shared case-variant media directories keep their spelling so older references still resolve. Dense matching refreshes cache free suffixes, indexed reuse shares allocator claims, and canonical filename provenance follows the final allocation. (#1391)
