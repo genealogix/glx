@@ -202,17 +202,19 @@ func TestImport_GEDCOM7DestinationCollisionKeepsDecodedOriginalName(t *testing.T
 				filesDir := filepath.Join(outputRoot, "media", "files")
 				require.NoError(t, os.MkdirAll(filesDir, 0o755))
 				originalBytes := []byte("already present")
-				require.NoError(t, os.WriteFile(filepath.Join(filesDir, encoded), originalBytes, 0o600))
+				// The archive names the file decoded (#1152), so that is the
+				// spelling an earlier import occupies.
+				require.NoError(t, os.WriteFile(filepath.Join(filesDir, decoded), originalBytes, 0o600))
 
 				res := runGLX(t, work, "import", src, "-o", output, "--format", format)
 				require.Equal(t, 0, res.exitCode, res.stderr)
 				media := importedMediaEntity(t, output, format, "media-1")
-				require.Equal(t, "media/files/CharlotteBront%C3%AB-2.jpg", media.URI)
+				require.Equal(t, "media/files/CharlotteBrontë-2.jpg", media.URI)
 				require.Equal(t, decoded, media.Properties[glxlib.MediaPropertyOriginalFilename])
 				actual, err := os.ReadFile(filepath.Join(outputRoot, filepath.FromSlash(media.URI)))
 				require.NoError(t, err)
 				require.Equal(t, sourceBytes, actual)
-				prior, err := os.ReadFile(filepath.Join(filesDir, encoded))
+				prior, err := os.ReadFile(filepath.Join(filesDir, decoded))
 				require.NoError(t, err)
 				require.Equal(t, originalBytes, prior)
 			})

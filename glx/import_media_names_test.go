@@ -95,26 +95,41 @@ func TestReserveImportMediaDestinations_PreservesExistingFileAndReferences(t *te
 	require.Equal(t, []byte("old bytes"), oldBytes)
 }
 
-func TestReserveImportMediaDestinations_UsesVersionAwareOriginalName(t *testing.T) {
+// original_filename names the source file a GEDCOM 7.0 reference actually
+// opened (#1153). The importer reads CharlotteBront%C3%AB.jpg as the decoded
+// CharlotteBrontë.jpg, and the archive file is named that way (#1152), but a
+// source directory holding only the literal %-named file is what the copy
+// reads, so that is the name recorded.
+func TestReserveImportMediaDestinations_RecordsTheSourceSpellingThatOpened(t *testing.T) {
 	const encoded = "CharlotteBront%C3%AB.jpg"
-	archiveDir := t.TempDir()
-	filesDir := filepath.Join(archiveDir, glxlib.MediaFilesDir)
-	require.NoError(t, os.MkdirAll(filesDir, dirPermissions))
-	require.NoError(t, os.WriteFile(filepath.Join(filesDir, encoded), []byte("old bytes"), filePermissions))
-	media := &glxlib.Media{URI: glxlib.MediaFilesDir + "/" + encoded}
-	glx := &glxlib.GLXFile{Media: map[string]*glxlib.Media{"file": media}}
-	files := []glxlib.MediaFileSource{{
-		MediaID: "file", SourceType: glxlib.MediaSourceFile, RelativePath: "media/files/" + encoded,
-		OriginalFilename: "CharlotteBrontë.jpg", TargetFilename: encoded,
-	}}
-	sourceDir := t.TempDir()
-	require.NoError(t, os.MkdirAll(filepath.Join(sourceDir, "media", "files"), dirPermissions))
-	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "media", "files", encoded), []byte("new bytes"), filePermissions))
+	const decoded = "CharlotteBrontë.jpg"
+	for _, tc := range []struct {
+		name, onDisk, wantOriginal string
+	}{
+		{"decoded source", decoded, decoded},
+		{"literal percent source", encoded, encoded},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			archiveDir := t.TempDir()
+			filesDir := filepath.Join(archiveDir, glxlib.MediaFilesDir)
+			require.NoError(t, os.MkdirAll(filesDir, dirPermissions))
+			require.NoError(t, os.WriteFile(filepath.Join(filesDir, decoded), []byte("old bytes"), filePermissions))
+			media := &glxlib.Media{URI: glxlib.MediaFilesDir + "/" + decoded}
+			glx := &glxlib.GLXFile{Media: map[string]*glxlib.Media{"file": media}}
+			files := []glxlib.MediaFileSource{{
+				MediaID: "file", SourceType: glxlib.MediaSourceFile, RelativePath: "media/files/" + encoded,
+				OriginalFilename: decoded, RequestedFilename: decoded, TargetFilename: decoded,
+			}}
+			sourceDir := t.TempDir()
+			require.NoError(t, os.MkdirAll(filepath.Join(sourceDir, "media", "files"), dirPermissions))
+			require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "media", "files", tc.onDisk), []byte("new bytes"), filePermissions))
 
-	require.NoError(t, allocateImportMediaDestinations(glx, files, archiveDir, sourceDir, nil))
-	require.Equal(t, "CharlotteBront%C3%AB-2.jpg", files[0].TargetFilename)
-	require.Equal(t, glxlib.MediaFilesDir+"/CharlotteBront%C3%AB-2.jpg", media.URI)
-	require.Equal(t, "CharlotteBrontë.jpg", media.Properties[glxlib.MediaPropertyOriginalFilename])
+			require.NoError(t, allocateImportMediaDestinations(glx, files, archiveDir, sourceDir, nil))
+			require.Equal(t, "CharlotteBrontë-2.jpg", files[0].TargetFilename)
+			require.Equal(t, glxlib.MediaFilesDir+"/CharlotteBrontë-2.jpg", media.URI)
+			require.Equal(t, tc.wantOriginal, media.Properties[glxlib.MediaPropertyOriginalFilename])
+		})
+	}
 }
 
 func TestReserveImportMediaDestinations_UnoccupiedAndEmpty(t *testing.T) {

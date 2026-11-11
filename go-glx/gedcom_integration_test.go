@@ -1671,7 +1671,7 @@ func TestMediaImport_OriginalFilenamePercentDecoding(t *testing.T) {
 			name:    "7.0 percent-encoded basename is decoded",
 			version: "7.0",
 			fileRef: "media/CharlotteBront%C3%AB.jpg",
-			wantURI: "media/files/CharlotteBront%C3%AB.jpg",
+			wantURI: "media/files/CharlotteBrontë.jpg", // the archive file is named decoded too (#1152)
 			want:    "CharlotteBrontë.jpg",
 		},
 		{

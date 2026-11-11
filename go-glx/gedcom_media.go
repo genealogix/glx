@@ -257,18 +257,20 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 		// Relative path — track for copying and rewrite URI
 		normalizedRef := normalizePathSeparators(fileRef)
 		basename := filepath.Base(normalizedRef)
+		// A GEDCOM 7.0 FILE payload is a URI reference, so the file it names
+		// is the decoded one: the archive file, uri and original_filename all
+		// use the decoded name (#1152). 5.5.1 paths keep a literal %.
 		originalFilename := originalFilenameFor(basename, conv.Version)
-		targetName := conv.MediaFileNames.Allocate(basename)
+		targetName := conv.MediaFileNames.Allocate(originalFilename)
 		source := MediaFileSource{
 			MediaID:           mediaID,
 			SourceType:        MediaSourceFile,
 			RelativePath:      normalizedRef,
 			OriginalFilename:  originalFilename,
-			RequestedFilename: basename,
+			RequestedFilename: originalFilename,
 			TargetFilename:    targetName,
 		}
 		source.SetMediaURI(media, targetName)
-		conv.MediaFileSources = append(conv.MediaFileSources, source)
 		// Record the pre-rename basename: a collision rename (photo.jpg →
 		// photo-2.jpg) puts only the renamed form in the URI, which would
 		// otherwise lose the source filename entirely. A ref already pointing
@@ -283,6 +285,9 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 		if !isCanonicalMediaRef(normalizedRef) {
 			source.RecordOriginalFilename(media)
 		}
+		// Append after stamping, so the CLI's copy knows the stamp is this
+		// import's guess and may correct it (ResolveOriginalFilename).
+		conv.MediaFileSources = append(conv.MediaFileSources, source)
 	} else {
 		// URL, absolute path, or empty — leave as-is
 		media.URI = fileRef
@@ -313,21 +318,15 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 	return media
 }
 
-// originalFilenameFor returns the source filename to record for a relative
-// FILE ref's basename. GEDCOM 7.0 FILE payloads are URI references, so a
-// percent-encoded basename names a file that exists only decoded
-// (CharlotteBront%C3%AB.jpg → CharlotteBrontë.jpg, matching the copyMediaFile
-// fallback); 5.5.1 payloads are plain paths where a literal % must survive
-// untouched. A 7.0 encoding that is malformed, or whose decoded form is not a
-// bare filename per isBareDecodedFilename, keeps the raw basename. On that
-// reject path the recorded value is knowingly not the source's decoded name
-// (a legitimate filename containing a disallowed rune, e.g. a bidi
-// directional mark, stays percent-encoded, indistinguishable from a 5.5.1
-// literal %) — it matches uri and the on-disk name instead; see #1152, which
-// owns the encoded-form question. Note that copyMediaFile resolves the encoded/decoded
-// ambiguity in the opposite order — raw path first, decode only on a miss —
-// so when the raw-named file is the one on disk, the recorded name never
-// existed; only the CLI knows which candidate resolved (#1153).
+// originalFilenameFor returns the source filename for a relative FILE ref's
+// basename, which is also the name the file is given in the archive. GEDCOM
+// 7.0 FILE payloads are URI references, so a percent-encoded basename names a
+// file that exists only decoded (CharlotteBront%C3%AB.jpg → CharlotteBrontë.jpg);
+// 5.5.1 payloads are plain paths where a literal % must survive untouched. A
+// 7.0 encoding that is malformed, or whose decoded form is not a bare filename
+// per isBareDecodedFilename, keeps the raw basename. This is the importer's
+// best reading of the reference: a source file found under the other spelling
+// corrects it once resolved (ResolveOriginalFilename, #1153).
 func originalFilenameFor(basename string, version GEDCOMVersion) string {
 	if version != GEDCOM70 {
 		return basename

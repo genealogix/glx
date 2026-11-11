@@ -83,6 +83,15 @@ func allocateImportMediaDestinations(glx *glxlib.GLXFile, files []glxlib.MediaFi
 	}
 	for i := range files {
 		mf := &files[i]
+		// original_filename names the file this reference actually opened,
+		// raw or percent-decoded, not the importer's guess between them
+		// (#1153). GEDZIP members are resolved, and corrected, in go-glx.
+		if mf.SourceType == glxlib.MediaSourceFile && bundle == nil && sourceDir != "" {
+			if f, opened, err := resolveMediaSourceFile(sourceDir, mf.RelativePath); err == nil {
+				_ = f.Close()
+				mf.ResolveOriginalFilename(glx.Media[mf.MediaID], opened)
+			}
+		}
 		oldName := mf.TargetFilename
 		requested := mf.RequestedFilename
 		if requested == "" {

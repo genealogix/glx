@@ -132,6 +132,23 @@ func (source *MediaFileSource) SetMediaURI(media *Media, filename string) {
 	}
 }
 
+// ResolveOriginalFilename records which file the FILE reference actually
+// named, once a caller has found it: opened is the path that resolved, raw or
+// percent-decoded. The importer can only guess between the two (it has no
+// filesystem), so original_filename it stamped from the guess is replaced
+// with opened's basename (#1153). A value it did not stamp, such as one the
+// archive already carried, is left alone.
+func (source *MediaFileSource) ResolveOriginalFilename(media *Media, opened string) {
+	actual := path.Base(strings.ReplaceAll(opened, `\`, "/"))
+	if actual == "" || actual == "." || actual == source.OriginalFilename {
+		return
+	}
+	source.OriginalFilename = actual
+	if source.originalFilenameRecorded && media != nil && media.Properties != nil {
+		media.Properties[MediaPropertyOriginalFilename] = actual
+	}
+}
+
 // RecordOriginalFilename preserves the source's interpreted FILE basename
 // unless a pre-existing property already supplies provenance.
 func (source *MediaFileSource) RecordOriginalFilename(media *Media) {
