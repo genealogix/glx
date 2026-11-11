@@ -208,6 +208,11 @@ func validatePathsShowing(streams *IOStreams, args []string, showFirstErrors int
 	// Determine archive root and validation mode
 	var archiveRoot string
 	var shouldValidateCrossRefs bool
+	// subset is set when the paths select part of an archive (an entity
+	// directory, or several paths) rather than the whole of one: the archive
+	// around them then supplies the references and vocabularies they use,
+	// and only findings about the selected files are reported (#1206).
+	var subset bool
 
 	if len(paths) == 1 {
 		if info, err := os.Stat(paths[0]); err == nil {
@@ -215,6 +220,12 @@ func validatePathsShowing(streams *IOStreams, args []string, showFirstErrors int
 			case info.IsDir():
 				archiveRoot = paths[0]
 				shouldValidateCrossRefs = true
+				// An entity directory inside an archive (`glx validate
+				// events`): its references and types live beside it.
+				if root, err := commonArchiveRoot(paths); err == nil && !sameDirectory(root, paths[0]) {
+					archiveRoot = root
+					subset = true
+				}
 			case isSelfContainedArchiveFile(paths[0]):
 				// A file that carries a whole archive — what `glx join`
 				// writes — has no siblings its references could resolve in,
@@ -236,6 +247,11 @@ func validatePathsShowing(streams *IOStreams, args []string, showFirstErrors int
 		}
 		archiveRoot = root
 		shouldValidateCrossRefs = true
+		// Only borrow context from a directory that is recognizably an
+		// archive. Paths whose common ancestor is not one (two unrelated
+		// folders under a home directory) are validated on their own, as
+		// before, rather than against whatever that ancestor holds.
+		subset = hasManagedSibling(root, "")
 	}
 
 	// Single file: structural validation + semantic checks (no cross-references)
@@ -306,6 +322,17 @@ func validatePathsShowing(streams *IOStreams, args []string, showFirstErrors int
 		return fmt.Errorf("%w: %s", ErrNothingToValidate, strings.Join(paths, ", "))
 	}
 
+	if subset {
+		return validateArchiveSubset(streams, archiveRoot, files, showFirstErrors)
+	}
+
+	return validateFilesAsArchive(streams, archiveRoot, files, showFirstErrors)
+}
+
+// validateFilesAsArchive validates files — keyed relative to archiveRoot — as
+// one complete archive: schema, references, vocabularies and media files.
+func validateFilesAsArchive(streams *IOStreams, archiveRoot string, files map[string][]byte, showFirstErrors int) error {
+	fileCount := len(files)
 	archive, duplicates, err := loadArchiveFromFiles(archiveRoot, files, true)
 	if err != nil {
 		reportArchiveLoadError(streams, err, showFirstErrors)
@@ -770,7 +797,7 @@ func withArchiveVocabularies(absRoot string, paths []string) []string {
 // it so duplicate-ID detection and error messages name paths the user
 // recognizes.
 func collectGLXFilesFromPaths(root string, paths []string) (map[string][]byte, error) {
-	if len(paths) == 1 {
+	if len(paths) == 1 && sameDirectory(root, paths[0]) {
 		return collectGLXFilesFromDir(root)
 	}
 
@@ -781,9 +808,10 @@ func collectGLXFilesFromPaths(root string, paths []string) (map[string][]byte, e
 	// The archive's vocabulary definitions are needed to validate any subset
 	// of it: without them every event, relationship, and place type reads as
 	// undefined. Include the conventional vocabularies/ directory under the
-	// shared root when it exists and was not named explicitly. Cross-references
-	// to entities outside the selected paths are still reported as errors —
-	// the selection is validated as the archive it would be on its own.
+	// shared root when it exists and was not named explicitly. When the root
+	// is an archive, validateArchiveSubset reads the rest of it for context;
+	// otherwise the selection is validated as the archive it would be on its
+	// own, and references outside it are errors.
 	paths = withArchiveVocabularies(absRoot, paths)
 	// Explicitly named files are read through the same containment the
 	// directory walks use, so a symlink out of the archive is refused.

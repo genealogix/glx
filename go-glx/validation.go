@@ -42,27 +42,35 @@ func (glx *GLXFile) Validate() *ValidationResult {
 		PropertyVocabs: make(map[string]map[string]*PropertyDefinition),
 	}
 
+	// An empty entity node (`persons: {my-person-id: }`) decodes to a nil
+	// pointer. Report each one, then run every other check on a view without
+	// them so no check has to guard against nil (#1406).
+	nullFindings, view := glx.nullEntityFindings()
+	result.Errors = append(result.Errors, nullFindings...)
+
 	// Phase 1: Build existence maps
-	glx.buildEntityMaps(result)
-	glx.buildVocabularyMaps(result)
-	glx.buildPropertyVocabMaps(result)
+	view.buildEntityMaps(result)
+	view.buildVocabularyMaps(result)
+	view.buildPropertyVocabMaps(result)
+	view.validateIDCaseCollisions(result)
 
 	// Phase 2: Validate all references using reflection
-	glx.validateAllReferences(result)
+	view.validateAllReferences(result)
 
 	// Phase 3: Validate entity properties
-	glx.validateAllProperties(result)
+	view.validateAllProperties(result)
+	view.validateAssertionPropertyNames(result)
 
 	// Phase 4: Validate structural constraints
-	glx.validatePlaceHierarchyCycles(result)
-	glx.validateParticipantRoleContexts(result)
+	view.validatePlaceHierarchyCycles(result)
+	view.validateParticipantRoleContexts(result)
 
 	// Phase 5: Validate entity-level field formats
-	glx.validateEntityFieldFormats(result)
-	glx.validateCensusHouseholds(result)
+	view.validateEntityFieldFormats(result)
+	view.validateCensusHouseholds(result)
 
 	// Phase 6: Temporal consistency checks
-	glx.validateTemporalConsistency(result)
+	view.validateTemporalConsistency(result)
 
 	// The checks above walk entity maps, whose iteration order Go randomizes,
 	// so put the findings in a stable order: every caller then shows the same
@@ -412,23 +420,33 @@ func (glx *GLXFile) validateAllProperties(result *ValidationResult) {
 	relPropVocab := result.PropertyVocabs[PropRelationshipProperties]
 	glx.validateParticipantProperties(EntityTypeEvents, PropEventProperties, glx.Events, eventPropVocab, result)
 	glx.validateParticipantProperties(EntityTypeRelationships, PropRelationshipProperties, glx.Relationships, relPropVocab, result)
-	glx.validateAssertionParticipantProperties(eventPropVocab, result)
+	glx.validateAssertionParticipantProperties(eventPropVocab, relPropVocab, result)
 }
 
 // validateAssertionParticipantProperties validates properties on assertion participants.
 // Unlike events and relationships, assertions have no top-level Properties field, so
 // this is the only place where "missing vocab" warnings for assertion participants
 // can be emitted.
+//
+// The vocabulary follows the assertion's subject, as it does for the
+// participants of the subject itself: event_properties for an event subject,
+// relationship_properties for a relationship subject (#1225). Any other
+// subject cannot carry participants and is reported by the reference checks,
+// so it is checked against event_properties as before rather than skipped.
 func (glx *GLXFile) validateAssertionParticipantProperties(
-	propVocab map[string]*PropertyDefinition,
+	eventPropVocab, relPropVocab map[string]*PropertyDefinition,
 	result *ValidationResult,
 ) {
 	for assertionID, assertion := range glx.Assertions {
 		if assertion.Participant == nil || len(assertion.Participant.Properties) == 0 {
 			continue
 		}
+		vocabKey, propVocab := PropEventProperties, eventPropVocab
+		if assertion.Subject.Type() == EntityTypeRelationships {
+			vocabKey, propVocab = PropRelationshipProperties, relPropVocab
+		}
 		participantEntityID := assertionID + " participant"
-		glx.validateProperties(EntityTypeAssertions, participantEntityID, PropEventProperties, assertion.Participant.Properties, propVocab, result)
+		glx.validateProperties(EntityTypeAssertions, participantEntityID, vocabKey, assertion.Participant.Properties, propVocab, result)
 	}
 }
 
