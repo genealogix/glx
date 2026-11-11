@@ -287,7 +287,7 @@ npx --yes markdownlint-cli2 --fix
 3. Ensure all CI checks pass
 4. Add tests for new features and bug fixes
 5. Update documentation if behavior changes
-6. Add a changelog fragment for user-facing changes — run `make changelog` (or `changie new`) to create one file under `.changes/unreleased/`. Do **not** hand-edit `CHANGELOG.md`; it is regenerated from fragments at release time. Every fragment must carry an issue or PR reference in its required `Issue` field — e.g. `#123` or `PR #456`. For a multi-reference value containing a comma, pass it via the environment (the `-m`/`--custom` flag comma-splits): `CHANGIE_CUSTOM_Issue="#41, #775" changie new -k Added -b "..." --interactive=false`
+6. Add a changelog fragment for user-facing changes — run `make changelog` (or `changie new`) to create one file under `.changes/unreleased/`. Do **not** hand-edit `CHANGELOG.md`; it is regenerated from fragments at release time. Every fragment must carry an issue or PR reference in its required `Issue` field — e.g. `#123` or `PR #456`. For a multi-reference value containing a comma, pass it via the environment (the `-m`/`--custom` flag comma-splits): `CHANGIE_CUSTOM_Issue="#41, #775" changie new -k Added -b "..." --interactive=false` If the change breaks existing archives, the schema, the spec format or a public CLI/`go-glx` interface, also answer **yes** to the optional `Breaking` field (`-m Breaking=yes`); the entry then renders as `- **Breaking:** ...` under its usual kind, since Keep a Changelog has no Breaking section.
 
 ### Review Process
 

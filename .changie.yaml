@@ -14,7 +14,10 @@ envPrefix: CHANGIE_
 # wording verbatim in the per-version files; these formats govern NEW versions.
 versionFormat: '## [{{.Version}}] - {{.Time.Format "2006-01-02"}}'
 kindFormat: '### {{.Kind}}'
-changeFormat: '- {{.Body}} ({{.Custom.Issue}})'
+# A fragment marked Breaking=yes renders with a leading **Breaking:** (#390).
+# Keep a Changelog defines no Breaking kind, so the marker rides on whichever
+# kind the change is (usually Changed or Removed) instead of being a kind itself.
+changeFormat: '- {{if eq (index .Custom "Breaking") "yes"}}**Breaking:** {{end}}{{.Body}} ({{.Custom.Issue}})'
 # Keep a Changelog v1.1.0 kind order (Added, Changed, Deprecated, Removed,
 # Fixed, Security). Pinning it here fixes the Fixed/Removed transposition (#853)
 # by construction — changie always emits kinds in this order.
@@ -43,6 +46,16 @@ custom:
       type: string
       label: Issue or PR reference (e.g. "#123", "#41, #775", "PR #456")
       minLength: 2
+    # Optional (#390): "yes" when the change breaks existing archives, the
+    # schema, the spec format, or a go-glx/CLI interface — anything an
+    # implementor or user has to act on. Omit it otherwise.
+    - key: Breaking
+      type: enum
+      label: Breaking change? (spec, schema, archive format or public API)
+      optional: true
+      enumOptions:
+        - "no"
+        - "yes"
 newlines:
     afterChangelogHeader: 0
     beforeChangelogVersion: 1

@@ -74,6 +74,7 @@ Changes are tracked as **changie fragments** (`.changes/unreleased/*.yaml`), one
 - Every fragment MUST carry an issue/PR reference in its required `Issue` field — e.g. `#123` or `PR #456`. `changie new` refuses to create one without it.
   - Single ref: `changie new -k Added -b "Subject — detail." -m Issue="#123" --interactive=false`
   - Multi-ref (commas) must use the env var, since `-m` comma-splits: `CHANGIE_CUSTOM_Issue="#41, #775" changie new -k Added -b "..." --interactive=false`
+- A change that breaks archives, the schema, the spec format or a public CLI/`go-glx` interface also gets `-m Breaking=yes`; it renders as `**Breaking:**` under its kind (#390).
 - **Before adding a fragment, grep `.changes/unreleased/` for a sibling fragment about the same feature and edit that one instead of creating a duplicate.** changie does not consolidate `add X` + `fix X` + `refine X` — it emits three bullets. Folding follow-ups into the original fragment is the contributor's job (the release-time `/compact-changelog` pass is the backstop, not a substitute).
 - No "feature branch hygiene" dance is needed anymore: fragments have unique filenames, so branches never collide on `CHANGELOG.md`.
 
