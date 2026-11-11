@@ -15,6 +15,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -69,19 +70,8 @@ func planSourceMediaCopies(srcPath, destPath string, src *glxlib.GLXFile) ([]pla
 		return nil, fmt.Errorf("inspecting source media/files: %w", err)
 	}
 	if srcFiles == "" {
-		// Keep rejecting a canonical directory reached through a symlink,
-		// while treating a missing or non-directory path as no media to copy.
-		canonical := filepath.Join(srcPath, glxlib.MediaFilesDir)
-		info, statErr := os.Stat(canonical)
-		if statErr != nil && !os.IsNotExist(statErr) {
-			return nil, fmt.Errorf("inspecting source media/files: %w", statErr)
-		}
-		if statErr == nil && info.IsDir() {
-			if _, err := listMediaFilenames(canonical); err != nil {
-				return nil, fmt.Errorf("inspecting source media/files: %w", err)
-			}
-		}
-
+		// archiveMediaFilesDir has already refused a linked media directory,
+		// so an absent media/files means there is nothing to copy.
 		return nil, nil
 	}
 	if err := checkMediaDirectory(srcFiles); err != nil {
@@ -200,7 +190,7 @@ func matchingMergeMediaName(sourceRoot, sourceFile, destRoot, destDir, requested
 }
 
 // mediaFilesDirsIn resolves conventional media/files directories while keeping
-// their actual spelling. Intermediate directory symlinks are not followed;
+// their actual spelling. Intermediate directory symlinks are rejected, not followed;
 // callers reject ambiguous spellings before writing.
 func mediaFilesDirsIn(dir string) ([]string, error) {
 	parts := strings.Split(filepath.ToSlash(glxlib.MediaFilesDir), "/")
@@ -228,7 +218,8 @@ func mediaFilesDirsIn(dir string) ([]string, error) {
 // media/files component is resolved here and then refused by
 // openMediaDirectory: imports and merges do not read or write through
 // media-directory symlinks. A missing dir yields no names; any other listing
-// failure is returned.
+// failure is returned. Matching intermediate symlinks are rejected even when
+// their spelling differs, rather than being mistaken for absent media.
 func childDirsCaseInsensitive(dir, name string, allowLink bool) ([]string, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -241,6 +232,17 @@ func childDirsCaseInsensitive(dir, name string, allowLink bool) ([]string, error
 	var names []string
 	for _, e := range entries {
 		isLink := e.Type()&fs.ModeSymlink != 0
+		if isLink && !allowLink && strings.EqualFold(e.Name(), name) {
+			relevant, err := linkedMediaDirRelevant(dir, e.Name(), name)
+			if err != nil {
+				return nil, err
+			}
+			if relevant {
+				return nil, fmt.Errorf("media directory %s is a symlink; imports and merges do not follow media-directory symlinks, so replace it with a real directory: %w", filepath.Join(dir, e.Name()), os.ErrInvalid)
+			}
+
+			continue
+		}
 		if !e.Type().IsDir() && (!allowLink || !isLink) {
 			continue
 		}
@@ -253,6 +255,45 @@ func childDirsCaseInsensitive(dir, name string, allowLink bool) ([]string, error
 	}
 
 	return names, nil
+}
+
+// linkedMediaDirRelevant reports whether the symlink dir/linkName (a case
+// variant of name) is one an import or merge could read or write through. It
+// is when the canonical spelling resolves to the link itself (an exact match,
+// or any spelling on a case-insensitive filesystem), and when it leads to a
+// files directory that media references could address. An unrelated
+// case-variant link on a case-sensitive filesystem, such as a "Media" share
+// beside the archive, is ignored like any other sibling.
+func linkedMediaDirRelevant(dir, linkName, name string) (bool, error) {
+	link, err := os.Lstat(filepath.Join(dir, linkName))
+	if err != nil {
+		return false, fmt.Errorf("inspecting %s: %w", filepath.Join(dir, linkName), err)
+	}
+	canonical, err := os.Lstat(filepath.Join(dir, name))
+	switch {
+	case err == nil && os.SameFile(link, canonical):
+		return true, nil
+	case err != nil && !errors.Is(err, fs.ErrNotExist):
+		return false, fmt.Errorf("inspecting %s: %w", filepath.Join(dir, name), err)
+	}
+	for _, e := range readDirOrNil(filepath.Join(dir, linkName)) {
+		if strings.EqualFold(e.Name(), path.Base(glxlib.MediaFilesDir)) {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+// readDirOrNil lists a directory reached through a symlink, treating any
+// failure (a dangling link, a link to a file) as holding nothing.
+func readDirOrNil(dir string) []os.DirEntry {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil
+	}
+
+	return entries
 }
 
 // archiveMediaFilesDir finds the one real media/files directory, preserving its
