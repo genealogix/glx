@@ -81,6 +81,9 @@ func importGEDCOM(gedcomPath, outputPath, format string, validate, verbose bool,
 
 	// Determine GEDCOM source directory for resolving relative media file paths
 	gedcomDir := filepath.Dir(gedcomPath)
+	if importMediaSourcePaths {
+		recordMediaSourcePaths(glx, result.MediaFiles)
+	}
 	// Hold the media directory from allocation through publication or
 	// rollback, so a concurrent import cannot reuse a binary this one may
 	// still roll back (#1443).

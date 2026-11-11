@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -34,8 +33,8 @@ func TestImportGEDCOM_WaitsForMediaDirectoryLock(t *testing.T) {
 	source := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(source, "photo.jpg"), []byte("same bytes"), filePermissions))
 	gedcom := filepath.Join(source, "tree.ged")
-	require.NoError(t, os.WriteFile(gedcom, []byte(
-		"0 HEAD\n1 GEDC\n2 VERS 5.5.1\n0 @O1@ OBJE\n1 FILE photo.jpg\n2 FORM jpg\n0 TRLR\n"), filePermissions))
+	const tree = "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n0 @O1@ OBJE\n1 FILE photo.jpg\n2 FORM jpg\n0 TRLR\n"
+	require.NoError(t, os.WriteFile(gedcom, []byte(tree), filePermissions))
 
 	release, err := lockImportMedia(work, &bytes.Buffer{}) // import A, mid-publication
 	require.NoError(t, err)
@@ -60,7 +59,7 @@ func TestImportGEDCOM_WaitsForMediaDirectoryLock(t *testing.T) {
 	case <-time.After(30 * time.Second):
 		t.Fatal("import B did not resume after the lock was released")
 	}
-	assert.True(t, strings.Contains(out.String(), "Waiting for another import"), out.String())
+	assert.Contains(t, out.String(), "Waiting for another import")
 	assert.FileExists(t, filepath.Join(work, "b.glx"))
 }
 

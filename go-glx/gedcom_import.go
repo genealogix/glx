@@ -386,6 +386,10 @@ type ConversionContext struct {
 	SourceIDMap     map[string]string
 	RepositoryIDMap map[string]string
 	MediaIDMap      map[string]string
+	// MediaFileGroups maps an OBJE XRef with several FILEs to the Media IDs
+	// it became, one per FILE (#1308); MediaIDMap holds the first. Nil until
+	// such an OBJE is seen.
+	MediaFileGroups map[string][]string
 	PlaceIDMap      map[string]string
 
 	// Content-based deduplication maps (name/content -> GLX ID)

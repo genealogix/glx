@@ -140,9 +140,13 @@ Unknown event types fall back to Title Case of the snake_case type (e.g., `milit
 
 The importer handles three types of media references:
 
-- **Relative file paths**: Copied to `media/files/` in your archive, with paths rewritten automatically. Duplicate filenames are deduplicated (e.g., `photo.jpg` → `photo-2.jpg`), and the source file's basename is preserved in `media.properties.original_filename`. A GEDCOM 7.0 `FILE` payload is a URI reference, so a percent-encoded basename is decoded before it is recorded (`CharlotteBront%C3%AB.jpg` → `CharlotteBrontë.jpg`) — a malformed encoding, or one that decodes to something that is not a bare filename, keeps the raw basename. GEDCOM 5.5.1 payloads are plain paths and are recorded verbatim, so a literal `%` survives untouched. A ref already pointing into `media/files/` (a re-imported GLX export) is not stamped — its basename is the canonicalized name, not an original — unless a collision during the new import renames it, in which case the pre-rename name is recorded.
+- **Relative file paths**: Copied to `media/files/` in your archive, with paths rewritten automatically. Duplicate filenames are deduplicated (e.g., `photo.jpg` → `photo-2.jpg`), and the source file's basename is preserved in `media.properties.original_filename`. A GEDCOM 7.0 `FILE` payload is a URI reference, so a percent-encoded basename is decoded, and the archive file, its `uri` and `original_filename` all use the decoded name (`CharlotteBront%C3%AB.jpg` → `CharlotteBrontë.jpg`). A malformed encoding, or one that decodes to something that is not a bare filename, keeps the raw basename. GEDCOM 5.5.1 payloads are plain paths and are used verbatim, so a literal `%` survives untouched. When only the other spelling exists next to the GEDCOM (a literal `%`-named file under 7.0), `original_filename` names the file that was actually copied. With `--media-source-paths`, `media.properties.source_path` also keeps the reference's directory, so `photos/photo.jpg` and `backup/photo.jpg` stay distinguishable; it is off by default because folder names can be private. A ref already pointing into `media/files/` (a re-imported GLX export) is not stamped — its basename is the canonicalized name, not an original — unless a collision during the new import renames it, in which case the pre-rename name is recorded.
 - **URLs and absolute paths**: Preserved as-is in the media entity's URI field.
 - **BLOB data** (GEDCOM 5.5.1): Binary data is decoded and written to files in `media/files/`.
+
+A GEDCOM 7.0 `OBJE` with several `FILE` structures becomes one media entity per `FILE`, because a media entity has one `uri`. Each keeps the object's title, notes, crop and identifiers, plus its own file's format and title, and every record that points to the `OBJE` links all of them.
+
+Imports that write media to the same `media/files/` directory, such as single-file archives side by side, take turns: a second import waits for the first to finish instead of reusing a file the first may still roll back.
 
 ::: warning Media source directory
 Relative file paths in the GEDCOM are resolved from the directory containing the `.ged` file. Make sure media files are accessible at those paths before importing.
@@ -288,7 +292,8 @@ Repositories are automatically deduplicated by name, city, and country. If two G
 
 | GEDCOM Tag | GLX Field | Notes |
 |------------|-----------|-------|
-| `FILE` | `media.uri` | Relative paths rewritten to `media/files/`; source basename kept in `media.properties.original_filename` (percent-decoded for 7.0; import-only, not emitted on export) |
+| `FILE` | `media.uri` | One media entity per `FILE`. Relative paths rewritten to `media/files/` (percent-decoded for 7.0); source basename kept in `media.properties.original_filename` |
+| `FILE._ORIG` | `media.properties.original_filename` | GLX extension: `glx export` writes the original filename here and `glx import` reads it back, so a round trip keeps it |
 | `FILE.FORM` | (MIME inference) | GEDCOM 5.5.1 format |
 | `FILE.MIME` | `media.mime_type` | GEDCOM 7.0 explicit MIME |
 | `FILE.TITL` | `media.title` | |
@@ -297,6 +302,9 @@ Repositories are automatically deduplicated by name, city, and country. If two G
 | `TITL` | `media.title` | |
 | `CROP` | `media.properties.crop` | GEDCOM 7.0 crop coordinates |
 | `NOTE` | `media.notes` | |
+| `EXID` | `media.properties.external_ids` | With `EXID.TYPE` as the identifier type |
+| `_OID` | `media.properties.external_ids` | Ancestry media object id, type `ancestry` |
+| `_CLON._OID` | `media.properties.external_ids` | Media id in the tree an Ancestry tree was cloned from, type `ancestry_clone` |
 | `BLOB` | (decoded to file) | GEDCOM 5.5.1 deprecated binary data |
 
 ## Common Challenges

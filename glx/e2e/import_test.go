@@ -227,8 +227,10 @@ func TestImport_MediaWithoutBinaries(t *testing.T) {
 		rel   string
 		media int
 	}{
-		{"7.0/media-objects/obje-1.ged", 2},
-		{"7.0/media-objects/filename-1.ged", 1},
+		// One Media per FILE: obje-1 has two OBJEs of two FILEs each, and
+		// filename-1 one OBJE with twelve (#1308).
+		{"7.0/media-objects/obje-1.ged", 4},
+		{"7.0/media-objects/filename-1.ged", 12},
 	} {
 		t.Run(tc.rel, func(t *testing.T) {
 			parent := t.TempDir()

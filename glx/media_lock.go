@@ -74,7 +74,7 @@ func importMediaLockPath(archiveDir string) (string, error) {
 		abs = resolved
 	}
 	key := filepath.Clean(abs)
-	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
+	if runtime.GOOS == goosWindows || runtime.GOOS == "darwin" {
 		key = strings.ToLower(key)
 	}
 	sum := sha256.Sum256([]byte(key))

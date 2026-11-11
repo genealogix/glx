@@ -199,6 +199,10 @@ var (
 	importNoValidate      bool
 	importVerbose         bool
 	importShowFirstErrors int
+	// importMediaSourcePaths records each media file's FILE reference as
+	// properties.source_path (#1144). Package-level, like the other flags,
+	// because importGEDCOM is called directly by many tests.
+	importMediaSourcePaths bool
 )
 
 var importCmd = &cobra.Command{
@@ -233,7 +237,11 @@ Output formats:
   glx import family.ged -o family.glx --format single
 
   # Import without validation
-  glx import family.ged -o family-archive --no-validate`,
+  glx import family.ged -o family-archive --no-validate
+
+  # Keep each media file's source path, so photos/a.jpg and backup/a.jpg
+  # stay distinguishable after both become media/files/a*.jpg
+  glx import family.ged -o family-archive --media-source-paths`,
 	Args: cobra.ExactArgs(1),
 	RunE: runImport,
 }
@@ -244,6 +252,8 @@ func init() {
 	importCmd.Flags().BoolVar(&importNoValidate, "no-validate", false, "Skip validation before saving")
 	importCmd.Flags().BoolVarP(&importVerbose, "verbose", "v", false, "Verbose output")
 	importCmd.Flags().IntVar(&importShowFirstErrors, "show-first-errors", defaultShowFirstErrors, "Number of validation errors to show (0 for all)")
+	importCmd.Flags().BoolVar(&importMediaSourcePaths, "media-source-paths", false,
+		"Record each media file's path as written in the GEDCOM (properties.source_path); off by default because folder names can be private")
 
 	_ = importCmd.MarkFlagRequired("output")
 }

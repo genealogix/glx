@@ -62,6 +62,16 @@ func exportMedia(mediaID string, media *Media, expCtx *ExportContext) *GEDCOMRec
 			SubRecords: []*GEDCOMRecord{},
 		}
 
+		// The original filename travels as a GLX extension tag, so that a
+		// GLX → GEDCOM → GLX round trip keeps it instead of replacing it with
+		// the archive's own canonical name (#1149). Other readers ignore it.
+		if original, ok := getStringProperty(media.Properties, MediaPropertyOriginalFilename); ok && original != "" {
+			fileRecord.SubRecords = append(fileRecord.SubRecords, &GEDCOMRecord{
+				Tag:   GedcomTagOrig,
+				Value: original,
+			})
+		}
+
 		if expCtx.Version == GEDCOM70 {
 			// GEDCOM 7.0: MIME under FILE
 			if media.MimeType != "" {

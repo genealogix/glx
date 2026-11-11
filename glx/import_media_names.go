@@ -192,21 +192,8 @@ func (family *mediaFamilyIndex) match(requested string, firstFree int, matcher *
 	if !matcher.haveSource {
 		return "", nil
 	}
-	if family.byHash == nil {
-		family.byHash = make(map[[32]byte][]mediaFamilySeed)
-		family.cursor = make(map[[32]byte]int)
-	}
-	for family.indexed < len(family.seeds) && family.seeds[family.indexed].ordinal < firstFree {
-		seed := family.seeds[family.indexed]
-		if _, ok := matcher.destinationHashes[seed.name]; !ok {
-			if _, err := matcher.matchesFile(seed.name); err != nil {
-				return "", err
-			}
-		}
-		if cached, ok := matcher.destinationHashes[seed.name]; ok {
-			family.byHash[cached.hash] = append(family.byHash[cached.hash], seed)
-		}
-		family.indexed++
+	if err := family.indexBelow(firstFree, matcher); err != nil {
+		return "", err
 	}
 	matching := family.byHash[matcher.sourceHash]
 	i := family.cursor[matcher.sourceHash]
@@ -240,6 +227,29 @@ func (family *mediaFamilyIndex) match(requested string, firstFree int, matcher *
 	}
 
 	return "", nil
+}
+
+// indexBelow hashes the family's on-disk members with ordinals below
+// firstFree that are not indexed yet. Each member is read once per import.
+func (family *mediaFamilyIndex) indexBelow(firstFree int, matcher *importMediaMatcher) error {
+	if family.byHash == nil {
+		family.byHash = make(map[[32]byte][]mediaFamilySeed)
+		family.cursor = make(map[[32]byte]int)
+	}
+	for family.indexed < len(family.seeds) && family.seeds[family.indexed].ordinal < firstFree {
+		seed := family.seeds[family.indexed]
+		if _, ok := matcher.destinationHashes[seed.name]; !ok {
+			if _, err := matcher.matchesFile(seed.name); err != nil {
+				return err
+			}
+		}
+		if cached, ok := matcher.destinationHashes[seed.name]; ok {
+			family.byHash[cached.hash] = append(family.byHash[cached.hash], seed)
+		}
+		family.indexed++
+	}
+
+	return nil
 }
 
 func indexedCandidateName(base string, ordinal int) string {
@@ -512,4 +522,26 @@ func hashReader(r io.Reader) ([32]byte, error) {
 	copy(digest[:], h.Sum(nil))
 
 	return digest, nil
+}
+
+// recordMediaSourcePaths stamps each file-backed media with the FILE
+// reference it came from, as written in the GEDCOM (#1144). original_filename
+// keeps only the basename, so photos/photo.jpg and backup/photo.jpg both read
+// photo.jpg after import; source_path tells them apart. It is opt-in
+// (--media-source-paths) because a relative path can still name private
+// folders. A value the archive already carries is kept.
+func recordMediaSourcePaths(archive *glxlib.GLXFile, files []glxlib.MediaFileSource) {
+	for i := range files {
+		mf := &files[i]
+		media := archive.Media[mf.MediaID]
+		if media == nil || mf.SourceType != glxlib.MediaSourceFile || mf.RelativePath == "" {
+			continue
+		}
+		if media.Properties == nil {
+			media.Properties = make(map[string]any)
+		}
+		if _, exists := media.Properties[glxlib.MediaPropertySourcePath]; !exists {
+			media.Properties[glxlib.MediaPropertySourcePath] = mf.RelativePath
+		}
+	}
 }

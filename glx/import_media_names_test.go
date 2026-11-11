@@ -21,6 +21,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -488,4 +489,43 @@ func TestAllocateImportMediaDestinations_OnePath(t *testing.T) {
 		files := allocationFixture(t, onDisk, incoming)
 		require.Equal(t, want, allocatedNames(files))
 	})
+}
+
+// --media-source-paths keeps each file's FILE reference, so two sources that
+// share a basename stay distinguishable after import (#1144). Off, nothing is
+// recorded.
+func TestImportGEDCOM_MediaSourcePaths(t *testing.T) {
+	for _, enabled := range []bool{false, true} {
+		t.Run(fmt.Sprintf("enabled=%v", enabled), func(t *testing.T) {
+			source := t.TempDir()
+			for _, dir := range []string{"photos", "backup"} {
+				require.NoError(t, os.MkdirAll(filepath.Join(source, dir), dirPermissions))
+				require.NoError(t, os.WriteFile(filepath.Join(source, dir, "photo.jpg"), []byte(dir), filePermissions))
+			}
+			gedcom := filepath.Join(source, "tree.ged")
+			require.NoError(t, os.WriteFile(gedcom, []byte("0 HEAD\n1 GEDC\n2 VERS 5.5.1\n"+
+				"0 @O1@ OBJE\n1 FILE photos/photo.jpg\n2 FORM jpg\n"+
+				"0 @O2@ OBJE\n1 FILE backup/photo.jpg\n2 FORM jpg\n0 TRLR\n"), filePermissions))
+			previous := importMediaSourcePaths
+			importMediaSourcePaths = enabled
+			t.Cleanup(func() { importMediaSourcePaths = previous })
+
+			output := filepath.Join(t.TempDir(), "archive")
+			require.NoError(t, importGEDCOM(gedcom, output, FormatMulti, false, false, 0, io.Discard))
+			archive, _, err := LoadArchiveWithOptions(output, false)
+			require.NoError(t, err)
+			var paths []string
+			for _, media := range archive.Media {
+				if p, ok := media.Properties[glxlib.MediaPropertySourcePath].(string); ok {
+					paths = append(paths, p)
+				}
+			}
+			slices.Sort(paths)
+			if enabled {
+				require.Equal(t, []string{"backup/photo.jpg", "photos/photo.jpg"}, paths)
+			} else {
+				require.Empty(t, paths)
+			}
+		})
+	}
 }

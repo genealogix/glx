@@ -1140,6 +1140,8 @@ Standard properties include:
 - `crop` - Crop coordinates for images
 - `medium` - Physical medium type
 - `original_filename` - Original filename when imported
+- `source_path` - The imported GEDCOM's `FILE` reference, when recorded with `glx import --media-source-paths`
+- `external_ids` - Identifiers from external systems, such as an Ancestry media object id
 - `photographer` - Person who captured the media
 - `location` - Location where media was captured
 - `blob_size` - Length in bytes of the encoded GEDCOM 5.5.1 BLOB text (pre-decode), when imported from a BLOB record

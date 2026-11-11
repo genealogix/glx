@@ -168,9 +168,7 @@ func prepareCitationFromSOUR(sourRecord *GEDCOMRecord, conv *ConversionContext) 
 
 		case GedcomTagObje:
 			// Media linked to citation (reference or embedded)
-			if mediaID := resolveOBJE(sub, conv); mediaID != "" {
-				citation.Media = append(citation.Media, mediaID)
-			}
+			citation.Media = append(citation.Media, resolveOBJE(sub, conv)...)
 		}
 	}
 

@@ -90,6 +90,9 @@ func importGEDZIP(gedzipPath, outputPath, format string, validate, verbose bool,
 			_, _ = fmt.Fprintf(output, "Warning: %s\n", w.Message)
 		}
 	}
+	if importMediaSourcePaths {
+		recordMediaSourcePaths(glx, result.MediaFiles)
+	}
 	// Hold the media directory from allocation through publication or
 	// rollback, so a concurrent import cannot reuse a binary this one may
 	// still roll back (#1443).

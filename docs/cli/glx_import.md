@@ -47,6 +47,10 @@ glx import <file> [flags]
 
   # Import without validation
   glx import family.ged -o family-archive --no-validate
+
+  # Keep each media file's source path, so photos/a.jpg and backup/a.jpg
+  # stay distinguishable after both become media/files/a*.jpg
+  glx import family.ged -o family-archive --media-source-paths
 ```
 
 ### Options
@@ -54,6 +58,7 @@ glx import <file> [flags]
 ```
   -f, --format string           Output format: multi or single (default "multi")
   -h, --help                    help for import
+      --media-source-paths      Record each media file's path as written in the GEDCOM (properties.source_path); off by default because folder names can be private
       --no-validate             Skip validation before saving
   -o, --output string           Output file or directory (required)
       --show-first-errors int   Number of validation errors to show (0 for all) (default 10)

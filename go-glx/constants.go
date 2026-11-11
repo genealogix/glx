@@ -189,6 +189,14 @@ const (
 const (
 	MediaPropertyOriginalFilename = "original_filename" // Source filename before import canonicalization or collision renaming
 	MediaPropertyBlobSize         = "blob_size"         // Length in bytes of the encoded GEDCOM 5.5.1 BLOB text as the BLOB/CONT lines joined with newlines (pre-decode; includes the line separators, not the decoded file size)
+	MediaPropertyExternalIDs      = "external_ids"      // Identifiers from external systems, such as Ancestry's media object id (_OID)
+	MediaPropertySourcePath       = "source_path"       // FILE reference as written in the imported GEDCOM, when glx import --media-source-paths records it
+)
+
+// External identifier types recorded on media from vendor GEDCOM tags.
+const (
+	ExternalIDTypeAncestry      = "ancestry"       // Ancestry media object id (OBJE._OID)
+	ExternalIDTypeAncestryClone = "ancestry_clone" // media object id of the tree an Ancestry tree was cloned from (OBJE._CLON._OID)
 )
 
 // Deprecated property constants - these properties have been removed from the spec.
@@ -423,6 +431,9 @@ const (
 	GedcomTagFile   = "FILE"   // File reference
 	GedcomTagForm   = "FORM"   // Format
 	GedcomTagCrop   = "CROP"   // Crop coordinates (GEDCOM 7.0)
+	GedcomTagOrig   = "_ORIG"  // Original filename under FILE (GLX extension, written by glx export)
+	GedcomTagOID    = "_OID"   // Ancestry media object id
+	GedcomTagClon   = "_CLON"  // Ancestry clone provenance block
 	GedcomTagMime   = "MIME"   // MIME type (GEDCOM 7.0)
 	GedcomTagMedi   = "MEDI"   // Media type (GEDCOM 5.5.1)
 	GedcomTagTop    = "TOP"    // Top coordinate
