@@ -367,6 +367,13 @@ func (m *importMediaMatcher) unverifiableExisting(name string) string {
 	if m.haveSource || errors.Is(m.sourceErr, ErrGEDZIPEntryTooLarge) {
 		return ""
 	}
+	// A previous import must not hide corrupt or unsupported bundle data.
+	// Only the members staging downgrades to a warning can keep an
+	// unverified existing reference; every other failure fails the import.
+	if m.bundle != nil && m.source.SourceType == glxlib.MediaSourceFile &&
+		!bundleMemberUnavailable(m.source.MemberPath, m.sourceErr) {
+		return ""
+	}
 	var first string
 	for _, variant := range variants {
 		if m.claimed[variant] {
