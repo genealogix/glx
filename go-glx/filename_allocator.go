@@ -21,6 +21,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"unicode/utf8"
 
 	"golang.org/x/text/cases"
 	"golang.org/x/text/unicode/norm"
@@ -77,11 +78,29 @@ var filenameCaseFolders = sync.Pool{New: func() any {
 // FilenameCollisionKey folds case and canonical Unicode equivalents so names
 // that address the same file on common filesystems share a reservation.
 func FilenameCollisionKey(name string) string {
+	name = strings.TrimRight(name, ". ")
+	// ASCII is invariant under NFD and folds to its lowercase, so the common
+	// case skips both normalization passes and the pooled caser.
+	if isASCII(name) {
+		return strings.ToLower(name)
+	}
 	folder := filenameCaseFolders.Get().(*cases.Caser) //nolint:errcheck // the private pool only stores *cases.Caser
-	key := folder.String(norm.NFC.String(strings.TrimRight(name, ". ")))
+	// Canonical caseless matching requires decomposition on both sides of
+	// folding: folding itself can introduce a different normalization form.
+	key := norm.NFD.String(folder.String(norm.NFD.String(name)))
 	filenameCaseFolders.Put(folder)
 
 	return key
+}
+
+func isASCII(s string) bool {
+	for i := range len(s) {
+		if s[i] >= utf8.RuneSelf {
+			return false
+		}
+	}
+
+	return true
 }
 
 // Existing returns the first reserved spelling equivalent to name, if any.
