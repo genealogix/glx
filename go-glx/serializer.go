@@ -51,6 +51,15 @@ type SerializerOptions struct {
 
 	// Indent specifies the indentation string for YAML output (default: "  ")
 	Indent string
+
+	// StandardVocabularyFallback makes DeserializeMultiFileFromMap fill every
+	// vocabulary category the archive leaves empty, and every property
+	// definition it leaves out, from the embedded standard vocabularies
+	// before validating (MergeStandardVocabularies). A category the archive
+	// defines stays authoritative. Single-file archives are validated under
+	// the same rule, so this gives a directory archive the one a single file
+	// already has (#1355).
+	StandardVocabularyFallback bool
 }
 
 // DefaultSerializerOptions returns the default serializer options.
@@ -320,6 +329,7 @@ func (s *DefaultSerializer) DeserializeMultiFileFromMap(files map[string][]byte)
 	}
 
 	var allConflicts []string
+	origins := newKeyOrigins()
 
 	// Each file is a GLXFile fragment — the YAML top-level keys (persons:,
 	// events:, event_types:, etc.) determine what entities it contains,
@@ -348,7 +358,16 @@ func (s *DefaultSerializer) DeserializeMultiFileFromMap(files map[string][]byte)
 			return nil, nil, fmt.Errorf("failed to unmarshal %s: %w", filePath, err)
 		}
 		conflicts, _ := glx.Merge(&partial)
-		allConflicts = append(allConflicts, conflicts...)
+		allConflicts = append(allConflicts, origins.annotate(conflicts, filePath)...)
+		origins.record(&partial, filePath)
+	}
+
+	// Fill vocabulary categories the archive does not define from the
+	// standard vocabularies before validating, when asked to.
+	if s.Options.StandardVocabularyFallback {
+		if err := MergeStandardVocabularies(glx); err != nil {
+			return nil, nil, fmt.Errorf("loading standard vocabularies: %w", err)
+		}
 	}
 
 	// Validate if requested

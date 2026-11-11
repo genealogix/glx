@@ -88,7 +88,7 @@ The `subject` field uses a typed reference to avoid entity ID collisions. Exactl
 ### Entity ID (map key)
 
 - Format: Any alphanumeric string with hyphens, 1-64 characters
-- Must be unique within the archive
+- Must be unique among entities of this type, ignoring case
 - Example formats:
   - Descriptive: `john-birth-date`, `mary-occupation`
   - Random hex: `a1b2c3d4`
@@ -623,7 +623,7 @@ For conflicting evidence where sources disagree and resolution is unclear, set t
 - All source references must point to existing Source entities
 - All media references must point to existing Media entities
 - `participant.person` must reference an existing Person entity; `participant.role`, if present, must be from the [participant roles vocabulary](vocabularies.md#participant-roles-vocabulary) (unknown roles are errors)
-- `property` values should match properties defined in the appropriate [property vocabulary](vocabularies.md#property-vocabularies) (unknown properties generate warnings). Structural entity fields — `date`, `place`, and `title` on events; `name`, `type`, and `parent` on places; `type`, `start_event`, and `end_event` on relationships — are valid `property` targets without a vocabulary entry
+- `property` values should match properties defined in the appropriate [property vocabulary](vocabularies.md#property-vocabularies) (unknown properties generate warnings). Structural entity fields — `date`, `place`, `title`, and `type` on events; `name`, `type`, `parent`, `latitude`, and `longitude` on places; `type`, `start_event`, and `end_event` on relationships — are valid `property` targets without a vocabulary entry. Persons have no structural fields, so every person `property` is looked up in `person_properties`
 - Confidence must be from the [confidence levels vocabulary](vocabularies.md#confidence-levels-vocabulary); out-of-vocabulary values are a hard error. To use a custom level, add it to the archive's `confidence-levels.glx` first.
 
 ## File Organization

@@ -104,34 +104,19 @@ func loadArchiveForWrite(rootPath string) (*glxlib.GLXFile, []string, map[string
 // apart on a symlinked archive root.
 func loadArchiveFromFiles(rootPath string, files map[string][]byte, schemaValidate bool) (*glxlib.GLXFile, []string, error) {
 	if schemaValidate {
-		var fileErrors []fileValidationIssues
-		for _, relPath := range slices.Sorted(maps.Keys(files)) {
-			data := files[relPath]
-			absPath := filepath.Join(rootPath, relPath)
-
-			doc, parseErr := ParseYAMLFile(data)
-			if parseErr != nil {
-				fileErrors = append(fileErrors, fileValidationIssues{
-					path:       absPath,
-					issues:     []string{fmt.Sprintf("YAML parse error: %v", parseErr)},
-					parseError: true,
-				})
-
-				continue
-			}
-
-			issues := ValidateGLXFileStructure(doc)
-			if len(issues) > 0 {
-				fileErrors = append(fileErrors, fileValidationIssues{path: absPath, issues: issues})
-			}
-		}
-		if len(fileErrors) > 0 {
-			return nil, nil, &archiveFilesValidationError{files: fileErrors}
+		if err := schemaValidateFiles(rootPath, files); err != nil {
+			return nil, nil, err
 		}
 	}
 
-	// Pass schemaValidate to serializer to enable referential integrity validation
+	// Pass schemaValidate to serializer to enable referential integrity
+	// validation. That validation runs inside the deserializer, before the
+	// standard-vocabulary merge below, so the serializer is asked to apply
+	// the same fallback first: otherwise a directory archive missing, say,
+	// source-types.glx fails on a value `glx add` accepted from the standard
+	// vocabulary (#1355).
 	serializer := createSerializer(schemaValidate, false, "")
+	serializer.Options.StandardVocabularyFallback = schemaValidate
 	glx, duplicates, err := serializer.DeserializeMultiFileFromMap(files)
 	if err != nil {
 		return nil, nil, err
@@ -291,4 +276,35 @@ func writePartialArchive(dirPath string, partial *glxlib.GLXFile) (int, error) {
 //nolint:gocyclo // 21 vocab fields with identical empty-map guards; splitting hurts readability
 func mergeStandardVocabularies(archive *glxlib.GLXFile) error {
 	return glxlib.MergeStandardVocabularies(archive)
+}
+
+// schemaValidateFiles runs the JSON-schema check on every file in files and
+// returns an *archiveFilesValidationError naming each file that fails it.
+func schemaValidateFiles(rootPath string, files map[string][]byte) error {
+	var fileErrors []fileValidationIssues
+	for _, relPath := range slices.Sorted(maps.Keys(files)) {
+		data := files[relPath]
+		absPath := filepath.Join(rootPath, relPath)
+
+		doc, parseErr := ParseYAMLFile(data)
+		if parseErr != nil {
+			fileErrors = append(fileErrors, fileValidationIssues{
+				path:       absPath,
+				issues:     []string{fmt.Sprintf("YAML parse error: %v", parseErr)},
+				parseError: true,
+			})
+
+			continue
+		}
+
+		issues := ValidateGLXFileStructure(doc)
+		if len(issues) > 0 {
+			fileErrors = append(fileErrors, fileValidationIssues{path: absPath, issues: issues})
+		}
+	}
+	if len(fileErrors) > 0 {
+		return &archiveFilesValidationError{files: fileErrors}
+	}
+
+	return nil
 }

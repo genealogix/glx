@@ -122,7 +122,7 @@ Across all files in an archive, the validator checks:
 
 **Errors (Hard Failures):**
 
-- Entity IDs must be unique (no duplicates)
+- Entity IDs must be unique within each entity type, ignoring case (no duplicates)
 - All entity cross-references must point to existing entities
 - All vocabulary type references must be defined (event_types, relationship_types, etc.)
 - All property `reference_type` values must point to existing entities
@@ -334,7 +334,7 @@ Entity IDs can be any unique identifier you choose, with the following constrain
 
 - 1-64 characters in length
 - Alphanumeric characters (a-z, A-Z, 0-9) and hyphens only
-- Must be unique across the entire archive (case-insensitive — `Person-A` and `person-a` collide)
+- Must be unique within its entity type, compared case-insensitively — two persons `Person-A` and `person-a` collide, while a person and an event may share an ID. Every reference names the type it points at (`person:`, `event:`), so a shared ID across types is never ambiguous; each type is also written to its own directory in a multi-file archive
 
 > **Note:** Examples in this documentation use prefixes (e.g., `person-abc123`) for readability. Prefixes are not required—any format meeting the requirements above is valid.
 >

@@ -68,6 +68,9 @@ func mergeParticipantReviewArchive() *GLXFile {
 		"identity": {Type: RelationshipTypePossiblySamePerson, Participants: []Participant{{Person: "person-keep"}, {Person: "person-drop"}}},
 		"other":    {Type: RelationshipTypeAssociate, Participants: []Participant{{Person: "person-keep"}, {Person: "third"}}},
 	}
+	archive.Events = map[string]*Event{
+		"event-1": {Type: EventTypeResidence, Participants: []Participant{{Person: "person-keep"}}},
+	}
 	archive.EventProperties = map[string]*PropertyDefinition{
 		"linked_person":       {Label: "Linked person", ReferenceType: "persons"},
 		"linked_relationship": {Label: "Linked relationship", ReferenceType: "relationships"},
@@ -77,33 +80,50 @@ func mergeParticipantReviewArchive() *GLXFile {
 	return archive
 }
 
-func TestMergePersonsAssertionParticipantUsesEventVocabulary(t *testing.T) {
-	for _, dependent := range []bool{false, true} {
-		t.Run(fmt.Sprintf("dependent=%t", dependent), func(t *testing.T) {
-			archive := mergeParticipantReviewArchive()
-			properties := map[string]any{"linked_person": "person-drop"}
-			if dependent {
-				properties["linked_relationship"] = "identity"
-			}
-			archive.Assertions = map[string]*Assertion{
-				"claim":     {Subject: EntityRef{Relationship: "other"}, Participant: &Participant{Person: "person-keep", Properties: properties}},
-				"dependent": {Subject: EntityRef{Relationship: "other"}, Participant: &Participant{Person: "person-keep", Properties: map[string]any{"linked_assertion": "claim"}}},
-			}
-			require.NoError(t, MergeStandardVocabularies(archive))
-			require.Empty(t, archive.Validate().Errors, "fixture must be valid before merging")
-			result, err := MergePersons(archive, "person-keep", "person-drop", MergePersonsOptions{})
-			require.NoError(t, err)
-			if dependent {
-				assert.Equal(t, []string{"claim", "dependent"}, result.RemovedAssertions)
-				assert.Empty(t, archive.Assertions)
-			} else {
-				assert.Empty(t, result.RemovedAssertions)
-				assert.Equal(t, "person-keep", archive.Assertions["claim"].Participant.Properties["linked_person"])
-				assert.Equal(t, "claim", archive.Assertions["dependent"].Participant.Properties["linked_assertion"])
-			}
-			require.Empty(t, archive.Validate().Errors, "no dangling participant qualifiers may be published")
-		})
+// Participant properties are read with the subject's vocabulary (#1225):
+// event_properties for an event subject, relationship_properties for a
+// relationship subject. Each case defines the reference properties only in
+// the vocabulary its subject selects.
+func TestMergePersonsAssertionParticipantUsesSubjectVocabulary(t *testing.T) {
+	for _, subject := range []string{"event", "relationship"} {
+		for _, dependent := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/dependent=%t", subject, dependent), func(t *testing.T) {
+				mergeParticipantSubjectVocabularyCase(t, subject, dependent)
+			})
+		}
 	}
+}
+
+func mergeParticipantSubjectVocabularyCase(t *testing.T, subject string, dependent bool) {
+	t.Helper()
+	archive := mergeParticipantReviewArchive()
+	ref := EntityRef{Event: "event-1"}
+	if subject == "relationship" {
+		ref = EntityRef{Relationship: "other"}
+		archive.RelationshipProperties = archive.EventProperties
+		archive.EventProperties = map[string]*PropertyDefinition{}
+	}
+	properties := map[string]any{"linked_person": "person-drop"}
+	if dependent {
+		properties["linked_relationship"] = "identity"
+	}
+	archive.Assertions = map[string]*Assertion{
+		"claim":     {Subject: ref, Participant: &Participant{Person: "person-keep", Properties: properties}},
+		"dependent": {Subject: ref, Participant: &Participant{Person: "person-keep", Properties: map[string]any{"linked_assertion": "claim"}}},
+	}
+	require.NoError(t, MergeStandardVocabularies(archive))
+	require.Empty(t, archive.Validate().Errors, "fixture must be valid before merging")
+	result, err := MergePersons(archive, "person-keep", "person-drop", MergePersonsOptions{})
+	require.NoError(t, err)
+	if dependent {
+		assert.Equal(t, []string{"claim", "dependent"}, result.RemovedAssertions)
+		assert.Empty(t, archive.Assertions)
+	} else {
+		assert.Empty(t, result.RemovedAssertions)
+		assert.Equal(t, "person-keep", archive.Assertions["claim"].Participant.Properties["linked_person"])
+		assert.Equal(t, "claim", archive.Assertions["dependent"].Participant.Properties["linked_assertion"])
+	}
+	require.Empty(t, archive.Validate().Errors, "no dangling participant qualifiers may be published")
 }
 
 func TestMergePersonsAssertionValueKeepsSubjectVocabulary(t *testing.T) {
@@ -113,14 +133,19 @@ func TestMergePersonsAssertionValueKeepsSubjectVocabulary(t *testing.T) {
 	archive.Sources = map[string]*Source{"source": {Title: "Unrelated record"}}
 	archive.Assertions = map[string]*Assertion{
 		"value":       {Subject: EntityRef{Relationship: "other"}, Property: "linked", Value: "person-drop"},
-		"participant": {Subject: EntityRef{Relationship: "other"}, Participant: &Participant{Person: "person-keep", Properties: map[string]any{"linked": "source"}}},
+		// Participant properties follow the subject too (#1225): under a
+		// relationship subject "linked" is a person reference and is
+		// rewritten; under an event subject it names a source and is kept.
+		"participant":       {Subject: EntityRef{Relationship: "other"}, Participant: &Participant{Person: "person-keep", Properties: map[string]any{"linked": "person-drop"}}},
+		"event-participant": {Subject: EntityRef{Event: "event-1"}, Participant: &Participant{Person: "person-keep", Properties: map[string]any{"linked": "source"}}},
 	}
 	require.NoError(t, MergeStandardVocabularies(archive))
 	require.Empty(t, archive.Validate().Errors)
 	_, err := MergePersons(archive, "person-keep", "person-drop", MergePersonsOptions{})
 	require.NoError(t, err)
 	assert.Equal(t, "person-keep", archive.Assertions["value"].Value)
-	assert.Equal(t, "source", archive.Assertions["participant"].Participant.Properties["linked"])
+	assert.Equal(t, "person-keep", archive.Assertions["participant"].Participant.Properties["linked"])
+	assert.Equal(t, "source", archive.Assertions["event-participant"].Participant.Properties["linked"])
 	require.Empty(t, archive.Validate().Errors)
 }
 

@@ -53,6 +53,8 @@ The standard vocabulary files are:
 
 When creating an archive with `glx init` or `glx import`, these files are automatically copied from the [Standard Vocabularies](../5-standard-vocabularies/) templates into a `vocabularies/` directory. You can reorganize or relocate them as you see fit — the parser discovers vocabulary definitions by their top-level keys, not by file path.
 
+A vocabulary the archive does not define at all falls back to the standard one, so an archive missing `source-types.glx` still accepts the standard source types. A vocabulary the archive does define replaces the standard one entirely: values it leaves out are not valid in that archive. Property vocabularies fall back per property: a property the archive does not define uses the standard definition.
+
 ---
 
 ## Event Types Vocabulary
