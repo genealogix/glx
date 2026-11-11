@@ -6,4 +6,14 @@ events:
     participants:
       - person: person-nonexistent
         role: subject
-
+      # Near-miss of the head_of_household role: exercises the
+      # hyphen/underscore "did you mean" suggestion.
+      - person: person-john
+        role: head-of-household
+  event-baptism:
+    # Broken vocabulary reference (event_types), not an entity reference.
+    type: event-type-nonexistent
+    date: "1850-02-01"
+    participants:
+      - person: person-john
+        role: subject
