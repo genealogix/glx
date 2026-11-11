@@ -1,0 +1,105 @@
+name: Release cosign install
+
+# release.yml runs only on a tag push, so nothing on a pull request ever
+# executed its "Install cosign" step: a Dependabot bump of
+# sigstore/cosign-installer merged green and met its first real run in a
+# release, inside the job that holds id-token: write. This workflow runs that
+# step, with release.yml's own inputs, on every change to either file.
+#
+# It also enforces the invariant release.yml documents above its
+# cosign-release pin: the pin must equal the installer's bootstrap version.
+# When they match, the installer installs its digest-checked bootstrap binary
+# and makes one download. When they differ, it downloads the pinned release,
+# its signature bundles and a public key from raw.githubusercontent.com, and
+# verifies one cosign with another, which adds network endpoints and failure
+# modes to the signing job. An installer bump that moves the bootstrap
+# therefore fails here until the pin is moved deliberately, after checking
+# that `sign-blob --bundle` still writes the same bundle format.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/release.yml'
+      - '.github/workflows/release-cosign-install.yml'
+  pull_request:
+    paths:
+      - '.github/workflows/release.yml'
+      - '.github/workflows/release-cosign-install.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-cosign-install-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cosign-install:
+    name: Release cosign install
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Read release.yml's cosign-installer pin
+        id: pin
+        run: |
+          release=.github/workflows/release.yml
+          self=.github/workflows/release-cosign-install.yml
+          pattern='s|^ *uses: sigstore/cosign-installer@\([0-9a-f]\{40\}\) .*|\1|p'
+          sha="$(sed -n "$pattern" "$release")"
+          self_sha="$(sed -n "$pattern" "$self")"
+          ver="$(sed -n "s|^ *cosign-release: '\(v[0-9][0-9.]*\)'.*|\1|p" "$release")"
+          if [ -z "$sha" ] || [ "$(printf '%s\n' "$sha" | wc -l)" -ne 1 ]; then
+            echo "::error file=$release::expected exactly one SHA-pinned sigstore/cosign-installer uses: line, found: '$sha'"
+            exit 1
+          fi
+          if [ -z "$ver" ] || [ "$(printf '%s\n' "$ver" | wc -l)" -ne 1 ]; then
+            echo "::error file=$release::expected exactly one cosign-release: 'vX.Y.Z' input, found: '$ver'"
+            exit 1
+          fi
+          if [ "$self_sha" != "$sha" ]; then
+            echo "::error file=$self::this workflow pins cosign-installer@$self_sha but release.yml pins @$sha; they must match"
+            exit 1
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "version=$ver" >> "$GITHUB_OUTPUT"
+
+      - name: Check the pin equals the installer's bootstrap version
+        env:
+          INSTALLER_SHA: ${{ steps.pin.outputs.sha }}
+          PINNED: ${{ steps.pin.outputs.version }}
+        run: |
+          url="https://raw.githubusercontent.com/sigstore/cosign-installer/${INSTALLER_SHA}/action.yml"
+          action="$(curl -fsSL --retry 5 --retry-all-errors "$url")"
+          bootstrap="$(printf '%s\n' "$action" | sed -n "s|^ *bootstrap_version='\(v[0-9][0-9.]*\)'.*|\1|p")"
+          if [ -z "$bootstrap" ]; then
+            echo "::error::could not read bootstrap_version from $url"
+            exit 1
+          fi
+          if [ "$PINNED" != "$bootstrap" ]; then
+            echo "::error file=.github/workflows/release.yml::cosign-release is $PINNED but cosign-installer@${INSTALLER_SHA} bootstraps $bootstrap. Move the pin to $bootstrap after confirming sign-blob --bundle still writes the same bundle format (see the comment above the pin)."
+            exit 1
+          fi
+          echo "cosign-release $PINNED matches the installer's bootstrap version"
+
+      - name: Install cosign exactly as release.yml does
+        # Only vX.Y.Z tags are published, no floating v4; do not "tidy" to @v4 (#938).
+        uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
+        with:
+          cosign-release: ${{ steps.pin.outputs.version }}
+
+      - name: Check the installed cosign version
+        env:
+          PINNED: ${{ steps.pin.outputs.version }}
+        run: |
+          got="$(cosign version --json 2>/dev/null | jq -r .gitVersion)"
+          if [ "$got" != "$PINNED" ]; then
+            echo "::error::installed cosign reports '$got', expected $PINNED"
+            exit 1
+          fi
+          echo "cosign $got installed"
