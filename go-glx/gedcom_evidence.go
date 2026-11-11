@@ -171,8 +171,8 @@ func prepareCitationFromSOUR(sourRecord *GEDCOMRecord, conv *ConversionContext) 
 			// GEDCOM quality assessment (0-3). Map to assertion confidence via the
 			// confidence_levels vocabulary (#515) and preserve the raw value in
 			// citation notes for lossless round-trip.
-			citation.Notes = append(citation.Notes, "GEDCOM QUAY: "+sub.Value)
 			raw := strings.TrimSpace(sub.Value)
+			citation.Notes = append(citation.Notes, "GEDCOM QUAY: "+raw)
 			if mapped, ok := conv.GEDCOMIndex.ConfidenceLevels[raw]; ok {
 				confidence = mapped
 			}

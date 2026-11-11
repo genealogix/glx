@@ -693,7 +693,7 @@ GENEALOGIX assertions are implicit in GEDCOM:
 | `property` | Property tag (BIRT, DEAT, OCCU, etc.) | |
 | `value` | Property value | |
 | `citations` | SOUR tags on property | |
-| `confidence` | (none) | Set by researcher; not derived from GEDCOM |
+| `confidence` | SOUR.QUAY (import only) | Mapped through the `confidence_levels` vocabulary's `gedcom` field; highest QUAY wins across several SOURs |
 
 GEDCOM Example:
 

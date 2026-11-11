@@ -867,6 +867,34 @@ func TestImportQUAY_MaxRankAcrossSources(t *testing.T) {
 		"strongest QUAY across multiple SOURs should set the assertion's confidence")
 }
 
+// TestImportQUAY_NameAndNegativeAssertions verifies QUAY reaches the
+// assertions created outside the property/event helpers: a NAME with a
+// cited SOUR, and the disproven assertion produced by a NO record.
+func TestImportQUAY_NameAndNegativeAssertions(t *testing.T) {
+	gedcom := "0 HEAD\n1 GEDC\n2 VERS 7.0\n" +
+		"0 @S1@ SOUR\n1 TITL Parish Register\n" +
+		"0 @I1@ INDI\n1 NAME John /Smith/\n2 SOUR @S1@\n3 PAGE Folio 3\n3 QUAY 2\n" +
+		"1 NO MARR\n2 SOUR @S1@\n3 PAGE Folio 9\n3 QUAY 3\n" +
+		"0 TRLR\n"
+
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	var nameAssertion, negativeAssertion *Assertion
+	for _, a := range glxFile.Assertions {
+		switch {
+		case a.Property == PersonPropertyName:
+			nameAssertion = a
+		case a.Status == "disproven":
+			negativeAssertion = a
+		}
+	}
+	require.NotNil(t, nameAssertion, "expected a name assertion")
+	require.NotNil(t, negativeAssertion, "expected a disproven assertion from NO MARR")
+	assert.Equal(t, ConfidenceLevelMedium, nameAssertion.Confidence)
+	assert.Equal(t, ConfidenceLevelHigh, negativeAssertion.Confidence)
+}
+
 func TestImportTITL_WithDatePreserved(t *testing.T) {
 	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n" +
 		"0 @I1@ INDI\n1 NAME John /Smith/\n" +

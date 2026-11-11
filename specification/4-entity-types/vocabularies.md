@@ -432,16 +432,19 @@ confidence_levels:
   high:
     label: "High Confidence"
     description: "Multiple high-quality sources agree, minimal uncertainty"
+    gedcom: "3"
     rank: 3
 
   medium:
     label: "Medium Confidence"
     description: "Some evidence supports conclusion, but conflicts or gaps exist"
+    gedcom: "2"
     rank: 2
 
   low:
     label: "Low Confidence"
     description: "Limited evidence, significant uncertainty"
+    gedcom: "1"
     rank: 0
 
 
@@ -459,7 +462,7 @@ confidence_levels:
 | `label` | Yes | Human-readable label |
 | `description` | No | Detailed description |
 | `rank` | No | Numeric ordering used by `glx diff` to detect confidence upgrades vs downgrades. Higher values rank above lower. Standard levels supply ranks `low=0, medium=2, high=3`; rank 1 is intentionally reserved for a custom level (e.g. `tentative`). Custom levels without a rank are skipped by upgrade-detection. |
-| `gedcom` | No | Reserved for the corresponding GEDCOM QUAY value (`0`-`3`) for import/export mapping. The standard levels do not currently populate this field; defined in the JSON schema for forward compatibility with QUAY round-tripping. |
+| `gedcom` | No | GEDCOM `QUAY` value (`0`-`3`) that maps to this level on import. The standard levels map `3` → `high`, `2` → `medium` and `1` → `low`; `0` has no entry of its own and imports at the level `1` maps to, since the field is single-valued. When an assertion cites several sources with a `QUAY`, the highest `QUAY` wins. A `QUAY` value no level declares leaves `confidence` empty. Import only: export never reconstructs a `QUAY`. |
 
 ### Important Notes
 
