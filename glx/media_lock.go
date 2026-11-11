@@ -41,7 +41,7 @@ func lockImportMedia(archiveDir string, out io.Writer) (func(), error) {
 	if err != nil {
 		return nil, err
 	}
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, filePermissions)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, filePermissions) // #nosec G304 -- os.TempDir() plus a hex digest; nothing archive-controlled reaches the name
 	if err != nil {
 		return nil, fmt.Errorf("opening media lock %s: %w", path, err)
 	}
