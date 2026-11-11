@@ -65,6 +65,24 @@ glx import family.ged -o family.glx --format single
 | `--no-validate` | | `false` | Skip validation before saving |
 | `--verbose` | `-v` | `false` | Show detailed import progress |
 | `--show-first-errors` | | `10` | Number of validation errors to show (0 for all) |
+| `--platform` | | (detected) | Force a platform adapter instead of detecting it from `HEAD.SOUR` |
+| `--list-platforms` | | `false` | List the platform adapters and exit |
+
+### Platform Adapters
+
+Ancestry, Family Tree Maker, RootsMagic and other programs each write their own custom tags. The importer reads the exporting program from the file's `HEAD.SOUR` record and, before converting, rewrites that program's custom tags into the standard GEDCOM structures it already maps. `--verbose` prints the adapter it chose and how many tags of each kind it rewrote.
+
+| Platform | `--platform` | Rewrites |
+|----------|--------------|----------|
+| Ancestry | `ancestry` | `_MILT` → `military_service` event (its value kept as `event_subtype`); `_DCAUSE` → the death event's `cause` (a death event is created if there is none); `_APID` on a citation → `external_ids` plus a `url` to the Ancestry record, on a source → `external_ids`; HTML markup in notes stripped; `_UID` → `external_ids` |
+| Family Tree Maker | `ftm` | Same as Ancestry |
+| MyHeritage | `myheritage` | `_UID` → `external_ids`; HTML markup in notes stripped |
+| RootsMagic | `rootsmagic` | `_UID` → `external_ids` |
+| Legacy Family Tree | `legacy` | `_UID` → `external_ids` |
+| Findmypast | `findmypast` | `_UID` → `external_ids` |
+| Anything else | `generic` | Nothing |
+
+`_UID` is rewritten on individuals, sources and repositories, the records whose external IDs are kept. A custom tag no adapter maps is still preserved on persons under `gedcom_extensions`, exactly as without an adapter. A `_DCAUSE` that carries its own citations, or names a cause when the death event already has one, is left as an extension rather than merged.
 
 ### Single-File vs Multi-File
 
@@ -264,6 +282,8 @@ If no `TYPE` tag is present, the importer infers the source type from keywords i
 | `DATA.TEXT` | `citation.properties.text_from_source` | Transcription from source |
 | `TEXT` | `citation.properties.text_from_source` | GEDCOM 5.5.1 direct text |
 | `QUAY` | `citation.notes` | Quality assessment preserved as note |
+| `EXID` | `citation.properties.external_ids` | |
+| `WWW` | `citation.properties.url` | Not a standard citation tag; written by some programs and by the Ancestry adapter for `_APID` |
 | `NOTE` | `citation.notes` | |
 | `OBJE` | `citation.media` | |
 
