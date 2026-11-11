@@ -19,6 +19,7 @@ import (
 	"net/url"
 	"path"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode"
@@ -31,21 +32,29 @@ func convertMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) error {
 		return fmt.Errorf("%w: expected %s, got %s", ErrUnexpectedMediaRecord, GedcomTagObje, objeRecord.Tag)
 	}
 
-	// Generate media ID
-	mediaID := generateMediaID(conv)
-	conv.MediaIDMap[objeRecord.XRef] = mediaID
+	mediaIDs := make([]string, 0, 1)
+	for _, part := range splitOBJEFiles(objeRecord) {
+		mediaID := generateMediaID(conv)
+		mediaIDs = append(mediaIDs, mediaID)
+		conv.Logger.LogInfof("Converting OBJE %s -> %s", objeRecord.XRef, mediaID)
+		media := convertMediaCommon(part, mediaID, conv)
 
-	conv.Logger.LogInfof("Converting OBJE %s -> %s", objeRecord.XRef, mediaID)
-
-	// Convert using common logic
-	media := convertMediaCommon(objeRecord, mediaID, conv)
-
-	// Warn about empty URI but preserve the entity — metadata (TITL, NOTE, FORM)
-	// may still be valuable. Validation will catch the missing required URI field.
-	if media.URI == "" {
-		conv.Logger.LogInfof("OBJE %s has no FILE reference or BLOB data — URI will be empty", objeRecord.XRef)
-		conv.addWarning(objeRecord.Line, GedcomTagObje,
-			fmt.Sprintf("OBJE %s: no FILE reference or BLOB data, URI will be empty", objeRecord.XRef))
+		// Warn about empty URI but preserve the entity — metadata (TITL, NOTE, FORM)
+		// may still be valuable. Validation will catch the missing required URI field.
+		if media.URI == "" {
+			conv.Logger.LogInfof("OBJE %s has no FILE reference or BLOB data — URI will be empty", objeRecord.XRef)
+			conv.addWarning(objeRecord.Line, GedcomTagObje,
+				fmt.Sprintf("OBJE %s: no FILE reference or BLOB data, URI will be empty", objeRecord.XRef))
+		}
+		conv.GLX.Media[mediaID] = media
+		conv.Stats.MediaCreated++
+	}
+	conv.MediaIDMap[objeRecord.XRef] = mediaIDs[0]
+	if len(mediaIDs) > 1 {
+		if conv.MediaFileGroups == nil {
+			conv.MediaFileGroups = make(map[string][]string)
+		}
+		conv.MediaFileGroups[objeRecord.XRef] = mediaIDs
 	}
 
 	// Handle SOUR subrecords (only for top-level OBJE records)
@@ -58,47 +67,70 @@ func convertMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) error {
 			}
 			if result.CitationID != "" {
 				if citation, ok := conv.GLX.Citations[result.CitationID]; ok {
-					citation.Media = append(citation.Media, mediaID)
+					citation.Media = append(citation.Media, mediaIDs...)
 				}
 			}
 			// Finalize private synthetic drafts only after attaching contextual
 			// media, so this record cannot modify another record's shared source.
 			if source := result.bareSource(conv); source != nil {
-				source.Media = append(source.Media, mediaID)
+				source.Media = append(source.Media, mediaIDs...)
 			}
 			result.finalizeSource(conv)
 		}
 	}
 
-	// Store media
-	conv.GLX.Media[mediaID] = media
-	conv.Stats.MediaCreated++
-
 	return nil
 }
 
-// convertEmbeddedMedia converts an embedded OBJE (without XRef) and returns the media ID
-func convertEmbeddedMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) string {
-	// Generate media ID for embedded object
-	mediaID := generateMediaID(conv)
-
-	conv.Logger.LogInfo("Converting embedded OBJE -> " + mediaID)
-
-	// Convert using common logic
-	media := convertMediaCommon(objeRecord, mediaID, conv)
-
-	// Warn about empty URI but preserve the entity and its metadata.
-	if media.URI == "" {
-		conv.Logger.LogInfo("Embedded OBJE has no FILE reference or BLOB data — URI will be empty")
-		conv.addWarning(objeRecord.Line, GedcomTagObje,
-			"embedded OBJE: no FILE reference or BLOB data, URI will be empty")
+// splitOBJEFiles returns one OBJE record per FILE structure (#1308). A GEDCOM
+// 7.0 OBJE may carry several FILEs, such as a scan and its transcription or
+// the same photo at two resolutions, and a GLX Media entity has one uri, so
+// each FILE becomes its own Media. Every copy keeps the OBJE's other
+// substructures (TITL, NOTE, CROP, _OID and so on) and one FILE with its own
+// FORM, MIME and TITL. An OBJE with at most one FILE is returned unchanged.
+func splitOBJEFiles(obje *GEDCOMRecord) []*GEDCOMRecord {
+	var files, shared []*GEDCOMRecord
+	for _, sub := range obje.SubRecords {
+		if sub.Tag == GedcomTagFile {
+			files = append(files, sub)
+		} else {
+			shared = append(shared, sub)
+		}
+	}
+	if len(files) <= 1 {
+		return []*GEDCOMRecord{obje}
+	}
+	parts := make([]*GEDCOMRecord, 0, len(files))
+	for _, file := range files {
+		part := *obje
+		part.SubRecords = append(slices.Clone(shared), file)
+		parts = append(parts, &part)
 	}
 
-	// Store media
-	conv.GLX.Media[mediaID] = media
-	conv.Stats.MediaCreated++
+	return parts
+}
 
-	return mediaID
+// convertEmbeddedMedia converts an embedded OBJE (without XRef) and returns
+// the IDs of its Media entities, one per FILE (#1308).
+func convertEmbeddedMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) []string {
+	mediaIDs := make([]string, 0, 1)
+	for _, part := range splitOBJEFiles(objeRecord) {
+		mediaID := generateMediaID(conv)
+		mediaIDs = append(mediaIDs, mediaID)
+		conv.Logger.LogInfo("Converting embedded OBJE -> " + mediaID)
+		media := convertMediaCommon(part, mediaID, conv)
+
+		// Warn about empty URI but preserve the entity and its metadata.
+		if media.URI == "" {
+			conv.Logger.LogInfo("Embedded OBJE has no FILE reference or BLOB data — URI will be empty")
+			conv.addWarning(objeRecord.Line, GedcomTagObje,
+				"embedded OBJE: no FILE reference or BLOB data, URI will be empty")
+		}
+		conv.GLX.Media[mediaID] = media
+		conv.Stats.MediaCreated++
+	}
+
+	return mediaIDs
 }
 
 // resolveOBJE resolves an OBJE subrecord to a media ID. It handles three cases:
@@ -106,19 +138,25 @@ func convertEmbeddedMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) str
 //  2. VOID pointer (GEDCOM 7.0 "1 OBJE @VOID@") with subrecords — creates embedded media
 //  3. Embedded OBJE (no value, has subrecords) — creates a new media entity
 //
-// Returns the media ID, or empty string if resolution failed (warnings are emitted).
-func resolveOBJE(objeRecord *GEDCOMRecord, conv *ConversionContext) string {
+// Returns the media IDs, one per FILE of the object (#1308), or none if
+// resolution failed (warnings are emitted).
+func resolveOBJE(objeRecord *GEDCOMRecord, conv *ConversionContext) []string {
 	isVoid := objeRecord.Value == "@VOID@"
 	hasRef := objeRecord.Value != "" && !isVoid
 
 	if hasRef {
 		// Case 1: Reference to top-level OBJE (e.g., @O1@)
+		if group := conv.MediaFileGroups[objeRecord.Value]; len(group) > 0 {
+			return group
+		}
 		mediaID := conv.MediaIDMap[objeRecord.Value]
 		if mediaID == "" {
 			conv.addWarning(objeRecord.Line, GedcomTagObje, "Referenced media not found: "+objeRecord.Value)
+
+			return nil
 		}
 
-		return mediaID
+		return []string{mediaID}
 	}
 
 	// Case 2 & 3: Embedded OBJE or VOID with subrecords
@@ -126,13 +164,13 @@ func resolveOBJE(objeRecord *GEDCOMRecord, conv *ConversionContext) string {
 		return convertEmbeddedMedia(objeRecord, conv)
 	}
 
-	return ""
+	return nil
 }
 
 // handleOBJE processes an OBJE subrecord and appends the resolved media ID to
 // the target properties map under PropertyMedia.
 func handleOBJE(objeRecord *GEDCOMRecord, targetProps map[string]any, conv *ConversionContext) {
-	if mediaID := resolveOBJE(objeRecord, conv); mediaID != "" {
+	for _, mediaID := range resolveOBJE(objeRecord, conv) {
 		appendMediaID(targetProps, mediaID)
 	}
 }
@@ -168,6 +206,7 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 	}
 
 	var fileRef string
+	var fileOriginal string // FILE._ORIG, written by glx export (#1149)
 	var formatType string
 	var notes []string
 	var blobText string
@@ -191,6 +230,8 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 				case GedcomTagTitl:
 					// Title under FILE
 					media.Title = fileSub.Value
+				case GedcomTagOrig:
+					fileOriginal = fileSub.Value
 				}
 			}
 
@@ -229,6 +270,25 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 				notes = append(notes, noteText)
 			}
 
+		case GedcomTagExid:
+			if sub.Value != "" {
+				appendMultiValueProperty(media.Properties, MediaPropertyExternalIDs, buildExternalIDEntry(sub))
+			}
+
+		case GedcomTagOID:
+			// Ancestry's stable media object id: the one exact link back to
+			// the platform, since Ancestry exports FILE empty (#944).
+			if sub.Value != "" {
+				appendMultiValueProperty(media.Properties, MediaPropertyExternalIDs, NewExternalIDEntry(sub.Value, ExternalIDTypeAncestry))
+			}
+
+		case GedcomTagClon:
+			for _, clon := range sub.SubRecords {
+				if clon.Tag == GedcomTagOID && clon.Value != "" {
+					appendMultiValueProperty(media.Properties, MediaPropertyExternalIDs, NewExternalIDEntry(clon.Value, ExternalIDTypeAncestryClone))
+				}
+			}
+
 		case GedcomTagBlob:
 			// GEDCOM 5.5.1 BLOB data (deprecated binary embedding)
 			blobText = extractTextWithContinuation(sub)
@@ -252,23 +312,31 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 		media.MimeType = MimeTypeOctetStream
 	}
 
+	// A FILE._ORIG written by glx export is the original filename the
+	// archive recorded, and wins over any name this import would infer (#1149).
+	if fileOriginal != "" {
+		media.Properties[MediaPropertyOriginalFilename] = fileOriginal
+	}
+
 	// Track file sources for CLI to copy/write
 	if fileRef != "" && classifyFileRef(fileRef) {
 		// Relative path — track for copying and rewrite URI
 		normalizedRef := normalizePathSeparators(fileRef)
 		basename := filepath.Base(normalizedRef)
+		// A GEDCOM 7.0 FILE payload is a URI reference, so the file it names
+		// is the decoded one: the archive file, uri and original_filename all
+		// use the decoded name (#1152). 5.5.1 paths keep a literal %.
 		originalFilename := originalFilenameFor(basename, conv.Version)
-		targetName := conv.MediaFileNames.Allocate(basename)
+		targetName := conv.MediaFileNames.Allocate(originalFilename)
 		source := MediaFileSource{
 			MediaID:           mediaID,
 			SourceType:        MediaSourceFile,
 			RelativePath:      normalizedRef,
 			OriginalFilename:  originalFilename,
-			RequestedFilename: basename,
+			RequestedFilename: originalFilename,
 			TargetFilename:    targetName,
 		}
 		source.SetMediaURI(media, targetName)
-		conv.MediaFileSources = append(conv.MediaFileSources, source)
 		// Record the pre-rename basename: a collision rename (photo.jpg →
 		// photo-2.jpg) puts only the renamed form in the URI, which would
 		// otherwise lose the source filename entirely. A ref already pointing
@@ -283,6 +351,9 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 		if !isCanonicalMediaRef(normalizedRef) {
 			source.RecordOriginalFilename(media)
 		}
+		// Append after stamping, so the CLI's copy knows the stamp is this
+		// import's guess and may correct it (ResolveOriginalFilename).
+		conv.MediaFileSources = append(conv.MediaFileSources, source)
 	} else {
 		// URL, absolute path, or empty — leave as-is
 		media.URI = fileRef
@@ -313,21 +384,15 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 	return media
 }
 
-// originalFilenameFor returns the source filename to record for a relative
-// FILE ref's basename. GEDCOM 7.0 FILE payloads are URI references, so a
-// percent-encoded basename names a file that exists only decoded
-// (CharlotteBront%C3%AB.jpg → CharlotteBrontë.jpg, matching the copyMediaFile
-// fallback); 5.5.1 payloads are plain paths where a literal % must survive
-// untouched. A 7.0 encoding that is malformed, or whose decoded form is not a
-// bare filename per isBareDecodedFilename, keeps the raw basename. On that
-// reject path the recorded value is knowingly not the source's decoded name
-// (a legitimate filename containing a disallowed rune, e.g. a bidi
-// directional mark, stays percent-encoded, indistinguishable from a 5.5.1
-// literal %) — it matches uri and the on-disk name instead; see #1152, which
-// owns the encoded-form question. Note that copyMediaFile resolves the encoded/decoded
-// ambiguity in the opposite order — raw path first, decode only on a miss —
-// so when the raw-named file is the one on disk, the recorded name never
-// existed; only the CLI knows which candidate resolved (#1153).
+// originalFilenameFor returns the source filename for a relative FILE ref's
+// basename, which is also the name the file is given in the archive. GEDCOM
+// 7.0 FILE payloads are URI references, so a percent-encoded basename names a
+// file that exists only decoded (CharlotteBront%C3%AB.jpg → CharlotteBrontë.jpg);
+// 5.5.1 payloads are plain paths where a literal % must survive untouched. A
+// 7.0 encoding that is malformed, or whose decoded form is not a bare filename
+// per isBareDecodedFilename, keeps the raw basename. This is the importer's
+// best reading of the reference: a source file found under the other spelling
+// corrects it once resolved (ResolveOriginalFilename, #1153).
 func originalFilenameFor(basename string, version GEDCOMVersion) string {
 	if version != GEDCOM70 {
 		return basename

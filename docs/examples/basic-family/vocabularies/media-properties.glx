@@ -66,8 +66,24 @@ media_properties:
 
   original_filename:
     label: "Original Filename"
-    description: "Original filename before import or renaming"
+    description: "Original filename before import or renaming. glx export writes it as _ORIG under FILE, and glx import reads it back, so a GEDCOM round trip keeps it."
     value_type: string
+
+  source_path:
+    label: "Source Path"
+    description: "The media file's path as the imported GEDCOM's FILE reference wrote it, relative to the GEDCOM file (or the GEDZIP root). Recorded only by glx import --media-source-paths, because folder names can be private."
+    value_type: string
+
+  external_ids:
+    label: "External Identifiers"
+    description: "Identifiers from external systems, such as Ancestry's media object id (_OID)"
+    value_type: string
+    multi_value: true
+    gedcom: "EXID"
+    fields:
+      type:
+        label: "Identifier Type"
+        description: "Authority or system that issued this identifier: ancestry for an Ancestry _OID, ancestry_clone for the _OID in an Ancestry _CLON block, or a GEDCOM 7 EXID.TYPE URI."
 
   photographer:
     label: "Photographer"

@@ -29,8 +29,6 @@ import (
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
-const mediaFamilyIndexThreshold = 32
-
 func importMediaDir(outputPath, format string) string {
 	if format == FormatSingle {
 		return filepath.Dir(ensureGLXExtension(outputPath))
@@ -41,6 +39,15 @@ func importMediaDir(outputPath, format string) string {
 
 // allocateImportMediaDestinations reuses identical on-disk media and allocates
 // the rest from each source's original unnumbered basename.
+//
+// Every source takes the same path (#1442). The allocator reports the first
+// free <stem>-N<ext> ordinal for the requested name. When that is the name
+// itself nothing on disk can match, so nothing is read. Otherwise the source
+// is hashed once and looked up in its filename family's hash index, which
+// hashes each on-disk member at most once and only up to the first free
+// ordinal. The lowest-ordinal identical file still unclaimed is reused, an
+// exact spelling winning over a case or Unicode variant. With none, the free
+// ordinal is reserved. A claimed file is never handed to a second source.
 func allocateImportMediaDestinations(glx *glxlib.GLXFile, files []glxlib.MediaFileSource, archiveDir, sourceDir string, bundle fs.FS) error {
 	if len(files) == 0 {
 		return nil
@@ -66,7 +73,6 @@ func allocateImportMediaDestinations(glx *glxlib.GLXFile, files []glxlib.MediaFi
 	sort.Strings(names)
 	allocator := glxlib.NewFilenameAllocator(names...)
 	families := indexMediaFamilies(names)
-	familyUses := make(map[string]int)
 	claimed := make(map[string]bool, len(files))
 	destinationHashes := make(map[string]mediaHashCache, len(existing))
 	activeURI := make(map[string]string, len(glx.Media))
@@ -77,6 +83,15 @@ func allocateImportMediaDestinations(glx *glxlib.GLXFile, files []glxlib.MediaFi
 	}
 	for i := range files {
 		mf := &files[i]
+		// original_filename names the file this reference actually opened,
+		// raw or percent-decoded, not the importer's guess between them
+		// (#1153). GEDZIP members are resolved, and corrected, in go-glx.
+		if mf.SourceType == glxlib.MediaSourceFile && bundle == nil && sourceDir != "" {
+			if f, opened, err := resolveMediaSourceFile(sourceDir, mf.RelativePath); err == nil {
+				_ = f.Close()
+				mf.ResolveOriginalFilename(glx.Media[mf.MediaID], opened)
+			}
+		}
 		oldName := mf.TargetFilename
 		requested := mf.RequestedFilename
 		if requested == "" {
@@ -91,19 +106,18 @@ func allocateImportMediaDestinations(glx *glxlib.GLXFile, files []glxlib.MediaFi
 		var reused, keep bool
 		var err error
 		portable := glxlib.PortableFilename(requested)
-		familyKey := glxlib.FilenameCollisionKey(portable)
-		family := families[familyKey]
-		familyUses[familyKey]++
-		// Keep the first source's short-circuit match cheap; repeated imports
-		// through a dense occupied family use the content index.
-		switch name := matcher.unverifiableExisting(oldName); {
-		case name != "" && allocator.ClaimExisting(portable, name):
+		if name := matcher.unverifiableExisting(oldName); name != "" {
 			newName, keep = name, true
-		case family != nil && len(family.seeds) >= mediaFamilyIndexThreshold && familyUses[familyKey] > 1:
-			_, firstFree := allocator.NextAvailable(portable)
-			newName, reused, err = family.allocate(portable, firstFree, allocator, matcher)
-		default:
-			newName, reused, err = allocator.AllocateMatching(requested, matcher.match)
+		} else {
+			candidate, firstFree := allocator.NextAvailable(portable)
+			if family := families[glxlib.FilenameCollisionKey(portable)]; family != nil && firstFree > 1 {
+				newName, err = family.match(portable, firstFree, matcher)
+				reused = newName != ""
+			}
+			if !reused && err == nil {
+				allocator.Reserve(candidate)
+				newName = candidate
+			}
 		}
 		if err != nil {
 			return fmt.Errorf("allocating media filename %s: %w", requested, err)
@@ -168,29 +182,26 @@ func indexMediaFamilies(names []string) map[string]*mediaFamilyIndex {
 	return families
 }
 
-func (family *mediaFamilyIndex) allocate(requested string, firstFree int, allocator *glxlib.FilenameAllocator, matcher *importMediaMatcher) (string, bool, error) {
+// match returns the lowest-ordinal on-disk member of the family below
+// firstFree that is unclaimed and has the source's bytes, or "" when none
+// has. Members are hashed into byHash as firstFree passes them, so each is
+// read at most once per import. cursor skips the claimed prefix of each hash's
+// list, which keeps a dense refresh linear.
+func (family *mediaFamilyIndex) match(requested string, firstFree int, matcher *importMediaMatcher) (string, error) {
 	matcher.loadSource()
 	if !matcher.haveSource {
-		return allocator.Allocate(requested), false, nil
+		return "", nil
 	}
-	if family.byHash == nil {
-		family.byHash = make(map[[32]byte][]mediaFamilySeed)
-		family.cursor = make(map[[32]byte]int)
-	}
-	for family.indexed < len(family.seeds) && family.seeds[family.indexed].ordinal < firstFree {
-		seed := family.seeds[family.indexed]
-		if _, ok := matcher.destinationHashes[seed.name]; !ok {
-			if _, err := matcher.matchesFile(seed.name); err != nil {
-				return "", false, err
-			}
-		}
-		if cached, ok := matcher.destinationHashes[seed.name]; ok {
-			family.byHash[cached.hash] = append(family.byHash[cached.hash], seed)
-		}
-		family.indexed++
+	if err := family.indexBelow(firstFree, matcher); err != nil {
+		return "", err
 	}
 	matching := family.byHash[matcher.sourceHash]
-	for i := family.cursor[matcher.sourceHash]; i < len(matching) && matching[i].ordinal < firstFree; {
+	i := family.cursor[matcher.sourceHash]
+	for i < len(matching) && matcher.claimed[matching[i].name] {
+		i++
+	}
+	family.cursor[matcher.sourceHash] = i
+	for i < len(matching) && matching[i].ordinal < firstFree {
 		ordinal := matching[i].ordinal
 		candidate := indexedCandidateName(requested, ordinal)
 		var chosen string
@@ -200,21 +211,45 @@ func (family *mediaFamilyIndex) allocate(requested string, firstFree int, alloca
 			if matcher.claimed[name] {
 				continue
 			}
+			// Re-check against the stat-keyed cache: a file replaced since
+			// it was indexed is hashed again rather than trusted.
 			same, err := matcher.matchesFile(name)
 			if err != nil {
-				return "", false, err
+				return "", err
 			}
 			if same && (chosen == "" || name == candidate) {
 				chosen = name
 			}
 		}
-		if chosen != "" && allocator.ClaimExisting(requested, chosen) {
-			return chosen, true, nil
+		if chosen != "" {
+			return chosen, nil
 		}
-		family.cursor[matcher.sourceHash] = i
 	}
 
-	return allocator.Allocate(requested), false, nil
+	return "", nil
+}
+
+// indexBelow hashes the family's on-disk members with ordinals below
+// firstFree that are not indexed yet. Each member is read once per import.
+func (family *mediaFamilyIndex) indexBelow(firstFree int, matcher *importMediaMatcher) error {
+	if family.byHash == nil {
+		family.byHash = make(map[[32]byte][]mediaFamilySeed)
+		family.cursor = make(map[[32]byte]int)
+	}
+	for family.indexed < len(family.seeds) && family.seeds[family.indexed].ordinal < firstFree {
+		seed := family.seeds[family.indexed]
+		if _, ok := matcher.destinationHashes[seed.name]; !ok {
+			if _, err := matcher.matchesFile(seed.name); err != nil {
+				return err
+			}
+		}
+		if cached, ok := matcher.destinationHashes[seed.name]; ok {
+			family.byHash[cached.hash] = append(family.byHash[cached.hash], seed)
+		}
+		family.indexed++
+	}
+
+	return nil
 }
 
 func indexedCandidateName(base string, ordinal int) string {
@@ -390,33 +425,6 @@ func (m *importMediaMatcher) unverifiableExisting(name string) string {
 	return first
 }
 
-func (m *importMediaMatcher) match(candidate string) (string, error) {
-	variants := m.byKey[glxlib.FilenameCollisionKey(candidate)]
-	if len(variants) == 0 {
-		return "", nil
-	}
-	m.loadSource()
-	if !m.haveSource {
-		return "", nil
-	}
-	for pass := range 2 {
-		for _, name := range variants {
-			if m.claimed[name] || (pass == 0) != (name == candidate) {
-				continue
-			}
-			same, err := m.matchesFile(name)
-			if err != nil {
-				return "", err
-			}
-			if same {
-				return name, nil
-			}
-		}
-	}
-
-	return "", nil
-}
-
 func (m *importMediaMatcher) matchesFile(name string) (bool, error) {
 	fullPath := filepath.Join(m.filesDir, name)
 	info, err := os.Lstat(fullPath)
@@ -514,4 +522,26 @@ func hashReader(r io.Reader) ([32]byte, error) {
 	copy(digest[:], h.Sum(nil))
 
 	return digest, nil
+}
+
+// recordMediaSourcePaths stamps each file-backed media with the FILE
+// reference it came from, as written in the GEDCOM (#1144). original_filename
+// keeps only the basename, so photos/photo.jpg and backup/photo.jpg both read
+// photo.jpg after import; source_path tells them apart. It is opt-in
+// (--media-source-paths) because a relative path can still name private
+// folders. A value the archive already carries is kept.
+func recordMediaSourcePaths(archive *glxlib.GLXFile, files []glxlib.MediaFileSource) {
+	for i := range files {
+		mf := &files[i]
+		media := archive.Media[mf.MediaID]
+		if media == nil || mf.SourceType != glxlib.MediaSourceFile || mf.RelativePath == "" {
+			continue
+		}
+		if media.Properties == nil {
+			media.Properties = make(map[string]any)
+		}
+		if _, exists := media.Properties[glxlib.MediaPropertySourcePath]; !exists {
+			media.Properties[glxlib.MediaPropertySourcePath] = mf.RelativePath
+		}
+	}
 }

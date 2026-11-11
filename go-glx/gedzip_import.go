@@ -91,7 +91,7 @@ func ImportGEDZIP(bundle fs.FS, logW io.Writer) (*GLXFile, *ImportResult, error)
 	}
 
 	// 5. Resolve media references
-	resolveBundleMediaFiles(gedcomPath, result, regularFilesSet, caseMap)
+	resolveBundleMediaFiles(glxFile, gedcomPath, result, regularFilesSet, caseMap)
 
 	return glxFile, result, nil
 }
@@ -338,7 +338,7 @@ func discoverRootGEDCOM(regularFiles []string, regularFilesSet map[string]struct
 // resolveBundleMediaFiles resolves each MediaFiles[].RelativePath against the bundle,
 // relative to the .ged's directory. Exact match first, then GEDCOM 7.0 percent-decoding,
 // then case-insensitive match. Unresolved refs emit a warning on ImportResult.
-func resolveBundleMediaFiles(gedcomPath string, result *ImportResult, filesSet map[string]struct{}, caseMap map[string]string) {
+func resolveBundleMediaFiles(glx *GLXFile, gedcomPath string, result *ImportResult, filesSet map[string]struct{}, caseMap map[string]string) {
 	gedDir := path.Dir(gedcomPath)
 
 	// A GEDCOM 7.0 FILE payload is a URI reference, so percent-escapes are
@@ -371,6 +371,9 @@ func resolveBundleMediaFiles(gedcomPath string, result *ImportResult, filesSet m
 		resolved, ok := resolveMember(gedDir, relPath, filesSet, caseMap, allowPercentDecode)
 		if ok {
 			mf.MemberPath = resolved
+			if glx != nil {
+				mf.ResolveOriginalFilename(glx.Media[mf.MediaID], resolved)
+			}
 		} else {
 			result.Statistics.Warnings = append(result.Statistics.Warnings, ImportWarning{
 				Line:    0,

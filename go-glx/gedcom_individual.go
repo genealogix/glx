@@ -682,9 +682,7 @@ func extractCensusData(censRecord *GEDCOMRecord, conv *ConversionContext) census
 		case GedcomTagSour:
 			// Prepared below after census context has been extracted
 		case GedcomTagObje:
-			if mediaID := resolveOBJE(sub, conv); mediaID != "" {
-				mediaIDs = append(mediaIDs, mediaID)
-			}
+			mediaIDs = append(mediaIDs, resolveOBJE(sub, conv)...)
 		default:
 			if sub.Tag != "" {
 				conv.addWarning(sub.Line, sub.Tag, "Unhandled CENS sub-tag")

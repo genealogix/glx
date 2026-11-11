@@ -21,6 +21,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -95,26 +96,41 @@ func TestReserveImportMediaDestinations_PreservesExistingFileAndReferences(t *te
 	require.Equal(t, []byte("old bytes"), oldBytes)
 }
 
-func TestReserveImportMediaDestinations_UsesVersionAwareOriginalName(t *testing.T) {
+// original_filename names the source file a GEDCOM 7.0 reference actually
+// opened (#1153). The importer reads CharlotteBront%C3%AB.jpg as the decoded
+// CharlotteBrontë.jpg, and the archive file is named that way (#1152), but a
+// source directory holding only the literal %-named file is what the copy
+// reads, so that is the name recorded.
+func TestReserveImportMediaDestinations_RecordsTheSourceSpellingThatOpened(t *testing.T) {
 	const encoded = "CharlotteBront%C3%AB.jpg"
-	archiveDir := t.TempDir()
-	filesDir := filepath.Join(archiveDir, glxlib.MediaFilesDir)
-	require.NoError(t, os.MkdirAll(filesDir, dirPermissions))
-	require.NoError(t, os.WriteFile(filepath.Join(filesDir, encoded), []byte("old bytes"), filePermissions))
-	media := &glxlib.Media{URI: glxlib.MediaFilesDir + "/" + encoded}
-	glx := &glxlib.GLXFile{Media: map[string]*glxlib.Media{"file": media}}
-	files := []glxlib.MediaFileSource{{
-		MediaID: "file", SourceType: glxlib.MediaSourceFile, RelativePath: "media/files/" + encoded,
-		OriginalFilename: "CharlotteBrontë.jpg", TargetFilename: encoded,
-	}}
-	sourceDir := t.TempDir()
-	require.NoError(t, os.MkdirAll(filepath.Join(sourceDir, "media", "files"), dirPermissions))
-	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "media", "files", encoded), []byte("new bytes"), filePermissions))
+	const decoded = "CharlotteBrontë.jpg"
+	for _, tc := range []struct {
+		name, onDisk, wantOriginal string
+	}{
+		{"decoded source", decoded, decoded},
+		{"literal percent source", encoded, encoded},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			archiveDir := t.TempDir()
+			filesDir := filepath.Join(archiveDir, glxlib.MediaFilesDir)
+			require.NoError(t, os.MkdirAll(filesDir, dirPermissions))
+			require.NoError(t, os.WriteFile(filepath.Join(filesDir, decoded), []byte("old bytes"), filePermissions))
+			media := &glxlib.Media{URI: glxlib.MediaFilesDir + "/" + decoded}
+			glx := &glxlib.GLXFile{Media: map[string]*glxlib.Media{"file": media}}
+			files := []glxlib.MediaFileSource{{
+				MediaID: "file", SourceType: glxlib.MediaSourceFile, RelativePath: "media/files/" + encoded,
+				OriginalFilename: decoded, RequestedFilename: decoded, TargetFilename: decoded,
+			}}
+			sourceDir := t.TempDir()
+			require.NoError(t, os.MkdirAll(filepath.Join(sourceDir, "media", "files"), dirPermissions))
+			require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "media", "files", tc.onDisk), []byte("new bytes"), filePermissions))
 
-	require.NoError(t, allocateImportMediaDestinations(glx, files, archiveDir, sourceDir, nil))
-	require.Equal(t, "CharlotteBront%C3%AB-2.jpg", files[0].TargetFilename)
-	require.Equal(t, glxlib.MediaFilesDir+"/CharlotteBront%C3%AB-2.jpg", media.URI)
-	require.Equal(t, "CharlotteBrontë.jpg", media.Properties[glxlib.MediaPropertyOriginalFilename])
+			require.NoError(t, allocateImportMediaDestinations(glx, files, archiveDir, sourceDir, nil))
+			require.Equal(t, "CharlotteBrontë-2.jpg", files[0].TargetFilename)
+			require.Equal(t, glxlib.MediaFilesDir+"/CharlotteBrontë-2.jpg", media.URI)
+			require.Equal(t, tc.wantOriginal, media.Properties[glxlib.MediaPropertyOriginalFilename])
+		})
+	}
 }
 
 func TestReserveImportMediaDestinations_UnoccupiedAndEmpty(t *testing.T) {
@@ -385,6 +401,131 @@ func TestAllocateImportMediaDestinations_KeepsExistingReferenceForUnreadableSour
 			require.True(t, files[0].KeepExisting)
 			require.Equal(t, "photo.jpg", files[0].TargetFilename)
 			require.Equal(t, glxlib.MediaFilesDir+"/photo.jpg", media.URI)
+		})
+	}
+}
+
+// allocationFixture writes on-disk media (name -> content) and one source per
+// entry of incoming (content), all requesting photo.jpg, and returns the
+// allocated sources.
+func allocationFixture(t *testing.T, onDisk map[string]string, incoming []string) []glxlib.MediaFileSource {
+	t.Helper()
+	archiveDir := t.TempDir()
+	sourceDir := t.TempDir()
+	filesDir := filepath.Join(archiveDir, glxlib.MediaFilesDir)
+	require.NoError(t, os.MkdirAll(filesDir, dirPermissions))
+	for name, content := range onDisk {
+		require.NoError(t, os.WriteFile(filepath.Join(filesDir, name), []byte(content), filePermissions))
+	}
+	archive := &glxlib.GLXFile{Media: make(map[string]*glxlib.Media)}
+	files := make([]glxlib.MediaFileSource, 0, len(incoming))
+	for i, content := range incoming {
+		id := fmt.Sprintf("incoming-%d", i)
+		require.NoError(t, os.WriteFile(filepath.Join(sourceDir, id), []byte(content), filePermissions))
+		archive.Media[id] = &glxlib.Media{URI: glxlib.MediaFilesDir + "/photo.jpg"}
+		files = append(files, glxlib.MediaFileSource{
+			MediaID: id, SourceType: glxlib.MediaSourceFile, RelativePath: id,
+			RequestedFilename: "photo.jpg", TargetFilename: "photo.jpg",
+		})
+	}
+	require.NoError(t, allocateImportMediaDestinations(archive, files, archiveDir, sourceDir, nil))
+
+	return files
+}
+
+func allocatedNames(files []glxlib.MediaFileSource) []string {
+	names := make([]string, len(files))
+	for i := range files {
+		names[i] = files[i].TargetFilename
+		if files[i].ReuseExisting {
+			names[i] += " (reused)"
+		}
+	}
+
+	return names
+}
+
+// One allocation path for every family size (#1442): these cases used to run
+// through FilenameAllocator.AllocateMatching or the content index depending on
+// how many numbered names a family had.
+func TestAllocateImportMediaDestinations_OnePath(t *testing.T) {
+	t.Run("lowest ordinal match first, then the next free name", func(t *testing.T) {
+		files := allocationFixture(t, map[string]string{"photo.jpg": "a", "photo-2.jpg": "a"}, []string{"a", "a", "a"})
+		require.Equal(t, []string{"photo.jpg (reused)", "photo-2.jpg (reused)", "photo-3.jpg"}, allocatedNames(files))
+	})
+
+	t.Run("a free gap is used before a later match", func(t *testing.T) {
+		files := allocationFixture(t, map[string]string{"photo.jpg": "x", "photo-3.jpg": "c"}, []string{"new", "new2", "c"})
+		require.Equal(t, []string{"photo-2.jpg", "photo-4.jpg", "photo-3.jpg (reused)"}, allocatedNames(files))
+	})
+
+	t.Run("a sparse high name does not slow the gap below it", func(t *testing.T) {
+		incoming := make([]string, 1000)
+		want := make([]string, 1000)
+		for i := range incoming {
+			incoming[i] = fmt.Sprintf("new %d", i)
+			want[i] = fmt.Sprintf("photo-%d.jpg", i+2)
+		}
+		files := allocationFixture(t, map[string]string{"photo.jpg": "x", "photo-1000000000.jpg": "y"}, incoming)
+		require.Equal(t, want, allocatedNames(files))
+	})
+
+	t.Run("a dense refresh reuses every file in order", func(t *testing.T) {
+		const count = 500
+		onDisk := make(map[string]string, count)
+		incoming := make([]string, 0, count+1)
+		want := make([]string, 0, count+1)
+		for n := 1; n <= count; n++ {
+			name := "photo.jpg"
+			if n > 1 {
+				name = fmt.Sprintf("photo-%d.jpg", n)
+			}
+			onDisk[name] = fmt.Sprintf("content %d", n)
+			incoming = append(incoming, fmt.Sprintf("content %d", n))
+			want = append(want, name+" (reused)")
+		}
+		incoming = append(incoming, "something new")
+		want = append(want, fmt.Sprintf("photo-%d.jpg", count+1))
+		files := allocationFixture(t, onDisk, incoming)
+		require.Equal(t, want, allocatedNames(files))
+	})
+}
+
+// --media-source-paths keeps each file's FILE reference, so two sources that
+// share a basename stay distinguishable after import (#1144). Off, nothing is
+// recorded.
+func TestImportGEDCOM_MediaSourcePaths(t *testing.T) {
+	for _, enabled := range []bool{false, true} {
+		t.Run(fmt.Sprintf("enabled=%v", enabled), func(t *testing.T) {
+			source := t.TempDir()
+			for _, dir := range []string{"photos", "backup"} {
+				require.NoError(t, os.MkdirAll(filepath.Join(source, dir), dirPermissions))
+				require.NoError(t, os.WriteFile(filepath.Join(source, dir, "photo.jpg"), []byte(dir), filePermissions))
+			}
+			gedcom := filepath.Join(source, "tree.ged")
+			require.NoError(t, os.WriteFile(gedcom, []byte("0 HEAD\n1 GEDC\n2 VERS 5.5.1\n"+
+				"0 @O1@ OBJE\n1 FILE photos/photo.jpg\n2 FORM jpg\n"+
+				"0 @O2@ OBJE\n1 FILE backup/photo.jpg\n2 FORM jpg\n0 TRLR\n"), filePermissions))
+			previous := importMediaSourcePaths
+			importMediaSourcePaths = enabled
+			t.Cleanup(func() { importMediaSourcePaths = previous })
+
+			output := filepath.Join(t.TempDir(), "archive")
+			require.NoError(t, importGEDCOM(gedcom, output, FormatMulti, false, false, 0, io.Discard))
+			archive, _, err := LoadArchiveWithOptions(output, false)
+			require.NoError(t, err)
+			var paths []string
+			for _, media := range archive.Media {
+				if p, ok := media.Properties[glxlib.MediaPropertySourcePath].(string); ok {
+					paths = append(paths, p)
+				}
+			}
+			slices.Sort(paths)
+			if enabled {
+				require.Equal(t, []string{"backup/photo.jpg", "photos/photo.jpg"}, paths)
+			} else {
+				require.Empty(t, paths)
+			}
 		})
 	}
 }
