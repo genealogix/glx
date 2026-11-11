@@ -222,6 +222,9 @@ func findPlugin(name, pathEnv, pathExt string) (Plugin, bool) {
 			path := filepath.Join(absDir, fn)
 			// os.Stat follows symlinks, so a PATH shim qualifies when its target
 			// is a regular executable file, exactly as in pluginNameFromEntry.
+			// #nosec G703 -- path is an absolute PATH dir joined with a single
+			// file name that isPluginLookupName has already confined (no
+			// separators, NUL, drive or ADS syntax); Stat only reads metadata.
 			info, err := os.Stat(path)
 			if err != nil || !info.Mode().IsRegular() {
 				continue
