@@ -100,3 +100,63 @@ func TestMerge_MissingPathsFail(t *testing.T) {
 	assertExitWithStderr(t, runGLX(t, t.TempDir(), "merge", dest, "--into", "does-not-exist"), "cannot access destination")
 	assertTreeUnchanged(t, before, dest)
 }
+
+func TestMerge_RejectsCaseVariantIntermediateMediaSymlink(t *testing.T) {
+	for _, spelling := range []string{"media", "MEDIA", "Media"} {
+		t.Run(spelling, func(t *testing.T) {
+			source := t.TempDir()
+			dest := copyExample(t, "minimal")
+			media := "media:\n  media-source:\n    uri: " + spelling + "/files/photo.jpg\n"
+			require.NoError(t, os.WriteFile(filepath.Join(source, "archive.glx"), []byte(media), 0o600))
+			require.NoError(t, os.MkdirAll(filepath.Join(source, "assets", "files"), 0o755))
+			photo := filepath.Join(source, "assets", "files", "photo.jpg")
+			require.NoError(t, os.WriteFile(photo, []byte("source photo"), 0o600))
+			if err := os.Symlink("assets", filepath.Join(source, spelling)); err != nil {
+				t.Skipf("symlinks unavailable: %v", err)
+			}
+			before := snapshotTree(t, dest)
+
+			result := runGLX(t, dest, "merge", source)
+
+			require.NotZero(t, result.exitCode)
+			assert.Contains(t, result.stderr, "symlink")
+			assert.Contains(t, result.stderr, "planning source media copies")
+			assertTreeUnchanged(t, before, dest)
+			actual, err := os.ReadFile(photo)
+			require.NoError(t, err)
+			assert.Equal(t, "source photo", string(actual))
+		})
+	}
+}
+
+func TestMerge_SingleFileWarnsAboutAmbiguousMediaDirectories(t *testing.T) {
+	source := t.TempDir()
+	for _, spelling := range []string{"media", "MEDIA"} {
+		files := filepath.Join(source, spelling, "files")
+		require.NoError(t, os.MkdirAll(files, 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(files, "photo.jpg"), []byte(spelling), 0o600))
+	}
+	lower, err := os.Stat(filepath.Join(source, "media"))
+	require.NoError(t, err)
+	upper, err := os.Stat(filepath.Join(source, "MEDIA"))
+	require.NoError(t, err)
+	if os.SameFile(lower, upper) {
+		t.Skip("requires a case-sensitive filesystem")
+	}
+	metadata := "media:\n  media-source:\n    uri: media/files/photo.jpg\n"
+	require.NoError(t, os.WriteFile(filepath.Join(source, "archive.glx"), []byte(metadata), 0o600))
+	destDir := t.TempDir()
+	dest := filepath.Join(destDir, "archive.glx")
+	require.NoError(t, os.WriteFile(dest, []byte("persons: {}\n"), 0o600))
+	sourceBefore := snapshotTree(t, source)
+
+	result := runGLX(t, destDir, "merge", source, "--into", dest)
+
+	require.Zero(t, result.exitCode, result.stderr)
+	assert.Contains(t, result.stderr, "could not inspect source media/files")
+	assert.Contains(t, result.stderr, "ambiguous media/files directory spellings")
+	assert.Contains(t, result.stderr, "Merged Media URIs may dangle")
+	assert.Equal(t, "media/files/photo.jpg", importedMediaEntity(t, dest, "single", "media-source").URI)
+	assert.NoDirExists(t, filepath.Join(destDir, "media", "files"))
+	assertTreeUnchanged(t, sourceBefore, source)
+}
