@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**`glx coverage` no longer ticks a record found on an estimated event** — Since #1267 an event counted as a found record when any assertion about it resolved a citation, source or media, so an estimated `ABT 1621` birth carried by a `low`/`speculative` assertion citing the man''s marriage entry showed as `[x] Birth record`. An event now counts only when a firm assertion backs it: one that is neither disproven nor a hypothesis by the shared `AssertionIsHypothetical` rule (low confidence, or a speculative, unresearched or disputed status, unless `proven`). An event backed only by weak evidence stays unticked, and its row says it is `recorded only as an estimate`. The rule applies to the census, marriage, probate and church-record rows as well.'
+time: '2026-10-09T00:00:13Z'
+custom:
+  Issue: '#1369'

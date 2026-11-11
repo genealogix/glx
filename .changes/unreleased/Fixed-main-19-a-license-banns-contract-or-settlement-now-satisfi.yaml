@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**A license, banns, contract or settlement now satisfies the marriage gap check** — `glx analyze` reported "no marriage event" whenever a couple had no `marriage` event, even when the relationship''s `start_event` (or a shared event) was a dated or placed `marriage_license`, `marriage_banns`, `marriage_contract` or `marriage_settlement`, often the only record that survives for an early marriage. Such a couple now gets an INFO "marriage known from a marriage license only; search for a minister''s return or marriage register entry" instead of the MEDIUM gap.'
+time: '2026-10-07T00:00:19Z'
+custom:
+  Issue: '#1338'

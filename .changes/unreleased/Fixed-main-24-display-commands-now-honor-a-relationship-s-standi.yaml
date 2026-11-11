@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**Display commands now honor a relationship''s standing: disproven links drop out, hypothetical ones are marked `(?)`** — A relationship whose every assertion is `disproven` was still drawn as family by `summary`, `ancestors`, `descendants`, `timeline`, `publish` and `serve`. It now drops out of all of them; `summary` names rejected parents on an `Excluded:` line, and marks two or more surviving birth fathers (or mothers) `(alternative)`. A relationship backed only by low-confidence or `speculative`/`unresearched`/`disputed` assertions (and none `proven`) is marked `(?)` in summary, the trees, and the published family lists and charts. The rule lives in one place, `glxlib.StandingFromAssertions`, and only existential and participant assertions count, not property ones. `analyze`''s hypothetical-relationship check now reads `status` as well as `confidence`, so `confidence: high, status: speculative` counts as hypothetical.'
+time: '2026-10-07T00:00:24Z'
+custom:
+  Issue: '#208'

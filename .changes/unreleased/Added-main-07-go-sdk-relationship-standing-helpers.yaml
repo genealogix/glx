@@ -1,0 +1,5 @@
+kind: Added
+body: '**Go SDK: relationship standing helpers** — `glxlib.NewRelationshipStandingIndex`, `StandingFromAssertions`, `AssertionIsHypothetical`, `AssertionIsDisproven`, `ParentChildLinks` (parent → child edges with step flag and standing) and `IsParentSideRole`/`IsChildSideRole`/`IsStepRole`/`IsParentChildRelationshipType` give every command one definition of whether a relationship is accepted, hypothetical, or disproven.'
+time: '2026-10-07T00:00:07Z'
+custom:
+  Issue: '#208'

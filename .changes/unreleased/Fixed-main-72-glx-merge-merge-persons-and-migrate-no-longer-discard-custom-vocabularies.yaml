@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**`glx merge`, `glx merge-persons` and `glx migrate` no longer discard custom vocabularies** — The multi-file writer emits only the standard vocabulary files, so an archive-defined entry such as a custom event type in `vocabularies/` was deleted on every write, and the archive''s events using it stopped validating.'
+time: '2026-11-06T00:00:02Z'
+custom:
+  Issue: '#1247'

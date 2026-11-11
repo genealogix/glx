@@ -1,0 +1,5 @@
+kind: Changed
+body: '**Spec↔schema field-parity drift now blocks merges** — the always-running, required `validate-schemas` job runs `make check-spec-schema-drift`, so a PR with mismatched entity field tables or schemas fails the merge gate; `make check` runs the same target. The scan also reports missing, unreadable or malformed files, empty coverage, and schema `required[]` entries with no spec row as drift, rather than skipping or crashing. A bare `node` run of the script still reports without failing. Closes #309'
+time: '2026-11-11T00:00:04Z'
+custom:
+  Issue: '#309'

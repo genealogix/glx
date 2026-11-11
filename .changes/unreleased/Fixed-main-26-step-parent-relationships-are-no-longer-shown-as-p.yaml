@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**`step_parent` relationships are no longer shown as plain parenthood** — `glx summary` lists a step-parent as `Stepfather:`/`Stepmother:`/`Stepparent:`, splits siblings into `Siblings:`, `Half-siblings:` and `Step-siblings:`, and its life history says "He had six children: …, and two stepdaughters, Peggy and Rachel Call." `glx publish` profiles gain Step-parents, Stepchildren, Half-siblings and Step-siblings groups, and its pedigree and descendancy charts draw birth-family links only. A link counts as step when its type is `step_parent` or a participant holds a `step_parent`/`step_child` role.'
+time: '2026-10-07T00:00:26Z'
+custom:
+  Issue: '#1331'

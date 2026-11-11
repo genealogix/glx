@@ -1,0 +1,5 @@
+kind: Changed
+body: '**README command lists and the `glx init` archive README caught up with the CLI** — the root README''s *CLI Commands* section now lists `add`, `cache`, `evidence`, `merge-persons`, `migrations`, `proof`, `publish` and `serve`, links each entry to its `docs/cli/` page, and a test fails when a visible top-level command is missing from it or from `docs/cli/index.md`. The install instructions add `go install ...@main` for unreleased changes. The `README.md` that `glx init` writes now describes `research_logs/` and `studies/` and their ID prefixes, and gives the relationship prefix as `relationship-` (it said `rel-`).'
+time: '2026-10-07T00:00:11Z'
+custom:
+  Issue: '#1339'

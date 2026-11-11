@@ -1,0 +1,5 @@
+kind: Added
+body: '**`territory` place type** — For organised territories and dependencies below country level that are not (or not yet) a state or province, such as Indiana Territory. GEDCOM import infers it from place names containing "Territory"/"Territories".'
+time: '2026-10-07T00:00:03Z'
+custom:
+  Issue: '#1335'

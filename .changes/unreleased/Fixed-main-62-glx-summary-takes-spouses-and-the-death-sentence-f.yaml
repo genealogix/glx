@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**`glx summary` takes spouses and the death sentence from the person''s own records** — The Spouse list took every other participant of a marriage event the person was in, so a bride''s father entered as `parent` became the groom''s spouse and the groom his. Spouses now come only from the couple roles (`groom`, `bride`, `spouse`, `principal`), and only when the person is of the couple; this also preserves spouse roles on the already-supported custom `civil_union` and `common_law_marriage` events. Life History took the first death event the person was named on in any role, so a husband named as `spouse` on his wife''s death "died" on her date; it now uses the person''s own death, as Vital Events does. Life Events rows for other people''s records are labeled like the timeline.'
+time: '2026-10-11T00:00:07Z'
+custom:
+  Issue: '#1362'

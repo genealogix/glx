@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**Census household membership and age ordering** — `glx households` excludes enumerators, witnesses and other nonresident roles from residents and head selection, and `glx cluster` excludes those roles from census-neighbor scoring. Infant ages such as `6m` and `3/12` sort below older children while preserving the recorded age text. The event specification clarifies that overlapping population and occupation tally rows cannot all be added to obtain household size.'
+time: '2026-10-09T00:00:14Z'
+custom:
+  Issue: '#1351'

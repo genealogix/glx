@@ -1,0 +1,6 @@
+kind: Fixed
+body: |-
+  **`glx validate` fails when there is nothing to validate** — A mistyped path (`glx validate archvie`), a non-`.glx` file, or a directory with no GLX files used to print "0 files validated" or "No GLX files found" alongside ✅ and exit 0. A CI step that misnamed its archive therefore stayed green without checking anything. Each of these now exits non-zero: a missing target reports `cannot access path` before anything is loaded, and a target with no GLX files reports that nothing was validated. `.yaml`/`.yml` files were never read as archive files, and a directory holding only those now fails the same way. CI's per-example validation, and `make validate-examples`, had been passing `docs/examples/westeros/` this way: that example is hosted in its own repository, so the directory holds only a README. Both now skip example directories without `.glx` files and say so, rather than "validating" them
+time: 2026-10-01T00:00:20Z
+custom:
+  Issue: "#1205"

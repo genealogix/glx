@@ -1,0 +1,5 @@
+kind: Changed
+body: '**`glx stats` shows direct and evidence coverage** — The single "Entity coverage (referenced by assertions)" block counted only assertion subjects, so an archive following the evidence-first model (facts asserted on events) read 0% persons and places. It is now two blocks: "Direct assertion references" (the old metric) and "Evidence coverage", where a person is covered through an asserted event or relationship they take part in or a participant assertion naming them, and a place through an asserted event held there, an assertion value naming it, or a covered place it contains. `glx serve`''s overview uses the evidence view, matching its "Evidence coverage" heading'
+time: '2026-10-07T00:00:09Z'
+custom:
+  Issue: '#713'

@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**Patched documentation and schema-tooling dependencies** — Updated `brace-expansion` to 5.0.12 and `fast-uri` to 3.1.8 to clear npm audit advisories.'
+time: '2026-10-07T00:00:21Z'
+custom:
+  Issue: 'PR #1313'

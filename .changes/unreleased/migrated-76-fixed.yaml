@@ -1,0 +1,6 @@
+kind: Fixed
+body: |-
+  **`glx link` records today's date as `accessed`, not UTC's** — The citation's `accessed` property was stamped with the UTC calendar date, so a lookup in the US evening was recorded as accessed the next day. It now uses the local date where the command runs
+time: 2026-10-01T00:00:24Z
+custom:
+  Issue: "#1205"

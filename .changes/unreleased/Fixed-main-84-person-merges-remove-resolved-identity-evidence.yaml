@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**Person merges remove resolved identity evidence without corrupting other research** — Binary `possibly_same_person` relationships joining the two records and whole dependent assertions are removed and reported, including transitive assertion references and participant qualifiers. Declared person references follow the survivor; opaque text, evidence records and unrelated research remain. The detached SDK plan is read-only until success. CLI edits preserve existing layout, permissions, surviving YAML comments/aliases, and unrelated pre-existing validation issues; structurally invalid edited entities are refused instead of losing unknown fields. Previews disclose resulting standing, proof, evidence and coverage changes. Recovery requires a recorded pre-merge version; no Git commit is created.'
+time: '2026-11-11T00:00:11Z'
+custom:
+  Issue: '#1201, #1359'

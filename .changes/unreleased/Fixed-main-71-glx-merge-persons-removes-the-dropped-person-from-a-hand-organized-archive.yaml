@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**`glx merge-persons` removes the dropped person from a hand-organized archive** — Entities in a directory the writer did not manage (say `people/family.glx`) were carried across the swap as foreign files, so the dropped person survived there and the kept one ended up defined twice: in its old file and in a new `persons/` copy.'
+time: '2026-11-06T00:00:01Z'
+custom:
+  Issue: '#1247'
