@@ -499,8 +499,8 @@ func migrationPlacePath(placeID string, places map[string]*glxlib.Place) []strin
 	return migrationPlacePathAt(placeID, "", places)
 }
 
-// migrationPlacePathAt is migrationPlacePath for the hierarchy as it stood at
-// date, following at each level the parent that applied then (#225).
+// migrationPlacePathAt is migrationPlacePath with the hierarchy resolved as of
+// date, following each place's parent at that date (see Place.ParentAt).
 func migrationPlacePathAt(placeID string, date glxlib.DateString, places map[string]*glxlib.Place) []string {
 	var names, types []string
 	visited := make(map[string]bool)
