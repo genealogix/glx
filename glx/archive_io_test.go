@@ -869,7 +869,7 @@ func (e *testError) Error() string {
 }
 
 // TestSafeWriteMultiFileArchive tests the crash-safe multi-file write path.
-func TestSafeWriteMultiFileArchive(t *testing.T) {
+func TestWriteArchiveInPlace(t *testing.T) {
 	makeArchive := func() *glxlib.GLXFile {
 		return &glxlib.GLXFile{
 			Persons: map[string]*glxlib.Person{
@@ -882,7 +882,7 @@ func TestSafeWriteMultiFileArchive(t *testing.T) {
 		}
 	}
 
-	t.Run("swaps archive contents atomically", func(t *testing.T) {
+	t.Run("replaces archive contents", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		archiveDir := filepath.Join(tmpDir, "archive")
 		if err := os.MkdirAll(archiveDir, 0o755); err != nil {
@@ -899,10 +899,10 @@ func TestSafeWriteMultiFileArchive(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// Overwrite with new content via safe write
+		// Overwrite with new content
 		updated := makeArchive()
-		if err := safeWriteMultiFileArchive(archiveDir, updated); err != nil {
-			t.Fatalf("safeWriteMultiFileArchive() error = %v", err)
+		if err := writeArchiveInPlaceFresh(archiveDir, updated, rewriteChanged); err != nil {
+			t.Fatalf("writeArchiveInPlace() error = %v", err)
 		}
 
 		// Verify new content is in place
@@ -915,11 +915,6 @@ func TestSafeWriteMultiFileArchive(t *testing.T) {
 		}
 		if _, ok := loaded.Persons["person-1"]; !ok {
 			t.Error("missing person-1")
-		}
-
-		// Verify backup was cleaned up
-		if _, err := os.Stat(archiveDir + ".bak"); !os.IsNotExist(err) {
-			t.Error("backup directory was not cleaned up")
 		}
 	})
 
@@ -939,8 +934,8 @@ func TestSafeWriteMultiFileArchive(t *testing.T) {
 		// t.Chdir restores the original working directory during cleanup.
 		t.Chdir(tmpDir)
 
-		if err := safeWriteMultiFileArchive("rel-archive", makeArchive()); err != nil {
-			t.Fatalf("safeWriteMultiFileArchive(relative) error = %v", err)
+		if err := writeArchiveInPlaceFresh("rel-archive", makeArchive(), rewriteChanged); err != nil {
+			t.Fatalf("writeArchiveInPlace(relative) error = %v", err)
 		}
 
 		loaded, _, err := LoadArchiveWithOptions(archiveDir, false)
@@ -954,8 +949,8 @@ func TestSafeWriteMultiFileArchive(t *testing.T) {
 
 	t.Run("preserves non-archive files and directories", func(t *testing.T) {
 		// Archives typically live inside a git repo alongside README.md,
-		// dotfiles, and top-level metadata. The safe-write swap must preserve
-		// everything it doesn't manage. See #692.
+		// dotfiles, and top-level metadata. The write touches only archive
+		// .glx files. See #692.
 		tmpDir := t.TempDir()
 		archiveDir := filepath.Join(tmpDir, "archive")
 		if err := os.MkdirAll(archiveDir, 0o755); err != nil {
@@ -987,9 +982,9 @@ func TestSafeWriteMultiFileArchive(t *testing.T) {
 			}
 		}
 
-		// Run the safe write
-		if err := safeWriteMultiFileArchive(archiveDir, makeArchive()); err != nil {
-			t.Fatalf("safeWriteMultiFileArchive() error = %v", err)
+		// Run the write
+		if err := writeArchiveInPlaceFresh(archiveDir, makeArchive(), rewriteChanged); err != nil {
+			t.Fatalf("writeArchiveInPlace() error = %v", err)
 		}
 
 		// Every foreign file must survive byte-identical
@@ -1014,54 +1009,10 @@ func TestSafeWriteMultiFileArchive(t *testing.T) {
 		if len(loaded.Persons) != 2 {
 			t.Errorf("expected 2 persons, got %d", len(loaded.Persons))
 		}
-
-		// No backup directory should remain
-		if _, err := os.Stat(archiveDir + ".bak"); !os.IsNotExist(err) {
-			t.Error("backup directory was not cleaned up")
-		}
 	})
 
-	t.Run("refuses to wipe stale backup holding unrecovered foreign files", func(t *testing.T) {
-		// Simulates a previous invocation that crashed mid-restore, leaving a
-		// .bak directory with the user's foreign files in it. The next run must
-		// refuse rather than silently wipe that recovery data. See #692.
-		tmpDir := t.TempDir()
-		archiveDir := filepath.Join(tmpDir, "archive")
-		if err := os.MkdirAll(archiveDir, 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := writeMultiFileArchive(archiveDir, makeArchive(), false); err != nil {
-			t.Fatal(err)
-		}
 
-		// Plant a stale backup containing foreign content
-		staleBackup := archiveDir + ".bak"
-		if err := os.MkdirAll(staleBackup, 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(filepath.Join(staleBackup, "unrecovered-notes.md"), []byte("user data"), 0o644); err != nil {
-			t.Fatal(err)
-		}
-
-		err := safeWriteMultiFileArchive(archiveDir, makeArchive())
-		if err == nil {
-			t.Fatal("expected error when stale backup contains foreign files")
-		}
-		if !strings.Contains(err.Error(), "unrecovered-notes.md") {
-			t.Errorf("error should mention the foreign file; got: %v", err)
-		}
-
-		// Foreign data must still be on disk
-		got, readErr := os.ReadFile(filepath.Join(staleBackup, "unrecovered-notes.md"))
-		if readErr != nil {
-			t.Fatalf("stale backup contents destroyed: %v", readErr)
-		}
-		if string(got) != "user data" {
-			t.Errorf("stale backup corrupted; got %q", got)
-		}
-	})
-
-	t.Run("cleans up temp dir on write failure", func(t *testing.T) {
+	t.Run("nil archive fails without touching the archive", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		archiveDir := filepath.Join(tmpDir, "fail-archive")
 		if err := os.MkdirAll(archiveDir, 0o755); err != nil {
@@ -1074,7 +1025,7 @@ func TestSafeWriteMultiFileArchive(t *testing.T) {
 		}
 
 		// Pass nil archive to trigger serialization error
-		err := safeWriteMultiFileArchive(archiveDir, nil)
+		err := writeArchiveInPlaceFresh(archiveDir, nil, rewriteChanged)
 		if err == nil {
 			t.Fatal("expected error for nil archive")
 		}
@@ -1087,20 +1038,9 @@ func TestSafeWriteMultiFileArchive(t *testing.T) {
 		if len(loaded.Persons) != 2 {
 			t.Errorf("expected 2 persons in original, got %d", len(loaded.Persons))
 		}
-
-		// No temp dirs should be left behind
-		entries, _ := os.ReadDir(tmpDir)
-		for _, e := range entries {
-			if strings.HasPrefix(e.Name(), ".glx-tmp-") {
-				t.Errorf("temp directory not cleaned up: %s", e.Name())
-			}
-		}
 	})
 
-	t.Run("safe-write succeeds when backup media/files path is a regular file", func(t *testing.T) {
-		// Defensive: if some prior corruption left a regular file at the
-		// media/files path inside the backup, preserveMediaBinaries treats it
-		// as nothing-to-preserve rather than crashing.
+	t.Run("succeeds when media/files is a regular file", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		archiveDir := filepath.Join(tmpDir, "archive")
 		if err := os.MkdirAll(archiveDir, 0o755); err != nil {
@@ -1117,20 +1057,15 @@ func TestSafeWriteMultiFileArchive(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if err := safeWriteMultiFileArchive(archiveDir, makeArchive()); err != nil {
-			t.Fatalf("safeWriteMultiFileArchive() error = %v", err)
-		}
-		// Backup cleaned up
-		if _, err := os.Stat(archiveDir + ".bak"); !os.IsNotExist(err) {
-			t.Error("backup directory was not cleaned up")
+		if err := writeArchiveInPlaceFresh(archiveDir, makeArchive(), rewriteChanged); err != nil {
+			t.Fatalf("writeArchiveInPlace() error = %v", err)
 		}
 	})
 
-	t.Run("preserves media/files binaries across the swap", func(t *testing.T) {
+	t.Run("preserves media/files binaries", func(t *testing.T) {
 		// The serializer writes Media entity YAML but never emits anything
-		// into media/files/. Without the binary-preservation step the
-		// safe-write swap would delete every pre-existing media binary —
-		// see genealogix/glx#593.
+		// into media/files/; the binaries must survive — see
+		// genealogix/glx#593.
 		tmpDir := t.TempDir()
 		archiveDir := filepath.Join(tmpDir, "archive")
 		if err := os.MkdirAll(archiveDir, 0o755); err != nil {
@@ -1156,16 +1091,16 @@ func TestSafeWriteMultiFileArchive(t *testing.T) {
 			}
 		}
 
-		// Trigger a safe write
-		if err := safeWriteMultiFileArchive(archiveDir, makeArchive()); err != nil {
-			t.Fatalf("safeWriteMultiFileArchive() error = %v", err)
+		// Trigger a write
+		if err := writeArchiveInPlaceFresh(archiveDir, makeArchive(), rewriteChanged); err != nil {
+			t.Fatalf("writeArchiveInPlace() error = %v", err)
 		}
 
 		// Verify every binary survived with the right content
 		for name, want := range binaries {
 			got, err := os.ReadFile(filepath.Join(mediaFilesDir, name))
 			if err != nil {
-				t.Errorf("binary %s lost across swap: %v", name, err)
+				t.Errorf("binary %s lost: %v", name, err)
 
 				continue
 			}
@@ -1173,51 +1108,6 @@ func TestSafeWriteMultiFileArchive(t *testing.T) {
 				t.Errorf("binary %s corrupted: got %q, want %q", name, got, want)
 			}
 		}
-
-		// Backup must be cleaned up
-		if _, err := os.Stat(archiveDir + ".bak"); !os.IsNotExist(err) {
-			t.Error("backup directory was not cleaned up")
-		}
 	})
 
-	t.Run("refuses to wipe stale backup with unrecovered media binaries", func(t *testing.T) {
-		// A previous run that crashed before binary preservation completed
-		// would leave a .bak with media/files/<binaries> still inside it.
-		// The next run must refuse rather than silently destroy them.
-		tmpDir := t.TempDir()
-		archiveDir := filepath.Join(tmpDir, "archive")
-		if err := os.MkdirAll(archiveDir, 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := writeMultiFileArchive(archiveDir, makeArchive(), false); err != nil {
-			t.Fatal(err)
-		}
-
-		// Plant a stale backup with an unrecovered media binary
-		staleBackup := archiveDir + ".bak"
-		stalemediaFiles := filepath.Join(staleBackup, "media", "files")
-		if err := os.MkdirAll(stalemediaFiles, 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(filepath.Join(stalemediaFiles, "irreplaceable.jpg"), []byte("only-copy"), 0o644); err != nil {
-			t.Fatal(err)
-		}
-
-		err := safeWriteMultiFileArchive(archiveDir, makeArchive())
-		if err == nil {
-			t.Fatal("expected error when stale backup holds unrecovered media binaries")
-		}
-		if !strings.Contains(err.Error(), "media/files") {
-			t.Errorf("error should mention media/files; got: %v", err)
-		}
-
-		// Binary must still be on disk
-		got, readErr := os.ReadFile(filepath.Join(stalemediaFiles, "irreplaceable.jpg"))
-		if readErr != nil {
-			t.Fatalf("stale backup binary destroyed: %v", readErr)
-		}
-		if string(got) != "only-copy" {
-			t.Errorf("stale backup binary corrupted; got %q", got)
-		}
-	})
 }
