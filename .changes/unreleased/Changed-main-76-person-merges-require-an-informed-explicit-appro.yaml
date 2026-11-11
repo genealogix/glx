@@ -1,0 +1,5 @@
+kind: Changed
+body: '**Person merges require an informed, explicit approval** — `glx merge-persons` previews entity/reference and interpretation changes, then defaults to No; noninteractive callers must pass `--yes` (`-y`). `--dry-run` never writes. Duplicate entity IDs, changed GLX symlinks and relationships that would gain duplicate participants now refuse the merge; resolve them first. Archives require exclusive write access. Private rollback data and the shared `.glx-write-journal` preserve interrupted-write recovery.'
+time: '2026-11-11T00:00:03Z'
+custom:
+  Issue: '#1359'

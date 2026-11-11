@@ -32,6 +32,7 @@ make test            # Run all tests
 make test-verbose    # Verbose test output
 make lint            # golangci-lint + website lint
 make check-schemas   # Validate JSON schema files
+make check-spec-schema-drift  # Spec field tables vs JSON schemas (required CI gate)
 make check-links     # Validate internal markdown links
 make check-memory-drift  # CLAUDE.md/AGENTS.md vs reality (paths, make targets, module path)
 make clean           # Remove build artifacts

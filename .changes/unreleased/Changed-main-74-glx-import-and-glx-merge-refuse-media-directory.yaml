@@ -1,0 +1,5 @@
+kind: Changed
+body: '**`glx import` and `glx merge` refuse media-directory symlinks** — A symlinked `media` or `media/files` now stops an import that has binary media, and stops `glx merge`, including `--preview` and a read-only source archive; both previously followed the link. An individually symlinked source binary pointing outside its archive also aborts a merge. Replace the link with a real directory.'
+time: '2026-11-11T00:00:01Z'
+custom:
+  Issue: '#1391'

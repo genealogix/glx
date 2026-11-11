@@ -1,0 +1,5 @@
+kind: Changed
+body: '**Media imports need exclusive use of a shared media directory** — Concurrent imports that write to the same `media/files/` are not coordinated: one that fails can roll back a binary another has just reused. Run them one at a time.'
+time: '2026-11-11T00:00:02Z'
+custom:
+  Issue: '#1391'

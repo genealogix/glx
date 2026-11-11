@@ -15,6 +15,8 @@
 package main
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -25,12 +27,29 @@ import (
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
-// copyMediaFiles copies or writes media files into the archive's media/files/ directory.
-// gedcomDir is the source directory for resolving relative FILE paths.
-// archiveDir is the root of the output archive.
-// Missing source files produce warnings on stdout (suppressible via --quiet),
-// not fatal errors.
-func copyMediaFiles(streams *IOStreams, archiveDir string, mediaFiles []glxlib.MediaFileSource, gedcomDir string, verbose bool) error {
+// stageImportMedia keeps warnings immediate but defers the success count until
+// both media and archive references have been published.
+func stageImportMedia(archiveDir string, files []glxlib.MediaFileSource, sourceDir string, verbose bool) (func(), error) {
+	streams := SystemIOStreams()
+	report := func() {}
+	err := copyMediaFilesUsing(streams, archiveDir, files, sourceDir, func(copied, blobs, warnings int) {
+		report = func() { printImportMediaReport(streams, copied, blobs, warnings, verbose) }
+	})
+
+	return report, err
+}
+
+// gedcomMediaSource stages media referenced relative to a GEDCOM file.
+func gedcomMediaSource(mediaFiles []glxlib.MediaFileSource, gedcomDir string, verbose bool) importMediaSource {
+	return importMediaSource{
+		sourceDir: gedcomDir,
+		stage: func(stageDir string) (func(), error) {
+			return stageImportMedia(stageDir, mediaFiles, gedcomDir, verbose)
+		},
+	}
+}
+
+func copyMediaFilesUsing(streams *IOStreams, archiveDir string, mediaFiles []glxlib.MediaFileSource, gedcomDir string, report func(int, int, int)) error {
 	if len(mediaFiles) == 0 {
 		return nil
 	}
@@ -41,13 +60,29 @@ func copyMediaFiles(streams *IOStreams, archiveDir string, mediaFiles []glxlib.M
 	}
 
 	var copyCount, blobCount, warnCount int
+	reserved := glxlib.NewFilenameAllocator()
 
 	for _, mf := range mediaFiles {
+		if mf.ReuseExisting {
+			continue
+		}
+		if mf.KeepExisting {
+			warnKeptMedia(streams, &mf)
+			warnCount++
+
+			continue
+		}
+		if !reserved.Reserve(mf.TargetFilename) {
+			return fmt.Errorf("%w: duplicate media destination %s", os.ErrExist, mf.TargetFilename)
+		}
 		destPath := filepath.Join(filesDir, mf.TargetFilename)
 
 		switch mf.SourceType {
 		case glxlib.MediaSourceFile:
 			if err := copyMediaFile(gedcomDir, mf.RelativePath, destPath); err != nil {
+				if errors.Is(err, os.ErrExist) {
+					return fmt.Errorf("media destination was occupied while copying %s: %w", mf.RelativePath, err)
+				}
 				streams.Printf("Warning: could not copy media file %s: %v\n", mf.RelativePath, err)
 				warnCount++
 
@@ -63,7 +98,10 @@ func copyMediaFiles(streams *IOStreams, archiveDir string, mediaFiles []glxlib.M
 
 				continue
 			}
-			if err := os.WriteFile(destPath, decoded, filePermissions); err != nil {
+			if err := writeFileFrom(destPath, bytes.NewReader(decoded)); err != nil {
+				if errors.Is(err, os.ErrExist) {
+					return fmt.Errorf("media destination was occupied while writing BLOB %s: %w", mf.MediaID, err)
+				}
 				streams.Printf("Warning: could not write BLOB file %s: %v\n", destPath, err)
 				warnCount++
 
@@ -73,6 +111,17 @@ func copyMediaFiles(streams *IOStreams, archiveDir string, mediaFiles []glxlib.M
 		}
 	}
 
+	report(copyCount, blobCount, warnCount)
+
+	return nil
+}
+
+// warnKeptMedia reports a reference retained because its source is unreadable.
+func warnKeptMedia(streams *IOStreams, mf *glxlib.MediaFileSource) {
+	streams.Printf("Warning: could not read the source of media %s; keeping the existing %s/%s, whose contents were not verified\n", mf.MediaID, glxlib.MediaFilesDir, mf.TargetFilename)
+}
+
+func printImportMediaReport(streams *IOStreams, copyCount, blobCount, warnCount int, verbose bool) {
 	if verbose || copyCount > 0 || blobCount > 0 {
 		streams.Printf("  Media files: %d copied, %d blobs written", copyCount, blobCount)
 		if warnCount > 0 {
@@ -80,8 +129,6 @@ func copyMediaFiles(streams *IOStreams, archiveDir string, mediaFiles []glxlib.M
 		}
 		streams.Println("")
 	}
-
-	return nil
 }
 
 // copyMediaFile copies a single media file from the GEDCOM source directory.
@@ -90,6 +137,18 @@ func copyMediaFiles(streams *IOStreams, archiveDir string, mediaFiles []glxlib.M
 // rejected lexically, and a symlink inside gedcomDir that points outside it is
 // refused at open time (see openWithin) rather than followed.
 func copyMediaFile(gedcomDir, relativePath, destPath string) error {
+	srcFile, err := openMediaSourceFile(gedcomDir, relativePath)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = srcFile.Close() }()
+
+	return writeFileFrom(destPath, srcFile)
+}
+
+// openMediaSourceFile applies the same raw-then-decoded FILE resolution for
+// both content matching and the subsequent copy.
+func openMediaSourceFile(gedcomDir, relativePath string) (*os.File, error) {
 	// Normalize backslashes to forward slashes for cross-platform compatibility
 	// (belt-and-braces: MediaFileSource.RelativePath is already slash-normalized
 	// at import, but direct callers may supply raw Windows path separators).
@@ -98,72 +157,48 @@ func copyMediaFile(gedcomDir, relativePath, destPath string) error {
 	// Prevent path traversal attacks from GEDCOM FILE references
 	srcPath := filepath.Join(gedcomDir, normalized)
 	if !isPathWithin(srcPath, gedcomDir) {
-		return fmt.Errorf("path traversal detected in media reference: %s", relativePath)
+		return nil, fmt.Errorf("path traversal detected in media reference %s: %w", relativePath, ErrPathEscapesDir)
 	}
-	err := copyContainedFile(gedcomDir, srcPath, destPath)
+	src, err := openWithin(gedcomDir, srcPath)
 	if err == nil {
-		return nil
+		return src, nil
 	}
 
 	// Only fall back to URL-decoded path if the source file does not exist.
 	// Other errors (permissions, disk full, etc.) should be returned immediately.
 	if !os.IsNotExist(err) {
-		return fmt.Errorf("copying media file from %s: %w", srcPath, err)
+		return nil, fmt.Errorf("opening media file from %s: %w", srcPath, err)
 	}
 
 	// Try URL-decoded version (e.g., "CharlotteBront%C3%AB.jpg" -> "CharlotteBrontë.jpg")
 	decoded, decodeErr := url.PathUnescape(normalized)
 	if decodeErr != nil {
-		return fmt.Errorf("failed to decode media path %q: %w", normalized, decodeErr)
+		return nil, fmt.Errorf("failed to decode media path %q: %w", normalized, decodeErr)
 	}
 	if decoded == normalized {
-		return fmt.Errorf("%w: %s", ErrMediaFileNotFound, srcPath)
+		return nil, fmt.Errorf("%w: %s", ErrMediaFileNotFound, srcPath)
 	}
 
 	decodedPath := filepath.Join(gedcomDir, decoded)
 	if !isPathWithin(decodedPath, gedcomDir) {
-		return fmt.Errorf("path traversal detected in media reference: %s", relativePath)
+		return nil, fmt.Errorf("path traversal detected in media reference %s: %w", relativePath, ErrPathEscapesDir)
 	}
-	err = copyContainedFile(gedcomDir, decodedPath, destPath)
+	src, err = openWithin(gedcomDir, decodedPath)
 	if err == nil {
-		return nil
+		return src, nil
 	}
 	if os.IsNotExist(err) {
-		return fmt.Errorf("%w: %s", ErrMediaFileNotFound, decodedPath)
+		return nil, fmt.Errorf("%w: %s", ErrMediaFileNotFound, decodedPath)
 	}
 
-	return fmt.Errorf("copying media file from %s: %w", decodedPath, err)
-}
-
-// copyFile copies a single file from src to dst using streaming I/O.
-func copyFile(src, dst string) error {
-	src = filepath.Clean(src)
-	srcFile, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = srcFile.Close() }()
-
-	return writeFileFrom(dst, srcFile)
-}
-
-// copyContainedFile copies src, which must lie inside baseDir (see openWithin),
-// to dst using streaming I/O.
-func copyContainedFile(baseDir, src, dst string) error {
-	srcFile, err := openWithin(baseDir, src)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = srcFile.Close() }()
-
-	return writeFileFrom(dst, srcFile)
+	return nil, fmt.Errorf("opening media file from %s: %w", decodedPath, err)
 }
 
 // writeFileFrom streams src into a newly created file at dst, removing the
 // partial file if the copy or close fails.
 func writeFileFrom(dst string, src io.Reader) error {
 	dst = filepath.Clean(dst)
-	dstFile, err := os.Create(dst)
+	dstFile, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_EXCL, filePermissions)
 	if err != nil {
 		return err
 	}
@@ -183,4 +218,59 @@ func writeFileFrom(dst string, src io.Reader) error {
 	}
 
 	return nil
+}
+
+// copyExclusive streams src into a new file at dst under root and returns the
+// created file's identity. It never replaces an existing destination, and on
+// failure removes only the file it created.
+func copyExclusive(root *os.Root, dst string, src io.Reader) (os.FileInfo, error) {
+	out, err := root.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_EXCL, filePermissions)
+	if err != nil {
+		return nil, err
+	}
+	created, statErr := out.Stat()
+	if statErr != nil {
+		return nil, errors.Join(statErr, discardUnidentifiedMediaFile(root, dst, out))
+	}
+	_, copyErr := io.Copy(out, src)
+	closeErr := out.Close()
+	if copyErr != nil || closeErr != nil {
+		current, err := root.Lstat(dst)
+		if err == nil && os.SameFile(current, created) {
+			_ = root.Remove(dst)
+		}
+
+		return nil, errors.Join(copyErr, closeErr)
+	}
+
+	return created, nil
+}
+
+// mediaStatCloser is the opened descriptor whose identity cleanup must prove.
+type mediaStatCloser interface {
+	Stat() (os.FileInfo, error)
+	Close() error
+}
+
+// discardUnidentifiedMediaFile retries descriptor identity before cleanup after
+// a post-create Stat failure. If identity remains unavailable, retain the path
+// and report it: removing an unverified path could delete another writer's file.
+func discardUnidentifiedMediaFile(root *os.Root, name string, opened mediaStatCloser) error {
+	info, statErr := opened.Stat()
+	closeErr := opened.Close()
+	if statErr != nil {
+		return fmt.Errorf("new media %s may remain for recovery because its opened identity is unavailable: %w", name, errors.Join(statErr, closeErr))
+	}
+	current, err := root.Lstat(name)
+	if os.IsNotExist(err) {
+		return closeErr
+	}
+	if err != nil {
+		return errors.Join(closeErr, err)
+	}
+	if os.SameFile(info, current) {
+		return errors.Join(closeErr, root.Remove(name))
+	}
+
+	return closeErr
 }

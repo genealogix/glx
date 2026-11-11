@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**`glx merge` warns about source media under a case-variant directory** — The warning for a single-file destination now finds `MEDIA/files` as well as `media/files`.'
+time: '2026-11-11T00:00:06Z'
+custom:
+  Issue: '#1391'

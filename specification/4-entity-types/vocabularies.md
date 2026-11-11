@@ -1239,7 +1239,7 @@ person_properties:
 | `label` | Yes | Human-readable label for the property |
 | `description` | No | Detailed description of the property |
 | `value_type` | No* | Data type: `string`, `date`, `integer`, or `boolean` |
-| `reference_type` | No* | Entity type for references: `persons`, `places`, `events`, `relationships`, `sources`, `citations`, `repositories`, `media` |
+| `reference_type` | No* | Entity type for references: `persons`, `places`, `events`, `relationships`, `sources`, `citations`, `repositories`, `media`, `assertions` |
 | `vocabulary_type` | No* | Vocabulary that constrains allowed values (e.g., `sex_types`, `gender_types`). Values not found in the vocabulary produce a **warning**, not an error — archives may use values before adding them to their vocabulary |
 | `temporal` | No | Whether property can change over time (default: false) |
 | `multi_value` | No | Whether property can have multiple values as an array (default: false) |
