@@ -46,9 +46,7 @@ func validateArchiveSubset(streams *IOStreams, archiveRoot string, selected map[
 
 	contextFiles, err := collectGLXFilesFromDir(archiveRoot)
 	if err != nil {
-		reportArchiveLoadError(streams, err, showFirstErrors)
-
-		return ErrStructuralValidationFailed
+		return validateSubsetAlone(streams, archiveRoot, selected, err, showFirstErrors)
 	}
 	contextFiles = slashKeys(contextFiles)
 	// The selection is read through the same root, but an explicitly named
@@ -58,9 +56,7 @@ func validateArchiveSubset(streams *IOStreams, archiveRoot string, selected map[
 
 	archive, duplicates, err := loadArchiveFromFiles(archiveRoot, contextFiles, false)
 	if err != nil {
-		reportArchiveLoadError(streams, err, showFirstErrors)
-
-		return ErrStructuralValidationFailed
+		return validateSubsetAlone(streams, archiveRoot, selected, err, showFirstErrors)
 	}
 	selection, _, err := loadArchiveFromFiles(archiveRoot, selected, false)
 	if err != nil {
@@ -108,6 +104,21 @@ func slashKeys(files map[string][]byte) map[string][]byte {
 	}
 
 	return out
+}
+
+// validateSubsetAlone validates the selected files as an archive of their own
+// — what subset validation did before #1206 — when the archive around them
+// cannot be read: a file elsewhere in it that is malformed, or a symlink that
+// leaves it. Failing the named files for a file nobody named would make the
+// subset unvalidatable until that file is fixed, so the reason is reported as
+// a warning and the selection is still checked; references outside it are
+// then errors. Validating the whole archive reports the unreadable file
+// itself.
+func validateSubsetAlone(streams *IOStreams, archiveRoot string, selected map[string][]byte, contextErr error, showFirstErrors int) error {
+	streams.Errorf("⚠️  Could not read the rest of the archive at %s, so the named files are validated on their own "+
+		"(references outside them are errors): %s\n", archiveRoot, sanitizeForTerminal(contextErr.Error()))
+
+	return validateFilesAsArchive(streams, archiveRoot, selected, showFirstErrors)
 }
 
 // entityIDSet is the set of entities a selection defines, by entity type.

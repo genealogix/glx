@@ -326,6 +326,13 @@ func validatePathsShowing(streams *IOStreams, args []string, showFirstErrors int
 		return validateArchiveSubset(streams, archiveRoot, files, showFirstErrors)
 	}
 
+	return validateFilesAsArchive(streams, archiveRoot, files, showFirstErrors)
+}
+
+// validateFilesAsArchive validates files — keyed relative to archiveRoot — as
+// one complete archive: schema, references, vocabularies and media files.
+func validateFilesAsArchive(streams *IOStreams, archiveRoot string, files map[string][]byte, showFirstErrors int) error {
+	fileCount := len(files)
 	archive, duplicates, err := loadArchiveFromFiles(archiveRoot, files, true)
 	if err != nil {
 		reportArchiveLoadError(streams, err, showFirstErrors)

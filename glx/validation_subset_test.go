@@ -61,6 +61,18 @@ func TestValidatePaths_EntityDirectoryUsesArchiveContext(t *testing.T) {
 	})
 }
 
+// A selection whose archive cannot be read in full — here a malformed file
+// nobody named — is validated on its own rather than failed for that file.
+func TestValidatePaths_UnreadableArchiveFallsBackToSelection(t *testing.T) {
+	root := writeSubsetArchive(t)
+	writeSkipTestFile(t, filepath.Join(root, "sources", "broken.glx"), "sources: [\n")
+	streams, _, errOut := newTestStreams()
+	err := validatePaths(streams, []string{filepath.Join(root, "events")})
+	require.Error(t, err, "on its own, events/ cannot resolve person-1 or place-1")
+	assert.Contains(t, errOut.String(), "Could not read the rest of the archive")
+	assert.Contains(t, errOut.String(), "person-1", "the selection itself was validated")
+}
+
 // A directory that is not inside an archive is validated on its own, as
 // before: nothing around it is guessed at as context.
 func TestValidatePaths_DirectoryOutsideAnArchiveHasNoContext(t *testing.T) {
