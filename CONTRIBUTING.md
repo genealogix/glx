@@ -110,10 +110,21 @@ before each commit:
 make install-hooks
 ```
 
-When Go files are staged the hook runs `golangci-lint` (flagging only issues
-introduced since `HEAD`, mirroring CI's `only-new-issues: true`); when JS/Vue
-files under `website/.vitepress/` are staged it runs `eslint` on those staged
-files. Skip once with `LEFTHOOK=0 git commit ...` if needed.
+Both jobs lint the staged content, not the working copy, with the settings CI
+uses (scripts in `scripts/hooks/`):
+
+- When Go files are staged, `golangci-lint` runs on the packages your branch
+  changes and reports issues new since the branch point with `origin/main`,
+  mirroring CI's `only-new-issues: true`. It requires the version pinned in
+  `.golangci-lint-version` and tells you how to install it if yours differs.
+- When `.js`, `.mjs`, `.cjs` or `.vue` files under `website/` are staged,
+  `eslint` runs on them with `--max-warnings 0`, like `npm run lint`. Run
+  `make install-deps` first so `website/node_modules` exists.
+
+Skip the hooks for one commit with `git commit --no-verify`, which works in
+every shell. `LEFTHOOK=0 git commit ...` also works in a POSIX shell (in
+PowerShell, set `$env:LEFTHOOK=0` and clear it afterwards with
+`Remove-Item Env:LEFTHOOK`).
 
 ### Makefile Reference
 

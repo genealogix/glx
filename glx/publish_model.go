@@ -549,6 +549,25 @@ func sourceRefFromCitation(citID string, a *glxlib.Assertion, archive *glxlib.GL
 	}, citID + "|" + detail
 }
 
+// uniqueAnchor numbers collisions among sanitized lowercase ASCII stems. HTML
+// fragments use exact identifiers, not portable filesystem names; keeping this
+// policy separate preserves existing published fragment links.
+func uniqueAnchor(stem string, used map[string]bool) string {
+	if !used[stem] {
+		used[stem] = true
+
+		return stem
+	}
+	for n := 2; ; n++ {
+		candidate := fmt.Sprintf("%s-%d", stem, n)
+		if !used[candidate] {
+			used[candidate] = true
+
+			return candidate
+		}
+	}
+}
+
 // buildSourceRows builds the global source index, ordered by title then ID.
 // Each row gets a sanitized, collision-free Anchor (assigned in sorted-ID
 // order for determinism) used as both the row's HTML id and the search-index
@@ -556,7 +575,7 @@ func sourceRefFromCitation(citID string, a *glxlib.Assertion, archive *glxlib.GL
 // fragment links.
 func buildSourceRows(archive *glxlib.GLXFile) []sourceRow {
 	rows := make([]sourceRow, 0, len(archive.Sources))
-	usedAnchors := map[string]bool{}
+	usedAnchors := make(map[string]bool, len(archive.Sources))
 	for _, id := range sortedKeys(archive.Sources) {
 		src := archive.Sources[id]
 		if src == nil {
@@ -568,7 +587,7 @@ func buildSourceRows(archive *glxlib.GLXFile) []sourceRow {
 		}
 		rows = append(rows, sourceRow{
 			ID:         id,
-			Anchor:     uniqueFileName(safeAnchorStem(id, searchKindSource), "", usedAnchors),
+			Anchor:     uniqueAnchor(safeAnchorStem(id, searchKindSource), usedAnchors),
 			Title:      src.Title,
 			Type:       humanizeToken(src.Type),
 			Authors:    strings.Join(src.Authors, ", "),
@@ -593,7 +612,7 @@ func buildSourceRows(archive *glxlib.GLXFile) []sourceRow {
 // name. Anchors are assigned the same way as in buildSourceRows.
 func buildPlaceRows(archive *glxlib.GLXFile, idx *siteIndex) []placeRow {
 	rows := make([]placeRow, 0, len(archive.Places))
-	usedAnchors := map[string]bool{}
+	usedAnchors := make(map[string]bool, len(archive.Places))
 	for _, id := range sortedKeys(archive.Places) {
 		place := archive.Places[id]
 		if place == nil {
@@ -601,7 +620,7 @@ func buildPlaceRows(archive *glxlib.GLXFile, idx *siteIndex) []placeRow {
 		}
 		row := placeRow{
 			ID:         id,
-			Anchor:     uniqueFileName(safeAnchorStem(id, searchKindPlace), "", usedAnchors),
+			Anchor:     uniqueAnchor(safeAnchorStem(id, searchKindPlace), usedAnchors),
 			Name:       place.Name,
 			FullName:   placeFullName(id, archive),
 			Type:       humanizeToken(place.Type),

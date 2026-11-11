@@ -1,5 +1,5 @@
 # GENEALOGIX Makefile
-.PHONY: help check build build-cli build-website install-deps install-hooks lint lint-fix lint-codeowners lint-workflows fix fix-diff test test-verbose test-race test-coverage bench mod-tidy mod-verify tidy-check ci-tools-tidy-check clean fmt check-schemas check-drift-allowlist check-code-drift check-memory-drift test-scripts check-links validate-examples docs-cli release-snapshot vulncheck gosec license-check
+.PHONY: help check build build-cli build-website install-deps install-hooks lint lint-fix lint-codeowners lint-workflows fix fix-diff test test-verbose test-race test-coverage bench mod-tidy mod-verify tidy-check ci-tools-tidy-check clean fmt check-schemas check-spec-schema-drift check-drift-allowlist check-code-drift check-memory-drift test-scripts check-links validate-examples docs-cli release-snapshot vulncheck gosec license-check
 
 .DEFAULT_GOAL := help
 
@@ -33,7 +33,7 @@ install-hooks: ## Install lefthook git pre-commit hooks (run once per clone)
 	"$$LEFTHOOK" install
 
 ## Verification
-check: tidy-check ci-tools-tidy-check lint lint-codeowners test check-schemas check-drift-allowlist check-code-drift check-memory-drift test-scripts check-links validate-examples ## Run all checks (mirrors CI)
+check: tidy-check ci-tools-tidy-check lint lint-codeowners test check-schemas check-spec-schema-drift check-drift-allowlist check-code-drift check-memory-drift test-scripts check-links validate-examples ## Run all checks (mirrors CI)
 	@echo "All checks passed."
 
 ## Build
@@ -185,6 +185,10 @@ license-check: ## Check Go dependency licenses against the Apache-2.0-compatible
 check-schemas: ## Validate JSON schema files
 	@node specification/validate-schemas.mjs
 
+check-spec-schema-drift: export DRIFT_STRICT := 1
+check-spec-schema-drift: ## Fail on spec field-table vs JSON-schema drift (the CI gate)
+	@node scripts/drift-checks/spec-schema-drift.mjs
+
 check-drift-allowlist: ## Validate .claude/drift-allowlist.yaml against its schema
 	@node specification/validate-drift-allowlist.mjs
 
@@ -195,7 +199,7 @@ check-memory-drift: ## Deterministically detect CLAUDE.md/AGENTS.md drift vs the
 	@go run ./tools/memcheck
 
 test-scripts: ## Unit-test the Node drift-check scripts and serve viewer
-	@node --test scripts/drift-checks/spec-schema-drift.test.mjs specification/schema-compat.test.mjs glx/web_test/app.test.mjs
+	@node --test scripts/drift-checks/spec-schema-drift.test.mjs specification/schema-compat.test.mjs glx/web_test/app.test.mjs scripts/hooks/staged.test.mjs
 
 ## Example Validation
 validate-examples: build-cli ## Validate all example archives

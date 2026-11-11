@@ -15,6 +15,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -106,9 +107,8 @@ func entityCounts(g *glxlib.GLXFile) counts {
 //
 //nolint:gocognit,gocyclo // top-level orchestrator: load + path-resolve + preview branch + merge + media plan + save
 func mergeArchives(srcPath, destPath string, preview bool, threshold float64) error {
-	// Resolve to absolute paths so "." becomes a real path that os.Rename can
-	// operate on. POSIX forbids renaming "." (EINVAL) and Windows rejects it
-	// with ERROR_SHARING_VIOLATION.
+	// Resolve to absolute paths so "." is reported, and compared by the media
+	// planner, as the directory it names.
 	var err error
 	destPath, err = filepath.Abs(destPath)
 	if err != nil {
@@ -126,10 +126,11 @@ func mergeArchives(srcPath, destPath string, preview bool, threshold float64) er
 	}
 
 	var dest *glxlib.GLXFile
+	var destFiles map[string][]byte
 	destIsDir := destInfo.IsDir()
 
 	if destIsDir {
-		loaded, dupes, loadErr := LoadArchiveWithOptions(destPath, false)
+		loaded, dupes, files, loadErr := loadArchiveForWrite(destPath)
 		if loadErr != nil {
 			return fmt.Errorf("failed to load destination archive: %w", loadErr)
 		}
@@ -137,6 +138,7 @@ func mergeArchives(srcPath, destPath string, preview bool, threshold float64) er
 			fmt.Fprintf(os.Stderr, "Warning (dest): %s\n", d)
 		}
 		dest = loaded
+		destFiles = files
 	} else {
 		loaded, loadErr := readSingleFileArchive(destPath, false)
 		if loadErr != nil {
@@ -206,9 +208,13 @@ func mergeArchives(srcPath, destPath string, preview bool, threshold float64) er
 
 	// Merge
 	result := mergeArchivesInMemory(dest, src)
-	result.MediaFilesPlanned = len(mediaPlan)
 	for _, p := range mediaPlan {
-		if filepath.Base(p.SrcPath) != p.TargetName {
+		if !p.ReuseExisting {
+			result.MediaFilesPlanned++
+		}
+	}
+	for _, p := range mediaPlan {
+		if !p.ReuseExisting && filepath.Base(p.SrcPath) != p.TargetName {
 			result.MediaFilesRenamed++
 		}
 	}
@@ -235,19 +241,17 @@ func mergeArchives(srcPath, destPath string, preview bool, threshold float64) er
 		return nil
 	}
 
-	// Save — multi-file archives use crash-safe temp+swap to prevent partial writes.
-	// Single-file archives use os.WriteFile directly (not atomic; see #595).
+	// Save — multi-file archives are rewritten in place, file by file, each
+	// write atomic with rollback (#1247). Single-file archives use
+	// atomic per-file writes.
 	if destIsDir {
-		if err := safeWriteMultiFileArchive(destPath, dest); err != nil {
-			return err
+		copied, skipped, publishErr := publishMergedMultiFileArchive(destPath, destFiles, dest, mediaPlan)
+		if publishErr != nil {
+			return publishErr
 		}
-		copied, skipped, copyErr := executeMediaCopies(mediaPlan, destPath, dest)
 		result.MediaFilesCopied = copied
 		result.MediaFilesSkipped = skipped
 		printMediaCopyReport(result)
-		if copyErr != nil {
-			return fmt.Errorf("copying source media binaries: %w", copyErr)
-		}
 
 		return nil
 	}
@@ -255,12 +259,56 @@ func mergeArchives(srcPath, destPath string, preview bool, threshold float64) er
 	return writeSingleFileArchive(destPath, dest, false)
 }
 
+// publishMergedMultiFileArchive commits binaries before metadata so an
+// exclusive-copy collision cannot leave a newly written URI pointing at a
+// different writer's bytes. A confirmed metadata rollback removes only our new files.
+func publishMergedMultiFileArchive(destPath string, loaded map[string][]byte, archive *glxlib.GLXFile, plan []plannedMediaCopy) (copied, skipped int, err error) {
+	if err := checkInPlaceJournal(destPath); err != nil {
+		return 0, 0, err
+	}
+	if len(plan) == 0 {
+		return 0, 0, writeArchiveInPlace(destPath, loaded, archive, rewriteChanged)
+	}
+	currentFiles, err := archiveMediaFilesDir(destPath)
+	if err != nil {
+		return 0, 0, fmt.Errorf("inspecting destination media/files: %w", err)
+	}
+	if len(plan) > 0 && plan[0].TargetDir != "" {
+		plannedFiles := filepath.Join(destPath, filepath.FromSlash(plan[0].TargetDir))
+		matches := currentFiles == plannedFiles || currentFiles == "" && plan[0].TargetDir == glxlib.MediaFilesDir
+		if !matches {
+			return 0, 0, fmt.Errorf("destination media/files changed after planning: %w", os.ErrInvalid)
+		}
+	}
+	copied, skipped, rollback, err := executeMediaCopiesWithRollback(plan, destPath, archive)
+	if err != nil {
+		return copied, skipped, fmt.Errorf("copying source media binaries: %w", err)
+	}
+	if err := validateReusedMergeMedia(plan, destPath, archive); err != nil {
+		rollback()
+
+		return copied, skipped, err
+	}
+	if err := writeArchiveInPlace(destPath, loaded, archive, rewriteChanged); err != nil {
+		if !errors.Is(err, errRollbackIncomplete) && mergeMetadataUnchanged(destPath, loaded) {
+			rollback()
+		}
+
+		return copied, skipped, err
+	}
+
+	return copied, skipped, nil
+}
+
 // warnOrphanSourceMedia prints a warning when the source archive carries media
 // binaries that a single-file destination cannot hold. Merged Media URIs will
 // dangle in this case; the warning lets the user decide whether to convert the
 // destination to multi-file or accept the dangling references.
 func warnOrphanSourceMedia(srcPath string) {
-	srcFiles := filepath.Join(srcPath, glxlib.MediaFilesDir)
+	srcFiles, err := archiveMediaFilesDir(srcPath)
+	if err != nil || srcFiles == "" {
+		return
+	}
 	entries, err := os.ReadDir(srcFiles)
 	if err != nil || len(entries) == 0 {
 		return

@@ -36,8 +36,12 @@ Practical consequences:
   is a defect, whatever the namespace.
 - Three actions publish no floating major at all — `ossf/scorecard-action`
   (#779), `mszostok/codeowners-validator`, `sigstore/cosign-installer` (#938).
-  Their `uses:` lines carry a trailing "do not tidy to @vN" note; "correcting"
-  them fails with `Unable to resolve action <owner>/<repo>@vN`.
+  Each carries a "do not tidy to @vN" note in the comment directly above its
+  `uses:` line; "correcting" them fails with
+  `Unable to resolve action <owner>/<repo>@vN`.
+- Keep the trailing comment on a `uses:` line a bare `# vX.Y.Z`. Extra text
+  after the version stops Dependabot from rewriting the comment, leaving the
+  SHA and comment out of sync after a bump (#1415). Put notes on the line above.
 - Dependabot sustains the pins: it bumps the SHA and rewrites the `# vX.Y.Z`
   comment together, weekly, via the `github-actions` ecosystem entry.
 - To find the SHA for a tag (this dereferences annotated tags correctly):
@@ -79,10 +83,11 @@ know which one you're about to trip before you push:
 
 - **Edit a CLI command** → run `make docs-cli` and commit the regenerated
   `docs/cli/**` (`docs-drift.yml`, hard-fail).
-- **Change a JSON schema** → `drift-checks.yml` runs two checks with
-  different teeth: schema backward-compat is HARD-fail (a breaking change
-  invalidates existing archives); spec-schema field parity is WARN-only
-  (#309). A green "spec-schema" job does NOT mean parity is enforced.
+- **Change a JSON schema** → update its spec field table in the same PR.
+  The required `validate-schemas` job checks spec↔schema parity (#309; run
+  `make check-spec-schema-drift` locally); `drift-checks.yml` checks schema
+  backward compatibility, but that context is not required. See
+  `../scripts/drift-checks/README.md` for the gate policy and local commands.
 - **Add or rename an issue Area** → edit `.github/issue-areas.yml` first
   (the single source of truth), then update the `Area` dropdown in every
   `ISSUE_TEMPLATE/*.yml` form (each must keep its `id: area` key) or

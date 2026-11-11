@@ -85,7 +85,7 @@ func TestMergePersonsPreservesDatedHistoryOnDisk(t *testing.T) {
 	after, err := os.ReadFile(path)
 	require.NoError(t, err)
 	require.Equal(t, before, after)
-	result := runGLX(t, dir, "merge-persons", "p", "q", "--archive", path)
+	result := runGLX(t, dir, "merge-persons", "p", "q", "--archive", path, "-y")
 	require.Equal(t, 0, result.exitCode, result.stderr)
 	require.NotContains(t, result.stderr, "Conflict")
 	data, err := os.ReadFile(path)
@@ -168,7 +168,7 @@ func TestMergePersonsPreservesDropDisagreementsOnDisk(t *testing.T) {
         - {value: miller, date: "1851"}
         - {value: driver, date: "1851"}
 `), 0o600))
-	result := runGLX(t, dir, "merge-persons", "keep", "drop", "--archive", path)
+	result := runGLX(t, dir, "merge-persons", "keep", "drop", "--archive", path, "-y")
 	require.Equal(t, 0, result.exitCode, result.stderr)
 	require.NotContains(t, result.stderr, "Conflict")
 	data, err := os.ReadFile(path)
@@ -308,7 +308,7 @@ func TestMergePersonsDoesNotPersistComparisonDefaults(t *testing.T) {
 `
 			}
 			require.NoError(t, os.WriteFile(path, []byte(data), 0o600))
-			result := runGLX(t, dir, "merge-persons", "p", "q", "--archive", path)
+			result := runGLX(t, dir, "merge-persons", "p", "q", "--archive", path, "-y")
 			require.Equal(t, 0, result.exitCode, result.stderr)
 			require.NotContains(t, result.stderr, "Conflict")
 			saved, err := os.ReadFile(path)
@@ -424,9 +424,9 @@ func TestMergePersonsKeepsMorePreciseValue(t *testing.T) {
   keep: {properties: {confirmed_date: "1850"}}
   drop: {properties: {confirmed_date: "1850-02-01"}}
 person_properties:
-  confirmed_date: {value_type: date, temporal: false}
+  confirmed_date: {label: Confirmed date, value_type: date, temporal: false}
 `), 0o600))
-	result := runGLX(t, dir, "merge-persons", "keep", "drop", "--archive", path)
+	result := runGLX(t, dir, "merge-persons", "keep", "drop", "--archive", path, "-y")
 	require.Equal(t, 0, result.exitCode, result.stderr)
 	require.NotContains(t, result.stderr, "Conflict")
 	saved, err := os.ReadFile(path)
@@ -444,9 +444,9 @@ func TestMergePersonsRetainsResolvedClaim(t *testing.T) {
   keep: {properties: {confirmed_date: {value: "1850", status: disproven}}}
   drop: {properties: {confirmed_date: {value: "1860", status: proven}}}
 person_properties:
-  confirmed_date: {value_type: date, temporal: false}
+  confirmed_date: {label: Confirmed date, value_type: date, temporal: false}
 `), 0o600))
-	result := runGLX(t, dir, "merge-persons", "keep", "drop", "--keep-oldest", "--archive", path)
+	result := runGLX(t, dir, "merge-persons", "keep", "drop", "--keep-oldest", "--archive", path, "-y")
 	require.Equal(t, 0, result.exitCode, result.stderr)
 	require.NotContains(t, result.stderr, "Conflict")
 	saved, err := os.ReadFile(path)

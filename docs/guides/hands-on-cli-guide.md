@@ -428,7 +428,7 @@ glx timeline "Eddard Stark" --no-family
 
 ### `glx migrations` — Geographic movement
 
-Trace where a person was over time and when they moved. Observations come from the person's events, their children's birth events (a child's birthplace is evidence of the parent's residence), and `residence` property values; each change of region is reported as a movement:
+Trace where a person was over time and when they moved. Observations come from the person's events, their children's birth events (a child's birthplace is evidence of the parent's residence), and `residence` property values; each change of place is reported as a movement, named at the highest level where the two places differ (two states, or two villages of one district). A parent named on a child's burial is shown but not counted, since the burial places the child:
 
 ```bash
 glx migrations "Eddard Stark"

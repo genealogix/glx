@@ -24,13 +24,6 @@ concurrency:
   group: lint-markdown-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-env:
-  GIT_CONFIG_COUNT: 2
-  GIT_CONFIG_KEY_0: init.defaultBranch
-  GIT_CONFIG_VALUE_0: main
-  GIT_CONFIG_KEY_1: advice.detachedHead
-  GIT_CONFIG_VALUE_1: "false"
-
 jobs:
   markdownlint:
     name: markdownlint-cli2
@@ -42,7 +35,7 @@ jobs:
           persist-credentials: false
 
       - name: Lint markdown
-        uses: DavidAnson/markdownlint-cli2-action@21c1be1b93ad9ed58fa840aacc3f279cde2a72ff # v24.2.0
+        uses: DavidAnson/markdownlint-cli2-action@696eb3f2509270d7b882d2aa68347bc676e7af34 # v25.0.0
         with:
           # Mirrors the globs in .markdownlint-cli2.jsonc so the workflow scope is
           # explicit and does not depend on the action's default glob (`*.{md,markdown}`).

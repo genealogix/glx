@@ -69,16 +69,20 @@ var ownRecordRoles = map[string]bool{
 // the record is about, so `spouse` (GEDCOM import's role for HUSB and WIFE) is
 // an own-record role there.
 var coupleEventTypes = map[string]bool{
-	EventTypeMarriage:           true,
-	EventTypeDivorce:            true,
-	EventTypeDivorceFiled:       true,
-	EventTypeEngagement:         true,
-	EventTypeAnnulment:          true,
-	EventTypeMarriageBanns:      true,
-	EventTypeMarriageContract:   true,
-	EventTypeMarriageLicense:    true,
-	EventTypeMarriageSettlement: true,
-	EventTypeLegalSeparation:    true,
+	// Archives may extend the event vocabulary with these union types,
+	// which summary already recognizes alongside marriage.
+	RelationshipTypeCivilUnion:        true,
+	RelationshipTypeCommonLawMarriage: true,
+	EventTypeMarriage:                 true,
+	EventTypeDivorce:                  true,
+	EventTypeDivorceFiled:             true,
+	EventTypeEngagement:               true,
+	EventTypeAnnulment:                true,
+	EventTypeMarriageBanns:            true,
+	EventTypeMarriageContract:         true,
+	EventTypeMarriageLicense:          true,
+	EventTypeMarriageSettlement:       true,
+	EventTypeLegalSeparation:          true,
 }
 
 // coupleRoles are the roles that name one of the couple in a couple event.

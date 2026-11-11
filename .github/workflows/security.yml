@@ -30,13 +30,6 @@ concurrency:
   group: security-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-env:
-  GIT_CONFIG_COUNT: 2
-  GIT_CONFIG_KEY_0: init.defaultBranch
-  GIT_CONFIG_VALUE_0: main
-  GIT_CONFIG_KEY_1: advice.detachedHead
-  GIT_CONFIG_VALUE_1: "false"
-
 jobs:
   govulncheck:
     name: Go Vulnerability Check
@@ -46,6 +39,15 @@ jobs:
       contents: read
       security-events: write
     steps:
+      # Runtime egress monitoring (#350). First step of the job so it sees every
+      # later step's network traffic. Audit mode only logs; it blocks nothing.
+      # Move to egress-policy: block with an explicit allowed-endpoints list
+      # once the audit runs have established this job's baseline.
+      - name: Harden runner
+        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        with:
+          egress-policy: audit
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -88,7 +90,7 @@ jobs:
 
       - name: Upload SARIF to Code Scanning
         if: always() && hashFiles('govulncheck.sarif') != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           sarif_file: govulncheck.sarif
           category: govulncheck
@@ -101,6 +103,15 @@ jobs:
       contents: read
       security-events: write
     steps:
+      # Runtime egress monitoring (#350). First step of the job so it sees every
+      # later step's network traffic. Audit mode only logs; it blocks nothing.
+      # Move to egress-policy: block with an explicit allowed-endpoints list
+      # once the audit runs have established this job's baseline.
+      - name: Harden runner
+        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        with:
+          egress-policy: audit
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -174,7 +185,7 @@ jobs:
 
       - name: Upload SARIF to Code Scanning
         if: always() && hashFiles('gosec.sarif') != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           sarif_file: gosec.sarif
           category: gosec

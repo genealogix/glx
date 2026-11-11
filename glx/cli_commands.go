@@ -1129,15 +1129,19 @@ place observation: events they participated in (birth, census, marriage, ...),
 their children's birth events (a child's birthplace is evidence of the
 parent's residence), and residence property values.
 
-Observations are sorted chronologically and each change of region is reported
-as a movement (e.g. "Florida → Wisconsin"). Regions compare at the
-state/region level of the place hierarchy, and pre-statehood territories
-match their successor states ("Florida Territory" equals "Florida").
+Observations are sorted chronologically and each change of place is reported
+as a movement, named at the highest level of the place hierarchy where the
+two places differ: "Florida → Wisconsin" between two states, "Niederkleen →
+Pohl-Göns" between two villages of one district. A place and a place inside
+it (a state and one of its towns) are not a move. Country and continent
+levels are skipped, and pre-statehood territories match their successor
+states ("Florida Territory" equals "Florida").
 
 Not every observation counts toward a movement. An event in which the
 person's role does not put them at its place (a grantor or grantee of a deed,
 a legatee or heir of an estate, someone merely mentioned) is shown but not
-counted; an archive can mark its own roles with implies_presence in the
+counted, and so is a parent named on a child's death or burial, which places
+the child rather than the parent's household; an archive can mark its own roles with implies_presence in the
 participant roles vocabulary. A bounded residence value overrides an event
 elsewhere only when the event's whole possible date span fits within that
 residence: the event remains visible but is not counted as a move. Open-ended
@@ -1146,7 +1150,7 @@ without conversion.
 
 With --pattern, searches all persons in the archive for a migration pattern
 instead: a comma-separated list of places that must appear in chronological
-order in a person's region sequence. Knowing who else made the same move
+order in a person's sequence of places. Knowing who else made the same move
 narrows the search for a person's family.
 
 The person argument can be an exact entity ID (e.g., person-jane-webb) or a
@@ -2027,7 +2031,12 @@ the source has any, a warning is printed and the merged Media URIs will
 dangle.
 
 Use --preview to see what would happen without modifying any files,
-including cross-archive duplicate person detection.`,
+including cross-archive duplicate person detection.
+
+A multi-file destination is updated in place: a changed entity or vocabulary
+entry is rewritten in the file that holds it, whatever the archive's layout,
+and each new entity gets its own file at ` + "`<type>/<id>.glx`" + `. Files with nothing
+to change are left untouched.`,
 	Example: `  # Merge another archive into the current one
   glx merge ./other-archive/ --into ./my-archive/
 
@@ -2102,6 +2111,7 @@ func runMergeDriverCmd(_ *cobra.Command, args []string) error {
 var (
 	mergePersonsArchive       string
 	mergePersonsDryRun        bool
+	mergePersonsYes           bool
 	mergePersonsKeepNewest    bool
 	mergePersonsKeepOldest    bool
 	mergePersonsNotesStrategy string
@@ -2113,6 +2123,35 @@ var mergePersonsCmd = &cobra.Command{
 	Long: `Consolidate two person entities into one. The keep-id is retained;
 the drop-id's properties, notes, and cross-references are folded into it,
 then the drop-id person file is removed.
+
+Resolved possibly_same_person relationships between these two people are
+removed and listed in the merge summary, including with --dry-run. Other
+relationships are retained and their person references follow the merge.
+Whole assertions depending on a removed relationship are deleted, regardless
+of status or confidence. ResearchLog subjects are cleared while their research
+is retained. Declared relationship-reference properties lose only matching
+whole values; sources, citations, media and unrelated assertions remain.
+
+The preview lists every changed entity, deleted claim and cleared/pruned
+reference, plus changes to current standing, evidence, proof and coverage.
+Deleting claims can change existing interpretations (for example, a relationship
+with no remaining assertions is accepted under the existing fallback rules).
+Recovery requires a recorded pre-merge version; this command does not commit.
+
+After reporting and validation, Apply this merge? [y/N] defaults to cancellation.
+--yes (-y) skips approval but still reports and validates. Noninteractive use
+requires --yes. --dry-run only reports, even with --yes, and never prompts.
+The preview remains visible with --quiet. A changed archive requires a new preview.
+Unrelated pre-existing validation errors are retained; an entity with structural
+errors cannot be edited safely and must be repaired first.
+Archives with duplicate entity IDs are refused, including in --dry-run;
+resolve the duplicates first. Relationships containing both merge IDs must
+be resolved before merging, except the binary possibly_same_person candidates
+that this command removes and reports. It never silently collapses participants.
+Merges refuse changes to linked GLX files (including Windows Git
+symlink placeholders) before approval, preserving the link and its target.
+Unchanged linked files in directory archives are retained. Run with exclusive
+archive write access; this command does not coordinate concurrent external writers.
 
 Property merging:
   - Properties present only on drop are copied verbatim.
@@ -2128,12 +2167,18 @@ Notes are combined per --notes-strategy (default: append).
 
 This is the natural follow-on to ` + "`glx duplicates`" + `: once you've identified
 that two person records are the same individual, this command consolidates
-them in a single atomic operation.`,
+them. Single-file writes use atomic replacement. Multi-file archives are updated
+in place: only changed files are rewritten in their original locations, and
+files left empty are deleted. Rollback and interrupted-write recovery safeguard
+the operation; unrelated files remain untouched.`,
 	Example: `  # Merge person-jungk-1750 into person-juncker-1750
   glx merge-persons person-juncker-1750 person-jungk-1750 --archive ./archive
 
   # Preview the merge
   glx merge-persons person-a person-b --archive ./archive --dry-run
+
+  # Apply without prompting (for scripts)
+  glx merge-persons person-a person-b --archive ./archive --yes
 
   # Resolve dated conflicts by picking the later entry
   glx merge-persons person-a person-b --archive ./archive --keep-newest
@@ -2147,6 +2192,7 @@ them in a single atomic operation.`,
 func init() {
 	mergePersonsCmd.Flags().StringVarP(&mergePersonsArchive, "archive", "a", ".", "Path to GLX archive")
 	mergePersonsCmd.Flags().BoolVar(&mergePersonsDryRun, "dry-run", false, "Show what would change without writing")
+	mergePersonsCmd.Flags().BoolVarP(&mergePersonsYes, "yes", "y", false, "Apply the reported merge without prompting (validation still runs)")
 	mergePersonsCmd.Flags().BoolVar(&mergePersonsKeepNewest, "keep-newest", false,
 		"For conflicting temporal properties, keep the entry with the later date")
 	mergePersonsCmd.Flags().BoolVar(&mergePersonsKeepOldest, "keep-oldest", false,
@@ -2167,7 +2213,7 @@ func runMergePersons(cmd *cobra.Command, args []string) error {
 		KeepOldest:    mergePersonsKeepOldest,
 	}
 
-	return mergePersons(mergePersonsArchive, args[0], args[1], opts, mergePersonsDryRun)
+	return mergePersons(mergePersonsArchive, args[0], args[1], opts, mergePersonsDryRun, mergePersonsYes)
 }
 
 // ============================================================================

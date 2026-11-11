@@ -250,12 +250,15 @@ func TestCollectMigrationEntries_RolesAndResidencePeriods(t *testing.T) {
 	assert.False(t, sale.Excluded, "a principal is present")
 
 	movements := computeMovements(entries)
-	require.Len(t, movements, 2, "movements: %+v", movements)
+	require.Len(t, movements, 3, "movements: %+v", movements)
 	assert.Equal(t, "North Carolina", movements[0].FromRegion)
 	assert.Equal(t, "Indiana", movements[0].ToRegion)
-	assert.Equal(t, "Indiana", movements[1].FromRegion)
-	assert.Equal(t, "Illinois", movements[1].ToRegion)
-	assert.Equal(t, "FROM 1820 TO 1826", movements[1].ToDate, "the land entry made from Wayne County is not the move")
+	// Two counties of one state are two places (#1370)
+	assert.Equal(t, "Dearborn County", movements[1].FromRegion)
+	assert.Equal(t, "Wayne County", movements[1].ToRegion)
+	assert.Equal(t, "Indiana", movements[2].FromRegion)
+	assert.Equal(t, "Illinois", movements[2].ToRegion)
+	assert.Equal(t, "FROM 1820 TO 1826", movements[2].ToDate, "the land entry made from Wayne County is not the move")
 }
 
 func TestCollectMigrationEntries_ResidenceWinsOverEventPlace(t *testing.T) {
