@@ -361,13 +361,69 @@ func TestExecuteMediaCopies_ReusedBinaryIsNotCountedAsSkipped(t *testing.T) {
 	assert.Zero(t, skipped, "a reused binary never needed copying, so its conflict skips nothing")
 }
 
+// orphanTestSource references a media/files binary, so the orphan warning has
+// something that could dangle.
+var orphanTestSource = &glxlib.GLXFile{Media: map[string]*glxlib.Media{
+	"media-source": {URI: "media/files/photo.jpg"},
+}}
+
+func TestWarnOrphanSourceMedia_SilentWithoutMediaReferences(t *testing.T) {
+	for name, src := range map[string]*glxlib.GLXFile{
+		"no media":     {},
+		"external uri": {Media: map[string]*glxlib.Media{"m": {URI: "https://example.com/photo.jpg"}}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			source := t.TempDir()
+			require.NoError(t, os.MkdirAll(filepath.Join(source, glxlib.MediaFilesDir), dirPermissions))
+			require.NoError(t, os.WriteFile(filepath.Join(source, glxlib.MediaFilesDir, "photo.jpg"), []byte("x"), filePermissions))
+			if err := os.Symlink("media", filepath.Join(source, "Media")); err != nil {
+				t.Logf("symlinks unavailable, checking the plain case only: %v", err)
+			}
+
+			stderr := captureStderr(t, func() { warnOrphanSourceMedia(source, src) })
+
+			assert.Empty(t, stderr, "nothing references media/files, so nothing can dangle")
+		})
+	}
+}
+
+func TestMediaFilesDirsIn_IgnoresUnrelatedCaseVariantSymlink(t *testing.T) {
+	archive := t.TempDir()
+	if !fsCaseSensitive(t, archive) {
+		t.Skip("on a case-insensitive filesystem every case variant aliases media/")
+	}
+	share := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(share, "movie.mp4"), []byte("x"), filePermissions))
+	if err := os.Symlink(share, filepath.Join(archive, "Media")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+
+	dirs, err := mediaFilesDirsIn(archive)
+	require.NoError(t, err, "a linked Media share without files/ is not an archive media directory")
+	require.Empty(t, dirs)
+
+	require.NoError(t, os.Mkdir(filepath.Join(share, "files"), dirPermissions))
+	_, err = mediaFilesDirsIn(archive)
+	require.ErrorIs(t, err, os.ErrInvalid, "a linked directory holding files/ could carry referenced media")
+}
+
+func TestMediaFilesDirsIn_RejectsExactMediaSymlink(t *testing.T) {
+	archive := t.TempDir()
+	if err := os.Symlink(t.TempDir(), filepath.Join(archive, "media")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+
+	_, err := mediaFilesDirsIn(archive)
+	require.ErrorIs(t, err, os.ErrInvalid, "writes to media/files would go through the link")
+}
+
 func TestWarnOrphanSourceMedia_ResolvesCaseVariantDirectory(t *testing.T) {
 	srcDir := t.TempDir()
 	filesDir := filepath.Join(srcDir, "MEDIA", "files")
 	require.NoError(t, os.MkdirAll(filesDir, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(filesDir, "photo.jpg"), []byte("PHOTO"), 0o644))
 
-	stderr := captureStderr(t, func() { warnOrphanSourceMedia(srcDir) })
+	stderr := captureStderr(t, func() { warnOrphanSourceMedia(srcDir, orphanTestSource) })
 	assert.Contains(t, stderr, "source has 1 file(s)")
 }
 
@@ -732,7 +788,7 @@ func TestWarnOrphanSourceMedia_ReportsInspectionErrors(t *testing.T) {
 			require.NoError(t, os.MkdirAll(filepath.Join(source, spelling, "files"), dirPermissions))
 		}
 
-		stderr := captureStderr(t, func() { warnOrphanSourceMedia(source) })
+		stderr := captureStderr(t, func() { warnOrphanSourceMedia(source, orphanTestSource) })
 
 		assert.Contains(t, stderr, "could not inspect source media/files")
 		assert.Contains(t, stderr, ErrAmbiguousMediaFilesDirs.Error())
@@ -746,7 +802,7 @@ func TestWarnOrphanSourceMedia_ReportsInspectionErrors(t *testing.T) {
 			t.Skipf("symlinks unavailable: %v", err)
 		}
 
-		stderr := captureStderr(t, func() { warnOrphanSourceMedia(source) })
+		stderr := captureStderr(t, func() { warnOrphanSourceMedia(source, orphanTestSource) })
 
 		assert.Contains(t, stderr, "could not read source media/files")
 		assert.Contains(t, stderr, "Merged Media URIs may dangle")
@@ -762,7 +818,7 @@ func TestWarnOrphanSourceMedia_RejectsFinalDirectorySymlink(t *testing.T) {
 		t.Skipf("symlinks unavailable: %v", err)
 	}
 
-	stderr := captureStderr(t, func() { warnOrphanSourceMedia(source) })
+	stderr := captureStderr(t, func() { warnOrphanSourceMedia(source, orphanTestSource) })
 
 	assert.Contains(t, stderr, "could not read source media/files")
 	assert.Contains(t, stderr, "symlink")

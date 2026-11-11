@@ -368,10 +368,10 @@ func (m *importMediaMatcher) unverifiableExisting(name string) string {
 		return ""
 	}
 	// A previous import must not hide corrupt or unsupported bundle data.
-	// Only unavailable members can keep an unverified existing reference.
+	// Only the members staging downgrades to a warning can keep an
+	// unverified existing reference; every other failure fails the import.
 	if m.bundle != nil && m.source.SourceType == glxlib.MediaSourceFile &&
-		!errors.Is(m.sourceErr, fs.ErrNotExist) &&
-		!errors.Is(m.sourceErr, fs.ErrPermission) && !errors.Is(m.sourceErr, errGEDZIPNonRegularEntry) {
+		!bundleMemberUnavailable(m.source.MemberPath, m.sourceErr) {
 		return ""
 	}
 	var first string

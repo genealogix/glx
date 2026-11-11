@@ -16,10 +16,13 @@ package glx
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/unicode/norm"
 )
 
 func TestFilenameAllocator_CaseAndUnicodeCollisions(t *testing.T) {
@@ -261,6 +264,15 @@ func TestMediaFileSource_ReallocationClearsOnlyGeneratedCanonicalProvenance(t *t
 	source.SetMediaURI(media, "photo-2.jpg")
 	source.SetMediaURI(media, "photo.jpg")
 	require.Equal(t, "supplied.jpg", media.Properties[MediaPropertyOriginalFilename])
+}
+
+func TestFilenameCollisionKey_ASCIIFastPathMatchesFullFold(t *testing.T) {
+	folder := cases.Fold()
+	for _, name := range []string{"Photo.JPG", "a-b_c 1.png.", "README", "", "...", "MiXeD.Case.Tiff  "} {
+		trimmed := strings.TrimRight(name, ". ")
+		want := norm.NFD.String(folder.String(norm.NFD.String(trimmed)))
+		require.Equal(t, want, FilenameCollisionKey(name), name)
+	}
 }
 
 func TestFilenameCollisionKey_CanonicalCaseFolding(t *testing.T) {

@@ -203,7 +203,7 @@ func mergeArchives(srcPath, destPath string, preview bool, threshold float64) er
 		}
 		mediaPlan = plan
 	} else if srcInfo.IsDir() {
-		warnOrphanSourceMedia(srcPath)
+		warnOrphanSourceMedia(srcPath, src)
 	}
 
 	// Merge
@@ -303,8 +303,12 @@ func publishMergedMultiFileArchive(destPath string, loaded map[string][]byte, ar
 // warnOrphanSourceMedia prints a warning when the source archive carries media
 // binaries that a single-file destination cannot hold. Merged Media URIs will
 // dangle in this case; the warning lets the user decide whether to convert the
-// destination to multi-file or accept the dangling references.
-func warnOrphanSourceMedia(srcPath string) {
+// destination to multi-file or accept the dangling references. A source with no
+// Media entity under media/files has nothing to dangle, so it stays silent.
+func warnOrphanSourceMedia(srcPath string, src *glxlib.GLXFile) {
+	if len(indexMediaByBasename(src.Media)) == 0 {
+		return
+	}
 	srcFiles, err := archiveMediaFilesDir(srcPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: could not inspect source media/files: %v; single-file destination cannot hold binaries, so they will not be copied. Merged Media URIs may dangle.\n", err)
