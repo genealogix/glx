@@ -208,7 +208,7 @@ func stageMediaFilesFromFS(streams *IOStreams, stageDir string, mediaFiles []glx
 
 		switch mf.SourceType {
 		case glxlib.MediaSourceFile:
-			if mf.MemberPath == "" {
+			if bundleMemberUnavailable(mf.MemberPath, nil) {
 				streams.Printf("Warning: could not copy media file %s: unresolved or invalid reference\n", mf.RelativePath)
 				warnCount++
 
@@ -216,7 +216,7 @@ func stageMediaFilesFromFS(streams *IOStreams, stageDir string, mediaFiles []glx
 			}
 
 			if err := copyMemberFile(bundle, mf.MemberPath, destPath); err != nil {
-				if errors.Is(err, errGEDZIPNonRegularEntry) {
+				if bundleMemberUnavailable(mf.MemberPath, err) {
 					// Not fatal, but the archive's media URI now points at a
 					// file that was never written — say so rather than leaving
 					// the user with a silently dangling reference.
@@ -415,6 +415,17 @@ func commitStagedFile(root *os.Root, src, dst string) (os.FileInfo, error) {
 // directory rather than a regular file. Symlinks are refused (not followed) to
 // prevent a zip-symlink-slip redirecting the copy outside the archive.
 var errGEDZIPNonRegularEntry = errors.New("bundle entry is not a regular file")
+
+// bundleMemberUnavailable reports whether a media reference has no usable
+// bundle member: it never resolved, is absent, or names a symlink or
+// directory. These
+// are the only bundle failures an import downgrades to a warning (keeping an
+// existing reference when there is one); checksum, compression and read
+// errors fail the import. Staging and filename allocation both decide here so
+// the two cannot disagree.
+func bundleMemberUnavailable(memberPath string, err error) bool {
+	return memberPath == "" || errors.Is(err, fs.ErrNotExist) || errors.Is(err, errGEDZIPNonRegularEntry)
+}
 
 func copyMemberFile(bundle fs.FS, memberPath, destPath string) error {
 	src, err := bundle.Open(memberPath)
