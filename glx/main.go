@@ -14,6 +14,10 @@
 
 package main
 
+import (
+	"os"
+)
+
 func main() {
-	Execute()
+	os.Exit(run(os.Args[1:], os.Stderr))
 }
