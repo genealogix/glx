@@ -89,6 +89,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Fixed
 
+- **glx writes two-space YAML** — `SerializerOptions.Indent` was documented and passed by every writer, but nothing read it, so every file glx wrote was indented four spaces: out of step with the specification and the examples, and rewriting one value in a hand-written file reflowed every line of it. The serializer now honours `Indent`, which defaults to two spaces (an empty value means the default). A file glx wrote before this change is re-indented once, the next time glx rewrites it. (#1427)
 - **Media imports and merges preserve integrity across filesystem aliases** — Corrupt or unsupported GEDZIP media now fails an import even when an older destination file exists. Case-variant intermediate media symlinks are rejected, single-file merges report media inspection failures and dangling-reference risks, and canonical Unicode case-folding collisions receive distinct filenames. Follow-up to #1391. (#1447)
 
 - **`glx merge` warns about source media under a case-variant directory** — The warning for a single-file destination now finds `MEDIA/files` as well as `media/files`. (#1391)

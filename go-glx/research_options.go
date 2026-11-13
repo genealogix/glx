@@ -70,32 +70,14 @@ func MergeStandardVocabularies(archive *GLXFile) error {
 	if err := LoadStandardVocabulariesIntoGLX(standards); err != nil {
 		return err
 	}
-	archive.EventTypes = typeVocabularyDefaults(archive.EventTypes, standards.EventTypes)
-	archive.RelationshipTypes = typeVocabularyDefaults(archive.RelationshipTypes, standards.RelationshipTypes)
-	archive.PlaceTypes = typeVocabularyDefaults(archive.PlaceTypes, standards.PlaceTypes)
-	archive.SourceTypes = typeVocabularyDefaults(archive.SourceTypes, standards.SourceTypes)
-	archive.RepositoryTypes = typeVocabularyDefaults(archive.RepositoryTypes, standards.RepositoryTypes)
-	archive.ParticipantRoles = typeVocabularyDefaults(archive.ParticipantRoles, standards.ParticipantRoles)
-	archive.MediaTypes = typeVocabularyDefaults(archive.MediaTypes, standards.MediaTypes)
-	archive.ConfidenceLevels = typeVocabularyDefaults(archive.ConfidenceLevels, standards.ConfidenceLevels)
-	archive.SexTypes = typeVocabularyDefaults(archive.SexTypes, standards.SexTypes)
-	archive.GenderTypes = typeVocabularyDefaults(archive.GenderTypes, standards.GenderTypes)
-	archive.SearchResultTypes = typeVocabularyDefaults(archive.SearchResultTypes, standards.SearchResultTypes)
-	archive.ResearchLogStatusTypes = typeVocabularyDefaults(archive.ResearchLogStatusTypes, standards.ResearchLogStatusTypes)
-	archive.LeadStatuses = typeVocabularyDefaults(archive.LeadStatuses, standards.LeadStatuses)
-	archive.StudyTypes = typeVocabularyDefaults(archive.StudyTypes, standards.StudyTypes)
-	archive.StudyStatuses = typeVocabularyDefaults(archive.StudyStatuses, standards.StudyStatuses)
-	archive.LegalStatuses = typeVocabularyDefaults(archive.LegalStatuses, standards.LegalStatuses)
-	archive.SourceNatures = typeVocabularyDefaults(archive.SourceNatures, standards.SourceNatures)
-	archive.InformationTypes = typeVocabularyDefaults(archive.InformationTypes, standards.InformationTypes)
-	archive.PersonProperties = vocabularyDefaults(archive.PersonProperties, standards.PersonProperties)
-	archive.EventProperties = vocabularyDefaults(archive.EventProperties, standards.EventProperties)
-	archive.RelationshipProperties = vocabularyDefaults(archive.RelationshipProperties, standards.RelationshipProperties)
-	archive.PlaceProperties = vocabularyDefaults(archive.PlaceProperties, standards.PlaceProperties)
-	archive.MediaProperties = vocabularyDefaults(archive.MediaProperties, standards.MediaProperties)
-	archive.RepositoryProperties = vocabularyDefaults(archive.RepositoryProperties, standards.RepositoryProperties)
-	archive.CitationProperties = vocabularyDefaults(archive.CitationProperties, standards.CitationProperties)
-	archive.SourceProperties = vocabularyDefaults(archive.SourceProperties, standards.SourceProperties)
+	standardTypes := standards.vocabFields()
+	for i, f := range archive.vocabFields() {
+		*f.Map = typeVocabularyDefaults(*f.Map, *standardTypes[i].Map)
+	}
+	standardProps := standards.propertyFields()
+	for i, f := range archive.propertyFields() {
+		*f.Map = vocabularyDefaults(*f.Map, *standardProps[i].Map)
+	}
 	archive.validation = nil
 
 	return nil
