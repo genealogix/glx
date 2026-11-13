@@ -766,7 +766,7 @@ relationships, places, citations, repositories, media, research_logs,
 studies.
 
 Filters vary by entity type:
-  persons:       --name, --born-before, --born-after, --birthplace
+  persons:       --name, --born-before, --born-after, --birthplace, --status
   events:        --type, --before, --after
   assertions:    --confidence, --status, --source, --citation, --subject
   sources:       --name, --type
@@ -826,7 +826,7 @@ func init() {
 	queryCmd.Flags().IntVar(&queryBefore, "before", 0, "Filter events with date before this year")
 	queryCmd.Flags().IntVar(&queryAfter, "after", 0, "Filter events with date after this year")
 	queryCmd.Flags().StringVar(&queryConfidence, "confidence", "", "Filter assertions by confidence level")
-	queryCmd.Flags().StringVar(&queryStatus, "status", "", "Filter assertions or research logs by status")
+	queryCmd.Flags().StringVar(&queryStatus, "status", "", "Filter persons, assertions or research logs by status")
 	queryCmd.Flags().StringVar(&querySource, "source", "", "Filter assertions by source ID (direct or via citation)")
 	queryCmd.Flags().StringVar(&queryCitation, "citation", "", "Filter assertions by citation ID")
 	queryCmd.Flags().StringVar(&querySubject, "subject", "", "Filter assertions or research logs by subject entity ID or person name substring")

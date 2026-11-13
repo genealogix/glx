@@ -212,6 +212,19 @@ Defines the status of a lead, a competing hypothesis inside a [research log](../
 
 ---
 
+### Person Statuses
+
+Marks a person as a [research placeholder](../4-entity-types/person.md#research-placeholders) for someone not yet identified (hypothetical, predicted, resolved).
+
+<YamlFile
+  :content="vocabularies['person-statuses']"
+  title="vocabularies/person-statuses.glx"
+/>
+
+**View Source:** [person-statuses.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/person-statuses.glx) | **See Also:** [Person Entity Documentation](../4-entity-types/person.md) | [Vocabularies Specification](../4-entity-types/vocabularies.md#person-statuses-vocabulary)
+
+---
+
 ### Study Types
 
 Defines classifications for research-project Study entities (one place study, one name study, family reconstruction, descendancy/ancestry studies, brick-wall investigations).

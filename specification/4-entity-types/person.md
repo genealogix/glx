@@ -117,6 +117,10 @@ Both properties are temporal, allowing changes over time. Out-of-vocabulary valu
 
 `living` is a non-temporal boolean property used to opt a person into export-time privacy filters such as `glx export --privatize-living`. Setting it to `true` is the explicit way to say "redact this person's data on export"; setting it to `false` is the explicit way to opt out of the date-based heuristic for someone the tool would otherwise guess is living. When the property is absent, privacy filters fall back to a heuristic — no recorded death, burial, or cremation event AND a birth event less than 100 years before the current wall clock implies living. The property has no GEDCOM mapping; it is GLX-specific and never written to a GEDCOM file.
 
+#### `status` — Research Placeholders
+
+`status` is a non-temporal property that marks a person as a research placeholder: someone the research implies exists but has not identified, such as an unknown ancestor pair predicted from a DNA match cluster. Its value comes from the [person statuses vocabulary](vocabularies.md#person-statuses-vocabulary). Leave it unset for an ordinary person. See [Research Placeholders](#research-placeholders) for how to use it.
+
 #### Temporal Property Examples
 
 Properties marked as `temporal: true` can hold multiple values. Dates are optional — use them when you know when each value applied, omit them when you don't.
@@ -314,6 +318,37 @@ persons:
       Need to verify with census records.
 ```
 
+### Research Placeholders
+
+DNA-driven methods such as the Leeds Method build a predicted family tree before anyone in it has a name. A placeholder gives each unknown node an entity ID, so relationships, assertions and research logs can point at it and the tree can be refined as evidence accumulates:
+
+```yaml
+persons:
+  person-unknown-ggp-8:
+    properties:
+      name:
+        value: "Unknown Great-Grandparent #8 (Green parents)"
+      status: predicted
+    notes: "Predicted from DNA cluster 8. Geography: Brooke County, VA."
+```
+
+| Status | Meaning |
+|--------|---------|
+| `hypothetical` | Proposed as a working assumption; nothing points to this person directly yet |
+| `predicted` | Inferred from indirect evidence such as DNA clusters; not yet identified |
+| `resolved` | Began as a placeholder and has since been identified |
+
+`status` says whether a person has been identified, not how strong the evidence is. Confidence belongs on [assertions](assertion.md), as it does for [hypothetical relationships](relationship.md); competing candidates for a placeholder's identity belong in [research log leads](research-log.md#researchlead).
+
+**Resolving a placeholder.** When the person is identified, do one of the following:
+
+- Update the placeholder in place, giving it the real name and `status: resolved`. This keeps a visible record that the person began as a prediction.
+- Merge it with `glx merge-persons`, if the identified person already has a record. An unresolved status never survives a merge with an identified person, whichever side is kept.
+
+**How tools treat placeholders.** `glx analyze` does not report missing births, deaths, events or parents for an unresolved placeholder, and does not suggest record searches for it. It lists the placeholder as open and gives an archive-wide count of open and resolved placeholders. A person whose only recorded parents are unresolved placeholders is still reported as having no identified parents. `glx query persons --status` filters by status, and `glx summary` shows it. A `resolved` person is treated like any other person.
+
+Only the standard `hypothetical` and `predicted` values mark a person as unresolved; tools treat a custom status like any other person. GEDCOM cannot express this distinction, so `glx export` adds a `NOTE` to each unresolved placeholder's `INDI` record. That note imports back as an ordinary note, not as a `status`.
+
 ## File Organization
 
 **Note:** File organization is flexible. Entities can be in any .glx file with any directory structure. The example below shows one-entity-per-file organization, which is recommended for collaborative projects (better git diffs) but not required.
@@ -338,6 +373,7 @@ persons/
 | `properties.name.fields.surname` | `INDI.NAME.SURN` | Surname |
 | `properties.sex` | `INDI.SEX` | M→male, F→female, U→unknown, X→other; absent/N→not_recorded |
 | `properties.gender` | (none) | No direct mapping; GEDCOM 7.0 defers gender identity to `FACT` |
+| `properties.status` | `INDI.NOTE` | Export only, for unresolved placeholders; see [Research Placeholders](#research-placeholders) |
 | `properties.occupation` | `INDI.OCCU` | Occupation |
 | `properties.residence` | `INDI.RESI` | Residence |
 | `notes` | `INDI.NOTE` | Notes |
@@ -347,6 +383,7 @@ persons/
 ## Validation Rules
 
 - Properties should be from the [person properties vocabulary](vocabularies.md#person-properties-vocabulary) (unknown properties generate warnings)
+- `status` should be from the [person statuses vocabulary](vocabularies.md#person-statuses-vocabulary) (out-of-vocabulary values generate warnings)
 - All place references must point to existing Place entities
 - Date formats must follow the [date format standard](../2-core-concepts.md#date-format-standard) (invalid formats generate warnings)
 
