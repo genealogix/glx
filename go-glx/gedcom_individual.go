@@ -224,10 +224,11 @@ func createNameAssertion(personID string, name *PersonName, nameRecord *GEDCOMRe
 	assertionID := generateAssertionID(conv)
 	conv.GLX.Assertions[assertionID] = &Assertion{
 		Subject:   EntityRef{Person: personID},
-		Property:  PersonPropertyName,
-		Value:     fullName,
-		Sources:   refs.SourceIDs,
-		Citations: refs.CitationIDs,
+		Property:   PersonPropertyName,
+		Value:      fullName,
+		Confidence: refs.Confidence,
+		Sources:    refs.SourceIDs,
+		Citations:  refs.CitationIDs,
 	}
 	conv.Stats.AssertionsCreated++
 }
@@ -888,11 +889,12 @@ func convertNegativeAssertion(personID string, noRecord *GEDCOMRecord, conv *Con
 	// Create a disproven assertion targeting the event
 	assertionID := generateAssertionID(conv)
 	conv.GLX.Assertions[assertionID] = &Assertion{
-		Subject:   EntityRef{Event: eventID},
-		Status:    "disproven",
-		Notes:     NoteList{"Negative assertion: NO " + noRecord.Value + " from GEDCOM import"},
-		Sources:   refs.SourceIDs,
-		Citations: refs.CitationIDs,
+		Subject:    EntityRef{Event: eventID},
+		Status:     "disproven",
+		Confidence: refs.Confidence,
+		Notes:      NoteList{"Negative assertion: NO " + noRecord.Value + " from GEDCOM import"},
+		Sources:    refs.SourceIDs,
+		Citations:  refs.CitationIDs,
 	}
 	conv.Stats.AssertionsCreated++
 }

@@ -374,7 +374,7 @@ The complete history of how information came to be known, including source attri
 
 ### QUAY
 
-GEDCOM quality indicator (0-3 scale) on a source citation. It is not mapped to assertion `confidence`; on import the value is preserved as a `GEDCOM QUAY: n` note on the citation.
+GEDCOM quality indicator (0-3 scale) on a source citation. On import it sets the citing assertion's `confidence` through the `confidence_levels` vocabulary's `gedcom` field (`3` → `high`, `2` → `medium`, `0`/`1` → `low`), and the raw value is also preserved as a `GEDCOM QUAY: n` note on the citation. Export does not reconstruct it.
 
 > **See Also:** [Citation Entity - GEDCOM Mapping](4-entity-types/citation.md#gedcom-mapping)
 
