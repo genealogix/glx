@@ -101,6 +101,7 @@ func serveArchive(streams *IOStreams, opts serveOptions) error {
 	}
 
 	// Interrupt triggers a graceful shutdown so in-flight requests complete.
+	handOverInterrupts()
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
