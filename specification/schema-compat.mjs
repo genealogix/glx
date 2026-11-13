@@ -79,6 +79,63 @@ export function normalizeDialect(node, isSchema = true) {
   return out;
 }
 
+// json-schema-diff-validator compares keywords, not the instances they accept,
+// so widening a field — `{type: string, pattern}` becoming `oneOf: [{type:
+// string, pattern}, {type: array, …}]` — reads as removing `type` and adding
+// `oneOf`, i.e. breaking, although every value valid before is still valid.
+// collapseWidenings finds those nodes in the current schema and puts the base
+// node back in their place before the diff, so the widening itself passes and
+// any other change around it is still diffed. A node counts as a widening only
+// when it is nothing but an anyOf/oneOf one of whose branches is the base node
+// verbatim; for oneOf, which fails when two branches match, every other branch
+// must also declare a type the base node's type cannot satisfy.
+const JSON_TYPE_OVERLAPS = { integer: ["integer", "number"], number: ["number", "integer"] };
+
+function typesOf(node) {
+  if (typeof node?.type === "string") return [node.type];
+  if (Array.isArray(node?.type)) return node.type;
+  return null;
+}
+
+function isWidening(base, current) {
+  if (!base || typeof base !== "object" || Array.isArray(base)) return false;
+  if (!current || typeof current !== "object" || Array.isArray(current)) return false;
+  const keys = Object.keys(current);
+  if (keys.length !== 1 || (keys[0] !== "anyOf" && keys[0] !== "oneOf")) return false;
+  const combinator = keys[0];
+  const branches = current[combinator];
+  if (combinator in base || !Array.isArray(branches)) return false;
+  const kept = branches.findIndex((b) => isDeepStrictEqual(b, base));
+  if (kept === -1) return false;
+  if (combinator === "anyOf") return true;
+
+  const baseTypes = typesOf(base);
+  if (!baseTypes) return false;
+  const clashes = new Set(baseTypes.flatMap((t) => JSON_TYPE_OVERLAPS[t] || [t]));
+  return branches.every((b, i) => {
+    if (i === kept) return true;
+    const types = typesOf(b);
+    return types !== null && !types.some((t) => clashes.has(t));
+  });
+}
+
+export function collapseWidenings(base, current) {
+  if (isWidening(base, current)) return base;
+  if (Array.isArray(current)) {
+    if (!Array.isArray(base) || base.length !== current.length) return current;
+    return current.map((n, i) => collapseWidenings(base[i], n));
+  }
+  if (current === null || typeof current !== "object" || base === null || typeof base !== "object") {
+    return current;
+  }
+  const out = {};
+  for (const [key, value] of Object.entries(current)) {
+    // Plain data is compared as written, never reinterpreted as a schema.
+    out[key] = DATA_VALUED_KEYWORDS.has(key) || !(key in base) ? value : collapseWidenings(base[key], value);
+  }
+  return out;
+}
+
 // Enum widening is monotone in ordinary property constraints, but can narrow
 // a negation or conditional, or make exclusive alternatives overlap. Follow
 // local references too: a definition can be reused in both safe and unsafe places.
@@ -196,10 +253,10 @@ export function classifySchemaChange({ path, baseContent, currentContent }) {
     };
   }
   try {
-    const oldNormalized = normalizeDialect(oldSchema);
-    const newNormalized = normalizeDialect(newSchema);
-    normalizeEnumWidening(oldNormalized, newNormalized);
-    validateSchemaCompatibility(oldNormalized, newNormalized);
+    const base = normalizeDialect(oldSchema);
+    const current = collapseWidenings(base, normalizeDialect(newSchema));
+    normalizeEnumWidening(base, current);
+    validateSchemaCompatibility(base, current);
     return { path, status: "compatible", breaking: false, message: `✓ ${path}: backward compatible` };
   } catch (e) {
     return { path, status: "breaking", breaking: true, message: `✗ ${path}: BREAKING change — ${e.message}` };

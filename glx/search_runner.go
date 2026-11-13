@@ -237,8 +237,12 @@ func searchPlaces(archive *glxlib.GLXFile, matchFn func(string) bool) []searchRe
 		if matchFn(place.Type) {
 			results = append(results, searchResult{glxlib.EntityTypePlaces, id, searchFieldType, place.Type})
 		}
-		if matchFn(place.ParentID) {
-			results = append(results, searchResult{glxlib.EntityTypePlaces, id, searchFieldParent, place.ParentID})
+		for _, parentID := range place.ParentIDs() {
+			if matchFn(parentID) {
+				results = append(results, searchResult{glxlib.EntityTypePlaces, id, searchFieldParent, parentID})
+
+				break
+			}
 		}
 		if matchFn(place.Notes.String()) {
 			results = append(results, searchResult{glxlib.EntityTypePlaces, id, searchFieldNotes, truncate(place.Notes.String())})
