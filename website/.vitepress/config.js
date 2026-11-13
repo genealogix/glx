@@ -149,7 +149,12 @@ const config = {
     nav: [
       { text: 'Home', link: '/' },
       { text: 'Quickstart', link: '/quickstart' },
-      { text: 'Convert', link: '/convert' },
+      {
+        text: 'Tools',
+        items: [
+          { text: 'GEDCOM ↔ GLX Converter', link: '/convert' }
+        ]
+      },
       { text: 'CLI', link: '/cli' },
       {
         text: 'Specification',
