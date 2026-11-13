@@ -4,4 +4,14 @@ places:
     type: country
     latitude: 52.3555
     longitude: -1.1743
-    notes: "United Kingdom constituent country"
+    properties:
+      jurisdiction: "GB-ENG"
+      place_format: "City, County, Country"
+      external_ids:
+        - value: "6269131"
+          fields:
+            type: "geonames"
+        - value: "Q21"
+          fields:
+            type: "wikidata"
+    notes: "Country in north-western Europe, part of the United Kingdom since 1801. Recorded as the top of the place hierarchy, the usual form for English places in genealogical records (Leeds, Yorkshire, England)."

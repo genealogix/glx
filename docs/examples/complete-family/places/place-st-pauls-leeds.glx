@@ -1,0 +1,8 @@
+places:
+  place-st-pauls-leeds:
+    name: "St. Paul's Church"
+    type: church
+    parent: place-leeds
+    latitude: 53.7993
+    longitude: -1.5534
+    notes: "Church of England church in Park Square. Its register is source-parish-leeds."
