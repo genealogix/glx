@@ -79,6 +79,7 @@ func publishSingleFileImportArchive(glx *glxlib.GLXFile, outputPath string, vali
 		return fmt.Errorf("creating media staging directory: %w", err)
 	}
 	defer func() { _ = os.RemoveAll(stageDir) }()
+	defer trackTemp(stageDir)()
 	reportMedia, err := source.stage(stageDir)
 	if err != nil {
 		return fmt.Errorf("failed to copy media files: %w", err)
@@ -95,6 +96,7 @@ func publishSingleFileImportArchive(glx *glxlib.GLXFile, outputPath string, vali
 			_ = os.Remove(tempPath)
 		}
 	}()
+	defer trackTemp(tempPath)()
 	if err := writeSingleFileArchive(tempPath, glx, validate); err != nil {
 		return formatValidationError(err, showFirstErrors)
 	}
@@ -161,6 +163,7 @@ func publishMultiFileImportArchive(glx *glxlib.GLXFile, outputPath string, valid
 		return fmt.Errorf("creating media staging directory: %w", err)
 	}
 	defer func() { _ = os.RemoveAll(stageDir) }()
+	defer trackTemp(stageDir)()
 	reportMedia, err := source.stage(stageDir)
 	if err != nil {
 		return fmt.Errorf("failed to copy media files: %w", err)
