@@ -9,7 +9,8 @@ Serve a local browser-based viewer for a GLX archive (prints a URL to open)
 
 ### Synopsis
 
-Serve a read-only, browser-based viewer for a GENEALOGIX archive.
+Serve a browser-based viewer for a GENEALOGIX archive, read-only unless
+--edit is given.
 
 Starts a small local web server and prints a URL to open in your browser
 (it does not open the browser for you). The viewer is interactive and shows:
@@ -21,6 +22,12 @@ Starts a small local web server and prints a URL to open in your browser
 The server binds to localhost by default so the archive stays on your machine.
 The archive is loaded once at startup; restart the server to pick up external
 edits made by the CLI or a text editor.
+
+With --edit, the viewer can also add people, edit a person's name, sex and
+gender, and add parent, child and spouse relationships. Additions go through
+the same checks as 'glx add person' and 'glx add relationship' and write the
+same files; an edit rewrites only that person's file, and is refused if the
+file changed since the page loaded. Editing needs a multi-file directory.
 
 Accepts either a multi-file directory or a single .glx file.
 If no path is given, the current directory is used.
@@ -43,11 +50,15 @@ glx serve [path] [flags]
 
   # Pick any free port (printed on startup)
   glx serve --port 0
+
+  # Allow adding and editing people in the browser
+  glx serve my-family-archive --edit
 ```
 
 ### Options
 
 ```
+      --edit          Allow adding and editing people and relationships (directory archives only)
   -h, --help          help for serve
       --host string   Host/interface to bind (use 127.0.0.1 to keep the viewer local) (default "127.0.0.1")
   -p, --port int      Port to listen on (0 picks any free port) (default 8080)

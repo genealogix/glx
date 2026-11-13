@@ -1,7 +1,7 @@
 /*
  * Copyright 2025 Oracynth, Inc.
  * Licensed under the Apache License, Version 2.0.
- * Styles for the `glx serve` read-only viewer (issue #93, Phase 1).
+ * Styles for the `glx serve` viewer and editor (issue #93).
  */
 
 :root {
@@ -149,3 +149,13 @@ select { padding: 0.4rem 0.6rem; border: 1px solid var(--border); border-radius:
 
 .crumbs { font-size: 0.9rem; color: var(--muted); margin-bottom: 0.75rem; }
 .crumbs a { color: var(--muted); }
+
+/* Editing (glx serve --edit) */
+.btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn.primary:hover { background: var(--accent); filter: brightness(1.1); }
+.btn:disabled { opacity: 0.5; cursor: default; }
+.edit-form .error { margin-bottom: 1rem; }
+.field-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem 1rem; margin-bottom: 1rem; }
+.field { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.85rem; color: var(--muted); }
+.field input, .field select { font: inherit; font-size: 0.95rem; color: var(--ink); padding: 0.4rem 0.6rem; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); min-width: 0; }
+.field input:disabled, .field select:disabled { background: var(--bg); color: var(--muted); }
