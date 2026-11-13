@@ -1,0 +1,5 @@
+persons:
+  person-456:
+    properties:
+      name:
+        value: "Mary"

@@ -1,8 +1,0 @@
-places:
-  place-yorkshire:
-    name: "Yorkshire"
-    type: county
-    parent: place-england
-    latitude: 53.9582
-    longitude: -1.5701
-    notes: "Historic county in Northern England"
