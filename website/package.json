@@ -3,10 +3,12 @@
   "version": "0.0.0-beta.12",
   "description": "GENEALOGIX Specification Documentation Site",
   "scripts": {
-    "dev": "npm run copy-static && vitepress dev -v --host 0.0.0.0",
-    "build": "npm run copy-static && vitepress build",
+    "dev": "npm run copy-static && npm run build:converter && vitepress dev -v --host 0.0.0.0",
+    "build": "npm run copy-static && npm run build:converter && vitepress build",
     "preview": "vitepress preview",
     "copy-static": "node scripts/copy-static.mjs",
+    "build:converter": "node scripts/build-converter.mjs",
+    "test:converter": "playwright test",
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"**/*.{js,vue,json,md}\""
@@ -21,6 +23,7 @@
   "license": "Apache-2.0",
   "devDependencies": {
     "@eslint/js": "^10.0.0",
+    "@playwright/test": "1.65.0",
     "eslint": "^10.14.0",
     "eslint-plugin-vue": "^10.12.0",
     "globals": "^17.14.0",

@@ -5,11 +5,21 @@ on:
     branches: [main]
     paths:
       - 'website/**'
+      - 'go-glx/**'
+      - 'specification/5-standard-vocabularies/**'
+      - 'go.mod'
+      - 'go.sum'
+      - 'public/_headers'
       - 'scripts/hooks/**'
       - '.github/workflows/lint-website.yml'
   pull_request:
     paths:
       - 'website/**'
+      - 'go-glx/**'
+      - 'specification/5-standard-vocabularies/**'
+      - 'go.mod'
+      - 'go.sum'
+      - 'public/_headers'
       - 'scripts/hooks/**'
       - '.github/workflows/lint-website.yml'
 
@@ -49,3 +59,17 @@ jobs:
 
       - name: Test staged lint hooks
         run: node --test ../scripts/hooks/staged.test.mjs
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Build website and converter
+        run: npm run build
+
+      - name: Install Chromium for converter smoke tests
+        run: npx playwright install --with-deps chromium
+
+      - name: Test browser conversion
+        run: npm run test:converter -- --project=chromium

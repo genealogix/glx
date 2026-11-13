@@ -21,7 +21,9 @@ fi
 # Export website configuration as well as sources: an unstaged config edit
 # must not change which staged findings are reported. Keep installed packages
 # available without copying them into the snapshot.
-root=$(git rev-parse --show-toplevel)
+# Hooks in a linked worktree can set GIT_DIR. Resolve the root from the
+# checkout root so Git does not treat website/ as the worktree.
+root=$(git -C .. rev-parse --show-toplevel)
 snap=$(mktemp -d "$(git rev-parse --path-format=absolute --git-path glx-eslint-snapshot).XXXXXX")
 trap 'rm -rf "$snap"' EXIT
 git -C "$root" ls-files -z -- website/ |
@@ -32,7 +34,7 @@ eslint="$root/website/$eslint"
 
 status=0
 for file in "$@"; do
-  git -C "$root/website" show ":./$file" |
+  git -C "$root" show ":website/${file#./}" |
     "$eslint" --max-warnings 0 --no-warn-ignored --stdin --stdin-filename "$file" ||
     status=1
 done

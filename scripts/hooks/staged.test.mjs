@@ -113,3 +113,20 @@ test('ESLint still reads LF blobs when checkout-index converts to CRLF', { skip:
   const result = f.run('bash', [join(hooks, 'eslint-staged.sh'), 'test.js'], { cwd: join(f.dir, 'website') })
   assert.equal(result.status, 0, result.stdout + result.stderr)
 })
+
+test('ESLint resolves a linked worktree with the hook environment', { skip: !existsSync(join(dependencies, '.bin/eslint')) }, t => {
+  const f = fixture(t)
+  f.put('website/eslint.config.mjs', "export default [{}]\n")
+  f.put('website/test.js', '// baseline\n')
+  f.git('add', 'website')
+  f.git('commit', '-qm', 'baseline')
+  const worktree = join(f.dir, 'worktree')
+  f.git('worktree', 'add', '-qb', 'feature', worktree)
+  const cwd = join(worktree, 'website')
+  symlinkSync(dependencies, join(cwd, 'node_modules'), 'dir')
+  const gitDir = f.git('-C', worktree, 'rev-parse', '--absolute-git-dir')
+  const result = f.run('bash', [join(hooks, 'eslint-staged.sh'), './test.js'], {
+    cwd, env: { ...process.env, GIT_DIR: gitDir },
+  })
+  assert.equal(result.status, 0, result.stdout + result.stderr)
+})

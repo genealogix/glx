@@ -17,6 +17,7 @@ package glx
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"go.yaml.in/yaml/v3"
@@ -74,10 +75,32 @@ func (n NoteList) MarshalYAML() (any, error) {
 		return nil, nil
 	}
 	if len(n) == 1 {
-		return n[0], nil
+		return marshalNote(n[0]), nil
+	}
+	if slices.ContainsFunc(n, needsQuotedNote) {
+		notes := make([]any, len(n))
+		for i, value := range n {
+			notes[i] = marshalNote(value)
+		}
+
+		return notes, nil
 	}
 
 	return []string(n), nil
+}
+
+func marshalNote(note string) any {
+	if needsQuotedNote(note) {
+		return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: note, Style: yaml.DoubleQuotedStyle}
+	}
+
+	return note
+}
+
+func needsQuotedNote(note string) bool {
+	// go-yaml can choose an unmarked block scalar for a multiline string
+	// starting with a tab, then reject that same tab while reading the file.
+	return strings.HasPrefix(strings.TrimLeft(note, "\n\r "), "\t") && strings.ContainsAny(note, "\n\r")
 }
 
 // String returns all notes joined with double newlines (for display).

@@ -8,6 +8,8 @@ layout: doc
 
 Guide for converting GEDCOM files to GENEALOGIX format using the automated import tool.
 
+For a single GEDCOM file, you can try the [browser converter](../../website/convert.md) and download a single-file GLX archive.
+
 ## Key Differences
 
 Understanding how GENEALOGIX differs from GEDCOM helps you get the most out of your migration.

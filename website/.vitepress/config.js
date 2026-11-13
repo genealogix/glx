@@ -15,6 +15,7 @@ const websiteNodeModules = path.resolve(__dirname, '../node_modules')
 const rewrites = {
   // Website homepage
   'website/index.md': 'index.md',
+  'website/convert.md': 'convert.md',
 
   // Docs section - specific files first
   'docs/quickstart.md': 'quickstart.md',
@@ -96,12 +97,15 @@ export default defineConfig({
     'scripts/**',
   ],
 
-  // Head configuration
-  head: [
-    ['link', { rel: 'icon', href: '/logo.svg', type: 'image/svg+xml' }],
-    ['script', { async: '', src: 'https://www.googletagmanager.com/gtag/js?id=G-N2YJJJFE6K' }],
-    ['script', {}, 'window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag(\'js\', new Date());\ngtag(\'config\', \'G-N2YJJJFE6K\');']
-  ],
+  head: [['link', { rel: 'icon', href: '/logo.svg', type: 'image/svg+xml' }]],
+  // The converter gets its own document without the site's analytics script.
+  transformHead({ pageData }) {
+    if (pageData.relativePath === 'convert.md') return
+    return [
+      ['script', { async: '', src: 'https://www.googletagmanager.com/gtag/js?id=G-N2YJJJFE6K' }],
+      ['script', {}, 'window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag(\'js\', new Date());\ngtag(\'config\', \'G-N2YJJJFE6K\');']
+    ]
+  },
 
   // Sitemap generation
   sitemap: {
@@ -144,6 +148,7 @@ export default defineConfig({
     nav: [
       { text: 'Home', link: '/' },
       { text: 'Quickstart', link: '/quickstart' },
+      { text: 'Convert', link: '/convert' },
       { text: 'CLI', link: '/cli' },
       {
         text: 'Specification',

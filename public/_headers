@@ -1,0 +1,14 @@
+/assets/converter-*
+  Cache-Control: public, max-age=31556952, immutable
+
+/assets/converter-*.wasm
+  Content-Type: application/wasm
+
+/assets/converter-worker-*.js
+  Content-Security-Policy: default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self'
+
+/convert
+  Content-Security-Policy: script-src 'self' 'unsafe-inline'; connect-src 'self'; worker-src 'self'; object-src 'none'
+
+/convert.html
+  Content-Security-Policy: script-src 'self' 'unsafe-inline'; connect-src 'self'; worker-src 'self'; object-src 'none'
