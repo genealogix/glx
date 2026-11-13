@@ -3,8 +3,8 @@
   "version": "0.0.0-beta.12",
   "description": "GENEALOGIX Specification Documentation Site",
   "scripts": {
-    "dev": "npm run copy-static && npm run build:converter && vitepress dev -v --host 0.0.0.0",
-    "build": "npm run copy-static && npm run build:converter && vitepress build",
+    "dev": "npm run copy-static && vitepress dev -v --host 0.0.0.0",
+    "build": "npm run copy-static && vitepress build",
     "preview": "vitepress preview",
     "copy-static": "node scripts/copy-static.mjs",
     "build:converter": "node scripts/build-converter.mjs",

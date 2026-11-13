@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process'
 import { defineConfig } from 'vitepress'
 import { fileURLToPath } from 'url'
 import path from 'path'
@@ -57,7 +58,7 @@ const rewrites = {
 }
 
 
-export default defineConfig({
+const config = {
   title: 'GENEALOGIX',
   description: 'A modern, evidence-first, Git-native genealogy data standard',
 
@@ -522,4 +523,13 @@ export default defineConfig({
       provider: 'local'
     }
   }
+}
+
+export default defineConfig(({ command, mode }) => {
+  // Cloudflare Pages invokes VitePress directly. Generate the same assets
+  // for that build and local development, and let preview use the built files.
+  if (command === 'build' || mode === 'development') {
+    execFileSync(process.execPath, [path.resolve(__dirname, '../scripts/build-converter.mjs')], { stdio: 'inherit' })
+  }
+  return config
 })
