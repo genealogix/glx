@@ -42,7 +42,7 @@ func convertFromWorker(_ js.Value, args []js.Value) (response any) {
 	if err != nil {
 		return map[string]any{errorKey: err.Error()}
 	}
-	if destination != "glx" {
+	if destination != singleFileGLX && destination != multiFileGLX {
 		prepare.Invoke()
 	}
 

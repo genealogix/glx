@@ -12,6 +12,7 @@ const stages = {
 const diagnosticBatch = 25
 const ready = ref(false)
 const direction = ref('import')
+const glxFormat = ref('glx')
 const version = ref('5.5.1')
 const fileInput = ref(null)
 const file = ref(null)
@@ -23,6 +24,7 @@ const diagnosticLimit = ref(diagnosticBatch)
 let worker = null
 
 const isImport = computed(() => direction.value === 'import')
+const isZIP = computed(() => isImport.value && glxFormat.value === 'zip')
 const busy = computed(() => ['loading', 'reading', 'converting', 'preparing'].includes(stage.value))
 const diagnostics = computed(() => download.value?.summary.diagnostics ?? [])
 const errors = computed(() => diagnostics.value.filter((entry) => entry.isError).length)
@@ -30,6 +32,7 @@ const warnings = computed(() => diagnostics.value.length - errors.value)
 const status = computed(() => {
   if (error.value) return error.value
   if (stage.value === 'done' && errors.value) return 'Ready to download. Some records could not be converted.'
+  if (stage.value === 'preparing' && isZIP.value) return 'Packaging the GLX ZIP…'
   return stages[stage.value] || (file.value ? 'File selected.' : '')
 })
 const number = new Intl.NumberFormat('en')
@@ -71,6 +74,7 @@ function reset() {
   stopWorker()
   clearSelection()
   direction.value = 'import'
+  glxFormat.value = 'glx'
   version.value = '5.5.1'
 }
 
@@ -81,9 +85,9 @@ function fail(message) {
 }
 
 function showDownload(message) {
-  const extension = isImport.value ? '.glx' : '.ged'
+  const extension = isImport.value ? `.${glxFormat.value}` : '.ged'
   const baseName = file.value.name.replace(/\.(ged(com)?|glx)$/i, '') || 'archive'
-  const blob = new Blob([message.output], { type: 'application/octet-stream' })
+  const blob = new Blob([message.output], { type: isZIP.value ? 'application/zip' : 'application/octet-stream' })
   download.value = {
     url: URL.createObjectURL(blob),
     name: baseName + extension,
@@ -136,7 +140,7 @@ function start() {
       }
       fail(data.type === 'error' ? data.message : workerFailure)
     }
-    run.postMessage({ file: file.value, destination: isImport.value ? 'glx' : version.value })
+    run.postMessage({ file: file.value, destination: isImport.value ? glxFormat.value : version.value })
   } catch {
     fail(workerFailure)
   }
@@ -173,7 +177,17 @@ onUnmounted(() => {
               <option value="export">GLX → GEDCOM</option>
             </select>
           </label>
-          <label v-if="!isImport">
+          <label v-if="isImport">
+            GLX output
+            <select
+              v-model="glxFormat"
+              @change="clearResult"
+            >
+              <option value="glx">Single file (.glx)</option>
+              <option value="zip">Multi-file archive (.zip)</option>
+            </select>
+          </label>
+          <label v-else>
             GEDCOM version
             <select
               v-model="version"
@@ -251,7 +265,7 @@ onUnmounted(() => {
           class="button primary"
           :href="download.url"
           :download="download.name"
-        >Download {{ isImport ? 'GLX' : 'GEDCOM' }}</a>
+        >Download {{ isZIP ? 'ZIP' : isImport ? 'GLX' : 'GEDCOM' }}</a>
       </div>
       <dl
         class="counts"

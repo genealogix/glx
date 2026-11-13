@@ -16,7 +16,9 @@ package glx
 
 import (
 	"fmt"
+	"maps"
 	"path"
+	"slices"
 	"sort"
 	"strings"
 
@@ -117,27 +119,41 @@ func withoutEmptyMetadata(archive *GLXFile) *GLXFile {
 // SerializeMultiFileToMap serializes a GLX archive to a map of relative paths to file contents.
 // Map keys are relative paths like "persons/person-001.glx", "vocabularies/event-types.glx".
 func (s *DefaultSerializer) SerializeMultiFileToMap(glx *GLXFile) (map[string][]byte, error) {
+	files := make(map[string][]byte)
+	if err := s.serializeMultiFile(glx, func(filename string, data []byte) error {
+		files[filename] = data
+
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return files, nil
+}
+
+func (s *DefaultSerializer) serializeMultiFile(glx *GLXFile, writeFile func(string, []byte) error) error {
 	// Validate if requested
 	if s.Options.Validate {
 		if err := validateGLXFile(glx); err != nil {
-			return nil, fmt.Errorf("validation failed: %w", err)
+			return fmt.Errorf("validation failed: %w", err)
 		}
 	}
 
 	// Guard against nil input when validation is disabled.
 	if glx == nil {
-		return nil, ErrGLXFileNil
+		return ErrGLXFileNil
 	}
-
-	files := make(map[string][]byte)
 
 	// Add standard vocabularies.
 	// path.Join (forward slashes), not filepath.Join: these are logical
 	// archive keys, not disk paths, and must be OS-independent so the same
 	// GLXFile produces the same map on Linux and Windows. See issue #900.
-	for filename, content := range StandardVocabularies() {
+	vocabularies := StandardVocabularies()
+	for _, filename := range slices.Sorted(maps.Keys(vocabularies)) {
 		vocabPath := path.Join("vocabularies", filename)
-		files[vocabPath] = content
+		if err := writeFile(vocabPath, vocabularies[filename]); err != nil {
+			return err
+		}
 	}
 
 	// Serialize metadata if present and non-empty
@@ -145,87 +161,54 @@ func (s *DefaultSerializer) SerializeMultiFileToMap(glx *GLXFile) (map[string][]
 		metaWrapper := map[string]*Metadata{"metadata": glx.ImportMetadata}
 		yamlBytes, err := yaml.Marshal(metaWrapper)
 		if err != nil {
-			return nil, fmt.Errorf("failed to marshal metadata: %w", err)
+			return fmt.Errorf("failed to marshal metadata: %w", err)
 		}
-		files["metadata.glx"] = yamlBytes
+		if err := writeFile("metadata.glx", yamlBytes); err != nil {
+			return err
+		}
 	}
 
 	// Serialize entities by type
-	if err := s.serializeEntitiesToMap(glx.Persons, "persons", "person", files); err != nil {
-		return nil, err
+	if err := serializeEntitiesWrapped(glx.Persons, "persons", "person", writeFile); err != nil {
+		return err
 	}
-	if err := s.serializeEntitiesToMap(glx.Events, "events", "event", files); err != nil {
-		return nil, err
+	if err := serializeEntitiesWrapped(glx.Events, "events", "event", writeFile); err != nil {
+		return err
 	}
-	if err := s.serializeEntitiesToMap(glx.Relationships, "relationships", "relationship", files); err != nil {
-		return nil, err
+	if err := serializeEntitiesWrapped(glx.Relationships, "relationships", "relationship", writeFile); err != nil {
+		return err
 	}
-	if err := s.serializeEntitiesToMap(glx.Places, "places", "place", files); err != nil {
-		return nil, err
+	if err := serializeEntitiesWrapped(glx.Places, "places", "place", writeFile); err != nil {
+		return err
 	}
-	if err := s.serializeEntitiesToMap(glx.Sources, "sources", "source", files); err != nil {
-		return nil, err
+	if err := serializeEntitiesWrapped(glx.Sources, "sources", "source", writeFile); err != nil {
+		return err
 	}
-	if err := s.serializeEntitiesToMap(glx.Citations, "citations", "citation", files); err != nil {
-		return nil, err
+	if err := serializeEntitiesWrapped(glx.Citations, "citations", "citation", writeFile); err != nil {
+		return err
 	}
-	if err := s.serializeEntitiesToMap(glx.Repositories, "repositories", "repository", files); err != nil {
-		return nil, err
+	if err := serializeEntitiesWrapped(glx.Repositories, "repositories", "repository", writeFile); err != nil {
+		return err
 	}
-	if err := s.serializeEntitiesToMap(glx.Media, "media", "media", files); err != nil {
-		return nil, err
+	if err := serializeEntitiesWrapped(glx.Media, "media", "media", writeFile); err != nil {
+		return err
 	}
-	if err := s.serializeEntitiesToMap(glx.Assertions, "assertions", "assertion", files); err != nil {
-		return nil, err
+	if err := serializeEntitiesWrapped(glx.Assertions, "assertions", "assertion", writeFile); err != nil {
+		return err
 	}
-	if err := s.serializeEntitiesToMap(glx.ResearchLogs, "research_logs", "research-log", files); err != nil {
-		return nil, err
-	}
-	if err := s.serializeEntitiesToMap(glx.Studies, "studies", "study", files); err != nil {
-		return nil, err
+	if err := serializeEntitiesWrapped(glx.ResearchLogs, "research_logs", "research-log", writeFile); err != nil {
+		return err
 	}
 
-	return files, nil
-}
-
-// serializeEntitiesToMap serializes entities to the files map with deterministic filenames.
-// Each entity file uses the standard GLX structure: {collectionKey: {entityID: entity}}
-func (s *DefaultSerializer) serializeEntitiesToMap(entities any, dirName, entityType string, files map[string][]byte) error {
-	// Type switch to handle different entity map types
-	switch typedEntities := entities.(type) {
-	case map[string]*Person:
-		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
-	case map[string]*Event:
-		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
-	case map[string]*Relationship:
-		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
-	case map[string]*Place:
-		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
-	case map[string]*Source:
-		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
-	case map[string]*Citation:
-		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
-	case map[string]*Repository:
-		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
-	case map[string]*Media:
-		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
-	case map[string]*Assertion:
-		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
-	case map[string]*ResearchLog:
-		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
-	case map[string]*Study:
-		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
-	default:
-		return fmt.Errorf("%w: %T", ErrUnsupportedEntityType, entities)
-	}
+	return serializeEntitiesWrapped(glx.Studies, "studies", "study", writeFile)
 }
 
 // serializeEntitiesWrapped serializes each entity as a standard GLX file:
 // {collectionKey: {entityID: entity}}. Derives filenames deterministically from entity IDs.
-func serializeEntitiesWrapped[T any](entities map[string]T, dirName, entityType string, files map[string][]byte) error {
+func serializeEntitiesWrapped[T any](entities map[string]*T, dirName, entityType string, writeFile func(string, []byte) error) error {
 	lowercaseToID := make(map[string]string, len(entities))
 
-	for entityID, entity := range entities {
+	for _, entityID := range sortedKeys(entities) {
 		filename, err := EntityIDToFilename(entityID)
 		if err != nil {
 			return fmt.Errorf("entity %s %s: %w", entityType, entityID, err)
@@ -238,8 +221,8 @@ func serializeEntitiesWrapped[T any](entities map[string]T, dirName, entityType 
 		lowercaseToID[filename] = entityID
 
 		// Wrap as standard GLX structure: {collectionKey: {entityID: entity}}
-		wrapper := map[string]map[string]T{
-			dirName: {entityID: entity},
+		wrapper := map[string]map[string]*T{
+			dirName: {entityID: entities[entityID]},
 		}
 
 		// Marshal to YAML
@@ -251,7 +234,9 @@ func serializeEntitiesWrapped[T any](entities map[string]T, dirName, entityType 
 		// path.Join, not filepath.Join — same rationale as vocabPath in
 		// SerializeMultiFileToMap above (issue #900).
 		filePath := path.Join(dirName, filename)
-		files[filePath] = yamlBytes
+		if err := writeFile(filePath, yamlBytes); err != nil {
+			return err
+		}
 	}
 
 	return nil

@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
+import { inflateRawSync } from 'node:zlib'
 
 const fromRepo = (path) => fileURLToPath(new URL(`../../${path}`, import.meta.url))
 const shakespeare = fromRepo('glx/testdata/gedcom/5.5.1/shakespeare-family/shakespeare.ged')
@@ -69,6 +70,49 @@ test('exports an existing single-file archive and reports a library warning', as
   await expect(page.locator('.converter li').first()).toContainText('event-unattached')
   const gedcom = await download(page, 'GEDCOM', 'unattached-event.ged')
   expect(gedcom.toString()).toContain('2 VERS 7.0')
+})
+
+test('switches GEDCOM import between a GLX file and a multi-file ZIP', async ({ page }) => {
+  await page.goto(converterPath)
+  const format = page.getByLabel('GLX output')
+  await expect(format).toHaveValue('glx')
+  await selectAndConvert(page, shakespeare)
+  await expect(page.getByRole('link', { name: 'Download GLX' })).toBeVisible()
+
+  await format.selectOption('zip')
+  await expect(page.getByRole('link', { name: 'Download GLX' })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Convert file' }).click()
+  await expectCount(page, 'People', '31')
+  const zip = await download(page, 'ZIP', 'shakespeare.zip')
+
+  // Inspect the small fixture's ZIP central directory and inflate one file.
+  const end = zip.length - 22
+  expect(zip.readUInt32LE(end)).toBe(0x06054b50)
+  const entries = zip.readUInt16LE(end + 10)
+  const names = []
+  let offset = zip.readUInt32LE(end + 16)
+  let person
+  for (let index = 0; index < entries; index++) {
+    expect(zip.readUInt32LE(offset)).toBe(0x02014b50)
+    const nameLength = zip.readUInt16LE(offset + 28)
+    const name = zip.toString('utf8', offset + 46, offset + 46 + nameLength)
+    names.push(name)
+    if (name === 'persons/person-1.glx') {
+      const size = zip.readUInt32LE(offset + 20)
+      const header = zip.readUInt32LE(offset + 42)
+      const dataStart = header + 30 + zip.readUInt16LE(header + 26) + zip.readUInt16LE(header + 28)
+      person = inflateRawSync(zip.subarray(dataStart, dataStart + size)).toString()
+    }
+    offset += 46 + nameLength + zip.readUInt16LE(offset + 30) + zip.readUInt16LE(offset + 32)
+  }
+  expect(names).toContain('metadata.glx')
+  expect(names).toContain('vocabularies/event-types.glx')
+  expect(names.filter((name) => name.startsWith('persons/'))).toHaveLength(31)
+  expect(person).toContain('Shakespeare')
+
+  await page.getByRole('button', { name: 'Reset' }).click()
+  await expect(page.getByRole('link', { name: 'Download ZIP' })).toHaveCount(0)
+  await expect(format).toHaveValue('glx')
 })
 
 test('recovers from malformed files and rejects GEDZIP', async ({ page }) => {

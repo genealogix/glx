@@ -15,9 +15,11 @@
 package glx
 
 import (
+	"archive/zip"
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -326,6 +328,65 @@ assertions: {}
 	// Check content
 	if len(glx.Persons) != 1 {
 		t.Errorf("Expected 1 person, got %d", len(glx.Persons))
+	}
+}
+
+func TestWriteMultiFileZIP(t *testing.T) {
+	archive := &GLXFile{
+		ImportMetadata: &Metadata{SourceSystem: "GEDCOM exporter"},
+		Persons: map[string]*Person{
+			"Person-B": {Notes: NoteList{"A note"}},
+			"person-a": {Properties: map[string]any{"name": "Jane Doe"}},
+		},
+	}
+	serializer := NewSerializer(&SerializerOptions{Validate: false})
+	want, err := serializer.SerializeMultiFileToMap(archive)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var output bytes.Buffer
+	if err := serializer.WriteMultiFileZIP(archive, &output); err != nil {
+		t.Fatal(err)
+	}
+	reader, err := zip.NewReader(bytes.NewReader(output.Bytes()), int64(output.Len()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range reader.File {
+		file, err := entry.Open()
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := io.ReadAll(file)
+		closeErr := file.Close()
+		if err := errors.Join(err, closeErr); err != nil {
+			t.Fatal(err)
+		}
+		expected, exists := want[entry.Name]
+		if !exists || !bytes.Equal(data, expected) {
+			t.Fatalf("unexpected content for ZIP entry %s", entry.Name)
+		}
+		delete(want, entry.Name)
+	}
+	if len(want) != 0 {
+		t.Fatalf("%d expected files missing from the ZIP", len(want))
+	}
+
+	var repeated bytes.Buffer
+	if err := serializer.WriteMultiFileZIP(archive, &repeated); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(output.Bytes(), repeated.Bytes()) {
+		t.Fatal("ZIP output varied across repeated serializations")
+	}
+}
+
+func TestWriteMultiFileZIPRejectsFilenameCollisions(t *testing.T) {
+	archive := &GLXFile{Persons: map[string]*Person{"Person-A": {}, "person-a": {}}}
+	serializer := NewSerializer(&SerializerOptions{Validate: false})
+	if err := serializer.WriteMultiFileZIP(archive, io.Discard); !errors.Is(err, ErrCaseInsensitiveCollision) {
+		t.Fatalf("expected a filename collision, got %v", err)
 	}
 }
 

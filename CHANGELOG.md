@@ -14,7 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Added
 
-- **Browser converter** — Convert GEDCOM to a single-file GLX archive or export GLX as GEDCOM 5.5.1 or 7.0. The converter runs on your device, displays conversion warnings, and lets you download the result. (#1446)
+- **Browser converter** — Convert GEDCOM to a single GLX file or a ZIP of a multi-file GLX archive. Export single-file GLX as GEDCOM 5.5.1 or 7.0. The converter runs on your device and displays conversion warnings. (#1446)
 - **`glx validate` warns about census sources not typed `census`** — A source titled "1851 England Census" with type `book`, or no type, is not found by `glx census add`, which matches an existing source by title and type `census`, so the next census entry created a second source beside it. Validation now warns and says to set `type: census`. (#497)
 - **`glx validate` checks the format of media hashes** — A media `hash` that is not `algorithm:hexstring` (`sha256:7d86…`) is a warning, as the media specification has long said it should be. For `md5`, `sha1`, `sha224`, `sha256`, `sha384` and `sha512` a digest of the wrong length warns too; other algorithm names are accepted at any length. (#510)
 - **`glx validate` says when a field was written inside `properties`** — A source with its `title` under `properties:` failed with `missing property 'title'`, true and unhelpful. The error now adds `(found title inside properties; move it to the top level of the entity)`. Any other key inside `properties` that names one of the entity's own fields, such as a source's `type` or `date` or a participant's `role`, warns with the same advice instead of the generic `unknown property`. (#648)

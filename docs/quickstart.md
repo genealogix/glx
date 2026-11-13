@@ -9,7 +9,7 @@ layout: doc
 Get started with GENEALOGIX in 5 minutes! This guide walks you through creating your first family archive from scratch. If you'd like to understand the concepts behind GLX first, read the [Introduction](../specification/1-introduction.md) and [Core Concepts](../specification/2-core-concepts.md).
 
 ::: tip Already have a GEDCOM file?
-Try the [browser converter](../website/convert.md) to create a single-file GLX archive. The [Migration from GEDCOM](guides/migration-from-gedcom.md) guide covers importing with the CLI.
+Try the [browser converter](../website/convert.md) to download a GLX file or a ZIP of a multi-file archive. The [Migration from GEDCOM](guides/migration-from-gedcom.md) guide covers importing with the CLI.
 :::
 
 ## What You'll Learn

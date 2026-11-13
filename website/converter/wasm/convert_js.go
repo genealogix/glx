@@ -35,6 +35,11 @@ var (
 	errDestination = errors.New("unknown conversion format")
 )
 
+const (
+	singleFileGLX = "glx"
+	multiFileGLX  = "zip"
+)
+
 type count struct {
 	Label string `json:"label"`
 	Value int    `json:"value"`
@@ -62,8 +67,8 @@ func convert(data []byte, destination string, prepare func()) ([]byte, summary, 
 	// Conversion reports library diagnostics. Archive validation is a separate operation.
 	serializer := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false})
 	switch destination {
-	case "glx":
-		return importGEDCOM(data, serializer, prepare)
+	case singleFileGLX, multiFileGLX:
+		return importGEDCOM(data, serializer, destination, prepare)
 	case "5.5.1":
 		return exportGEDCOM(data, serializer, glxlib.GEDCOM551)
 	case "7.0":
@@ -73,7 +78,7 @@ func convert(data []byte, destination string, prepare func()) ([]byte, summary, 
 	}
 }
 
-func importGEDCOM(data []byte, serializer *glxlib.DefaultSerializer, prepare func()) ([]byte, summary, error) {
+func importGEDCOM(data []byte, serializer *glxlib.DefaultSerializer, destination string, prepare func()) ([]byte, summary, error) {
 	// The importer tolerates legacy headers and encodings. Check the first
 	// record here so unrelated text cannot produce an empty archive.
 	header := bytes.TrimSpace(bytes.TrimPrefix(data, []byte("\xef\xbb\xbf")))
@@ -114,6 +119,14 @@ func importGEDCOM(data []byte, serializer *glxlib.DefaultSerializer, prepare fun
 		Diagnostics: diagnostics,
 	}
 	prepare()
+	if destination == multiFileGLX {
+		var output bytes.Buffer
+		if err := serializer.WriteMultiFileZIP(archive, &output); err != nil {
+			return nil, summary{}, fmt.Errorf("could not write the GLX ZIP: %w", err)
+		}
+
+		return output.Bytes(), report, nil
+	}
 	output, err := serializer.SerializeSingleFileBatchedBytes(archive)
 	if err != nil {
 		return nil, summary{}, fmt.Errorf("could not write GLX: %w", err)
