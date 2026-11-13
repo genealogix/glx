@@ -514,6 +514,8 @@ Media
 - If `media` array is present, all IDs must reference existing Media entities
 - `date` should follow the [date format standard](../2-core-concepts.md#date-format-standard) (e.g. `1851`, `1851-03-30`, `FROM 1840 TO 1860`, `ABT 1850`)
 - If `type` is specified, it must be from the [source types vocabulary](vocabularies.md#source-types-vocabulary)
+- A title that mentions a census with a `type` other than `census` is a warning: `glx census add` finds an existing census source by its title and type `census`, so a census source typed anything else is not found and a duplicate is created
+- `title`, `type` and `date` are fields of the source itself. Written inside `properties` they are reported with a hint to move them to the top level
 
 ## GEDCOM Mapping
 
