@@ -2,3 +2,5 @@ participant_roles:
   subject:
     label: "Subject"
 
+  head_of_household:
+    label: "Head of Household"
