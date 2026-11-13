@@ -73,7 +73,7 @@ func convert(data []byte, destination string, prepare func()) ([]byte, summary, 
 	}
 }
 
-func importGEDCOM(data []byte, serializer glxlib.Serializer, prepare func()) ([]byte, summary, error) {
+func importGEDCOM(data []byte, serializer *glxlib.DefaultSerializer, prepare func()) ([]byte, summary, error) {
 	// The importer tolerates legacy headers and encodings. Check the first
 	// record here so unrelated text cannot produce an empty archive.
 	header := bytes.TrimSpace(bytes.TrimPrefix(data, []byte("\xef\xbb\xbf")))
@@ -114,7 +114,7 @@ func importGEDCOM(data []byte, serializer glxlib.Serializer, prepare func()) ([]
 		Diagnostics: diagnostics,
 	}
 	prepare()
-	output, err := serializer.SerializeSingleFileBytes(archive)
+	output, err := serializer.SerializeSingleFileBatchedBytes(archive)
 	if err != nil {
 		return nil, summary{}, fmt.Errorf("could not write GLX: %w", err)
 	}

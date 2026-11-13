@@ -93,23 +93,25 @@ func (s *DefaultSerializer) SerializeSingleFileBytes(glx *GLXFile) ([]byte, erro
 		return nil, ErrGLXFileNil
 	}
 
-	// Normalize empty metadata to nil so omitempty suppresses it.
-	// Save and restore the original value to avoid mutating the caller's data.
-	origMetadata := glx.ImportMetadata
-	if glx.ImportMetadata != nil && !glx.ImportMetadata.hasContent() {
-		glx.ImportMetadata = nil
-	}
+	// Normalize empty metadata so omitempty suppresses it.
+	glx = withoutEmptyMetadata(glx)
 
-	// Marshal to YAML
 	yamlBytes, err := yaml.Marshal(glx)
-
-	glx.ImportMetadata = origMetadata
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal YAML: %w", err)
 	}
 
 	return yamlBytes, nil
+}
+
+func withoutEmptyMetadata(archive *GLXFile) *GLXFile {
+	if archive.ImportMetadata == nil || archive.ImportMetadata.hasContent() {
+		return archive
+	}
+	normalized := *archive
+	normalized.ImportMetadata = nil
+
+	return &normalized
 }
 
 // SerializeMultiFileToMap serializes a GLX archive to a map of relative paths to file contents.

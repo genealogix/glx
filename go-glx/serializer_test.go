@@ -17,6 +17,7 @@ package glx
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -110,6 +111,43 @@ func TestSerializeSingleFileBytes(t *testing.T) {
 	}
 	if surname != "Doe" {
 		t.Errorf("Expected surname 'Doe', got %q", surname)
+	}
+}
+
+func TestSerializeSingleFileLargeCollections(t *testing.T) {
+	people := make(map[string]*Person, yamlBatchSize+1)
+	for index := range yamlBatchSize {
+		id := fmt.Sprintf("person-%05d", index)
+		people[id] = &Person{Notes: NoteList{"First line\n\n  Indented text\n\n"}}
+	}
+	people["null"] = nil
+	archive := &GLXFile{
+		ImportMetadata: &Metadata{},
+		Persons:        people,
+		Events:         map[string]*Event{},
+		EventTypes:     map[string]*VocabularyEntry{"birth": {Label: "Birth"}},
+	}
+	expected := *archive
+	expected.ImportMetadata = nil
+	before, err := yaml.Marshal(&expected)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	serializer := NewSerializer(&SerializerOptions{Validate: false})
+	actual, err := serializer.SerializeSingleFileBatchedBytes(archive)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(actual, before) {
+		t.Fatal("batched YAML differed from the standard encoding for sorted IDs")
+	}
+	parsed, err := serializer.DeserializeSingleFileBytes(actual)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(parsed.Persons) != len(people) || parsed.EventTypes["birth"].Label != "Birth" || archive.ImportMetadata == nil {
+		t.Fatal("large archive round trip did not preserve the expected data")
 	}
 }
 
