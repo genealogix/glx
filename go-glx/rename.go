@@ -16,7 +16,6 @@ package glx
 
 import (
 	"fmt"
-	"slices"
 )
 
 // RenameResult holds the outcome of a rename operation.
@@ -41,7 +40,7 @@ func RenameEntity(glx *GLXFile, oldID, newID string) (*RenameResult, error) {
 		return nil, err
 	}
 
-	changes := RenameInFragment(glx, entityType, oldID, newID)
+	changes := RenameInFragment(glx, glx, entityType, oldID, newID)
 
 	return &RenameResult{
 		EntityType:  entityType,
@@ -59,10 +58,18 @@ func RenameEntity(glx *GLXFile, oldID, newID string) (*RenameResult, error) {
 // two entity types only has the selected one renamed. Callers are expected
 // to have validated the rename against the whole archive.
 //
+// Only typed references are rewritten (#1440): fields declared as references
+// to entityType, and properties whose definition declares that
+// reference_type. A free-text property that happens to equal oldID is left
+// alone. A fragment rarely carries the archive's property vocabularies, so
+// they are read from archive (the whole archive, with the standard
+// vocabularies filling any it does not define); pass the fragment itself
+// when it is the whole archive.
+//
 // Returns the number of changes made (a moved map key counts as one), so a
 // caller can tell whether the fragment was touched at all. Invalidates the
 // validation cache when anything changed.
-func RenameInFragment(glx *GLXFile, entityType EntityType, oldID, newID string) int {
+func RenameInFragment(glx, archive *GLXFile, entityType EntityType, oldID, newID string) int {
 	changes := 0
 
 	if probe, ok := entityIDProbes[entityType]; ok && probe(glx, oldID) {
@@ -70,7 +77,7 @@ func RenameInFragment(glx *GLXFile, entityType EntityType, oldID, newID string) 
 		changes++
 	}
 
-	changes += updateAllRefs(glx, oldID, newID)
+	changes += rewriteTypedReferences(glx, referenceVocabularies(archive), entityType, oldID, newID)
 
 	if changes > 0 {
 		glx.validation = nil
@@ -232,289 +239,17 @@ func moveMapKey(glx *GLXFile, entityType EntityType, oldID, newID string) {
 	}
 }
 
-// updateAllRefs scans every entity in the archive and replaces oldID with
-// newID in all reference fields, including Properties maps and Assertion.Value.
-// Returns the count of fields updated.
-func updateAllRefs(glx *GLXFile, oldID, newID string) int {
-	count := 0
-
-	// Participants in events
-	for _, ev := range glx.Events {
-		if ev == nil {
-			continue
-		}
-		for i := range ev.Participants {
-			if ev.Participants[i].Person == oldID {
-				ev.Participants[i].Person = newID
-				count++
-			}
-			count += replaceInProperties(ev.Participants[i].Properties, oldID, newID)
-		}
-		for i := range ev.Neighbors {
-			if ev.Neighbors[i].Person == oldID {
-				ev.Neighbors[i].Person = newID
-				count++
-			}
-		}
-		if ev.PlaceID == oldID {
-			ev.PlaceID = newID
-			count++
-		}
-		count += replaceInProperties(ev.Properties, oldID, newID)
+// referenceVocabularies returns archive with the standard vocabularies filling
+// any it does not define, which is what decides whether a property holds a
+// reference. archive is not modified.
+func referenceVocabularies(archive *GLXFile) *GLXFile {
+	if archive == nil {
+		archive = &GLXFile{}
+	}
+	prepared, err := researchArchive(archive)
+	if err != nil {
+		return archive // the embedded vocabularies failed to parse; use what the archive has
 	}
 
-	// Participants and event refs in relationships
-	for _, rel := range glx.Relationships {
-		if rel == nil {
-			continue
-		}
-		for i := range rel.Participants {
-			if rel.Participants[i].Person == oldID {
-				rel.Participants[i].Person = newID
-				count++
-			}
-			count += replaceInProperties(rel.Participants[i].Properties, oldID, newID)
-		}
-		if rel.StartEvent == oldID {
-			rel.StartEvent = newID
-			count++
-		}
-		if rel.EndEvent == oldID {
-			rel.EndEvent = newID
-			count++
-		}
-	}
-
-	// Place parent hierarchy
-	for _, place := range glx.Places {
-		if place == nil {
-			continue
-		}
-		if place.ParentID == oldID {
-			place.ParentID = newID
-			count++
-		}
-		count += replaceInProperties(place.Properties, oldID, newID)
-	}
-
-	// Person properties (can contain place IDs)
-	for _, person := range glx.Persons {
-		if person == nil {
-			continue
-		}
-		count += replaceInProperties(person.Properties, oldID, newID)
-	}
-
-	// Source refs
-	for _, src := range glx.Sources {
-		if src == nil {
-			continue
-		}
-		if src.RepositoryID == oldID {
-			src.RepositoryID = newID
-			count++
-		}
-		count += replaceInSlice(src.Media, oldID, newID)
-		count += replaceInProperties(src.Properties, oldID, newID)
-	}
-
-	// Citation refs
-	for _, cit := range glx.Citations {
-		if cit == nil {
-			continue
-		}
-		if cit.SourceID == oldID {
-			cit.SourceID = newID
-			count++
-		}
-		if cit.RepositoryID == oldID {
-			cit.RepositoryID = newID
-			count++
-		}
-		count += replaceInSlice(cit.Media, oldID, newID)
-		count += replaceInProperties(cit.Properties, oldID, newID)
-	}
-
-	// Assertion refs
-	for _, a := range glx.Assertions {
-		if a == nil {
-			continue
-		}
-		if a.Subject.Person == oldID {
-			a.Subject.Person = newID
-			count++
-		}
-		if a.Subject.Event == oldID {
-			a.Subject.Event = newID
-			count++
-		}
-		if a.Subject.Relationship == oldID {
-			a.Subject.Relationship = newID
-			count++
-		}
-		if a.Subject.Place == oldID {
-			a.Subject.Place = newID
-			count++
-		}
-		// Assertion.Value can contain entity IDs for reference-type properties
-		if a.Value == oldID {
-			a.Value = newID
-			count++
-		}
-		count += replaceInSlice(a.Sources, oldID, newID)
-		count += replaceInSlice(a.Citations, oldID, newID)
-		count += replaceInSlice(a.Media, oldID, newID)
-		if a.Participant != nil {
-			if a.Participant.Person == oldID {
-				a.Participant.Person = newID
-				count++
-			}
-			count += replaceInProperties(a.Participant.Properties, oldID, newID)
-		}
-	}
-
-	// Media refs
-	for _, m := range glx.Media {
-		if m == nil {
-			continue
-		}
-		if m.Source == oldID {
-			m.Source = newID
-			count++
-		}
-		count += replaceInProperties(m.Properties, oldID, newID)
-	}
-
-	// Research log refs
-	for _, rl := range glx.ResearchLogs {
-		if rl == nil {
-			continue
-		}
-		// Subject is *EntityRef (optional), unlike Assertion.Subject which is a value.
-		if rl.Subject != nil {
-			if rl.Subject.Person == oldID {
-				rl.Subject.Person = newID
-				count++
-			}
-			if rl.Subject.Event == oldID {
-				rl.Subject.Event = newID
-				count++
-			}
-			if rl.Subject.Relationship == oldID {
-				rl.Subject.Relationship = newID
-				count++
-			}
-			if rl.Subject.Place == oldID {
-				rl.Subject.Place = newID
-				count++
-			}
-		}
-		// Mutate Searches via index because the slice holds values, not pointers.
-		for i := range rl.Searches {
-			if rl.Searches[i].RepositoryID == oldID {
-				rl.Searches[i].RepositoryID = newID
-				count++
-			}
-			if rl.Searches[i].SourceID == oldID {
-				rl.Searches[i].SourceID = newID
-				count++
-			}
-			if rl.Searches[i].CitationID == oldID {
-				rl.Searches[i].CitationID = newID
-				count++
-			}
-		}
-		for i := range rl.Leads {
-			var replacements int
-			rl.Leads[i].Persons, replacements = replaceInReferenceSet(rl.Leads[i].Persons, oldID, newID)
-			count += replacements
-			count += replaceInSlice(rl.Leads[i].Citations, oldID, newID)
-			count += replaceInSlice(rl.Leads[i].Assertions, oldID, newID)
-		}
-		count += replaceInSlice(rl.Citations, oldID, newID)
-		count += replaceInProperties(rl.Properties, oldID, newID)
-	}
-
-	// Study refs (places and sources in scope)
-	for _, st := range glx.Studies {
-		if st == nil {
-			continue
-		}
-		count += replaceInSlice(st.Places, oldID, newID)
-		count += replaceInSlice(st.Sources, oldID, newID)
-		count += replaceInProperties(st.Properties, oldID, newID)
-	}
-
-	return count
-}
-
-// replaceInSlice replaces all occurrences of oldID with newID in a string
-// slice, returning the number of replacements made.
-func replaceInSlice(s []string, oldID, newID string) int {
-	count := 0
-	for i := range s {
-		if s[i] == oldID {
-			s[i] = newID
-			count++
-		}
-	}
-
-	return count
-}
-
-// replaceInReferenceSet rewrites a reference list while preserving the order
-// of first appearance. Consolidating two persons can otherwise leave duplicate
-// candidates in a lead. Copy before rewriting so shared candidate slices are
-// each updated and deduplicated independently.
-func replaceInReferenceSet(ids []string, oldID, newID string) ([]string, int) {
-	if !slices.Contains(ids, oldID) {
-		return ids, 0
-	}
-	result := make([]string, 0, len(ids))
-	seen := make(map[string]bool, len(ids))
-	count := 0
-	for _, id := range ids {
-		if id == oldID {
-			id = newID
-			count++
-		}
-		if !seen[id] {
-			seen[id] = true
-			result = append(result, id)
-		}
-	}
-
-	return result, count
-}
-
-// replaceInProperties scans a properties map for string values matching oldID
-// and replaces them with newID. Handles simple strings, structured maps with
-// "value" keys, and temporal lists.
-func replaceInProperties(props map[string]any, oldID, newID string) int {
-	count := 0
-	for key, val := range props {
-		switch v := val.(type) {
-		case string:
-			if v == oldID {
-				props[key] = newID
-				count++
-			}
-		case map[string]any:
-			if s, ok := v["value"].(string); ok && s == oldID {
-				v["value"] = newID
-				count++
-			}
-		case []any:
-			for _, elem := range v {
-				if m, ok := elem.(map[string]any); ok {
-					if s, ok := m["value"].(string); ok && s == oldID {
-						m["value"] = newID
-						count++
-					}
-				}
-			}
-		}
-	}
-
-	return count
+	return prepared
 }

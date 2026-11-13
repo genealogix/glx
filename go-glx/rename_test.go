@@ -258,9 +258,56 @@ func TestRenameEntity_PropertyBasedRefs(t *testing.T) {
 
 	_, err := RenameEntity(glx, "place-old", "place-new")
 	require.NoError(t, err)
-	assert.Equal(t, "place-new", glx.Persons["person-1"].Properties["residence"])
+	assert.Equal(t, "place-new", glx.Persons["person-1"].Properties["residence"], "residence is declared reference_type: places")
 	workplace := glx.Persons["person-1"].Properties["workplace"].(map[string]any)
-	assert.Equal(t, "place-new", workplace["value"])
+	assert.Equal(t, "place-old", workplace["value"], "workplace is defined nowhere, so its value is opaque text")
+}
+
+// glx rename rewrites only typed references (#1440): a free-text property
+// equal to the old ID, and a reference of another entity type to a same-ID
+// entity, both stay as they are.
+func TestRenameEntity_OnlyTypedReferences(t *testing.T) {
+	glx := &GLXFile{
+		Persons: map[string]*Person{
+			"smith": {Properties: map[string]any{
+				"occupation": "smith",                                                 // free text, equal to the old ID
+				"residence":  []any{map[string]any{"value": "smith", "date": "1851"}}, // a place named smith
+			}},
+			"person-2": {Properties: map[string]any{"name": "smith"}},
+		},
+		Places: map[string]*Place{"smith": {Name: "Smith"}},
+		Events: map[string]*Event{"event-1": {
+			Type:         EventTypeBirth,
+			PlaceID:      "smith",
+			Participants: []Participant{{Person: "smith"}},
+		}},
+		Assertions: map[string]*Assertion{
+			"a-1": {Subject: EntityRef{Person: "smith"}, Property: "occupation", Value: "smith"},
+			"a-2": {Subject: EntityRef{Person: "person-2"}, Property: "residence", Value: "smith"},
+		},
+	}
+	glx.PersonProperties = map[string]*PropertyDefinition{
+		"occupation": {Label: "Occupation", ValueType: "string"},
+		"name":       {Label: "Name", ValueType: "string"},
+		"residence":  {Label: "Residence", ReferenceType: "places"},
+	}
+
+	// The person and the place share an ID, so name the type, as glx rename
+	// does after resolving it against the whole archive.
+	require.Positive(t, RenameInFragment(glx, glx, EntityTypePersons, "smith", "person-smith"))
+
+	person := glx.Persons["person-smith"]
+	require.NotNil(t, person)
+	assert.Equal(t, "smith", person.Properties["occupation"], "free text is not a reference")
+	assert.Equal(t, "smith", glx.Persons["person-2"].Properties["name"])
+	residence := person.Properties["residence"].([]any)[0].(map[string]any)
+	assert.Equal(t, "smith", residence["value"], "a reference to the place smith is not a reference to the person")
+	assert.Equal(t, "smith", glx.Events["event-1"].PlaceID)
+	assert.Equal(t, "person-smith", glx.Events["event-1"].Participants[0].Person)
+	assert.Equal(t, "person-smith", glx.Assertions["a-1"].Subject.Person)
+	assert.Equal(t, "smith", glx.Assertions["a-1"].Value, "occupation is not a reference property")
+	assert.Equal(t, "smith", glx.Assertions["a-2"].Value, "residence references places, not persons")
+	assert.Contains(t, glx.Places, "smith")
 }
 
 func TestRenameEntity_AssertionValue(t *testing.T) {
@@ -377,7 +424,7 @@ func TestRenameInFragment_RefsOnlyWhenEntityAbsent(t *testing.T) {
 		},
 	}
 
-	changes := RenameInFragment(fragment, EntityTypePersons, "person-old", "person-new")
+	changes := RenameInFragment(fragment, fragment, EntityTypePersons, "person-old", "person-new")
 
 	assert.Equal(t, 1, changes)
 	assert.Equal(t, "person-new", fragment.Events["event-birth"].Participants[0].Person)
@@ -392,7 +439,7 @@ func TestRenameInFragment_MovesKeyWhenEntityPresent(t *testing.T) {
 		},
 	}
 
-	changes := RenameInFragment(fragment, EntityTypePersons, "person-old", "person-new")
+	changes := RenameInFragment(fragment, fragment, EntityTypePersons, "person-old", "person-new")
 
 	assert.Equal(t, 1, changes)
 	assert.True(t, fragment.HasEntity("person-new"))
@@ -406,7 +453,7 @@ func TestRenameInFragment_ZeroWhenUntouched(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, 0, RenameInFragment(fragment, EntityTypePersons, "person-old", "person-new"))
+	assert.Equal(t, 0, RenameInFragment(fragment, fragment, EntityTypePersons, "person-old", "person-new"))
 	assert.Equal(t, "X", fragment.Places["place-x"].Name)
 }
 
@@ -484,7 +531,7 @@ func TestRenameInFragment_OnlyMovesSelectedType(t *testing.T) {
 		},
 	}
 
-	changes := RenameInFragment(fragment, EntityTypePersons, "shared-id", "person-renamed")
+	changes := RenameInFragment(fragment, fragment, EntityTypePersons, "shared-id", "person-renamed")
 
 	assert.Equal(t, 2, changes, "key move plus one reference")
 	assert.Contains(t, fragment.Persons, "person-renamed")

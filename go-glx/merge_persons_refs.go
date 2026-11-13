@@ -584,36 +584,68 @@ func rewriteMergedPersonReferences(archive, prepared *GLXFile, oldID, newID stri
 			count++
 			result.ReferenceChanges = append(result.ReferenceChanges, MergeReferenceChange{entity.kind, entity.id, path, EntityTypePersons, "rewritten", original, replacement})
 		}
-		walkMergeStructural(entity.value, "", func(kind EntityType, path string, value reflect.Value) {
-			if kind == EntityTypePersons && value.String() == oldID {
-				record(path, oldID, newID)
-				value.SetString(newID)
-			}
-		})
-		if entity.kind == EntityTypeAssertions {
-			a, _ := reflect.TypeAssert[*Assertion](entity.value.Addr())
-			if def := ConflictProperty(prepared, a.Subject, a.Property); def != nil && def.ReferenceType == string(EntityTypePersons) && a.Value == oldID {
-				record("value", oldID, newID)
-				a.Value = newID
-			}
-		}
+		rewriteStructuralReferences(entity, prepared, EntityTypePersons, oldID, newID, record)
 		if entity.kind == EntityTypeResearchLogs {
 			deduplicateMergeLeadPersons(entity, result, changedLeads, newID)
 		}
-		editMergeProperties(entity, func(kind EntityType, id, path string, original any) (string, bool) {
-			if kind == EntityTypePersons && id == oldID {
-				next, _ := editMergeProperty(cloneMergeValue(reflect.ValueOf(original)), path,
-					func(_, _ string, _ any) (string, bool) { return newID, false })
-				record(path, cloneMergeValue(reflect.ValueOf(original)).Interface(), next.Interface())
-
-				return newID, false
-			}
-
-			return id, false
-		})
+		rewritePropertyReferences(entity, EntityTypePersons, oldID, newID, record)
 	})
 
 	return count
+}
+
+// rewriteTypedReferences rewrites every reference to the target entity type's
+// oldID across archive as newID, and returns how many it rewrote. A
+// reference is a field tagged with that refType, an EntityRef naming that
+// type, an assertion value whose property is declared a reference to it, or a
+// property value whose definition in prepared declares that reference_type.
+// Anything else stays unchanged, including free text that happens to equal
+// oldID and references to a same-ID entity of another type (#1440).
+func rewriteTypedReferences(archive, prepared *GLXFile, target EntityType, oldID, newID string) int {
+	count := 0
+	record := func(string, any, any) { count++ }
+	forMergeEntities(archive, prepared, func(entity mergeEntity) {
+		rewriteStructuralReferences(entity, prepared, target, oldID, newID, record)
+		rewritePropertyReferences(entity, target, oldID, newID, record)
+	})
+
+	return count
+}
+
+// rewriteStructuralReferences rewrites the entity's refType-tagged fields and
+// EntityRefs naming target's oldID, and an assertion value whose property is
+// declared a reference to target.
+func rewriteStructuralReferences(entity mergeEntity, prepared *GLXFile, target EntityType, oldID, newID string, record func(string, any, any)) {
+	walkMergeStructural(entity.value, "", func(kind EntityType, path string, value reflect.Value) {
+		if kind == target && value.String() == oldID {
+			record(path, oldID, newID)
+			value.SetString(newID)
+		}
+	})
+	if entity.kind == EntityTypeAssertions {
+		a, _ := reflect.TypeAssert[*Assertion](entity.value.Addr())
+		if def := ConflictProperty(prepared, a.Subject, a.Property); def != nil && def.ReferenceType == string(target) && a.Value == oldID {
+			record("value", oldID, newID)
+			a.Value = newID
+		}
+	}
+}
+
+// rewritePropertyReferences rewrites property values whose definition
+// declares a reference to target and whose ID is oldID, keeping each
+// occurrence's shape (plain string, {value: ...} map or temporal entry).
+func rewritePropertyReferences(entity mergeEntity, target EntityType, oldID, newID string, record func(string, any, any)) {
+	editMergeProperties(entity, func(kind EntityType, id, path string, original any) (string, bool) {
+		if kind == target && id == oldID {
+			next, _ := editMergeProperty(cloneMergeValue(reflect.ValueOf(original)), path,
+				func(_, _ string, _ any) (string, bool) { return newID, false })
+			record(path, cloneMergeValue(reflect.ValueOf(original)).Interface(), next.Interface())
+
+			return newID, false
+		}
+
+		return id, false
+	})
 }
 
 func mergeRewrittenLeadLimits(entity mergeEntity, oldID, newID string) map[int]int {
