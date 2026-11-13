@@ -19,6 +19,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
@@ -44,6 +45,12 @@ func resolveOutputWriter(out ...io.Writer) io.Writer {
 // media/files/ is a sibling directory of the output file; for multi-file output
 // it lives within the archive layout.
 func importGEDCOM(gedcomPath, outputPath, format string, validate, verbose bool, showFirstErrors int, out ...io.Writer) error {
+	return importGEDCOMWithPlatform(gedcomPath, outputPath, format, glxlib.GEDCOMPlatformAuto, validate, verbose, showFirstErrors, out...)
+}
+
+// importGEDCOMWithPlatform is importGEDCOM with a forced platform adapter
+// (glxlib.GEDCOMPlatformAuto to detect it from HEAD.SOUR).
+func importGEDCOMWithPlatform(gedcomPath, outputPath, format, platform string, validate, verbose bool, showFirstErrors int, out ...io.Writer) error {
 	output := resolveOutputWriter(out...)
 
 	// Validate format flag
@@ -52,7 +59,7 @@ func importGEDCOM(gedcomPath, outputPath, format string, validate, verbose bool,
 	}
 
 	if isGEDZIPPath(gedcomPath) {
-		return importGEDZIP(gedcomPath, outputPath, format, validate, verbose, showFirstErrors, out...)
+		return importGEDZIPWithPlatform(gedcomPath, outputPath, format, platform, validate, verbose, showFirstErrors, out...)
 	}
 
 	// Check if GEDCOM file exists
@@ -74,9 +81,12 @@ func importGEDCOM(gedcomPath, outputPath, format string, validate, verbose bool,
 	defer func() { _ = gedcomFile.Close() }()
 
 	// Import GEDCOM from reader
-	glx, result, err := glxlib.ImportGEDCOM(gedcomFile, nil)
+	glx, result, err := glxlib.ImportGEDCOMWithOptions(gedcomFile, nil, glxlib.ImportOptions{Platform: platform})
 	if err != nil {
 		return fmt.Errorf("failed to import GEDCOM: %w", err)
+	}
+	if verbose {
+		reportImportPlatform(output, result)
 	}
 
 	// Determine GEDCOM source directory for resolving relative media file paths
@@ -111,4 +121,33 @@ func importToMultiFile(glx *glxlib.GLXFile, outputPath string, validate, verbose
 // importToMultiFileUsing permits deterministic metadata-write failure tests.
 func importToMultiFileUsing(glx *glxlib.GLXFile, outputPath string, validate, verbose bool, showFirstErrors int, mediaFiles []glxlib.MediaFileSource, gedcomDir string, out io.Writer, writeFiles func(string, map[string][]byte) error) error {
 	return publishMultiFileImportArchive(glx, outputPath, validate, verbose, showFirstErrors, mediaFiles, gedcomMediaSource(mediaFiles, gedcomDir, verbose), out, writeFiles)
+}
+
+// reportImportPlatform prints which platform adapter ran and what it rewrote.
+func reportImportPlatform(out io.Writer, result *glxlib.ImportResult) {
+	if result.Platform == glxlib.GEDCOMPlatformGeneric {
+		_, _ = fmt.Fprintln(out, "Platform: no platform-specific handling (generic)")
+
+		return
+	}
+	_, _ = fmt.Fprintf(out, "Platform: %s export — applying %s-specific handling\n", result.PlatformLabel, result.PlatformLabel)
+
+	tags := make([]string, 0, len(result.PlatformRewrites))
+	for tag := range result.PlatformRewrites {
+		tags = append(tags, tag)
+	}
+	sort.Strings(tags)
+	for _, tag := range tags {
+		_, _ = fmt.Fprintf(out, "  %s: %d rewritten\n", tag, result.PlatformRewrites[tag])
+	}
+}
+
+// listImportPlatforms prints every platform adapter --platform accepts.
+func listImportPlatforms(out io.Writer) error {
+	_, _ = fmt.Fprintln(out, "Platform adapters (detected from HEAD.SOUR, or forced with --platform):")
+	for _, adapter := range glxlib.GEDCOMPlatforms() {
+		_, _ = fmt.Fprintf(out, "  %-12s %s\n", adapter.Name(), adapter.Label())
+	}
+
+	return nil
 }

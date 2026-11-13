@@ -31,6 +31,7 @@ var (
 	ErrInvalidPlaceHierarchy  = errors.New("invalid place hierarchy")
 	ErrCircularPlaceReference = errors.New("circular place reference detected")
 	ErrPersonNotFound         = errors.New("person not found")
+	ErrUnknownGEDCOMPlatform  = errors.New("unknown GEDCOM platform")
 )
 
 // Serialization errors

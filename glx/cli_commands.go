@@ -269,6 +269,8 @@ var (
 	importNoValidate      bool
 	importVerbose         bool
 	importShowFirstErrors int
+	importPlatform        string
+	importListPlatforms   bool
 )
 
 var importCmd = &cobra.Command{
@@ -292,7 +294,16 @@ The imported archive will include:
 
 Output formats:
 - multi: Multi-file directory structure (default, one file per entity)
-- single: Single YAML file`,
+- single: Single YAML file
+
+Platform adapters:
+The software that exported the file is detected from its HEAD.SOUR record,
+and that platform's custom tags are rewritten into standard GEDCOM before
+conversion (for example Ancestry's _MILT becomes a military_service event,
+_DCAUSE the death event's cause, and a citation's _APID an external ID plus
+a link to the Ancestry record). Use --platform to force an adapter and
+--list-platforms to see them all. Custom tags no adapter maps are still
+preserved under gedcom_extensions on persons.`,
 	Example: `  # Import GEDCOM to multi-file directory (default)
   glx import family.ged -o family-archive
 
@@ -303,8 +314,20 @@ Output formats:
   glx import family.ged -o family.glx --format single
 
   # Import without validation
-  glx import family.ged -o family-archive --no-validate`,
-	Args: cobra.ExactArgs(1),
+  glx import family.ged -o family-archive --no-validate
+
+  # Force the Ancestry adapter instead of detecting it
+  glx import tree.ged -o family-archive --platform ancestry
+
+  # List the platform adapters
+  glx import --list-platforms`,
+	Args: func(cmd *cobra.Command, args []string) error {
+		if importListPlatforms {
+			return cobra.NoArgs(cmd, args)
+		}
+
+		return cobra.ExactArgs(1)(cmd, args)
+	},
 	RunE: runImport,
 }
 
@@ -314,12 +337,21 @@ func init() {
 	importCmd.Flags().BoolVar(&importNoValidate, "no-validate", false, "Skip validation before saving")
 	importCmd.Flags().BoolVarP(&importVerbose, "verbose", "v", false, "Verbose output")
 	importCmd.Flags().IntVar(&importShowFirstErrors, "show-first-errors", defaultShowFirstErrors, "Number of validation errors to show (0 for all)")
-
-	_ = importCmd.MarkFlagRequired("output")
+	importCmd.Flags().StringVar(&importPlatform, "platform", "", "Force a platform adapter instead of detecting it from HEAD.SOUR (see --list-platforms)")
+	importCmd.Flags().BoolVar(&importListPlatforms, "list-platforms", false, "List the platform adapters and exit")
 }
 
 func runImport(_ *cobra.Command, args []string) error {
-	return importGEDCOM(args[0], importOutput, importFormat, !importNoValidate, importVerbose, importShowFirstErrors)
+	if importListPlatforms {
+		return listImportPlatforms(resolveOutputWriter())
+	}
+	// --output is required for an import but not for --list-platforms, so it
+	// is checked here rather than with MarkFlagRequired.
+	if importOutput == "" {
+		return ErrImportOutputRequired
+	}
+
+	return importGEDCOMWithPlatform(args[0], importOutput, importFormat, importPlatform, !importNoValidate, importVerbose, importShowFirstErrors)
 }
 
 // ============================================================================

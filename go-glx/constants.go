@@ -185,6 +185,11 @@ const (
 	RelationshipPropertyEndedOn          = "ended_on"           // Date the relationship ended; use end_event when the boundary is a documented event
 )
 
+// Standard Citation Property Names - commonly used properties on Citation entities
+const (
+	CitationPropertyURL = "url" // Link to the cited record online
+)
+
 // Standard Media Property Names - commonly used properties on Media entities
 const (
 	MediaPropertyOriginalFilename = "original_filename" // Source filename before import canonicalization or collision renaming

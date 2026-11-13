@@ -48,6 +48,12 @@ var maxGEDZIPEntryBytes int64 = 512 << 20
 // Go's fs.FS abstraction without extracting the entire archive to a temporary
 // directory.
 func importGEDZIP(gedzipPath, outputPath, format string, validate, verbose bool, showFirstErrors int, out ...io.Writer) error {
+	return importGEDZIPWithPlatform(gedzipPath, outputPath, format, glxlib.GEDCOMPlatformAuto, validate, verbose, showFirstErrors, out...)
+}
+
+// importGEDZIPWithPlatform is importGEDZIP with a forced platform adapter
+// (glxlib.GEDCOMPlatformAuto to detect it from HEAD.SOUR).
+func importGEDZIPWithPlatform(gedzipPath, outputPath, format, platform string, validate, verbose bool, showFirstErrors int, out ...io.Writer) error {
 	output := resolveOutputWriter(out...)
 
 	if verbose {
@@ -74,7 +80,7 @@ func importGEDZIP(gedzipPath, outputPath, format string, validate, verbose bool,
 	}
 
 	limitedBundle := &sizeLimitedFS{inner: zr}
-	glx, result, err := glxlib.ImportGEDZIP(limitedBundle, nil)
+	glx, result, err := glxlib.ImportGEDZIPWithOptions(limitedBundle, nil, glxlib.ImportOptions{Platform: platform})
 	if err != nil {
 		// sizeLimitedFile already names the offending entry and the limit, so
 		// the error is returned as-is rather than re-wrapped against a guessed
