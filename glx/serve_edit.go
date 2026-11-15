@@ -436,16 +436,23 @@ func (s *viewerServer) updatePerson(id string, req *personUpdateRequest) error {
 	}
 	req.Sex = strings.TrimSpace(req.Sex)
 	req.Gender = strings.TrimSpace(req.Gender)
-	if err := validateVocabKey(archive, glxlib.VocabSexTypes, req.Sex); err != nil {
-		return err
-	}
-	if err := validateVocabKey(archive, glxlib.VocabGenderTypes, req.Gender); err != nil {
-		return err
-	}
-
 	updated, err := applyPersonEdit(stored.person, req)
 	if err != nil {
 		return err
+	}
+
+	// Structured and temporal values are read-only in this form. Their
+	// display strings are not vocabulary keys; leave their validation to
+	// whole-archive validation rather than rejecting an unrelated edit.
+	for _, field := range []struct{ property, vocabulary string }{
+		{glxlib.PersonPropertySex, glxlib.VocabSexTypes},
+		{glxlib.PersonPropertyGender, glxlib.VocabGenderTypes},
+	} {
+		if value, editable := simpleProperty(updated.Properties, field.property); editable {
+			if err := validateVocabKey(archive, field.vocabulary, value); err != nil {
+				return err
+			}
+		}
 	}
 
 	partial := &glxlib.GLXFile{Persons: map[string]*glxlib.Person{id: updated}}

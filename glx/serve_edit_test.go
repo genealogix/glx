@@ -17,6 +17,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
@@ -342,4 +343,43 @@ func optionKeys(opts []vocabOptionDTO) []string {
 	}
 
 	return keys
+}
+
+func TestServeEditPreservesReadOnlySexAndGender(t *testing.T) {
+	for _, property := range []string{glxlib.PersonPropertySex, glxlib.PersonPropertyGender} {
+		for _, temporal := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/temporal=%t", property, temporal), func(t *testing.T) {
+				srv := newEditTestServer(t)
+				var value any = map[string]any{"value": "male"}
+				if temporal {
+					value = []any{map[string]any{"value": "male", "date": "1900"}}
+				}
+				srv.archive.Persons["person-dad"].Properties[property] = value
+				require.NoError(t, writeMultiFileArchive(srv.archivePath, srv.archive, false))
+				require.NoError(t, srv.reloadArchive())
+				before := srv.archive.Persons["person-dad"].Properties[property]
+				form := editForm(t, srv, "person-dad")
+				if property == glxlib.PersonPropertySex {
+					assert.False(t, form.SexEditable)
+				} else {
+					assert.False(t, form.GenderEditable)
+				}
+				req := personUpdateRequest{Version: form.Version, Name: personNameDTO{Given: "Robert James", Surname: "Webb"}, Sex: form.Sex, Gender: form.Gender}
+				rec := doEditRequest(t, srv, http.MethodPut, "/api/persons/person-dad", req)
+				require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+				assert.Equal(t, before, srv.archive.Persons["person-dad"].Properties[property])
+				assert.Equal(t, "Robert James Webb", glxlib.GetFullName(srv.archive.Persons["person-dad"].Properties[glxlib.PersonPropertyName]))
+				// A client must not replace the locked value, even with a valid key.
+				req.Version = editForm(t, srv, "person-dad").Version
+				if property == glxlib.PersonPropertySex {
+					req.Sex = "female"
+				} else {
+					req.Gender = "female"
+				}
+				rec = doEditRequest(t, srv, http.MethodPut, "/api/persons/person-dad", req)
+				assert.Equal(t, http.StatusConflict, rec.Code, rec.Body.String())
+				assert.Equal(t, before, srv.archive.Persons["person-dad"].Properties[property])
+			})
+		}
+	}
 }
