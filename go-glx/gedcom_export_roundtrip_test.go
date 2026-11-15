@@ -1509,6 +1509,11 @@ func TestCitationQUAYLegacyAndInvalid(t *testing.T) {
 	archive, result, err := ImportGEDCOM(strings.NewReader(quayFixture("5.5.1", "2 SOUR @S1@\n3 QUAY 0\n3 QUAY 3\n")), nil)
 	require.NoError(t, err)
 	require.NotEmpty(t, result.Statistics.Warnings)
+	for _, warning := range result.Statistics.Warnings {
+		if warning.Tag == GedcomTagQuay {
+			assert.Contains(t, warning.Message, "Repeated QUAY")
+		}
+	}
 	for _, c := range archive.Citations {
 		assert.Equal(t, 0, c.Properties["gedcom_quay"])
 		assert.Contains(t, c.Notes, "GEDCOM QUAY: 3")
