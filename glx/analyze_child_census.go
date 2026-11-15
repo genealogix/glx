@@ -66,7 +66,7 @@ func suggestChildCensusRecords(archive *glxlib.GLXFile) []AnalysisIssue {
 
 	// Find persons without parents (brickwalls) who have children
 	for _, personID := range sortedPersonIDs(archive.Persons) {
-		if childHasParents[personID] {
+		if childHasParents[personID] || glxlib.IsUnresolvedPlaceholder(archive.Persons[personID]) {
 			continue
 		}
 
