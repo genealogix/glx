@@ -1,0 +1,19 @@
+# Standard Person Statuses
+# This file defines the values of the person `status` property, which marks a
+# person as a research placeholder for someone not yet identified. A person with
+# no status is an ordinary person.
+# Archives can extend this with custom statuses by adding additional entries;
+# tools treat a custom status like any other person.
+
+person_statuses:
+  hypothetical:
+    label: "Hypothetical"
+    description: "Proposed as a working assumption; nothing points to this person directly yet."
+
+  predicted:
+    label: "Predicted"
+    description: "Inferred from indirect evidence, such as DNA match clusters, but not yet identified."
+
+  resolved:
+    label: "Resolved"
+    description: "Began as a placeholder and has since been identified. Tools treat this person like any other."

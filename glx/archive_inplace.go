@@ -151,6 +151,11 @@ func executeInPlaceOps(archivePath string, ordered []fileOp) error {
 		return fmt.Errorf("writing %s: %w", journal, err)
 	}
 
+	// From the first file written until the last is written or rolled back,
+	// the archive holds a mix of old and new content. An interrupt waits for
+	// that to finish rather than leave the journal for the user to replay.
+	release := holdInterrupts()
+	defer release()
 	createdDirs := missingParentDirs(archivePath, ordered)
 	if err := executeFileOps(archivePath, ordered); err != nil {
 		if errors.Is(err, errRollbackIncomplete) {

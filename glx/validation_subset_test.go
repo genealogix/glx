@@ -16,6 +16,7 @@ package main
 
 import (
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -125,4 +126,36 @@ func TestValidatePaths_IDCollisionsNameTheirFiles(t *testing.T) {
 		assert.Contains(t, errOut.String(), "conflict persons ID: person-a (persons")
 		assert.Contains(t, errOut.String(), "a.glx vs persons")
 	})
+}
+
+func TestValidatePaths_SubsetCaseCollisionIsSymmetric(t *testing.T) {
+	root := writeSubsetArchive(t)
+	for name, id := range map[string]string{"a.glx": "Person-A", "b.glx": "person-a"} {
+		writeSkipTestFile(t, filepath.Join(root, "persons", name), "persons:\n  "+id+":\n    properties:\n      primary_name: Alice\n")
+	}
+	for _, name := range []string{"a.glx", "b.glx"} {
+		t.Run(name, func(t *testing.T) {
+			streams, _, errOut := newTestStreams()
+			require.ErrorIs(t, validatePaths(streams, []string{filepath.Join(root, "persons", name), filepath.Join(root, "events")}), ErrValidationFailed)
+			assert.Contains(t, errOut.String(), `"Person-A" and "person-a" differ only by case`)
+		})
+	}
+	t.Run("unselected collision is omitted", func(t *testing.T) {
+		streams, _, errOut := newTestStreams()
+		require.NoError(t, validatePaths(streams, []string{filepath.Join(root, "events")}), errOut.String())
+		assert.NotContains(t, errOut.String(), "differ only by case")
+	})
+}
+
+func TestValidatePaths_SubsetDuplicateWithControlFilename(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows filenames cannot contain control characters")
+	}
+	root := writeSubsetArchive(t)
+	for name, label := range map[string]string{"a\x1b.glx": "Alice", "b.glx": "Bob"} {
+		writeSkipTestFile(t, filepath.Join(root, "persons", name), "persons:\n  person-a:\n    properties:\n      primary_name: "+label+"\n")
+	}
+	streams, _, errOut := newTestStreams()
+	require.ErrorIs(t, validatePaths(streams, []string{filepath.Join(root, "persons", "a\x1b.glx"), filepath.Join(root, "events")}), ErrValidationFailed)
+	assert.Contains(t, errOut.String(), "conflict persons ID: person-a")
 }

@@ -17,8 +17,11 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
+	"runtime/debug"
 	"strings"
+	"sync"
 
 	"github.com/spf13/cobra"
 
@@ -48,11 +51,9 @@ GENEALOGIX is a modern, evidence-first, Git-native genealogy data standard.
 Use GLX to initialize new archives, validate files, and ensure data quality.`,
 	Version:       versionString(),
 	SilenceErrors: true,
-	// SilenceUsage is set in PersistentPreRun (after arg validation) so that
-	// arg-count errors still show usage but runtime errors from RunE do not.
-	PersistentPreRun: func(cmd *cobra.Command, _ []string) {
-		cmd.SilenceUsage = true
-	},
+	// run prints usage itself, and only for errors raised before a command's
+	// RunE started (see runStarted), so Cobra never does.
+	SilenceUsage: true,
 }
 
 // showHelp is the RunE of a parent command that only groups subcommands (add,
@@ -77,29 +78,98 @@ func (e *silentExitError) Error() string {
 	return fmt.Sprintf("silent exit %d", e.code)
 }
 
-// Execute runs the root command.
-//
-// A *silentExitError returned by a RunE means "exit with this code, do not
-// print a message" — see runMergeDriverCmd for the canonical use. Any other
-// non-nil error is printed to stderr before exiting with code 1. The message
-// is passed through sanitizeForTerminal first: errors routinely embed
-// archive-controlled text (a symlink's filename from a containment failure,
-// an entity ID from a reference error), and this is the one print site that
-// every runner's returned error funnels through.
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		if silent, ok := errors.AsType[*silentExitError](err); ok {
-			os.Exit(silent.code)
+// runStarted records whether the invoked command's own RunE (or Run) began.
+// An error returned before that point came from Cobra itself or from the
+// command's argument, flag or PreRunE checks: the invocation was wrong, not
+// the data. Cobra validates required flags and flag groups only after the
+// persistent pre-run hooks, so a PersistentPreRun cannot draw this line.
+var runStarted bool
+
+// markRunStartOnce wraps every command's RunE and Run, once per process, so
+// they set runStarted before doing anything else. It runs at the first call
+// to run rather than in init so it sees every command, whichever file's init
+// registered it.
+var markRunStartOnce sync.Once
+
+func markRunStart(cmd *cobra.Command) {
+	if runE := cmd.RunE; runE != nil {
+		cmd.RunE = func(c *cobra.Command, args []string) error {
+			runStarted = true
+
+			return runE(c, args)
 		}
-		fmt.Fprintln(os.Stderr, sanitizeForTerminal(err.Error()))
-		os.Exit(exitCodeForError(err))
+	}
+	if runFn := cmd.Run; runFn != nil {
+		cmd.Run = func(c *cobra.Command, args []string) {
+			runStarted = true
+			runFn(c, args)
+		}
+	}
+	for _, sub := range cmd.Commands() {
+		markRunStart(sub)
 	}
 }
 
-// exitBadInvocation is the process exit code for CLI misuse on the --stdin path
-// (issue #910) — distinct from exit 1, which signals a structural/semantic
+// run executes the root command with args and returns the process exit code.
+// main passes the result to os.Exit; keeping the exit out of run lets tests
+// drive every branch below.
+//
+// A *silentExitError returned by a RunE means "exit with this code, do not
+// print a message" — see runMergeDriverCmd for the canonical use. Any other
+// non-nil error is printed to stderr. The message is passed through
+// sanitizeForTerminal first: errors routinely embed archive-controlled text (a
+// symlink's filename from a containment failure, an entity ID from a reference
+// error), and this is the one print site that every runner's returned error
+// funnels through. An error raised before the command's RunE started is a
+// misuse (unknown flag or subcommand, wrong argument count, missing required
+// flag): its usage is printed first and the code is exitBadInvocation.
+// Otherwise exitCodeForError picks the code.
+//
+// A panic is recovered here so it cannot exit with Go's own status 2, which
+// would read as exitBadInvocation, and so its text is sanitized like any error.
+func run(args []string, stderr io.Writer) (code int) {
+	defer func() {
+		if r := recover(); r != nil {
+			_, _ = fmt.Fprintf(stderr, "glx: internal error: %s\n%s",
+				sanitizeForTerminal(fmt.Sprint(r)), sanitizeForTerminal(string(debug.Stack())))
+			code = exitInternalError
+		}
+	}()
+
+	stop := watchInterrupts(stderr)
+	defer stop()
+
+	markRunStartOnce.Do(func() { markRunStart(rootCmd) })
+	runStarted = false
+	rootCmd.SetArgs(args)
+
+	cmd, err := rootCmd.ExecuteC()
+	if err == nil {
+		return 0
+	}
+	if silent, ok := errors.AsType[*silentExitError](err); ok {
+		return silent.code
+	}
+	if !runStarted {
+		_, _ = fmt.Fprintln(stderr, cmd.UsageString())
+		_, _ = fmt.Fprintln(stderr, sanitizeForTerminal(err.Error()))
+
+		return exitBadInvocation
+	}
+	_, _ = fmt.Fprintln(stderr, sanitizeForTerminal(err.Error()))
+
+	return exitCodeForError(err)
+}
+
+// exitBadInvocation is the process exit code for CLI misuse: the --stdin
+// sentinels below (issue #910) and every error raised before a command's RunE
+// started (see run) — distinct from exit 1, which signals a structural/semantic
 // validation failure on otherwise well-formed input.
 const exitBadInvocation = 2
+
+// exitInternalError is the process exit code for a recovered panic: a glx bug,
+// not a problem with the invocation or the archive.
+const exitInternalError = 3
 
 // exitCodeForError maps a root-command error to a process exit code. The
 // --stdin invocation sentinels yield 2 so callers and CI can tell "you invoked
@@ -700,7 +770,7 @@ relationships, places, citations, repositories, media, research_logs,
 studies.
 
 Filters vary by entity type:
-  persons:       --name, --born-before, --born-after, --birthplace
+  persons:       --name, --born-before, --born-after, --birthplace, --status
   events:        --type, --before, --after
   assertions:    --confidence, --status, --source, --citation, --subject
   sources:       --name, --type
@@ -760,7 +830,7 @@ func init() {
 	queryCmd.Flags().IntVar(&queryBefore, "before", 0, "Filter events with date before this year")
 	queryCmd.Flags().IntVar(&queryAfter, "after", 0, "Filter events with date after this year")
 	queryCmd.Flags().StringVar(&queryConfidence, "confidence", "", "Filter assertions by confidence level")
-	queryCmd.Flags().StringVar(&queryStatus, "status", "", "Filter assertions or research logs by status")
+	queryCmd.Flags().StringVar(&queryStatus, "status", "", "Filter persons, assertions or research logs by status")
 	queryCmd.Flags().StringVar(&querySource, "source", "", "Filter assertions by source ID (direct or via citation)")
 	queryCmd.Flags().StringVar(&queryCitation, "citation", "", "Filter assertions by citation ID")
 	queryCmd.Flags().StringVar(&querySubject, "subject", "", "Filter assertions or research logs by subject entity ID or person name substring")
@@ -2298,12 +2368,14 @@ func runLink(_ *cobra.Command, args []string) error {
 var (
 	serveHost string
 	servePort int
+	serveEdit bool
 )
 
 var serveCmd = &cobra.Command{
 	Use:   "serve [path]",
 	Short: "Serve a local browser-based viewer for a GLX archive (prints a URL to open)",
-	Long: `Serve a read-only, browser-based viewer for a GENEALOGIX archive.
+	Long: `Serve a browser-based viewer for a GENEALOGIX archive, read-only unless
+--edit is given.
 
 Starts a small local web server and prints a URL to open in your browser
 (it does not open the browser for you). The viewer is interactive and shows:
@@ -2315,6 +2387,12 @@ Starts a small local web server and prints a URL to open in your browser
 The server binds to localhost by default so the archive stays on your machine.
 The archive is loaded once at startup; restart the server to pick up external
 edits made by the CLI or a text editor.
+
+With --edit, the viewer can also add people, edit a person's name, sex and
+gender, and add parent, child and spouse relationships. Additions go through
+the same checks as 'glx add person' and 'glx add relationship' and write the
+same files; an edit rewrites only that person's file, and is refused if the
+file changed since the page loaded. Editing needs a multi-file directory.
 
 Accepts either a multi-file directory or a single .glx file.
 If no path is given, the current directory is used.`,
@@ -2328,7 +2406,10 @@ If no path is given, the current directory is used.`,
   glx serve family.glx --port 9000
 
   # Pick any free port (printed on startup)
-  glx serve --port 0`,
+  glx serve --port 0
+
+  # Allow adding and editing people in the browser
+  glx serve my-family-archive --edit`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runServe,
 }
@@ -2336,6 +2417,7 @@ If no path is given, the current directory is used.`,
 func init() {
 	serveCmd.Flags().StringVar(&serveHost, "host", serveDefaultHost, "Host/interface to bind (use 127.0.0.1 to keep the viewer local)")
 	serveCmd.Flags().IntVarP(&servePort, "port", "p", serveDefaultPort, "Port to listen on (0 picks any free port)")
+	serveCmd.Flags().BoolVar(&serveEdit, "edit", false, "Allow adding and editing people and relationships (directory archives only)")
 }
 
 func runServe(_ *cobra.Command, args []string) error {
@@ -2348,6 +2430,7 @@ func runServe(_ *cobra.Command, args []string) error {
 		ArchivePath: path,
 		Host:        serveHost,
 		Port:        servePort,
+		Edit:        serveEdit,
 	})
 }
 

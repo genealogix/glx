@@ -68,7 +68,7 @@ func validateArchiveSubset(streams *IOStreams, archiveRoot string, selected map[
 	inSelection := selectedEntityIDs(selection)
 	selectedPaths := make([]string, 0, len(selected))
 	for rel := range selected {
-		selectedPaths = append(selectedPaths, rel)
+		selectedPaths = append(selectedPaths, sanitizeForTerminal(rel))
 	}
 
 	var allErrors, allWarnings []string
@@ -81,7 +81,7 @@ func validateArchiveSubset(streams *IOStreams, archiveRoot string, selected map[
 
 	result := archive.Validate()
 	for _, e := range result.Errors {
-		if inSelection.covers(e.SourceType, e.SourceID) {
+		if inSelection.coversError(&e) {
 			allErrors = append(allErrors, e.Message)
 		}
 	}
@@ -161,6 +161,21 @@ func (s entityIDSet) covers(sourceType glxlib.EntityType, sourceID string) bool 
 	id, _, _ := strings.Cut(sourceID, " ")
 
 	return ids[id]
+}
+
+// coversError includes both sides of a case-insensitive ID collision. Other
+// reference errors belong to their source, not to a selected reference target.
+func (s entityIDSet) coversError(e *glxlib.ValidationError) bool {
+	if s.covers(e.SourceType, e.SourceID) {
+		return true
+	}
+	if string(e.SourceType) != e.TargetType || e.SourceID == e.TargetID || !s[e.SourceType][e.TargetID] {
+		return false
+	}
+	sourceKey, sourceErr := glxlib.EntityIDToFilename(e.SourceID)
+	targetKey, targetErr := glxlib.EntityIDToFilename(e.TargetID)
+
+	return sourceErr == nil && targetErr == nil && sourceKey == targetKey
 }
 
 func mapKeys[T any](m map[string]*T) []string {
