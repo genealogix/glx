@@ -129,7 +129,7 @@ test('recovers from malformed files and rejects GEDZIP', async ({ page }) => {
 
   await page.getByLabel('Conversion direction').selectOption('export')
   await selectAndConvert(page, { name: 'other.glx', mimeType: 'text/plain', buffer: Buffer.from('unrelated: true') })
-  await expect(page.getByRole('status')).toContainText('expected a single-file GLX archive')
+  await expect(page.getByRole('status')).toContainText('could not read GLX')
   await selectAndConvert(page, { name: 'broken.glx', mimeType: 'text/plain', buffer: Buffer.from('persons: [') })
   await expect(page.getByRole('status')).toContainText('could not read GLX')
   await selectAndConvert(page, singleArchive)
@@ -233,4 +233,33 @@ test('offers a retry after a WASM load failure or worker script failure', async 
   await page.unroute('**/converter-worker-*.js')
   await page.getByRole('button', { name: 'Convert file' }).click()
   await expectCount(page, 'People', '31')
+})
+
+for (const output of ['glx', 'zip']) {
+  test(`rejects embedded media rather than silently omitting it from ${output}`, async ({ page }) => {
+    await page.goto(converterPath)
+    await page.getByLabel('GLX output').selectOption(output)
+    await selectAndConvert(page, {
+      name: 'embedded.ged', mimeType: 'text/plain',
+      buffer: Buffer.from('0 HEAD\n1 GEDC\n2 VERS 5.5.1\n1 CHAR UTF-8\n0 @M1@ OBJE\n1 FORM PICT\n1 BLOB\n2 CONT .HM.......k.1..F\n0 TRLR\n'),
+    })
+    await expect(page.getByRole('status')).toContainText('embedded BLOB media')
+    await expect(page.getByRole('link', { name: /Download/ })).toHaveCount(0)
+  })
+}
+
+test('rejects unknown GLX fields and extra YAML documents without offering a lossy download', async ({ page }) => {
+  await page.goto(converterPath)
+  await page.getByLabel('Conversion direction').selectOption('export')
+  for (const content of [
+    'persons: {}\npersnos:\n  p1: {}\n',
+    'persons:\n  p1:\n    name: Jane\n',
+    'persons: {}\n---\npersons:\n  p2: {}\n',
+  ]) {
+    await selectAndConvert(page, { name: 'bad.glx', mimeType: 'text/plain', buffer: Buffer.from(content) })
+    await expect(page.getByRole('status')).toContainText(/could not read GLX|expected a single-file GLX archive/)
+    await expect(page.getByRole('link', { name: 'Download GEDCOM' })).toHaveCount(0)
+  }
+  await selectAndConvert(page, singleArchive)
+  await expect(page.getByRole('link', { name: 'Download GEDCOM' })).toBeVisible()
 })

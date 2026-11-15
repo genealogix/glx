@@ -21,6 +21,6 @@ When converting a GEDCOM 5.5.1 or 7.0 file (`.ged`), choose **Single file (.glx)
 
 To export to GEDCOM, select a single-file GLX archive (`.glx`) and choose the GEDCOM version your destination application accepts.
 
-Downloads can include media references. Keep the original media files with your archive. Use the [GLX CLI](../glx/README.md#installation) to export an archive folder, import GEDZIP packages, or handle files that strain the browser.
+Downloads can include media references. Keep the original media files with your archive. Use the [GLX CLI](../glx/README.md#installation) to export an archive folder, import GEDZIP packages or embedded GEDCOM `BLOB` media, or handle files that strain the browser.
 
 Some details may be lost or represented differently in the other format. Keep your original file, review any warnings, and open the result in your destination application. Use the [GLX CLI validator](../docs/cli/glx_validate.md) to check an archive.

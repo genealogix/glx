@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"reflect"
 
 	"go.yaml.in/yaml/v3"
 
@@ -27,12 +26,13 @@ import (
 )
 
 var (
-	errEmptyFile   = errors.New("the selected file is empty")
-	errGEDZIP      = errors.New("ZIP and GEDZIP files require the GLX CLI")
-	errGEDCOM      = errors.New("expected a GEDCOM file beginning with a 0 HEAD record")
-	errUTF16       = errors.New("UTF-16 GEDCOM files are unsupported. Save or export the file as UTF-8 and try again")
-	errGLX         = errors.New("expected a single-file GLX archive")
-	errDestination = errors.New("unknown conversion format")
+	errEmptyFile     = errors.New("the selected file is empty")
+	errGEDZIP        = errors.New("ZIP and GEDZIP files require the GLX CLI")
+	errGEDCOM        = errors.New("expected a GEDCOM file beginning with a 0 HEAD record")
+	errUTF16         = errors.New("UTF-16 GEDCOM files are unsupported. Save or export the file as UTF-8 and try again")
+	errGLX           = errors.New("expected a single-file GLX archive")
+	errDestination   = errors.New("unknown conversion format")
+	errEmbeddedMedia = errors.New("this GEDCOM contains embedded BLOB media; use the GLX CLI to preserve the embedded files")
 )
 
 const (
@@ -70,9 +70,9 @@ func convert(data []byte, destination string, prepare func()) ([]byte, summary, 
 	case singleFileGLX, multiFileGLX:
 		return importGEDCOM(data, serializer, destination, prepare)
 	case "5.5.1":
-		return exportGEDCOM(data, serializer, glxlib.GEDCOM551)
+		return exportGEDCOM(data, glxlib.GEDCOM551)
 	case "7.0":
-		return exportGEDCOM(data, serializer, glxlib.GEDCOM70)
+		return exportGEDCOM(data, glxlib.GEDCOM70)
 	default:
 		return nil, summary{}, errDestination
 	}
@@ -97,6 +97,11 @@ func importGEDCOM(data []byte, serializer *glxlib.DefaultSerializer, destination
 	archive, result, err := glxlib.ImportGEDCOM(bytes.NewReader(data), nil)
 	if err != nil {
 		return nil, summary{}, fmt.Errorf("could not read GEDCOM: %w", err)
+	}
+	for i := range result.MediaFiles {
+		if result.MediaFiles[i].SourceType == glxlib.MediaSourceBlob {
+			return nil, summary{}, errEmbeddedMedia
+		}
 	}
 	stats := result.Statistics
 	diagnostics := make([]diagnostic, 0, len(stats.Errors)+len(stats.Warnings))
@@ -143,15 +148,27 @@ func importMessage(line int, tag, message string) string {
 	return fmt.Sprintf("Line %d (%s): %s", line, tag, message)
 }
 
-func exportGEDCOM(data []byte, serializer glxlib.Serializer, version glxlib.GEDCOMVersion) ([]byte, summary, error) {
-	archive, err := serializer.DeserializeSingleFileBytes(data)
-	if err != nil {
+func exportGEDCOM(data []byte, version glxlib.GEDCOMVersion) ([]byte, summary, error) {
+	// Reject unknown structural fields before decoding can silently discard them.
+	// Property maps stay extensible; this is not full archive validation.
+	decoder := yaml.NewDecoder(bytes.NewReader(data))
+	decoder.KnownFields(true)
+	var archive *glxlib.GLXFile
+	if err := decoder.Decode(&archive); err != nil {
 		return nil, summary{}, fmt.Errorf("could not read GLX: %w", err)
 	}
-	// The serializer ignores unknown fields. Distinguish unrelated YAML from a
-	// supported empty mapping without decoding ordinary archives a second time.
-	if reflect.ValueOf(archive).Elem().IsZero() && !isEmptyGLX(data) {
+	if archive == nil {
 		return nil, summary{}, errGLX
+	}
+	// A single-file archive is one YAML document, not a stream. Never ignore
+	// later documents (including malformed ones) and export only the first.
+	var extra any
+	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
+		return nil, summary{}, errGLX
+	}
+
+	if err := checkCompatibilityFields(data); err != nil {
+		return nil, summary{}, fmt.Errorf("could not read GLX: %w", err)
 	}
 
 	output, result, err := glxlib.ExportGEDCOM(archive, version, nil)
@@ -178,11 +195,27 @@ func exportGEDCOM(data []byte, serializer glxlib.Serializer, version glxlib.GEDC
 	return output, report, nil
 }
 
-func isEmptyGLX(data []byte) bool {
+// Source and Media have legacy-description unmarshallers that use Node.Decode,
+// which does not inherit KnownFields. Check these records without those methods
+// before allowing their compatibility conversion to hide misspelled fields.
+func checkCompatibilityFields(data []byte) error {
+	type sourceFields glxlib.Source
+	type mediaFields glxlib.Media
+	var archive struct {
+		Sources map[string]*struct {
+			sourceFields `yaml:",inline"`
+			Description  string `yaml:"description,omitempty"`
+		} `yaml:"sources"`
+		Media map[string]*struct {
+			mediaFields `yaml:",inline"`
+			Description string `yaml:"description,omitempty"`
+		} `yaml:"media"`
+		Other map[string]any `yaml:",inline"`
+	}
+	// Keep the full document so aliases can refer to anchors in other sections.
+	// Other sections were already checked by the GLXFile decoder above.
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
 	decoder.KnownFields(true)
-	var archive *glxlib.GLXFile
-	err := decoder.Decode(&archive)
 
-	return errors.Is(err, io.EOF) || (err == nil && archive != nil)
+	return decoder.Decode(&archive)
 }

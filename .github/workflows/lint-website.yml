@@ -65,11 +65,14 @@ jobs:
           go-version-file: go.mod
           cache: false
 
+      - name: Test converter input guards
+        run: go test -race converter/wasm/convert_js.go converter/wasm/convert_js_test.go
+
       - name: Build website and converter
         run: npm run build
 
-      - name: Install Chromium for converter smoke tests
-        run: npx playwright install --with-deps chromium
+      - name: Install browsers for converter tests
+        run: npx playwright install --with-deps chromium firefox webkit
 
       - name: Test browser conversion
-        run: npm run test:converter -- --project=chromium
+        run: npm run test:converter
