@@ -1,7 +1,6 @@
 # Valid: an assertion whose property is not in the person_properties vocabulary.
 # It must not fail validation, which allows emerging properties. It should also
-# produce an "unknown property" warning, but the validator does not yet check
-# assertion property names (genealogix/glx#1224).
+# produce an "unknown property" warning (genealogix/glx#1224).
 
 persons:
   person-john:
