@@ -197,9 +197,10 @@ func TestValidFixturesWithWarnings(t *testing.T) {
 		// No vocabularies at all: the standard vocabularies fill in, so a
 		// person using standard properties needs none.
 		{"missing-vocabularies", nil},
-		// Should warn about the unknown assertion property once the validator
-		// checks assertion property names (genealogix/glx#1224).
-		{"assertion-unknown-property", nil},
+		// Assertion property names are checked against the subject vocabulary.
+		{"assertion-unknown-property", []string{
+			`assertions[assertion-custom-property]: property "custom_property_not_in_vocab" is not defined in person_properties`,
+		}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
