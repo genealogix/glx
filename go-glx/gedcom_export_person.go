@@ -226,6 +226,14 @@ func exportPerson(personID string, person *Person, expCtx *ExportContext) *GEDCO
 	// Person properties with GEDCOM tag mappings (OCCU, RELI, EDUC, etc.)
 	record.SubRecords = append(record.SubRecords, exportMappedPersonProperties(personID, person, expCtx)...)
 
+	// A GEDCOM reader would otherwise take a placeholder for a documented person.
+	if IsUnresolvedPlaceholder(person) {
+		record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
+			Tag:   GedcomTagNote,
+			Value: "GLX status: " + PersonStatus(person) + " (research placeholder, not an identified person)",
+		})
+	}
+
 	// NOTE - emit one NOTE subrecord per note
 	for _, note := range person.Notes {
 		record.SubRecords = append(record.SubRecords, &GEDCOMRecord{

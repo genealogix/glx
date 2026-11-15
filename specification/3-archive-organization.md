@@ -131,6 +131,9 @@ Across all files in an archive, the validator checks:
 
 - Unknown properties (not defined in property vocabularies) generate warnings
 - Unknown assertion properties (not defined in property vocabularies) generate warnings
+- A key inside `properties` that names one of the entity's own fields (for example `type` or `date` inside a source's `properties`) generates a warning naming the field to move
+- A source whose title mentions a census but whose `type` is not `census` generates a warning
+- A media `hash` that is not `algorithm:hexstring` generates a warning
 - Reversed date ranges (an end before the start) generate warnings. Conflicting evidence remains valid data; validation does not adjudicate claims.
 - Temporal consistency issues generate warnings:
   - Death year before birth year

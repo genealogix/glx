@@ -328,6 +328,14 @@
       },
       "additionalProperties": false
     },
+    "person_statuses": {
+      "type": "object",
+      "description": "Person status vocabulary (research placeholder states for persons)",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/person-statuses.schema.json#/$defs/PersonStatusDefinition" }
+      },
+      "additionalProperties": false
+    },
     "research_log_status_types": {
       "type": "object",
       "description": "Research log status type vocabulary",

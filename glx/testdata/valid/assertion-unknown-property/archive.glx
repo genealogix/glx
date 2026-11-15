@@ -1,0 +1,54 @@
+# Valid: an assertion whose property is not in the person_properties vocabulary.
+# It must not fail validation, which allows emerging properties. It should also
+# produce an "unknown property" warning, but the validator does not yet check
+# assertion property names (genealogix/glx#1224).
+
+persons:
+  person-john:
+    properties:
+      name:
+        value: "John Smith"
+        fields:
+          given: "John"
+          surname: "Smith"
+
+sources:
+  source-record:
+    title: "Historical Record"
+
+citations:
+  citation-record:
+    source: source-record
+
+# This assertion uses an unknown property that's not in person_properties vocabulary
+# Should generate a WARNING but still validate (allows emerging properties)
+assertions:
+  assertion-custom-property:
+    subject:
+      person: person-john
+    property: custom_property_not_in_vocab  # WARNING: unknown property
+    value: "some value"
+    citations:
+      - citation-record
+    confidence: medium
+
+# Define person_properties vocabulary for this archive
+person_properties:
+  name:
+    label: "Name"
+    description: "Person's name as recorded"
+    value_type: string
+    temporal: true
+    fields:
+      given:
+        label: "Given Name"
+        description: "Given/first name(s)"
+      surname:
+        label: "Surname"
+        description: "Family name"
+
+confidence_levels:
+  medium:
+    label: "Medium Confidence"
+    description: "Some evidence supports conclusion, but conflicts or gaps exist"
+    rank: 2
