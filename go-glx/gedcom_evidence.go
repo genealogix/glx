@@ -156,8 +156,19 @@ func prepareCitationFromSOUR(sourRecord *GEDCOMRecord, conv *ConversionContext) 
 			}
 
 		case GedcomTagQuay:
-			// GEDCOM quality assessment (0-3) - preserve in notes
-			citation.Notes = append(citation.Notes, "GEDCOM QUAY: "+sub.Value)
+			// Keep the original citation assessment separate from assertion confidence.
+			propertyKey, mapped := conv.GEDCOMIndex.CitationProperties[sub.Tag]
+			_, duplicate := citation.Properties[propertyKey]
+			if mapped && !duplicate && len(sub.Value) == 1 && sub.Value[0] >= '0' && sub.Value[0] <= '3' {
+				if citation.Properties == nil {
+					citation.Properties = make(map[string]any)
+				}
+				citation.Properties[propertyKey] = int(sub.Value[0] - '0')
+			} else {
+				// Preserve malformed, repeated, or unmapped values without inventing a rating.
+				citation.Notes = append(citation.Notes, "GEDCOM QUAY: "+sub.Value)
+				conv.addWarning(sub.Line, GedcomTagQuay, "QUAY could not be stored as a single integer 0-3; preserved in citation notes")
+			}
 
 		case GedcomTagNote:
 			// Notes about the citation

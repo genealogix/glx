@@ -21,6 +21,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.yaml.in/yaml/v3"
 )
 
 // ============================================================================
@@ -1429,4 +1430,154 @@ func TestRoundtrip_ExtensionTags(t *testing.T) {
 	famSubs := famtag[ExtensionEntrySubrecords].([]any)
 	require.Len(t, famSubs, 1)
 	assert.Equal(t, map[string]any{ExtensionEntryTag: "NOTE", ExtensionEntryValue: "family-level extension note"}, famSubs[0])
+}
+
+func quayFixture(version, citations string) string {
+	return "0 HEAD\n1 GEDC\n2 VERS " + version + "\n0 @S1@ SOUR\n1 TITL Register\n0 @I1@ INDI\n1 NAME Jane /Doe/\n1 BIRT\n2 DATE 1 JAN 1900\n" + citations + "0 TRLR\n"
+}
+
+func TestCitationQUAYRoundTrip(t *testing.T) {
+	for _, version := range []GEDCOMVersion{GEDCOM551, GEDCOM70} {
+		versionText := "5.5.1"
+		if version == GEDCOM70 {
+			versionText = "7.0"
+		}
+		t.Run(versionText, func(t *testing.T) {
+			var citations strings.Builder
+			for q := range 4 {
+				fmt.Fprintf(&citations, "2 SOUR @S1@\n3 PAGE p%d\n3 QUAY %d\n", q, q)
+			}
+			citations.WriteString("2 SOUR @S1@\n3 PAGE absent\n3 NOTE ordinary note\n")
+			archive, _, err := ImportGEDCOM(strings.NewReader(quayFixture(versionText, citations.String())), nil)
+			require.NoError(t, err)
+			require.NotEmpty(t, archive.Citations)
+			for _, assertion := range archive.Assertions {
+				assert.Empty(t, assertion.Confidence)
+			}
+			// Exercise the persisted YAML numeric representation, not only in-memory Go values.
+			data, err := yaml.Marshal(archive)
+			require.NoError(t, err)
+			persisted := &GLXFile{}
+			require.NoError(t, yaml.Unmarshal(data, persisted))
+			exported, _, err := ExportGEDCOM(persisted, version, nil)
+			require.NoError(t, err)
+			assert.Equal(t, 4, strings.Count(string(exported), " QUAY "))
+			roundtrip, _, err := ImportGEDCOM(strings.NewReader(string(exported)), nil)
+			require.NoError(t, err)
+			require.NotEmpty(t, roundtrip.Citations)
+			seen := map[string]bool{}
+			for _, c := range roundtrip.Citations {
+				page, _ := getStringProperty(c.Properties, "locator")
+				seen[page] = true
+				if page == "absent" {
+					_, present := c.Properties["gedcom_quay"]
+					assert.False(t, present)
+					assert.Contains(t, c.Notes, "ordinary note")
+				} else {
+					require.Len(t, page, 2)
+					assert.Equal(t, int(page[1]-'0'), c.Properties["gedcom_quay"])
+				}
+			}
+			assert.Len(t, seen, 5)
+			for _, assertion := range roundtrip.Assertions {
+				assert.Empty(t, assertion.Confidence)
+			}
+		})
+	}
+}
+
+func TestCitationQUAYLegacyAndInvalid(t *testing.T) {
+	for _, q := range []string{"", "4", "-1", "03", "bad"} {
+		t.Run("invalid_"+q, func(t *testing.T) {
+			archive, result, err := ImportGEDCOM(strings.NewReader(quayFixture("5.5.1", "2 SOUR @S1@\n3 QUAY "+q+"\n")), nil)
+			require.NoError(t, err)
+			require.NotEmpty(t, result.Statistics.Warnings)
+			require.NotEmpty(t, archive.Citations)
+			for _, c := range archive.Citations {
+				assert.NotContains(t, c.Properties, "gedcom_quay")
+				assert.Contains(t, c.Notes, "GEDCOM QUAY: "+q)
+			}
+		})
+	}
+	archive, _, err := ImportGEDCOM(strings.NewReader(quayFixture("5.5.1", "2 SOUR @S1@\n3 NOTE GEDCOM QUAY: 3\n")), nil)
+	require.NoError(t, err)
+	exported, _, err := ExportGEDCOM(archive, GEDCOM551, nil)
+	require.NoError(t, err)
+	assert.Contains(t, string(exported), "NOTE GEDCOM QUAY: 3")
+	assert.NotContains(t, string(exported), "3 QUAY")
+	// A repeated QUAY must not silently replace the first assessment.
+	archive, result, err := ImportGEDCOM(strings.NewReader(quayFixture("5.5.1", "2 SOUR @S1@\n3 QUAY 0\n3 QUAY 3\n")), nil)
+	require.NoError(t, err)
+	require.NotEmpty(t, result.Statistics.Warnings)
+	for _, c := range archive.Citations {
+		assert.Equal(t, 0, c.Properties["gedcom_quay"])
+		assert.Contains(t, c.Notes, "GEDCOM QUAY: 3")
+	}
+}
+
+func TestCitationQUAYExportValues(t *testing.T) {
+	for i, value := range []any{0, int64(1), float64(2), uint(3), 4, -1, 2.5, "3", nil} {
+		t.Run(fmt.Sprintf("%T_%v", value, value), func(t *testing.T) {
+			archive, _, err := ImportGEDCOM(strings.NewReader(quayFixture("5.5.1", "2 SOUR @S1@\n3 PAGE p\n")), nil)
+			require.NoError(t, err)
+			for _, c := range archive.Citations {
+				c.Properties["gedcom_quay"] = value
+			}
+			output, result, err := ExportGEDCOM(archive, GEDCOM551, nil)
+			require.NoError(t, err)
+			if i < 4 {
+				expected := []string{"0", "1", "2", "3"}[i]
+				assert.Contains(t, string(output), "3 QUAY "+expected)
+			} else {
+				assert.NotContains(t, string(output), "3 QUAY")
+				assert.NotEmpty(t, result.Statistics.Warnings)
+				for _, w := range result.Statistics.Warnings {
+					if w.EntityType == EntityTypeCitations {
+						assert.Contains(t, archive.Citations, w.EntityID)
+					}
+				}
+				assert.Contains(t, string(output), "NOTE GEDCOM QUAY:")
+			}
+		})
+	}
+}
+
+func TestCitationQUAYOnlyDetailAndCustomVocabulary(t *testing.T) {
+	archive, _, err := ImportGEDCOM(strings.NewReader(quayFixture("5.5.1", "2 SOUR @S1@\n3 QUAY 0\n")), nil)
+	require.NoError(t, err)
+	require.NotEmpty(t, archive.Citations, "zero alone is citation detail, not a bare source")
+	for _, c := range archive.Citations {
+		assert.Equal(t, 0, c.Properties["gedcom_quay"])
+		assert.Empty(t, c.Notes)
+	}
+	// Export respects vocabulary mapping rather than hard-coding the property name.
+	archive.CitationProperties["quality_original"] = archive.CitationProperties["gedcom_quay"]
+	delete(archive.CitationProperties, "gedcom_quay")
+	for _, c := range archive.Citations {
+		c.Properties["quality_original"] = c.Properties["gedcom_quay"]
+		delete(c.Properties, "gedcom_quay")
+	}
+	output, _, err := ExportGEDCOM(archive, GEDCOM70, nil)
+	require.NoError(t, err)
+	assert.Contains(t, string(output), "3 QUAY 0")
+}
+
+func TestCitationQUAYAmbiguousMappings(t *testing.T) {
+	archive, _, err := ImportGEDCOM(strings.NewReader(quayFixture("5.5.1", "2 SOUR @S1@\n3 QUAY 0\n")), nil)
+	require.NoError(t, err)
+	archive.CitationProperties["quality_original"] = archive.CitationProperties["gedcom_quay"]
+	for _, c := range archive.Citations {
+		c.Properties["quality_original"] = 3
+	}
+	output, result, err := ExportGEDCOM(archive, GEDCOM551, nil)
+	require.NoError(t, err)
+	assert.Contains(t, string(output), "3 QUAY 0")
+	assert.NotContains(t, string(output), "3 QUAY 3")
+	assert.Contains(t, string(output), "NOTE GEDCOM QUAY: 3")
+	require.NotEmpty(t, result.Statistics.Warnings)
+	for _, w := range result.Statistics.Warnings {
+		if w.EntityType == EntityTypeCitations {
+			assert.Contains(t, archive.Citations, w.EntityID)
+		}
+	}
 }

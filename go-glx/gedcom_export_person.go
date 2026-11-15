@@ -154,7 +154,7 @@ func assertionSourceRefs(assertions []*Assertion, expCtx *ExportContext) []*GEDC
 			}
 
 			if sourceXRef := expCtx.SourceXRefMap[citation.SourceID]; sourceXRef != "" {
-				records = append(records, exportCitationAsSOUR(citation, sourceXRef, expCtx))
+				records = append(records, exportCitationAsSOUR(citationID, citation, sourceXRef, expCtx))
 			}
 		}
 	}
@@ -973,7 +973,7 @@ func eventSourceRefs(event *Event, expCtx *ExportContext) []*GEDCOMRecord {
 			}
 
 			if sourceXRef := expCtx.SourceXRefMap[citation.SourceID]; sourceXRef != "" {
-				records = append(records, exportCitationAsSOUR(citation, sourceXRef, expCtx))
+				records = append(records, exportCitationAsSOUR(citationID, citation, sourceXRef, expCtx))
 			}
 		}
 	}
@@ -1012,8 +1012,8 @@ func sourceRefKey(sour *GEDCOMRecord) string {
 }
 
 // exportCitationAsSOUR creates a GEDCOM SOUR sub-record from a GLX Citation,
-// including PAGE, NOTE, DATA (DATE/TEXT), and OBJE sub-records.
-func exportCitationAsSOUR(citation *Citation, sourceXRef string, expCtx *ExportContext) *GEDCOMRecord {
+// including PAGE, QUAY, NOTE, DATA (DATE/TEXT), and OBJE sub-records.
+func exportCitationAsSOUR(citationID string, citation *Citation, sourceXRef string, expCtx *ExportContext) *GEDCOMRecord {
 	sourRecord := &GEDCOMRecord{
 		Tag:        GedcomTagSour,
 		Value:      sourceXRef,
@@ -1026,6 +1026,27 @@ func exportCitationAsSOUR(citation *Citation, sourceXRef string, expCtx *ExportC
 			Tag:   GedcomTagPage,
 			Value: locator,
 		})
+	}
+
+	// QUAY is citation interchange metadata, never assertion confidence.
+	// Follow the archive vocabulary so custom property names can round-trip too.
+	quayWritten := false
+	for _, key := range sortedKeys(expCtx.GLX.CitationProperties) {
+		if expCtx.GLX.CitationProperties[key].GEDCOM != GedcomTagQuay {
+			continue
+		}
+		value, present := citation.Properties[key]
+		if !present {
+			continue
+		}
+		quay, valid := citationQUAY(value)
+		if valid && !quayWritten {
+			quayWritten = true
+			sourRecord.SubRecords = append(sourRecord.SubRecords, &GEDCOMRecord{Tag: GedcomTagQuay, Value: quay})
+		} else {
+			expCtx.addExportWarning(EntityTypeCitations, citationID, "Invalid or additional citation QUAY: expected one integer 0-3; preserved as a note")
+			sourRecord.SubRecords = append(sourRecord.SubRecords, &GEDCOMRecord{Tag: GedcomTagNote, Value: fmt.Sprintf("GEDCOM QUAY: %v", value)})
+		}
 	}
 
 	// DATA sub-record (date and text)
@@ -1089,5 +1110,17 @@ func extractStringList(val any) []string {
 		return []string{v}
 	default:
 		return nil
+	}
+}
+
+// citationQUAY accepts the numeric representations produced by YAML/JSON decoding.
+func citationQUAY(value any) (string, bool) {
+	switch value.(type) {
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64:
+		text := fmt.Sprint(value)
+
+		return text, len(text) == 1 && text[0] >= '0' && text[0] <= '3'
+	default:
+		return "", false
 	}
 }

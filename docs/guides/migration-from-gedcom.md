@@ -263,7 +263,7 @@ If no `TYPE` tag is present, the importer infers the source type from keywords i
 | `DATA.DATE` | `citation.properties.source_date` | When the source recorded the information |
 | `DATA.TEXT` | `citation.properties.text_from_source` | Transcription from source |
 | `TEXT` | `citation.properties.text_from_source` | GEDCOM 5.5.1 direct text |
-| `QUAY` | `citation.notes` | Quality assessment preserved as note |
+| `QUAY` | `citation.properties.gedcom_quay` | Original integer 0–3 retained for GEDCOM round-trip; not assertion confidence |
 | `NOTE` | `citation.notes` | |
 | `OBJE` | `citation.media` | |
 

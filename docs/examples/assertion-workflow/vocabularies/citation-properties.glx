@@ -47,3 +47,9 @@ citation_properties:
       type:
         label: "Identifier Type"
         description: "Authority or system that issued this identifier (e.g., familysearch, ancestry, wikitree). Often a URI, especially when imported from GEDCOM 7 EXID.TYPE."
+
+  gedcom_quay:
+    label: "GEDCOM Quality Assessment"
+    description: "Original GEDCOM citation QUAY integer (0-3), retained for round-trip export. Zero is distinct from absence. This is interchange metadata, not assertion confidence."
+    value_type: integer
+    gedcom: "QUAY"
