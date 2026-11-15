@@ -83,6 +83,7 @@ func MergeStandardVocabularies(archive *GLXFile) error {
 	archive.SearchResultTypes = typeVocabularyDefaults(archive.SearchResultTypes, standards.SearchResultTypes)
 	archive.ResearchLogStatusTypes = typeVocabularyDefaults(archive.ResearchLogStatusTypes, standards.ResearchLogStatusTypes)
 	archive.LeadStatuses = typeVocabularyDefaults(archive.LeadStatuses, standards.LeadStatuses)
+	archive.PersonStatuses = typeVocabularyDefaults(archive.PersonStatuses, standards.PersonStatuses)
 	archive.StudyTypes = typeVocabularyDefaults(archive.StudyTypes, standards.StudyTypes)
 	archive.StudyStatuses = typeVocabularyDefaults(archive.StudyStatuses, standards.StudyStatuses)
 	archive.LegalStatuses = typeVocabularyDefaults(archive.LegalStatuses, standards.LegalStatuses)
