@@ -1,0 +1,8 @@
+places:
+  place-west-riding:
+    name: "West Riding"
+    type: district
+    parent: place-yorkshire
+    latitude: 53.75
+    longitude: -1.6
+    notes: "One of the three ridings of Yorkshire, each with its own quarter sessions and, from 1889, county council. Many records for Leeds (the West Riding Registry of Deeds, quarter sessions) are organized by riding rather than by county."
