@@ -2,7 +2,13 @@ places:
   place-leeds:
     name: "Leeds"
     type: city
-    parent: place-yorkshire
+    parent: place-west-riding
     latitude: 53.8008
     longitude: -1.5491
-    notes: "Major industrial city in Yorkshire, England"
+    properties:
+      population:
+        - value: 172270
+          date: "1851"
+        - value: 428968
+          date: "1901"
+    notes: "Wool and engineering town, a municipal borough when the family's earliest records were made. Granted city status in 1893; the type gives its status from then on."
