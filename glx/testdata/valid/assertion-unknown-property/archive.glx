@@ -1,5 +1,7 @@
-# Warning-level: Unknown property not in property vocabulary
-# This should generate a warning but not fail - allows flexibility
+# Valid: an assertion whose property is not in the person_properties vocabulary.
+# It must not fail validation, which allows emerging properties. It should also
+# produce an "unknown property" warning, but the validator does not yet check
+# assertion property names (genealogix/glx#1224).
 
 persons:
   person-john:
@@ -44,3 +46,9 @@ person_properties:
       surname:
         label: "Surname"
         description: "Family name"
+
+confidence_levels:
+  medium:
+    label: "Medium Confidence"
+    description: "Some evidence supports conclusion, but conflicts or gaps exist"
+    rank: 2
