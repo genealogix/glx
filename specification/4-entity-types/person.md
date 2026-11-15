@@ -53,7 +53,7 @@ persons:
 ### Entity ID (map key)
 
 - Format: Any alphanumeric string with hyphens, 1-64 characters
-- Must be unique within the archive
+- Must be unique among entities of this type, ignoring case
 - Example formats:
   - Descriptive: `john-smith-1850`, `mary-jones`
   - Random hex: `a1b2c3d4`
