@@ -539,3 +539,45 @@ func TestRenameInFragment_OnlyMovesSelectedType(t *testing.T) {
 	assert.Contains(t, fragment.Events, "shared-id", "event with the same ID must be untouched")
 	assert.Equal(t, "person-renamed", fragment.Events["event-other"].Participants[0].Person)
 }
+
+func TestRenameEntity_AssertionParticipantUsesSubjectVocabulary(t *testing.T) {
+	for _, relationship := range []bool{false, true} {
+		subject := EntityRef{Event: "subject"}
+		name := "event"
+		if relationship {
+			subject = EntityRef{Relationship: "subject"}
+			name = "relationship"
+		}
+		t.Run(name, func(t *testing.T) {
+			archive := &GLXFile{
+				Persons: map[string]*Person{"person-old": {}},
+				EventProperties: map[string]*PropertyDefinition{
+					"linked_person": {Label: "Text", ValueType: "string"},
+					"event_ref":     {Label: "Person", ReferenceType: "persons"},
+				},
+				RelationshipProperties: map[string]*PropertyDefinition{
+					"linked_person": {Label: "Person", ReferenceType: "persons"},
+					"event_ref":     {Label: "Text", ValueType: "string"},
+				},
+				Assertions: map[string]*Assertion{"assertion": {
+					Subject: subject,
+					Participant: &Participant{Person: "person-old", Properties: map[string]any{
+						"linked_person": "person-old", "event_ref": "person-old",
+					}},
+				}},
+			}
+			_, err := RenameEntity(archive, "person-old", "person-new")
+			require.NoError(t, err)
+			participant := archive.Assertions["assertion"].Participant
+			assert.Equal(t, "person-new", participant.Person)
+			reference, text := "event_ref", "linked_person"
+			if relationship {
+				reference, text = text, reference
+			}
+			assert.Equal(t, "person-new", participant.Properties[reference])
+			assert.Equal(t, "person-old", participant.Properties[text])
+			assert.NotContains(t, archive.Persons, "person-old")
+			assert.Contains(t, archive.Persons, "person-new")
+		})
+	}
+}

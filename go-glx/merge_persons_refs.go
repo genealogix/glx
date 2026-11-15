@@ -180,9 +180,15 @@ func forMergeEntities(archive, prepared *GLXFile, visit func(mergeEntity)) {
 			definitions := mergePropertyVocabulary(prepared, kind)
 			participantDefinitions := definitions
 			if kind == EntityTypeAssertions {
-				participantDefinitions = prepared.EventProperties
 				a, _ := reflect.TypeAssert[*Assertion](value)
 				definitions = mergePropertyVocabulary(prepared, a.Subject.Type())
+				// Participant properties follow the subject, as the
+				// validator reads them (#1225): relationship_properties
+				// for a relationship subject, event_properties otherwise.
+				participantDefinitions = prepared.EventProperties
+				if a.Subject.Type() == EntityTypeRelationships {
+					participantDefinitions = prepared.RelationshipProperties
+				}
 			}
 			visit(mergeEntity{kind, key.String(), value.Elem(), definitions, participantDefinitions})
 		}
