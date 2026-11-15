@@ -1,5 +1,6 @@
 events:
   event-missing-type:
     date: "1850-01-15"
-
-
+    participants:
+      - person: person-123
+        role: subject
