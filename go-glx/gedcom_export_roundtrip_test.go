@@ -1581,3 +1581,41 @@ func TestCitationQUAYAmbiguousMappings(t *testing.T) {
 		}
 	}
 }
+
+// Person-attached citations use the same serializer as event/assertion citations.
+// Direct INDI.SOUR import is not currently supported; build this attachment explicitly.
+func TestCitationQUAYPersonLevel(t *testing.T) {
+	for _, version := range []GEDCOMVersion{GEDCOM551, GEDCOM70} {
+		t.Run(fmt.Sprint(version), func(t *testing.T) {
+			archive, _, err := ImportGEDCOM(strings.NewReader(quayFixture("5.5.1", "2 SOUR @S1@\n3 PAGE valid\n3 QUAY 0\n3 QUAY 3\n2 SOUR @S1@\n3 PAGE invalid\n3 QUAY bad\n2 SOUR @S1@\n3 PAGE legacy\n3 NOTE GEDCOM QUAY: 2\n")), nil)
+			require.NoError(t, err)
+			// Import can create separate event/assertion citations; attach one per page.
+			pages := map[string]bool{}
+			ids := []string{}
+			for _, id := range sortedKeys(archive.Citations) {
+				page, _ := getStringProperty(archive.Citations[id].Properties, "locator")
+				if !pages[page] {
+					ids = append(ids, id)
+					pages[page] = true
+				}
+			}
+			require.Len(t, ids, 3)
+			archive.Events = nil
+			archive.Assertions = nil
+			for _, person := range archive.Persons {
+				person.Properties[PropertyCitations] = ids
+			}
+			output, _, err := ExportGEDCOM(archive, version, nil)
+			require.NoError(t, err)
+			assert.Equal(t, 3, strings.Count(string(output), "1 SOUR @"))
+			assert.Equal(t, 1, strings.Count(string(output), "2 QUAY "))
+			assert.Contains(t, string(output), "2 QUAY 0")
+			for _, note := range []string{"3", "bad", "2"} {
+				assert.Contains(t, string(output), "2 NOTE GEDCOM QUAY: "+note)
+			}
+			for _, page := range []string{"valid", "invalid", "legacy"} {
+				assert.Contains(t, string(output), "2 PAGE "+page)
+			}
+		})
+	}
+}

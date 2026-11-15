@@ -897,21 +897,7 @@ func exportPersonSourceRefs(personID string, person *Person, expCtx *ExportConte
 
 			sourceXRef := expCtx.SourceXRefMap[citation.SourceID]
 			if sourceXRef != "" {
-				sourRecord := &GEDCOMRecord{
-					Tag:        GedcomTagSour,
-					Value:      sourceXRef,
-					SubRecords: []*GEDCOMRecord{},
-				}
-
-				// PAGE from locator
-				if locator, ok := getStringProperty(citation.Properties, "locator"); ok {
-					sourRecord.SubRecords = append(sourRecord.SubRecords, &GEDCOMRecord{
-						Tag:   GedcomTagPage,
-						Value: locator,
-					})
-				}
-
-				record.SubRecords = append(record.SubRecords, sourRecord)
+				record.SubRecords = append(record.SubRecords, exportCitationAsSOUR(citationID, citation, sourceXRef, expCtx))
 			} else {
 				expCtx.addExportWarning(EntityTypePersons, personID,
 					fmt.Sprintf("citation %s source %s has no XREF mapping", citationID, citation.SourceID))
