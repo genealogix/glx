@@ -2,6 +2,6 @@ relationships:
   rel-missing-type:
     participants:
       - person: person-123
-        role: subject
-
-
+        role: spouse
+      - person: person-456
+        role: spouse
