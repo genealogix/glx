@@ -329,10 +329,19 @@ func buildGEDCOMIndex(glx *GLXFile) *GEDCOMIndex {
 		}
 	}
 
+	quayMappings := 0
 	for key, propDef := range glx.CitationProperties {
 		if propDef.GEDCOM != "" {
 			index.CitationProperties[propDef.GEDCOM] = key
+			if propDef.GEDCOM == GedcomTagQuay {
+				quayMappings++
+			}
 		}
+	}
+
+	// Ambiguous QUAY mappings must not pick a random map-iteration winner.
+	if quayMappings > 1 {
+		delete(index.CitationProperties, GedcomTagQuay)
 	}
 
 	for key, propDef := range glx.SourceProperties {

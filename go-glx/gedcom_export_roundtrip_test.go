@@ -1664,3 +1664,25 @@ func TestCitationQUAYFamilyRoundTrip(t *testing.T) {
 		})
 	}
 }
+
+func TestCitationQUAYAmbiguousImportMapping(t *testing.T) {
+	archive, _, err := ImportGEDCOM(strings.NewReader(quayFixture("5.5.1", "2 SOUR @S1@\n3 QUAY 0\n")), nil)
+	require.NoError(t, err)
+	for _, key := range []string{"quality_copy", "quality_other"} {
+		archive.CitationProperties[key] = archive.CitationProperties["gedcom_quay"]
+	}
+	for range 20 {
+		index := buildGEDCOMIndex(archive)
+		_, mapped := index.CitationProperties[GedcomTagQuay]
+		require.False(t, mapped)
+		conv := &ConversionContext{GLX: archive, GEDCOMIndex: index, Logger: NewImportLogger(nil), SourceIDMap: map[string]string{"@S1@": "source-1"}}
+		result, err := prepareCitationFromSOUR(&GEDCOMRecord{Tag: GedcomTagSour, Value: "@S1@", SubRecords: []*GEDCOMRecord{{Tag: GedcomTagQuay, Value: "0"}}}, conv)
+		require.NoError(t, err)
+		citation := archive.Citations[result.CitationID]
+		require.NotNil(t, citation)
+		assert.Empty(t, citation.Properties)
+		assert.Contains(t, citation.Notes, "GEDCOM QUAY: 0")
+		require.NotEmpty(t, conv.Stats.Warnings)
+		assert.Contains(t, conv.Stats.Warnings[0].Message, "no unique QUAY property")
+	}
+}

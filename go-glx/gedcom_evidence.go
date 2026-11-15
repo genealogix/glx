@@ -169,7 +169,7 @@ func prepareCitationFromSOUR(sourRecord *GEDCOMRecord, conv *ConversionContext) 
 				citation.Notes = append(citation.Notes, "GEDCOM QUAY: "+sub.Value)
 				reason := "Invalid QUAY: expected an integer 0-3"
 				if !mapped {
-					reason = "Unmapped QUAY: citation vocabulary has no QUAY property"
+					reason = "Unmapped or ambiguous QUAY: citation vocabulary has no unique QUAY property"
 				} else if duplicate {
 					reason = "Repeated QUAY: citation already has an assessment"
 				}
