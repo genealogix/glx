@@ -344,6 +344,12 @@ Classification of geographic locations including country, county, city, parish, 
 
 > **See Also:** [Place Types Vocabulary](4-entity-types/vocabularies.md#place-types-vocabulary)
 
+### Placeholder Person
+
+A person entity standing in for someone the research implies exists but has not identified, such as an unknown ancestor predicted from a DNA match cluster. Marked with the person `status` property (`hypothetical` or `predicted`, later `resolved`).
+
+> **See Also:** [Person Entity - Research Placeholders](4-entity-types/person.md#research-placeholders), [Person Statuses Vocabulary](4-entity-types/vocabularies.md#person-statuses-vocabulary)
+
 ### Primary Evidence
 
 Information created at the time of the event by someone with direct knowledge (birth certificates, contemporary letters).
