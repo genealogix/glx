@@ -35,6 +35,7 @@ The standard vocabulary files are:
 - `search-result-types.glx`
 - `research-log-status-types.glx`
 - `lead-statuses.glx`
+- `person-statuses.glx`
 - `person-properties.glx`
 - `event-properties.glx`
 - `relationship-properties.glx`
@@ -802,6 +803,38 @@ lead_statuses:
 ### Standard Lead Statuses
 
 See [ResearchLog Entity - Leads](research-log.md#researchlead) for guidance on recording and eliminating leads.
+
+---
+
+## Person Statuses Vocabulary
+
+**Default file**: `vocabularies/person-statuses.glx`
+
+**Used By**: [Person Entity](person.md#research-placeholders) (the `status` property)
+
+**Purpose**: Marks a person as a research placeholder for someone not yet identified, and records when that placeholder has been resolved. A person with no status is an ordinary person. Status does not express confidence, which stays on assertions.
+
+**Standard Templates**: See [Standard Vocabularies - Person Statuses](../5-standard-vocabularies/#person-statuses) for the complete default vocabulary.
+
+### Structure
+
+```yaml
+person_statuses:
+  predicted:
+    label: "Predicted"
+    description: "Inferred from indirect evidence, such as DNA match clusters, but not yet identified."
+```
+
+### Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `label` | Yes | Human-readable label |
+| `description` | No | Detailed description |
+
+### Standard Person Statuses
+
+`hypothetical` and `predicted` mark an unresolved placeholder; `resolved` marks one that has been identified. Archives can add their own values, but tools treat a custom status like any other person. See [Person Entity - Research Placeholders](person.md#research-placeholders).
 
 ---
 
@@ -1860,6 +1893,7 @@ Each vocabulary type has a corresponding JSON Schema for validation:
 | Search Result Types | [search-result-types.schema.json](../schema/v1/vocabularies/search-result-types.schema.json) |
 | Research Log Status Types | [research-log-status-types.schema.json](../schema/v1/vocabularies/research-log-status-types.schema.json) |
 | Lead Statuses | [lead-statuses.schema.json](../schema/v1/vocabularies/lead-statuses.schema.json) |
+| Person Statuses | [person-statuses.schema.json](../schema/v1/vocabularies/person-statuses.schema.json) |
 | Person Properties | [person-properties.schema.json](../schema/v1/vocabularies/person-properties.schema.json) |
 | Event Properties | [event-properties.schema.json](../schema/v1/vocabularies/event-properties.schema.json) |
 | Relationship Properties | [relationship-properties.schema.json](../schema/v1/vocabularies/relationship-properties.schema.json) |
