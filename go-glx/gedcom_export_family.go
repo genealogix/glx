@@ -217,6 +217,8 @@ func exportFamily(family *ExportFamily, expCtx *ExportContext) *GEDCOMRecord {
 			// FAM-level relationship properties mapped to GEDCOM tags (e.g. NCHI)
 			record.SubRecords = append(record.SubRecords, exportMappedRelationshipProperties(rel, expCtx)...)
 
+			exportEntitySourceRefs(EntityTypeRelationships, family.RelationshipID, rel.Properties, expCtx, record)
+
 			// NOTE from relationship
 			for _, note := range rel.Notes {
 				record.SubRecords = append(record.SubRecords, &GEDCOMRecord{

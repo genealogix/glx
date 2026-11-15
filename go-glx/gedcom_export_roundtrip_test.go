@@ -1619,3 +1619,43 @@ func TestCitationQUAYPersonLevel(t *testing.T) {
 		})
 	}
 }
+
+func TestCitationQUAYFamilyRoundTrip(t *testing.T) {
+	for _, version := range []GEDCOMVersion{GEDCOM551, GEDCOM70} {
+		t.Run(fmt.Sprint(version), func(t *testing.T) {
+			versionText := "5.5.1"
+			if version == GEDCOM70 {
+				versionText = "7.0"
+			}
+			input := "0 HEAD\n1 GEDC\n2 VERS " + versionText + "\n0 @S1@ SOUR\n1 TITL Register\n0 @I1@ INDI\n1 NAME Jane /Doe/\n0 @F1@ FAM\n1 WIFE @I1@\n1 SOUR @S1@\n2 PAGE zero\n2 QUAY 0\n2 QUAY 3\n1 SOUR @S1@\n2 PAGE high\n2 QUAY 3\n1 SOUR @S1@\n2 PAGE legacy\n2 NOTE GEDCOM QUAY: 2\n0 TRLR\n"
+			archive, _, err := ImportGEDCOM(strings.NewReader(input), nil)
+			require.NoError(t, err)
+			output, _, err := ExportGEDCOM(archive, version, nil)
+			require.NoError(t, err)
+			assert.Equal(t, 2, strings.Count(string(output), "2 QUAY "))
+			roundtrip, _, err := ImportGEDCOM(strings.NewReader(string(output)), nil)
+			require.NoError(t, err)
+			require.Len(t, roundtrip.Citations, 3)
+			for _, c := range roundtrip.Citations {
+				page, _ := getStringProperty(c.Properties, "locator")
+				switch page {
+				case "zero":
+					assert.Equal(t, 0, c.Properties["gedcom_quay"])
+					assert.Contains(t, c.Notes, "GEDCOM QUAY: 3")
+				case "high":
+					assert.Equal(t, 3, c.Properties["gedcom_quay"])
+				case "legacy":
+					_, present := c.Properties["gedcom_quay"]
+					assert.False(t, present)
+					assert.Contains(t, c.Notes, "GEDCOM QUAY: 2")
+				default:
+					t.Errorf("unexpected page %q", page)
+				}
+			}
+			require.Len(t, roundtrip.Relationships, 1)
+			for _, rel := range roundtrip.Relationships {
+				assert.Len(t, extractStringList(rel.Properties[PropertyCitations]), 3)
+			}
+		})
+	}
+}

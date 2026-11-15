@@ -866,8 +866,13 @@ func exportPersonMediaRefs(personID string, person *Person, expCtx *ExportContex
 
 // exportPersonSourceRefs adds SOUR references for sources and citations attached to a person.
 func exportPersonSourceRefs(personID string, person *Person, expCtx *ExportContext, record *GEDCOMRecord) {
+	exportEntitySourceRefs(EntityTypePersons, personID, person.Properties, expCtx, record)
+}
+
+// exportEntitySourceRefs preserves direct entity evidence using the shared citation serializer.
+func exportEntitySourceRefs(entityType EntityType, entityID string, properties map[string]any, expCtx *ExportContext, record *GEDCOMRecord) {
 	// Sources
-	if sourcesVal, ok := person.Properties[PropertySources]; ok {
+	if sourcesVal, ok := properties[PropertySources]; ok {
 		sourceIDs := extractStringList(sourcesVal)
 		for _, sourceID := range sourceIDs {
 			sourceXRef := expCtx.SourceXRefMap[sourceID]
@@ -877,19 +882,19 @@ func exportPersonSourceRefs(personID string, person *Person, expCtx *ExportConte
 					Value: sourceXRef,
 				})
 			} else {
-				expCtx.addExportWarning(EntityTypePersons, personID,
+				expCtx.addExportWarning(entityType, entityID,
 					fmt.Sprintf("source %s has no XREF mapping", sourceID))
 			}
 		}
 	}
 
 	// Citations (resolve to source references)
-	if citationsVal, ok := person.Properties[PropertyCitations]; ok {
+	if citationsVal, ok := properties[PropertyCitations]; ok {
 		citationIDs := extractStringList(citationsVal)
 		for _, citationID := range citationIDs {
 			citation, exists := expCtx.GLX.Citations[citationID]
 			if !exists {
-				expCtx.addExportWarning(EntityTypePersons, personID,
+				expCtx.addExportWarning(entityType, entityID,
 					fmt.Sprintf("citation %s not found", citationID))
 
 				continue
@@ -899,7 +904,7 @@ func exportPersonSourceRefs(personID string, person *Person, expCtx *ExportConte
 			if sourceXRef != "" {
 				record.SubRecords = append(record.SubRecords, exportCitationAsSOUR(citationID, citation, sourceXRef, expCtx))
 			} else {
-				expCtx.addExportWarning(EntityTypePersons, personID,
+				expCtx.addExportWarning(entityType, entityID,
 					fmt.Sprintf("citation %s source %s has no XREF mapping", citationID, citation.SourceID))
 			}
 		}
