@@ -188,6 +188,9 @@ The `glx validate` command enforces vocabulary consistency with different severi
 - Unknown properties not defined in property vocabularies (Study and ResearchLog have no property vocabulary, so their `properties` are not checked at all)
 - Unknown assertion properties not defined in property vocabularies
 - Out-of-vocabulary values on properties declared with `vocabulary_type` (e.g. `sex`, `gender`, `source_nature`)
+- A key inside `properties` that names one of the entity's own fields (a source's `type` or `date`), which belongs beside `properties`, not inside it
+- A source whose title mentions a census but whose `type` is not `census`
+- A media `hash` that is not `algorithm:hexstring`, or whose digest is the wrong length for a well-known algorithm
 - Warnings allow rapid data entry and emerging properties without breaking validation
 
 This policy balances strictness (broken references are errors) with flexibility (unknown properties generate warnings, not errors).

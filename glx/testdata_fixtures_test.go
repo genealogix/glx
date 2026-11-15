@@ -65,6 +65,8 @@ var invalidFixtures = map[string]invalidFixture{
 		"citations[citation-birth].SourceID references non-existent sources: source-nonexistent",
 		"events[event-birth].Person references non-existent persons: person-nonexistent",
 		"events[event-birth].PlaceID references non-existent places: place-nonexistent",
+		"events[event-birth].Role references non-existent participant_roles: head-of-household",
+		"events[event-baptism].Type references non-existent event_types: event-type-nonexistent",
 		"places[place-leeds].ParentID references non-existent places: place-nonexistent-parent",
 		"sources[source-register].RepositoryID references non-existent repositories: repository-nonexistent",
 	}},

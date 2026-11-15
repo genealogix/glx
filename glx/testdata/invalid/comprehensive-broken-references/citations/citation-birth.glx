@@ -2,3 +2,4 @@ citations:
   citation-birth:
     source: source-nonexistent
     repository: repository-nonexistent
+    notes: "Page 1"
