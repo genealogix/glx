@@ -111,14 +111,14 @@ const (
 
 // duplicateIndex caches lookup maps built from the archive.
 type duplicateIndex struct {
-	personEvents          map[string][]string          // person ID → event IDs
-	personRelPeers        map[string]map[string]bool   // person ID → set of related person IDs
-	relatedPairs          map[[2]string]bool           // sorted person ID pairs that share a relationship
-	personBirthEvent      map[string]*Event            // person ID → their birth event (lowest-ID principal role)
-	personDeathEvent      map[string]*Event            // person ID → their death event (lowest-ID principal role)
-	personBirthYear       map[string]int               // person ID → year extracted from their birth event (0 if unknown)
-	personEventRoles      map[string]map[string]string // person -> event -> role
-	personFirstParentYear map[string]int               // person ID → earliest year they appear as role=parent (0 if never)
+	personEvents          map[string][]string                   // person ID → event IDs
+	personRelPeers        map[string]map[string]bool            // person ID → set of related person IDs
+	relatedPairs          map[[2]string]bool                    // sorted person ID pairs that share a relationship
+	personBirthEvent      map[string]*Event                     // person ID → their birth event (lowest-ID principal role)
+	personDeathEvent      map[string]*Event                     // person ID → their death event (lowest-ID principal role)
+	personBirthYear       map[string]int                        // person ID → year extracted from their birth event (0 if unknown)
+	personEventRoles      map[string]map[string]map[string]bool // person -> event -> role set
+	personFirstParentYear map[string]int                        // person ID → earliest year they appear as role=parent (0 if never)
 }
 
 // FindCrossArchiveDuplicates detects potential duplicate persons between two
@@ -175,10 +175,12 @@ func FindCrossArchiveDuplicates(dest, src *GLXFile, opts DuplicateOptions) (*Dup
 // The original archives are not modified.
 func buildCombinedView(dest, src *GLXFile) *GLXFile {
 	combined := &GLXFile{
-		Persons:       make(map[string]*Person, len(dest.Persons)+len(src.Persons)),
-		Events:        make(map[string]*Event, len(dest.Events)+len(src.Events)),
-		Relationships: make(map[string]*Relationship, len(dest.Relationships)+len(src.Relationships)),
-		Places:        make(map[string]*Place, len(dest.Places)+len(src.Places)),
+		Persons:          make(map[string]*Person, len(dest.Persons)+len(src.Persons)),
+		Events:           make(map[string]*Event, len(dest.Events)+len(src.Events)),
+		Relationships:    make(map[string]*Relationship, len(dest.Relationships)+len(src.Relationships)),
+		Places:           make(map[string]*Place, len(dest.Places)+len(src.Places)),
+		Assertions:       make(map[string]*Assertion, len(dest.Assertions)+len(src.Assertions)),
+		ParticipantRoles: make(map[string]*VocabularyEntry, len(dest.ParticipantRoles)+len(src.ParticipantRoles)),
 	}
 
 	// Add src first, then dest (dest overwrites on collision)
@@ -193,6 +195,10 @@ func buildCombinedView(dest, src *GLXFile) *GLXFile {
 
 	maps.Copy(combined.Places, src.Places)
 	maps.Copy(combined.Places, dest.Places)
+	maps.Copy(combined.Assertions, src.Assertions)
+	maps.Copy(combined.Assertions, dest.Assertions)
+	maps.Copy(combined.ParticipantRoles, src.ParticipantRoles)
+	maps.Copy(combined.ParticipantRoles, dest.ParticipantRoles)
 
 	return combined
 }
@@ -391,7 +397,7 @@ func FindDuplicates(archive *GLXFile, opts DuplicateOptions) (*DuplicateResult, 
 func buildDuplicateIndex(archive *GLXFile) *duplicateIndex {
 	idx := &duplicateIndex{
 		personEvents:          make(map[string][]string),
-		personEventRoles:      make(map[string]map[string]string),
+		personEventRoles:      make(map[string]map[string]map[string]bool),
 		personRelPeers:        make(map[string]map[string]bool),
 		relatedPairs:          make(map[[2]string]bool),
 		personBirthEvent:      make(map[string]*Event),
@@ -420,22 +426,30 @@ func buildDuplicateIndex(archive *GLXFile) *duplicateIndex {
 			if p.Person == "" {
 				continue
 			}
-			idx.personEvents[p.Person] = append(idx.personEvents[p.Person], eventID)
 			if idx.personEventRoles[p.Person] == nil {
-				idx.personEventRoles[p.Person] = make(map[string]string)
+				idx.personEventRoles[p.Person] = make(map[string]map[string]bool)
 			}
-			idx.personEventRoles[p.Person][eventID] = p.Role
+			if idx.personEventRoles[p.Person][eventID] == nil {
+				idx.personEventRoles[p.Person][eventID] = make(map[string]bool)
+				idx.personEvents[p.Person] = append(idx.personEvents[p.Person], eventID)
+			}
+			role := strings.ToLower(strings.TrimSpace(p.Role))
+			idx.personEventRoles[p.Person][eventID][role] = true
 			if p.Role == ParticipantRoleParent && eventYear > 0 {
 				recordParentYear(idx, p.Person, eventYear)
 			}
-			if !isSubjectRole(p.Role) {
+			if !isVitalPrincipal(event.Type, role) {
 				continue
 			}
 			switch event.Type {
 			case EventTypeBirth, "baptism", "christening":
 				if previous := idx.personBirthEvent[p.Person]; previous == nil || event.Type == EventTypeBirth && previous.Type != EventTypeBirth {
 					idx.personBirthEvent[p.Person] = event
-					idx.personBirthYear[p.Person] = eventYear
+					// A baptism is an upper bound on birth, not a lower bound
+					// for the hard parent-age plausibility gate.
+					if event.Type == EventTypeBirth {
+						idx.personBirthYear[p.Person] = eventYear
+					}
 				}
 			case EventTypeDeath, "burial", "cremation":
 				if previous := idx.personDeathEvent[p.Person]; previous == nil || event.Type == EventTypeDeath && previous.Type != EventTypeDeath {
@@ -1159,7 +1173,7 @@ func scoreSharedEvents(idA, idB string, idx *duplicateIndex) (float64, string, b
 
 	var common int
 	for _, e := range eventsA {
-		if setB[e] && (idx.personEventRoles == nil || idx.personEventRoles[idA][e] == idx.personEventRoles[idB][e]) {
+		if setB[e] && duplicateEventRolesOverlap(idA, idB, e, idx) {
 			common++
 		}
 	}
@@ -1350,9 +1364,7 @@ func duplicateLifetimeConflict(idA, idB string, archive *GLXFile, idx *duplicate
 		birth := duplicateDateBounds(idx.personBirthEvent[known])
 		for _, eventID := range idx.personEvents[candidate] {
 			event := archive.Events[eventID]
-			participation, role, ok := EventParticipation(event, candidate, archive.ParticipantRoles)
-			if !ok || !participation.Present || !duplicateRoleNeedsLivingPerson(event.Type, role) ||
-				participation.OwnRecord && (isBirthEventType(event.Type) || isDeathEventType(event.Type)) {
+			if !duplicateEventNeedsLivingPerson(event, candidate, archive.ParticipantRoles) {
 				continue
 			}
 			activity := duplicateDateBounds(event)
@@ -1383,15 +1395,46 @@ func duplicateDateBounds(event *Event) glxdate.Bounds {
 	return date.ValueBounds(2)
 }
 
-func duplicateRoleNeedsLivingPerson(eventType, role string) bool {
-	if IsParentSideRole(role) && (isDeathEventType(eventType) || eventType == EventTypeMarriage) {
+// Multiple roles union their evidence. A parent reference alone does not
+// establish living activity, but a witness role or explicit presence does.
+func duplicateEventNeedsLivingPerson(event *Event, personID string, roles map[string]*VocabularyEntry) bool {
+	if event == nil {
 		return false
 	}
-	if isSubjectRole(role) && (eventType == "burial" || eventType == "cremation" || eventType == "probate") {
-		return false
+	for _, participant := range event.Participants {
+		if participant.Person != personID {
+			continue
+		}
+		role := strings.ToLower(strings.TrimSpace(participant.Role))
+		participation := ClassifyParticipation(event.Type, participant.Role, roles)
+		if !participation.Present || participation.OwnRecord && (isBirthEventType(event.Type) || isDeathEventType(event.Type) || event.Type == EventTypeProbate) {
+			continue
+		}
+		definition := roles[strings.TrimSpace(participant.Role)]
+		if definition == nil {
+			definition = roles[role]
+		}
+		if IsParentSideRole(role) && (definition == nil || definition.ImpliesPresence == nil) {
+			continue
+		}
+
+		return true
 	}
 
-	return true
+	return false
+}
+
+func duplicateEventRolesOverlap(idA, idB, eventID string, idx *duplicateIndex) bool {
+	if idx.personEventRoles == nil {
+		return true
+	}
+	for role := range idx.personEventRoles[idA][eventID] {
+		if idx.personEventRoles[idB][eventID][role] {
+			return true
+		}
+	}
+
+	return false
 }
 
 func duplicateCalendarsAgree(a, b *Event) bool {
