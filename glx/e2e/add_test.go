@@ -239,11 +239,13 @@ func TestAdd_ChainedCaptureBuildsValidArchive(t *testing.T) {
 // persisted sources, and validation. Also cover the standard-vocabulary
 // fallback when an archive has no source-types vocabulary of its own.
 func TestAdd_SourcePublicationKinds(t *testing.T) {
-	for _, vocabulary := range []string{"initialized", "standard fallback", "single-file"} {
+	for _, vocabulary := range []string{"initialized", "standard fallback", "single-file scaffold as directory"} {
 		t.Run(vocabulary, func(t *testing.T) {
 			parent := t.TempDir()
 			args := []string{"init", "references", "--no-git"}
-			if vocabulary == "single-file" {
+			if vocabulary == "single-file scaffold as directory" {
+				// add targets the directory and creates source fragments beside
+				// archive.glx; it does not rewrite the single-file scaffold.
 				args = append(args, "--single-file")
 			}
 			init := runGLX(t, parent, args...)
