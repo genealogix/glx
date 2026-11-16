@@ -148,6 +148,9 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 				PedigreeType: pedigreeType,
 			})
 
+		case GedcomTagExid, GedcomTagRefn, GedcomTagAsso:
+			// EXID is handled above; INDI associations are resolved after families.
+
 		case GedcomTagFams:
 			// Family as spouse - defer for family processing
 			conv.DeferredFamilyLinks = append(conv.DeferredFamilyLinks, &FamilyLink{
@@ -289,6 +292,11 @@ func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOM
 			Person: personID,
 			Role:   ParticipantRolePrincipal,
 		},
+	}
+
+	if age, ok := event.Properties["age_at_event"]; ok {
+		event.Participants[0].Properties = map[string]any{"age_at_event": age}
+		delete(event.Properties, "age_at_event")
 	}
 
 	// Add ASSO participants (witnesses, officiants, etc.). Fixes #527.

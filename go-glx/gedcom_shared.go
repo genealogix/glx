@@ -274,7 +274,7 @@ func appendMultiValueProperty(props map[string]any, key string, value any) {
 // with value and fields.type; bare EXIDs become plain strings.
 func extractExternalIDs(record *GEDCOMRecord, propertyKey string, props map[string]any) {
 	for _, sub := range record.SubRecords {
-		if sub.Tag == GedcomTagExid && sub.Value != "" {
+		if (sub.Tag == GedcomTagExid || sub.Tag == GedcomTagRefn) && sub.Value != "" {
 			entry := buildExternalIDEntry(sub)
 			appendMultiValueProperty(props, propertyKey, entry)
 		}

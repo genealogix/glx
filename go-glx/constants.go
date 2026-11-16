@@ -424,7 +424,7 @@ const (
 	GedcomTagFile   = "FILE"   // File reference
 	GedcomTagForm   = "FORM"   // Format
 	GedcomTagCrop   = "CROP"   // Crop coordinates (GEDCOM 7.0)
-	GedcomTagMime   = "MIME"   // MIME type (GEDCOM 7.0)
+	GedcomTagMime   = "MIME"   // Legacy nonstandard MIME tag (read for compatibility)
 	GedcomTagMedi   = "MEDI"   // Media type (GEDCOM 5.5.1)
 	GedcomTagTop    = "TOP"    // Top coordinate
 	GedcomTagLeft   = "LEFT"   // Left coordinate
@@ -450,6 +450,9 @@ const (
 	GedcomTagVers = "VERS" // Version
 	GedcomTagCorp = "CORP" // Corporation
 )
+
+// GedcomTagRefn is the GEDCOM 5.5.1 user reference number tag.
+const GedcomTagRefn = "REFN"
 
 // GEDCOM Tags - GEDCOM 7.0 Specific
 const (

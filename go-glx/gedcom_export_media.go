@@ -63,10 +63,10 @@ func exportMedia(mediaID string, media *Media, expCtx *ExportContext) *GEDCOMRec
 		}
 
 		if expCtx.Version == GEDCOM70 {
-			// GEDCOM 7.0: MIME under FILE
+			// GEDCOM 7.0: FORM holds the media type under FILE
 			if media.MimeType != "" {
 				fileRecord.SubRecords = append(fileRecord.SubRecords, &GEDCOMRecord{
-					Tag:   GedcomTagMime,
+					Tag:   GedcomTagForm,
 					Value: media.MimeType,
 				})
 			}
@@ -125,6 +125,18 @@ func exportMedia(mediaID string, media *Media, expCtx *ExportContext) *GEDCOMRec
 			if cropRecord != nil {
 				record.SubRecords = append(record.SubRecords, cropRecord)
 			}
+		}
+	}
+
+	// EXID/REFN identify the object, independently of whether a file exists.
+	record.SubRecords = append(record.SubRecords, exportExternalIDs(media.Properties["external_ids"], expCtx.Version)...)
+	if media.URI == "" {
+		expCtx.addExportWarning(EntityTypeMedia, mediaID, "media has no URI; GEDCOM requires a FILE reference, so the object cannot be fully represented; available title and media type are retained in notes")
+		if expCtx.Version == GEDCOM70 && media.Title != "" {
+			record.SubRecords = append(record.SubRecords, &GEDCOMRecord{Tag: GedcomTagNote, Value: "Media title: " + media.Title})
+		}
+		if media.MimeType != "" {
+			record.SubRecords = append(record.SubRecords, &GEDCOMRecord{Tag: GedcomTagNote, Value: "Media type: " + media.MimeType})
 		}
 	}
 

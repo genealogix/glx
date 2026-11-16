@@ -114,6 +114,8 @@ func exportRepository(repoID string, repo *Repository, expCtx *ExportContext) *G
 		})
 	}
 
+	record.SubRecords = append(record.SubRecords, exportExternalIDs(repo.Properties["external_ids"], expCtx.Version)...)
+
 	return record
 }
 

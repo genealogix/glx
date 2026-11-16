@@ -130,6 +130,8 @@ func exportSource(sourceID string, source *Source, expCtx *ExportContext) *GEDCO
 		})
 	}
 
+	record.SubRecords = append(record.SubRecords, exportExternalIDs(source.Properties["external_ids"], expCtx.Version)...)
+
 	return record
 }
 

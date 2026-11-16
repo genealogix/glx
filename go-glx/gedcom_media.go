@@ -16,6 +16,7 @@ package glx
 
 import (
 	"fmt"
+	"mime"
 	"net/url"
 	"path"
 	"path/filepath"
@@ -242,6 +243,11 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 	if media.MimeType == "" {
 		if formatType != "" {
 			media.MimeType = mapFormatToMimeType(formatType)
+			if conv.Version == GEDCOM70 {
+				if mediaType, _, err := mime.ParseMediaType(formatType); err == nil && strings.Contains(mediaType, "/") {
+					media.MimeType = formatType
+				}
+			}
 		} else if fileRef != "" {
 			media.MimeType = inferMimeType(fileRef)
 		}

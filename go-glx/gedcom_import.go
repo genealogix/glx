@@ -647,6 +647,16 @@ func parseGEDCOMFields(text string) (level int, xref, tag, value string, err err
 		tag = token
 	}
 
+	// Text payload whitespace is data, including at CONC boundaries. Consume
+	// just the grammar's single delimiter; trimming it corrupts long notes.
+	if tag == GedcomTagNote || tag == GedcomTagCont || tag == GedcomTagConc || tag == GedcomTagText {
+		if pos < n {
+			value = text[pos+1:]
+		}
+
+		return level, xref, tag, value, nil
+	}
+
 	for pos < n && text[pos] == ' ' {
 		pos++
 	}
