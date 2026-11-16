@@ -29,6 +29,7 @@ const defaultMergeThreshold = 0.6
 type mergeResult struct {
 	Conflicts         []string
 	IdenticalSkipped  int
+	IdenticalEntities int
 	NewPersons        int
 	NewEvents         int
 	NewRelationships  int
@@ -58,25 +59,26 @@ func mergeArchivesInMemory(dest, src *glxlib.GLXFile) *mergeResult {
 	// Snapshot counts before merge
 	before := entityCounts(dest)
 
-	conflicts, identicalSkipped := dest.Merge(src)
+	conflicts, identicalEntities, identicalSkipped := dest.MergeArchive(src)
 
 	// Compute new entities added
 	after := entityCounts(dest)
 
 	return &mergeResult{
-		Conflicts:        conflicts,
-		IdenticalSkipped: identicalSkipped,
-		NewPersons:       after.persons - before.persons,
-		NewEvents:        after.events - before.events,
-		NewRelationships: after.relationships - before.relationships,
-		NewPlaces:        after.places - before.places,
-		NewSources:       after.sources - before.sources,
-		NewCitations:     after.citations - before.citations,
-		NewRepositories:  after.repositories - before.repositories,
-		NewAssertions:    after.assertions - before.assertions,
-		NewResearchLogs:  after.researchLogs - before.researchLogs,
-		NewStudies:       after.studies - before.studies,
-		NewMedia:         after.media - before.media,
+		Conflicts:         conflicts,
+		IdenticalSkipped:  identicalSkipped,
+		IdenticalEntities: identicalEntities,
+		NewPersons:        after.persons - before.persons,
+		NewEvents:         after.events - before.events,
+		NewRelationships:  after.relationships - before.relationships,
+		NewPlaces:         after.places - before.places,
+		NewSources:        after.sources - before.sources,
+		NewCitations:      after.citations - before.citations,
+		NewRepositories:   after.repositories - before.repositories,
+		NewAssertions:     after.assertions - before.assertions,
+		NewResearchLogs:   after.researchLogs - before.researchLogs,
+		NewStudies:        after.studies - before.studies,
+		NewMedia:          after.media - before.media,
 	}
 }
 
@@ -356,6 +358,10 @@ func printMergeReport(result *mergeResult) {
 		for _, d := range result.Conflicts {
 			fmt.Printf("    %s\n", d)
 		}
+	}
+
+	if result.IdenticalEntities > 0 {
+		fmt.Printf("\n  %d identical entities skipped\n", result.IdenticalEntities)
 	}
 
 	if result.IdenticalSkipped > 0 {

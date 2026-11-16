@@ -17,6 +17,9 @@ package glx
 import (
 	"bytes"
 	"fmt"
+	"maps"
+	"slices"
+	"strings"
 
 	"go.yaml.in/yaml/v3"
 )
@@ -557,6 +560,20 @@ type TemporalValue struct {
 // entries (e.g., standard vocabularies present in both archives) are silently
 // skipped and counted.
 func (g *GLXFile) Merge(other *GLXFile) (conflicts []string, identicalSkipped int) {
+	conflicts, _, identicalSkipped = g.merge(other, false)
+
+	return conflicts, identicalSkipped
+}
+
+// MergeArchive combines a complete archive into g, keeping destination values.
+// Unlike Merge, which detects duplicate definitions while loading archive files,
+// identical entities are skipped. Conflicts describe the fields that differ.
+// The two counts distinguish identical entities from vocabulary/property entries.
+func (g *GLXFile) MergeArchive(other *GLXFile) (conflicts []string, identicalEntities, identicalVocabulary int) {
+	return g.merge(other, true)
+}
+
+func (g *GLXFile) merge(other *GLXFile, deduplicateEntities bool) (conflicts []string, identicalEntities, identicalSkipped int) {
 	g.initMaps()
 	g.validation = nil // invalidate cached validation since maps are being mutated
 	conflicts = make([]string, 0, 10)
@@ -570,18 +587,62 @@ func (g *GLXFile) Merge(other *GLXFile) (conflicts []string, identicalSkipped in
 		}
 	}
 
-	// Merge entities — always report conflicts (entity ID collisions are significant)
-	conflicts = append(conflicts, mergeMap("persons", g.Persons, other.Persons)...)
-	conflicts = append(conflicts, mergeMap("relationships", g.Relationships, other.Relationships)...)
-	conflicts = append(conflicts, mergeMap("events", g.Events, other.Events)...)
-	conflicts = append(conflicts, mergeMap("places", g.Places, other.Places)...)
-	conflicts = append(conflicts, mergeMap("sources", g.Sources, other.Sources)...)
-	conflicts = append(conflicts, mergeMap("citations", g.Citations, other.Citations)...)
-	conflicts = append(conflicts, mergeMap("repositories", g.Repositories, other.Repositories)...)
-	conflicts = append(conflicts, mergeMap("assertions", g.Assertions, other.Assertions)...)
-	conflicts = append(conflicts, mergeMap("media", g.Media, other.Media)...)
-	conflicts = append(conflicts, mergeMap("research_logs", g.ResearchLogs, other.ResearchLogs)...)
-	conflicts = append(conflicts, mergeMap("studies", g.Studies, other.Studies)...)
+	// Loading individual files remains strict; archive merging skips identical entities.
+	{
+		c, skipped := mergeArchiveMap("persons", g.Persons, other.Persons, deduplicateEntities)
+		conflicts = append(conflicts, c...)
+		identicalEntities += skipped
+	}
+	{
+		c, skipped := mergeArchiveMap("relationships", g.Relationships, other.Relationships, deduplicateEntities)
+		conflicts = append(conflicts, c...)
+		identicalEntities += skipped
+	}
+	{
+		c, skipped := mergeArchiveMap("events", g.Events, other.Events, deduplicateEntities)
+		conflicts = append(conflicts, c...)
+		identicalEntities += skipped
+	}
+	{
+		c, skipped := mergeArchiveMap("places", g.Places, other.Places, deduplicateEntities)
+		conflicts = append(conflicts, c...)
+		identicalEntities += skipped
+	}
+	{
+		c, skipped := mergeArchiveMap("sources", g.Sources, other.Sources, deduplicateEntities)
+		conflicts = append(conflicts, c...)
+		identicalEntities += skipped
+	}
+	{
+		c, skipped := mergeArchiveMap("citations", g.Citations, other.Citations, deduplicateEntities)
+		conflicts = append(conflicts, c...)
+		identicalEntities += skipped
+	}
+	{
+		c, skipped := mergeArchiveMap("repositories", g.Repositories, other.Repositories, deduplicateEntities)
+		conflicts = append(conflicts, c...)
+		identicalEntities += skipped
+	}
+	{
+		c, skipped := mergeArchiveMap("assertions", g.Assertions, other.Assertions, deduplicateEntities)
+		conflicts = append(conflicts, c...)
+		identicalEntities += skipped
+	}
+	{
+		c, skipped := mergeArchiveMap("media", g.Media, other.Media, deduplicateEntities)
+		conflicts = append(conflicts, c...)
+		identicalEntities += skipped
+	}
+	{
+		c, skipped := mergeArchiveMap("research_logs", g.ResearchLogs, other.ResearchLogs, deduplicateEntities)
+		conflicts = append(conflicts, c...)
+		identicalEntities += skipped
+	}
+	{
+		c, skipped := mergeArchiveMap("studies", g.Studies, other.Studies, deduplicateEntities)
+		conflicts = append(conflicts, c...)
+		identicalEntities += skipped
+	}
 
 	// Helper to accumulate mergeMapDedup results
 	addDedup := func(c []string, s int) {
@@ -620,7 +681,7 @@ func (g *GLXFile) Merge(other *GLXFile) (conflicts []string, identicalSkipped in
 	addDedup(mergeMapDedup("citation_properties", g.CitationProperties, other.CitationProperties))
 	addDedup(mergeMapDedup("source_properties", g.SourceProperties, other.SourceProperties))
 
-	return conflicts, identicalSkipped
+	return conflicts, identicalEntities, identicalSkipped
 }
 
 // initMaps ensures all entity and vocabulary maps are initialized (non-nil).
@@ -796,4 +857,35 @@ func yamlEqual(a, b any) bool {
 	}
 
 	return bytes.Equal(ay, by)
+}
+
+// mergeArchiveMap keeps the strict file-loading path separate from archive merging.
+func mergeArchiveMap[T any](mapType string, dest, src map[string]*T, deduplicate bool) ([]string, int) {
+	if !deduplicate {
+		return mergeMap(mapType, dest, src), 0
+	}
+	var conflicts []string
+	var skipped int
+	for _, id := range slices.Sorted(maps.Keys(src)) {
+		incoming := src[id]
+		existing, exists := dest[id]
+		if !exists {
+			dest[id] = incoming
+
+			continue
+		}
+		if yamlEqual(existing, incoming) {
+			skipped++
+
+			continue
+		}
+		var message strings.Builder
+		fmt.Fprintf(&message, "conflict %s ID: %s", mapType, id)
+		for _, field := range compareEntity(existing, incoming) {
+			fmt.Fprintf(&message, "; %s: %s here, %s in source", field.Path, field.OldValue, field.NewValue)
+		}
+		conflicts = append(conflicts, message.String())
+	}
+
+	return conflicts, skipped
 }

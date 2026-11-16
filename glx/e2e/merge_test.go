@@ -160,3 +160,18 @@ func TestMerge_SingleFileWarnsAboutAmbiguousMediaDirectories(t *testing.T) {
 	assert.NoDirExists(t, filepath.Join(destDir, "media", "files"))
 	assertTreeUnchanged(t, sourceBefore, source)
 }
+
+func TestMerge_IdenticalEntitiesAreQuiet(t *testing.T) {
+	dest := copyExample(t, "minimal")
+	src := copyExample(t, "minimal")
+	before := snapshotTree(t, dest)
+	preview := runGLX(t, t.TempDir(), "merge", src, "--into", dest, "--preview")
+	require.Equal(t, 0, preview.exitCode, preview.stderr)
+	assert.Contains(t, preview.stdout, "1 identical entities skipped")
+	assert.NotContains(t, preview.stdout, "Conflicts (")
+	assertTreeUnchanged(t, before, dest)
+	merged := runGLX(t, t.TempDir(), "merge", src, "--into", dest)
+	require.Equal(t, 0, merged.exitCode, merged.stderr)
+	assert.Contains(t, merged.stdout, "1 identical entities skipped")
+	assertArchiveValid(t, dest)
+}
