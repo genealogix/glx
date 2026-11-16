@@ -5,8 +5,8 @@
 **Repository**: genealogix/glx | **Language**: Go | **Status**: Active development
 
 This file is the instruction set for AI coding agents working in this repository. It
-follows the [AGENTS.md](https://agents.md) convention. `CLAUDE.md` files are one-line
-stubs that import the `AGENTS.md` beside them, so edit `AGENTS.md`, never the stub.
+follows the [AGENTS.md](https://agents.md) convention, which Claude Code and other
+agents load directly; don't add a `CLAUDE.md` alongside it.
 Subdirectories carry their own `AGENTS.md` with narrower rules: `go-glx/`, `glx/`,
 `specification/`, `.github/`.
 

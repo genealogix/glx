@@ -71,7 +71,7 @@ export default defineConfig({
   // pages. Specifically:
   // - node_modules: vendored deps.
   // - AGENTS.md and CLAUDE.md files anywhere: internal agent instruction files
-  //   (CLAUDE.md is a stub importing AGENTS.md); the
+  //   (CLAUDE.md is retired but stays excluded in case one reappears); the
   //   `feedback_no_claude_artifacts` rule keeps these out of public output.
   // - docs/superpowers/**: internal planning and implementation specs that
   //   should not be served from the public site.

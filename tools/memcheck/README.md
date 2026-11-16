@@ -1,7 +1,7 @@
 # memcheck — deterministic memory-file drift detector
 
-`memcheck` checks the repository's agent-memory files — every `AGENTS.md`, plus the
-`CLAUDE.md` stubs that import them — against reality and fails when an instruction has
+`memcheck` checks the repository's agent-memory files — every `AGENTS.md`, and any
+`CLAUDE.md` that reappears — against reality and fails when an instruction has
 rotted. It is the offline, API-key-free counterpart to the LLM-based
 [`check-*` drift suite](../../.claude/skills/check-suite/README.md)
 (genealogix/glx#1053): stale instructions are worse than missing ones, because an

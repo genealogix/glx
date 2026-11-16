@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Command memcheck deterministically detects drift between the repository's
-// agent-memory files (every AGENTS.md, plus any CLAUDE.md stub) and reality. It
+// agent-memory files (every AGENTS.md, and any CLAUDE.md) and reality. It
 // is the offline, API-key-free counterpart to the LLM-based check-* drift suite,
 // asserting three cheap invariants on every PR:
 //
@@ -47,8 +47,8 @@ var (
 )
 
 // The agent-memory filenames memcheck scans. AGENTS.md holds the instructions;
-// each CLAUDE.md is a stub importing the AGENTS.md beside it, still scanned so a
-// stub that grows content is checked too.
+// CLAUDE.md is no longer used but is still scanned so one that reappears is
+// checked too.
 const (
 	memoryFileClaude = "CLAUDE.md"
 	memoryFileAgents = "AGENTS.md"
