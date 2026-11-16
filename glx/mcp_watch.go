@@ -35,8 +35,9 @@ import (
 const mcpWatchInterval = time.Second
 
 var (
-	errMCPWatchSourceType = errors.New("archive path must remain a regular file or directory of its original type")
-	errMCPWatchJournal    = errors.New("archive write journal is present; waiting for the write to finish or be recovered")
+	errMCPWatchSourceType  = errors.New("archive path must remain a regular file or directory of its original type")
+	errMCPWatchFileChanged = errors.New("archive file changed while opening")
+	errMCPWatchJournal     = errors.New("archive write journal is present; waiting for the write to finish or be recovered")
 )
 
 // mcpArchiveSource always reads source bytes, not a metadata-based binary cache.
@@ -124,21 +125,22 @@ func readMCPWatchFile(root *os.Root, path string) ([]byte, error) {
 		return nil, err
 	}
 
-	return readMCPWatchRegularFile(file)
+	return readMCPWatchRegularFile(file, nil)
 }
 
 func readMCPWatchSingleFile(path string) ([]byte, error) {
-	// #nosec G304 -- The archive path is explicitly selected by the local
-	// CLI caller, never supplied by an MCP client or archive content.
-	file, err := os.OpenFile(path, os.O_RDONLY|mcpWatchNonblock, 0)
+	// The leaf open itself must not follow a replacement symlink. Do not
+	// open the parent for reading: a known file can legitimately live in a
+	// directory that grants search permission without directory read access.
+	file, expected, err := openMCPWatchSingleFile(path)
 	if err != nil {
 		return nil, err
 	}
 
-	return readMCPWatchRegularFile(file)
+	return readMCPWatchRegularFile(file, expected)
 }
 
-func readMCPWatchRegularFile(file *os.File) ([]byte, error) {
+func readMCPWatchRegularFile(file *os.File, expected os.FileInfo) ([]byte, error) {
 	defer func() { _ = file.Close() }()
 	info, err := file.Stat()
 	if err != nil {
@@ -146,6 +148,11 @@ func readMCPWatchRegularFile(file *os.File) ([]byte, error) {
 	}
 	if !info.Mode().IsRegular() {
 		return nil, errMCPWatchSourceType
+	}
+	// Platforms without a native no-follow open supply the entry's identity
+	// from before the open. Reject any substitution before reading bytes.
+	if expected != nil && !os.SameFile(expected, info) {
+		return nil, errMCPWatchFileChanged
 	}
 
 	return io.ReadAll(file)

@@ -17,7 +17,20 @@
 package main
 
 import (
+	"errors"
+	"os"
 	"syscall"
 )
 
 const mcpWatchNonblock = syscall.O_NONBLOCK
+
+func openMCPWatchSingleFile(path string) (*os.File, os.FileInfo, error) {
+	// #nosec G304 -- The CLI selects the pathname; O_NOFOLLOW enforces the
+	// single-file boundary atomically, including replacement after stat.
+	file, err := os.OpenFile(path, os.O_RDONLY|mcpWatchNonblock|syscall.O_NOFOLLOW, 0)
+	if errors.Is(err, syscall.ELOOP) {
+		return nil, nil, errMCPWatchSourceType
+	}
+
+	return file, nil, err
+}

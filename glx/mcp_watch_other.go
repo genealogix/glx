@@ -1,4 +1,4 @@
-//go:build !unix
+//go:build !unix && !windows
 
 // Copyright 2025 Oracynth, Inc.
 //
@@ -16,4 +16,21 @@
 
 package main
 
+import "os"
+
 const mcpWatchNonblock = 0
+
+func openMCPWatchSingleFile(path string) (*os.File, os.FileInfo, error) {
+	expected, err := os.Lstat(path)
+	if err != nil {
+		return nil, nil, err
+	}
+	if !expected.Mode().IsRegular() {
+		return nil, nil, errMCPWatchSourceType
+	}
+	// #nosec G304 -- This platform lacks a native no-follow open. The shared
+	// descriptor reader verifies the captured identity before reading bytes.
+	file, err := os.OpenFile(path, os.O_RDONLY, 0)
+
+	return file, expected, err
+}

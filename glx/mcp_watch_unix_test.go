@@ -57,3 +57,25 @@ func TestMCPWatchRejectsNamedPipes(t *testing.T) {
 	require.False(t, changed)
 	require.Same(t, previous, backend.current.Load())
 }
+
+func TestMCPSingleFileSearchOnlyParent(t *testing.T) {
+	dir := t.TempDir()
+	selected := filepath.Join(dir, "archive.glx")
+	writeMCPWatchSource(t, selected, "OriginalSyntheticMarker")
+	require.NoError(t, os.Chmod(dir, 0o111))
+	t.Cleanup(func() { require.NoError(t, os.Chmod(dir, 0o700)) })
+	// Some privileged test environments bypass directory permissions.
+	if root, err := os.OpenRoot(dir); err == nil {
+		require.NoError(t, root.Close())
+		t.Skip("directory read permissions are not enforced for this user")
+	}
+	backend, err := loadMCPArchiveContext(t.Context(), selected)
+	require.NoError(t, err)
+	require.Equal(t, "OriginalSyntheticMarker", backend.archive.Persons["person-one"].Properties["name"])
+	watcher, err := newMCPWatchingBackend(t.Context(), selected)
+	require.NoError(t, err)
+	writeMCPWatchSource(t, selected, "RecoveredSyntheticMarker")
+	pollMCPWatch(t, watcher, false)
+	pollMCPWatch(t, watcher, true)
+	require.Equal(t, "RecoveredSyntheticMarker", watcher.current.Load().archive.Persons["person-one"].Properties["name"])
+}

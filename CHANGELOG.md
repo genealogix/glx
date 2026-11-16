@@ -103,6 +103,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Fixed
 
+- MCP single-file loading rejects symlinked archive files with no-follow opens and descriptor checks before reading. Watch mode retains the previous snapshot after an unsafe replacement and recovers when a regular file is restored (#1528).
+
 - Cache reads no longer follow symlinks outside the selected archive. Unusable caches fall back to source loading; MCP tool and resource results are fully encoded before another backend call begins (PR #1528).
 
 - **`glx rename` rewrites only typed references** — Rename replaced every string equal to the old ID: any property value, whatever its vocabulary said, and any reference field of any type. So a free-text property such as `occupation: smith` was rewritten as if it were a reference, and, since IDs are unique per type, renaming person `smith` also redirected references to a place `smith`. Rename now uses the vocabulary-aware walker that `glx merge-persons` uses. It rewrites only fields that refer to the renamed entity type and properties whose definition declares that `reference_type`, read from the whole archive with the standard vocabularies filling any it lacks. Study and research-log properties have no vocabulary and are no longer rewritten. **Go API:** `RenameInFragment` gains an `archive *GLXFile` argument that supplies the property vocabularies; pass the fragment itself when it is the whole archive. (#1440)

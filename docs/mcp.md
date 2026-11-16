@@ -20,6 +20,11 @@ an archive or cache, even when `GLX_CACHE=auto` is set. Restart the server after
 editing the archive, or enable `--watch` for automatic reloads. Use
 `glx cache build` separately to prepare a cache. Both default and watch modes
 require regular source files; special files such as named pipes are rejected.
+Single-file archive paths must name a regular file directly; a symlink in the
+final path component is rejected. Symlinked parent directories remain usable.
+If a watched file is replaced by a symlink, serving retains the previous
+snapshot until a regular file is restored; ordinary atomic file saves still
+reload normally.
 An unusable cache, including a cache path that resolves outside the selected
 archive, is ignored in favor of read-only source loading.
 
