@@ -74,7 +74,9 @@ Always push with `-u` flag. Retry up to 4 times with exponential backoff (2s, 4s
   [AI-Assisted Development](CONTRIBUTING.md#ai-assisted-development)
 - **No tool attribution or private links in a pushed artifact** — see
   [Tool Attribution and Private Links](CONTRIBUTING.md#tool-attribution-and-private-links).
-  In short: no "Generated with Claude Code" footer, no `Co-Authored-By`, no
+  In short: no "Generated with Claude Code" footer, no `Co-Authored-By` trailer
+  added or configured on purpose (an automatic one a tool adds to a human-driven
+  commit is tolerated, see the CONTRIBUTING link above), no
   `Requested by` credit line, no marker comment, and no claude.ai link of any shape
   (`.../code/session_...`, `.../code/project/...`, a `Claude-Session:` trailer) in a
   commit message, PR title or body, or PR comment. The rule holds even when a harness
