@@ -165,3 +165,31 @@ func TestDuplicatesReview_CollidingEventAndParticipantIDsFilterSourceClaims(t *t
 	}}
 	assert.Empty(t, buildCombinedView(dest, src).Assertions)
 }
+
+func TestDuplicatesReview_VitalBoundsExcludeBirthAfterDeath(t *testing.T) {
+	for _, scenario := range []struct {
+		firstType, firstDate, secondType, secondDate string
+		conflict                                     bool
+	}{
+		{"death", "1700", "birth", "1710", true},
+		{"birth", "1700", "death", "1690", true},
+		{"birth", "1700", "burial", "1690", true},
+		{"death", "1700", "burial", "1710", false},
+		{"death", "1700", "baptism", "1710", false},
+		{"death", "1700", "birth", "1700", false},
+	} {
+		archive := &GLXFile{Events: map[string]*Event{
+			"first":  {Type: scenario.firstType, Date: DateString(scenario.firstDate), Participants: []Participant{{Person: "a", Role: "principal"}}},
+			"second": {Type: scenario.secondType, Date: DateString(scenario.secondDate), Participants: []Participant{{Person: "b", Role: "principal"}}},
+		}}
+		index := buildDuplicateIndex(archive)
+		assert.Equal(t, scenario.conflict, duplicateLifetimeConflict("a", "b", archive, index) != "", scenario)
+		assert.Equal(t, scenario.conflict, duplicateLifetimeConflict("b", "a", archive, index) != "", scenario)
+		if scenario.conflict {
+			archive.Persons = map[string]*Person{"a": duplicateTestPerson("Johann", "Roth", "male"), "b": duplicateTestPerson("Johann", "Roth", "male")}
+			result, err := FindDuplicates(archive, DuplicateOptions{Threshold: 0.6})
+			require.NoError(t, err)
+			assert.Empty(t, result.Pairs)
+		}
+	}
+}

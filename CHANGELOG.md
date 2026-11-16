@@ -97,6 +97,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Fixed
 
+- **Duplicate matching rejects a birth certainly after the other record's death** — Actual birth dates are compared with the counterpart's death/burial bound in both directions, including when the only dated observations are vital records. Overlapping dates and later posthumous rites remain eligible. (#1483, PR #1535)
+
 - **Cross-archive duplicate matching keeps assertion provenance** — A source claim about a colliding subject or participant ID is excluded when the destination retained a different entity. Claims about identical retained subjects still participate, and neither input archive is modified. (PR #1535)
 
 - **Duplicate matching respects identity evidence** — Fold Latin accents and sharp-s before Soundex; compare phonetic surname variants in large and cross-archive searches; keep recorded sex differences, surname-only evidence and sparse social context from producing high-confidence matches. Relationship overlap respects both roles and ignores disproven links, all participant roles are retained and an event counts once when role sets overlap; cross-archive views preserve assertions and presence overrides; different event roles do not count as shared identity evidence, and dated activity after a counterpart's death/burial or before their recorded birth excludes the pair. Baptism/burial supply fallback vital comparison dates, without treating baptism as a hard birth lower bound. Parent references imply living activity only with explicit presence evidence. (#1479, #1473, #1507, #1476, #1371, #1517, #1489, #1483)

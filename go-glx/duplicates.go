@@ -1396,6 +1396,12 @@ func duplicateLifetimeConflict(idA, idB string, archive *GLXFile, idx *duplicate
 		known, candidate := direction[0], direction[1]
 		death := duplicateDateBounds(idx.personDeathEvent[known])
 		birth := duplicateDateBounds(idx.personBirthEvent[known])
+		if born := idx.personBirthEvent[candidate]; born != nil && born.Type == EventTypeBirth {
+			candidateBirth := duplicateDateBounds(born)
+			if death.Known && candidateBirth.Known && duplicateCalendarsAgree(idx.personDeathEvent[known], born) && candidateBirth.Outer.Start >= death.Outer.End {
+				return fmt.Sprintf("%s born on %s after %s's death/burial", candidate, born.Date, known)
+			}
+		}
 		for _, eventID := range idx.personEvents[candidate] {
 			event := archive.Events[eventID]
 			if !duplicateEventNeedsLivingPerson(event, candidate, archive.ParticipantRoles) {
