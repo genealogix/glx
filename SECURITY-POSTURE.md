@@ -59,6 +59,34 @@ Status legend: ✓ met · ◐ partial · ☐ not yet met
 | Continuous security posture scoring | ✓ | [OpenSSF Scorecard](https://github.com/genealogix/glx/blob/main/.github/workflows/scorecard.yml) runs on push to `main`, weekly on Mondays, and on `workflow_dispatch`. Results are published to the Scorecard REST API (`api.scorecard.dev`, which backs the badge) and uploaded to GitHub Code Scanning as SARIF. The workflow deliberately has **no** `pull_request` trigger: publishing requires OIDC (`id-token: write`), which fork PRs cannot safely hold, so per-PR Scorecard coverage would break the publish model rather than harden it. Advisories the *Vulnerabilities* check reports that do not apply to GLX are handled per [Vulnerability suppression](#vulnerability-suppression), not left to drift |
 | GitHub Actions pinned per a documented convention | ✓ | **Every** `uses:` reference in every workflow is pinned to a full commit SHA with a trailing version comment — third-party (including `github/*`) and first-party `actions/*` alike. No floating major tags and no exact-patch-tag references remain. See [Action pinning](#action-pinning) for the rationale and the mutable-ref threat it closes |
 
+#### Dependency license exception
+
+The MCP research server uses `github.com/modelcontextprotocol/go-sdk v1.8.0`.
+Its [upstream license](https://github.com/modelcontextprotocol/go-sdk/blob/v1.8.0/LICENSE)
+separates Apache-2.0 code/specification contributions and unrelicensed legacy MIT
+contributions from CC-BY-4.0 documentation. GitHub reports the entire module as
+`Apache-2.0 AND MIT AND CC-BY-4.0`, while the imported-code license check passes
+under the existing policy. GLX links SDK code; the imported SDK packages have no
+embedded files, and SDK documentation is not copied into GLX's docs or releases.
+
+[Dependency Review](.github/workflows/dependency-review.yml) therefore has one
+package-specific license exception, not a global CC-BY-4.0 allowance. The pinned
+action [ignores versions when matching exception PURLs](https://github.com/actions/dependency-review-action/blob/a1d282b36b6f3519aa1f3fc636f609c47dddb294/src/purl.ts),
+so [a fail-closed guard](scripts/check-mcp-license-exception.mjs) checks the exact
+SDK requirement, module checksums, action pin, and upstream license text preserved
+in [NOTICE](NOTICE). It rejects SDK declarations in other tracked Go manifests,
+workspaces and replacements, so the package-wide exemption cannot silently cover
+another module/version. An upgrade, replacement, or changed notice requires a
+fresh license decision. Vulnerability checks and the independent imported-code
+license check remain enabled.
+
+The SDK and its newly linked dependencies are attributed in `NOTICE`, with their
+full upstream license texts. The existing release configuration includes that
+file in every archive, retaining the copyright, permission and disclaimer text
+rather than relying only on source-repository links. This exception does not
+approve copying CC-BY-4.0 SDK documentation; such reuse needs its own attribution
+assessment. (#198)
+
 #### Action pinning
 
 This section is the project's canonical statement of how GitHub Actions references are pinned. There is a single rule, applied to every `uses:` line in the repository.

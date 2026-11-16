@@ -20,6 +20,9 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Verify scoped MCP SDK license exception
+        run: node scripts/check-mcp-license-exception.mjs
+
       - name: Dependency Review
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
@@ -86,6 +89,16 @@ jobs:
             Apache-2.0, MIT, BSD-2-Clause, BSD-3-Clause, ISC, MPL-2.0,
             CC0-1.0, BlueOak-1.0.0, PSF-2.0, 0BSD, Unlicense,
             LicenseRef-scancode-google-patent-license-golang
+          # The SDK's package-wide metadata includes CC-BY-4.0 documentation;
+          # the code linked into GLX is Apache-2.0 / legacy MIT. No SDK docs
+          # are bundled. See SECURITY-POSTURE.md "Dependency license exception"
+          # and the exact upstream license reproduced in release-shipped NOTICE.
+          # This action ignores PURL versions for license exceptions, so the
+          # preceding guard enforces the reviewed requirement, module checksums,
+          # and notice. Upgrades/replacements require a fresh license decision.
+          # CC-BY-4.0 is NOT added to the global allowlist; vulnerability checks
+          # and the separate imported-code license check remain enabled.
+          allow-dependencies-licenses: pkg:golang/github.com/modelcontextprotocol/go-sdk@1.8.0
           # Note: a dependency whose license the action cannot resolve at all
           # is reported but does NOT fail the check (upstream behaviour), so
           # the allow-list gates known licenses, not unknown ones — e.g.
