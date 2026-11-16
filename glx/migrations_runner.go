@@ -235,6 +235,9 @@ func collectMigrationEntries(personID string, archive *glxlib.GLXFile) []migrati
 			// parish says nothing of where the father lived (#1370).
 			entry.Excluded = true
 			entry.Note = fmt.Sprintf("role %q on a %s places the deceased, not this person", role, strings.ToLower(formatEventTypeLabel(event.Type)))
+		case ok && !participation.OwnRecord && !migrationParentAtBirth(event, personID):
+			entry.Excluded = true
+			entry.Note = fmt.Sprintf("attendance as %q shows a visit, not residence", role)
 		}
 		entries = append(entries, entry)
 	}
@@ -876,7 +879,11 @@ func printMigrationReportText(io *IOStreams, report *migrationReport) {
 // formatMigrationEntryLine renders one timeline row. An observation left out
 // of movement detection carries the reason after its label.
 func formatMigrationEntryLine(e *migrationEntry, placeWidth int) string {
-	line := fmt.Sprintf("  %-18s  %s  (%s)", displayDate(e.Date), padPlaceColumn(e.Place, placeWidth), e.Label)
+	label := e.Label
+	if e.Excluded && e.Role != "" && strings.Contains(e.Note, "shows a visit") {
+		label += ", as " + e.Role
+	}
+	line := fmt.Sprintf("  %-18s  %s  (%s)", displayDate(e.Date), padPlaceColumn(e.Place, placeWidth), label)
 	if e.Excluded {
 		line += " [not counted as a move: " + e.Note + "]"
 	}
@@ -934,4 +941,19 @@ func printMigrationPatternText(io *IOStreams, report migrationPatternReport) {
 	}
 
 	io.Printf("\n  %d %s\n\n", len(report.Matches), pluralize(len(report.Matches), "match", "matches"))
+}
+
+// A parent at a child's birth/baptism remains evidence of the household's
+// location. Other attendance roles place the visitor, not their residence.
+func migrationParentAtBirth(event *glxlib.Event, personID string) bool {
+	if event.Type != glxlib.EventTypeBirth && event.Type != glxlib.EventTypeBaptism && event.Type != glxlib.EventTypeChristening {
+		return false
+	}
+	for _, participant := range event.Participants {
+		if participant.Person == personID && glxlib.IsParentSideRole(participant.Role) {
+			return true
+		}
+	}
+
+	return false
 }

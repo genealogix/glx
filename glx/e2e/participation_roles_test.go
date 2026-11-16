@@ -113,7 +113,7 @@ func TestMigrations_RemoteDeedIsNotAMove(t *testing.T) {
 	require.Equal(t, 0, res.exitCode, res.stderr)
 
 	assert.Contains(t, res.stdout, `(Deed) [not counted as a move: role "grantor" does not imply presence]`)
-	assert.Contains(t, res.stdout, "[not counted as a move: inside residence FROM 1809 TO 1810")
+	assert.Contains(t, res.stdout, `as witness) [not counted as a move: attendance as "witness" shows a visit, not residence]`)
 	assert.Contains(t, res.stdout, "North Carolina → Indiana")
 	assert.NotContains(t, res.stdout, "Indiana → North Carolina")
 }
@@ -131,19 +131,22 @@ func TestMigrations_WholePossibleDateSpan(t *testing.T) {
 		t.Run(tt.date, func(t *testing.T) {
 			dir := t.TempDir()
 			data := strings.ReplaceAll(roleArchive, "1810-04-03", tt.date)
+			// Use an own-record role so the test continues to isolate residence-period bounds.
+			data = strings.ReplaceAll(data, "{person: person-lewis, role: witness}", "{person: person-lewis, role: principal}")
 			require.NoError(t, os.WriteFile(filepath.Join(dir, "archive.glx"), []byte(data), 0o600))
 			result := runGLX(t, dir, "migrations", "person-lewis", "--archive", "archive.glx", "--format", "json")
 			require.Equal(t, 0, result.exitCode, result.stderr)
 			var report struct {
 				Entries []struct {
 					Role     string `json:"role"`
+					Date     string `json:"date"`
 					Excluded bool   `json:"excluded"`
 				} `json:"entries"`
 			}
 			require.NoError(t, json.Unmarshal([]byte(result.stdout), &report))
 			found := false
 			for _, entry := range report.Entries {
-				if entry.Role == "witness" {
+				if entry.Role == "principal" && entry.Date == tt.date {
 					found = true
 					require.Equal(t, tt.excluded, entry.Excluded)
 				}

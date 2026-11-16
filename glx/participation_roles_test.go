@@ -242,9 +242,9 @@ func TestCollectMigrationEntries_RolesAndResidencePeriods(t *testing.T) {
 	assert.True(t, probate.Excluded, "an absent legatee was not at the estate's place")
 
 	// The baptism is in Dearborn, where Lewis lived only to 1810; no
-	// bounded residence covers 1812, so a present godparent counts
+	// bounded residence covers 1812; attendance still does not imply residence
 	baptism := migrationEntryByLabel(t, entries, "Baptism")
-	assert.False(t, baptism.Excluded)
+	assert.True(t, baptism.Excluded)
 
 	sale := migrationEntryByLabel(t, entries, "Sale of farm")
 	assert.False(t, sale.Excluded, "a principal is present")
@@ -279,7 +279,7 @@ func TestCollectMigrationEntries_ResidenceWinsOverEventPlace(t *testing.T) {
 
 	wedding := migrationEntryByLabel(t, entries, "Wedding of a cousin")
 	assert.True(t, wedding.Excluded)
-	assert.Equal(t, "inside residence FROM 1809 TO 1810 Dearborn County, Indiana Territory, United States", wedding.Note)
+	assert.Contains(t, wedding.Note, `attendance as "witness" shows a visit`)
 
 	census := migrationEntryByLabel(t, entries, "1810 Census")
 	assert.False(t, census.Excluded)
@@ -305,7 +305,7 @@ func TestCollectMigrationEntries_VocabularyImpliesPresence(t *testing.T) {
 	deed := migrationEntryByLabel(t, entries, "Deed")
 	// Present now, but still inside the Dearborn residence period
 	assert.True(t, deed.Excluded)
-	assert.Contains(t, deed.Note, "inside residence FROM 1809 TO 1810")
+	assert.Contains(t, deed.Note, `attendance as "grantor" shows a visit`)
 }
 
 func TestPrintMigrationReportText_ExcludedNote(t *testing.T) {

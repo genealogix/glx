@@ -174,7 +174,7 @@ func buildProof(personID string, person *Person, topic string, archive *GLXFile,
 
 	var relevant []proofAssertion
 	for i := range all {
-		if assertionRelevant(topic, &all[i]) && (topic != topicParentage || parentageLinkRelevant(&all[i], personID, parentLinks)) {
+		if assertionRelevant(topic, &all[i], personID) && (topic != topicParentage || parentageLinkRelevant(&all[i], personID, parentLinks)) {
 			relevant = append(relevant, all[i])
 		}
 	}
@@ -202,6 +202,9 @@ func buildProof(personID string, person *Person, topic string, archive *GLXFile,
 		return a.Timing().Outer.Start < b.Timing().Outer.Start
 	})
 	conflicts := detectProofConflicts(relevant, archive, opts.Comparison)
+	if topic == topicDeath {
+		conflicts = append(conflicts, vitalChronologyConflicts(archive, personID, all, opts.Comparison)...)
+	}
 	conclusionEvidence := relevant
 	var excluded []ProofExcludedAlternative
 	if topic == topicParentage {
@@ -211,6 +214,9 @@ func buildProof(personID string, person *Person, topic string, archive *GLXFile,
 		conclusionEvidence = parentageSupport(relevant, personID, parentLinks, standings)
 	}
 	gaps := collectProofGaps(personID, person, topic, archive, opts.Coverage)
+	if gap := proxyVitalProofGap(topic, relevant, archive, personID); gap != nil {
+		gaps = append(gaps, *gap)
+	}
 	searches := collectProofSearches(personID, archive)
 
 	conclusion, summary := concludeProof(topic, personID, archive, conclusionEvidence, conflicts, gaps)
@@ -326,7 +332,10 @@ var (
 )
 
 // assertionRelevant reports whether an assertion is evidence for the topic.
-func assertionRelevant(topic string, pa *proofAssertion) bool {
+func assertionRelevant(topic string, pa *proofAssertion, personID string) bool {
+	if (topic == topicBirth || topic == topicDeath) && pa.a.Participant != nil && pa.a.Participant.Person != personID {
+		return false
+	}
 	legacyKind, _ := legacyVitalProperty(pa.a.Property)
 	switch topic {
 	case topicParentage:
@@ -903,6 +912,16 @@ func eventAnswer(personID string, archive *GLXFile, eventType, label string) (st
 // The topic context is already carried by the result's question text, so the
 // summary only needs the supporting values.
 func answerFromAssertions(relevant []proofAssertion, archive *GLXFile, topic, personID string) (string, bool) {
+	primaryVitalDate := false
+	if topic == topicBirth || topic == topicDeath {
+		for i := range relevant {
+			if primaryVitalDateAssertion(&relevant[i], topic) {
+				primaryVitalDate = true
+
+				break
+			}
+		}
+	}
 	seen := make(map[string]bool)
 	var values []string
 	for i := range relevant {
@@ -910,10 +929,16 @@ func answerFromAssertions(relevant []proofAssertion, archive *GLXFile, topic, pe
 		if relevant[i].synthetic || strings.EqualFold(a.Status, statusDisproven) {
 			continue
 		}
+		if primaryVitalDate && a.Property == conflictDateType && relevant[i].eventType != topic {
+			continue
+		}
 		if !proofAssertionAnswersQuestion(&relevant[i], topic, personID) {
 			continue
 		}
 		value := proofAssertionValue(a, archive)
+		if value != "" {
+			value = qualifyProxyVitalAnswer(topic, &relevant[i], value)
+		}
 		if value == "" || seen[value] {
 			continue
 		}
@@ -958,9 +983,9 @@ func proofPropertyAnswersQuestion(subject EntityRef, eventType, relationshipType
 	vitalField := property == conflictDateType || property == eventFieldPlace
 	switch topic {
 	case topicBirth:
-		return subject.Person != "" && kind == EventTypeBirth && field != "" || isBirthEventType(eventType) && vitalField
+		return subject.Person != "" && kind == EventTypeBirth && field != "" || isBirthEventType(eventType) && (vitalField || kind == EventTypeBirth && field == conflictDateType)
 	case topicDeath:
-		return subject.Person != "" && (kind == EventTypeDeath || kind == EventTypeBurial) && field != "" || isDeathEventType(eventType) && vitalField
+		return subject.Person != "" && (kind == EventTypeDeath || kind == EventTypeBurial) && field != "" || isDeathEventType(eventType) && (vitalField || kind == EventTypeDeath && field == conflictDateType)
 	case topicMarriage:
 		return isMarriageEventType(eventType) && vitalField ||
 			(relationshipType == RelationshipTypeMarriage || relationshipType == RelationshipTypePartner) && (property == ParticipantRoleSpouse || property == RelationshipTypePartner)
@@ -1082,4 +1107,68 @@ func firstLine(s string) string {
 	}
 
 	return ""
+}
+
+func proxyVitalProofGap(topic string, relevant []proofAssertion, archive *GLXFile, personID string) *ProofGap {
+	if topic != topicBirth && topic != topicDeath {
+		return nil
+	}
+	if _, event := FindPersonEvent(archive, personID, topic); event != nil && event.Date != "" {
+		return nil
+	}
+	proxy := false
+	for i := range relevant {
+		evidence := &relevant[i]
+		if primaryVitalDateAssertion(evidence, topic) {
+			return nil
+		}
+		if evidence.a.Property == conflictDateType && evidence.a.Participant == nil && !AssertionIsDisproven(evidence.a) && evidence.eventType != "" {
+			proxy = true
+		}
+	}
+	if !proxy {
+		return nil
+	}
+
+	return &ProofGap{Label: strings.ToUpper(topic[:1]) + topic[1:] + " date not established", Description: "The recorded rite bounds the vital event; it does not establish its exact date."}
+}
+
+func primaryVitalDateAssertion(evidence *proofAssertion, topic string) bool {
+	if evidence.a.Participant != nil || evidence.a.Value == "" || AssertionIsDisproven(evidence.a) {
+		return false
+	}
+	kind, field := legacyVitalProperty(evidence.a.Property)
+
+	return kind == topic && field == conflictDateType || evidence.eventType == topic && evidence.a.Property == conflictDateType
+}
+
+func qualifyProxyVitalAnswer(topic string, evidence *proofAssertion, value string) string {
+	verb := ""
+	if topic == topicBirth && (evidence.eventType == EventTypeBaptism || evidence.eventType == EventTypeChristening) {
+		verb = "born"
+	}
+	if topic == topicDeath && (evidence.eventType == EventTypeBurial || evidence.eventType == EventTypeCremation) {
+		verb = "died"
+	}
+	if verb == "" {
+		return value
+	}
+	if evidence.a.Property == eventFieldPlace {
+		return evidence.eventType + " place: " + value
+	}
+	if evidence.a.Property != conflictDateType {
+		return value
+	}
+	date, err := DateString(value).Parse()
+	if err != nil || date.Qualifier() != 0 {
+		return evidence.eventType + " recorded " + value + "; exact " + topic + " date not established"
+	}
+	if date.IsRange() {
+		if date.IsOpenEnded() && !date.IsOpenStart() {
+			return evidence.eventType + " recorded " + value + "; exact " + topic + " date not established"
+		}
+		value = date.End().String()
+	}
+
+	return verb + " on or before " + value + " (" + evidence.eventType + ")"
 }

@@ -1159,6 +1159,9 @@ The person argument can be an exact entity ID (e.g., person-john-smith)
 or a name to search for (e.g., "John Smith"). If the name matches
 multiple persons, all matches are listed for disambiguation.
 
+Gregorian and Julian dates share chronological ordering. A BEF observation
+precedes the date that bounds it.
+
 Use --no-family to exclude family events and show only direct events.`,
 	Example: `  # Timeline by person ID
   glx timeline person-john-smith
@@ -1216,11 +1219,14 @@ person's role does not put them at its place (a grantor or grantee of a deed,
 a legatee or heir of an estate, someone merely mentioned) is shown but not
 counted, and so is a parent named on a child's death or burial, which places
 the child rather than the parent's household; an archive can mark its own roles with implies_presence in the
-participant roles vocabulary. A bounded residence value overrides an event
+participant roles vocabulary. Godparent, witness, sponsor, informant, officiant
+and other attendance-only appearances are labeled visits and do not start
+or end a movement. A parent at a child's birth or baptism still counts as
+household evidence. A bounded residence value overrides an event
 elsewhere only when the event's whole possible date span fits within that
 residence: the event remains visible but is not counted as a move. Open-ended
-event spans remain included. Dates in different calendars are not compared
-without conversion.
+event spans remain included. Gregorian and Julian observations share
+chronological ordering; unsupported calendar conversions are not assumed.
 
 With --pattern, searches all persons in the archive for a migration pattern
 instead: a comma-separated list of places that must appear in chronological
@@ -1900,6 +1906,12 @@ surfaces evidence gaps from the coverage checklist, flags conflicting assertions
 (and whether they have been resolved via the assertion ` + "`status`" + ` field), lists any
 logged searches that document a reasonably exhaustive search, and ends with a
 conclusion: PROVEN, PROBABLE, POSSIBLE, INSUFFICIENT EVIDENCE, or CONFLICTED.
+
+Baptism/christening and burial/cremation evidence bounds birth/death; its date
+is not presented as the exact vital date. A burial certainly before death
+is a chronology conflict, including in merge-persons preview interpretations.
+Only the target person's own participant assertions support their vital proof.
+Equivalent Gregorian and Julian dates agree.
 
 Supported research questions:
   parentage   Who are the person's parents?
