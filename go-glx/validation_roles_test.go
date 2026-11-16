@@ -220,6 +220,9 @@ func TestValidateDuplicateParticipants(t *testing.T) {
 			{Person: "person-b", Role: "witness"},
 			{Person: "person-a", Role: "witness"},
 		}}},
+		Relationships: map[string]*Relationship{"rel-1": {Type: RelationshipTypeAssociate, Participants: []Participant{
+			{Person: "person-a"}, {Person: "person-b"}, {Person: "person-a"},
+		}}},
 	}
 	require.NoError(t, MergeStandardVocabularies(archive))
 
@@ -229,8 +232,10 @@ func TestValidateDuplicateParticipants(t *testing.T) {
 			warnings = append(warnings, warning)
 		}
 	}
-	require.Len(t, warnings, 1)
+	require.Len(t, warnings, 2)
 	assert.Equal(t, EntityTypeEvents, warnings[0].SourceType)
 	assert.Equal(t, "participants[2]", warnings[0].Field)
 	assert.Contains(t, warnings[0].Message, "person 'person-b' already appears with role 'witness' at participants[1]")
+	assert.Equal(t, EntityTypeRelationships, warnings[1].SourceType)
+	assert.Contains(t, warnings[1].Message, "person 'person-a' already appears with no role at participants[0]")
 }

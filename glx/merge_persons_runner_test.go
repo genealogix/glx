@@ -834,3 +834,8 @@ func TestMergePersonsMaterializesInheritedCollection(t *testing.T) {
 		})
 	}
 }
+
+func TestParticipantRoleLabel(t *testing.T) {
+	assert.Equal(t, "godparent", participantRoleLabel("godparent"))
+	assert.Equal(t, "(no role)", participantRoleLabel(""))
+}
