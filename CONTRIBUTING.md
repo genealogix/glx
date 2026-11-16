@@ -491,13 +491,15 @@ Assisted-by: Claude <noreply@anthropic.com>
 
 `Assisted-by:` is the preferred form. `Co-authored-by` trailers that an AI coding
 tool adds automatically are tolerated on human-driven commits, but don't add one on
-purpose and don't configure an agent to: `Co-authored-by` credits an author, and the
-person who signs off is the author of record.
+purpose and don't configure an agent to: `Co-authored-by` credits an author, and an
+AI tool is not one.
 
 The `Signed-off-by` trailer required by the [DCO](#developer-certificate-of-origin-dco)
 is always a human's. An AI tool cannot make the DCO attestation, so when an agent
-commits on your behalf the sign-off carries your name and email, and by signing off you
-certify the agent's output exactly as you would your own code.
+commits on your behalf the sign-off carries your name and email. Signing off does not
+claim you wrote every line; it certifies, under the DCO clauses, that you have the right
+to submit the change under the project's license, so check that the agent's output does
+not carry code you could not otherwise contribute.
 
 ### Accuracy of Genealogical and Spec Content
 
