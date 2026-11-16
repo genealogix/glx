@@ -14,7 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Added
 
-- Add a read-only stdio MCP research server with fourteen structured tools, archive resources, a research prompt, extensible Go protocol API, and JSON output for research commands (#198).
+- Add a read-only stdio MCP research server with fourteen structured tools, archive resources, a research prompt, extensible Go protocol API, and JSON output for research commands. Optional `glx mcp serve --watch` reloads stable source changes without reconnecting and keeps the previous snapshot available on read/parse errors (#198).
 
 - **`glx validate` warns when an assertion's `property` is not in its subject's property vocabulary** — The specification has long said this check exists, and nothing performed it, so `property: occupaton` passed silently. An assertion about a person is looked up in `person_properties`, an event in `event_properties`, a relationship in `relationship_properties` and a place in `place_properties`. The subject's own single-valued fields (an event's `date`, `place`, `title` and `type`; a place's `name`, `type`, `parent`, `latitude` and `longitude`; a relationship's `type`, `start_event` and `end_event`) are valid without an entry, and the specification now lists exactly those. A warning, not an error, so emerging properties still validate. (#1224)
 - **`glx validate` reports entity IDs that differ only by case** — Two persons `Person-A` and `person-a` would be written to the same file and overwrite each other on a case-insensitive filesystem. The serializer already refused to write such an archive; validation now reports the pair as an error before anything is written. (#696)

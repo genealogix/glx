@@ -15,8 +15,11 @@ using the Model Context Protocol over stdin/stdout. No network listener is opene
 
 The optional path defaults to the current directory and may be a directory or
 single-file archive. A fresh existing binary cache is reused; this command never
-writes a cache or archive files, even with GLX_CACHE=auto. Restart to see edits.
-Diagnostics use stderr; stdout is reserved for MCP messages.
+writes a cache or archive files, even with GLX_CACHE=auto. Restart to see edits,
+or pass --watch to reload stable source changes automatically without a cache.
+Watch mode retains the previous snapshot on read/parse errors and reports them
+on stderr. Each request uses one complete snapshot. stdout is reserved for MCP
+messages.
 
 Archive data may include living people's personal information. Connect only a
 trusted MCP client and check its model provider's data-handling policy. The
@@ -30,13 +33,15 @@ glx mcp serve [archive-path] [flags]
 
 ```
   glx mcp serve ./family-archive
+  glx mcp serve --watch ./family-archive
   glx mcp serve archive.glx
 ```
 
 ### Options
 
 ```
-  -h, --help   help for serve
+  -h, --help    help for serve
+      --watch   Automatically reload stable archive changes; retain the previous snapshot on errors
 ```
 
 ### Options inherited from parent commands

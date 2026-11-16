@@ -36,22 +36,44 @@ var (
 	errMCPMaxHops          = errors.New("max_hops must be at least 1")
 )
 
-// mcpArchiveBackend owns one startup snapshot. The protocol adapter serializes
-// its calls, including the lazy validation cache; no handler reopens files.
+// mcpArchiveBackend owns one snapshot. The protocol adapter serializes its
+// calls, including the lazy validation cache; no handler reopens files. A watcher
+// replaces the whole backend rather than mutating a published archive.
 type mcpArchiveBackend struct {
 	archive    *glxlib.GLXFile
 	duplicates []string
 	validation *validationJSONResult
 }
 
-func serveMCP(ctx context.Context, archivePath string) error {
-	backend, err := loadMCPArchive(archivePath)
+func serveMCP(ctx context.Context, archivePath string, watch bool) error {
+	var backend glxmcp.Backend
+	var watcher *mcpWatchingBackend
+	var err error
+	if watch {
+		watcher, err = newMCPWatchingBackend(ctx, archivePath)
+		backend = watcher
+	} else {
+		backend, err = loadMCPArchive(archivePath)
+	}
 	if err != nil {
 		return err
 	}
 	server, err := glxmcp.NewServer(backend, versionString())
 	if err != nil {
 		return err
+	}
+
+	if watcher != nil {
+		watchCtx, cancel := context.WithCancel(ctx)
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			watcher.run(watchCtx, SystemIOStreams())
+		}()
+		defer func() {
+			cancel()
+			<-done
+		}()
 	}
 
 	return server.Run(ctx, &mcpsdk.StdioTransport{})

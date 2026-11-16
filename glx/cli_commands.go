@@ -2619,13 +2619,16 @@ using the Model Context Protocol over stdin/stdout. No network listener is opene
 
 The optional path defaults to the current directory and may be a directory or
 single-file archive. A fresh existing binary cache is reused; this command never
-writes a cache or archive files, even with GLX_CACHE=auto. Restart to see edits.
-Diagnostics use stderr; stdout is reserved for MCP messages.
+writes a cache or archive files, even with GLX_CACHE=auto. Restart to see edits,
+or pass --watch to reload stable source changes automatically without a cache.
+Watch mode retains the previous snapshot on read/parse errors and reports them
+on stderr. Each request uses one complete snapshot. stdout is reserved for MCP
+messages.
 
 Archive data may include living people's personal information. Connect only a
 trusted MCP client and check its model provider's data-handling policy. The
 server does not contact any AI provider itself.`,
-	Example: "  glx mcp serve ./family-archive\n  glx mcp serve archive.glx",
+	Example: "  glx mcp serve ./family-archive\n  glx mcp serve --watch ./family-archive\n  glx mcp serve archive.glx",
 	Args:    cobra.MaximumNArgs(1), RunE: runMCPServe,
 }
 
@@ -2635,9 +2638,18 @@ func runMCPServe(cmd *cobra.Command, args []string) error {
 		path = args[0]
 	}
 
-	return serveMCP(cmd.Context(), path)
+	watch, err := cmd.Flags().GetBool("watch")
+	if err != nil {
+		return err
+	}
+
+	return serveMCP(cmd.Context(), path, watch)
 }
-func init() { mcpCmd.AddCommand(mcpServeCmd) }
+
+func init() {
+	mcpServeCmd.Flags().Bool("watch", false, "Automatically reload stable archive changes; retain the previous snapshot on errors")
+	mcpCmd.AddCommand(mcpServeCmd)
+}
 
 var queryJSON, vitalsJSON, timelineJSON, summaryJSON, ancestorsJSON, descendantsJSON, citeJSON, statsJSON, placesJSON, validateJSON, analyzeJSON bool
 
