@@ -41,7 +41,7 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 		Properties: make(map[string]any),
 	}
 
-	// Extract external IDs (GEDCOM 7.0 EXID tags)
+	// The EXID vocabulary mapping selects the property; the shared reader consumes EXID and REFN.
 	if propertyKey, ok := conv.GEDCOMIndex.PersonProperties[GedcomTagExid]; ok {
 		extractExternalIDs(indiRecord, propertyKey, person.Properties)
 	}

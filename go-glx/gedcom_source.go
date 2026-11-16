@@ -42,7 +42,7 @@ func convertSource(sourRecord *GEDCOMRecord, conv *ConversionContext) error {
 	var description []string
 	var eventsRecorded []string
 
-	// Extract external IDs (GEDCOM 7.0 EXID tags) and store in properties
+	// The EXID vocabulary mapping selects the property; the shared reader consumes EXID and REFN.
 	if propertyKey, ok := conv.GEDCOMIndex.SourceProperties[GedcomTagExid]; ok {
 		extractExternalIDs(sourRecord, propertyKey, source.Properties)
 	}

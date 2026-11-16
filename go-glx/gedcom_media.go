@@ -234,6 +234,18 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 				notes = append(notes, noteText)
 			}
 
+		case GedcomTagOID:
+			if sub.Value != "" {
+				appendMultiValueProperty(media.Properties, MediaPropertyExternalIDs, NewExternalIDEntry(sub.Value, ExternalIDTypeAncestry))
+			}
+
+		case GedcomTagClon:
+			for _, clon := range sub.SubRecords {
+				if clon.Tag == GedcomTagOID && clon.Value != "" {
+					appendMultiValueProperty(media.Properties, MediaPropertyExternalIDs, NewExternalIDEntry(clon.Value, ExternalIDTypeAncestryClone))
+				}
+			}
+
 		case GedcomTagBlob:
 			// GEDCOM 5.5.1 BLOB data (deprecated binary embedding)
 			blobText = extractTextWithContinuation(sub)
