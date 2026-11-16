@@ -547,8 +547,8 @@ Most differences are handled transparently by the importer, but it helps to know
 | Feature | GEDCOM 5.5.1 | GEDCOM 7.0 |
 |---------|-------------|------------|
 | **Shared notes** | `NOTE` records with XRef | `SNOTE` tag |
-| **Media MIME types** | Inferred from `FORM` tag | Explicit `MIME` tag |
-| **External IDs** | Not supported | `EXID` tag with optional `TYPE` |
+| **Media MIME types** | Format name in `FILE.FORM` | Media type in `FILE.FORM` |
+| **External IDs** | `REFN` with `TYPE` | `EXID` with authority `TYPE` |
 | **Negative assertions** | Not supported | `NO` tag (e.g., `NO BIRT`) |
 | **Crop coordinates** | Not supported | `CROP` tag on media |
 | **Extension schemas** | Convention only (`_` prefix) | `SCHMA` tag with URI definitions |
@@ -556,7 +556,7 @@ Most differences are handled transparently by the importer, but it helps to know
 | **Binary data** | `BLOB` tag (deprecated) | Not supported |
 | **Void pointers** | Not used | `@VOID@` for embedded structures |
 
-GEDCOM 5.5.1 exports associations between people using standard person-level structures. Family-event associations appear on each known spouse, with event type, archive event ID, date, place and subjects in notes. These notes describe the event link; the importer does not reconstruct event participants from person-level associations. Choose GEDCOM 7.0 to round-trip structured event associations and participant roles.
+GEDCOM 5.5.1 exports associations between people using standard person-level structures. Family-event associations appear on each known spouse, with event type, archive event ID, date, place and subjects in notes. The importer restores participants when these notes identify one event; otherwise it retains a referenced social relationship and warns. GEDCOM 7.0 uses structured event associations directly.
 
 ## Export and round trips
 
