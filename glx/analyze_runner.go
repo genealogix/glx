@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,11 +26,18 @@ import (
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
+const (
+	analysisGapsCheck           = "gaps"
+	analysisEvidenceCategory    = "evidence"
+	analysisConsistencyCategory = "consistency"
+	analysisSuggestionsCheck    = "suggestions"
+)
+
 var errUnknownAnalysisCheck = errors.New("unknown check category")
 
 // AnalysisIssue represents a single finding from the analysis engine.
 type AnalysisIssue struct {
-	Category string `json:"category"` // "gap", "evidence", "consistency", "suggestion"
+	Category string `json:"category"` // "gap", analysisEvidenceCategory, analysisConsistencyCategory, "suggestion"
 	Severity string `json:"severity"` // "high", "medium", "low", "info"
 	Person   string `json:"person,omitempty"`
 	Entity   string `json:"entity,omitempty"`
@@ -106,70 +114,87 @@ func showAnalysis(archivePath, personFilter, checkFilter, format, country string
 // Census suggestions use the process's fixed censusCountryFallback. MCP callers
 // must not change it between requests.
 func buildAnalysisJSON(archive *glxlib.GLXFile, personFilter, checkFilter string, options ...glxlib.ComparisonOptions) (AnalysisResult, error) {
+	return buildAnalysisJSONContext(context.Background(), archive, personFilter, checkFilter, options...)
+}
+
+func buildAnalysisJSONContext(ctx context.Context, archive *glxlib.GLXFile, personFilter, checkFilter string, options ...glxlib.ComparisonOptions) (AnalysisResult, error) {
+	if err := ctx.Err(); err != nil {
+		return AnalysisResult{}, err
+	}
 	if archive == nil {
 		return AnalysisResult{}, glxlib.ErrNilArchive
 	}
 	if err := comparisonOptions(options).Validate(); err != nil {
 		return AnalysisResult{}, err
 	}
-	issues := make([]AnalysisIssue, 0)
-
-	var conflictIssues []AnalysisIssue
-	if checkFilter == "" || checkFilter == conflictsCheck || checkFilter == conflictCategory {
-		var err error
-		conflictIssues, err = analyzeConflictsWithOptions(archive, comparisonOptions(options))
+	checks := map[string]func() ([]AnalysisIssue, error){
+		analysisGapsCheck: func() ([]AnalysisIssue, error) { return analyzeGapsContext(ctx, archive) },
+		analysisEvidenceCategory: func() ([]AnalysisIssue, error) {
+			return runAnalysisChecksContext(ctx, archive, checkUnsupportedAssertions, checkSingleSourcePersons, checkOrphanedCitations, checkOrphanedSources, checkUncitedNotes)
+		},
+		analysisConsistencyCategory: func() ([]AnalysisIssue, error) {
+			return runAnalysisChecksContext(ctx, archive, checkBirthAfterDeath, checkParentYoungerThanChild, checkEventAfterDeath, checkImplausibleLifespan, checkMarriageBeforeBirth, checkDuplicateSiblingNames, checkSiblingBirthplaceOutlier)
+		},
+		conflictsCheck: func() ([]AnalysisIssue, error) {
+			return analyzeConflictsWithOptions(archive, comparisonOptions(options))
+		},
+		analysisSuggestionsCheck: func() ([]AnalysisIssue, error) {
+			return runAnalysisChecksContext(ctx, archive, suggestCensusSearches, suggestVitalRecords, suggestChildCensusRecords, reportResearchPlaceholders)
+		},
+	}
+	aliases := map[string]string{analysisGapCategory: analysisGapsCheck, analysisSuggestionCategory: analysisSuggestionsCheck, conflictCategory: conflictsCheck}
+	if alias, ok := aliases[checkFilter]; ok {
+		checkFilter = alias
+	}
+	categories := []string{analysisGapsCheck, analysisEvidenceCategory, analysisConsistencyCategory, conflictsCheck, analysisSuggestionsCheck}
+	if checkFilter != "" {
+		if checks[checkFilter] == nil {
+			return AnalysisResult{}, fmt.Errorf("%w: %q (valid: gaps, evidence, consistency, conflicts, suggestions)", errUnknownAnalysisCheck, checkFilter)
+		}
+		categories = []string{checkFilter}
+	}
+	issues := []AnalysisIssue{}
+	for _, category := range categories {
+		if err := ctx.Err(); err != nil {
+			return AnalysisResult{}, err
+		}
+		findings, err := checks[category]()
+		if canceled := ctx.Err(); canceled != nil {
+			return AnalysisResult{}, canceled
+		}
 		if err != nil {
 			return AnalysisResult{}, err
 		}
+		issues = append(issues, findings...)
 	}
-	checks := map[string]func(*glxlib.GLXFile) []AnalysisIssue{
-		"gaps":        analyzeGaps,
-		"evidence":    analyzeEvidence,
-		"consistency": analyzeConsistency,
-		conflictsCheck: func(a *glxlib.GLXFile) []AnalysisIssue {
-			return conflictIssues
-		},
-		"suggestions": analyzeSuggestions,
-	}
-
-	// Accept singular aliases (gap → gaps, conflict → conflicts, suggestion → suggestions).
-	singularToPlural := map[string]string{
-		analysisGapCategory:        "gaps",
-		analysisSuggestionCategory: "suggestions",
-		conflictCategory:           conflictsCheck,
-	}
-
-	if checkFilter != "" {
-		if mapped, ok := singularToPlural[checkFilter]; ok {
-			checkFilter = mapped
-		}
-		fn, ok := checks[checkFilter]
-		if !ok {
-			return AnalysisResult{}, fmt.Errorf("%w: %q (valid: gaps, evidence, consistency, conflicts, suggestions)", errUnknownAnalysisCheck, checkFilter)
-		}
-		issues = fn(archive)
-	} else {
-		for _, category := range []string{"gaps", "evidence", "consistency", conflictsCheck, "suggestions"} {
-			issues = append(issues, checks[category](archive)...)
-		}
-	}
-
-	// Filter by person if specified
 	if personFilter != "" {
 		issues = filterByPerson(issues, personFilter, archive)
 	}
-
 	if issues == nil {
 		issues = []AnalysisIssue{}
 	}
-
-	// Sort by severity (high → medium → low → info) then by person/entity for stability
 	sortIssues(issues)
+	if err := ctx.Err(); err != nil {
+		return AnalysisResult{}, err
+	}
 
-	return AnalysisResult{
-		Summary: buildSummary(issues),
-		Issues:  issues,
-	}, nil
+	return AnalysisResult{Summary: buildSummary(issues), Issues: issues}, nil
+}
+
+func runAnalysisChecksContext(ctx context.Context, archive *glxlib.GLXFile, checks ...func(*glxlib.GLXFile) []AnalysisIssue) ([]AnalysisIssue, error) {
+	issues := []AnalysisIssue{}
+	for _, check := range checks {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		findings := check(archive)
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		issues = append(issues, findings...)
+	}
+
+	return issues, nil
 }
 
 // filterByPerson filters issues to only those matching a person ID or name.
@@ -212,11 +237,11 @@ func filterByPerson(issues []AnalysisIssue, query string, archive *glxlib.GLXFil
 // buildSummary counts issues by category.
 func buildSummary(issues []AnalysisIssue) map[string]int {
 	summary := map[string]int{
-		analysisGapCategory:        0,
-		"evidence":                 0,
-		"consistency":              0,
-		conflictCategory:           0,
-		analysisSuggestionCategory: 0,
+		analysisGapCategory:         0,
+		analysisEvidenceCategory:    0,
+		analysisConsistencyCategory: 0,
+		conflictCategory:            0,
+		analysisSuggestionCategory:  0,
 	}
 	for _, issue := range issues {
 		summary[issue.Category]++
@@ -252,8 +277,8 @@ func printAnalysisTerminal(result AnalysisResult) {
 		label string
 	}{
 		{"gap", "EVIDENCE GAPS"},
-		{"evidence", "EVIDENCE QUALITY"},
-		{"consistency", "CONSISTENCY"},
+		{analysisEvidenceCategory, "EVIDENCE QUALITY"},
+		{analysisConsistencyCategory, "CONSISTENCY"},
 		{conflictCategory, "CONFLICTS"},
 		{"suggestion", "SUGGESTIONS"},
 	}

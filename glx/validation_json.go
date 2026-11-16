@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -44,6 +45,13 @@ func emptyValidationJSON(scope string) *validationJSONResult {
 // buildValidationJSON checks a loaded typed snapshot, not its original files.
 // Unknown source fields discarded during loading cannot be reconstructed.
 func buildValidationJSON(archive *glxlib.GLXFile, report bool) (*validationJSONResult, error) {
+	return buildValidationJSONContext(context.Background(), archive, report)
+}
+
+func buildValidationJSONContext(ctx context.Context, archive *glxlib.GLXFile, report bool) (*validationJSONResult, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if archive == nil {
 		return nil, glxlib.ErrNilArchive
 	}
@@ -51,23 +59,45 @@ func buildValidationJSON(archive *glxlib.GLXFile, report bool) (*validationJSONR
 	if err := glxlib.MergeStandardVocabularies(&view); err != nil {
 		return nil, err
 	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	data, err := yaml.Marshal(&view)
 	if err != nil {
 		return nil, fmt.Errorf("serialize validation snapshot: %w", err)
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
 	doc, err := ParseYAMLFile(data)
 	if err != nil {
 		return nil, fmt.Errorf("parse validation snapshot: %w", err)
 	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	result := emptyValidationJSON("typed_snapshot; unknown fields discarded at load time are not checked")
 	result.StructuralErrors = append(result.StructuralErrors, ValidateGLXFileStructure(doc)...)
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	findings := view.Validate()
 	result.Errors = append(result.Errors, findings.Errors...)
 	result.Warnings = append(result.Warnings, findings.Warnings...)
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if report {
 		result.Report = buildConfidenceJSONReport(&view)
 	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	result.Valid = len(result.StructuralErrors) == 0 && len(result.Errors) == 0
+
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 
 	return result, nil
 }

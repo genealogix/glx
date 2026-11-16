@@ -53,7 +53,7 @@ func serveMCP(ctx context.Context, archivePath string, watch bool) error {
 		watcher, err = newMCPWatchingBackend(ctx, archivePath)
 		backend = watcher
 	} else {
-		backend, err = loadMCPArchive(archivePath)
+		backend, err = loadMCPArchiveContext(ctx, archivePath)
 	}
 	if err != nil {
 		return err
@@ -80,9 +80,19 @@ func serveMCP(ctx context.Context, archivePath string, watch bool) error {
 }
 
 func loadMCPArchive(path string) (*mcpArchiveBackend, error) {
+	return loadMCPArchiveContext(context.Background(), path)
+}
+
+func loadMCPArchiveContext(ctx context.Context, path string) (*mcpArchiveBackend, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	info, err := os.Stat(path)
 	if err != nil {
 		return nil, fmt.Errorf("cannot access archive: %w", err)
+	}
+	if !info.IsDir() && !info.Mode().IsRegular() {
+		return nil, errMCPWatchSourceType
 	}
 	var archive *glxlib.GLXFile
 	var duplicates []string
@@ -93,16 +103,39 @@ func loadMCPArchive(path string) (*mcpArchiveBackend, error) {
 		if cacheEnvMode() != cacheModeOff {
 			archive, duplicates, cached = tryLoadFreshCache(path)
 		}
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		if !cached {
-			archive, duplicates, err = LoadArchiveWithOptions(path, false)
+			// Use the same contained, regular-file-only reader as watch mode.
+			// A FIFO present initially or swapped in after stat cannot block startup.
+			source := mcpArchiveSource{path: path, directory: true}
+			var files map[string][]byte
+			files, err = source.captureDirectory(ctx)
+			if err == nil {
+				archive, duplicates, err = loadArchiveFromFiles(path, files, false)
+			}
 		}
 	} else {
-		archive, err = readSingleFileArchive(path, false)
+		var data []byte
+		data, err = readMCPWatchSingleFile(path)
+		if canceled := ctx.Err(); canceled != nil {
+			return nil, canceled
+		}
+		if err == nil {
+			archive, err = createSerializer(false, false, "").DeserializeSingleFileBytes(data)
+		}
 	}
 	if err != nil {
 		return nil, err
 	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if err := mergeStandardVocabularies(archive); err != nil {
+		return nil, err
+	}
+	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 	for _, duplicate := range duplicates {
@@ -121,13 +154,14 @@ func (b *mcpArchiveBackend) CallTool(ctx context.Context, name string, raw json.
 	}
 	switch name {
 	case "query":
-		return withMCPArgs(raw, b.query)
+		return withMCPArgs(raw, func(a *glxmcp.QueryArgs) (any, error) { return b.queryContext(ctx, a) })
 	case "vitals":
 		return withMCPArgs(raw, func(a *glxmcp.PersonArgs) (any, error) { return buildVitalsJSON(b.archive, a.Person) })
 	case "timeline":
+		//nolint:contextcheck // Legacy timeline collection is synchronous; the serialized adapter checks cancellation after it finishes.
 		return withMCPArgs(raw, func(a *glxmcp.TimelineArgs) (any, error) { return buildTimelineJSON(b.archive, a.Person, !a.NoFamily) })
 	case "summary":
-		return withMCPArgs(raw, func(a *glxmcp.PersonArgs) (any, error) { return buildSummaryJSON(b.archive, a.Person) })
+		return withMCPArgs(raw, func(a *glxmcp.PersonArgs) (any, error) { return buildSummaryJSONContext(ctx, b.archive, a.Person) })
 	case jsonAncestors, jsonDescendants:
 		return withMCPArgs(raw, func(a *glxmcp.TreeArgs) (any, error) {
 			return b.tree(ctx, *a, name == jsonAncestors)
@@ -135,17 +169,17 @@ func (b *mcpArchiveBackend) CallTool(ctx context.Context, name string, raw json.
 	case "cite":
 		return withMCPArgs(raw, func(a *glxmcp.CiteArgs) (any, error) { return buildCitationJSON(b.archive, a.Citation, a.All) })
 	case "analyze":
-		return withMCPArgs(raw, b.analyze)
+		return withMCPArgs(raw, func(a *glxmcp.AnalyzeArgs) (any, error) { return b.analyzeContext(ctx, a) })
 	case "stats":
-		return buildStatsJSON(b.archive)
+		return buildStatsJSONContext(ctx, b.archive)
 	case "places":
 		return buildPlacesJSON(b.archive)
 	case "path":
-		return withMCPArgs(raw, b.path)
+		return withMCPArgs(raw, func(a *glxmcp.PathArgs) (any, error) { return b.pathContext(ctx, a) })
 	case "cluster":
-		return withMCPArgs(raw, b.cluster)
+		return withMCPArgs(raw, func(a *glxmcp.ClusterArgs) (any, error) { return b.clusterContext(ctx, a) })
 	case "validate":
-		return withMCPArgs(raw, b.validate)
+		return withMCPArgs(raw, func(a *glxmcp.ValidateArgs) (any, error) { return b.validateContext(ctx, a) })
 	case "list_entity_types":
 		return map[string]any{"entity_counts": archiveEntityCounts(b.archive)}, nil
 	case "vocabularies":
@@ -171,14 +205,14 @@ type mcpQueryResult struct {
 	HasMore  bool `json:"has_more"`
 }
 
-func (b *mcpArchiveBackend) query(a *glxmcp.QueryArgs) (any, error) {
+func (b *mcpArchiveBackend) queryContext(ctx context.Context, a *glxmcp.QueryArgs) (any, error) {
 	if a.Offset < 0 || a.Limit < 0 || a.Limit > 1000 {
 		return nil, errMCPPagination
 	}
 	if a.Limit == 0 {
 		a.Limit = 100
 	}
-	result, err := buildQueryJSON(b.archive, glxlib.EntityType(a.EntityType), &queryOpts{
+	result, err := buildQueryJSONContext(ctx, b.archive, glxlib.EntityType(a.EntityType), &queryOpts{
 		Name: a.Name, Phonetic: a.Phonetic, BornBefore: a.BornBefore, BornAfter: a.BornAfter,
 		Type: a.Type, Before: a.Before, After: a.After, Confidence: a.Confidence,
 		Status: a.Status, Source: a.Source, Citation: a.Citation, Subject: a.Subject, Birthplace: a.Birthplace,
@@ -189,11 +223,27 @@ func (b *mcpArchiveBackend) query(a *glxmcp.QueryArgs) (any, error) {
 	start := min(a.Offset, len(result.Entities))
 	end := start + min(a.Limit, len(result.Entities)-start)
 	result.Entities = result.Entities[start:end]
+	// Normalize only the returned page while still inside serialized dispatch.
+	// Encoding each entity is a cancellation boundary rather than deferring an
+	// entire page's expensive YAML round trips to the SDK's output marshaler.
+	for i := range result.Entities {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		encoded, err := marshalArchiveJSON(result.Entities[i].Entity)
+		if err != nil {
+			return nil, err
+		}
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		result.Entities[i].encoded = encoded
+	}
 
 	return &mcpQueryResult{queryJSONResult: result, Offset: a.Offset, Returned: end - start, HasMore: end < result.Count}, nil
 }
 
-func (b *mcpArchiveBackend) analyze(a *glxmcp.AnalyzeArgs) (any, error) {
+func (b *mcpArchiveBackend) analyzeContext(ctx context.Context, a *glxmcp.AnalyzeArgs) (any, error) {
 	if a.Person != "" {
 		id, _, err := resolveJSONPerson(b.archive, a.Person)
 		if err != nil {
@@ -202,10 +252,10 @@ func (b *mcpArchiveBackend) analyze(a *glxmcp.AnalyzeArgs) (any, error) {
 		a.Person = id
 	}
 
-	return buildAnalysisJSON(b.archive, a.Person, a.Check)
+	return buildAnalysisJSONContext(ctx, b.archive, a.Person, a.Check)
 }
 
-func (b *mcpArchiveBackend) path(a *glxmcp.PathArgs) (any, error) {
+func (b *mcpArchiveBackend) pathContext(ctx context.Context, a *glxmcp.PathArgs) (any, error) {
 	if strings.TrimSpace(a.From) == "" || strings.TrimSpace(a.To) == "" {
 		return nil, errMCPEndpoints
 	}
@@ -226,21 +276,29 @@ func (b *mcpArchiveBackend) path(a *glxmcp.PathArgs) (any, error) {
 	if fromID == toID {
 		return nil, fmt.Errorf("%w: both resolve to %s", errMCPEndpoints, fromID)
 	}
-	adj := buildPathAdjacency(b.archive)
+	adj, err := buildPathAdjacencyContext(ctx, b.archive)
+	if err != nil {
+		return nil, err
+	}
 	if a.AcceptedOnly {
 		adj = acceptedPathAdjacency(adj)
 	}
 
-	return buildPathResult(fromID, toID, bfsPath(fromID, toID, adj, a.MaxHops), b.archive), nil
+	path, err := bfsPathContext(ctx, fromID, toID, adj, a.MaxHops)
+	if err != nil {
+		return nil, err
+	}
+
+	return buildPathResult(fromID, toID, path, b.archive), ctx.Err()
 }
 
-func (b *mcpArchiveBackend) cluster(a *glxmcp.ClusterArgs) (any, error) {
+func (b *mcpArchiveBackend) clusterContext(ctx context.Context, a *glxmcp.ClusterArgs) (any, error) {
 	id, _, err := resolveJSONPerson(b.archive, a.Person)
 	if err != nil {
 		return nil, err
 	}
 
-	return buildCluster(id, b.archive, a.Place, a.Before, a.After), nil
+	return buildClusterContext(ctx, id, b.archive, a.Place, a.Before, a.After)
 }
 
 func mcpVocabularies(archive *glxlib.GLXFile) (map[string]any, error) {
@@ -259,14 +317,17 @@ func mcpVocabularies(archive *glxlib.GLXFile) (map[string]any, error) {
 	return ParseYAMLFile(data)
 }
 
-func (b *mcpArchiveBackend) validate(a *glxmcp.ValidateArgs) (any, error) {
+func (b *mcpArchiveBackend) validateContext(ctx context.Context, a *glxmcp.ValidateArgs) (any, error) {
 	if b.validation == nil {
-		result, err := buildValidationJSON(b.archive, true)
+		result, err := buildValidationJSONContext(ctx, b.archive, true)
 		if err != nil {
 			return nil, err
 		}
 		result.DuplicateIDs = append(result.DuplicateIDs, b.duplicates...)
 		result.Valid = result.Valid && len(result.DuplicateIDs) == 0
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		b.validation = result
 	}
 	result := *b.validation

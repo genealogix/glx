@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -51,17 +52,33 @@ func archiveEntityCounts(archive *glxlib.GLXFile) map[string]int {
 }
 
 func buildStatsJSON(archive *glxlib.GLXFile) (*statsJSONResult, error) {
+	return buildStatsJSONContext(context.Background(), archive)
+}
+
+func buildStatsJSONContext(ctx context.Context, archive *glxlib.GLXFile) (*statsJSONResult, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if archive == nil {
 		return nil, glxlib.ErrNilArchive
 	}
 	confidence := make(map[string]int)
 	for _, assertion := range archive.Assertions {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		if assertion == nil {
 			continue
 		}
 		confidence[assertion.Confidence]++
 	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	coverage := glxlib.ComputeAssertionCoverage(archive)
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 
 	return &statsJSONResult{
 		EntityCounts: archiveEntityCounts(archive), Confidence: confidence,

@@ -464,7 +464,9 @@ func writeCache(root string, archive *glxlib.GLXFile, duplicates []string) error
 // positioned to read the archive body. The caller owns the file and must close
 // it.
 func openCache(root string) (*os.File, *gob.Decoder, *CacheHeader, error) {
-	f, err := os.Open(cachePath(root))
+	// Nonblocking open plus descriptor validation prevents a FIFO (including
+	// one swapped in between lookup and open) from hanging cache consumers.
+	f, err := os.OpenFile(cachePath(root), os.O_RDONLY|mcpWatchNonblock, 0)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil, nil, ErrCacheNotFound
@@ -476,7 +478,18 @@ func openCache(root string) (*os.File, *gob.Decoder, *CacheHeader, error) {
 	// Refuse an implausibly large cache before decoding any of it (the cache may
 	// be a hostile file in a shared repo, and gob is not safe for untrusted
 	// input); the YAML parse runs instead.
-	if info, statErr := f.Stat(); statErr == nil && info.Size() > maxCacheFileBytes {
+	info, statErr := f.Stat()
+	if statErr != nil {
+		_ = f.Close()
+
+		return nil, nil, nil, statErr
+	}
+	if !info.Mode().IsRegular() {
+		_ = f.Close()
+
+		return nil, nil, nil, ErrNotCacheFile
+	}
+	if info.Size() > maxCacheFileBytes {
 		_ = f.Close()
 
 		return nil, nil, nil, ErrCacheTooLarge

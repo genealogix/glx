@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 
+	glxlib "github.com/genealogix/glx/go-glx"
 	glxmcp "github.com/genealogix/glx/mcp"
 )
 
@@ -55,7 +56,11 @@ func (b *mcpArchiveBackend) tree(ctx context.Context, a glxmcp.TreeArgs, ancesto
 	if err != nil {
 		return nil, err
 	}
-	walker := mcpTreeWalker{tree: newTreeContext(b.archive), ancestors: ancestors, maxDepth: a.Generations}
+	tree, err := newMCPTreeContext(ctx, b.archive)
+	if err != nil {
+		return nil, err
+	}
+	walker := mcpTreeWalker{tree: tree, ancestors: ancestors, maxDepth: a.Generations}
 	root, err := walker.build(ctx, id, 0, map[string]bool{})
 	if err != nil {
 		return nil, err
@@ -104,4 +109,32 @@ func (w *mcpTreeWalker) build(ctx context.Context, id string, depth int, visited
 	}
 
 	return node, nil
+}
+
+func newMCPTreeContext(ctx context.Context, archive *glxlib.GLXFile) (*treeContext, error) {
+	links, err := glxlib.ParentChildLinksContext(ctx, archive, nil)
+	if err != nil {
+		return nil, err
+	}
+	tree := &treeContext{archive: archive, parents: make(map[string][]treeRelPerson), children: make(map[string][]treeRelPerson)}
+	for _, link := range links {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		if link.Standing == glxlib.RelationshipStandingDisproven {
+			continue
+		}
+		tree.parents[link.ChildID] = append(tree.parents[link.ChildID], treeRelPersonFromLink(&link, link.ParentID))
+		tree.children[link.ParentID] = append(tree.children[link.ParentID], treeRelPersonFromLink(&link, link.ChildID))
+	}
+	for _, index := range []map[string][]treeRelPerson{tree.parents, tree.children} {
+		for id := range index {
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
+			sortRelatedPersons(index[id])
+		}
+	}
+
+	return tree, ctx.Err()
 }

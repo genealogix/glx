@@ -31,6 +31,8 @@ import (
 // diagnostics to stdout, modify archive data, or interpret archive text as code.
 // Besides the 14 tools, the vocabularies operation serves the vocabulary resource.
 // Results must be JSON-serializable objects. Errors become MCP tool errors.
+// Implementations must check ctx during expensive work. Cancellation does not
+// preempt Go code: the serialization gate remains held until CallTool returns.
 type Backend interface {
 	CallTool(context.Context, string, json.RawMessage) (any, error)
 }
@@ -107,7 +109,12 @@ func (b *serialBackend) CallTool(ctx context.Context, name string, args json.Raw
 		return nil, err
 	}
 
-	return b.Backend.CallTool(ctx, name, args)
+	result, err = b.Backend.CallTool(ctx, name, args)
+	if canceled := ctx.Err(); canceled != nil {
+		return nil, canceled
+	}
+
+	return result, err
 }
 
 func addTool[In any](s *mcpsdk.Server, backend Backend, name, description string) {
@@ -121,8 +128,15 @@ func addTool[In any](s *mcpsdk.Server, backend Backend, name, description string
 			return nil, nil, fmt.Errorf("encode %s arguments: %w", name, err)
 		}
 		result, err := backend.CallTool(ctx, name, args)
+		if err != nil {
+			return nil, nil, err
+		}
+		data, err := marshalResult(ctx, result)
+		if err != nil {
+			return nil, nil, err
+		}
 
-		return nil, result, err
+		return &mcpsdk.CallToolResult{StructuredContent: data, Content: []mcpsdk.Content{&mcpsdk.TextContent{Text: string(data)}}}, nil, nil
 	})
 }
 
@@ -132,13 +146,28 @@ func addResource(s *mcpsdk.Server, backend Backend, uri, name, operation string)
 		if err != nil {
 			return nil, err
 		}
-		data, err := json.Marshal(result)
+		data, err := marshalResult(ctx, result)
 		if err != nil {
 			return nil, err
 		}
 
 		return &mcpsdk.ReadResourceResult{Contents: []*mcpsdk.ResourceContents{{URI: uri, MIMEType: "application/json", Text: string(data)}}}, nil
 	})
+}
+
+// marshalResult checks cancellation around encoding so a request canceled
+// during output conversion cannot be reported as a successful tool/resource call.
+// Expensive custom marshalers must also cooperate between their own units of work.
+func marshalResult(ctx context.Context, result any) (json.RawMessage, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	data, err := json.Marshal(result)
+	if canceled := ctx.Err(); canceled != nil {
+		return nil, canceled
+	}
+
+	return data, err
 }
 
 func researchPrompt(_ context.Context, _ *mcpsdk.GetPromptRequest) (*mcpsdk.GetPromptResult, error) {

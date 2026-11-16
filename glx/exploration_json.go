@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -40,8 +41,9 @@ const (
 )
 
 type queryJSONEntity struct {
-	ID     string `json:"id"`
-	Entity any    `json:"entity"`
+	ID      string `json:"id"`
+	Entity  any    `json:"entity"`
+	encoded json.RawMessage
 }
 type queryJSONResult struct {
 	EntityType glxlib.EntityType `json:"entity_type"`
@@ -51,6 +53,13 @@ type queryJSONResult struct {
 
 // buildQueryJSON returns complete matching entities, not rendered table rows.
 func buildQueryJSON(archive *glxlib.GLXFile, entityType glxlib.EntityType, opts *queryOpts) (*queryJSONResult, error) {
+	return buildQueryJSONContext(context.Background(), archive, entityType, opts)
+}
+
+func buildQueryJSONContext(ctx context.Context, archive *glxlib.GLXFile, entityType glxlib.EntityType, opts *queryOpts) (*queryJSONResult, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if archive == nil {
 		return nil, glxlib.ErrNilArchive
 	}
@@ -64,43 +73,125 @@ func buildQueryJSON(archive *glxlib.GLXFile, entityType glxlib.EntityType, opts 
 	localOpts.Name = strings.ToLower(localOpts.Name)
 	opts = &localOpts
 	result := &queryJSONResult{EntityType: entityType, Entities: []queryJSONEntity{}}
-	switch entityType {
-	case glxlib.EntityTypePersons:
-		appendQueryJSON(result, archive.Persons, archive, opts)
-	case glxlib.EntityTypeEvents:
-		appendQueryJSON(result, archive.Events, archive, opts)
-	case glxlib.EntityTypeAssertions:
-		appendQueryJSON(result, archive.Assertions, archive, opts)
-	case glxlib.EntityTypeSources:
-		appendQueryJSON(result, archive.Sources, archive, opts)
-	case glxlib.EntityTypeRelationships:
-		appendQueryJSON(result, archive.Relationships, archive, opts)
-	case glxlib.EntityTypePlaces:
-		appendQueryJSON(result, archive.Places, archive, opts)
-	case glxlib.EntityTypeCitations:
-		appendQueryJSON(result, archive.Citations, archive, opts)
-	case glxlib.EntityTypeRepositories:
-		appendQueryJSON(result, archive.Repositories, archive, opts)
-	case glxlib.EntityTypeMedia:
-		appendQueryJSON(result, archive.Media, archive, opts)
-	case glxlib.EntityTypeResearchLogs:
-		appendQueryJSON(result, archive.ResearchLogs, archive, opts)
-	case glxlib.EntityTypeStudies:
-		appendQueryJSON(result, archive.Studies, archive, opts)
+	var births map[string]*glxlib.Event
+	if entityType == glxlib.EntityTypePersons && (opts.BornBefore > 0 || opts.BornAfter > 0 || opts.Birthplace != "") {
+		var err error
+		births, err = queryBirthIndex(ctx, archive)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if err := collectQueryJSONContext(ctx, result, archive, opts, births); err != nil {
+		return nil, err
 	}
 	result.Count = len(result.Entities)
 
 	return result, nil
 }
 
-func appendQueryJSON[T any](result *queryJSONResult, entities map[string]*T, archive *glxlib.GLXFile, opts *queryOpts) {
+func collectQueryJSONContext(ctx context.Context, result *queryJSONResult, archive *glxlib.GLXFile, opts *queryOpts, births map[string]*glxlib.Event) error {
+	switch result.EntityType {
+	case glxlib.EntityTypePersons:
+		return appendQueryJSON(ctx, result, archive.Persons, archive, opts, births)
+	case glxlib.EntityTypeEvents:
+		return appendQueryJSON(ctx, result, archive.Events, archive, opts, births)
+	case glxlib.EntityTypeAssertions:
+		return appendQueryJSON(ctx, result, archive.Assertions, archive, opts, births)
+	case glxlib.EntityTypeSources:
+		return appendQueryJSON(ctx, result, archive.Sources, archive, opts, births)
+	case glxlib.EntityTypeRelationships:
+		return appendQueryJSON(ctx, result, archive.Relationships, archive, opts, births)
+	case glxlib.EntityTypePlaces:
+		return appendQueryJSON(ctx, result, archive.Places, archive, opts, births)
+	case glxlib.EntityTypeCitations:
+		return appendQueryJSON(ctx, result, archive.Citations, archive, opts, births)
+	case glxlib.EntityTypeRepositories:
+		return appendQueryJSON(ctx, result, archive.Repositories, archive, opts, births)
+	case glxlib.EntityTypeMedia:
+		return appendQueryJSON(ctx, result, archive.Media, archive, opts, births)
+	case glxlib.EntityTypeResearchLogs:
+		return appendQueryJSON(ctx, result, archive.ResearchLogs, archive, opts, births)
+	case glxlib.EntityTypeStudies:
+		return appendQueryJSON(ctx, result, archive.Studies, archive, opts, births)
+	}
+
+	return nil
+}
+
+func appendQueryJSON[T any](ctx context.Context, result *queryJSONResult, entities map[string]*T, archive *glxlib.GLXFile, opts *queryOpts, births map[string]*glxlib.Event) error {
 	for _, id := range sortedKeys(entities) {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		entity := entities[id]
-		if entity != nil && matchesQueryEntity(archive, id, entity, opts) {
+		if entity != nil && matchesIndexedQueryEntity(archive, id, entity, opts, births) {
 			result.Entities = append(result.Entities, queryJSONEntity{ID: id, Entity: entity})
 		}
 	}
+
+	return ctx.Err()
 }
+
+// queryBirthIndex preserves FindPersonEvent's lowest-ID birth and principal
+// role rules while avoiding an archive-wide event sort/scan for every person.
+func queryBirthIndex(ctx context.Context, archive *glxlib.GLXFile) (map[string]*glxlib.Event, error) {
+	births := make(map[string]*glxlib.Event)
+	for _, id := range sortedKeys(archive.Events) {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		event := archive.Events[id]
+		if event == nil || event.Type != glxlib.EventTypeBirth {
+			continue
+		}
+		for _, participant := range event.Participants {
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
+			switch participant.Role {
+			case "", glxlib.ParticipantRolePrincipal, glxlib.ParticipantRoleSubject, glxlib.ParticipantRoleChild:
+				if births[participant.Person] == nil {
+					births[participant.Person] = event
+				}
+			}
+		}
+	}
+
+	return births, ctx.Err()
+}
+
+func matchesIndexedQueryEntity(archive *glxlib.GLXFile, id string, entity any, opts *queryOpts, births map[string]*glxlib.Event) bool {
+	person, ok := entity.(*glxlib.Person)
+	if !ok || births == nil {
+		return matchesQueryEntity(archive, id, entity, opts)
+	}
+	local := *opts
+	local.BornBefore, local.BornAfter, local.Birthplace = 0, 0, ""
+	if !personMatchesQuery(archive, id, person, &local) {
+		return false
+	}
+	event := births[id]
+	if opts.Birthplace != "" {
+		if event == nil || event.PlaceID == "" {
+			return false
+		}
+		needle := strings.ToLower(opts.Birthplace)
+		matched := containsFold(event.PlaceID, needle)
+		if place := archive.Places[event.PlaceID]; place != nil {
+			matched = matched || containsFold(place.Name, needle)
+		}
+		if !matched {
+			return false
+		}
+	}
+	year := 0
+	if event != nil {
+		year = extractDateYear(string(event.Date))
+	}
+
+	return matchesQueryYear(year, opts.BornBefore, opts.BornAfter)
+}
+
 func explorationJSONEnabled(flags []bool) bool { return len(flags) > 0 && flags[0] }
 
 func matchesQueryEntity(archive *glxlib.GLXFile, id string, entity any, opts *queryOpts) bool {
@@ -268,20 +359,49 @@ type summaryJSONResult struct {
 }
 
 func buildSummaryJSON(archive *glxlib.GLXFile, personQuery string) (*summaryJSONResult, error) {
+	return buildSummaryJSONContext(context.Background(), archive, personQuery)
+}
+
+//nolint:contextcheck // Existing summary helpers are synchronous phases, checked before and after each call.
+func buildSummaryJSONContext(ctx context.Context, archive *glxlib.GLXFile, personQuery string) (*summaryJSONResult, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	id, person, err := resolveJSONPerson(archive, personQuery)
 	if err != nil {
 		return nil, err
 	}
-	result := &summaryJSONResult{PersonID: id, Person: person, Names: extractAllNameVariants(person), Vitals: collectVitals(id, person, archive), Timeline: collectTimelineEntries(id, archive, true), Spouses: findSpouses(id, archive), OtherRelationships: findOtherRelationships(id, archive), Narrative: generateLifeHistory(id, person, archive), Assertions: []queryJSONEntity{}, ResearchLogs: []queryJSONEntity{}}
-	populateSummaryJSONFamily(result, archive)
+	result := &summaryJSONResult{PersonID: id, Person: person, Assertions: []queryJSONEntity{}, ResearchLogs: []queryJSONEntity{}}
+	if err := runContextPhases(
+		ctx,
+		func() { result.Names = extractAllNameVariants(person) },
+		func() { result.Vitals = collectVitals(id, person, archive) },
+		func() { result.Timeline = collectTimelineEntries(id, archive, true) },
+		func() { result.Spouses = findSpouses(id, archive) },
+		func() { result.OtherRelationships = findOtherRelationships(id, archive) },
+		func() { result.Narrative = generateLifeHistory(id, person, archive) },
+		func() { populateSummaryJSONFamily(result, archive) },
+	); err != nil {
+		return nil, err
+	}
 	for _, assertionID := range sortedKeys(archive.Assertions) {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		assertion := archive.Assertions[assertionID]
 		if assertion != nil && assertion.Subject.Person == id {
 			result.Assertions = append(result.Assertions, queryJSONEntity{ID: assertionID, Entity: assertion})
 		}
 	}
 	for _, logID := range researchLogIDsForPerson(id, archive) {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		result.ResearchLogs = append(result.ResearchLogs, queryJSONEntity{ID: logID, Entity: archive.ResearchLogs[logID]})
+	}
+
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
 
 	return result, nil
@@ -394,9 +514,13 @@ func marshalArchiveJSON(value any) (json.RawMessage, error) {
 }
 
 func (entry queryJSONEntity) MarshalJSON() ([]byte, error) {
-	entity, err := marshalArchiveJSON(entry.Entity)
-	if err != nil {
-		return nil, err
+	entity := entry.encoded
+	if entity == nil {
+		var err error
+		entity, err = marshalArchiveJSON(entry.Entity)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return json.Marshal(struct {

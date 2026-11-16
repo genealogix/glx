@@ -18,7 +18,9 @@ directory. The server loads one snapshot at startup, reuses a fresh existing
 [binary cache](cli/glx_cache.md), and keeps serving from memory. It never writes
 an archive or cache, even when `GLX_CACHE=auto` is set. Restart the server after
 editing the archive, or enable `--watch` for automatic reloads. Use
-`glx cache build` separately to prepare a cache.
+`glx cache build` separately to prepare a cache. Both default and watch modes
+require regular source files; special files such as named pipes are rejected.
+An unusable cache is ignored in favor of read-only source loading.
 
 ## Watch for edits
 
@@ -35,8 +37,7 @@ identical captures, then replaces the whole in-memory snapshot. Typical reload
 latency is one to two seconds, plus read/parse time. It detects additions,
 changes, renames, removals and vocabulary edits using the normal archive loading
 rules. Dot-prefixed paths (including `.git` and `.glx`), non-GLX files in a
-directory, and external media are ignored. Non-regular source files (such as
-named pipes) are rejected instead of blocking the server. It bypasses the binary cache at both
+directory, and external media are ignored. It bypasses the binary cache at both
 startup and reload, and never creates or updates one. Content polling catches
 changes even if file sizes and modification times stay the same, but reads the
 whole source archive each poll; scans never overlap. For very large archives,
@@ -169,6 +170,26 @@ individual entity fragments, multiple paths, or `--stdin`. It checks the origina
 returns every finding regardless of `--show-first-errors`, and exits nonzero
 when the result is invalid. Like the MCP validator, this JSON mode does not
 check local media-file existence; use the original text mode for that check.
+
+## Cancellation
+
+Cancellation is cooperative, not immediate preemption. Requests canceled while
+waiting for the backend do not run. Active queries check during entity and birth
+index scans and between returned-page entity conversions. Tree and relationship
+path operations check while building graph indexes and traversing edges. Analysis,
+summary, clustering, statistics, and validation check between their processing
+phases; analysis gaps also check between people. Canceled results are discarded,
+and canceled validation does not populate the snapshot's validation cache.
+
+Some existing synchronous operations must finish before cancellation is observed:
+an individual analysis check, summary section, cluster collector, coverage
+calculation, timeline/vitals/citation/place/vocabulary collection, schema or
+semantic validation pass, sorting, and serialization of
+one entity or output value. A large archive or unusually large record can therefore
+delay cancellation. Work is not detached into an orphan goroutine: the backend
+keeps its serialization gate until the active operation has actually stopped.
+Queued requests can still cancel while waiting for that gate. Custom backends
+must observe their supplied context during expensive work as well.
 
 ## Extend the server in Go
 

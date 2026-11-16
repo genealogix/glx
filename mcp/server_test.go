@@ -161,3 +161,85 @@ func TestBackendPanicIsToolErrorAndSessionSurvives(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, result.IsError)
 }
+
+func TestSerialBackendDiscardsResultAfterCancellation(t *testing.T) {
+	for _, backendErr := range []error{nil, errTestPersonNotFound} {
+		ctx, cancel := context.WithCancel(t.Context())
+		b := &serialBackend{Backend: BackendFunc(func(context.Context, string, json.RawMessage) (any, error) {
+			// Model an operation that completes its current unit of work after
+			// cancellation instead of checking context in every domain loop.
+			cancel()
+
+			return map[string]bool{"finished": true}, backendErr
+		}), gate: make(chan struct{}, 1)}
+		result, err := b.CallTool(ctx, "analyze", nil)
+		require.ErrorIs(t, err, context.Canceled)
+		require.Nil(t, result, "canceled work must not produce a successful/stale result")
+	}
+}
+
+func TestSerialBackendCancellationKeepsGateUntilWorkEnds(t *testing.T) {
+	started, release := make(chan struct{}), make(chan struct{})
+	var releaseOnce sync.Once
+	releaseWork := func() { releaseOnce.Do(func() { close(release) }) }
+	t.Cleanup(releaseWork)
+	var calls atomic.Int32
+	b := &serialBackend{Backend: BackendFunc(func(context.Context, string, json.RawMessage) (any, error) {
+		if calls.Add(1) == 1 {
+			close(started)
+			<-release
+		}
+
+		return map[string]bool{"finished": true}, nil
+	}), gate: make(chan struct{}, 1)}
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+	done := make(chan error, 1)
+	go func() {
+		_, err := b.CallTool(ctx, "analyze", nil)
+		done <- err
+	}()
+	select {
+	case <-started:
+	case <-time.After(time.Second):
+		t.Fatal("backend did not start")
+	}
+	cancel()
+	waiting, stopWaiting := context.WithTimeout(t.Context(), 10*time.Millisecond)
+	defer stopWaiting()
+	_, err := b.CallTool(waiting, "stats", nil)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.EqualValues(t, 1, calls.Load(), "cancellation must not let another request race the unfinished backend")
+	select {
+	case <-done:
+		t.Fatal("backend work was abandoned while still running")
+	default:
+	}
+	releaseWork()
+	select {
+	case err := <-done:
+		require.ErrorIs(t, err, context.Canceled)
+	case <-time.After(time.Second):
+		t.Fatal("backend did not finish after release")
+	}
+	result, err := b.CallTool(t.Context(), "stats", nil)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.EqualValues(t, 2, calls.Load(), "gate must be reusable once the canceled operation actually finishes")
+}
+
+type cancelDuringJSON struct{ cancel context.CancelFunc }
+
+func (value cancelDuringJSON) MarshalJSON() ([]byte, error) {
+	value.cancel()
+
+	return []byte(`{"finished":true}`), nil
+}
+
+func TestMarshalResultCancellationDuringEncoding(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	data, err := marshalResult(ctx, cancelDuringJSON{cancel: cancel})
+	require.ErrorIs(t, err, context.Canceled)
+	require.Nil(t, data)
+}
