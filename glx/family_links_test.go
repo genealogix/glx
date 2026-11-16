@@ -380,8 +380,11 @@ func TestPublishBirthOrder(t *testing.T) {
 		return &glxlib.Person{Properties: map[string]any{"name": map[string]any{"value": name}}}
 	}
 	baptism := func(id, date string) *glxlib.Event {
-		return &glxlib.Event{Type: glxlib.EventTypeBaptism, Date: glxlib.DateString(date),
-			Participants: []glxlib.Participant{{Person: id, Role: "principal"}}}
+		return &glxlib.Event{
+			Type:         glxlib.EventTypeBaptism,
+			Date:         glxlib.DateString(date),
+			Participants: []glxlib.Participant{{Person: id, Role: "principal"}},
+		}
 	}
 	pc := func(childID string) *glxlib.Relationship {
 		return &glxlib.Relationship{Type: "parent_child", Participants: []glxlib.Participant{
@@ -404,16 +407,17 @@ func TestPublishBirthOrder(t *testing.T) {
 	}
 	idx := newSiteIndex(archive)
 
-	var names []string
-	for _, l := range buildPersonPage("p-f", archive.Persons["p-f"], archive, idx).Children {
-		names = append(names, l.Name)
-	}
-	assert.Equal(t, []string{"Michel Doe", "Anna Doe", "Zacharias Doe"}, names)
-	assert.Equal(t, []string{"p-c", "p-b", "p-a"}, idx.children["p-f"])
+	names := func(links []personLink) []string {
+		out := make([]string, 0, len(links))
+		for _, l := range links {
+			out = append(out, l.Name)
+		}
 
-	names = nil
-	for _, l := range buildPersonPage("p-b", archive.Persons["p-b"], archive, idx).Siblings {
-		names = append(names, l.Name)
+		return out
 	}
-	assert.Equal(t, []string{"Michel Doe", "Zacharias Doe"}, names)
+	assert.Equal(t, []string{"Michel Doe", "Anna Doe", "Zacharias Doe"},
+		names(buildPersonPage("p-f", archive.Persons["p-f"], archive, idx).Children))
+	assert.Equal(t, []string{"p-c", "p-b", "p-a"}, idx.children["p-f"])
+	assert.Equal(t, []string{"Michel Doe", "Zacharias Doe"},
+		names(buildPersonPage("p-b", archive.Persons["p-b"], archive, idx).Siblings))
 }

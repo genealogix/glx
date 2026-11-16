@@ -66,7 +66,7 @@ func NewBirthOrder(archive *GLXFile) *BirthOrder {
 			continue
 		}
 		for _, p := range event.Participants {
-			if p.Person == "" || !(isSubjectRole(p.Role) || isResearchPrincipal(event.Type, p.Role)) {
+			if p.Person == "" || (!isSubjectRole(p.Role) && !isResearchPrincipal(event.Type, p.Role)) {
 				continue
 			}
 			if _, seen := found[p.Person]; !seen {
