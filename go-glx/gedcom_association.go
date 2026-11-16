@@ -37,7 +37,7 @@ func importIndividualAssociations(records []*GEDCOMRecord, conv *ConversionConte
 			}
 			event := matchAssociationEvent(hostID, association, conv)
 			if event != nil {
-				restoreAssociationRole(participant, conv)
+				restoreAssociationRole(participant, association, conv)
 				participant.Notes = slices.DeleteFunc(participant.Notes, func(note string) bool {
 					return gedcom551ContextPattern.MatchString(note)
 				})
@@ -52,7 +52,10 @@ func importIndividualAssociations(records []*GEDCOMRecord, conv *ConversionConte
 			notes := slices.Clone(participant.Notes)
 			for _, child := range association.SubRecords {
 				if child.Tag == GedcomTagRela && child.Value != "" {
-					notes = append(notes, "GEDCOM RELA: "+child.Value)
+					note := "GEDCOM RELA: " + child.Value
+					if !slices.Contains(notes, note) {
+						notes = append(notes, note)
+					}
 				}
 			}
 			if hostID == participant.Person {
@@ -115,12 +118,23 @@ func matchAssociationEvent(hostID string, association *GEDCOMRecord, conv *Conve
 	return match
 }
 
-func restoreAssociationRole(participant *Participant, conv *ConversionContext) {
+func restoreAssociationRole(participant *Participant, association *GEDCOMRecord, conv *ConversionContext) {
+	neutral := false
+	for _, child := range association.SubRecords {
+		if child.Tag == GedcomTagRela && child.Value == gedcom551NeutralRelation {
+			neutral = true
+
+			break
+		}
+	}
+	if !neutral {
+		return
+	}
 	for _, note := range participant.Notes {
 		if roleLabel, ok := strings.CutPrefix(note, gedcom551EventRolePrefix); ok {
 			if role, found := lookupLabelIndex(conv.GEDCOMIndex.ParticipantRoles, roleLabel); found {
 				participant.Role = role
-				participant.Notes = slices.DeleteFunc(participant.Notes, func(value string) bool { return value == note })
+				participant.Notes = slices.DeleteFunc(participant.Notes, func(value string) bool { return value == note || value == "GEDCOM RELA: "+gedcom551NeutralRelation })
 
 				return
 			}

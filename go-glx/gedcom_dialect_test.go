@@ -185,3 +185,22 @@ func TestGEDCOM551_AssociationFamilyAndAmbiguousContext(t *testing.T) {
 	}
 	assert.NotEmpty(t, result.Statistics.Warnings)
 }
+
+func TestGEDCOM551_NeutralAssociationRoleComesFromEventRoleNote(t *testing.T) {
+	for _, relation := range []string{"Participant", "Godparent"} {
+		gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n0 @I1@ INDI\n1 NAME Child /One/\n1 BAPM\n2 DATE 1800\n1 ASSO @I2@\n2 RELA " + relation + "\n2 NOTE Event role: Informant\n2 NOTE Original note\n2 NOTE Event: Baptism (BAPM; e); date: 1800\n0 @I2@ INDI\n1 NAME Associate /Two/\n0 TRLR\n"
+		archive, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+		require.NoError(t, err)
+		for _, event := range archive.Events {
+			require.Len(t, event.Participants, 2)
+			associate := event.Participants[1]
+			assert.Contains(t, associate.Notes, "Original note")
+			if relation == "Participant" {
+				assert.Equal(t, "informant", associate.Role)
+				assert.Equal(t, NoteList{"Original note"}, associate.Notes)
+			} else {
+				assert.Equal(t, "godparent", associate.Role, "a real RELA takes precedence over the context note")
+			}
+		}
+	}
+}
