@@ -207,8 +207,15 @@ func checkEventAfterDeath(archive *glxlib.GLXFile) []AnalysisIssue {
 }
 
 func mentionedRelativeAtEvent(eventType, role string, roles map[string]*glxlib.VocabularyEntry) bool {
+	declared := strings.TrimSpace(role)
+	role = strings.ToLower(declared)
+	eventType = strings.ToLower(strings.TrimSpace(eventType))
 	// Explicit presence evidence overrides the contextual reference heuristic.
-	if definition := roles[role]; definition != nil && definition.ImpliesPresence != nil {
+	definition := roles[declared]
+	if definition == nil {
+		definition = roles[role]
+	}
+	if definition != nil && definition.ImpliesPresence != nil {
 		return !*definition.ImpliesPresence
 	}
 	if glxlib.IsParentSideRole(role) && (eventType == glxlib.EventTypeMarriage || migrationDeathEventTypes[eventType]) {
@@ -769,7 +776,7 @@ func checkVitalChronology(archive *glxlib.GLXFile) []AnalysisIssue {
 			conflict := &conflicts[i]
 			issues = append(issues, AnalysisIssue{
 				Category: "consistency", Severity: "high", Person: id,
-				Message: fmt.Sprintf("%s — %s: %s", personName(archive, id), conflict.Subject, conflict.Values[0].Value+"; "+conflict.Values[1].Value),
+				Message: fmt.Sprintf("%s — %s: %s", personName(archive, id), conflict.Subject, conflictValuesString(conflict)),
 			})
 		}
 	}

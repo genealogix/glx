@@ -494,15 +494,18 @@ func dateSortKey(dateStr string) string {
 	bounds := point.ChronologyBounds(0)
 	if bounds.Known {
 		rank := 1
+		sortPoint := bounds.Outer.Start
 		switch d.Qualifier() {
 		case glxdate.QualifierBefore:
+			sortPoint = bounds.Outer.End
 			rank = 0
 		case glxdate.QualifierAfter:
 			bounds = d.ChronologyBounds(0)
+			sortPoint = bounds.Outer.Start
 			rank = 0 // after the entire written day/month/year, before the next observation
 		}
 
-		return fmt.Sprintf("%09d:%d", bounds.Outer.Start+dateSortDayOffset, rank)
+		return fmt.Sprintf("%09d:%d", sortPoint+dateSortDayOffset, rank)
 	}
 
 	key := fmt.Sprintf("%05d", year)
