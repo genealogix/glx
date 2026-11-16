@@ -124,15 +124,15 @@ func (glx *GLXFile) validateDuplicateParticipants(result *ValidationResult) {
 
 				continue
 			}
-			role := participant.Role
-			if role == "" {
-				role = "(none)"
+			role := "with role '" + participant.Role + "'"
+			if participant.Role == "" {
+				role = "with no role"
 			}
 			result.Warnings = append(result.Warnings, ValidationWarning{
 				SourceType: entityType,
 				SourceID:   id,
 				Field:      fmt.Sprintf("participants[%d]", i),
-				Message: fmt.Sprintf("%s[%s].participants[%d]: person '%s' already appears with role '%s' at participants[%d]; fold the rows into one if they record the same person",
+				Message: fmt.Sprintf("%s[%s].participants[%d]: person '%s' already appears %s at participants[%d]; fold the rows into one if they record the same person",
 					entityType, id, i, participant.Person, role, j),
 			})
 		}

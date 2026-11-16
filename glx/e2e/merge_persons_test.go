@@ -304,8 +304,10 @@ func TestMergePersons_ReportsDuplicateEventParticipant(t *testing.T) {
 		{"add", "person", "--id", "p-child", "--given", "Anna"},
 		{"add", "person", "--id", "p-elisabeth", "--given", "Elisabeth"},
 		{"add", "person", "--id", "p-catharina", "--given", "Catharina"},
-		{"add", "event", "--id", "ev-bapt", "--type", "baptism", "--date", "1641-07-11", "--principal", "p-child",
-			"--participant", "p-elisabeth:godparent", "--participant", "p-catharina:godparent"},
+		{
+			"add", "event", "--id", "ev-bapt", "--type", "baptism", "--date", "1641-07-11", "--principal", "p-child",
+			"--participant", "p-elisabeth:godparent", "--participant", "p-catharina:godparent",
+		},
 	} {
 		res := runGLX(t, archive, args...)
 		require.Equal(t, 0, res.exitCode, res.stderr)
