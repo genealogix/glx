@@ -331,7 +331,7 @@ func (idx *siteIndex) indexParentChild() {
 	// The descendant chart draws children in birth order, as the family
 	// groups on each person page list them.
 	for _, kids := range idx.children {
-		idx.family.birthOrder.Sort(kids)
+		idx.family.birthOrder().Sort(kids)
 	}
 }
 

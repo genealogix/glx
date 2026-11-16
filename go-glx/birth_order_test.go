@@ -41,6 +41,11 @@ func TestBirthOrder_Sort(t *testing.T) {
 		// An undated birth falls back to the dated baptism.
 		"e6": birthOrderEvent(EventTypeBirth, "", "p-undated-birth", ParticipantRolePrincipal),
 		"e7": birthOrderEvent(EventTypeBaptism, "1705-01-01", "p-undated-birth", ParticipantRolePrincipal),
+		// A godchild's baptism is their own record.
+		"e11": birthOrderEvent(EventTypeBaptism, "1690-02-02", "p-godchild", ParticipantRoleGodchild),
+		// Of two dated births, the lowest event ID wins.
+		"e12": birthOrderEvent(EventTypeBirth, "1720", "p-two", ParticipantRolePrincipal),
+		"e13": birthOrderEvent(EventTypeBirth, "1600", "p-two", ParticipantRolePrincipal),
 		// A witness's own date is not the witness's birth.
 		"e8": birthOrderEvent(EventTypeBirth, "1600", "p-witness", ParticipantRoleWitness),
 		// A year-only date sorts at the start of its year; same day ties by ID.
@@ -48,12 +53,12 @@ func TestBirthOrder_Sort(t *testing.T) {
 		"e10": birthOrderEvent(EventTypeBirth, "1688-11-04", "p-twin", ParticipantRolePrincipal),
 	}}
 
-	ids := []string{"p-witness", "p-chr", "p-birth", "p-none", "p-undated-birth", "p-year", "p-twin", "p-bapt"}
+	ids := []string{"p-two", "p-godchild", "p-witness", "p-chr", "p-birth", "p-none", "p-undated-birth", "p-year", "p-twin", "p-bapt"}
 	NewBirthOrder(archive).Sort(ids)
 
 	assert.Equal(t, []string{
-		"p-bapt", "p-twin", "p-birth", "p-undated-birth", "p-year", "p-chr",
-		"p-none", "p-witness",
+		"p-bapt", "p-twin", "p-godchild", "p-birth", "p-undated-birth", "p-year", "p-chr",
+		"p-two", "p-none", "p-witness",
 	}, ids)
 }
 

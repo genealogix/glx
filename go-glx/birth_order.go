@@ -33,27 +33,26 @@ type BirthOrder struct {
 
 // NewBirthOrder indexes each person's birth date, falling back to their
 // christening and then their baptism when the birth is missing or undated.
-// Only events where the person is the subject count, and among several dated
-// events of one type the lowest event ID wins, as in FindPersonEvent.
+// Only the person's own records count (ClassifyParticipation's OwnRecord, so
+// a godchild's baptism is theirs and a witness's is not), and among several
+// dated events of one type the lowest event ID wins, as in FindPersonEvent.
+// It makes one pass over the archive's events.
 func NewBirthOrder(archive *GLXFile) *BirthOrder {
 	bo := &BirthOrder{keys: map[string]int{}}
 	if archive == nil {
 		return bo
 	}
 
-	ids := make([]string, 0, len(archive.Events))
-	for id := range archive.Events {
-		ids = append(ids, id)
+	// byType[t][person] is the earliest-ID dated event of type t.
+	type dated struct {
+		eventID string
+		key     int
 	}
-	sort.Strings(ids)
-
-	// byType[t][person] is the key from the first dated event of type t.
-	byType := make(map[string]map[string]int, len(birthOrderEventTypes))
+	byType := make(map[string]map[string]dated, len(birthOrderEventTypes))
 	for _, t := range birthOrderEventTypes {
-		byType[t] = map[string]int{}
+		byType[t] = map[string]dated{}
 	}
-	for _, id := range ids {
-		event := archive.Events[id]
+	for id, event := range archive.Events {
 		if event == nil {
 			continue
 		}
@@ -61,24 +60,24 @@ func NewBirthOrder(archive *GLXFile) *BirthOrder {
 		if !ok {
 			continue
 		}
-		key, dated := birthOrderKey(event.Date)
-		if !dated {
+		key, ok := birthOrderKey(event.Date)
+		if !ok {
 			continue
 		}
 		for _, p := range event.Participants {
-			if p.Person == "" || (!isSubjectRole(p.Role) && !isResearchPrincipal(event.Type, p.Role)) {
+			if p.Person == "" || !ClassifyParticipation(event.Type, p.Role, nil).OwnRecord {
 				continue
 			}
-			if _, seen := found[p.Person]; !seen {
-				found[p.Person] = key
+			if prev, seen := found[p.Person]; !seen || id < prev.eventID {
+				found[p.Person] = dated{eventID: id, key: key}
 			}
 		}
 	}
 
 	for _, t := range birthOrderEventTypes {
-		for person, key := range byType[t] {
+		for person, d := range byType[t] {
 			if _, ok := bo.keys[person]; !ok {
-				bo.keys[person] = key
+				bo.keys[person] = d.key
 			}
 		}
 	}

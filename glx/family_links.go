@@ -58,7 +58,7 @@ type siblingEdge struct {
 type familyLinks struct {
 	archive    *glxlib.GLXFile
 	standings  *glxlib.RelationshipStandingIndex
-	birthOrder *glxlib.BirthOrder                  // orders children and siblings
+	order      *glxlib.BirthOrder                  // built on first use by birthOrder
 	surviving  []glxlib.ParentChildLink            // non-disproven links, in relationship order
 	parentsOf  map[string][]glxlib.ParentChildLink // child ID -> surviving links
 	childrenOf map[string][]glxlib.ParentChildLink // parent ID -> surviving links
@@ -71,7 +71,6 @@ func newFamilyLinks(archive *glxlib.GLXFile) *familyLinks {
 	f := &familyLinks{
 		archive:    archive,
 		standings:  standings,
-		birthOrder: glxlib.NewBirthOrder(archive),
 		parentsOf:  map[string][]glxlib.ParentChildLink{},
 		childrenOf: map[string][]glxlib.ParentChildLink{},
 		excluded:   map[string][]glxlib.ParentChildLink{},
@@ -88,6 +87,16 @@ func newFamilyLinks(archive *glxlib.GLXFile) *familyLinks {
 	}
 
 	return f
+}
+
+// birthOrder returns the archive's birth order, building it on first use so
+// callers that only need parents never pay for it.
+func (f *familyLinks) birthOrder() *glxlib.BirthOrder {
+	if f.order == nil {
+		f.order = glxlib.NewBirthOrder(f.archive)
+	}
+
+	return f.order
 }
 
 // mergeEdges folds links into one edge per relative, in first-seen order.
@@ -123,7 +132,7 @@ func (f *familyLinks) parents(personID string) []familyEdge {
 func (f *familyLinks) children(personID string) []familyEdge {
 	edges := mergeEdges(f.childrenOf[personID], func(l glxlib.ParentChildLink) string { return l.ChildID })
 	sort.SliceStable(edges, func(i, j int) bool {
-		return f.birthOrder.Less(edges[i].PersonID, edges[j].PersonID)
+		return f.birthOrder().Less(edges[i].PersonID, edges[j].PersonID)
 	})
 
 	return edges
@@ -185,7 +194,7 @@ func (f *familyLinks) siblings(personID string) []siblingEdge {
 	for id := range cands {
 		ids = append(ids, id)
 	}
-	f.birthOrder.Sort(ids)
+	f.birthOrder().Sort(ids)
 
 	out := make([]siblingEdge, 0, len(ids))
 	for _, id := range ids {
