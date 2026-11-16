@@ -20,7 +20,8 @@ an archive or cache, even when `GLX_CACHE=auto` is set. Restart the server after
 editing the archive, or enable `--watch` for automatic reloads. Use
 `glx cache build` separately to prepare a cache. Both default and watch modes
 require regular source files; special files such as named pipes are rejected.
-An unusable cache is ignored in favor of read-only source loading.
+An unusable cache, including a cache path that resolves outside the selected
+archive, is ignored in favor of read-only source loading.
 
 ## Watch for edits
 
@@ -187,7 +188,9 @@ calculation, timeline/vitals/citation/place/vocabulary collection, schema or
 semantic validation pass, sorting, and serialization of
 one entity or output value. A large archive or unusually large record can therefore
 delay cancellation. Work is not detached into an orphan goroutine: the backend
-keeps its serialization gate until the active operation has actually stopped.
+keeps its serialization gate until the active operation and its result JSON
+encoding have actually stopped. Result bytes are detached from backend-owned
+values before another tool or resource call can begin.
 Queued requests can still cancel while waiting for that gate. Custom backends
 must observe their supplied context during expensive work as well.
 

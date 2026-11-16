@@ -464,9 +464,22 @@ func writeCache(root string, archive *glxlib.GLXFile, duplicates []string) error
 // positioned to read the archive body. The caller owns the file and must close
 // it.
 func openCache(root string) (*os.File, *gob.Decoder, *CacheHeader, error) {
+	// Anchor cache traversal at the archive root, including both the .glx
+	// directory and cache file. os.Root contains symlink resolution even when
+	// a path component is replaced during the open.
+	archiveRoot, err := os.OpenRoot(root)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil, nil, ErrCacheNotFound
+		}
+
+		return nil, nil, nil, err
+	}
+	defer func() { _ = archiveRoot.Close() }()
+
 	// Nonblocking open plus descriptor validation prevents a FIFO (including
 	// one swapped in between lookup and open) from hanging cache consumers.
-	f, err := os.OpenFile(cachePath(root), os.O_RDONLY|mcpWatchNonblock, 0)
+	f, err := archiveRoot.OpenFile(filepath.Join(cacheDirName, cacheFileName), os.O_RDONLY|mcpWatchNonblock, 0)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil, nil, ErrCacheNotFound

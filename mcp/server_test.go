@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -73,6 +74,9 @@ func TestServerCatalogAndStructuredTools(t *testing.T) {
 		text, ok := result.Content[0].(*mcpsdk.TextContent)
 		require.True(t, ok)
 		require.True(t, json.Valid([]byte(text.Text)))
+		structured, encodeErr := json.Marshal(result.StructuredContent)
+		require.NoError(t, encodeErr)
+		require.JSONEq(t, text.Text, string(structured))
 	}
 	require.EqualValues(t, 14, calls.Load())
 	for _, args := range []any{map[string]any{}, map[string]any{"person": 42}, map[string]any{"person": "a", "archive": "/etc/passwd"}} {
@@ -117,7 +121,7 @@ func TestServerErrorsResourcesPromptsAndExtension(t *testing.T) {
 
 func TestSerialBackendAndCancellation(t *testing.T) {
 	var active atomic.Int32
-	b := &serialBackend{Backend: BackendFunc(func(ctx context.Context, name string, args json.RawMessage) (any, error) {
+	b := &serialBackend{backend: BackendFunc(func(ctx context.Context, name string, args json.RawMessage) (any, error) {
 		require.EqualValues(t, 1, active.Add(1))
 		defer active.Add(-1)
 
@@ -125,13 +129,13 @@ func TestSerialBackendAndCancellation(t *testing.T) {
 	}), gate: make(chan struct{}, 1)}
 	var wg sync.WaitGroup
 	for range 20 {
-		wg.Go(func() { _, err := b.CallTool(t.Context(), "stats", nil); require.NoError(t, err) })
+		wg.Go(func() { _, err := b.callJSON(t.Context(), "stats", nil); require.NoError(t, err) })
 	}
 	wg.Wait()
 	b.gate <- struct{}{}
 	ctx, cancel := context.WithTimeout(t.Context(), time.Millisecond)
 	defer cancel()
-	_, err := b.CallTool(ctx, "stats", nil)
+	_, err := b.callJSON(ctx, "stats", nil)
 	require.ErrorIs(t, err, context.DeadlineExceeded)
 	<-b.gate
 }
@@ -165,14 +169,14 @@ func TestBackendPanicIsToolErrorAndSessionSurvives(t *testing.T) {
 func TestSerialBackendDiscardsResultAfterCancellation(t *testing.T) {
 	for _, backendErr := range []error{nil, errTestPersonNotFound} {
 		ctx, cancel := context.WithCancel(t.Context())
-		b := &serialBackend{Backend: BackendFunc(func(context.Context, string, json.RawMessage) (any, error) {
+		b := &serialBackend{backend: BackendFunc(func(context.Context, string, json.RawMessage) (any, error) {
 			// Model an operation that completes its current unit of work after
 			// cancellation instead of checking context in every domain loop.
 			cancel()
 
 			return map[string]bool{"finished": true}, backendErr
 		}), gate: make(chan struct{}, 1)}
-		result, err := b.CallTool(ctx, "analyze", nil)
+		result, err := b.callJSON(ctx, "analyze", nil)
 		require.ErrorIs(t, err, context.Canceled)
 		require.Nil(t, result, "canceled work must not produce a successful/stale result")
 	}
@@ -184,7 +188,7 @@ func TestSerialBackendCancellationKeepsGateUntilWorkEnds(t *testing.T) {
 	releaseWork := func() { releaseOnce.Do(func() { close(release) }) }
 	t.Cleanup(releaseWork)
 	var calls atomic.Int32
-	b := &serialBackend{Backend: BackendFunc(func(context.Context, string, json.RawMessage) (any, error) {
+	b := &serialBackend{backend: BackendFunc(func(context.Context, string, json.RawMessage) (any, error) {
 		if calls.Add(1) == 1 {
 			close(started)
 			<-release
@@ -196,7 +200,7 @@ func TestSerialBackendCancellationKeepsGateUntilWorkEnds(t *testing.T) {
 	t.Cleanup(cancel)
 	done := make(chan error, 1)
 	go func() {
-		_, err := b.CallTool(ctx, "analyze", nil)
+		_, err := b.callJSON(ctx, "analyze", nil)
 		done <- err
 	}()
 	select {
@@ -207,7 +211,7 @@ func TestSerialBackendCancellationKeepsGateUntilWorkEnds(t *testing.T) {
 	cancel()
 	waiting, stopWaiting := context.WithTimeout(t.Context(), 10*time.Millisecond)
 	defer stopWaiting()
-	_, err := b.CallTool(waiting, "stats", nil)
+	_, err := b.callJSON(waiting, "stats", nil)
 	require.ErrorIs(t, err, context.DeadlineExceeded)
 	require.EqualValues(t, 1, calls.Load(), "cancellation must not let another request race the unfinished backend")
 	select {
@@ -222,7 +226,7 @@ func TestSerialBackendCancellationKeepsGateUntilWorkEnds(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("backend did not finish after release")
 	}
-	result, err := b.CallTool(t.Context(), "stats", nil)
+	result, err := b.callJSON(t.Context(), "stats", nil)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.EqualValues(t, 2, calls.Load(), "gate must be reusable once the canceled operation actually finishes")
@@ -242,4 +246,141 @@ func TestMarshalResultCancellationDuringEncoding(t *testing.T) {
 	data, err := marshalResult(ctx, cancelDuringJSON{cancel: cancel})
 	require.ErrorIs(t, err, context.Canceled)
 	require.Nil(t, data)
+}
+
+type blockingJSON struct {
+	started chan struct{}
+	release chan struct{}
+}
+
+func (value blockingJSON) MarshalJSON() ([]byte, error) {
+	close(value.started)
+	<-value.release
+
+	return []byte(`{"finished":true}`), nil
+}
+
+func TestServerSerializesResultEncoding(t *testing.T) {
+	for _, resourceFirst := range []bool{false, true} {
+		t.Run(fmt.Sprint("resource_first=", resourceFirst), func(t *testing.T) {
+			started, release := make(chan struct{}), make(chan struct{})
+			var once sync.Once
+			releaseEncoding := func() { once.Do(func() { close(release) }) }
+			defer releaseEncoding()
+			var calls atomic.Int32
+			server, err := NewServer(BackendFunc(func(context.Context, string, json.RawMessage) (any, error) {
+				if calls.Add(1) == 1 {
+					return blockingJSON{started: started, release: release}, nil
+				}
+
+				return map[string]bool{"finished": true}, nil
+			}), "test")
+			require.NoError(t, err)
+			client := connectTestServer(t, server)
+			done := make(chan error, 1)
+			go func() {
+				if resourceFirst {
+					_, callErr := client.ReadResource(t.Context(), &mcpsdk.ReadResourceParams{URI: "glx://archive/stats"})
+					done <- callErr
+				} else {
+					_, callErr := client.CallTool(t.Context(), &mcpsdk.CallToolParams{Name: "stats"})
+					done <- callErr
+				}
+			}()
+			select {
+			case <-started:
+			case <-time.After(time.Second):
+				t.Fatal("result encoding did not start")
+			}
+			waiting, cancel := context.WithTimeout(t.Context(), 30*time.Millisecond)
+			defer cancel()
+			if resourceFirst {
+				_, err = client.CallTool(waiting, &mcpsdk.CallToolParams{Name: "stats"})
+			} else {
+				_, err = client.ReadResource(waiting, &mcpsdk.ReadResourceParams{URI: "glx://archive/stats"})
+			}
+			require.Error(t, err, "second call must wait for the first result to finish encoding")
+			require.EqualValues(t, 1, calls.Load(), "backend must not overlap a previous result's marshaler")
+			releaseEncoding()
+			require.NoError(t, <-done)
+		})
+	}
+}
+
+func TestSerialBackendCanceledEncodingKeepsGate(t *testing.T) {
+	started, release := make(chan struct{}), make(chan struct{})
+	var once sync.Once
+	releaseEncoding := func() { once.Do(func() { close(release) }) }
+	defer releaseEncoding()
+	var calls atomic.Int32
+	b := &serialBackend{backend: BackendFunc(func(context.Context, string, json.RawMessage) (any, error) {
+		if calls.Add(1) == 1 {
+			return blockingJSON{started: started, release: release}, nil
+		}
+
+		return map[string]bool{"finished": true}, nil
+	}), gate: make(chan struct{}, 1)}
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	type outcome struct {
+		data json.RawMessage
+		err  error
+	}
+	done := make(chan outcome, 1)
+	go func() {
+		data, err := b.callJSON(ctx, "stats", nil)
+		done <- outcome{data: data, err: err}
+	}()
+	select {
+	case <-started:
+	case <-time.After(time.Second):
+		t.Fatal("encoding did not start")
+	}
+	cancel()
+	waiting, stopWaiting := context.WithTimeout(t.Context(), 10*time.Millisecond)
+	defer stopWaiting()
+	_, err := b.callJSON(waiting, "stats", nil)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.EqualValues(t, 1, calls.Load())
+	select {
+	case <-done:
+		t.Fatal("encoding was abandoned before it stopped")
+	default:
+	}
+	releaseEncoding()
+	result := <-done
+	require.ErrorIs(t, result.err, context.Canceled)
+	require.Nil(t, result.data)
+	data, err := b.callJSON(t.Context(), "stats", nil)
+	require.NoError(t, err)
+	require.JSONEq(t, `{"finished":true}`, string(data))
+}
+
+type panicJSON struct{}
+
+func (panicJSON) MarshalJSON() ([]byte, error) {
+	panic("private marshaler panic")
+}
+
+func TestSerialBackendEncodingFailureReleasesGate(t *testing.T) {
+	for _, value := range []any{panicJSON{}, make(chan int)} {
+		var calls int
+		b := &serialBackend{backend: BackendFunc(func(context.Context, string, json.RawMessage) (any, error) {
+			calls++
+			if calls == 1 {
+				return value, nil
+			}
+
+			return map[string]bool{"finished": true}, nil
+		}), gate: make(chan struct{}, 1)}
+		data, err := b.callJSON(t.Context(), "stats", nil)
+		require.Error(t, err)
+		require.NotContains(t, err.Error(), "private marshaler panic")
+		require.Nil(t, data)
+		ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+		data, err = b.callJSON(ctx, "stats", nil)
+		cancel()
+		require.NoError(t, err)
+		require.JSONEq(t, `{"finished":true}`, string(data))
+	}
 }
