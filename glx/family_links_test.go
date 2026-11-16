@@ -371,3 +371,49 @@ func TestPrintFamilySection_CompetingFathersAreAlternatives(t *testing.T) {
 	assert.Contains(t, out, "Mother:           Annie Mary Lewis  (?)\n", "a single mother is no alternative")
 	assert.Contains(t, out, "Excluded:         Jacob Little  (disproven parent)\n")
 }
+
+// Person pages list children and siblings in birth order, with baptisms
+// standing in for missing births, and the descendant chart index agrees
+// (#1504). Names and IDs are both chosen so neither order matches.
+func TestPublishBirthOrder(t *testing.T) {
+	person := func(name string) *glxlib.Person {
+		return &glxlib.Person{Properties: map[string]any{"name": map[string]any{"value": name}}}
+	}
+	baptism := func(id, date string) *glxlib.Event {
+		return &glxlib.Event{Type: glxlib.EventTypeBaptism, Date: glxlib.DateString(date),
+			Participants: []glxlib.Participant{{Person: id, Role: "principal"}}}
+	}
+	pc := func(childID string) *glxlib.Relationship {
+		return &glxlib.Relationship{Type: "parent_child", Participants: []glxlib.Participant{
+			{Person: "p-f", Role: "parent"}, {Person: childID, Role: "child"},
+		}}
+	}
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"p-f": person("Hans Doe"),
+			"p-a": person("Zacharias Doe"),
+			"p-b": person("Anna Doe"),
+			"p-c": person("Michel Doe"),
+		},
+		Events: map[string]*glxlib.Event{
+			"ev-a": baptism("p-a", "1711-05-03"),
+			"ev-b": baptism("p-b", "1700-10-24"),
+			"ev-c": baptism("p-c", "1688-11-04"),
+		},
+		Relationships: map[string]*glxlib.Relationship{"r-a": pc("p-a"), "r-b": pc("p-b"), "r-c": pc("p-c")},
+	}
+	idx := newSiteIndex(archive)
+
+	var names []string
+	for _, l := range buildPersonPage("p-f", archive.Persons["p-f"], archive, idx).Children {
+		names = append(names, l.Name)
+	}
+	assert.Equal(t, []string{"Michel Doe", "Anna Doe", "Zacharias Doe"}, names)
+	assert.Equal(t, []string{"p-c", "p-b", "p-a"}, idx.children["p-f"])
+
+	names = nil
+	for _, l := range buildPersonPage("p-b", archive.Persons["p-b"], archive, idx).Siblings {
+		names = append(names, l.Name)
+	}
+	assert.Equal(t, []string{"Michel Doe", "Zacharias Doe"}, names)
+}

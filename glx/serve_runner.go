@@ -755,7 +755,7 @@ type treeRelIndex struct {
 
 // buildTreeRelIndex scans the parent-child relationships once and records both
 // directions, leaving out disproven links. It mirrors findParentIDs/findChildIDs: parents keep first-seen
-// order; children are ordered by birth year (then ID) for a stable chart.
+// order; children are in birth order (glxlib.BirthOrder) for a stable chart.
 func buildTreeRelIndex(a *glxlib.GLXFile) *treeRelIndex {
 	idx := &treeRelIndex{parents: map[string][]string{}, children: map[string][]string{}}
 	for _, link := range glxlib.ParentChildLinks(a, nil) {
@@ -768,24 +768,9 @@ func buildTreeRelIndex(a *glxlib.GLXFile) *treeRelIndex {
 		idx.parents[link.ChildID] = appendUniqueString(idx.parents[link.ChildID], link.ParentID)
 	}
 
-	for parentID := range idx.children {
-		kids := idx.children[parentID]
-		sort.SliceStable(kids, func(i, j int) bool {
-			yi, yj := birthYear(a, kids[i]), birthYear(a, kids[j])
-			if yi != yj {
-				// Unknown birth year (0) sorts last, matching findChildIDs.
-				if yi == 0 {
-					return false
-				}
-				if yj == 0 {
-					return true
-				}
-
-				return yi < yj
-			}
-
-			return kids[i] < kids[j]
-		})
+	order := glxlib.NewBirthOrder(a)
+	for _, kids := range idx.children {
+		order.Sort(kids)
 	}
 
 	return idx

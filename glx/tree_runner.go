@@ -79,7 +79,8 @@ func buildParentIndex(archive *glxlib.GLXFile) map[string][]treeRelPerson {
 }
 
 // buildChildIndex scans all relationships once and returns a map from
-// parent ID to their children. Links the archive has disproven are left out.
+// parent ID to their children in birth order (glxlib.BirthOrder). Links the
+// archive has disproven are left out.
 func buildChildIndex(archive *glxlib.GLXFile) map[string][]treeRelPerson {
 	index := make(map[string][]treeRelPerson)
 
@@ -90,8 +91,12 @@ func buildChildIndex(archive *glxlib.GLXFile) map[string][]treeRelPerson {
 		index[link.ParentID] = append(index[link.ParentID], treeRelPersonFromLink(&link, link.ChildID))
 	}
 
+	order := glxlib.NewBirthOrder(archive)
 	for id := range index {
-		sortRelatedPersons(index[id])
+		children := index[id]
+		sort.SliceStable(children, func(i, j int) bool {
+			return order.Less(children[i].personID, children[j].personID)
+		})
 	}
 
 	return index
