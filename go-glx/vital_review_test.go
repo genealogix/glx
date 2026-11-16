@@ -133,3 +133,30 @@ func TestVitalReview_ChronologyGroupsKeepAllSupportingFacts(t *testing.T) {
 	assert.Len(t, conflicts[0].Evaluation.Surviving, 5)
 	assert.Len(t, conflicts[0].Values, 2)
 }
+
+func TestVitalReview_LegacyBurialAliasesAreDeathBounds(t *testing.T) {
+	for _, property := range []string{"buried_on", "burial_date"} {
+		archive := chronologyArchive("burial", "1700", "")
+		archive.Events = nil
+		archive.Places = map[string]*Place{"place": {Name: "Parish"}}
+		archive.Assertions = map[string]*Assertion{
+			"burial": {Subject: EntityRef{Person: "p"}, Property: property, Value: "1700", Citations: []string{"c"}, Confidence: "high", Status: "proven"},
+			"place":  {Subject: EntityRef{Person: "p"}, Property: "buried_at", Value: "place", Citations: []string{"c"}, Confidence: "high", Status: "proven"},
+		}
+		require.NoError(t, MergeStandardVocabularies(archive))
+		proof, err := BuildProof(archive, "p", "death", ProofOptions{})
+		require.NoError(t, err)
+		assert.Contains(t, proof.Summary, "died on or before 1700 (burial)")
+		assert.Contains(t, proof.Summary, "burial place: Parish")
+		assert.Contains(t, proof.Gaps, ProofGap{Label: "Death date not established", Description: "The recorded rite bounds the vital event; it does not establish its exact date."})
+		assert.Equal(t, property, archive.Assertions["burial"].Property)
+		archive.Assertions["death"] = &Assertion{Subject: EntityRef{Person: "p"}, Property: "died_on", Value: "1699", Citations: []string{"c"}, Confidence: "high", Status: "proven"}
+		proof, err = BuildProof(archive, "p", "death", ProofOptions{})
+		require.NoError(t, err)
+		assert.Contains(t, proof.Summary, "1699")
+		assert.NotContains(t, proof.Summary, "1700", "a primary death date takes precedence over the proxy date")
+		for _, gap := range proof.Gaps {
+			assert.NotEqual(t, "Death date not established", gap.Label)
+		}
+	}
+}

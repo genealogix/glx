@@ -95,6 +95,16 @@ func isProxyVitalType(topic, eventType string) bool {
 		topic == topicDeath && (eventType == EventTypeBurial || eventType == EventTypeCremation)
 }
 
+// Legacy person properties retain their raw identity, but describe the same
+// kind of observation as the corresponding vital event field.
+func vitalProofObservation(claim *proofAssertion) (kind, field string) {
+	if claim.a.Subject.Person != "" {
+		return legacyVitalProperty(claim.a.Property)
+	}
+
+	return claim.eventType, claim.a.Property
+}
+
 // A rite's recorded data can describe a bound without supplying evidence or
 // confidence. supportLevel continues to exclude every synthetic observation.
 func proxyVitalAnswer(relevant []proofAssertion, archive *GLXFile, topic string) (string, bool) {
@@ -103,17 +113,18 @@ func proxyVitalAnswer(relevant []proofAssertion, archive *GLXFile, topic string)
 	hasDate := false
 	for i := range relevant {
 		claim := &relevant[i]
-		if !isProxyVitalType(topic, claim.eventType) || claim.a.Participant != nil || AssertionIsDisproven(claim.a) {
+		kind, field := vitalProofObservation(claim)
+		if !isProxyVitalType(topic, kind) || claim.a.Participant != nil || AssertionIsDisproven(claim.a) {
 			continue
 		}
-		if claim.a.Property != conflictDateType && claim.a.Property != eventFieldPlace {
+		if field != conflictDateType && field != eventFieldPlace {
 			continue
 		}
 		value := proofAssertionValue(claim.a, archive)
 		if value == "" {
 			continue
 		}
-		if claim.a.Property == conflictDateType {
+		if field == conflictDateType {
 			hasDate = true
 		}
 		value = qualifyProxyVitalAnswer(topic, claim, value)

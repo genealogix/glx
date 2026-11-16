@@ -952,7 +952,8 @@ func answerFromAssertions(relevant []proofAssertion, archive *GLXFile, topic, pe
 		if (topic == topicBirth || topic == topicDeath) && a.Participant != nil {
 			continue
 		}
-		if primaryVitalDate && a.Property == conflictDateType && relevant[i].eventType != topic {
+		kind, field := vitalProofObservation(&relevant[i])
+		if primaryVitalDate && field == conflictDateType && kind != topic {
 			continue
 		}
 		if !proofAssertionAnswersQuestion(&relevant[i], topic, personID) {
@@ -1145,7 +1146,8 @@ func proxyVitalProofGap(topic string, relevant []proofAssertion, archive *GLXFil
 		if primaryVitalDateAssertion(evidence, topic) {
 			return nil
 		}
-		if isProxyVitalType(topic, evidence.eventType) {
+		kind, _ := vitalProofObservation(evidence)
+		if evidence.a.Participant == nil && !AssertionIsDisproven(evidence.a) && isProxyVitalType(topic, kind) {
 			proxy = true
 		}
 	}
@@ -1166,32 +1168,33 @@ func primaryVitalDateAssertion(evidence *proofAssertion, topic string) bool {
 }
 
 func qualifyProxyVitalAnswer(topic string, evidence *proofAssertion, value string) string {
+	kind, field := vitalProofObservation(evidence)
 	verb := ""
-	if topic == topicBirth && (evidence.eventType == EventTypeBaptism || evidence.eventType == EventTypeChristening) {
+	if topic == topicBirth && (kind == EventTypeBaptism || kind == EventTypeChristening) {
 		verb = "born"
 	}
-	if topic == topicDeath && (evidence.eventType == EventTypeBurial || evidence.eventType == EventTypeCremation) {
+	if topic == topicDeath && (kind == EventTypeBurial || kind == EventTypeCremation) {
 		verb = "died"
 	}
 	if verb == "" {
 		return value
 	}
-	if evidence.a.Property == eventFieldPlace {
-		return evidence.eventType + " place: " + value
+	if field == eventFieldPlace {
+		return kind + " place: " + value
 	}
-	if evidence.a.Property != conflictDateType {
+	if field != conflictDateType {
 		return value
 	}
 	date, err := DateString(value).Parse()
 	if err != nil || date.Qualifier() != 0 {
-		return evidence.eventType + " recorded " + value + "; exact " + topic + " date not established"
+		return kind + " recorded " + value + "; exact " + topic + " date not established"
 	}
 	if date.IsRange() {
 		if date.IsOpenEnded() && !date.IsOpenStart() {
-			return evidence.eventType + " recorded " + value + "; exact " + topic + " date not established"
+			return kind + " recorded " + value + "; exact " + topic + " date not established"
 		}
 		value = date.End().String()
 	}
 
-	return verb + " on or before " + value + " (" + evidence.eventType + ")"
+	return verb + " on or before " + value + " (" + kind + ")"
 }
