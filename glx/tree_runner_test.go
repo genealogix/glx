@@ -535,3 +535,29 @@ func TestBuildAncestorTree_DuplicateRelationship(t *testing.T) {
 	assert.Equal(t, "person-father", root.Children[0].PersonID)
 	assert.Equal(t, "person-mother", root.Children[1].PersonID)
 }
+
+// TestDedupeRelatedPersons_AcceptedWins checks that when two copies of one
+// link differ in standing, the collapsed edge is accepted whichever copy
+// comes first (#1506).
+func TestDedupeRelatedPersons_AcceptedWins(t *testing.T) {
+	accepted := treeRelPerson{personID: "person-father", relType: "parent_child"}
+	hypo := treeRelPerson{personID: "person-father", relType: "Parent_Child", hypothetical: true}
+	other := treeRelPerson{personID: "person-mother", relType: "parent_child", hypothetical: true}
+
+	for name, in := range map[string][]treeRelPerson{
+		"hypothetical first": {hypo, other, accepted},
+		"accepted first":     {accepted, other, hypo},
+	} {
+		t.Run(name, func(t *testing.T) {
+			out := dedupeRelatedPersons(in)
+			require.Len(t, out, 2)
+			assert.Equal(t, "person-father", out[0].personID)
+			assert.False(t, out[0].hypothetical)
+			assert.True(t, out[1].hypothetical, "a distinct person keeps its own standing")
+		})
+	}
+
+	both := dedupeRelatedPersons([]treeRelPerson{hypo, hypo})
+	require.Len(t, both, 1)
+	assert.True(t, both[0].hypothetical, "two hypothetical copies stay hypothetical")
+}
