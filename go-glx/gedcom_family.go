@@ -92,6 +92,10 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 	}
 
 	// Second pass: process deferred family events now that spouse IDs are known
+	// First ANUL, linked as the relationship's end_event when the FAM has
+	// no DIV, so an exported annulment end event round-trips (#1498).
+	var annulmentEventID string
+
 	// Skip if both spouse IDs are empty — events require at least one participant
 	if husbandID != "" || wifeID != "" {
 		for _, censRec := range censusRecords {
@@ -101,7 +105,10 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 			convertFamilyResidence(husbandID, wifeID, resiRec, conv)
 		}
 		for _, eventRec := range familyEventRecords {
-			convertFamilyEvent(husbandID, wifeID, eventRec, conv)
+			eventID := convertFamilyEvent(husbandID, wifeID, eventRec, conv)
+			if eventRec.Tag == GedcomTagAnul && annulmentEventID == "" {
+				annulmentEventID = eventID
+			}
 		}
 	}
 
@@ -167,6 +174,9 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 		// Process divorce event if exists
 		if divorceRecord != nil {
 			convertDivorceEvent(husbandID, wifeID, relationshipID, divorceRecord, conv)
+		}
+		if relationship.EndEvent == "" && annulmentEventID != "" {
+			relationship.EndEvent = annulmentEventID
 		}
 	} else {
 		// No spouses — no relationship was created, so FAM-level extension
@@ -308,8 +318,9 @@ func convertDivorceEvent(husbandID, wifeID, relationshipID string, divRecord *GE
 	}
 }
 
-// convertFamilyEvent converts other family events (ENGA, MARB, MARC, MARL, MARS)
-func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, conv *ConversionContext) {
+// convertFamilyEvent converts other family events (ENGA, MARB, MARC, MARL, MARS,
+// ANUL, ...) and returns the new event ID.
+func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, conv *ConversionContext) string {
 	eventID := generateEventID(conv)
 
 	eventType := mapFamilyEventType(eventRecord.Tag, conv.GEDCOMIndex)
@@ -372,6 +383,8 @@ func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, con
 	// Store event
 	conv.GLX.Events[eventID] = event
 	conv.Stats.EventsCreated++
+
+	return eventID
 }
 
 // convertFamilyResidence applies a family-level RESI record to both spouses.
