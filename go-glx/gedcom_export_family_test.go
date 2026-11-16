@@ -15,6 +15,7 @@
 package glx
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -1944,5 +1945,64 @@ func TestExportGEDCOM_DisprovenParentFallbackKeepsEligibleFamily(t *testing.T) {
 			assert.Equal(t, []string{"1 WIFE @I3@"}, gedcomSubstructures(ged, "@F2@", "WIFE"))
 			assert.Equal(t, 2, result.Statistics.FamiliesExported)
 		})
+	}
+}
+
+// TestExportGEDCOM_FamilyEndEventTag checks that a marriage's end event is
+// written as DIV only for a divorce and ANUL only for an annulment, and that
+// a marriage ended by a death or burial gets no FAM end record (#1498).
+func TestExportGEDCOM_FamilyEndEventTag(t *testing.T) {
+	for _, tc := range []struct {
+		name, eventType string
+		wantTag         string // "" means no end record on the FAM
+	}{
+		{"divorce", EventTypeDivorce, GedcomTagDiv},
+		{"annulment", EventTypeAnnulment, GedcomTagAnul},
+		{"death", EventTypeDeath, ""},
+		{"burial", EventTypeBurial, ""},
+	} {
+		for _, version := range []GEDCOMVersion{GEDCOM551, GEDCOM70} {
+			t.Run(fmt.Sprintf("%s/%d", tc.name, version), func(t *testing.T) {
+				glx := newEventExportArchive(t, map[string][2]string{
+					"person-a": {"Hans Roth", "male"}, "person-b": {"Anna Seitz", "female"},
+				})
+				endParticipants := []Participant{
+					{Person: "person-a", Role: ParticipantRoleSpouse},
+					{Person: "person-b", Role: ParticipantRoleSpouse},
+				}
+				if tc.wantTag == "" {
+					endParticipants = []Participant{{Person: "person-b", Role: ParticipantRolePrincipal}}
+				}
+				glx.Events["ev-m"] = &Event{Type: EventTypeMarriage, Date: "1691-07-07", Participants: []Participant{
+					{Person: "person-a", Role: ParticipantRoleGroom},
+					{Person: "person-b", Role: ParticipantRoleBride},
+				}}
+				glx.Events["ev-end"] = &Event{Type: tc.eventType, Date: "1694-01-25", Participants: endParticipants}
+				glx.Relationships["rel-m"] = &Relationship{
+					Type: RelationshipTypeMarriage,
+					Participants: []Participant{
+						{Person: "person-a", Role: ParticipantRoleSpouse},
+						{Person: "person-b", Role: ParticipantRoleSpouse},
+					},
+					StartEvent: "ev-m",
+					EndEvent:   "ev-end",
+				}
+				require.Empty(t, glx.Validate().Errors)
+
+				ged, _ := exportGEDCOMString(t, glx, version)
+				assert.Len(t, gedcomSubstructures(ged, "@F1@", GedcomTagMarr), 1)
+				for _, tag := range []string{GedcomTagDiv, GedcomTagAnul} {
+					want := 0
+					if tag == tc.wantTag {
+						want = 1
+					}
+					assert.Len(t, gedcomSubstructures(ged, "@F1@", tag), want, tag)
+				}
+				if tc.wantTag == "" {
+					deathTag := map[string]string{EventTypeDeath: GedcomTagDeat, EventTypeBurial: GedcomTagBuri}[tc.eventType]
+					assert.Len(t, gedcomSubstructures(ged, "@I2@", deathTag), 1, "end event stays on the person")
+				}
+			})
+		}
 	}
 }

@@ -201,17 +201,21 @@ func exportFamily(family *ExportFamily, expCtx *ExportContext) *GEDCOMRecord {
 				}
 			}
 
-			// DIV from end_event
-			if rel.EndEvent != "" {
-				divRecord := exportFamilyEvent(rel.EndEvent, GedcomTagDiv, expCtx, family.HusbandID, family.WifeID)
-				if divRecord != nil {
-					record.SubRecords = append(record.SubRecords, divRecord)
+			// DIV or ANUL from end_event, only when the end event is a
+			// divorce or annulment. A marriage ended by a death writes
+			// nothing on the FAM: the death is exported on the person (#1498).
+			endEventID := ""
+			if endTag := familyEndEventTag(rel.EndEvent, expCtx); endTag != "" {
+				endEventID = rel.EndEvent
+				endRecord := exportFamilyEvent(rel.EndEvent, endTag, expCtx, family.HusbandID, family.WifeID)
+				if endRecord != nil {
+					record.SubRecords = append(record.SubRecords, endRecord)
 				}
 			}
 
 			// Other family events: events where both spouses participate with role "spouse"
 			familyEvents := findFamilyEvents(family.HusbandID, family.WifeID,
-				rel.StartEvent, rel.EndEvent, expCtx)
+				rel.StartEvent, endEventID, expCtx)
 			record.SubRecords = append(record.SubRecords, familyEvents...)
 
 			// FAM-level relationship properties mapped to GEDCOM tags (e.g. NCHI)
@@ -288,6 +292,28 @@ func formatCountProperty(value any) string {
 		return strconv.FormatFloat(v, 'f', -1, 64)
 	case string:
 		return v
+	default:
+		return ""
+	}
+}
+
+// familyEndEventTag returns the FAM tag that a relationship's end event is
+// written as: DIV for a divorce, ANUL for an annulment. Any other end event
+// (a death or burial, most often) has no FAM tag meaning "ended by this", so
+// it returns "" and the event is left to its own exporter (#1498).
+func familyEndEventTag(eventID string, expCtx *ExportContext) string {
+	if eventID == "" {
+		return ""
+	}
+	event, ok := expCtx.GLX.Events[eventID]
+	if !ok || event == nil {
+		return ""
+	}
+	switch event.Type {
+	case EventTypeDivorce:
+		return GedcomTagDiv
+	case EventTypeAnnulment:
+		return GedcomTagAnul
 	default:
 		return ""
 	}
