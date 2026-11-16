@@ -131,7 +131,7 @@ func exportMedia(mediaID string, media *Media, expCtx *ExportContext) *GEDCOMRec
 	// EXID/REFN identify the object, independently of whether a file exists.
 	record.SubRecords = append(record.SubRecords, exportExternalIDs(media.Properties["external_ids"], expCtx.Version)...)
 	if media.URI == "" {
-		expCtx.addExportWarning(EntityTypeMedia, mediaID, "media has no URI; GEDCOM requires a FILE reference, so the object cannot be fully represented; available title and media type are retained in notes")
+		expCtx.addExportWarning(EntityTypeMedia, mediaID, "media has no URI; GEDCOM requires a FILE reference, so the object cannot be fully represented; available title and media type are retained in valid structures or notes where supported")
 		if expCtx.Version == GEDCOM70 && media.Title != "" {
 			record.SubRecords = append(record.SubRecords, &GEDCOMRecord{Tag: GedcomTagNote, Value: "Media title: " + media.Title})
 		}

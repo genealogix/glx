@@ -15,13 +15,19 @@
 package glx
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"slices"
 	"strings"
 )
 
-var gedcom551ContextPattern = regexp.MustCompile(`^Event: (.+) \(([^;()]+); ([^)]+)\)(.*)$`)
+var (
+	gedcom551ContextPattern          = regexp.MustCompile(`^Event: (.+) \(([^;()]+); ([^)]+)\)(.*)$`)
+	gedcom551ContextAttributePattern = regexp.MustCompile(`; (date|place|subjects): `)
+)
+
+const gedcom551EncodedContextPrefix = "; context: "
 
 // importIndividualAssociations waits until both INDI and FAM events exist.
 func importIndividualAssociations(records []*GEDCOMRecord, conv *ConversionContext) {
@@ -82,11 +88,9 @@ func matchAssociationEvent(hostID string, association *GEDCOMRecord, conv *Conve
 		return nil
 	}
 	label, tag := context[1], context[2]
-	attributes := make(map[string]string)
-	for part := range strings.SplitSeq(context[4], "; ") {
-		if key, value, ok := strings.Cut(part, ": "); ok {
-			attributes[key] = value
-		}
+	attributes, valid := associationContextAttributes(context[4])
+	if !valid {
+		return nil
 	}
 	var match *Event
 	for _, event := range conv.GLX.Events {
@@ -100,10 +104,10 @@ func matchAssociationEvent(hostID string, association *GEDCOMRecord, conv *Conve
 		} else if conv.GEDCOMIndex.EventTypes[tag] != event.Type {
 			continue
 		}
-		if string(event.Date) != string(parseGEDCOMDate(attributes["date"])) {
+		if string(event.Date) != string(parseGEDCOMDate(attributes[conflictDateType])) {
 			continue
 		}
-		if place := attributes["place"]; place != "" {
+		if place := attributes[eventFieldPlace]; place != "" {
 			export := &ExportContext{GLX: conv.GLX, PlaceStrings: make(map[string]string)}
 			if resolvePlaceString(event.PlaceID, export) != place {
 				continue
@@ -116,6 +120,29 @@ func matchAssociationEvent(hostID string, association *GEDCOMRecord, conv *Conve
 	}
 
 	return match
+}
+
+func associationContextAttributes(tail string) (map[string]string, bool) {
+	attributes := make(map[string]string)
+	if encoded, ok := strings.CutPrefix(tail, gedcom551EncodedContextPrefix); ok {
+		if err := json.Unmarshal([]byte(encoded), &attributes); err != nil || attributes == nil {
+			return nil, false
+		}
+
+		return attributes, true
+	}
+	// Older notes remain readable. Only a known attribute begins a new field;
+	// an unlabelled semicolon belongs to its place or subject text.
+	fields := gedcom551ContextAttributePattern.FindAllStringSubmatchIndex(tail, -1)
+	for i, field := range fields {
+		end := len(tail)
+		if i+1 < len(fields) {
+			end = fields[i+1][0]
+		}
+		attributes[tail[field[2]:field[3]]] = tail[field[1]:end]
+	}
+
+	return attributes, true
 }
 
 func restoreAssociationRole(participant *Participant, association *GEDCOMRecord, conv *ConversionContext) {

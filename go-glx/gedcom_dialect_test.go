@@ -204,3 +204,47 @@ func TestGEDCOM551_NeutralAssociationRoleComesFromEventRoleNote(t *testing.T) {
 		}
 	}
 }
+
+func TestGEDCOM551_ContextPunctuationKeepsParticipants(t *testing.T) {
+	for _, placeName := range []string{"Town; County", "Town; subjects: Parish; place: Original", "Town \"quoted\"; County"} {
+		archive := newEventExportArchive(t, map[string][2]string{"p": {"Child; date: Original", "male"}, "w": {"Witness One", "female"}})
+		archive.Places["place"] = &Place{Name: placeName}
+		archive.Events["e"] = &Event{Type: "baptism", Date: "1800", PlaceID: "place", Participants: []Participant{{Person: "p", Role: "principal"}, {Person: "w", Role: "godparent"}}}
+		output, _ := exportGEDCOMString(t, archive, GEDCOM551)
+		imported, _, err := ImportGEDCOM(strings.NewReader(output), nil)
+		require.NoError(t, err)
+		require.Len(t, imported.Events, 1)
+		for _, event := range imported.Events {
+			assert.Len(t, event.Participants, 2, placeName)
+		}
+		assert.Empty(t, imported.Relationships, "a unique event should retain its participant rather than create an associate relationship")
+	}
+}
+
+func TestGEDCOM551_LegacyContextWithUnlabelledSemicolons(t *testing.T) {
+	input := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n0 @I1@ INDI\n1 NAME Child /One/\n1 BAPM\n2 DATE 1800\n2 PLAC Town; County\n1 ASSO @I2@\n2 RELA Godparent\n2 NOTE Event: Baptism (BAPM; original); date: 1800; place: Town; County; subjects: Child; extra text\n0 @I2@ INDI\n1 NAME Sponsor /Two/\n0 TRLR\n"
+	archive, _, err := ImportGEDCOM(strings.NewReader(input), nil)
+	require.NoError(t, err)
+	require.Len(t, archive.Events, 1)
+	for _, event := range archive.Events {
+		assert.Len(t, event.Participants, 2)
+	}
+	assert.Empty(t, archive.Relationships)
+}
+
+func TestGEDCOM551_InvalidEncodedContextPreservesAssociation(t *testing.T) {
+	for _, value := range []string{"{invalid", "null", "[]", `{"date":1}`} {
+		note := "Event: Baptism (BAPM; original); context: " + value
+		input := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n0 @I1@ INDI\n1 NAME Child /One/\n1 BAPM\n1 ASSO @I2@\n2 RELA Godparent\n2 NOTE " + note + "\n0 @I2@ INDI\n1 NAME Sponsor /Two/\n0 TRLR\n"
+		archive, _, err := ImportGEDCOM(strings.NewReader(input), nil)
+		require.NoError(t, err)
+		require.Len(t, archive.Events, 1)
+		for _, event := range archive.Events {
+			assert.Len(t, event.Participants, 1)
+		}
+		require.Len(t, archive.Relationships, 1)
+		for _, relationship := range archive.Relationships {
+			assert.Contains(t, relationship.Notes, note)
+		}
+	}
+}
