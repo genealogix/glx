@@ -69,12 +69,12 @@ contributions from CC-BY-4.0 documentation. GitHub reports the entire module as
 under the existing policy. GLX links SDK code; the imported SDK packages have no
 embedded files, and SDK documentation is not copied into GLX's docs or releases.
 
-[Dependency Review](.github/workflows/dependency-review.yml) therefore has one
+[Dependency Review](https://github.com/genealogix/glx/blob/main/.github/workflows/dependency-review.yml) therefore has one
 package-specific license exception, not a global CC-BY-4.0 allowance. The pinned
 action [ignores versions when matching exception PURLs](https://github.com/actions/dependency-review-action/blob/a1d282b36b6f3519aa1f3fc636f609c47dddb294/src/purl.ts),
-so [a fail-closed guard](scripts/check-mcp-license-exception.mjs) checks the exact
+so [a fail-closed guard](https://github.com/genealogix/glx/blob/main/scripts/check-mcp-license-exception.mjs) checks the exact
 SDK requirement, module checksums, action pin, and upstream license text preserved
-in [NOTICE](NOTICE). It rejects SDK declarations in other tracked Go manifests,
+in [NOTICE](https://github.com/genealogix/glx/blob/main/NOTICE). It rejects SDK declarations in other tracked Go manifests,
 workspaces and replacements, so the package-wide exemption cannot silently cover
 another module/version. An upgrade, replacement, or changed notice requires a
 fresh license decision. Vulnerability checks and the independent imported-code
