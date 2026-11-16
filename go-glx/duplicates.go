@@ -1359,10 +1359,10 @@ func duplicateLifetimeConflict(idA, idB string, archive *GLXFile, idx *duplicate
 			if !activity.Known {
 				continue
 			}
-			if death.Known && activity.Outer.Start >= death.Outer.End {
+			if death.Known && duplicateCalendarsAgree(idx.personDeathEvent[known], event) && activity.Outer.Start >= death.Outer.End {
 				return fmt.Sprintf("%s active at %s after %s's death/burial", candidate, event.Date, known)
 			}
-			if born := idx.personBirthEvent[known]; born != nil && born.Type == EventTypeBirth && birth.Known && activity.Outer.End <= birth.Outer.Start {
+			if born := idx.personBirthEvent[known]; born != nil && born.Type == EventTypeBirth && birth.Known && duplicateCalendarsAgree(born, event) && activity.Outer.End <= birth.Outer.Start {
 				return fmt.Sprintf("%s active at %s before %s's birth", candidate, event.Date, known)
 			}
 		}
@@ -1392,4 +1392,14 @@ func duplicateRoleNeedsLivingPerson(eventType, role string) bool {
 	}
 
 	return true
+}
+
+func duplicateCalendarsAgree(a, b *Event) bool {
+	if a == nil || b == nil {
+		return false
+	}
+	first, errA := glxdate.Parse(string(a.Date))
+	second, errB := glxdate.Parse(string(b.Date))
+
+	return errA == nil && errB == nil && first.Calendar() == second.Calendar() && first.CalendarName() == second.CalendarName()
 }
