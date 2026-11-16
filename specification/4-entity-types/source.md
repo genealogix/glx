@@ -134,7 +134,7 @@ Common source types:
 - `social_media` - Social media posts and profiles
 - `other` - Other source types
 
-Use `article` for an individual journal, magazine, or encyclopedia article, including a Wikipedia reference article. Use `website` for a website, informational page, or blog that is not better described by a more specific source type. A searchable collection of records is a `database`, not simply a `website`; a published monograph remains a `book`. Online access alone does not change the source's type: a digitized birth certificate is still a `vital_record`.
+Use `article` for individual journal, magazine, and encyclopedia articles, and `website` for websites, informational pages, or blogs without a more specific source type. Use `database` for searchable record collections and `book` for published monographs. Online access does not change the type: a digitized birth certificate remains a `vital_record`.
 
 Example:
 
@@ -144,8 +144,6 @@ sources:
     title: "Seven Years' War (Wikipedia)"
     type: article
 ```
-
-New archives created by `glx init` accept `article` and `website`. If an existing archive defines its own `source_types` vocabulary, add the desired entries from the [standard source types](../5-standard-vocabularies/README.md#source-types) to that vocabulary while preserving its other entries. Updating the CLI does not rewrite archive vocabularies or reclassify existing sources.
 
 ### `authors`
 
