@@ -215,11 +215,11 @@ func (b *mcpArchiveBackend) path(a *glxmcp.PathArgs) (any, error) {
 	if a.MaxHops < 1 {
 		return nil, errMCPMaxHops
 	}
-	fromID, err := resolvePersonForPath(b.archive, a.From)
+	fromID, _, err := resolveJSONPerson(b.archive, a.From)
 	if err != nil {
 		return nil, fmt.Errorf("from person: %w", err)
 	}
-	toID, err := resolvePersonForPath(b.archive, a.To)
+	toID, _, err := resolveJSONPerson(b.archive, a.To)
 	if err != nil {
 		return nil, fmt.Errorf("to person: %w", err)
 	}

@@ -142,3 +142,18 @@ func TestValidationJSONConfidenceReportParity(t *testing.T) {
 	require.NotNil(t, empty.Report.UnbackedRelations)
 	require.NotNil(t, empty.Report.ConfidenceOrder)
 }
+
+func TestValidateJSONPathRejectsNonGLXFiles(t *testing.T) {
+	// This is a self-contained, structurally parseable archive with a dangling
+	// reference. A filtered-out input must never become a valid empty archive.
+	data := []byte("persons:\n  person-a:\n    properties:\n      name: Alice\nevents:\n  event-a:\n    type: birth\n    date: \"1900\"\n    place: place-missing\nevent_types: {}\n")
+	for _, name := range []string{"archive.txt", "archive", "archive.yaml", "archive.yml"} {
+		t.Run(name, func(t *testing.T) {
+			file := filepath.Join(t.TempDir(), name)
+			require.NoError(t, os.WriteFile(file, data, 0o600))
+			result, err := validateJSONPath(file, true)
+			require.ErrorIs(t, err, ErrNothingToValidate)
+			require.Nil(t, result, "unsupported inputs must not produce a success result")
+		})
+	}
+}

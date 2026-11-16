@@ -164,8 +164,8 @@ glx validate /path/to/complete-archive --report --json
 ```
 
 `validate --json` accepts one complete archive directory or self-contained
-archive file. It does not accept individual entity fragments, multiple paths,
-or `--stdin`. It checks the original source structure and archive references,
+`.glx` archive file, matching text validation's file selection. It does not accept
+individual entity fragments, multiple paths, or `--stdin`. It checks the original source structure and archive references,
 returns every finding regardless of `--show-first-errors`, and exits nonzero
 when the result is invalid. Like the MCP validator, this JSON mode does not
 check local media-file existence; use the original text mode for that check.

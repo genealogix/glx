@@ -106,6 +106,12 @@ func validateJSONPath(path string, report bool) (*validationJSONResult, error) {
 		}
 		files, err = collectGLXFilesFromDir(path)
 	} else {
+		// Match text validation's file selection. The multi-file loader skips
+		// unsupported extensions, which must not turn this explicit input
+		// into a successfully validated empty archive.
+		if !isGLXFile(path) {
+			return nil, fmt.Errorf("%w: %s is not a .glx file", ErrNothingToValidate, path)
+		}
 		var data []byte
 		data, err = os.ReadFile(path) // #nosec G304 -- explicit CLI input selected by the user; MCP validation never reads paths
 		files = map[string][]byte{path: data}

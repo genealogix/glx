@@ -174,3 +174,81 @@ func TestMCPInvalidEntitiesAndDuplicateIDs(t *testing.T) {
 	require.NotEmpty(t, result.Duplicates)
 	callMCP(t, session, "stats", map[string]any{})
 }
+
+func TestMCPPathAlternateAndAmbiguousNames(t *testing.T) {
+	dir := t.TempDir()
+	archive := filepath.Join(dir, "archive.glx")
+	data := `persons:
+  person-alpha:
+    properties:
+      name:
+        - value: Alpha Original
+        - value: Historical Alias
+        - value: Shared Name
+  person-beta:
+    properties:
+      name: Shared Name
+  person-target:
+    properties:
+      name:
+        - value: Target Original
+        - value: Destination Alias
+relationships:
+  relationship-alpha:
+    type: parent_child
+    participants:
+      - person: person-alpha
+        role: parent
+      - person: person-target
+        role: child
+  relationship-beta:
+    type: parent_child
+    participants:
+      - person: person-beta
+        role: parent
+      - person: person-target
+        role: child
+`
+	require.NoError(t, os.WriteFile(archive, []byte(data), 0o600))
+	session, _ := connectMCP(t, dir, archive)
+	cases := []struct {
+		name, from, to, wantFrom, wantTo string
+		ambiguous                        bool
+	}{
+		{name: "alternate source", from: "Historical Alias", to: "person-target", wantFrom: "person-alpha", wantTo: "person-target"},
+		{name: "alternate destination", from: "person-alpha", to: "Destination Alias", wantFrom: "person-alpha", wantTo: "person-target"},
+		{name: "both alternate", from: "Historical Alias", to: "Destination Alias", wantFrom: "person-alpha", wantTo: "person-target"},
+		{name: "ambiguous source", from: "Shared Name", to: "person-target", ambiguous: true},
+		{name: "ambiguous destination", from: "person-target", to: "Shared Name", ambiguous: true},
+		{name: "exact ID disambiguates", from: "person-beta", to: "person-target", wantFrom: "person-beta", wantTo: "person-target"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := session.CallTool(t.Context(), &mcpsdk.CallToolParams{Name: "path", Arguments: map[string]any{"from": tc.from, "to": tc.to}})
+			require.NoError(t, err)
+			if tc.ambiguous {
+				require.True(t, result.IsError, "an alternate-name collision must not silently select a person")
+				content, marshalErr := json.Marshal(result.Content)
+				require.NoError(t, marshalErr)
+				require.Contains(t, string(content), "multiple persons match")
+				require.Contains(t, string(content), "person-alpha")
+				require.Contains(t, string(content), "person-beta")
+
+				return
+			}
+			require.False(t, result.IsError, "%+v", result.Content)
+			content, err := json.Marshal(result.StructuredContent)
+			require.NoError(t, err)
+			var path struct {
+				From string `json:"from"`
+				To   string `json:"to"`
+				Hops int    `json:"hops"`
+			}
+			require.NoError(t, json.Unmarshal(content, &path))
+			require.Equal(t, tc.wantFrom, path.From)
+			require.Equal(t, tc.wantTo, path.To)
+			require.Equal(t, 1, path.Hops)
+		})
+	}
+	callMCP(t, session, "stats", map[string]any{})
+}
