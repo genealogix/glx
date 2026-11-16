@@ -105,3 +105,46 @@ func articleFor(word string) string {
 
 	return "a"
 }
+
+// validateDuplicateParticipants warns when an event or relationship lists one
+// person more than once in the same role. Such rows usually come from merging
+// two records of one person who were both read into the same event (#1493).
+func (glx *GLXFile) validateDuplicateParticipants(result *ValidationResult) {
+	check := func(entityType EntityType, id string, participants []Participant) {
+		type key struct{ person, role string }
+		first := map[key]int{}
+		for i, participant := range participants {
+			if participant.Person == "" {
+				continue
+			}
+			k := key{participant.Person, participant.Role}
+			j, seen := first[k]
+			if !seen {
+				first[k] = i
+
+				continue
+			}
+			role := participant.Role
+			if role == "" {
+				role = "(none)"
+			}
+			result.Warnings = append(result.Warnings, ValidationWarning{
+				SourceType: entityType,
+				SourceID:   id,
+				Field:      fmt.Sprintf("participants[%d]", i),
+				Message: fmt.Sprintf("%s[%s].participants[%d]: person '%s' already appears with role '%s' at participants[%d]; fold the rows into one if they record the same person",
+					entityType, id, i, participant.Person, role, j),
+			})
+		}
+	}
+	for _, id := range sortedKeys(glx.Events) {
+		if event := glx.Events[id]; event != nil {
+			check(EntityTypeEvents, id, event.Participants)
+		}
+	}
+	for _, id := range sortedKeys(glx.Relationships) {
+		if rel := glx.Relationships[id]; rel != nil {
+			check(EntityTypeRelationships, id, rel.Participants)
+		}
+	}
+}

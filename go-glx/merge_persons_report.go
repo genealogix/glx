@@ -432,3 +432,36 @@ func collectMergeAffectedPeople(archive *GLXFile, assertion *Assertion, people m
 		people[participant.Person] = true
 	}
 }
+
+// mergeDuplicateParticipants finds events in which keepID and dropID hold the
+// same role, so the rewrite leaves the survivor in that role twice.
+func mergeDuplicateParticipants(archive *GLXFile, keepID, dropID string) []MergeDuplicateParticipant {
+	var duplicates []MergeDuplicateParticipant
+	for _, id := range sortedKeys(archive.Events) {
+		event := archive.Events[id]
+		if event == nil {
+			continue
+		}
+		var roles []string
+		rows := map[string][]int{}
+		hasKeep, hasDrop := map[string]bool{}, map[string]bool{}
+		for i, participant := range event.Participants {
+			if participant.Person != keepID && participant.Person != dropID {
+				continue
+			}
+			if _, seen := rows[participant.Role]; !seen {
+				roles = append(roles, participant.Role)
+			}
+			rows[participant.Role] = append(rows[participant.Role], i)
+			hasKeep[participant.Role] = hasKeep[participant.Role] || participant.Person == keepID
+			hasDrop[participant.Role] = hasDrop[participant.Role] || participant.Person == dropID
+		}
+		for _, role := range roles {
+			if hasKeep[role] && hasDrop[role] {
+				duplicates = append(duplicates, MergeDuplicateParticipant{EventID: id, Role: role, Indexes: rows[role]})
+			}
+		}
+	}
+
+	return duplicates
+}

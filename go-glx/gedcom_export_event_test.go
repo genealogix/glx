@@ -485,7 +485,11 @@ func TestExportGEDCOM_Associations551KeepDistinctEventsAndNotes(t *testing.T) {
 		}
 	}
 	require.Empty(t, glx.Validate().Errors)
-	require.Empty(t, glx.Validate().Warnings)
+	// The repeated witness rows are deliberate, so only the duplicate
+	// participant warning may appear.
+	for _, warning := range glx.Validate().Warnings {
+		require.Contains(t, warning.Message, "already appears with role 'custom_role'")
+	}
 	ged, _ := exportGEDCOMString(t, glx, GEDCOM551)
 	for _, owner := range []string{"@I1@", "@I2@"} {
 		associations := gedcomSubstructures(ged, owner, GedcomTagAsso)

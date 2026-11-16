@@ -86,6 +86,19 @@ type MergePersonsResult struct {
 	// InterpretationChanges compares existing evidence, standing and coverage
 	// semantics before and after the merge. It does not invent researcher statuses.
 	InterpretationChanges []MergeInterpretationChange
+	// DuplicateParticipants lists events where both merge persons held the
+	// same role, so the survivor now appears in that role more than once.
+	// The rows are kept, not folded; callers should review them.
+	DuplicateParticipants []MergeDuplicateParticipant
+}
+
+// MergeDuplicateParticipant identifies an event that lists the surviving
+// person more than once in Role after a merge. Indexes are the participant
+// positions of those rows, in order.
+type MergeDuplicateParticipant struct {
+	EventID string
+	Role    string
+	Indexes []int
 }
 
 // MergePersons consolidates two person entities, retaining keepID and folding
@@ -182,7 +195,7 @@ func MergePersons(glx *GLXFile, keepID, dropID string, opts MergePersonsOptions)
 	if err != nil {
 		return nil, err
 	}
-	result := &MergePersonsResult{}
+	result := &MergePersonsResult{DuplicateParticipants: mergeDuplicateParticipants(glx, keepID, dropID)}
 	cleanupResolvedPersonRelationships(planned, prepared, keepID, dropID, result)
 	keep := planned.Persons[keepID]
 	drop := planned.Persons[dropID]
