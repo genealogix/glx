@@ -27,6 +27,33 @@ import (
 // basic-family does not have, so merging it in adds one entity.
 const mergeNewPerson = "persons/person-abc123.glx"
 
+func TestMerge_IdenticalMediaRestoresMissingDestinationBinary(t *testing.T) {
+	source, dest := copyExample(t, "minimal"), copyExample(t, "minimal")
+	metadata := "media:\n  media-shared:\n    uri: media/files/photo.jpg\n    title: Shared photograph\n    mime_type: image/jpeg\n"
+	for _, root := range []string{source, dest} {
+		require.NoError(t, os.MkdirAll(filepath.Join(root, "media"), 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(root, "media/shared.glx"), []byte(metadata), 0o600))
+	}
+	require.NoError(t, os.MkdirAll(filepath.Join(source, "media/files"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(source, "media/files/photo.jpg"), []byte("source photo"), 0o600))
+	sourceBefore, destBefore := snapshotTree(t, source), snapshotTree(t, dest)
+	preview := runGLX(t, dest, "merge", source, "--preview")
+	require.Zero(t, preview.exitCode, preview.stderr)
+	assert.Contains(t, preview.stdout, "Would copy 1 media file(s)")
+	assertTreeUnchanged(t, destBefore, dest)
+	result := runGLX(t, dest, "merge", source)
+	require.Zero(t, result.exitCode, result.stderr)
+	assert.Contains(t, result.stdout, "2 identical entities skipped")
+	assert.Contains(t, result.stdout, "Media files: 1 copied")
+	assert.NotContains(t, result.stdout, "skipped (entity conflict)")
+	data, err := os.ReadFile(filepath.Join(dest, "media/files/photo.jpg"))
+	require.NoError(t, err)
+	assert.Equal(t, "source photo", string(data))
+	assert.Equal(t, "media/files/photo.jpg", importedMediaEntity(t, dest, "multi", "media-shared").URI)
+	assertTreeUnchanged(t, sourceBefore, source)
+	assertArchiveValid(t, dest)
+}
+
 func TestMerge_FromInsideDestination_DefaultIntoFlag(t *testing.T) {
 	// cwd is the destination and --into defaults to ".": the #1192 shape.
 	dest := copyExample(t, "basic-family")

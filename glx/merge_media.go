@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -24,6 +25,8 @@ import (
 	"sort"
 	"strings"
 
+	"go.yaml.in/yaml/v3"
+
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
@@ -31,8 +34,8 @@ import (
 // into the destination archive before the merge is published. Several Media
 // entities may reference the same binary, so the plan is keyed by source
 // file: SrcMedia captures the src.Media entries by ID at planning time so
-// execution can use pointer identity — rather than a URI coincidence — to
-// detect entities that survived the merge.
+// execution recognizes both retained source entities and identical destination
+// entities. A shared URI alone does not establish that a source entity survived.
 type plannedMediaCopy struct {
 	SrcPath       string                   // absolute path of the source binary
 	SrcRoot       string                   // source archive root for confined reads
@@ -341,18 +344,7 @@ func executeMediaCopiesWithRollback(plan []plannedMediaCopy, destPath string, me
 		if p.ReuseExisting {
 			continue
 		}
-		// Copy the binary if at least one src Media entity for this plan
-		// entry made it into the merged archive (same pointer, since Merge()
-		// preserves the src entity by reference when there's no conflict).
-		var referenced bool
-		for id, srcM := range p.SrcMedia {
-			if mergedM, ok := merged.Media[id]; ok && mergedM != nil && mergedM == srcM {
-				referenced = true
-
-				break
-			}
-		}
-		if !referenced {
+		if !plannedMediaIsReferenced(p, merged) {
 			skipped++
 
 			continue
@@ -373,6 +365,28 @@ func executeMediaCopiesWithRollback(plan []plannedMediaCopy, destPath string, me
 		defer func() { _ = root.Close() }()
 		rollbackCommittedMedia(root, committed)
 	}, nil
+}
+
+// MergeArchive retains the destination pointer for identical entities. Match
+// its YAML equality semantics, including omitted/empty optional fields, when
+// deciding whether a planned binary still has a reference in the merged archive.
+func plannedMediaIsReferenced(p *plannedMediaCopy, merged *glxlib.GLXFile) bool {
+	for id, source := range p.SrcMedia {
+		destination := merged.Media[id]
+		if source == nil || destination == nil {
+			continue
+		}
+		if destination == source {
+			return true
+		}
+		sourceYAML, sourceErr := yaml.Marshal(source)
+		destinationYAML, destinationErr := yaml.Marshal(destination)
+		if sourceErr == nil && destinationErr == nil && bytes.Equal(sourceYAML, destinationYAML) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func copyPlannedMedia(root *os.Root, p *plannedMediaCopy) (committedMediaFile, error) {
@@ -402,15 +416,7 @@ func validateReusedMergeMedia(plan []plannedMediaCopy, destPath string, merged *
 		if !p.ReuseExisting {
 			continue
 		}
-		var referenced bool
-		for id, source := range p.SrcMedia {
-			if merged.Media[id] == source {
-				referenced = true
-
-				break
-			}
-		}
-		if !referenced {
+		if !plannedMediaIsReferenced(p, merged) {
 			continue
 		}
 		dir := filepath.Join(destPath, filepath.FromSlash(plannedMediaTargetDir(p)))
