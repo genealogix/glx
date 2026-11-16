@@ -527,7 +527,9 @@ const (
 	SourceTypeImmigration        = "immigration"         // Passenger lists, naturalization records
 	SourceTypeDirectory          = "directory"           // City directories, telephone books
 	SourceTypeBook               = "book"                // Published genealogies, family histories
-	SourceTypeDatabase           = "database"            // Online databases, compiled records
+	SourceTypeArticle            = "article"             // Journal, magazine, and reference articles
+	SourceTypeWebsite            = "website"             // Websites, informational web pages, and blogs
+	SourceTypeDatabase           = "database"            // Structured, searchable record collections
 	SourceTypeOralHistory        = "oral_history"        // Interviews, recorded memories
 	SourceTypeCorrespondence     = "correspondence"      // Letters, emails, personal papers
 	SourceTypePhotograph         = "photograph"          // Photograph collections
@@ -562,6 +564,8 @@ var standardSourceTypes = map[string]bool{
 	SourceTypeImmigration:        true,
 	SourceTypeDirectory:          true,
 	SourceTypeBook:               true,
+	SourceTypeArticle:            true,
+	SourceTypeWebsite:            true,
 	SourceTypeDatabase:           true,
 	SourceTypeOralHistory:        true,
 	SourceTypeCorrespondence:     true,
@@ -583,8 +587,8 @@ var standardSourceTypes = map[string]bool{
 // Package-level to avoid allocation on every call.
 var gedcomSourceTypeMapping = map[string]string{
 	"book":       SourceTypeBook,
-	"article":    SourceTypeBook,
-	"website":    SourceTypeDatabase,
+	"article":    SourceTypeArticle,
+	"website":    SourceTypeWebsite,
 	"database":   SourceTypeDatabase,
 	"census":     SourceTypeCensus,
 	"vital":      SourceTypeVitalRecord,

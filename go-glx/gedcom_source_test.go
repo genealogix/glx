@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestMapSourceType verifies that every registered GEDCOM SOUR.TYPE value
@@ -117,4 +118,50 @@ func TestInferSourceType(t *testing.T) {
 			assert.Equal(t, tt.want, inferSourceType(tt.title))
 		})
 	}
+}
+
+// An article is not a book, and an informational website is not a record
+// database. Pin these mappings independently of the implementation tables.
+func TestMapSourceType_PublicationKinds(t *testing.T) {
+	for _, sourceType := range []string{"article", "website", "book", "database"} {
+		t.Run(sourceType, func(t *testing.T) {
+			assert.Equal(t, sourceType, mapSourceType(sourceType))
+			assert.Equal(t, sourceType, mapSourceType(strings.ToUpper(sourceType)))
+			assert.Equal(t, sourceType, gedcomSourceTypeMapping[sourceType])
+		})
+	}
+}
+
+func TestImportSource_PublicationKinds(t *testing.T) {
+	const gedcom = `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @S1@ SOUR
+1 TITL Seven Years' War (Wikipedia)
+1 TYPE ArTiClE
+0 @S2@ SOUR
+1 TITL A local history website
+1 TYPE WeBsItE
+0 @S3@ SOUR
+1 TITL Published family history
+1 TYPE book
+0 @S4@ SOUR
+1 TITL Searchable records collection
+1 TYPE database
+0 TRLR
+`
+	archive, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+	require.Len(t, archive.Sources, 4)
+
+	got := make(map[string]string, len(archive.Sources))
+	for _, source := range archive.Sources {
+		got[source.Title] = source.Type
+	}
+	assert.Equal(t, map[string]string{
+		"Seven Years' War (Wikipedia)":  "article",
+		"A local history website":       "website",
+		"Published family history":      "book",
+		"Searchable records collection": "database",
+	}, got)
 }
