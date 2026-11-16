@@ -1960,6 +1960,7 @@ func TestExportGEDCOM_FamilyEndEventTag(t *testing.T) {
 		{"annulment", EventTypeAnnulment, GedcomTagAnul},
 		{"death", EventTypeDeath, ""},
 		{"burial", EventTypeBurial, ""},
+		{"spouse-role death", EventTypeDeath, ""},
 	} {
 		for _, version := range []GEDCOMVersion{GEDCOM551, GEDCOM70} {
 			t.Run(fmt.Sprintf("%s/%d", tc.name, version), func(t *testing.T) {
@@ -1970,7 +1971,7 @@ func TestExportGEDCOM_FamilyEndEventTag(t *testing.T) {
 					{Person: "person-a", Role: ParticipantRoleSpouse},
 					{Person: "person-b", Role: ParticipantRoleSpouse},
 				}
-				if tc.wantTag == "" {
+				if tc.wantTag == "" && !strings.HasPrefix(tc.name, "spouse-role") {
 					endParticipants = []Participant{{Person: "person-b", Role: ParticipantRolePrincipal}}
 				}
 				glx.Events["ev-m"] = &Event{Type: EventTypeMarriage, Date: "1691-07-07", Participants: []Participant{
@@ -1991,14 +1992,14 @@ func TestExportGEDCOM_FamilyEndEventTag(t *testing.T) {
 
 				ged, _ := exportGEDCOMString(t, glx, version)
 				assert.Len(t, gedcomSubstructures(ged, "@F1@", GedcomTagMarr), 1)
-				for _, tag := range []string{GedcomTagDiv, GedcomTagAnul} {
+				for _, tag := range []string{GedcomTagDiv, GedcomTagAnul, GedcomTagDeat, GedcomTagBuri} {
 					want := 0
 					if tag == tc.wantTag {
 						want = 1
 					}
 					assert.Len(t, gedcomSubstructures(ged, "@F1@", tag), want, tag)
 				}
-				if tc.wantTag == "" {
+				if tc.wantTag == "" && !strings.HasPrefix(tc.name, "spouse-role") {
 					deathTag := map[string]string{EventTypeDeath: GedcomTagDeat, EventTypeBurial: GedcomTagBuri}[tc.eventType]
 					assert.Len(t, gedcomSubstructures(ged, "@I2@", deathTag), 1, "end event stays on the person")
 				}

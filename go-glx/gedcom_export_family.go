@@ -297,6 +297,14 @@ func formatCountProperty(value any) string {
 	}
 }
 
+// gedcomFamilyEventTags are the event tags GEDCOM allows directly under a
+// FAM record, the same set the importer reads from FAM.
+var gedcomFamilyEventTags = map[string]bool{
+	GedcomTagAnul: true, GedcomTagCens: true, GedcomTagDiv: true, GedcomTagDivf: true,
+	GedcomTagEnga: true, GedcomTagMarb: true, GedcomTagMarc: true, GedcomTagMarr: true,
+	GedcomTagMarl: true, GedcomTagMars: true, GedcomTagResi: true, GedcomTagEven: true,
+}
+
 // familyEndEventTag returns the FAM tag that a relationship's end event is
 // written as: DIV for a divorce, ANUL for an annulment. Any other end event
 // (a death or burial, most often) has no FAM tag meaning "ended by this", so
@@ -446,7 +454,9 @@ func findFamilyEvents(husbandID, wifeID, startEventID, endEventID string, expCtx
 
 		// Map event type to GEDCOM tag
 		gedcomTag, ok := expCtx.ExportIndex.EventTypes[event.Type]
-		if !ok || gedcomTag == "" {
+		if !ok || !gedcomFamilyEventTags[gedcomTag] {
+			// Individual-only tags (DEAT, BURI, ...) never go under FAM,
+			// even when both spouses are listed with role "spouse" (#1498).
 			continue
 		}
 
