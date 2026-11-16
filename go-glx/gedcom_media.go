@@ -168,6 +168,10 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 		Properties: make(map[string]any),
 	}
 
+	if key, ok := conv.GEDCOMIndex.MediaProperties[GedcomTagExid]; ok {
+		extractExternalIDs(objeRecord, key, media.Properties)
+	}
+
 	var fileRef string
 	var formatType string
 	var notes []string

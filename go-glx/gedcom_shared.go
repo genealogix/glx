@@ -269,8 +269,8 @@ func appendMultiValueProperty(props map[string]any, key string, value any) {
 	}
 }
 
-// extractExternalIDs extracts EXID tags from a record and stores them as structured
-// multi-value properties. Each EXID with a TYPE sub-record becomes a structured entry
+// extractExternalIDs extracts EXID/REFN tags and stores them as structured
+// multi-value properties. A tag with a TYPE sub-record becomes a structured entry
 // with value and fields.type; bare EXIDs become plain strings.
 func extractExternalIDs(record *GEDCOMRecord, propertyKey string, props map[string]any) {
 	for _, sub := range record.SubRecords {

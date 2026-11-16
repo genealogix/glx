@@ -395,6 +395,7 @@ Defines standard and custom properties for media entities.
 - `crop` - Crop coordinates for images
 - `medium` - Physical medium type
 - `original_filename` - Original filename when imported
+- `external_ids` - External media identifiers with optional authority (multi-value, GEDCOM: EXID or REFN)
 - `photographer` - Person who captured the media (reference)
 - `location` - Location where media was captured (reference)
 
