@@ -529,7 +529,7 @@ Participant roles (spouse, parent, child, etc.) are defined in the archive's `vo
 - If `start_event` or `end_event` is specified, it must reference an existing Event entity
 - If both `start_event` and `end_event` are specified and both reference events with known dates, the start event's date should precede the end event's date. Reversed ordering generates a warning (not an error) because fuzzy dates and data-entry errors are common; relationships where either date is missing or unparseable are not checked
 - A boundary should be recorded once: specifying both `start_event` and the `started_on` property (or both `end_event` and `ended_on`) generates a warning, with a more specific warning when the two dates disagree on the year. It is a warning rather than an error so that archives mid-migration still validate; boundaries whose event reference is unresolvable or whose dates have no parseable year are not checked
-- Two relationships of the same type whose participants are the same people in the same roles (in any order) generate a warning on the later one by ID, naming the earlier. Relationships whose `start_event` values are both set and differ are not duplicates, so a couple who remarried can be recorded twice
+- Two relationships of the same type whose participants are the same people in the same roles (in any order; types and roles are compared ignoring case) generate a warning on the later one by ID, naming the earlier. Relationships whose `start_event` values are both set and differ are not duplicates, so a couple who remarried can be recorded twice
 
 ## File Organization
 

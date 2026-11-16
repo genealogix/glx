@@ -19,7 +19,9 @@ events.
 
 A relationship of the same type between the same participants in the same
 roles as an existing one is refused, naming the existing relationship; pass
---force to add it anyway.
+--force to add it anyway. Types and roles are compared ignoring case. Two
+relationships whose --start-event values are both set and differ (a couple
+who married twice) are not duplicates.
 
 ```
 glx add relationship [flags]
