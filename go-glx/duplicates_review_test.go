@@ -128,3 +128,40 @@ func TestDuplicatesReview_BaptismDoesNotBoundBirthFromBelow(t *testing.T) {
 	index = buildDuplicateIndex(archive)
 	assert.NotEmpty(t, duplicateLifetimeConflict("a", "b", archive, index))
 }
+
+func TestDuplicatesReview_CollidingSubjectIDsRetainAssertionProvenance(t *testing.T) {
+	dest := &GLXFile{Persons: map[string]*Person{"a": duplicateTestPerson("Johann", "Roth", "male")}, Relationships: map[string]*Relationship{
+		"shared": {Type: "parent_child", Participants: []Participant{{Person: "a", Role: "parent"}, {Person: "child", Role: "child"}}},
+	}}
+	src := &GLXFile{Persons: map[string]*Person{"b": duplicateTestPerson("Johann", "Roth", "male")}, Relationships: map[string]*Relationship{
+		"shared": {Type: "parent_child", Participants: []Participant{{Person: "b", Role: "parent"}, {Person: "other", Role: "child"}}},
+		"source": {Type: "parent_child", Participants: []Participant{{Person: "b", Role: "parent"}, {Person: "child", Role: "child"}}},
+	}, Assertions: map[string]*Assertion{"source-rejection": {Subject: EntityRef{Relationship: "shared"}, Status: "disproven"}}}
+	combined := buildCombinedView(dest, src)
+	assert.NotContains(t, combined.Assertions, "source-rejection")
+	assert.Equal(t, RelationshipStandingAccepted, NewRelationshipStandingIndex(combined).Relationship("shared"))
+	result, err := FindCrossArchiveDuplicates(dest, src, DuplicateOptions{Threshold: 0.6})
+	require.NoError(t, err)
+	require.Len(t, result.Pairs, 1)
+	for _, signal := range result.Pairs[0].Signals {
+		if signal.Name == "Shared relationships" {
+			assert.InDelta(t, 1, signal.Score, 1e-12)
+		}
+	}
+	assert.Len(t, src.Assertions, 1, "filtering the combined view must not modify source claims")
+	// Identical subjects really are the retained entity, even with distinct pointers.
+	copyOfDest := *dest.Relationships["shared"]
+	src.Relationships["shared"] = &copyOfDest
+	combined = buildCombinedView(dest, src)
+	assert.Contains(t, combined.Assertions, "source-rejection")
+	assert.Equal(t, RelationshipStandingDisproven, NewRelationshipStandingIndex(combined).Relationship("shared"))
+}
+
+func TestDuplicatesReview_CollidingEventAndParticipantIDsFilterSourceClaims(t *testing.T) {
+	dest := &GLXFile{Persons: map[string]*Person{"p": {Properties: map[string]any{"name": "Destination"}}}, Events: map[string]*Event{"e": {Type: "birth"}}}
+	src := &GLXFile{Persons: map[string]*Person{"p": {Properties: map[string]any{"name": "Source"}}}, Events: map[string]*Event{"e": {Type: "death"}, "own": {Type: "census"}}, Assertions: map[string]*Assertion{
+		"event":       {Subject: EntityRef{Event: "e"}, Property: "date", Value: "1700"},
+		"participant": {Subject: EntityRef{Event: "own"}, Participant: &Participant{Person: "p", Role: "principal"}},
+	}}
+	assert.Empty(t, buildCombinedView(dest, src).Assertions)
+}

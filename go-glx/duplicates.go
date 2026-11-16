@@ -195,12 +195,46 @@ func buildCombinedView(dest, src *GLXFile) *GLXFile {
 
 	maps.Copy(combined.Places, src.Places)
 	maps.Copy(combined.Places, dest.Places)
-	maps.Copy(combined.Assertions, src.Assertions)
+	for id, claim := range src.Assertions {
+		if duplicateSourceClaimRetained(claim, dest, src) {
+			combined.Assertions[id] = claim
+		}
+	}
 	maps.Copy(combined.Assertions, dest.Assertions)
 	maps.Copy(combined.ParticipantRoles, src.ParticipantRoles)
 	maps.Copy(combined.ParticipantRoles, dest.ParticipantRoles)
 
 	return combined
+}
+
+// A source claim must not attach to a different destination entity merely
+// because their IDs collide. Identical retained subjects still share claims.
+func duplicateSourceClaimRetained(claim *Assertion, dest, src *GLXFile) bool {
+	if claim == nil {
+		return false
+	}
+	ref := claim.Subject
+	if !duplicateSourceEntityRetained(ref.Person, dest.Persons, src.Persons) ||
+		!duplicateSourceEntityRetained(ref.Event, dest.Events, src.Events) ||
+		!duplicateSourceEntityRetained(ref.Relationship, dest.Relationships, src.Relationships) ||
+		!duplicateSourceEntityRetained(ref.Place, dest.Places, src.Places) {
+		return false
+	}
+
+	return claim.Participant == nil || duplicateSourceEntityRetained(claim.Participant.Person, dest.Persons, src.Persons)
+}
+
+func duplicateSourceEntityRetained[T any](id string, dest, src map[string]*T) bool {
+	if id == "" {
+		return true
+	}
+	retained, collision := dest[id]
+	if !collision {
+		return true
+	}
+	incoming := src[id]
+
+	return retained != nil && incoming != nil && (retained == incoming || yamlEqual(retained, incoming))
 }
 
 // crossArchivePairThreshold is the combined person count above which surname
