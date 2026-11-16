@@ -1253,6 +1253,13 @@ func addRelationship(io *IOStreams, opts *addRelationshipOptions) error {
 	if len(opts.Notes) > 0 {
 		rel.Notes = glxlib.NoteList(opts.Notes)
 	}
+	if existing := glxlib.FindDuplicateRelationship(ctx.archive, rel, id); existing != "" {
+		if !opts.Force {
+			return fmt.Errorf("%w: %s already records a %s relationship between these participants in these roles; "+
+				"edit it instead, or pass --force to add another", ErrAddRelationshipDuplicate, existing, opts.Type)
+		}
+		io.Errorf("Warning: %s duplicates %s (same type and participants in the same roles)\n", id, existing)
+	}
 
 	partial := &glxlib.GLXFile{Relationships: map[string]*glxlib.Relationship{id: rel}}
 

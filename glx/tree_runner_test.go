@@ -513,3 +513,25 @@ func TestAncestorSuggestions_PersonWithAllAncestors(t *testing.T) {
 	}
 	assert.False(t, hasFatherGap, "should not flag gap for person who has parents")
 }
+
+// TestBuildAncestorTree_DuplicateRelationship checks that two relationships
+// recording the same parent-child link draw the parent once (#1506).
+func TestBuildAncestorTree_DuplicateRelationship(t *testing.T) {
+	archive := threeGenArchive()
+	archive.Relationships["rel-father-child-again"] = &glxlib.Relationship{
+		Type: "parent_child",
+		Participants: []glxlib.Participant{
+			{Person: "person-father", Role: "parent"},
+			{Person: "person-child", Role: "child"},
+		},
+	}
+	tc := newTreeContext(archive)
+
+	assert.Len(t, findParents(tc, "person-child"), 2)
+	assert.Len(t, findChildren(tc, "person-father"), 2)
+
+	root := buildAncestorTree(tc, "person-child", 0, 0, make(map[string]bool))
+	require.Len(t, root.Children, 2)
+	assert.Equal(t, "person-father", root.Children[0].PersonID)
+	assert.Equal(t, "person-mother", root.Children[1].PersonID)
+}

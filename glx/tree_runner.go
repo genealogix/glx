@@ -72,6 +72,7 @@ func buildParentIndex(archive *glxlib.GLXFile) map[string][]treeRelPerson {
 	}
 
 	for id := range index {
+		index[id] = dedupeRelatedPersons(index[id])
 		sortRelatedPersons(index[id])
 	}
 
@@ -91,6 +92,7 @@ func buildChildIndex(archive *glxlib.GLXFile) map[string][]treeRelPerson {
 	}
 
 	for id := range index {
+		index[id] = dedupeRelatedPersons(index[id])
 		sortRelatedPersons(index[id])
 	}
 
@@ -240,6 +242,32 @@ func buildDescendantTree(tc *treeContext, personID string, maxGen, depth int, vi
 	}
 
 	return node
+}
+
+// dedupeRelatedPersons collapses edges that link the same person in the same
+// way (same relationship type and step flag), as two relationships recording
+// one parent-child link do (#1506), so the tree draws that person once. When
+// the copies differ in standing, the accepted one is kept over a hypothesis.
+func dedupeRelatedPersons(persons []treeRelPerson) []treeRelPerson {
+	type edgeKey struct {
+		personID string
+		relType  string
+		step     bool
+	}
+	out := persons[:0]
+	at := make(map[edgeKey]int, len(persons))
+	for _, p := range persons {
+		key := edgeKey{p.personID, strings.ToLower(p.relType), p.step}
+		if i, seen := at[key]; seen {
+			out[i].hypothetical = out[i].hypothetical && p.hypothetical
+
+			continue
+		}
+		at[key] = len(out)
+		out = append(out, p)
+	}
+
+	return out
 }
 
 // sortRelatedPersons sorts related persons by person ID for deterministic output.

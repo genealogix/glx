@@ -321,7 +321,11 @@ var addRelCmd = &cobra.Command{
 At least two participants are required. Use --parent / --child (each
 repeatable) for parent-child relationships, --participant person-id:role for
 arbitrary roles. --start-event and --end-event must reference existing
-events.`,
+events.
+
+A relationship of the same type between the same participants in the same
+roles as an existing one is refused, naming the existing relationship; pass
+--force to add it anyway.`,
 	Example: `  # Biological parent-child
   glx add relationship --type biological_parent_child \
     --parent person-johann --child person-johann-jr --archive ./archive
