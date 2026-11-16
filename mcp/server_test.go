@@ -53,12 +53,13 @@ func TestServerCatalogAndStructuredTools(t *testing.T) {
 	client := connectTestServer(t, server)
 	catalog, err := client.ListTools(t.Context(), nil)
 	require.NoError(t, err)
-	require.Len(t, catalog.Tools, 15)
+	require.Len(t, catalog.Tools, 16)
 	for _, tool := range catalog.Tools {
 		require.True(t, tool.Annotations.ReadOnlyHint, tool.Name)
 		require.NotNil(t, tool.InputSchema)
 	}
 	for name, args := range map[string]any{
+		"search":     SearchArgs{Query: "TEST-RECORD-0042", EntityType: "citations", CaseSensitive: true, Limit: 5, Offset: 2},
 		"query":      QueryArgs{EntityType: "persons", Name: "Mary"},
 		"get_entity": GetEntityArgs{EntityType: "persons", ID: "person-mary"},
 		"vitals":     PersonArgs{Person: "person-mary"}, "summary": SummaryArgs{Person: "person-mary"},
@@ -79,12 +80,47 @@ func TestServerCatalogAndStructuredTools(t *testing.T) {
 		require.NoError(t, encodeErr)
 		require.JSONEq(t, text.Text, string(structured))
 	}
-	require.EqualValues(t, 15, calls.Load())
+	require.EqualValues(t, 16, calls.Load())
 	for _, args := range []any{map[string]any{}, map[string]any{"person": 42}, map[string]any{"person": "a", "archive": "/etc/passwd"}} {
 		result, callErr := client.CallTool(t.Context(), &mcpsdk.CallToolParams{Name: "vitals", Arguments: args})
 		require.True(t, callErr != nil || result.IsError)
 	}
-	require.EqualValues(t, 15, calls.Load(), "invalid arguments must not reach the backend")
+	require.EqualValues(t, 16, calls.Load(), "invalid arguments must not reach the backend")
+}
+
+func TestSearchSchemaRejectsInvalidArgumentsBeforeBackend(t *testing.T) {
+	var calls atomic.Int32
+	forwarded := make(chan json.RawMessage, 1)
+	server, err := NewServer(BackendFunc(func(_ context.Context, name string, args json.RawMessage) (any, error) {
+		calls.Add(1)
+		forwarded <- args
+
+		return map[string]any{"operation": name}, nil
+	}), "test")
+	require.NoError(t, err)
+	client := connectTestServer(t, server)
+	for _, args := range []map[string]any{
+		{},
+		{"query": 42},
+		{"query": nil},
+		{"query": "record", "entity_type": []string{"persons"}},
+		{"query": "record", "case_sensitive": "yes"},
+		{"query": "record", "limit": 1.5},
+		{"query": "record", "offset": "0"},
+		{"query": "record", "archive": "/etc/passwd"},
+	} {
+		result, callErr := client.CallTool(t.Context(), &mcpsdk.CallToolParams{Name: "search", Arguments: args})
+		require.True(t, callErr != nil || result.IsError)
+	}
+	require.Zero(t, calls.Load())
+	args := SearchArgs{Query: "TEST-RECORD-0042", EntityType: "citations", CaseSensitive: true, Limit: 10, Offset: 3}
+	result, err := client.CallTool(t.Context(), &mcpsdk.CallToolParams{Name: "search", Arguments: args})
+	require.NoError(t, err)
+	require.False(t, result.IsError)
+	var received SearchArgs
+	require.NoError(t, json.Unmarshal(<-forwarded, &received))
+	require.Equal(t, args, received)
+	require.EqualValues(t, 1, calls.Load())
 }
 
 var errTestPersonNotFound = errors.New("person not found")

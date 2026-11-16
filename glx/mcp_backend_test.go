@@ -36,6 +36,7 @@ func TestMCPArchiveBackendAllTools(t *testing.T) {
 	require.NoError(t, err)
 	const person = "person-jane-smith-1876"
 	for _, testCase := range []struct{ name, args, key string }{
+		{"search", `{"query":"Jane"}`, "matches"},
 		{"query", `{"entity_type":"persons","name":"Jane"}`, "entities"},
 		{"get_entity", `{"entity_type":"persons","id":"` + person + `"}`, "entity"},
 		{"vitals", `{"person":"` + person + `"}`, "vitals"},

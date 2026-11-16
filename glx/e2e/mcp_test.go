@@ -64,9 +64,10 @@ func TestMCPRealStdioAllToolsAndNoWrites(t *testing.T) {
 	session, stderr := connectMCP(t, dir)
 	catalog, err := session.ListTools(t.Context(), nil)
 	require.NoError(t, err)
-	require.Len(t, catalog.Tools, 15)
+	require.Len(t, catalog.Tools, 16)
 	const person = "person-jane-smith-1876"
 	calls := map[string]any{
+		"search":     map[string]any{"query": "Jane"},
 		"query":      map[string]any{"entity_type": "persons", "name": "Jane"},
 		"get_entity": map[string]any{"entity_type": "persons", "id": person},
 		"vitals":     map[string]any{"person": person}, "summary": map[string]any{"person": person},
@@ -108,8 +109,10 @@ func TestMCPSnapshotAndSingleFile(t *testing.T) {
 	require.NoError(t, os.WriteFile(archive, []byte("persons:\n  person-first:\n    properties:\n      name: First\n"), 0o600))
 	session, _ := connectMCP(t, dir, archive)
 	initial := callMCP(t, session, "list_entity_types", map[string]any{})
+	initialSearch := callMCP(t, session, "search", map[string]any{"query": "Second"})
 	require.NoError(t, os.WriteFile(archive, []byte("persons:\n  person-first:\n    properties:\n      name: First\n  person-second:\n    properties:\n      name: Second\n"), 0o600))
 	require.JSONEq(t, string(initial), string(callMCP(t, session, "list_entity_types", map[string]any{})))
+	require.JSONEq(t, string(initialSearch), string(callMCP(t, session, "search", map[string]any{"query": "Second"})))
 	require.NoError(t, session.Close())
 	restarted, _ := connectMCP(t, dir, archive)
 	var result struct {
@@ -117,6 +120,7 @@ func TestMCPSnapshotAndSingleFile(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal(callMCP(t, restarted, "list_entity_types", map[string]any{}), &result))
 	require.Equal(t, 2, result.Counts["persons"])
+	require.Contains(t, string(callMCP(t, restarted, "search", map[string]any{"query": "Second"})), `"count":1`)
 }
 
 func TestMCPUsesExistingCacheWithoutChangingIt(t *testing.T) {

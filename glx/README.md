@@ -176,7 +176,7 @@ glx validate persons/ events/   # several directories are validated as one archi
 
 ## Features
 
-- **MCP research server**: `glx mcp serve` exposes read-only archive tools over stdio; add `--watch` to reload archive changes automatically. See the [MCP guide](../docs/mcp.md).
+- **MCP research server**: `glx mcp serve` exposes read-only archive tools over stdio, including paginated text and external-identifier `search`; add `--watch` to reload archive changes automatically. See the [MCP guide](../docs/mcp.md).
 
 - [Shared conflict detection](../docs/guides/conflict-detection.md) across analysis, proof, evidence and person merges, with dated history and configurable approximate-date tolerance.
 

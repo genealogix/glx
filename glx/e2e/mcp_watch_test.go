@@ -87,14 +87,18 @@ func TestMCPWatchDirectoryReloadRecoveryAndNoWrites(t *testing.T) {
 	watchAwait(t, func() bool { return watchPersons(t, session) == 2 })
 	query := callMCP(t, session, "query", map[string]any{"entity_type": "persons", "name": "After"})
 	require.Contains(t, string(query), "person-first", "reload must bypass the previously built cache")
+	search := callMCP(t, session, "search", map[string]any{"query": "After"})
+	require.Contains(t, string(search), "person-first")
 
 	watchWrite(t, nested, "persons: [not-valid-yaml")
 	watchRetainsPersons(t, session, 2)
+	require.JSONEq(t, string(search), string(callMCP(t, session, "search", map[string]any{"query": "After"})))
 	watchWrite(t, nested, "persons:\n  person-first:\n    properties:\n      name: Recovered\n")
 	require.NoError(t, os.Remove(second))
 	watchAwait(t, func() bool {
 		return watchPersons(t, session) == 1 && strings.Contains(string(callMCP(t, session, "query", map[string]any{"entity_type": "persons", "name": "Recovered"})), "person-first")
 	})
+	require.Contains(t, string(callMCP(t, session, "search", map[string]any{"query": "Recovered"})), "person-first")
 
 	watchWrite(t, filepath.Join(dir, "vocabularies", "event-types.glx"), "event_types:\n  watch_marker:\n    label: Watch marker\n")
 	expected := snapshotTree(t, dir)

@@ -46,6 +46,16 @@ type QueryArgs struct {
 	Offset     int    `json:"offset,omitempty"      jsonschema:"Number of sorted matches to skip, at least zero"`
 }
 
+// SearchArgs searches recorded text using the same matching rules as glx search.
+// Pagination counts distinct entities, retaining the first matching field.
+type SearchArgs struct {
+	Query         string `json:"query"                    jsonschema:"Nonempty text substring, at most 1024 Unicode characters; surrounding whitespace is trimmed"`
+	EntityType    string `json:"entity_type,omitempty"    jsonschema:"Optional collection: persons, events, relationships, places, sources, citations, repositories, media, assertions, research_logs, or studies; omitted searches all"`
+	CaseSensitive bool   `json:"case_sensitive,omitempty" jsonschema:"Use case-sensitive substring matching; default is case-insensitive"`
+	Limit         int    `json:"limit,omitempty"          jsonschema:"Maximum entities, 1 to 1000; omitted or zero means 100; pages also capped at 256 KiB"`
+	Offset        int    `json:"offset,omitempty"         jsonschema:"Number of matching entities to skip, at least zero"`
+}
+
 // PersonArgs identifies a person by exact ID or an unambiguous name substring.
 type PersonArgs struct {
 	Person string `json:"person" jsonschema:"Exact person ID or unambiguous case-insensitive name substring; use query to disambiguate"`

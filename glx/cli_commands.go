@@ -2613,7 +2613,7 @@ var mcpCmd = &cobra.Command{
 
 var mcpServeCmd = &cobra.Command{
 	Use: "serve [archive-path]", Short: "Serve read-only research tools over stdio",
-	Long: `Load one archive snapshot and expose fifteen read-only research tools,
+	Long: `Load one archive snapshot and expose sixteen read-only research tools,
 archive statistics and vocabulary resources, and a genealogy research prompt
 using the Model Context Protocol over stdin/stdout. No network listener is opened.
 

@@ -100,6 +100,7 @@ produce a tool error rather than selecting an arbitrary person.
 | Tool | Purpose | Main arguments |
 | --- | --- | --- |
 | `query` | Filter complete entity records | `entity_type`, CLI filter names with underscores, `limit`, `offset` |
+| `search` | Find recorded text or external identifiers | `query`, optional `entity_type`, `case_sensitive`, `limit`, `offset` |
 | `get_entity` | One complete entity by exact ID | `entity_type`, `id` |
 | `vitals` | Vital records | `person` |
 | `timeline` | Chronological personal and family events | `person`, `no_family` |
@@ -125,6 +126,48 @@ subject. Invalid filter/collection combinations are rejected.
 of 1,000. `count` is the total number of matches; `returned`, `offset` and
 `has_more` describe the page. Use successive offsets to read the remaining
 matches. Entity fields retain the archive's snake_case names.
+
+`search` uses the same substring matching, searchable fields and first-match
+deduplication as [`glx search --json`](cli/glx_search.md). It searches all eleven
+collections unless `entity_type` selects one. Matching is case-insensitive by
+default; set `case_sensitive: true` for an exact-case substring. Queries are
+trimmed and must contain 1–1,024 Unicode characters. The collection is trimmed
+and lowercased, matching CLI `--type`; empty means all collections. This is a
+search of recorded archive text, including supported property values and
+research-log search entries. It does not resolve an external identifier through
+a provider or open recorded files and URLs.
+
+Results contain `matches` with `entity_type`, `entity_id`, `field` and `value`.
+Each matching entity appears once, with its first matching field in the CLI's
+field order. Entities follow the CLI's collection order and then ascending ID
+within each collection. Values are previews of at most 80 Unicode characters
+including any `...` suffix; a preview can omit the matching text later in a
+long value. Read complete evidence with `get_entity` using the returned
+collection and exact ID. Identifiers and field paths are never shortened.
+
+Search pages default to 100 entities and allow at most 1,000 (`limit: 0` uses
+the default). Result JSON is also capped at 256 KiB, so a page can contain fewer
+entities than requested. An individual ID or field path too large to fit is a
+tool error. `count` gives the total number of matching entities in that
+snapshot; `returned`, `offset` and `has_more` describe the page. Continue at
+`offset + returned`. A search without matches or beyond the last match returns
+`matches: []`, `returned: 0` and `has_more: false`. Empty queries, queries over
+the length limit, unknown collections, negative offsets and limits outside
+0–1,000 are tool errors. Missing required arguments, wrong JSON types and
+unknown arguments are rejected by the protocol schema.
+
+For example, discover a recorded provider identifier and inspect its evidence:
+
+```json
+{"name":"search","arguments":{"query":"TEST-RECORD-0042","limit":10}}
+{"name":"search","arguments":{"query":"TEST-RECORD-0042","entity_type":"research_logs"}}
+{"name":"get_entity","arguments":{"entity_type":"citations","id":"citation-example"}}
+```
+
+Search scans and result encoding use the same serialized snapshot handling as
+other tools. Cancellation discards partial results. Watch reloads affect later
+requests; successive pages can therefore refer to different snapshots when
+`--watch` is enabled.
 
 `get_entity` requires both a collection and an exact, case-sensitive ID and
 returns `{ "entity_type": "events", "id": "event-example", "entity": { ... } }`.
@@ -202,8 +245,8 @@ then inspect `vitals`, `timeline`, `summary`, `analyze` with `check: "gaps"`, an
 
 The same research commands support `--json`: `query`, `vitals`, `timeline`,
 `summary`, `ancestors`, `descendants`, `cite`, `analyze`, `stats`, `places`,
-`cluster`, `path`, and `validate`. Existing `analyze --format json` still works.
-CLI query output is not paginated.
+`cluster`, `path`, `search`, and `validate`. Existing `analyze --format json` still
+works. CLI query and search output are not paginated.
 
 ```bash
 glx query persons --name "Mary Lane" --json

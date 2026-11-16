@@ -157,6 +157,8 @@ func (b *mcpArchiveBackend) CallTool(ctx context.Context, name string, raw json.
 	switch name {
 	case "query":
 		return withMCPArgs(raw, func(a *glxmcp.QueryArgs) (any, error) { return b.queryContext(ctx, a) })
+	case "search":
+		return withMCPArgs(raw, func(a *glxmcp.SearchArgs) (any, error) { return b.searchContext(ctx, a) })
 	case "get_entity":
 		return withMCPArgs(raw, func(a *glxmcp.GetEntityArgs) (any, error) { return b.getEntityContext(ctx, a) })
 	case "vitals":

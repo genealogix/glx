@@ -196,6 +196,15 @@ func TestMCPWatchConcurrentSnapshotReads(t *testing.T) {
 
 				return
 			}
+			result, callErr = backend.CallTool(ctx, "search", json.RawMessage(`{"query":"person"}`))
+			if callErr != nil {
+				return
+			}
+			if _, marshalErr := json.Marshal(result); marshalErr != nil {
+				t.Errorf("encoding search in a snapshot: %v", marshalErr)
+
+				return
+			}
 		}
 	})
 	for i := range 20 {
