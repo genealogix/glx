@@ -1,7 +1,7 @@
 # memcheck — deterministic memory-file drift detector
 
-`memcheck` checks the repository's agent-memory files — every `CLAUDE.md`, and
-`AGENTS.md` if adopted — against reality and fails when an instruction has
+`memcheck` checks the repository's agent-memory files — every `AGENTS.md`, plus the
+`CLAUDE.md` stubs that import them — against reality and fails when an instruction has
 rotted. It is the offline, API-key-free counterpart to the LLM-based
 [`check-*` drift suite](../../.claude/skills/check-suite/README.md)
 (genealogix/glx#1053): stale instructions are worse than missing ones, because an
@@ -24,7 +24,7 @@ invariants:
    `Makefile`.
 2. **Paths exist** — every concrete file or directory path referenced resolves
    on disk, checked relative to the repo root **and** to the memory file's own
-   directory (so `go-glx/CLAUDE.md` may write either `serializer.go`-style or
+   directory (so `go-glx/AGENTS.md` may write either `serializer.go`-style or
    repo-root-relative paths).
 3. **Import path matches go.mod** — any `github.com/<org>/<repo>` path under this
    module's own org is prefixed by the `go.mod` module line, so a module rename
@@ -64,7 +64,7 @@ example path, or a `make` target that is documented before it exists in the
 ```yaml
 - token: path/to/example.go      # the reference, verbatim
   kind: stale-path               # optional: stale-path | unknown-make-target | import-path-drift
-  file: docs/CLAUDE.md           # optional: restrict to one memory file
+  file: docs/AGENTS.md            # optional: restrict to one memory file
   reason: "Illustrative example, not a real file (#1234)"
 ```
 

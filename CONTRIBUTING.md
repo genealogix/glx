@@ -489,7 +489,49 @@ Contributors SHOULD disclose substantial AI assistance via a commit trailer:
 Assisted-by: Claude <noreply@anthropic.com>
 ```
 
-`Co-authored-by` trailers added automatically by AI coding tools are also acceptable.
+`Assisted-by:` is the preferred form. `Co-authored-by` trailers that an AI coding
+tool adds automatically are tolerated on human-driven commits, but don't add one on
+purpose and don't configure an agent to: `Co-authored-by` credits an author, and the
+person who signs off is the author of record.
+
+The `Signed-off-by` trailer required by the [DCO](#developer-certificate-of-origin-dco)
+is always a human's. An AI tool cannot make the DCO attestation, so when an agent
+commits on your behalf the sign-off carries your name and email, and by signing off you
+certify the agent's output exactly as you would your own code.
+
+### Accuracy of Genealogical and Spec Content
+
+AI tools readily produce plausible but invented facts. For GLX that means:
+
+- **Cite real sources only.** Never commit a citation, repository, archive reference,
+  or record locator in an example, fixture, or doc unless you have checked that it
+  exists. Invented sources in an evidence-first format teach readers the wrong habit.
+- **Check GEDCOM claims against the specification**, not the tool's recollection. The
+  split PDFs under `docs/gedcom-spec/` are small enough to read; quote the version and
+  section you relied on in the PR.
+- **Keep people in examples and fixtures fictional or long dead.** Don't paste real
+  data about living people into an AI tool or into the repository.
+
+### Agent Configuration in This Repository
+
+The repository ships instructions and tooling for coding agents. If you use one,
+point it at these rather than writing your own:
+
+- **`AGENTS.md`** at the root and in `go-glx/`, `glx/`, `specification/` and
+  `.github/` holds the agent instructions, following the
+  [AGENTS.md](https://agents.md) convention. Each `CLAUDE.md` is a one-line stub that
+  imports the `AGENTS.md` beside it; edit `AGENTS.md`, never the stub.
+- **Agent files summarize; they don't decide.** Policies and conventions live in this
+  guide, [SECURITY-POSTURE.md](SECURITY-POSTURE.md), `docs/decisions/` and
+  `specification/`. Change the project file first and the `AGENTS.md` summary second,
+  and never link to an `AGENTS.md` or `CLAUDE.md` from public docs.
+- **`make check-memory-drift`** (run in CI) fails when an `AGENTS.md` names a file,
+  `make` target, or module path that no longer exists. Run it when you rename or move
+  something an agent file mentions.
+- **`.claude/`** holds Claude Code settings, the `PreToolUse` hooks in
+  `scripts/claude-hooks/` (golangci-lint before commit, a gate on `gh api` writes),
+  and the LLM-based `check-*` drift skills. The hooks are restrictive by design; don't
+  bypass them.
 
 ### Tool Attribution and Private Links
 

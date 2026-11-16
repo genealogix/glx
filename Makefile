@@ -195,7 +195,7 @@ check-drift-allowlist: ## Validate .claude/drift-allowlist.yaml against its sche
 check-code-drift: ## Deterministically detect go-glx type vs JSON-schema drift
 	@go run ./tools/driftcheck
 
-check-memory-drift: ## Deterministically detect CLAUDE.md/AGENTS.md drift vs the repo
+check-memory-drift: ## Deterministically detect AGENTS.md/CLAUDE.md drift vs the repo
 	@go run ./tools/memcheck
 
 test-scripts: ## Unit-test the Node drift-check scripts and serve viewer
