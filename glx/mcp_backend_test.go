@@ -37,6 +37,7 @@ func TestMCPArchiveBackendAllTools(t *testing.T) {
 	const person = "person-jane-smith-1876"
 	for _, testCase := range []struct{ name, args, key string }{
 		{"query", `{"entity_type":"persons","name":"Jane"}`, "entities"},
+		{"get_entity", `{"entity_type":"persons","id":"` + person + `"}`, "entity"},
 		{"vitals", `{"person":"` + person + `"}`, "vitals"},
 		{"timeline", `{"person":"` + person + `","no_family":true}`, "entries"},
 		{"summary", `{"person":"` + person + `"}`, "narrative"},

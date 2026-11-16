@@ -342,28 +342,48 @@ type excludedParentJSONEdge struct {
 }
 
 type summaryJSONResult struct {
-	ExcludedParents    []excludedParentJSONEdge `json:"excluded_parents"`
-	PersonID           string                   `json:"person_id"`
-	Person             *glxlib.Person           `json:"person"`
-	Names              []nameVariant            `json:"names"`
-	Vitals             []vitalRecord            `json:"vitals"`
-	Timeline           []timelineEntry          `json:"timeline"`
-	Parents            []familyJSONEdge         `json:"parents"`
-	Children           []familyJSONEdge         `json:"children"`
-	Siblings           []siblingJSONEdge        `json:"siblings"`
-	Spouses            []spouseInfo             `json:"spouses"`
-	OtherRelationships []otherRelInfo           `json:"other_relationships"`
-	Narrative          string                   `json:"narrative"`
-	Assertions         []queryJSONEntity        `json:"assertions"`
-	ResearchLogs       []queryJSONEntity        `json:"research_logs"`
+	ExcludedParents      []excludedParentJSONEdge `json:"excluded_parents"`
+	PersonID             string                   `json:"person_id"`
+	Person               *glxlib.Person           `json:"person"`
+	Names                []nameVariant            `json:"names"`
+	Vitals               []vitalRecord            `json:"vitals"`
+	Timeline             []timelineEntry          `json:"timeline"`
+	Parents              []familyJSONEdge         `json:"parents"`
+	Children             []familyJSONEdge         `json:"children"`
+	Siblings             []siblingJSONEdge        `json:"siblings"`
+	Spouses              []spouseInfo             `json:"spouses"`
+	OtherRelationships   []otherRelInfo           `json:"other_relationships"`
+	Narrative            string                   `json:"narrative"`
+	Assertions           []queryJSONEntity        `json:"assertions"`
+	ResearchLogs         []queryJSONEntity        `json:"research_logs"`
+	ResearchLogRefs      []summaryResearchLogRef  `json:"research_log_refs"`
+	ResearchLogCount     int                      `json:"research_log_count"`
+	ResearchLogsIncluded bool                     `json:"research_logs_included"`
+}
+
+// A reference deliberately excludes objectives, searches, conclusions and notes.
+// IsSubject distinguishes direct subject logs from lead-candidate associations.
+type summaryResearchLogRef struct {
+	ID          string            `json:"id"`
+	Title       string            `json:"title,omitempty"`
+	Status      string            `json:"status,omitempty"`
+	Date        glxlib.DateString `json:"date,omitempty"`
+	IsSubject   bool              `json:"is_subject"`
+	SearchCount int               `json:"search_count"`
+	LeadCount   int               `json:"lead_count"`
 }
 
 func buildSummaryJSON(archive *glxlib.GLXFile, personQuery string) (*summaryJSONResult, error) {
 	return buildSummaryJSONContext(context.Background(), archive, personQuery)
 }
 
-//nolint:contextcheck // Existing summary helpers are synchronous phases, checked before and after each call.
 func buildSummaryJSONContext(ctx context.Context, archive *glxlib.GLXFile, personQuery string) (*summaryJSONResult, error) {
+	// Preserve the CLI JSON contract, which historically includes full logs.
+	return buildSummaryJSONWithLogsContext(ctx, archive, personQuery, true)
+}
+
+//nolint:contextcheck // Existing summary helpers are synchronous phases, checked before and after each call.
+func buildSummaryJSONWithLogsContext(ctx context.Context, archive *glxlib.GLXFile, personQuery string, includeLogs bool) (*summaryJSONResult, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -371,7 +391,10 @@ func buildSummaryJSONContext(ctx context.Context, archive *glxlib.GLXFile, perso
 	if err != nil {
 		return nil, err
 	}
-	result := &summaryJSONResult{PersonID: id, Person: person, Assertions: []queryJSONEntity{}, ResearchLogs: []queryJSONEntity{}}
+	result := &summaryJSONResult{
+		PersonID: id, Person: person, Assertions: []queryJSONEntity{},
+		ResearchLogs: []queryJSONEntity{}, ResearchLogRefs: []summaryResearchLogRef{}, ResearchLogsIncluded: includeLogs,
+	}
 	if err := runContextPhases(
 		ctx,
 		func() { result.Names = extractAllNameVariants(person) },
@@ -397,8 +420,16 @@ func buildSummaryJSONContext(ctx context.Context, archive *glxlib.GLXFile, perso
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		result.ResearchLogs = append(result.ResearchLogs, queryJSONEntity{ID: logID, Entity: archive.ResearchLogs[logID]})
+		log := archive.ResearchLogs[logID]
+		result.ResearchLogRefs = append(result.ResearchLogRefs, summaryResearchLogRef{
+			ID: logID, Title: log.Title, Status: log.Status, Date: log.Date,
+			IsSubject: log.Subject != nil && log.Subject.Person == id, SearchCount: len(log.Searches), LeadCount: len(log.Leads),
+		})
+		if includeLogs {
+			result.ResearchLogs = append(result.ResearchLogs, queryJSONEntity{ID: logID, Entity: log})
+		}
 	}
+	result.ResearchLogCount = len(result.ResearchLogRefs)
 
 	if err := ctx.Err(); err != nil {
 		return nil, err

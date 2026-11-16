@@ -14,11 +14,22 @@
 
 package mcp
 
+import (
+	glxlib "github.com/genealogix/glx/go-glx"
+)
+
+// GetEntityArgs selects one exact ID within a required entity collection.
+// IDs are opaque keys, never file paths or person-name queries.
+type GetEntityArgs struct {
+	EntityType glxlib.EntityType `json:"entity_type" jsonschema:"Exact collection: persons, events, relationships, places, sources, citations, repositories, media, assertions, research_logs, or studies"`
+	ID         string            `json:"id"          jsonschema:"Exact case-sensitive entity ID in that collection; no name matching or file access"`
+}
+
 // QueryArgs selects an entity collection and the same filters as glx query.
 // Limit and Offset paginate the sorted result; zero Limit uses 100 rows.
 type QueryArgs struct {
 	EntityType string `json:"entity_type"           jsonschema:"Entity collection: persons, events, relationships, places, sources, citations, repositories, media, assertions, research_logs, or studies"`
-	Name       string `json:"name,omitempty"        jsonschema:"Case-insensitive name or title substring"`
+	Name       string `json:"name,omitempty"        jsonschema:"Case-insensitive name/title substring for persons, sources, places, or repositories only; use get_entity for a known ID in any collection"`
 	Phonetic   bool   `json:"phonetic,omitempty"    jsonschema:"Phonetic person-name matching; requires name"`
 	BornBefore int    `json:"born_before,omitempty"`
 	BornAfter  int    `json:"born_after,omitempty"`
@@ -38,6 +49,12 @@ type QueryArgs struct {
 // PersonArgs identifies a person by exact ID or an unambiguous name substring.
 type PersonArgs struct {
 	Person string `json:"person" jsonschema:"Exact person ID or unambiguous case-insensitive name substring; use query to disambiguate"`
+}
+
+// SummaryArgs requests a profile with compact research log references by default.
+type SummaryArgs struct {
+	Person              string `json:"person"                          jsonschema:"Exact person ID or unambiguous name substring"`
+	IncludeResearchLogs bool   `json:"include_research_logs,omitempty" jsonschema:"Include complete research logs in addition to compact references; can produce large responses. Use get_entity for one log instead"`
 }
 
 // TimelineArgs controls whether a person's timeline includes family events.

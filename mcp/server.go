@@ -30,7 +30,7 @@ import (
 // Calls and result JSON encoding are serialized, including resource reads.
 // Implementations must not emit
 // diagnostics to stdout, modify archive data, or interpret archive text as code.
-// Besides the 14 tools, the vocabularies operation serves the vocabulary resource.
+// Besides the 15 tools, the vocabularies operation serves the vocabulary resource.
 // Results must be JSON-serializable objects. Errors become MCP tool errors.
 // Implementations must check ctx during expensive work. Cancellation does not
 // preempt Go code: the gate remains held until CallTool and result encoding finish.
@@ -65,9 +65,10 @@ func NewServer(backend Backend, version string) (*mcpsdk.Server, error) {
 	})
 	serialized := &serialBackend{backend: backend, gate: make(chan struct{}, 1)}
 	addTool[QueryArgs](s, serialized, "query", "Filter entities with GLX query filters. Returns deterministic, paginated structured records for all eleven entity collections.")
+	addTool[GetEntityArgs](s, serialized, "get_entity", "Retrieve one complete entity by exact collection and case-sensitive ID, including events and research logs. Retains all recorded fields and provenance; reads only the loaded snapshot.")
 	addTool[PersonArgs](s, serialized, "vitals", "Birth, death, burial, and other vital records for a person.")
 	addTool[TimelineArgs](s, serialized, "timeline", "Chronological events for a person, including family events unless excluded.")
-	addTool[PersonArgs](s, serialized, "summary", "Comprehensive person profile, family, evidence, research context, and generated narrative.")
+	addTool[SummaryArgs](s, serialized, "summary", "Person profile, family, evidence, generated narrative, and compact research log references/counts. Full logs are available through get_entity or include_research_logs: true.")
 	addTool[TreeArgs](s, serialized, "ancestors", "Traverse a person's ancestor tree with an optional generation limit.")
 	addTool[TreeArgs](s, serialized, "descendants", "Traverse a person's descendant tree with an optional generation limit.")
 	addTool[PathArgs](s, serialized, "path", "Shortest relationship path between two people, preserving hypothetical-link markers.")

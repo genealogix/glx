@@ -37,13 +37,14 @@ var errUnknownAnalysisCheck = errors.New("unknown check category")
 
 // AnalysisIssue represents a single finding from the analysis engine.
 type AnalysisIssue struct {
-	Category string `json:"category"` // "gap", analysisEvidenceCategory, analysisConsistencyCategory, "suggestion"
-	Severity string `json:"severity"` // "high", "medium", "low", "info"
-	Person   string `json:"person,omitempty"`
-	Entity   string `json:"entity,omitempty"`
-	Message  string `json:"message"`
-	Property string `json:"property,omitempty"`
-	Subject  string `json:"subject,omitempty"`
+	Category string                  `json:"category"` // "gap", analysisEvidenceCategory, analysisConsistencyCategory, "suggestion"
+	Severity string                  `json:"severity"` // "high", "medium", "low", "info"
+	Person   string                  `json:"person,omitempty"`
+	Entity   string                  `json:"entity,omitempty"`
+	Message  string                  `json:"message"`
+	Property string                  `json:"property,omitempty"`
+	Subject  string                  `json:"subject,omitempty"`
+	Events   []analysisConflictEvent `json:"events,omitempty"`
 }
 
 // AnalysisResult holds all findings from the analysis engine.
@@ -202,9 +203,10 @@ func filterByPerson(issues []AnalysisIssue, query string, archive *glxlib.GLXFil
 	// Check if query is an exact person ID
 	if _, ok := archive.Persons[query]; ok {
 		var filtered []AnalysisIssue
-		for _, issue := range issues {
+		for i := range issues {
+			issue := &issues[i]
 			if issue.Person == query {
-				filtered = append(filtered, issue)
+				filtered = append(filtered, *issue)
 			}
 		}
 
@@ -225,9 +227,10 @@ func filterByPerson(issues []AnalysisIssue, query string, archive *glxlib.GLXFil
 	}
 
 	var filtered []AnalysisIssue
-	for _, issue := range issues {
+	for i := range issues {
+		issue := &issues[i]
 		if matchingIDs[issue.Person] {
-			filtered = append(filtered, issue)
+			filtered = append(filtered, *issue)
 		}
 	}
 
@@ -243,7 +246,8 @@ func buildSummary(issues []AnalysisIssue) map[string]int {
 		conflictCategory:            0,
 		analysisSuggestionCategory:  0,
 	}
-	for _, issue := range issues {
+	for i := range issues {
+		issue := &issues[i]
 		summary[issue.Category]++
 	}
 
@@ -300,9 +304,10 @@ func printAnalysisTerminal(result AnalysisResult) {
 // filterCategory returns issues matching a category.
 func filterCategory(issues []AnalysisIssue, category string) []AnalysisIssue {
 	var filtered []AnalysisIssue
-	for _, issue := range issues {
+	for i := range issues {
+		issue := &issues[i]
 		if issue.Category == category {
-			filtered = append(filtered, issue)
+			filtered = append(filtered, *issue)
 		}
 	}
 

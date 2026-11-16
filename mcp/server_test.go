@@ -53,14 +53,15 @@ func TestServerCatalogAndStructuredTools(t *testing.T) {
 	client := connectTestServer(t, server)
 	catalog, err := client.ListTools(t.Context(), nil)
 	require.NoError(t, err)
-	require.Len(t, catalog.Tools, 14)
+	require.Len(t, catalog.Tools, 15)
 	for _, tool := range catalog.Tools {
 		require.True(t, tool.Annotations.ReadOnlyHint, tool.Name)
 		require.NotNil(t, tool.InputSchema)
 	}
 	for name, args := range map[string]any{
-		"query":  QueryArgs{EntityType: "persons", Name: "Mary"},
-		"vitals": PersonArgs{Person: "person-mary"}, "summary": PersonArgs{Person: "person-mary"},
+		"query":      QueryArgs{EntityType: "persons", Name: "Mary"},
+		"get_entity": GetEntityArgs{EntityType: "persons", ID: "person-mary"},
+		"vitals":     PersonArgs{Person: "person-mary"}, "summary": SummaryArgs{Person: "person-mary"},
 		"timeline": TimelineArgs{Person: "person-mary"}, "ancestors": TreeArgs{Person: "person-mary"}, "descendants": TreeArgs{Person: "person-mary"},
 		"path": PathArgs{From: "a", To: "b"}, "cite": CiteArgs{Citation: "citation-1"},
 		"analyze": AnalyzeArgs{Check: "gaps"}, "stats": struct{}{}, "places": struct{}{},
@@ -78,12 +79,12 @@ func TestServerCatalogAndStructuredTools(t *testing.T) {
 		require.NoError(t, encodeErr)
 		require.JSONEq(t, text.Text, string(structured))
 	}
-	require.EqualValues(t, 14, calls.Load())
+	require.EqualValues(t, 15, calls.Load())
 	for _, args := range []any{map[string]any{}, map[string]any{"person": 42}, map[string]any{"person": "a", "archive": "/etc/passwd"}} {
 		result, callErr := client.CallTool(t.Context(), &mcpsdk.CallToolParams{Name: "vitals", Arguments: args})
 		require.True(t, callErr != nil || result.IsError)
 	}
-	require.EqualValues(t, 14, calls.Load(), "invalid arguments must not reach the backend")
+	require.EqualValues(t, 15, calls.Load(), "invalid arguments must not reach the backend")
 }
 
 var errTestPersonNotFound = errors.New("person not found")

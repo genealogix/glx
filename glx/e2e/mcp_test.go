@@ -64,11 +64,12 @@ func TestMCPRealStdioAllToolsAndNoWrites(t *testing.T) {
 	session, stderr := connectMCP(t, dir)
 	catalog, err := session.ListTools(t.Context(), nil)
 	require.NoError(t, err)
-	require.Len(t, catalog.Tools, 14)
+	require.Len(t, catalog.Tools, 15)
 	const person = "person-jane-smith-1876"
 	calls := map[string]any{
-		"query":  map[string]any{"entity_type": "persons", "name": "Jane"},
-		"vitals": map[string]any{"person": person}, "summary": map[string]any{"person": person},
+		"query":      map[string]any{"entity_type": "persons", "name": "Jane"},
+		"get_entity": map[string]any{"entity_type": "persons", "id": person},
+		"vitals":     map[string]any{"person": person}, "summary": map[string]any{"person": person},
 		"timeline": map[string]any{"person": person}, "ancestors": map[string]any{"person": person, "generations": 3},
 		"descendants": map[string]any{"person": "person-john-smith-1850", "generations": 3},
 		"path":        map[string]any{"from": person, "to": "person-john-smith-1850"},

@@ -34,6 +34,8 @@ var (
 	errMCPPagination       = errors.New("offset must be nonnegative and limit must be between 0 and 1000")
 	errMCPEndpoints        = errors.New("from and to must identify distinct people")
 	errMCPMaxHops          = errors.New("max_hops must be at least 1")
+	errMCPEntityID         = errors.New("id must not be empty or whitespace")
+	errMCPEntityNotFound   = errors.New("entity not found in collection")
 )
 
 // mcpArchiveBackend owns one snapshot. The protocol adapter serializes its
@@ -155,13 +157,17 @@ func (b *mcpArchiveBackend) CallTool(ctx context.Context, name string, raw json.
 	switch name {
 	case "query":
 		return withMCPArgs(raw, func(a *glxmcp.QueryArgs) (any, error) { return b.queryContext(ctx, a) })
+	case "get_entity":
+		return withMCPArgs(raw, func(a *glxmcp.GetEntityArgs) (any, error) { return b.getEntityContext(ctx, a) })
 	case "vitals":
 		return withMCPArgs(raw, func(a *glxmcp.PersonArgs) (any, error) { return buildVitalsJSON(b.archive, a.Person) })
 	case "timeline":
 		//nolint:contextcheck // Legacy timeline collection is synchronous; the serialized adapter checks cancellation after it finishes.
 		return withMCPArgs(raw, func(a *glxmcp.TimelineArgs) (any, error) { return buildTimelineJSON(b.archive, a.Person, !a.NoFamily) })
 	case "summary":
-		return withMCPArgs(raw, func(a *glxmcp.PersonArgs) (any, error) { return buildSummaryJSONContext(ctx, b.archive, a.Person) })
+		return withMCPArgs(raw, func(a *glxmcp.SummaryArgs) (any, error) {
+			return buildSummaryJSONWithLogsContext(ctx, b.archive, a.Person, a.IncludeResearchLogs)
+		})
 	case jsonAncestors, jsonDescendants:
 		return withMCPArgs(raw, func(a *glxmcp.TreeArgs) (any, error) {
 			return b.tree(ctx, *a, name == jsonAncestors)

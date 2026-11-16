@@ -100,9 +100,10 @@ produce a tool error rather than selecting an arbitrary person.
 | Tool | Purpose | Main arguments |
 | --- | --- | --- |
 | `query` | Filter complete entity records | `entity_type`, CLI filter names with underscores, `limit`, `offset` |
+| `get_entity` | One complete entity by exact ID | `entity_type`, `id` |
 | `vitals` | Vital records | `person` |
 | `timeline` | Chronological personal and family events | `person`, `no_family` |
-| `summary` | Profile, family, narrative, assertions and research logs | `person` |
+| `summary` | Profile, family, narrative, assertions and research log references | `person`, optional `include_research_logs` |
 | `ancestors` | Ancestor tree | `person`, `generations` |
 | `descendants` | Descendant tree | `person`, `generations` |
 | `path` | Shortest relationship path | `from`, `to`, `max_hops`, `accepted_only` |
@@ -124,6 +125,52 @@ subject. Invalid filter/collection combinations are rejected.
 of 1,000. `count` is the total number of matches; `returned`, `offset` and
 `has_more` describe the page. Use successive offsets to read the remaining
 matches. Entity fields retain the archive's snake_case names.
+
+`get_entity` requires both a collection and an exact, case-sensitive ID and
+returns `{ "entity_type": "events", "id": "event-example", "entity": { ... } }`.
+It supports all eleven collections, including events and research logs, without
+name matching or inference from the ID prefix. A missing record or an ID in the
+wrong collection is a tool error. IDs address the loaded snapshot and never
+open files or URLs. Full entity data, including custom properties, notes,
+searches, citations and uncertainty, is retained.
+
+MCP `summary` returns compact `research_log_refs` sorted by ID, with title,
+status, date, search/lead counts and `is_subject` (false for a lead-candidate
+association). `research_log_count` includes all matching logs. By default,
+`research_logs` is an empty array and `research_logs_included` is false; this
+explicitly signals omitted detail rather than an absence of research. Use
+`get_entity` with `entity_type: "research_logs"` and a reference's `id` to read
+one complete log. Set `include_research_logs: true` to restore the previous
+full-log MCP response; it can be large. The existing `glx summary --json`
+continues to include full logs. Other summary sections retain their detail,
+so compact logs do not impose a byte limit on a profile.
+
+For example, after resolving a person ID:
+
+```json
+{"name":"summary","arguments":{"person":"person-mary-lane"}}
+{"name":"get_entity","arguments":{"entity_type":"research_logs","id":"research-log-origins"}}
+{"name":"get_entity","arguments":{"entity_type":"events","id":"event-declaration"}}
+{"name":"summary","arguments":{"person":"person-mary-lane","include_research_logs":true}}
+```
+
+`query.name` applies to persons, sources, places and repositories. Events use
+type/year filters; research logs use status/subject filters. A known ID in
+either collection is best read with `get_entity`.
+
+Timeline entries retain `event_id` and add the recorded `event_type`,
+`event_subtype` and `title` when present. Labels show subtypes such as
+"Naturalization: Declaration of intention". Generated narratives retain
+separate immigration, naturalization and military-service events in date order,
+using recorded subtypes or titles. A declaration and a later admission index
+remain separate records; the generated text does not resolve their evidence.
+
+Conflict findings retain their existing `person` scope and `subject` display
+label. Event conflicts also include `events` with IDs, titles, dates, labels,
+principal person IDs, the scoped person's role and `own_record`. Contextual
+messages identify whose record it is and the person's role (for example,
+"Death of Robin Green [event-robin-death] (informant)"). An association remains
+available as evidence without being presented as the informant's own death.
 
 MCP trees default to four generations, allow up to twenty, and return at most
 1,000 nodes. `truncated` identifies an incomplete tree; query a boundary person

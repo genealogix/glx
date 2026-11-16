@@ -9,7 +9,7 @@ Serve read-only research tools over stdio
 
 ### Synopsis
 
-Load one archive snapshot and expose fourteen read-only research tools,
+Load one archive snapshot and expose fifteen read-only research tools,
 archive statistics and vocabulary resources, and a genealogy research prompt
 using the Model Context Protocol over stdin/stdout. No network listener is opened.
 

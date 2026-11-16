@@ -25,12 +25,15 @@ import (
 
 // timelineEntry represents a single row in the timeline output.
 type timelineEntry struct {
-	Date     string `json:"date"`      // Raw date string for display
-	SortKey  string `json:"sort_key"`  // Normalized string for chronological sorting
-	Label    string `json:"label"`     // e.g., "Birth", "Marriage", "Birth of child (Jane)"
-	Detail   string `json:"detail"`    // Place or other context
-	EventID  string `json:"event_id"`  // For deduplication
-	IsFamily bool   `json:"is_family"` // Whether this came from relationship traversal
+	Date         string `json:"date"`      // Raw date string for display
+	SortKey      string `json:"sort_key"`  // Normalized string for chronological sorting
+	Label        string `json:"label"`     // e.g., "Birth", "Marriage", "Birth of child (Jane)"
+	Detail       string `json:"detail"`    // Place or other context
+	EventID      string `json:"event_id"`  // For deduplication
+	IsFamily     bool   `json:"is_family"` // Whether this came from relationship traversal
+	EventType    string `json:"event_type,omitempty"`
+	EventSubtype string `json:"event_subtype,omitempty"`
+	Title        string `json:"title,omitempty"`
 }
 
 // familyRelationshipTypes defines which relationship types count as "family"
@@ -168,18 +171,23 @@ func collectDirectEvents(personID string, archive *glxlib.GLXFile) []timelineEnt
 
 		date := string(event.Date)
 		label := formatEventTypeLabel(event.Type)
+		subtype, _ := event.Properties["event_subtype"].(string)
+		if strings.TrimSpace(subtype) != "" {
+			label += ": " + subtype
+		}
 		if !participation.OwnRecord {
 			label = glxlib.AppearanceLabel(event, archive) + " (" + role + ")"
 		}
 		detail := timelineResolvePlaceName(event.PlaceID, archive)
 
 		entries = append(entries, timelineEntry{
-			Date:     date,
-			SortKey:  dateSortKey(date),
-			Label:    label,
-			Detail:   detail,
-			EventID:  id,
-			IsFamily: false,
+			Date:      date,
+			SortKey:   dateSortKey(date),
+			Label:     label,
+			Detail:    detail,
+			EventID:   id,
+			IsFamily:  false,
+			EventType: event.Type, EventSubtype: subtype, Title: event.Title,
 		})
 	}
 
@@ -433,15 +441,17 @@ func relatedPersonTimelineEvents(rel relatedPerson, archive *glxlib.GLXFile) []t
 
 		date := string(event.Date)
 		label := fmt.Sprintf(labelTemplate, rel.Name)
+		subtype, _ := event.Properties["event_subtype"].(string)
 		detail := timelineResolvePlaceName(event.PlaceID, archive)
 
 		entries = append(entries, timelineEntry{
-			Date:     date,
-			SortKey:  dateSortKey(date),
-			Label:    label,
-			Detail:   detail,
-			EventID:  id,
-			IsFamily: true,
+			Date:      date,
+			SortKey:   dateSortKey(date),
+			Label:     label,
+			Detail:    detail,
+			EventID:   id,
+			IsFamily:  true,
+			EventType: event.Type, EventSubtype: subtype, Title: event.Title,
 		})
 	}
 
@@ -454,18 +464,20 @@ func deduplicateEntries(direct, family []timelineEntry) []timelineEntry {
 	seen := make(map[string]bool)
 	result := make([]timelineEntry, 0, len(direct)+len(family))
 
-	for _, e := range direct {
+	for i := range direct {
+		e := &direct[i]
 		if e.EventID != "" {
 			seen[e.EventID] = true
 		}
-		result = append(result, e)
+		result = append(result, *e)
 	}
 
-	for _, e := range family {
+	for i := range family {
+		e := &family[i]
 		if e.EventID != "" && seen[e.EventID] {
 			continue
 		}
-		result = append(result, e)
+		result = append(result, *e)
 	}
 
 	return result
@@ -550,7 +562,8 @@ func printTimeline(personID, personName string, entries []timelineEntry) {
 
 	// Find longest label for alignment
 	maxLabel := 0
-	for _, e := range entries {
+	for i := range entries {
+		e := &entries[i]
 		if len(e.Label) > maxLabel {
 			maxLabel = len(e.Label)
 		}
@@ -563,9 +576,10 @@ func printTimeline(personID, personName string, entries []timelineEntry) {
 
 	var undated []timelineEntry
 
-	for _, e := range entries {
+	for i := range entries {
+		e := &entries[i]
 		if e.SortKey == "\xff" {
-			undated = append(undated, e)
+			undated = append(undated, *e)
 
 			continue
 		}
@@ -582,7 +596,8 @@ func printTimeline(personID, personName string, entries []timelineEntry) {
 	if len(undated) > 0 {
 		fmt.Println()
 		fmt.Println("  Undated:")
-		for _, e := range undated {
+		for i := range undated {
+			e := &undated[i]
 			date := displayDate(e.Date)
 			if e.Detail != "" {
 				fmt.Printf("  %-18s  %-*s  %s\n", date, maxLabel, e.Label, e.Detail)

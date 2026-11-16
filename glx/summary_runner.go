@@ -17,6 +17,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -1078,24 +1079,7 @@ func generateLifeHistory(personID string, person *glxlib.Person, archive *glxlib
 		sentences = append(sentences, c)
 	}
 
-	// Notable events (first of each type)
-	notableTypes := []string{"immigration", "naturalization", "military_service"}
-	for _, evType := range notableTypes {
-		evDate, evPlace := findEventDatePlace(personID, evType, archive)
-		if evDate == "" && evPlace == "" {
-			continue
-		}
-		label := strings.ToLower(snakeCaseToTitle(evType))
-		s := possessive + " " + label + " was recorded"
-		if evDate != "" {
-			s += " " + narrativeDate(evDate)
-		}
-		if evPlace != "" {
-			s += " in " + evPlace
-		}
-		s = capitalize(s)
-		sentences = append(sentences, s+".")
-	}
+	sentences = append(sentences, notableLifeSentences(personID, possessive, archive)...)
 
 	// Death
 	deathDate, deathPlace := findEventDatePlace(personID, "death", archive)
@@ -1111,6 +1095,38 @@ func generateLifeHistory(personID string, person *glxlib.Person, archive *glxlib
 	}
 
 	return strings.Join(sentences, " ")
+}
+
+// Keep separate proceedings, including declarations and final admissions, in
+// date order. The timeline retains their IDs; prose preserves recorded subtype
+// or title without interpreting either as a legal conclusion.
+func notableLifeSentences(personID, possessive string, archive *glxlib.GLXFile) []string {
+	var sentences []string
+	entries := collectTimelineEntries(personID, archive, false)
+	for i := range entries {
+		entry := &entries[i]
+		event := archive.Events[entry.EventID]
+		if !slices.Contains([]string{"immigration", "naturalization", "military_service"}, strings.ToLower(event.Type)) || !ownsSummaryEvent(personID, event, archive) {
+			continue
+		}
+		label := strings.ToLower(snakeCaseToTitle(event.Type))
+		subtype, _ := event.Properties["event_subtype"].(string)
+		if subtype = strings.TrimSpace(subtype); subtype != "" {
+			label += " (" + subtype + ")"
+		} else if title := strings.TrimSpace(event.Title); title != "" {
+			label += " (" + title + ")"
+		}
+		s := possessive + " " + label + " was recorded"
+		if event.Date != "" {
+			s += " " + narrativeDate(string(event.Date))
+		}
+		if place := resolvePlaceName(event.PlaceID, archive); place != "" {
+			s += " in " + place
+		}
+		sentences = append(sentences, capitalize(s)+".")
+	}
+
+	return sentences
 }
 
 // parentSentences narrates a person's parents, then step-parents
