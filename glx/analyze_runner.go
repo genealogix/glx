@@ -16,6 +16,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -23,6 +24,8 @@ import (
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
+
+var errUnknownAnalysisCheck = errors.New("unknown check category")
 
 // AnalysisIssue represents a single finding from the analysis engine.
 type AnalysisIssue struct {
@@ -85,13 +88,38 @@ func showAnalysis(archivePath, personFilter, checkFilter, format, country string
 		return fmt.Errorf("failed to load archive: %w", err)
 	}
 
-	var issues []AnalysisIssue
+	result, err := buildAnalysisJSON(archive, personFilter, checkFilter, options...)
+	if err != nil {
+		return err
+	}
+
+	if format == householdsFormatJSON {
+		return printAnalysisJSON(result)
+	}
+
+	printAnalysisTerminal(result)
+
+	return nil
+}
+
+// buildAnalysisJSON evaluates the loaded archive without I/O or changing CLI options.
+// Census suggestions use the process's fixed censusCountryFallback. MCP callers
+// must not change it between requests.
+func buildAnalysisJSON(archive *glxlib.GLXFile, personFilter, checkFilter string, options ...glxlib.ComparisonOptions) (AnalysisResult, error) {
+	if archive == nil {
+		return AnalysisResult{}, glxlib.ErrNilArchive
+	}
+	if err := comparisonOptions(options).Validate(); err != nil {
+		return AnalysisResult{}, err
+	}
+	issues := make([]AnalysisIssue, 0)
 
 	var conflictIssues []AnalysisIssue
 	if checkFilter == "" || checkFilter == conflictsCheck || checkFilter == conflictCategory {
+		var err error
 		conflictIssues, err = analyzeConflictsWithOptions(archive, comparisonOptions(options))
 		if err != nil {
-			return err
+			return AnalysisResult{}, err
 		}
 	}
 	checks := map[string]func(*glxlib.GLXFile) []AnalysisIssue{
@@ -117,7 +145,7 @@ func showAnalysis(archivePath, personFilter, checkFilter, format, country string
 		}
 		fn, ok := checks[checkFilter]
 		if !ok {
-			return fmt.Errorf("unknown check category: %q (valid: gaps, evidence, consistency, conflicts, suggestions)", checkFilter)
+			return AnalysisResult{}, fmt.Errorf("%w: %q (valid: gaps, evidence, consistency, conflicts, suggestions)", errUnknownAnalysisCheck, checkFilter)
 		}
 		issues = fn(archive)
 	} else {
@@ -131,21 +159,17 @@ func showAnalysis(archivePath, personFilter, checkFilter, format, country string
 		issues = filterByPerson(issues, personFilter, archive)
 	}
 
+	if issues == nil {
+		issues = []AnalysisIssue{}
+	}
+
 	// Sort by severity (high → medium → low → info) then by person/entity for stability
 	sortIssues(issues)
 
-	result := AnalysisResult{
+	return AnalysisResult{
 		Summary: buildSummary(issues),
 		Issues:  issues,
-	}
-
-	if format == "json" {
-		return printAnalysisJSON(result)
-	}
-
-	printAnalysisTerminal(result)
-
-	return nil
+	}, nil
 }
 
 // filterByPerson filters issues to only those matching a person ID or name.

@@ -25,12 +25,12 @@ import (
 
 // timelineEntry represents a single row in the timeline output.
 type timelineEntry struct {
-	Date     string // Raw date string for display
-	SortKey  string // Normalized string for chronological sorting
-	Label    string // e.g., "Birth", "Marriage", "Birth of child (Jane)"
-	Detail   string // Place or other context
-	EventID  string // For deduplication
-	IsFamily bool   // Whether this came from relationship traversal
+	Date     string `json:"date"`      // Raw date string for display
+	SortKey  string `json:"sort_key"`  // Normalized string for chronological sorting
+	Label    string `json:"label"`     // e.g., "Birth", "Marriage", "Birth of child (Jane)"
+	Detail   string `json:"detail"`    // Place or other context
+	EventID  string `json:"event_id"`  // For deduplication
+	IsFamily bool   `json:"is_family"` // Whether this came from relationship traversal
 }
 
 // familyRelationshipTypes defines which relationship types count as "family"
@@ -49,10 +49,13 @@ var familyRelationshipTypes = map[string]bool{
 }
 
 // showTimeline loads an archive and displays a chronological timeline for a person.
-func showTimeline(archivePath, personQuery string, includeFamily bool) error {
+func showTimeline(archivePath, personQuery string, includeFamily bool, jsonOutput ...bool) error {
 	archive, err := loadArchiveForTimeline(archivePath)
 	if err != nil {
 		return err
+	}
+	if explorationJSONEnabled(jsonOutput) {
+		return printExplorationJSON(buildTimelineJSON(archive, personQuery, includeFamily))
 	}
 
 	personID, _, err := findPersonForTimeline(archive, personQuery)

@@ -28,27 +28,27 @@ import (
 
 // nameVariant holds a single name variant with its type classification.
 type nameVariant struct {
-	Value    string
-	NameType string // e.g., "birth", "married", "as_recorded"
+	Value    string `json:"value"`
+	NameType string `json:"name_type"` // e.g., "birth", "married", "as_recorded"
 }
 
 // spouseInfo holds details about a spouse relationship.
 type spouseInfo struct {
-	PersonID      string
-	PersonName    string
-	RelType       string
-	MarriageDate  string
-	MarriagePlace string
-	Hypothetical  bool // the archive records the union only as a hypothesis
+	PersonID      string `json:"person_id"`
+	PersonName    string `json:"person_name"`
+	RelType       string `json:"rel_type"`
+	MarriageDate  string `json:"marriage_date"`
+	MarriagePlace string `json:"marriage_place"`
+	Hypothetical  bool   `json:"hypothetical"` // the archive records the union only as a hypothesis
 }
 
 // otherRelInfo holds a non-family relationship for display.
 type otherRelInfo struct {
-	RelType      string
-	Label        string // how the other participant relates to the person (see otherRelationshipLabel)
-	OtherName    string
-	OtherID      string
-	Hypothetical bool // the archive records the relationship only as a hypothesis
+	RelType      string `json:"rel_type"`
+	Label        string `json:"label"` // how the other participant relates to the person (see otherRelationshipLabel)
+	OtherName    string `json:"other_name"`
+	OtherID      string `json:"other_id"`
+	Hypothetical bool   `json:"hypothetical"` // the archive records the relationship only as a hypothesis
 }
 
 // parentChildRelTypes maps relationship types that represent parent-child connections.
@@ -135,10 +135,13 @@ func loadArchiveForSummary(path string) (*glxlib.GLXFile, error) {
 }
 
 // showSummary loads an archive and displays a comprehensive person profile.
-func showSummary(archivePath, personQuery string) error {
+func showSummary(archivePath, personQuery string, jsonOutput ...bool) error {
 	archive, err := loadArchiveForSummary(archivePath)
 	if err != nil {
 		return err
+	}
+	if explorationJSONEnabled(jsonOutput) {
+		return printExplorationJSON(buildSummaryJSON(archive, personQuery))
 	}
 
 	personID, person, err := findPersonByQuery(archive, personQuery)
@@ -177,6 +180,9 @@ func findPersonByQuery(archive *glxlib.GLXFile, query string) (string, *glxlib.P
 	var matches []string
 
 	for id, person := range archive.Persons {
+		if person == nil {
+			continue
+		}
 		names := extractAllNameValues(person)
 		for _, name := range names {
 			if strings.Contains(strings.ToLower(name), lowerQuery) {

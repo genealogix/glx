@@ -367,7 +367,10 @@ export default defineConfig({
             { text: 'glx descendants', link: '/cli/glx_descendants' },
             { text: 'glx cite', link: '/cli/glx_cite' },
             { text: 'glx path', link: '/cli/glx_path' },
-            { text: 'glx serve', link: '/cli/glx_serve' }
+            { text: 'glx serve', link: '/cli/glx_serve' },
+            { text: 'glx mcp', link: '/cli/glx_mcp' },
+            { text: 'glx mcp serve', link: '/cli/glx_mcp_serve' },
+            { text: 'MCP research guide', link: '/mcp' }
           ]
         },
         {

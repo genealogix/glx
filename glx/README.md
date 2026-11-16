@@ -176,6 +176,8 @@ glx validate persons/ events/   # several directories are validated as one archi
 
 ## Features
 
+- **MCP research server**: `glx mcp serve` exposes read-only archive tools over stdio. See the [MCP guide](../docs/mcp.md).
+
 - [Shared conflict detection](../docs/guides/conflict-detection.md) across analysis, proof, evidence and person merges, with dated history and configurable approximate-date tolerance.
 
 - ✅ **Initialize Archives** - Create new single-file or multi-file genealogy archives

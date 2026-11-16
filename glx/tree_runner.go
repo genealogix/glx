@@ -25,13 +25,13 @@ import (
 
 // treeNode represents a person in the ancestor/descendant tree.
 type treeNode struct {
-	PersonID     string
-	Name         string
-	Dates        string // "(1850 – 1920)" or similar
-	RelType      string // relationship type connecting to parent/child
-	Step         bool   // connected to parent/child through a step link
-	Hypothetical bool   // the connecting relationship is only a hypothesis
-	Children     []*treeNode
+	PersonID     string      `json:"person_id"`
+	Name         string      `json:"name"`
+	Dates        string      `json:"dates"`        // "(1850 – 1920)" or similar
+	RelType      string      `json:"rel_type"`     // relationship type connecting to parent/child
+	Step         bool        `json:"step"`         // connected to parent/child through a step link
+	Hypothetical bool        `json:"hypothetical"` // the connecting relationship is only a hypothesis
+	Children     []*treeNode `json:"children"`
 }
 
 // treeRelPerson holds a person ID and the relationship connecting them.
@@ -142,10 +142,13 @@ func loadArchiveForTree(path string) (*glxlib.GLXFile, error) {
 
 // showAncestors loads the archive and prints the ancestor tree for a person.
 // When ancestors are missing, it appends research suggestions.
-func showAncestors(archivePath, personID string, maxGen int) error {
+func showAncestors(archivePath, personID string, maxGen int, jsonOutput ...bool) error {
 	archive, err := loadArchiveForTree(archivePath)
 	if err != nil {
 		return err
+	}
+	if explorationJSONEnabled(jsonOutput) {
+		return printExplorationJSON(buildTreeJSON(archive, personID, maxGen, true))
 	}
 
 	if _, ok := archive.Persons[personID]; !ok {
@@ -167,10 +170,13 @@ func showAncestors(archivePath, personID string, maxGen int) error {
 }
 
 // showDescendants loads the archive and prints the descendant tree for a person.
-func showDescendants(archivePath, personID string, maxGen int) error {
+func showDescendants(archivePath, personID string, maxGen int, jsonOutput ...bool) error {
 	archive, err := loadArchiveForTree(archivePath)
 	if err != nil {
 		return err
+	}
+	if explorationJSONEnabled(jsonOutput) {
+		return printExplorationJSON(buildTreeJSON(archive, personID, maxGen, false))
 	}
 
 	if _, ok := archive.Persons[personID]; !ok {

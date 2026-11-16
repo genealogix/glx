@@ -40,6 +40,7 @@ glx cite [citation-id] [flags]
 ```
   -a, --archive string   Archive path (directory or single file) (default ".")
   -h, --help             help for cite
+      --json             Output as JSON
 ```
 
 ### Options inherited from parent commands
