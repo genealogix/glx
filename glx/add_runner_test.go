@@ -1798,18 +1798,20 @@ func TestAdd_RelationshipRefusesDuplicate(t *testing.T) {
 	io, _, errOut := TestIOStreams()
 	for _, given := range []string{"Hans", "Ann"} {
 		if err := addPerson(io, &addPersonOptions{
-			addCommonOptions: addCommonOptions{ArchivePath: dir},
-			Given:            given,
+			ArchivePath: dir,
+			Given:       given,
 		}); err != nil {
 			t.Fatalf("addPerson: %v", err)
 		}
 	}
 	opts := func(id string, force bool) *addRelationshipOptions {
 		return &addRelationshipOptions{
-			addCommonOptions: addCommonOptions{ArchivePath: dir, OverrideID: id, Force: force},
-			Type:             "parent_child",
-			Parents:          []string{"person-hans"},
-			Children:         []string{"person-ann"},
+			ArchivePath: dir,
+			OverrideID:  id,
+			Force:       force,
+			Type:        "parent_child",
+			Parents:     []string{"person-hans"},
+			Children:    []string{"person-ann"},
 		}
 	}
 	if err := addRelationship(io, opts("rel-1", false)); err != nil {

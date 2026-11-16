@@ -21,6 +21,10 @@ import (
 	"strings"
 )
 
+// fieldParticipants is the `participants` field name that validation
+// findings point at.
+const fieldParticipants = "participants"
+
 // relationshipSignature returns a key shared by relationships of the same type
 // whose participants are the same people in the same roles, regardless of the
 // order the participants are listed in. Type and role comparison ignores case.
@@ -125,7 +129,7 @@ func (glx *GLXFile) validateDuplicateRelationships(result *ValidationResult) {
 		result.Warnings = append(result.Warnings, ValidationWarning{
 			SourceType: EntityTypeRelationships,
 			SourceID:   id,
-			Field:      "participants",
+			Field:      fieldParticipants,
 			Message: fmt.Sprintf("%s[%s]: duplicates %s[%s] (same type %q and the same participants in the same roles); "+
 				"merge them or remove one",
 				EntityTypeRelationships, id, EntityTypeRelationships, earlier, rel.Type),

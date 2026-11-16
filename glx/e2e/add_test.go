@@ -253,7 +253,8 @@ func TestAdd_DuplicateRelationship(t *testing.T) {
 		require.Equal(t, 0, res.exitCode, res.stderr)
 	}
 
-	dup := []string{"add", "relationship", "--id", "rel-2", "--type", "parent_child", "--parent", "p-f", "--child", "p-c"}
+	dup := make([]string, 0, 11)
+	dup = append(dup, "add", "relationship", "--id", "rel-2", "--type", "parent_child", "--parent", "p-f", "--child", "p-c")
 	before := snapshotTree(t, archive)
 	res := runGLX(t, archive, dup...)
 	assertTreeUnchanged(t, before, archive)
