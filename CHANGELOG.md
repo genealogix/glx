@@ -103,6 +103,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Fixed
 
+- Reject named pipes and other special files in JSON validation instead of blocking on archive reads. (#1528)
+
 - MCP single-file loading rejects symlinked archive files with no-follow opens and descriptor checks before reading. Watch mode retains the previous snapshot after an unsafe replacement and recovers when a regular file is restored (#1528).
 
 - Cache reads no longer follow symlinks outside the selected archive. Unusable caches fall back to source loading; MCP tool and resource results are fully encoded before another backend call begins (PR #1528).

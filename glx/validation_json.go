@@ -134,7 +134,15 @@ func validateJSONPath(path string, report bool) (*validationJSONResult, error) {
 		if root, rootErr := commonArchiveRoot([]string{path}); rootErr == nil && !sameDirectory(root, path) {
 			return nil, errJSONValidationScope
 		}
-		files, err = collectGLXFilesFromDir(path)
+		files = make(map[string][]byte)
+		err = walkGLXFilesUnderReading(path, ".", readMCPWatchFile, func(name string, data []byte, readErr error) error {
+			if readErr != nil {
+				return fmt.Errorf("read validation source %s: %w", name, readErr)
+			}
+			files[name] = data
+
+			return nil
+		})
 	} else {
 		// Match text validation's file selection. The multi-file loader skips
 		// unsupported extensions, which must not turn this explicit input
@@ -142,8 +150,11 @@ func validateJSONPath(path string, report bool) (*validationJSONResult, error) {
 		if !isGLXFile(path) {
 			return nil, fmt.Errorf("%w: %s is not a .glx file", ErrNothingToValidate, path)
 		}
+		if !info.Mode().IsRegular() {
+			return nil, errMCPWatchSourceType
+		}
 		var data []byte
-		data, err = os.ReadFile(path) // #nosec G304 -- explicit CLI input selected by the user; MCP validation never reads paths
+		data, err = readValidationJSONFile(path)
 		files = map[string][]byte{path: data}
 	}
 	if err != nil {
@@ -173,6 +184,19 @@ func validateJSONPath(path string, report bool) (*validationJSONResult, error) {
 	result.Valid = len(result.StructuralErrors) == 0 && len(result.Errors) == 0 && len(result.DuplicateIDs) == 0
 
 	return result, nil
+}
+
+// readValidationJSONFile preserves explicit-path symlink support while rejecting
+// special files before reading. Nonblocking open also closes the Unix FIFO
+// replacement race; the descriptor check does not rely on the earlier stat.
+func readValidationJSONFile(path string) ([]byte, error) {
+	// #nosec G304 -- explicit CLI input; MCP validation never reads paths.
+	file, err := os.OpenFile(path, os.O_RDONLY|mcpWatchNonblock, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	return readMCPWatchRegularFile(file, nil)
 }
 
 func validateJSONSourceFiles(files map[string][]byte, directory bool) ([]string, error) {
