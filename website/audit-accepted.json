@@ -1,0 +1,11 @@
+{
+  "accepted": [
+    {
+      "advisory": "GHSA-fc5q-39xc-vjpf",
+      "package": "picomatch",
+      "version": "4.0.7",
+      "reason": "No fixed picomatch release exists. postinstall applies the upstream PR #262 parser fix to 4.0.7 and fails closed on any hash mismatch; see patches/README.md. Remove this entry with the backport once a fixed release is installed.",
+      "verify": "npm run test:security"
+    }
+  ]
+}

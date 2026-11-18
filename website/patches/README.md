@@ -22,9 +22,12 @@ unsupported complex patterns and capture forms can fall back to literal matching
 uses developer-controlled build patterns, not a public user-supplied glob API.
 The patch is a temporary defense for the affected development toolchain.
 
-The package version is deliberately unchanged. Raw npm audit and dependency
-scanners still report the advisory, including transitive findings. No audit
-exception or severity downgrade is included. Replace this backport with an
+The package version is deliberately unchanged, so raw npm audit and dependency
+scanners still report the advisory, including transitive findings. The CI audit
+gate accepts it through `../audit-accepted.json`, for picomatch 4.0.7 only and
+only while `npm run test:security` passes; any other advisory still fails the
+gate (see `../../scripts/npm-audit-gate.mjs`). Replace this backport with an
 upstream fixed release once available and verified, then remove the installer,
-patch, and temporary regression tests together. Review dependency-tree changes
-for nested copies: this installation currently has one root picomatch instance.
+patch, temporary regression tests and the `audit-accepted.json` entry
+together. Review dependency-tree changes for nested copies: this installation
+currently has one root picomatch instance.
