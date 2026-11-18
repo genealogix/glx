@@ -1,0 +1,6 @@
+kind: Changed
+body: |-
+  **CLI exit codes: misuse is 2 everywhere, a crash is 3, Ctrl-C is 130** — Every error raised before a command starts running now exits 2 with its usage printed: an unknown flag or subcommand, a wrong argument count, a missing required flag. Before, only the `--stdin` misuse errors exited 2, so a mistyped flag exited 1, the code for an archive that failed validation, and a missing required flag printed no usage. A panic is recovered and exits 3 with its message and stack sanitized for the terminal; it used to exit with Go's own status 2, which read as a usage error. SIGINT and SIGTERM now let an in-progress archive swap finish, remove the `.glx-tmp-*` and `.glx-stage-*` paths glx created, and exit 130; `glx serve` keeps its graceful shutdown. Scripts that test for exactly 1 after a misuse will now see 2.
+time: 2026-11-18T15:15:28Z
+custom:
+  Issue: "PR #1431"

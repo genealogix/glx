@@ -29,7 +29,10 @@ const standardVocabularyDir = "../specification/5-standard-vocabularies"
 
 // customizedVocabularyDirs lists archives whose vocabularies/ files are
 // deliberately edited (for example to exercise broken-reference validation)
-// and therefore are not expected to match the standard vocabularies.
+// and therefore are not expected to match the standard vocabularies. Each
+// entry must be exercised by a validation test, or the exemption hides drift
+// for nothing: comprehensive-broken-references is pinned by
+// TestRunValidate_ComprehensiveBrokenReferences.
 var customizedVocabularyDirs = map[string]bool{
 	"testdata/invalid/comprehensive-broken-references": true,
 }

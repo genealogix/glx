@@ -1,0 +1,6 @@
+kind: Changed
+body: |-
+  **Directory archives fall back to the standard vocabularies** — A directory archive missing a vocabulary file (for example `source-types.glx`, or the research-log vocabularies `basic-family` never shipped) failed `glx validate` on values `glx add` had just accepted from the standard vocabulary. Validation now uses the rule single-file archives already had: a vocabulary the archive does not define falls back to the standard one, and one it does define stays authoritative. New `SerializerOptions.StandardVocabularyFallback` applies the rule in `DeserializeMultiFileFromMap`.
+time: 2026-11-18T15:15:28Z
+custom:
+  Issue: "#1355"

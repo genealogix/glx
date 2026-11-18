@@ -1,0 +1,6 @@
+kind: Added
+body: |-
+  **`glx validate` warns when an assertion's `property` is not in its subject's property vocabulary** — The specification has long said this check exists, and nothing performed it, so `property: occupaton` passed silently. An assertion about a person is looked up in `person_properties`, an event in `event_properties`, a relationship in `relationship_properties` and a place in `place_properties`. The subject's own single-valued fields (an event's `date`, `place`, `title` and `type`; a place's `name`, `type`, `parent`, `latitude` and `longitude`; a relationship's `type`, `start_event` and `end_event`) are valid without an entry, and the specification now lists exactly those. A warning, not an error, so emerging properties still validate.
+time: 2026-11-18T15:15:28Z
+custom:
+  Issue: "#1224"

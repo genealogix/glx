@@ -1,0 +1,6 @@
+kind: Added
+body: |-
+  **`glx validate` reports entity IDs that differ only by case** — Two persons `Person-A` and `person-a` would be written to the same file and overwrite each other on a case-insensitive filesystem. The serializer already refused to write such an archive; validation now reports the pair as an error before anything is written.
+time: 2026-11-18T15:15:28Z
+custom:
+  Issue: "#696"

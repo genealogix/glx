@@ -1,0 +1,6 @@
+kind: Fixed
+body: |-
+  **Assertion participant properties are checked against the subject's vocabulary** — A participant assertion about a relationship had its participant properties checked against `event_properties`, so a relationship-only property warned and an event-only one passed. Relationship subjects now use `relationship_properties`, as the specification says. `glx merge-persons` read them the same wrong way when rewriting person references and now follows the same rule.
+time: 2026-11-18T15:15:28Z
+custom:
+  Issue: "#1225"

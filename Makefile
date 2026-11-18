@@ -1,5 +1,5 @@
 # GENEALOGIX Makefile
-.PHONY: help check build build-cli build-website install-deps install-hooks lint lint-fix lint-codeowners lint-workflows fix fix-diff test test-verbose test-race test-coverage bench mod-tidy mod-verify tidy-check ci-tools-tidy-check clean fmt check-schemas check-spec-schema-drift check-drift-allowlist check-code-drift check-memory-drift test-scripts check-links validate-examples docs-cli release-snapshot vulncheck gosec license-check changelog changelog-check
+.PHONY: help check build build-cli build-website install-deps install-hooks lint lint-fix lint-codeowners lint-workflows fix fix-diff test test-verbose test-race test-coverage bench mod-tidy mod-verify tidy-check ci-tools-tidy-check clean fmt check-schemas check-spec-schema-drift check-drift-allowlist check-code-drift check-memory-drift test-scripts test-website-security check-links validate-examples docs-cli release-snapshot vulncheck gosec license-check changelog changelog-check
 
 .DEFAULT_GOAL := help
 
@@ -33,7 +33,7 @@ install-hooks: ## Install lefthook git pre-commit hooks (run once per clone)
 	"$$LEFTHOOK" install
 
 ## Verification
-check: tidy-check ci-tools-tidy-check lint lint-codeowners test check-schemas check-spec-schema-drift check-drift-allowlist check-code-drift check-memory-drift test-scripts check-links validate-examples ## Run all checks (mirrors CI)
+check: tidy-check ci-tools-tidy-check lint lint-codeowners test check-schemas check-spec-schema-drift check-drift-allowlist check-code-drift check-memory-drift test-scripts test-website-security check-links validate-examples ## Run all checks (mirrors CI)
 	@echo "All checks passed."
 
 ## Build
@@ -198,8 +198,11 @@ check-code-drift: ## Deterministically detect go-glx type vs JSON-schema drift
 check-memory-drift: ## Deterministically detect CLAUDE.md/AGENTS.md drift vs the repo
 	@go run ./tools/memcheck
 
-test-scripts: ## Unit-test the Node drift-check scripts and serve viewer
-	@node --test scripts/drift-checks/spec-schema-drift.test.mjs specification/schema-compat.test.mjs glx/web_test/app.test.mjs scripts/hooks/staged.test.mjs
+test-scripts: ## Unit-test the Node drift-check scripts, npm audit gate and serve viewer
+	@node --test scripts/drift-checks/spec-schema-drift.test.mjs specification/schema-compat.test.mjs glx/web_test/app.test.mjs scripts/hooks/staged.test.mjs scripts/npm-audit-gate.test.mjs
+
+test-website-security: ## Verify the website's picomatch backport (the npm audit gate's verify command)
+	cd website && npm run test:security
 
 ## Example Validation
 validate-examples: build-cli ## Validate all example archives

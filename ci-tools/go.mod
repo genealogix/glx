@@ -2,7 +2,7 @@ module github.com/genealogix/glx/ci-tools
 
 go 1.27.0
 
-toolchain go1.27.3
+toolchain go1.27.4
 
 tool (
 	github.com/hmarr/codeowners/cmd/codeowners

@@ -1,0 +1,6 @@
+kind: Changed
+body: |-
+  **`glx validate <entity directory>` checks it against the archive around it** — `glx validate events` used to load `events/` alone and report every person, place and event type it referenced as missing. A directory inside an archive, or several paths sharing one, is now checked against the whole archive: references and vocabularies resolve as they do when the archive is validated whole, and only findings about the named files are reported. Paths that share no recognizable archive directory are validated on their own as before.
+time: 2026-11-18T15:15:28Z
+custom:
+  Issue: "#1206"

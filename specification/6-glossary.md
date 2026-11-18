@@ -114,7 +114,7 @@ A typed record in a GENEALOGIX archive representing a person, event, place, rela
 
 ### Entity ID
 
-A unique identifier for each entity, used as the YAML map key. Format: 1-64 alphanumeric characters with hyphens. Can be descriptive (john-smith-1850) or random (a1b2c3d4).
+An identifier unique within its entity type, used as the YAML map key. Format: 1-64 alphanumeric characters with hyphens. Can be descriptive (john-smith-1850) or random (a1b2c3d4).
 
 > **See Also:** [ID (Identifier)](#id-identifier), [ID Format Standards](3-archive-organization.md#id-format-standards)
 
@@ -210,7 +210,7 @@ A validation error that must be fixed before the archive is considered valid. Ex
 
 ### ID (Identifier)
 
-A unique identifier for each entity, used as the map key in YAML. Format: 1-64 alphanumeric characters with hyphens. Compared case-insensitively, so `Person-A` and `person-a` collide and only one may exist.
+An identifier unique within its entity type, used as the map key in YAML. Format: 1-64 alphanumeric characters with hyphens. Compared case-insensitively, so two persons `Person-A` and `person-a` collide and only one may exist; entities of different types may share an ID.
 
 **Examples:**
 
@@ -343,6 +343,12 @@ A geographic location with hierarchical organization, including coordinates, alt
 Classification of geographic locations including country, county, city, parish, cemetery, church, etc.
 
 > **See Also:** [Place Types Vocabulary](4-entity-types/vocabularies.md#place-types-vocabulary)
+
+### Placeholder Person
+
+A person entity standing in for someone the research implies exists but has not identified, such as an unknown ancestor predicted from a DNA match cluster. Marked with the person `status` property (`hypothetical` or `predicted`, later `resolved`).
+
+> **See Also:** [Person Entity - Research Placeholders](4-entity-types/person.md#research-placeholders), [Person Statuses Vocabulary](4-entity-types/vocabularies.md#person-statuses-vocabulary)
 
 ### Primary Evidence
 
