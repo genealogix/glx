@@ -56,20 +56,34 @@ jobs:
         # which times out under registry load and fails the run with "audit
         # endpoint returned an error" while reporting no vulnerabilities at
         # all. Retry the whole command with backoff on that class of failure
-        # only: npm audit exits 1 for both network errors and real findings,
-        # so the two are told apart by the error text, and a genuine advisory
-        # is never retried or masked.
+        # only. The JSON report goes to scripts/npm-audit-gate.mjs, which
+        # exits 3 when the output is not an audit report (a network failure:
+        # retried) and otherwise decides the run, so a genuine advisory is
+        # never retried or masked.
+        #
+        # The gate honours <tree>/audit-accepted.json: an advisory accepted
+        # for one exact package version, until its ignoreUntil date and only
+        # while that entry's verify command passes (see the script's header
+        # and SECURITY-POSTURE.md). Any other advisory at the threshold or
+        # above fails exactly as plain npm audit would. The threshold is the
+        # gate's --audit-level: npm's own flag only sets npm's exit code,
+        # which is ignored here. On failure the gate prints each failing
+        # package with its advisories, range and fix.
         shell: bash
         run: |
           attempts=5
           for attempt in $(seq 1 "$attempts"); do
-            if out=$(npm audit --audit-level=moderate --fetch-timeout=60000 2>&1); then
-              printf '%s\n' "$out"
-              exit 0
+            npm audit --json --fetch-timeout=60000 >audit.json 2>audit.err || true
+            set +e
+            node ../scripts/npm-audit-gate.mjs audit.json --audit-level=moderate
+            status=$?
+            set -e
+            if [ "$status" -ne 3 ]; then
+              exit "$status"
             fi
-            printf '%s\n' "$out"
-            if ! grep -qE 'audit endpoint returned an error|network timeout|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|socket hang up|E50[0-9]|E429' <<<"$out"; then
-              echo "::error::npm audit reported vulnerabilities at or above the moderate level"
+            cat audit.err audit.json
+            if ! grep -qE 'audit endpoint returned an error|network timeout|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|socket hang up|E50[0-9]|E429' audit.err audit.json; then
+              echo "::error::npm audit produced no report"
               exit 1
             fi
             if [ "$attempt" -lt "$attempts" ]; then
