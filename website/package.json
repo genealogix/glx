@@ -9,7 +9,9 @@
     "copy-static": "node scripts/copy-static.mjs",
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix",
-    "format": "prettier --write \"**/*.{js,vue,json,md}\""
+    "format": "prettier --write \"**/*.{js,vue,json,md}\"",
+    "postinstall": "node scripts/patch-picomatch.mjs",
+    "test:security": "node --test scripts/picomatch-security.test.mjs"
   },
   "keywords": [
     "genealogy",
