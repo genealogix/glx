@@ -46,7 +46,7 @@ const pluginPrefix = "glx-"
 const osWindows = "windows"
 
 // pluginsFlag and quietFlag are the long-form CLI flag tokens recognized by the
-// pre-cobra interception path in Execute(). Hoisted to named constants to
+// pre-cobra interception path in run(). Hoisted to named constants to
 // satisfy the goconst linter (each token recurs across this file and its tests)
 // and to keep the flag-string spellings single-sourced. The `=`-attached forms
 // used for value-bearing parses are derived as `pluginsFlag + "="` /
@@ -579,7 +579,7 @@ func pluginsFlagRequested(args []string) bool {
 // both. Scanning stops at the `--` end-of-flags marker, after which pflag reads
 // nothing as a flag.
 //
-// Used by Execute() to honor the established `--quiet` contract for the
+// Used by run() to honor the established `--quiet` contract for the
 // `glx --plugins` listing path, which runs before cobra parses flags into the
 // package-level quietOutput variable.
 func quietFlagRequested(args []string) bool {
@@ -598,7 +598,7 @@ func quietFlagRequested(args []string) bool {
 
 // pluginDispatchTarget decides whether `glx <args>` should be redirected to a
 // discovered plugin instead of letting cobra handle it. It returns the plugin
-// to invoke and the args to forward, or ok=false if Execute() should fall
+// to invoke and the args to forward, or ok=false if run() should fall
 // through to cobra (which will handle the built-in, print "unknown command",
 // or render help). Cobra-internal completion commands (the `__complete*`
 // family — `__complete` and `__completeNoDesc` in cobra v1.10) and built-in

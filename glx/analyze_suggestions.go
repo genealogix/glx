@@ -86,6 +86,43 @@ func analyzeSuggestions(archive *glxlib.GLXFile) []AnalysisIssue {
 	issues = append(issues, suggestCensusSearches(archive)...)
 	issues = append(issues, suggestVitalRecords(archive)...)
 	issues = append(issues, suggestChildCensusRecords(archive)...)
+	issues = append(issues, reportResearchPlaceholders(archive)...)
+
+	return issues
+}
+
+// reportResearchPlaceholders lists each unresolved placeholder person and closes
+// with an archive-wide tally of open and resolved ones, so a researcher can see
+// how far a predicted tree has been refined (#191).
+func reportResearchPlaceholders(archive *glxlib.GLXFile) []AnalysisIssue {
+	var issues []AnalysisIssue
+	resolved := 0
+	for _, id := range sortedPersonIDs(archive.Persons) {
+		person := archive.Persons[id]
+		if glxlib.PersonStatus(person) == glxlib.PersonStatusResolved {
+			resolved++
+
+			continue
+		}
+		if !glxlib.IsUnresolvedPlaceholder(person) {
+			continue
+		}
+		issues = append(issues, AnalysisIssue{
+			Category: analysisSuggestionCategory,
+			Severity: severityInfo,
+			Person:   id,
+			Property: glxlib.PersonPropertyStatus,
+			Message:  fmt.Sprintf("%s — %s placeholder, not yet identified", personName(archive, id), glxlib.PersonStatus(person)),
+		})
+	}
+	if open := len(issues); open > 0 || resolved > 0 {
+		issues = append(issues, AnalysisIssue{
+			Category: analysisSuggestionCategory,
+			Severity: severityInfo,
+			Property: glxlib.PersonPropertyStatus,
+			Message:  fmt.Sprintf("Research placeholders: %d open, %d resolved", open, resolved),
+		})
+	}
 
 	return issues
 }
@@ -175,7 +212,7 @@ func buildCensusSuggestionPlans(
 	plans := make(map[string]*censusSuggestionPlan)
 	schedulesByCountry := make(map[string]*censusSchedule)
 	for _, id := range sortedPersonIDs(archive.Persons) {
-		if archive.Persons[id] == nil {
+		if archive.Persons[id] == nil || glxlib.IsUnresolvedPlaceholder(archive.Persons[id]) {
 			continue
 		}
 
@@ -675,7 +712,7 @@ func suggestVitalRecords(archive *glxlib.GLXFile) []AnalysisIssue {
 		}
 
 		person := archive.Persons[id]
-		if person == nil {
+		if person == nil || glxlib.IsUnresolvedPlaceholder(person) {
 			continue
 		}
 

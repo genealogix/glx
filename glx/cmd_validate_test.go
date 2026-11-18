@@ -158,6 +158,45 @@ func TestRunValidate_BrokenReferences(t *testing.T) {
 	require.Error(t, err, "should fail when cross-references are broken")
 }
 
+// TestRunValidate_ComprehensiveBrokenReferences pins every dangling reference
+// in the comprehensive-broken-references fixture individually. A bare
+// require.Error would stay green while any one of them silently stopped being
+// reported, since the others would still fail the archive.
+func TestRunValidate_ComprehensiveBrokenReferences(t *testing.T) {
+	const fixture = "testdata/invalid/comprehensive-broken-references"
+
+	streams, _, errOut := TestIOStreams()
+	err := validatePathsShowing(streams, []string{fixture}, 0)
+	require.Error(t, err, "archive with broken references must fail validation")
+	require.Contains(t, errOut.String(),
+		"events[event-birth].Role references non-existent participant_roles: head-of-household (did you mean 'head_of_household'?)",
+		"a hyphen/underscore near-miss should carry a suggestion")
+
+	archive, _, err := LoadArchiveWithOptions(fixture, false)
+	require.NoError(t, err)
+
+	type brokenRef struct{ source, id, field, target string }
+	got := map[brokenRef]bool{}
+	for _, e := range archive.Validate().Errors {
+		if e.TargetID == "" {
+			continue // not a dangling-reference error
+		}
+		got[brokenRef{string(e.SourceType), e.SourceID, e.SourceField, e.TargetID}] = true
+	}
+
+	want := map[brokenRef]bool{
+		{"events", "event-birth", "PlaceID", "place-nonexistent"}:                 true,
+		{"events", "event-birth", "Person", "person-nonexistent"}:                 true,
+		{"events", "event-birth", "Role", "head-of-household"}:                    true,
+		{"events", "event-baptism", "Type", "event-type-nonexistent"}:             true,
+		{"places", "place-leeds", "ParentID", "place-nonexistent-parent"}:         true,
+		{"sources", "source-register", "RepositoryID", "repository-nonexistent"}:  true,
+		{"citations", "citation-birth", "SourceID", "source-nonexistent"}:         true,
+		{"citations", "citation-birth", "RepositoryID", "repository-nonexistent"}: true,
+	}
+	require.Equal(t, want, got)
+}
+
 func TestRunValidate_PlaceCoordsHalfSet(t *testing.T) {
 	// A Place may carry both latitude and longitude or neither; setting one
 	// without the other is meaningless and must be rejected by the schema's

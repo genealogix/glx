@@ -18,9 +18,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"runtime"
+	"runtime/debug"
 	"strings"
+	"sync"
 
 	"github.com/spf13/cobra"
 
@@ -50,11 +53,9 @@ GENEALOGIX is a modern, evidence-first, Git-native genealogy data standard.
 Use GLX to initialize new archives, validate files, and ensure data quality.`,
 	Version:       versionString(),
 	SilenceErrors: true,
-	// SilenceUsage is set in PersistentPreRun (after arg validation) so that
-	// arg-count errors still show usage but runtime errors from RunE do not.
-	PersistentPreRun: func(cmd *cobra.Command, _ []string) {
-		cmd.SilenceUsage = true
-	},
+	// run prints usage itself, and only for errors raised before a command's
+	// RunE started (see runStarted), so Cobra never does.
+	SilenceUsage: true,
 }
 
 // showHelp is the RunE of a parent command that only groups subcommands (add,
@@ -79,8 +80,58 @@ func (e *silentExitError) Error() string {
 	return fmt.Sprintf("silent exit %d", e.code)
 }
 
-// Execute runs the root command. Two plugin-related interceptions run before
-// cobra parses args (see plugins.go for the full rationale):
+// runStarted records whether the invoked command's own RunE (or Run) began.
+// An error returned before that point came from Cobra itself or from the
+// command's argument, flag or PreRunE checks: the invocation was wrong, not
+// the data. Cobra validates required flags and flag groups only after the
+// persistent pre-run hooks, so a PersistentPreRun cannot draw this line.
+var runStarted bool
+
+// markRunStartOnce wraps every command's RunE and Run, once per process, so
+// they set runStarted before doing anything else. It runs at the first call
+// to run rather than in init so it sees every command, whichever file's init
+// registered it.
+var markRunStartOnce sync.Once
+
+func markRunStart(cmd *cobra.Command) {
+	if runE := cmd.RunE; runE != nil {
+		cmd.RunE = func(c *cobra.Command, args []string) error {
+			runStarted = true
+
+			return runE(c, args)
+		}
+	}
+	if runFn := cmd.Run; runFn != nil {
+		cmd.Run = func(c *cobra.Command, args []string) {
+			runStarted = true
+			runFn(c, args)
+		}
+	}
+	for _, sub := range cmd.Commands() {
+		markRunStart(sub)
+	}
+}
+
+// run executes the root command with args and returns the process exit code.
+// main passes the result to os.Exit; keeping the exit out of run lets tests
+// drive every branch below.
+//
+// A *silentExitError returned by a RunE means "exit with this code, do not
+// print a message" — see runMergeDriverCmd for the canonical use. Any other
+// non-nil error is printed to stderr. The message is passed through
+// sanitizeForTerminal first: errors routinely embed archive-controlled text (a
+// symlink's filename from a containment failure, an entity ID from a reference
+// error), and this is the one print site that every runner's returned error
+// funnels through. An error raised before the command's RunE started is a
+// misuse (unknown flag or subcommand, wrong argument count, missing required
+// flag): its usage is printed first and the code is exitBadInvocation.
+// Otherwise exitCodeForError picks the code.
+//
+// A panic is recovered here so it cannot exit with Go's own status 2, which
+// would read as exitBadInvocation, and so its text is sanitized like any error.
+//
+// Two plugin-related interceptions run before cobra parses args (see
+// plugins.go for the full rationale):
 //
 //   - `glx --plugins` is short-circuited here to list discovered plugins.
 //     Attaching a RunE to rootCmd to read the flag instead would make root
@@ -89,16 +140,17 @@ func (e *silentExitError) Error() string {
 //   - `glx <name>` falls back to executing `glx-<name>` from PATH when <name>
 //     is not a built-in command (git/kubectl plugin model, #95 Phase 1).
 //     Cobra-internal __complete* commands and built-ins are never replaced.
-//
-// A *silentExitError returned by a RunE means "exit with this code, do not
-// print a message" — see runMergeDriverCmd for the canonical use. Any other
-// non-nil error is printed to stderr before exiting with code 1. The message
-// is passed through sanitizeForTerminal first: errors routinely embed
-// archive-controlled text (a symlink's filename from a containment failure,
-// an entity ID from a reference error), and this is the one print site that
-// every runner's returned error funnels through.
-func Execute() {
-	args := os.Args[1:]
+//     The plugin runs before the interrupt watcher starts, so it handles its
+//     own SIGINT and its exit code passes through unchanged.
+func run(args []string, stderr io.Writer) (code int) {
+	defer func() {
+		if r := recover(); r != nil {
+			_, _ = fmt.Fprintf(stderr, "glx: internal error: %s\n%s",
+				sanitizeForTerminal(fmt.Sprint(r)), sanitizeForTerminal(string(debug.Stack())))
+			code = exitInternalError
+		}
+	}()
+
 	pathEnv, pathExt := os.Getenv("PATH"), os.Getenv("PATHEXT")
 	isWindows := runtime.GOOS == osWindows
 
@@ -114,28 +166,49 @@ func Execute() {
 			os.Stdout,
 		)
 
-		return
+		return 0
 	}
 
 	if p, rest, ok := pluginDispatchTarget(rootCmd, args, pathEnv, pathExt, isWindows); ok {
-		os.Exit(runPlugin(context.Background(), p, rest, os.Stdin, os.Stdout, os.Stderr))
+		return runPlugin(context.Background(), p, rest, os.Stdin, os.Stdout, stderr)
 	}
 	// No plugin to dispatch: fall through so cobra handles built-ins, prints
 	// help, or emits its standard "unknown command" error for typos.
 
-	if err := rootCmd.Execute(); err != nil {
-		if silent, ok := errors.AsType[*silentExitError](err); ok {
-			os.Exit(silent.code)
-		}
-		fmt.Fprintln(os.Stderr, sanitizeForTerminal(err.Error()))
-		os.Exit(exitCodeForError(err))
+	stop := watchInterrupts(stderr)
+	defer stop()
+
+	markRunStartOnce.Do(func() { markRunStart(rootCmd) })
+	runStarted = false
+	rootCmd.SetArgs(args)
+
+	cmd, err := rootCmd.ExecuteC()
+	if err == nil {
+		return 0
 	}
+	if silent, ok := errors.AsType[*silentExitError](err); ok {
+		return silent.code
+	}
+	if !runStarted {
+		_, _ = fmt.Fprintln(stderr, cmd.UsageString())
+		_, _ = fmt.Fprintln(stderr, sanitizeForTerminal(err.Error()))
+
+		return exitBadInvocation
+	}
+	_, _ = fmt.Fprintln(stderr, sanitizeForTerminal(err.Error()))
+
+	return exitCodeForError(err)
 }
 
-// exitBadInvocation is the process exit code for CLI misuse on the --stdin path
-// (issue #910) — distinct from exit 1, which signals a structural/semantic
+// exitBadInvocation is the process exit code for CLI misuse: the --stdin
+// sentinels below (issue #910) and every error raised before a command's RunE
+// started (see run) — distinct from exit 1, which signals a structural/semantic
 // validation failure on otherwise well-formed input.
 const exitBadInvocation = 2
+
+// exitInternalError is the process exit code for a recovered panic: a glx bug,
+// not a problem with the invocation or the archive.
+const exitInternalError = 3
 
 // exitCodeForError maps a root-command error to a process exit code. The
 // --stdin invocation sentinels yield 2 so callers and CI can tell "you invoked
@@ -180,7 +253,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&quietOutput, "quiet", "q", false,
 		"Suppress non-error output (where supported)")
 	// `--plugins` is registered for --help and docs visibility only; the flag is
-	// handled in Execute() before cobra parses, because making rootCmd runnable
+	// handled in run() before cobra parses, because making rootCmd runnable
 	// to read it via RunE would suppress cobra's "unknown command" error for typos.
 	rootCmd.Flags().Bool("plugins", false, "List discovered glx-<name> plugins found on PATH")
 	rootCmd.AddCommand(importCmd)
@@ -501,14 +574,18 @@ Validation behavior:
   fragment's siblings, which are not being validated
 - Directory: Validates all .glx files with full cross-reference validation
 - No arguments: Validates current directory with full cross-reference validation
-- Several paths (directories, .glx files, or a mix): Loaded together as one
-  archive rooted at the enclosing archive directory — their deepest common
-  directory, or its parent when that is itself an entity directory such as
-  events/ — so cross-references between them resolve and duplicate IDs across
-  them are caught. The archive's vocabularies/ under that root is included
-  automatically; files that are not .glx are ignored. References to entities
-  outside the named paths are errors: the selection is validated as the
-  archive it would be on its own.
+- Part of an archive (an entity directory such as events/, or several paths —
+  directories, .glx files, or a mix): the enclosing archive directory is their
+  deepest common directory, or its parent when that is itself an entity
+  directory. The whole archive is read so references, types and properties
+  resolve as they do when it is validated whole, and only findings about the
+  named files are reported; files that are not .glx are ignored. Paths that
+  share no recognizable archive directory are validated together on their
+  own, and references outside them are errors.
+
+Vocabularies the archive does not define fall back to the standard ones, so an
+archive without source-types.glx still accepts the standard source types. A
+vocabulary the archive defines replaces the standard one.
 
 Dot-prefixed directories and files (.git, .glx, .worktrees, ._name.glx) are not
 archive content and are skipped when a directory is walked, including symlinks
@@ -736,7 +813,7 @@ relationships, places, citations, repositories, media, research_logs,
 studies.
 
 Filters vary by entity type:
-  persons:       --name, --born-before, --born-after, --birthplace
+  persons:       --name, --born-before, --born-after, --birthplace, --status
   events:        --type, --before, --after
   assertions:    --confidence, --status, --source, --citation, --subject
   sources:       --name, --type
@@ -796,7 +873,7 @@ func init() {
 	queryCmd.Flags().IntVar(&queryBefore, "before", 0, "Filter events with date before this year")
 	queryCmd.Flags().IntVar(&queryAfter, "after", 0, "Filter events with date after this year")
 	queryCmd.Flags().StringVar(&queryConfidence, "confidence", "", "Filter assertions by confidence level")
-	queryCmd.Flags().StringVar(&queryStatus, "status", "", "Filter assertions or research logs by status")
+	queryCmd.Flags().StringVar(&queryStatus, "status", "", "Filter persons, assertions or research logs by status")
 	queryCmd.Flags().StringVar(&querySource, "source", "", "Filter assertions by source ID (direct or via citation)")
 	queryCmd.Flags().StringVar(&queryCitation, "citation", "", "Filter assertions by citation ID")
 	queryCmd.Flags().StringVar(&querySubject, "subject", "", "Filter assertions or research logs by subject entity ID or person name substring")
@@ -2019,6 +2096,12 @@ var renameCmd = &cobra.Command{
 	Long: `Rename an entity ID throughout the archive, atomically updating all
 cross-references in events, relationships, assertions, citations, and other entities.
 
+Only typed references are rewritten: fields that refer to an entity of the
+renamed type, and properties whose vocabulary definition declares that
+reference_type (for example residence, which refers to places). A free-text
+property that happens to equal the old ID, or a reference to a same-ID entity
+of another type, is left as written.
+
 Works with any entity type: persons, events, relationships, places, sources,
 citations, repositories, assertions, and media.`,
 	Example: `  # Rename a person
@@ -2334,12 +2417,14 @@ func runLink(_ *cobra.Command, args []string) error {
 var (
 	serveHost string
 	servePort int
+	serveEdit bool
 )
 
 var serveCmd = &cobra.Command{
 	Use:   "serve [path]",
 	Short: "Serve a local browser-based viewer for a GLX archive (prints a URL to open)",
-	Long: `Serve a read-only, browser-based viewer for a GENEALOGIX archive.
+	Long: `Serve a browser-based viewer for a GENEALOGIX archive, read-only unless
+--edit is given.
 
 Starts a small local web server and prints a URL to open in your browser
 (it does not open the browser for you). The viewer is interactive and shows:
@@ -2351,6 +2436,12 @@ Starts a small local web server and prints a URL to open in your browser
 The server binds to localhost by default so the archive stays on your machine.
 The archive is loaded once at startup; restart the server to pick up external
 edits made by the CLI or a text editor.
+
+With --edit, the viewer can also add people, edit a person's name, sex and
+gender, and add parent, child and spouse relationships. Additions go through
+the same checks as 'glx add person' and 'glx add relationship' and write the
+same files; an edit rewrites only that person's file, and is refused if the
+file changed since the page loaded. Editing needs a multi-file directory.
 
 Accepts either a multi-file directory or a single .glx file.
 If no path is given, the current directory is used.`,
@@ -2364,7 +2455,10 @@ If no path is given, the current directory is used.`,
   glx serve family.glx --port 9000
 
   # Pick any free port (printed on startup)
-  glx serve --port 0`,
+  glx serve --port 0
+
+  # Allow adding and editing people in the browser
+  glx serve my-family-archive --edit`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runServe,
 }
@@ -2372,6 +2466,7 @@ If no path is given, the current directory is used.`,
 func init() {
 	serveCmd.Flags().StringVar(&serveHost, "host", serveDefaultHost, "Host/interface to bind (use 127.0.0.1 to keep the viewer local)")
 	serveCmd.Flags().IntVarP(&servePort, "port", "p", serveDefaultPort, "Port to listen on (0 picks any free port)")
+	serveCmd.Flags().BoolVar(&serveEdit, "edit", false, "Allow adding and editing people and relationships (directory archives only)")
 }
 
 func runServe(_ *cobra.Command, args []string) error {
@@ -2384,6 +2479,7 @@ func runServe(_ *cobra.Command, args []string) error {
 		ArchivePath: path,
 		Host:        serveHost,
 		Port:        servePort,
+		Edit:        serveEdit,
 	})
 }
 

@@ -578,7 +578,7 @@ func TestKnownCommandNames_ContainsBuiltinsAndAutoAdded(t *testing.T) {
 	}
 }
 
-// TestPluginDispatchTarget covers Execute()'s dispatch decision: built-ins win,
+// TestPluginDispatchTarget covers run()'s dispatch decision: built-ins win,
 // cobra-internal __complete* falls through, unknown-with-plugin dispatches,
 // unknown-without-plugin falls through, and no-subcommand falls through. The
 // Windows case-insensitive subset is exercised by the isWindows column so the

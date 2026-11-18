@@ -209,7 +209,7 @@ glx validate persons/ events/   # several directories are validated as one archi
 - 🧾 **Research Logging** - Append searches, including negative results, to a research log one at a time with `glx add search`
 - 🔄 **Migrate** - Convert deprecated person properties to birth/death events
 - 🔌 **Plugins** - Discover and run third-party `glx-<name>` executables from PATH (git-style fallback); list with `glx --plugins`
-- 🖥️ **Serve** - Run a local web server with a browser-based read-only viewer (dashboard, person profiles, family tree, sources)
+- 🖥️ **Serve** - Run a local web server with a browser-based viewer (dashboard, person profiles, family tree, sources); `--edit` adds person and relationship editing
 - ⚡ **Cache** - Build a binary archive cache (`.glx/cache.bin`) so repeated commands skip the YAML parse; transparently used by read commands, with git + filesystem staleness detection
 
 ## Development

@@ -127,8 +127,9 @@ func TestLoadArchive(t *testing.T) {
 				if len(duplicates) != 1 {
 					return &testError{"expected 1 conflict, got %d", []any{len(duplicates)}}
 				}
-				if duplicates[0] != "conflict persons ID: person-1" {
-					return &testError{"expected conflict to be 'conflict persons ID: person-1', got %s", []any{duplicates[0]}}
+				// The conflict names both files, in merge (sorted path) order (#1232).
+				if duplicates[0] != "conflict persons ID: person-1 (person1.glx vs person2.glx)" {
+					return &testError{"expected conflict to be 'conflict persons ID: person-1 (person1.glx vs person2.glx)', got %s", []any{duplicates[0]}}
 				}
 
 				return nil
