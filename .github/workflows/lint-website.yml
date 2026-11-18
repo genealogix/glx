@@ -42,6 +42,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify picomatch security backport
+        run: npm run test:security
+
       - name: Run eslint
         # Same command `make lint` runs; --max-warnings 0 lives in the npm
         # script itself so local and CI strictness can't drift.
