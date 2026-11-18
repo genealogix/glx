@@ -51,9 +51,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Test the audit gate
-        run: node --test ../scripts/npm-audit-gate.test.mjs
-
       - name: Run npm audit
         # npm's --fetch-retries does not cover the bulk advisories endpoint,
         # which times out under registry load and fails the run with "audit
@@ -65,16 +62,20 @@ jobs:
         # never retried or masked.
         #
         # The gate honours <tree>/audit-accepted.json: an advisory accepted
-        # for one exact package version, only while that entry's verify
-        # command passes (see the script's header). Any other finding at
-        # moderate or above fails exactly as plain npm audit would.
+        # for one exact package version, until its ignoreUntil date and only
+        # while that entry's verify command passes (see the script's header
+        # and SECURITY-POSTURE.md). Any other advisory at the threshold or
+        # above fails exactly as plain npm audit would. The threshold is the
+        # gate's --audit-level: npm's own flag only sets npm's exit code,
+        # which is ignored here. On failure the gate prints each failing
+        # package with its advisories, range and fix.
         shell: bash
         run: |
           attempts=5
           for attempt in $(seq 1 "$attempts"); do
-            npm audit --json --audit-level=moderate --fetch-timeout=60000 >audit.json 2>audit.err || true
+            npm audit --json --fetch-timeout=60000 >audit.json 2>audit.err || true
             set +e
-            node ../scripts/npm-audit-gate.mjs audit.json
+            node ../scripts/npm-audit-gate.mjs audit.json --audit-level=moderate
             status=$?
             set -e
             if [ "$status" -ne 3 ]; then

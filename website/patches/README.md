@@ -8,9 +8,13 @@ The local patch applies only the parser changes from
 It does not pull in unrelated unreleased upstream changes. The upstream MIT
 license is preserved in `picomatch-LICENSE`.
 
-`npm ci`/`npm install` applies the backport through `postinstall`. The installer
-checks the exact original and patched SHA-256 hashes, is idempotent, and fails
-closed if the dependency changes. Do not use `--ignore-scripts` for the website
+`npm ci`/`npm install` applies the backport through `postinstall` to every
+installed picomatch copy at 4.0.7. For such a copy the installer checks the
+exact original and patched SHA-256 hashes, is idempotent, and fails closed on
+any other content. A copy at another version, or one not installed (for example
+`npm ci --omit=dev`), is left alone and does not break the install: the audit
+gate refuses the exception for any picomatch version other than 4.0.7, so a
+version or layout change is reviewed there. Do not use `--ignore-scripts` for the website
 without subsequently running `npm run postinstall`. `npm run test:security`
 verifies the installed patch, supported ordinary matching, and bounded
 adversarial subprocesses across matcher, makeRe and parse/compileRe APIs.
@@ -24,10 +28,12 @@ The patch is a temporary defense for the affected development toolchain.
 
 The package version is deliberately unchanged, so raw npm audit and dependency
 scanners still report the advisory, including transitive findings. The CI audit
-gate accepts it through `../audit-accepted.json`, for picomatch 4.0.7 only and
-only while `npm run test:security` passes; any other advisory still fails the
-gate (see `../../scripts/npm-audit-gate.mjs`). Replace this backport with an
-upstream fixed release once available and verified, then remove the installer,
-patch, temporary regression tests and the `audit-accepted.json` entry
-together. Review dependency-tree changes for nested copies: this installation
-currently has one root picomatch instance.
+gate accepts it through `../audit-accepted.json`, for picomatch 4.0.7 only,
+until the entry's `ignoreUntil` date and only while `npm run test:security`
+passes (see SECURITY-POSTURE.md, "Vulnerability suppression"); any other
+advisory still fails the gate (see `../../scripts/npm-audit-gate.mjs`). Extend
+`ignoreUntil` only after re-checking that no fixed release exists. Replace this
+backport with an upstream fixed release once available and verified, then
+remove the installer, patch, temporary regression tests and the
+`audit-accepted.json` entry together. This installation currently has one root
+picomatch instance; a nested 4.0.7 copy would be patched too.

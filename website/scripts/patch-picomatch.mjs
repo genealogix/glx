@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { resolve } from 'node:path'
 
@@ -19,22 +19,40 @@ export function patchParser(source) {
   return source
 }
 
-export function installPatch() {
-  const lock = JSON.parse(readFileSync(new URL('../package-lock.json', import.meta.url)))
-  const copies = Object.keys(lock.packages).filter(path => path.endsWith('node_modules/picomatch'))
-  if (copies.length !== 1 || copies[0] !== 'node_modules/picomatch') {
-    throw new Error('Review picomatch security backport: dependency layout changed')
+// Patches every installed copy of picomatch at the version the backport
+// targets, and leaves every other copy alone. Deciding whether a different
+// version is acceptable (a fixed release, a new nested copy) is the audit
+// gate's job (scripts/npm-audit-gate.mjs checks the lockfile against
+// audit-accepted.json), so an upgrade or a dev-less install never breaks
+// `npm ci` here. A copy at the targeted version whose parser does not hash to
+// the known original or patched source still fails closed.
+export function installPatch(treeDir = new URL('../', import.meta.url), log = console.log) {
+  const lockUrl = new URL('package-lock.json', treeDir)
+  const lock = existsSync(lockUrl) ? JSON.parse(readFileSync(lockUrl)) : {}
+  const copies = Object.keys(lock.packages || {})
+    .filter(path => path === 'node_modules/picomatch' || path.endsWith('/node_modules/picomatch'))
+  const patched = []
+  for (const path of copies) {
+    const root = new URL(`${path}/`, treeDir)
+    const manifestUrl = new URL('package.json', root)
+    if (!existsSync(manifestUrl)) continue // not installed, e.g. npm ci --omit=dev
+    const { version } = JSON.parse(readFileSync(manifestUrl))
+    if (version !== patch.version) {
+      log(`picomatch backport: ${path} is ${version}, not ${patch.version}; left unpatched for the audit gate to review`)
+      continue
+    }
+    const target = new URL('lib/parse.js', root)
+    const source = readFileSync(target, 'utf8')
+    const result = patchParser(source)
+    if (result !== source) writeFileSync(target, result)
+    patched.push(path)
   }
-  const root = new URL('../node_modules/picomatch/', import.meta.url)
-  const manifest = JSON.parse(readFileSync(new URL('package.json', root)))
-  if (manifest.version !== patch.version) throw new Error('Review picomatch security backport for the new version')
-  const target = new URL('lib/parse.js', root)
-  const source = readFileSync(target, 'utf8')
-  const patched = patchParser(source)
-  if (patched !== source) writeFileSync(target, patched)
+  return patched
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  installPatch()
-  console.log('Verified picomatch repeated-extglob backport (upstream PR #262)')
+  const patched = installPatch()
+  if (patched.length) {
+    console.log(`Verified picomatch repeated-extglob backport (upstream PR #262): ${patched.join(', ')}`)
+  }
 }
