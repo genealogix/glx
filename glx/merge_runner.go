@@ -27,8 +27,12 @@ const defaultMergeThreshold = 0.6
 
 // mergeResult holds statistics from a merge operation.
 type mergeResult struct {
-	Conflicts         []string
-	IdenticalSkipped  int
+	Conflicts           []string
+	IdenticalVocabulary int
+	IdenticalEntities   int
+	// IdenticalMedia lists the Media IDs whose source entity was skipped as
+	// identical, so the destination's entity is the one that stayed.
+	IdenticalMedia    []string
 	NewPersons        int
 	NewEvents         int
 	NewRelationships  int
@@ -58,25 +62,27 @@ func mergeArchivesInMemory(dest, src *glxlib.GLXFile) *mergeResult {
 	// Snapshot counts before merge
 	before := entityCounts(dest)
 
-	conflicts, identicalSkipped := dest.Merge(src)
+	merged := dest.MergeArchive(src)
 
 	// Compute new entities added
 	after := entityCounts(dest)
 
 	return &mergeResult{
-		Conflicts:        conflicts,
-		IdenticalSkipped: identicalSkipped,
-		NewPersons:       after.persons - before.persons,
-		NewEvents:        after.events - before.events,
-		NewRelationships: after.relationships - before.relationships,
-		NewPlaces:        after.places - before.places,
-		NewSources:       after.sources - before.sources,
-		NewCitations:     after.citations - before.citations,
-		NewRepositories:  after.repositories - before.repositories,
-		NewAssertions:    after.assertions - before.assertions,
-		NewResearchLogs:  after.researchLogs - before.researchLogs,
-		NewStudies:       after.studies - before.studies,
-		NewMedia:         after.media - before.media,
+		Conflicts:           merged.Conflicts,
+		IdenticalVocabulary: merged.IdenticalVocabulary,
+		IdenticalEntities:   merged.IdenticalEntities,
+		IdenticalMedia:      merged.Identical["media"],
+		NewPersons:          after.persons - before.persons,
+		NewEvents:           after.events - before.events,
+		NewRelationships:    after.relationships - before.relationships,
+		NewPlaces:           after.places - before.places,
+		NewSources:          after.sources - before.sources,
+		NewCitations:        after.citations - before.citations,
+		NewRepositories:     after.repositories - before.repositories,
+		NewAssertions:       after.assertions - before.assertions,
+		NewResearchLogs:     after.researchLogs - before.researchLogs,
+		NewStudies:          after.studies - before.studies,
+		NewMedia:            after.media - before.media,
 	}
 }
 
@@ -191,23 +197,24 @@ func mergeArchives(srcPath, destPath string, preview bool, threshold float64) er
 		}
 	}
 
-	// Plan source media binary copies before the merge, so the URI rewrites
-	// done for name-collision dedup flow into the merged Media entities. Only
-	// multi-file destinations can hold binaries; warn and skip the plan
-	// otherwise.
+	// Merge
+	result := mergeArchivesInMemory(dest, src)
+
+	// Plan source media binary copies after the merge, so equality is judged
+	// on the URIs the source archive wrote. A source entity the merge added is
+	// the same pointer in dest, so the planner's name-collision URI rewrites
+	// still reach the merged archive. Only multi-file destinations can hold
+	// binaries; warn and skip the plan otherwise.
 	var mediaPlan []plannedMediaCopy
 	if destIsDir {
 		plan, planErr := planSourceMediaCopies(srcPath, destPath, src)
 		if planErr != nil {
 			return fmt.Errorf("planning source media copies: %w", planErr)
 		}
-		mediaPlan = plan
+		mediaPlan = adoptIdenticalMedia(plan, dest, result.IdenticalMedia)
 	} else if srcInfo.IsDir() {
 		warnOrphanSourceMedia(srcPath, src)
 	}
-
-	// Merge
-	result := mergeArchivesInMemory(dest, src)
 	for _, p := range mediaPlan {
 		if !p.ReuseExisting {
 			result.MediaFilesPlanned++
@@ -358,8 +365,12 @@ func printMergeReport(result *mergeResult) {
 		}
 	}
 
-	if result.IdenticalSkipped > 0 {
-		fmt.Printf("\n  %d identical vocabulary/property entries skipped\n", result.IdenticalSkipped)
+	if result.IdenticalEntities > 0 {
+		fmt.Printf("\n  %d identical entities skipped\n", result.IdenticalEntities)
+	}
+
+	if result.IdenticalVocabulary > 0 {
+		fmt.Printf("\n  %d identical vocabulary/property entries skipped\n", result.IdenticalVocabulary)
 	}
 }
 
