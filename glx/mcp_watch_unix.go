@@ -22,7 +22,6 @@ import (
 	"syscall"
 )
 
-
 func openMCPWatchSingleFile(path string) (*os.File, os.FileInfo, error) {
 	// #nosec G304 -- The CLI selects the pathname; O_NOFOLLOW enforces the
 	// single-file boundary atomically, including replacement after stat.

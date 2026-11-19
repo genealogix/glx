@@ -382,7 +382,6 @@ func buildSummaryJSONContext(ctx context.Context, archive *glxlib.GLXFile, perso
 	return buildSummaryJSONWithLogsContext(ctx, archive, personQuery, true)
 }
 
-//nolint:contextcheck // Existing summary helpers are synchronous phases, checked before and after each call.
 func buildSummaryJSONWithLogsContext(ctx context.Context, archive *glxlib.GLXFile, personQuery string, includeLogs bool) (*summaryJSONResult, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err

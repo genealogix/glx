@@ -147,7 +147,7 @@ type RelationshipStandingIndex struct {
 
 // NewRelationshipStandingIndex indexes the archive's relationship assertions.
 func NewRelationshipStandingIndex(archive *GLXFile) *RelationshipStandingIndex {
-	index, _ := NewRelationshipStandingIndexContext(context.Background(), archive)
+	index, _ := buildRelationshipStandingIndex(archive, func() error { return nil })
 
 	return index
 }
@@ -155,7 +155,15 @@ func NewRelationshipStandingIndex(archive *GLXFile) *RelationshipStandingIndex {
 // NewRelationshipStandingIndexContext builds the same index while checking
 // cancellation during assertion collection. Canceled calls return no partial index.
 func NewRelationshipStandingIndexContext(ctx context.Context, archive *GLXFile) (*RelationshipStandingIndex, error) {
-	if err := ctx.Err(); err != nil {
+	return buildRelationshipStandingIndex(archive, ctx.Err)
+}
+
+// buildRelationshipStandingIndex indexes the archive's relationship
+// assertions, calling canceled between steps and returning no partial index
+// once it reports an error. The synchronous constructor passes a check that
+// never fails, so it needs no context of its own.
+func buildRelationshipStandingIndex(archive *GLXFile, canceled func() error) (*RelationshipStandingIndex, error) {
+	if err := canceled(); err != nil {
 		return nil, err
 	}
 	idx := &RelationshipStandingIndex{
@@ -168,7 +176,7 @@ func NewRelationshipStandingIndexContext(ctx context.Context, archive *GLXFile) 
 
 	ids := make([]string, 0, len(archive.Assertions))
 	for id := range archive.Assertions {
-		if err := ctx.Err(); err != nil {
+		if err := canceled(); err != nil {
 			return nil, err
 		}
 		ids = append(ids, id)
@@ -176,7 +184,7 @@ func NewRelationshipStandingIndexContext(ctx context.Context, archive *GLXFile) 
 	sort.Strings(ids)
 
 	for _, id := range ids {
-		if err := ctx.Err(); err != nil {
+		if err := canceled(); err != nil {
 			return nil, err
 		}
 		a := archive.Assertions[id]
@@ -197,7 +205,7 @@ func NewRelationshipStandingIndexContext(ctx context.Context, archive *GLXFile) 
 		idx.whole[relID] = append(idx.whole[relID], a)
 	}
 
-	if err := ctx.Err(); err != nil {
+	if err := canceled(); err != nil {
 		return nil, err
 	}
 
@@ -303,7 +311,7 @@ type ParentChildLink struct {
 // and standing. Disproven edges are included; callers decide whether to drop
 // them or list them as excluded alternatives.
 func ParentChildLinks(archive *GLXFile, standings *RelationshipStandingIndex) []ParentChildLink {
-	links, _ := ParentChildLinksContext(context.Background(), archive, standings)
+	links, _ := buildParentChildLinks(archive, standings, func() error { return nil })
 
 	return links
 }
@@ -312,7 +320,14 @@ func ParentChildLinks(archive *GLXFile, standings *RelationshipStandingIndex) []
 // checking cancellation while constructing the standing index and graph.
 // Canceled calls return no partial graph.
 func ParentChildLinksContext(ctx context.Context, archive *GLXFile, standings *RelationshipStandingIndex) ([]ParentChildLink, error) {
-	if err := ctx.Err(); err != nil {
+	return buildParentChildLinks(archive, standings, ctx.Err)
+}
+
+// buildParentChildLinks collects the links, calling canceled between steps
+// and returning no partial graph once it reports an error. The synchronous
+// ParentChildLinks passes a check that never fails, so it needs no context.
+func buildParentChildLinks(archive *GLXFile, standings *RelationshipStandingIndex, canceled func() error) ([]ParentChildLink, error) {
+	if err := canceled(); err != nil {
 		return nil, err
 	}
 	if archive == nil {
@@ -320,7 +335,7 @@ func ParentChildLinksContext(ctx context.Context, archive *GLXFile, standings *R
 	}
 	if standings == nil {
 		var err error
-		standings, err = NewRelationshipStandingIndexContext(ctx, archive)
+		standings, err = buildRelationshipStandingIndex(archive, canceled)
 		if err != nil {
 			return nil, err
 		}
@@ -328,7 +343,7 @@ func ParentChildLinksContext(ctx context.Context, archive *GLXFile, standings *R
 
 	relIDs := make([]string, 0, len(archive.Relationships))
 	for id := range archive.Relationships {
-		if err := ctx.Err(); err != nil {
+		if err := canceled(); err != nil {
 			return nil, err
 		}
 		relIDs = append(relIDs, id)
@@ -337,34 +352,34 @@ func ParentChildLinksContext(ctx context.Context, archive *GLXFile, standings *R
 
 	var links []ParentChildLink
 	for _, relID := range relIDs {
-		if err := ctx.Err(); err != nil {
+		if err := canceled(); err != nil {
 			return nil, err
 		}
 		rel := archive.Relationships[relID]
 		if rel == nil || !IsParentChildRelationshipType(rel.Type) {
 			continue
 		}
-		items, err := relationshipParentChildLinksContext(ctx, relID, rel, standings)
+		items, err := relationshipParentChildLinks(relID, rel, standings, canceled)
 		if err != nil {
 			return nil, err
 		}
 		links = append(links, items...)
 	}
 
-	if err := ctx.Err(); err != nil {
+	if err := canceled(); err != nil {
 		return nil, err
 	}
 
 	return links, nil
 }
 
-func relationshipParentChildLinksContext(ctx context.Context, relID string, rel *Relationship, standings *RelationshipStandingIndex) ([]ParentChildLink, error) {
+func relationshipParentChildLinks(relID string, rel *Relationship, standings *RelationshipStandingIndex, canceled func() error) ([]ParentChildLink, error) {
 	var links []ParentChildLink
 	relIsStep := strings.EqualFold(rel.Type, RelationshipTypeStepParent)
 
 	var parents, children []Participant
 	for _, p := range rel.Participants {
-		if err := ctx.Err(); err != nil {
+		if err := canceled(); err != nil {
 			return nil, err
 		}
 		if p.Person == "" {
@@ -380,7 +395,7 @@ func relationshipParentChildLinksContext(ctx context.Context, relID string, rel 
 
 	for _, c := range children {
 		for _, p := range parents {
-			if err := ctx.Err(); err != nil {
+			if err := canceled(); err != nil {
 				return nil, err
 			}
 			links = append(links, ParentChildLink{

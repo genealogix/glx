@@ -170,7 +170,6 @@ func (b *mcpArchiveBackend) CallTool(ctx context.Context, name string, raw json.
 	case "vitals":
 		return withMCPArgs(raw, func(a *glxmcp.PersonArgs) (any, error) { return buildVitalsJSON(b.archive, a.Person) })
 	case "timeline":
-		//nolint:contextcheck // Legacy timeline collection is synchronous; the serialized adapter checks cancellation after it finishes.
 		return withMCPArgs(raw, func(a *glxmcp.TimelineArgs) (any, error) { return buildTimelineJSON(b.archive, a.Person, !a.NoFamily) })
 	case "summary":
 		return withMCPArgs(raw, func(a *glxmcp.SummaryArgs) (any, error) {
