@@ -148,8 +148,15 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 				PedigreeType: pedigreeType,
 			})
 
-		case GedcomTagExid, GedcomTagRefn, GedcomTagAsso:
-			// EXID is handled above; INDI associations are resolved after families.
+		case GedcomTagAsso:
+			// INDI associations are resolved after families.
+
+		case GedcomTagExid, GedcomTagRefn:
+			// Read above when the vocabulary maps EXID; otherwise keep the value
+			// as an administrative property rather than dropping it.
+			if _, mapped := conv.GEDCOMIndex.PersonProperties[GedcomTagExid]; !mapped && sub.Value != "" {
+				person.Properties[strings.ToLower(sub.Tag)] = sub.Value
+			}
 
 		case GedcomTagFams:
 			// Family as spouse - defer for family processing

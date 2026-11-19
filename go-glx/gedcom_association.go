@@ -23,16 +23,64 @@ import (
 )
 
 var (
-	gedcom551ContextPattern          = regexp.MustCompile(`^Event: (.+) \(([^;()]+); ([^)]+)\)(.*)$`)
+	gedcom551ContextPattern          = regexp.MustCompile(`^Event: (.+?) \(([^;()]+); ([^)]+)\)(.*)$`)
 	gedcom551ContextAttributePattern = regexp.MustCompile(`; (date|place|subjects): `)
 )
 
 const gedcom551EncodedContextPrefix = "; context: "
 
+// associationMatcher indexes the imported events by host person once, so
+// matching an association's context does not rescan every event, and shares
+// one place-string cache across all associations.
+type associationMatcher struct {
+	conv         *ConversionContext
+	eventsByHost map[string][]*Event
+	places       *ExportContext
+}
+
+func newAssociationMatcher(conv *ConversionContext) *associationMatcher {
+	matcher := &associationMatcher{
+		conv:         conv,
+		eventsByHost: make(map[string][]*Event),
+		places:       &ExportContext{GLX: conv.GLX, PlaceStrings: make(map[string]string)},
+	}
+	for _, event := range conv.GLX.Events {
+		if event == nil {
+			continue
+		}
+		var hosts []string
+		for _, participant := range event.Participants {
+			if participant.Person != "" && isFamilyEventMemberRole(participant.Role) && !slices.Contains(hosts, participant.Person) {
+				hosts = append(hosts, participant.Person)
+			}
+		}
+		for _, host := range eventHostIDs(event) {
+			if !slices.Contains(hosts, host) {
+				hosts = append(hosts, host)
+			}
+		}
+		for _, host := range hosts {
+			matcher.eventsByHost[host] = append(matcher.eventsByHost[host], event)
+		}
+	}
+
+	return matcher
+}
+
 // importIndividualAssociations waits until both INDI and FAM events exist.
 func importIndividualAssociations(records []*GEDCOMRecord, conv *ConversionContext) {
+	var matcher *associationMatcher
 	for _, individual := range records {
-		hostID := conv.PersonIDMap[individual.XRef]
+		hostID, ok := conv.PersonIDMap[individual.XRef]
+		if !ok || hostID == "" || conv.GLX.Persons[hostID] == nil {
+			for _, association := range individual.SubRecords {
+				if association.Tag == GedcomTagAsso {
+					conv.addWarning(association.Line, GedcomTagAsso, fmt.Sprintf("Association on unconverted individual %s skipped", individual.XRef))
+				}
+			}
+
+			continue
+		}
 		for _, association := range individual.SubRecords {
 			if association.Tag != GedcomTagAsso {
 				continue
@@ -41,7 +89,10 @@ func importIndividualAssociations(records []*GEDCOMRecord, conv *ConversionConte
 			if participant == nil {
 				continue
 			}
-			event := matchAssociationEvent(hostID, association, conv)
+			if matcher == nil {
+				matcher = newAssociationMatcher(conv)
+			}
+			event := matcher.match(hostID, association)
 			if event != nil {
 				restoreAssociationRole(participant, association, conv)
 				participant.Notes = slices.DeleteFunc(participant.Notes, func(note string) bool {
@@ -82,7 +133,8 @@ func importIndividualAssociations(records []*GEDCOMRecord, conv *ConversionConte
 	}
 }
 
-func matchAssociationEvent(hostID string, association *GEDCOMRecord, conv *ConversionContext) *Event {
+func (matcher *associationMatcher) match(hostID string, association *GEDCOMRecord) *Event {
+	conv := matcher.conv
 	context := associationEventContext(association, conv)
 	if context == nil {
 		return nil
@@ -93,10 +145,7 @@ func matchAssociationEvent(hostID string, association *GEDCOMRecord, conv *Conve
 		return nil
 	}
 	var match *Event
-	for _, event := range conv.GLX.Events {
-		if event == nil || !associationEventHasHost(event, hostID) {
-			continue
-		}
+	for _, event := range matcher.eventsByHost[hostID] {
 		if tag == GedcomTagEven {
 			if vocabularyLabel(conv.GLX.EventTypes, event.Type) != label {
 				continue
@@ -108,8 +157,7 @@ func matchAssociationEvent(hostID string, association *GEDCOMRecord, conv *Conve
 			continue
 		}
 		if place := attributes[eventFieldPlace]; place != "" {
-			export := &ExportContext{GLX: conv.GLX, PlaceStrings: make(map[string]string)}
-			if resolvePlaceString(event.PlaceID, export) != place {
+			if resolvePlaceString(event.PlaceID, matcher.places) != place {
 				continue
 			}
 		}
@@ -182,16 +230,6 @@ func appendAssociationParticipant(event *Event, participant Participant) {
 		}
 	}
 	event.Participants = append(event.Participants, participant)
-}
-
-func associationEventHasHost(event *Event, hostID string) bool {
-	for _, participant := range event.Participants {
-		if participant.Person == hostID && isFamilyEventMemberRole(participant.Role) {
-			return true
-		}
-	}
-
-	return slices.Contains(eventHostIDs(event), hostID)
 }
 
 func associationEventContext(association *GEDCOMRecord, conv *ConversionContext) []string {

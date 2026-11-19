@@ -653,6 +653,10 @@ func parseGEDCOMFields(text string) (level int, xref, tag, value string, err err
 		if pos < n {
 			value = text[pos+1:]
 		}
+		// A pointer is not text: "1 NOTE @N1@ " still references @N1@.
+		if trimmed := strings.TrimSpace(value); isGEDCOMPointer(trimmed) && !strings.Contains(trimmed, " ") {
+			value = trimmed
+		}
 
 		return level, xref, tag, value, nil
 	}

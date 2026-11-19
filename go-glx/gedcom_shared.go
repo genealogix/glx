@@ -234,7 +234,7 @@ func buildExternalIDEntry(exidRecord *GEDCOMRecord) any {
 		}
 	}
 
-	return NewExternalIDEntry(exidRecord.Value, exidType)
+	return NewExternalIDEntry(exidRecord.Value, importExternalIDAuthority(exidType))
 }
 
 // NewExternalIDEntry constructs the canonical external_ids property entry for

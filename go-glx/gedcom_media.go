@@ -20,6 +20,7 @@ import (
 	"net/url"
 	"path"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode"
@@ -253,6 +254,25 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 				media.Properties[MediaPropertyBlobSize] = len(blobText)
 			}
 		}
+	}
+
+	// Media with no FILE: export kept the title and media type in notes
+	// because GEDCOM had no valid structure for them. Restore them.
+	if fileRef == "" {
+		notes = slices.DeleteFunc(notes, func(note string) bool {
+			if title, ok := strings.CutPrefix(note, filelessMediaTitlePrefix); ok && media.Title == "" && title != "" {
+				media.Title = title
+
+				return true
+			}
+			if mediaType, ok := strings.CutPrefix(note, filelessMediaTypePrefix); ok && media.MimeType == "" && mediaType != "" {
+				media.MimeType = mediaType
+
+				return true
+			}
+
+			return false
+		})
 	}
 
 	// Infer MIME type if not set (GEDCOM 5.5.1)

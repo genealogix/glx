@@ -206,7 +206,7 @@ func TestGEDCOM551_NeutralAssociationRoleComesFromEventRoleNote(t *testing.T) {
 }
 
 func TestGEDCOM551_ContextPunctuationKeepsParticipants(t *testing.T) {
-	for _, placeName := range []string{"Town; County", "Town; subjects: Parish; place: Original", "Town \"quoted\"; County"} {
+	for _, placeName := range []string{"Town; County", "Town; subjects: Parish; place: Original", "Town \"quoted\"; County", "St. Mary (Parish; Old)"} {
 		archive := newEventExportArchive(t, map[string][2]string{"p": {"Child; date: Original", "male"}, "w": {"Witness One", "female"}})
 		archive.Places["place"] = &Place{Name: placeName}
 		archive.Events["e"] = &Event{Type: "baptism", Date: "1800", PlaceID: "place", Participants: []Participant{{Person: "p", Role: "principal"}, {Person: "w", Role: "godparent"}}}
@@ -247,4 +247,13 @@ func TestGEDCOM551_InvalidEncodedContextPreservesAssociation(t *testing.T) {
 			assert.Contains(t, relationship.Notes, note)
 		}
 	}
+}
+
+func TestGEDCOM551_AssociationOnUnconvertedHostIsSkipped(t *testing.T) {
+	archive := newEventExportArchive(t, map[string][2]string{"w": {"Witness One", "female"}})
+	conv := &ConversionContext{GLX: archive, PersonIDMap: map[string]string{"@I2@": "w"}, Logger: NewImportLogger(nil)}
+	records := []*GEDCOMRecord{{XRef: "@I1@", Tag: GedcomTagIndi, SubRecords: []*GEDCOMRecord{{Tag: GedcomTagAsso, Value: "@I2@"}}}}
+	importIndividualAssociations(records, conv)
+	assert.Empty(t, archive.Relationships)
+	assert.NotEmpty(t, conv.Stats.Warnings)
 }

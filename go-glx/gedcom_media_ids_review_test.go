@@ -99,13 +99,112 @@ func TestGEDCOMReview_AncestryMediaIdentifiers(t *testing.T) {
 			roundTrip, _, importErr := ImportGEDCOM(strings.NewReader(output), nil)
 			require.NoError(t, importErr)
 			require.Len(t, roundTrip.Media, 1)
-			authority, cloneAuthority := "ancestry", "ancestry_clone"
 			if version.version == GEDCOM70 {
-				authority, cloneAuthority = "https://www.ancestry.com/", "urn:glx:external-id:ancestry_clone"
+				assert.Contains(t, output, "2 TYPE https://www.ancestry.com/")
+				assert.Contains(t, output, "2 TYPE urn:glx:external-id:ancestry_clone")
 			}
+			// Import reverses the 7.0 authority URIs, so both dialects keep
+			// GLX's own ancestry/ancestry_clone names.
 			for _, media := range roundTrip.Media {
-				assert.Equal(t, []any{NewExternalIDEntry("object-123", authority), NewExternalIDEntry("clone-456", cloneAuthority)}, media.Properties["external_ids"])
+				assert.Equal(t, []any{NewExternalIDEntry("object-123", "ancestry"), NewExternalIDEntry("clone-456", "ancestry_clone")}, media.Properties["external_ids"])
 			}
 		}
+	}
+}
+
+func TestGEDCOMReview_AuthorityNamesSurviveRepeatedRoundTrips(t *testing.T) {
+	archive := newEventExportArchive(t, map[string][2]string{"p": {"Child One", "male"}})
+	identifiers := []any{NewExternalIDEntry("Schepp-190", "wikitree"), NewExternalIDEntry("P1", "local registry"), NewExternalIDEntry("x", "https://example.org/id/")}
+	archive.Persons["p"].Properties["external_ids"] = identifiers
+	current := archive
+	for _, version := range []GEDCOMVersion{GEDCOM70, GEDCOM551, GEDCOM70} {
+		output, _ := exportGEDCOMString(t, current, version)
+		imported, _, err := ImportGEDCOM(strings.NewReader(output), nil)
+		require.NoError(t, err)
+		require.Len(t, imported.Persons, 1)
+		for _, person := range imported.Persons {
+			assert.Equal(t, identifiers, person.Properties["external_ids"], version)
+		}
+		current = imported
+	}
+}
+
+func TestGEDCOMReview_ExternalIDsExportUnderVocabularyKey(t *testing.T) {
+	archive := newEventExportArchive(t, nil)
+	archive.SourceProperties["ids"] = &PropertyDefinition{Label: "IDs", ValueType: "string", MultiValue: new(true), GEDCOM: GedcomTagExid}
+	delete(archive.SourceProperties, "external_ids")
+	archive.Sources["s"] = &Source{Title: "Register", Properties: map[string]any{"ids": []any{"abc"}}}
+	output, _ := exportGEDCOMString(t, archive, GEDCOM70)
+	assert.Contains(t, output, "1 EXID abc")
+}
+
+func TestGEDCOMReview_FilelessMediaRestoresTitleAndType(t *testing.T) {
+	for _, version := range gedcomVersions {
+		archive := newEventExportArchive(t, nil)
+		archive.Media = map[string]*Media{"m": {Title: "Caption", MimeType: "image/jpeg", Notes: NoteList{"Kept note"}}}
+		output, _ := exportGEDCOMString(t, archive, version.version)
+		imported, _, err := ImportGEDCOM(strings.NewReader(output), nil)
+		require.NoError(t, err)
+		require.Len(t, imported.Media, 1)
+		for _, media := range imported.Media {
+			assert.Equal(t, "Caption", media.Title, version.name)
+			assert.Equal(t, "image/jpeg", media.MimeType, version.name)
+			assert.Equal(t, NoteList{"Kept note"}, media.Notes, version.name)
+		}
+	}
+}
+
+// convertWithoutPersonEXID imports gedcom through a vocabulary whose person
+// properties map nothing to EXID.
+func convertWithoutPersonEXID(t *testing.T, gedcom string) *GLXFile {
+	t.Helper()
+	logger := NewImportLogger(nil)
+	records, version, _, err := parseGEDCOM(strings.NewReader(gedcom), logger)
+	require.NoError(t, err)
+	glx := &GLXFile{Persons: map[string]*Person{}, Events: map[string]*Event{}, Relationships: map[string]*Relationship{}, Places: map[string]*Place{}, Sources: map[string]*Source{}, Repositories: map[string]*Repository{}, Media: map[string]*Media{}, Citations: map[string]*Citation{}, Assertions: map[string]*Assertion{}}
+	require.NoError(t, LoadStandardVocabulariesIntoGLX(glx))
+	index := buildGEDCOMIndex(glx)
+	delete(index.PersonProperties, GedcomTagExid)
+	conv := &ConversionContext{
+		GLX: glx, Version: version, Logger: logger, GEDCOMIndex: index,
+		PersonIDMap: map[string]string{}, FamilyIDMap: map[string]string{}, SourceIDMap: map[string]string{}, RepositoryIDMap: map[string]string{},
+		MediaIDMap: map[string]string{}, PlaceIDMap: map[string]string{}, RepositoryNameMap: map[string]string{}, FamilyParentsMap: map[string][]string{},
+		SharedNotes: map[string]string{}, ExtensionSchemas: map[string]*ExtensionSchema{}, MediaFileNames: NewFilenameAllocator(),
+	}
+	require.NoError(t, conv.Convert(records))
+
+	return glx
+}
+
+func TestGEDCOMReview_PersonREFNKeptWithoutEXIDMapping(t *testing.T) {
+	glx := convertWithoutPersonEXID(t, "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n0 @I1@ INDI\n1 NAME Child /One/\n1 REFN 12345\n0 TRLR\n")
+	require.Len(t, glx.Persons, 1)
+	for _, person := range glx.Persons {
+		assert.Equal(t, "12345", person.Properties["refn"])
+	}
+}
+
+func TestGEDCOMReview_NotePointerWithTrailingSpace(t *testing.T) {
+	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n0 @N1@ NOTE Shared text\n0 @I1@ INDI\n1 NAME Child /One/\n1 NOTE @N1@ \n0 TRLR\n"
+	archive, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+	for _, person := range archive.Persons {
+		assert.Equal(t, NoteList{"Shared text"}, person.Notes)
+	}
+}
+
+func TestGEDCOMReview_CONCSplitKeepsSpacesInTrimmedTags(t *testing.T) {
+	title := strings.Repeat("a", 247) + " " + strings.Repeat("b", 50)
+	archive := newEventExportArchive(t, nil)
+	archive.Sources["s"] = &Source{Title: title}
+	output, _ := exportGEDCOMString(t, archive, GEDCOM551)
+	assert.Contains(t, output, " CONC ")
+	for line := range strings.SplitSeq(output, "\n") {
+		assert.False(t, strings.HasSuffix(line, " ") || strings.Contains(line, "CONC  "), "split next to a space: %q", line)
+	}
+	imported, _, err := ImportGEDCOM(strings.NewReader(output), nil)
+	require.NoError(t, err)
+	for _, source := range imported.Sources {
+		assert.Equal(t, title, source.Title)
 	}
 }

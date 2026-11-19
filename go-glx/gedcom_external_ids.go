@@ -16,6 +16,7 @@ package glx
 
 import (
 	"net/url"
+	"slices"
 	"strings"
 )
 
@@ -25,6 +26,54 @@ var externalIDAuthorities = map[string]string{
 	"familysearch": "https://www.familysearch.org/tree/person/details/",
 	"findagrave":   "https://www.findagrave.com/memorial/",
 	"ancestry":     "https://www.ancestry.com/",
+}
+
+// externalIDOpaquePrefix wraps an authority name that is not a URI so it can
+// travel in a GEDCOM 7 EXID.TYPE.
+const externalIDOpaquePrefix = "urn:glx:external-id:"
+
+// importExternalIDAuthority reverses the 7.0 export mapping: a known authority
+// URI or an opaque GLX URN becomes the short authority name GLX stores, so
+// identifiers keep one representation across export and re-import.
+func importExternalIDAuthority(authority string) string {
+	if name, ok := strings.CutPrefix(authority, externalIDOpaquePrefix); ok {
+		if unescaped, err := url.PathUnescape(name); err == nil && unescaped != "" {
+			return unescaped
+		}
+
+		return authority
+	}
+	for name, uri := range externalIDAuthorities {
+		if authority == uri {
+			return name
+		}
+	}
+
+	return authority
+}
+
+// exportEntityExternalIDs exports every property the vocabulary maps to
+// EXID, in key order, falling back to the standard external_ids key when the
+// vocabulary maps none.
+func exportEntityExternalIDs(props map[string]any, index map[string]string, version GEDCOMVersion) []*GEDCOMRecord {
+	var keys []string
+	for key, tag := range index {
+		if tag == GedcomTagExid {
+			keys = append(keys, key)
+		}
+	}
+	if len(keys) == 0 {
+		keys = []string{"external_ids"}
+	}
+	slices.Sort(keys)
+	var records []*GEDCOMRecord
+	for _, key := range keys {
+		if value, ok := props[key]; ok {
+			records = append(records, exportExternalIDs(value, version)...)
+		}
+	}
+
+	return records
 }
 
 func exportExternalIDs(value any, version GEDCOMVersion) []*GEDCOMRecord {
@@ -61,7 +110,7 @@ func exportExternalIDs(value any, version GEDCOMVersion) []*GEDCOMRecord {
 				authority = known
 			} else if parsed, err := url.Parse(authority); authority != "" && (err != nil || !parsed.IsAbs()) {
 				// An opaque URI retains an unrecognized authority without inventing a website.
-				authority = "urn:glx:external-id:" + url.PathEscape(authority)
+				authority = externalIDOpaquePrefix + url.PathEscape(authority)
 			}
 		}
 		record := &GEDCOMRecord{Tag: tag, Value: id}

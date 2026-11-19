@@ -118,6 +118,21 @@ func writeLineSplitByCONC(prefix, value string, level int, buf *bytes.Buffer) {
 			byteOffset += size
 		}
 
+		// Readers commonly trim line values, so never split next to a space
+		// (GEDCOM 5.5.1 CONC rule): back the split up to a non-space pair.
+		if byteOffset < len(remaining) {
+			for split := byteOffset; split > 0; {
+				prev, size := utf8.DecodeLastRuneInString(remaining[:split])
+				next, _ := utf8.DecodeRuneInString(remaining[split:])
+				if prev != ' ' && next != ' ' {
+					byteOffset = split
+
+					break
+				}
+				split -= size
+			}
+		}
+
 		chunk := remaining[:byteOffset]
 		remaining = remaining[byteOffset:]
 
