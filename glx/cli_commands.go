@@ -2228,6 +2228,10 @@ Archives with duplicate entity IDs are refused, including in --dry-run;
 resolve the duplicates first. Relationships containing both merge IDs must
 be resolved before merging, except the binary possibly_same_person candidates
 that this command removes and reports. It never silently collapses participants.
+When both persons hold the same role in one event, the survivor keeps both
+rows; the preview names each such event, and which row was the dropped
+person's, so the rows can be reviewed and folded by hand. glx validate
+warns about such rows when their notes and properties are also identical.
 Merges refuse changes to linked GLX files (including Windows Git
 symlink placeholders) before approval, preserving the link and its target.
 Unchanged linked files in directory archives are retained. Run with exclusive

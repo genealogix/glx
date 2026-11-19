@@ -66,6 +66,7 @@ func (glx *GLXFile) Validate() *ValidationResult {
 	view.validatePlaceHierarchyCycles(result)
 	view.validatePlaceParentHistory(result)
 	view.validateParticipantRoleContexts(result)
+	view.validateDuplicateParticipants(result)
 
 	// Phase 5: Validate entity-level field formats
 	view.validateEntityFieldFormats(result)
