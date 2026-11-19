@@ -561,3 +561,26 @@ func TestDedupeRelatedPersons_AcceptedWins(t *testing.T) {
 	require.Len(t, both, 1)
 	assert.True(t, both[0].hypothetical, "two hypothetical copies stay hypothetical")
 }
+
+// TestDedupeRelatedPersons_GenericBesideSpecific checks that a generic
+// parent_child edge beside a specific one for the same person is drawn once,
+// with the specific type, while two specific types stay apart (#1506).
+func TestDedupeRelatedPersons_GenericBesideSpecific(t *testing.T) {
+	generic := treeRelPerson{personID: "person-father", relType: "parent_child"}
+	bio := treeRelPerson{personID: "person-father", relType: "biological_parent_child"}
+	adoptive := treeRelPerson{personID: "person-father", relType: "adoptive_parent_child"}
+
+	for name, in := range map[string][]treeRelPerson{
+		"generic first":  {generic, bio},
+		"specific first": {bio, generic},
+	} {
+		t.Run(name, func(t *testing.T) {
+			out := dedupeRelatedPersons(in)
+			require.Len(t, out, 1)
+			assert.Equal(t, "biological_parent_child", out[0].relType)
+		})
+	}
+
+	assert.Len(t, dedupeRelatedPersons([]treeRelPerson{bio, adoptive}), 2,
+		"biological and adoptive links are different facts")
+}

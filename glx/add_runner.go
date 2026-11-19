@@ -1253,17 +1253,49 @@ func addRelationship(io *IOStreams, opts *addRelationshipOptions) error {
 	if len(opts.Notes) > 0 {
 		rel.Notes = glxlib.NoteList(opts.Notes)
 	}
-	if existing := glxlib.FindDuplicateRelationship(ctx.archive, rel, id); existing != "" {
-		if !opts.Force {
-			return fmt.Errorf("%w: %s already records a %s relationship between these participants in these roles; "+
-				"edit it instead, or pass --force to add another", ErrAddRelationshipDuplicate, existing, opts.Type)
-		}
-		io.Errorf("Warning: %s duplicates %s (same type and participants in the same roles)\n", id, existing)
+	if err := checkDuplicateRelationship(io, ctx.archive, rel, id, opts.Force); err != nil {
+		return err
 	}
 
 	partial := &glxlib.GLXFile{Relationships: map[string]*glxlib.Relationship{id: rel}}
 
 	return finalizeAdd(io, &opts.addCommonOptions, ctx, glxlib.EntityTypeRelationships, id, partial)
+}
+
+// checkDuplicateRelationship refuses rel when the archive already records it
+// (#1506): a relationship of the same type between the same participants in
+// the same roles, or a parent-child relationship every link of which another
+// relationship already records. With force it warns instead. A parent-child
+// relationship only some of whose links are already recorded is added with a
+// warning naming them.
+func checkDuplicateRelationship(io *IOStreams, archive *glxlib.GLXFile, rel *glxlib.Relationship, id string, force bool) error {
+	if existing := glxlib.FindDuplicateRelationship(archive, rel, id); len(existing) > 0 {
+		names := strings.Join(existing, ", ")
+		if !force {
+			return fmt.Errorf("%w: %s already records a %s relationship between these participants in these roles; "+
+				"edit it instead, or pass --force to add another", ErrAddRelationshipDuplicate, names, rel.Type)
+		}
+		io.Errorf("Warning: %s duplicates %s (same type and participants in the same roles)\n", id, names)
+
+		return nil
+	}
+
+	recorded, total := glxlib.FindRecordedParentChildLinks(archive, rel, id)
+	if len(recorded) == 0 {
+		return nil
+	}
+	descs := make([]string, len(recorded))
+	for i, l := range recorded {
+		descs[i] = fmt.Sprintf("%s to %s in %s", l.ParentID, l.ChildID, l.RecordedIn)
+	}
+	list := strings.Join(descs, "; ")
+	if len(recorded) == total && !force {
+		return fmt.Errorf("%w: every parent-child link it records is already recorded (%s); "+
+			"edit that relationship instead, or pass --force to add another", ErrAddRelationshipDuplicate, list)
+	}
+	io.Errorf("Warning: %s records parent-child links already recorded elsewhere (%s)\n", id, list)
+
+	return nil
 }
 
 func buildRelationshipParticipants(archive *glxlib.GLXFile, opts *addRelationshipOptions) ([]glxlib.Participant, error) {

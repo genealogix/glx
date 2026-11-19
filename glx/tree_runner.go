@@ -245,25 +245,39 @@ func buildDescendantTree(tc *treeContext, personID string, maxGen, depth int, vi
 }
 
 // dedupeRelatedPersons collapses edges that link the same person in the same
-// way (same relationship type and step flag), as two relationships recording
-// one parent-child link do (#1506), so the tree draws that person once. When
-// the copies differ in standing, the accepted one is kept over a hypothesis.
+// way, as two relationships recording one parent-child link do (#1506), so
+// the tree draws that person once. Two edges are the same link when they share
+// the step flag and their types overlap (glxlib.ParentChildTypesOverlap): the
+// same type, or the generic parent_child beside a specific type, in which case
+// the specific type is kept. Two specific types (biological and adoptive) are
+// different facts and both stay. When the copies differ in standing, the
+// accepted one is kept over a hypothesis.
 func dedupeRelatedPersons(persons []treeRelPerson) []treeRelPerson {
 	type edgeKey struct {
 		personID string
-		relType  string
 		step     bool
 	}
 	out := persons[:0]
-	at := make(map[edgeKey]int, len(persons))
+	at := make(map[edgeKey][]int, len(persons))
 	for _, p := range persons {
-		key := edgeKey{p.personID, strings.ToLower(p.relType), p.step}
-		if i, seen := at[key]; seen {
+		key := edgeKey{p.personID, p.step}
+		merged := false
+		for _, i := range at[key] {
+			if !glxlib.ParentChildTypesOverlap(out[i].relType, p.relType) {
+				continue
+			}
 			out[i].hypothetical = out[i].hypothetical && p.hypothetical
+			if strings.EqualFold(out[i].relType, glxlib.RelationshipTypeParentChild) {
+				out[i].relType = p.relType
+			}
+			merged = true
 
+			break
+		}
+		if merged {
 			continue
 		}
-		at[key] = len(out)
+		at[key] = append(at[key], len(out))
 		out = append(out, p)
 	}
 

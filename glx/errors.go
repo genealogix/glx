@@ -139,7 +139,6 @@ var (
 	ErrServeRelationshipSelfLink = errors.New("a person cannot be related to themselves")
 	ErrServePropertyNotSimple    = errors.New("property is not a single value; edit it in a text editor")
 	ErrServeSerializePerson      = errors.New("serializing person")
-	ErrServeRelationshipExists   = errors.New("that relationship is already recorded")
 
 	// `glx cache` errors
 	ErrCacheNotDirectory = errors.New("binary cache is only supported for multi-file (directory) archives")
