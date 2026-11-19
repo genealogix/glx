@@ -76,8 +76,6 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 			censusRecords = append(censusRecords, sub)
 		case GedcomTagResi:
 			familyResiRecords = append(familyResiRecords, sub)
-		case GedcomTagEnga, GedcomTagMarb, GedcomTagMarc, GedcomTagMarl, GedcomTagMars, GedcomTagAnul, GedcomTagDivf, GedcomTagEven:
-			familyEventRecords = append(familyEventRecords, sub)
 		case GedcomTagObje:
 			objeRecords = append(objeRecords, sub)
 		case GedcomTagNchi:
@@ -85,7 +83,12 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 			// the count of CHIL pointers. Stored on the marriage relationship.
 			nchiRecord = sub
 		default:
-			if isExtensionTag(sub.Tag) {
+			switch {
+			case gedcomFamilyEventTags[sub.Tag]:
+				// ENGA, MARB, MARC, MARL, MARS, ANUL, DIVF, EVEN: MARR, DIV,
+				// CENS and RESI have their own cases above.
+				familyEventRecords = append(familyEventRecords, sub)
+			case isExtensionTag(sub.Tag):
 				extensionRecords = append(extensionRecords, sub)
 			}
 		}
@@ -106,7 +109,8 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 		}
 		for _, eventRec := range familyEventRecords {
 			eventID := convertFamilyEvent(husbandID, wifeID, eventRec, conv)
-			if eventRec.Tag == GedcomTagAnul && annulmentEventID == "" {
+			if eventRec.Tag == GedcomTagAnul && annulmentEventID == "" &&
+				conv.GLX.Events[eventID].Type == EventTypeAnnulment {
 				annulmentEventID = eventID
 			}
 		}
@@ -316,6 +320,15 @@ func convertDivorceEvent(husbandID, wifeID, relationshipID string, divRecord *GE
 	if relationship != nil && relationship.EndEvent == "" {
 		relationship.EndEvent = eventID
 	}
+}
+
+// gedcomFamilyEventTags are the event tags GEDCOM allows directly under a
+// FAM record. convertFamily reads exactly these, and the exporter writes no
+// other tag under FAM (#1498).
+var gedcomFamilyEventTags = map[string]bool{
+	GedcomTagAnul: true, GedcomTagCens: true, GedcomTagDiv: true, GedcomTagDivf: true,
+	GedcomTagEnga: true, GedcomTagMarb: true, GedcomTagMarc: true, GedcomTagMarr: true,
+	GedcomTagMarl: true, GedcomTagMars: true, GedcomTagResi: true, GedcomTagEven: true,
 }
 
 // convertFamilyEvent converts other family events (ENGA, MARB, MARC, MARL, MARS,

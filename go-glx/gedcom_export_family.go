@@ -297,14 +297,6 @@ func formatCountProperty(value any) string {
 	}
 }
 
-// gedcomFamilyEventTags are the event tags GEDCOM allows directly under a
-// FAM record, the same set the importer reads from FAM.
-var gedcomFamilyEventTags = map[string]bool{
-	GedcomTagAnul: true, GedcomTagCens: true, GedcomTagDiv: true, GedcomTagDivf: true,
-	GedcomTagEnga: true, GedcomTagMarb: true, GedcomTagMarc: true, GedcomTagMarr: true,
-	GedcomTagMarl: true, GedcomTagMars: true, GedcomTagResi: true, GedcomTagEven: true,
-}
-
 // familyEndEventTag returns the FAM tag that a relationship's end event is
 // written as: DIV for a divorce, ANUL for an annulment. Any other end event
 // (a death or burial, most often) has no FAM tag meaning "ended by this", so
@@ -317,11 +309,11 @@ func familyEndEventTag(eventID string, expCtx *ExportContext) string {
 	if !ok || event == nil {
 		return ""
 	}
-	switch event.Type {
-	case EventTypeDivorce:
-		return GedcomTagDiv
-	case EventTypeAnnulment:
-		return GedcomTagAnul
+	// Read the tag from the vocabulary, as every other export path does, so a
+	// custom event type mapped to DIV or ANUL is written the same way.
+	switch tag := expCtx.ExportIndex.EventTypes[event.Type]; tag {
+	case GedcomTagDiv, GedcomTagAnul:
+		return tag
 	default:
 		return ""
 	}
@@ -386,7 +378,14 @@ func exportFamilyEvent(eventID, gedcomTag string, expCtx *ExportContext, hostIDs
 	// TYPE: a generic EVEN names its event type (#1320); otherwise the
 	// marriage_type property takes precedence, then event_subtype via exportEventPropertySubrecords
 	hasExplicitType := false
-	if genericType := genericEventTypeRecord(event, expCtx); genericType != nil && gedcomTag == GedcomTagEven {
+	genericType := genericEventTypeRecord(event, expCtx)
+	if ownTag := expCtx.ExportIndex.EventTypes[event.Type]; genericType == nil && gedcomTag == GedcomTagEven &&
+		ownTag != "" && !gedcomFamilyEventTags[ownTag] {
+		// An event whose own tag cannot go under FAM, written as EVEN
+		// (see findFamilyEvents): TYPE names its event type.
+		genericType = eventTypeLabelRecord(event, expCtx)
+	}
+	if genericType != nil && gedcomTag == GedcomTagEven {
 		record.SubRecords = append(record.SubRecords, genericType)
 		hasExplicitType = true
 	} else if marriageType, ok := event.Properties[PropertyMarriageType].(string); ok && marriageType != "" {
@@ -454,10 +453,18 @@ func findFamilyEvents(husbandID, wifeID, startEventID, endEventID string, expCtx
 
 		// Map event type to GEDCOM tag
 		gedcomTag, ok := expCtx.ExportIndex.EventTypes[event.Type]
-		if !ok || !gedcomFamilyEventTags[gedcomTag] {
-			// Individual-only tags (DEAT, BURI, ...) never go under FAM,
-			// even when both spouses are listed with role "spouse" (#1498).
+		if !ok || gedcomTag == "" {
 			continue
+		}
+		if !gedcomFamilyEventTags[gedcomTag] {
+			// Individual-only tags (DEAT, BURI, EMIG, ...) never go under FAM,
+			// even when both spouses are listed with role "spouse" (#1498).
+			// An INDI that hosts the event carries it; one no INDI hosts stays
+			// on the FAM as an EVEN naming its type, so it is not dropped.
+			if len(eventHostIDs(event)) > 0 {
+				continue
+			}
+			gedcomTag = GedcomTagEven
 		}
 
 		// Reuse exportFamilyEvent to get full sub-record export (DATE, PLAC, NOTE, SOUR, properties)

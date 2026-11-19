@@ -15,7 +15,6 @@
 package glx
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
@@ -1950,29 +1949,34 @@ func TestExportGEDCOM_DisprovenParentFallbackKeepsEligibleFamily(t *testing.T) {
 
 // TestExportGEDCOM_FamilyEndEventTag checks that a marriage's end event is
 // written as DIV only for a divorce and ANUL only for an annulment, and that
-// a marriage ended by a death or burial gets no FAM end record (#1498).
+// a marriage ended by a death or burial gets no FAM end record: the death
+// stays on the INDI that hosts it, or, when no INDI hosts it, on the FAM as
+// an EVEN naming its type (#1498).
 func TestExportGEDCOM_FamilyEndEventTag(t *testing.T) {
 	for _, tc := range []struct {
 		name, eventType string
-		wantTag         string // "" means no end record on the FAM
+		spouseRoles     bool   // end event lists both partners as role spouse, no principal
+		wantTag         string // FAM end record tag; "" means none
+		wantFamEven     string // TYPE of a FAM EVEN carrying the end event; "" means none
+		wantIndiTag     string // tag on @I2@ carrying the end event; "" means none
 	}{
-		{"divorce", EventTypeDivorce, GedcomTagDiv},
-		{"annulment", EventTypeAnnulment, GedcomTagAnul},
-		{"death", EventTypeDeath, ""},
-		{"burial", EventTypeBurial, ""},
-		{"spouse-role death", EventTypeDeath, ""},
+		{name: "divorce", eventType: EventTypeDivorce, spouseRoles: true, wantTag: GedcomTagDiv},
+		{name: "annulment", eventType: EventTypeAnnulment, spouseRoles: true, wantTag: GedcomTagAnul},
+		{name: "death", eventType: EventTypeDeath, wantIndiTag: GedcomTagDeat},
+		{name: "burial", eventType: EventTypeBurial, wantIndiTag: GedcomTagBuri},
+		{name: "spouse-role death", eventType: EventTypeDeath, spouseRoles: true, wantFamEven: "Death"},
 	} {
-		for _, version := range []GEDCOMVersion{GEDCOM551, GEDCOM70} {
-			t.Run(fmt.Sprintf("%s/%d", tc.name, version), func(t *testing.T) {
+		for _, version := range gedcomVersions {
+			t.Run(tc.name+"/"+version.name, func(t *testing.T) {
 				glx := newEventExportArchive(t, map[string][2]string{
 					"person-a": {"Hans Roth", "male"}, "person-b": {"Anna Seitz", "female"},
 				})
-				endParticipants := []Participant{
-					{Person: "person-a", Role: ParticipantRoleSpouse},
-					{Person: "person-b", Role: ParticipantRoleSpouse},
-				}
-				if tc.wantTag == "" && !strings.HasPrefix(tc.name, "spouse-role") {
-					endParticipants = []Participant{{Person: "person-b", Role: ParticipantRolePrincipal}}
+				endParticipants := []Participant{{Person: "person-b", Role: ParticipantRolePrincipal}}
+				if tc.spouseRoles {
+					endParticipants = []Participant{
+						{Person: "person-a", Role: ParticipantRoleSpouse},
+						{Person: "person-b", Role: ParticipantRoleSpouse},
+					}
 				}
 				glx.Events["ev-m"] = &Event{Type: EventTypeMarriage, Date: "1691-07-07", Participants: []Participant{
 					{Person: "person-a", Role: ParticipantRoleGroom},
@@ -1990,7 +1994,7 @@ func TestExportGEDCOM_FamilyEndEventTag(t *testing.T) {
 				}
 				require.Empty(t, glx.Validate().Errors)
 
-				ged, _ := exportGEDCOMString(t, glx, version)
+				ged, _ := exportGEDCOMString(t, glx, version.version)
 				assert.Len(t, gedcomSubstructures(ged, "@F1@", GedcomTagMarr), 1)
 				for _, tag := range []string{GedcomTagDiv, GedcomTagAnul, GedcomTagDeat, GedcomTagBuri} {
 					want := 0
@@ -1999,11 +2003,77 @@ func TestExportGEDCOM_FamilyEndEventTag(t *testing.T) {
 					}
 					assert.Len(t, gedcomSubstructures(ged, "@F1@", tag), want, tag)
 				}
-				if tc.wantTag == "" && !strings.HasPrefix(tc.name, "spouse-role") {
-					deathTag := map[string]string{EventTypeDeath: GedcomTagDeat, EventTypeBurial: GedcomTagBuri}[tc.eventType]
-					assert.Len(t, gedcomSubstructures(ged, "@I2@", deathTag), 1, "end event stays on the person")
+
+				evens := gedcomSubstructures(ged, "@F1@", GedcomTagEven)
+				if tc.wantFamEven == "" {
+					assert.Empty(t, evens)
+				} else if assert.Len(t, evens, 1, "end event no INDI hosts stays on the FAM") {
+					assert.Contains(t, evens[0], "2 TYPE "+tc.wantFamEven)
+				}
+				if tc.wantIndiTag != "" {
+					assert.Len(t, gedcomSubstructures(ged, "@I2@", tc.wantIndiTag), 1, "end event stays on the person")
 				}
 			})
 		}
+	}
+}
+
+// TestExportGEDCOM_FamilyEndEventTagFromVocabulary checks that the end
+// event's FAM tag is read from the vocabulary: a custom event type mapped to
+// DIV is written as DIV (#1498).
+func TestExportGEDCOM_FamilyEndEventTagFromVocabulary(t *testing.T) {
+	glx := newEventExportArchive(t, map[string][2]string{
+		"person-a": {"Hans Roth", "male"}, "person-b": {"Anna Seitz", "female"},
+	})
+	glx.EventTypes["civil_divorce"] = &VocabularyEntry{Label: "Civil Divorce", GEDCOM: GedcomTagDiv}
+	glx.Events["ev-end"] = &Event{Type: "civil_divorce", Date: "1694-01-25", Participants: []Participant{
+		{Person: "person-a", Role: ParticipantRolePrincipal},
+		{Person: "person-b", Role: ParticipantRolePrincipal},
+	}}
+	glx.Relationships["rel-m"] = &Relationship{
+		Type: RelationshipTypeMarriage,
+		Participants: []Participant{
+			{Person: "person-a", Role: ParticipantRoleSpouse},
+			{Person: "person-b", Role: ParticipantRoleSpouse},
+		},
+		EndEvent: "ev-end",
+	}
+
+	ged, _ := exportGEDCOMString(t, glx, GEDCOM70)
+	assert.Len(t, gedcomSubstructures(ged, "@F1@", GedcomTagDiv), 1)
+}
+
+// TestExportGEDCOM_HostlessCoupleEventStaysOnFAM checks that a couple event
+// with an individual-only tag and no INDI host (both partners role spouse)
+// is written under the FAM as an EVEN naming its type, not dropped, and that
+// the same event with a principal goes to that INDI instead (#1498).
+func TestExportGEDCOM_HostlessCoupleEventStaysOnFAM(t *testing.T) {
+	for _, version := range gedcomVersions {
+		t.Run(version.name, func(t *testing.T) {
+			glx := newEventExportArchive(t, map[string][2]string{
+				"person-a": {"Hans Roth", "male"}, "person-b": {"Anna Seitz", "female"},
+			})
+			glx.Events["ev-emig"] = &Event{Type: EventTypeEmigration, Date: "1709", Participants: []Participant{
+				{Person: "person-a", Role: ParticipantRoleSpouse},
+				{Person: "person-b", Role: ParticipantRoleSpouse},
+			}}
+			glx.Relationships["rel-m"] = &Relationship{
+				Type: RelationshipTypeMarriage,
+				Participants: []Participant{
+					{Person: "person-a", Role: ParticipantRoleSpouse},
+					{Person: "person-b", Role: ParticipantRoleSpouse},
+				},
+			}
+
+			ged, result := exportGEDCOMString(t, glx, version.version)
+			assert.Empty(t, gedcomSubstructures(ged, "@F1@", GedcomTagEmig))
+			evens := gedcomSubstructures(ged, "@F1@", GedcomTagEven)
+			if assert.Len(t, evens, 1) {
+				assert.Contains(t, evens[0], "2 TYPE Emigration")
+			}
+			for _, w := range result.Statistics.Warnings {
+				assert.NotEqual(t, "ev-emig", w.EntityID, "event reported unexported: %s", w.Message)
+			}
+		})
 	}
 }
