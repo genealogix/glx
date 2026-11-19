@@ -877,15 +877,20 @@ func exportPersonSourceRefs(personID string, person *Person, expCtx *ExportConte
 	exportEntitySourceRefs(EntityTypePersons, personID, person.Properties, expCtx, record)
 }
 
-// exportEntitySourceRefs preserves direct entity evidence using the shared citation serializer.
+// exportEntitySourceRefs preserves direct entity evidence using the shared
+// citation serializer. Identical exported references are emitted once, as for
+// events, so a source listed both bare and through a citation, or a citation
+// listed twice, does not produce duplicate SOUR blocks.
 func exportEntitySourceRefs(entityType EntityType, entityID string, properties map[string]any, expCtx *ExportContext, record *GEDCOMRecord) {
+	var refs []*GEDCOMRecord
+
 	// Sources
 	if sourcesVal, ok := properties[PropertySources]; ok {
 		sourceIDs := extractStringList(sourcesVal)
 		for _, sourceID := range sourceIDs {
 			sourceXRef := expCtx.SourceXRefMap[sourceID]
 			if sourceXRef != "" {
-				record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
+				refs = append(refs, &GEDCOMRecord{
 					Tag:   GedcomTagSour,
 					Value: sourceXRef,
 				})
@@ -910,12 +915,28 @@ func exportEntitySourceRefs(entityType EntityType, entityID string, properties m
 
 			sourceXRef := expCtx.SourceXRefMap[citation.SourceID]
 			if sourceXRef != "" {
-				record.SubRecords = append(record.SubRecords, exportCitationAsSOUR(citationID, citation, sourceXRef, expCtx))
+				refs = append(refs, exportCitationAsSOUR(citationID, citation, sourceXRef, expCtx))
 			} else {
 				expCtx.addExportWarning(entityType, entityID,
 					fmt.Sprintf("citation %s source %s has no XREF mapping", citationID, citation.SourceID))
 			}
 		}
+	}
+
+	appendUniqueSourceRefs(record, refs)
+}
+
+// appendUniqueSourceRefs appends each SOUR whose complete exported structure
+// has not already been appended by this call.
+func appendUniqueSourceRefs(record *GEDCOMRecord, refs []*GEDCOMRecord) {
+	seen := make(map[string]bool, len(refs))
+	for _, sour := range refs {
+		key := sourceRefKey(sour)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		record.SubRecords = append(record.SubRecords, sour)
 	}
 }
 
@@ -932,16 +953,7 @@ func exportEntitySourceRefs(entityType EntityType, entityID string, properties m
 func exportEventEvidenceRefs(eventID string, event *Event, expCtx *ExportContext, record *GEDCOMRecord) {
 	refs := eventSourceRefs(event, expCtx)
 	refs = append(refs, eventAssertionSourceRefs(eventID, expCtx)...)
-
-	seen := make(map[string]bool, len(refs))
-	for _, sour := range refs {
-		key := sourceRefKey(sour)
-		if seen[key] {
-			continue
-		}
-		seen[key] = true
-		record.SubRecords = append(record.SubRecords, sour)
-	}
+	appendUniqueSourceRefs(record, refs)
 }
 
 // eventSourceRefs builds the SOUR subrecords for sources and citations attached
@@ -1011,52 +1023,34 @@ func sourceRefKey(sour *GEDCOMRecord) string {
 }
 
 // exportCitationAsSOUR creates a GEDCOM SOUR sub-record from a GLX Citation,
-// including PAGE, QUAY, NOTE, DATA (DATE/TEXT), and OBJE sub-records.
+// including PAGE, DATA (DATE/TEXT), QUAY, NOTE, and OBJE sub-records. Property
+// keys come from the citation vocabulary's gedcom mappings, resolved by the
+// same rule as import (see gedcomPropertyIndex), so custom keys round-trip.
 func exportCitationAsSOUR(citationID string, citation *Citation, sourceXRef string, expCtx *ExportContext) *GEDCOMRecord {
 	sourRecord := &GEDCOMRecord{
 		Tag:        GedcomTagSour,
 		Value:      sourceXRef,
 		SubRecords: []*GEDCOMRecord{},
 	}
+	citationKeys := citationPropertyKeysByTag(expCtx.GLX)
 
 	// PAGE (locator)
-	if locator, ok := getStringProperty(citation.Properties, "locator"); ok {
+	if locator, ok := getStringProperty(citation.Properties, citationPropertyKey(citationKeys, GedcomTagPage, "locator")); ok {
 		sourRecord.SubRecords = append(sourRecord.SubRecords, &GEDCOMRecord{
 			Tag:   GedcomTagPage,
 			Value: locator,
 		})
 	}
 
-	// QUAY is citation interchange metadata, never assertion confidence.
-	// Follow the archive vocabulary so custom property names can round-trip too.
-	quayWritten := false
-	for _, key := range sortedKeys(expCtx.GLX.CitationProperties) {
-		if expCtx.GLX.CitationProperties[key].GEDCOM != GedcomTagQuay {
-			continue
-		}
-		value, present := citation.Properties[key]
-		if !present {
-			continue
-		}
-		quay, valid := citationQUAY(value)
-		if valid && !quayWritten {
-			quayWritten = true
-			sourRecord.SubRecords = append(sourRecord.SubRecords, &GEDCOMRecord{Tag: GedcomTagQuay, Value: quay})
-		} else {
-			expCtx.addExportWarning(EntityTypeCitations, citationID, "Invalid or additional citation QUAY: expected one integer 0-3; preserved as a note")
-			sourRecord.SubRecords = append(sourRecord.SubRecords, &GEDCOMRecord{Tag: GedcomTagNote, Value: fmt.Sprintf("GEDCOM QUAY: %v", value)})
-		}
-	}
-
 	// DATA sub-record (date and text)
 	var dataSubRecords []*GEDCOMRecord
-	if dateStr, ok := getStringProperty(citation.Properties, "date"); ok {
+	if dateStr, ok := getStringProperty(citation.Properties, citationPropertyKey(citationKeys, GedcomTagDate, "source_date")); ok {
 		dataSubRecords = append(dataSubRecords, &GEDCOMRecord{
 			Tag:   GedcomTagDate,
 			Value: formatGEDCOMDate(DateString(dateStr), expCtx.Version),
 		})
 	}
-	if text, ok := getStringProperty(citation.Properties, "description"); ok {
+	if text, ok := getStringProperty(citation.Properties, citationPropertyKey(citationKeys, GedcomTagText, "text_from_source")); ok {
 		dataSubRecords = append(dataSubRecords, &GEDCOMRecord{
 			Tag:   GedcomTagText,
 			Value: text,
@@ -1069,6 +1063,14 @@ func exportCitationAsSOUR(citationID string, citation *Citation, sourceXRef stri
 		})
 	}
 
+	// QUAY is citation interchange metadata, never assertion confidence. A
+	// value that cannot be written as QUAY becomes a note after the
+	// citation's own notes, so their order survives a round trip.
+	quay, quayNotes := citationQUAYRecords(citationID, citation, citationKeys[GedcomTagQuay], expCtx)
+	if quay != nil {
+		sourRecord.SubRecords = append(sourRecord.SubRecords, quay)
+	}
+
 	// NOTE
 	for _, note := range citation.Notes {
 		sourRecord.SubRecords = append(sourRecord.SubRecords, &GEDCOMRecord{
@@ -1076,6 +1078,8 @@ func exportCitationAsSOUR(citationID string, citation *Citation, sourceXRef stri
 			Value: note,
 		})
 	}
+
+	sourRecord.SubRecords = append(sourRecord.SubRecords, quayNotes...)
 
 	// OBJE (media references)
 	for _, mediaID := range citation.Media {
@@ -1112,14 +1116,67 @@ func extractStringList(val any) []string {
 	}
 }
 
-// citationQUAY accepts the numeric representations produced by YAML/JSON decoding.
-func citationQUAY(value any) (string, bool) {
-	switch value.(type) {
-	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64:
-		text := fmt.Sprint(value)
+// citationPropertyKeysByTag lists, for each GEDCOM tag, the citation
+// property keys whose vocabulary entry maps to it, in sorted order.
+func citationPropertyKeysByTag(glx *GLXFile) map[string][]string {
+	keys := make(map[string][]string)
+	for _, key := range sortedKeys(glx.CitationProperties) {
+		if tag := glx.CitationProperties[key].GEDCOM; tag != "" {
+			keys[tag] = append(keys[tag], key)
+		}
+	}
 
-		return text, len(text) == 1 && text[0] >= '0' && text[0] <= '3'
-	default:
+	return keys
+}
+
+// citationPropertyKey returns the property key import stores a citation tag
+// under (the first mapped key in sorted order), or fallback when the
+// vocabulary maps nothing to the tag.
+func citationPropertyKey(keysByTag map[string][]string, tag, fallback string) string {
+	if keys := keysByTag[tag]; len(keys) > 0 {
+		return keys[0]
+	}
+
+	return fallback
+}
+
+// citationQUAYRecords returns the QUAY record for a citation, if one can be
+// written, and NOTE records for every QUAY-mapped value that cannot. Import
+// leaves an ambiguous QUAY mapping unmapped and keeps the value as a note, so
+// export does the same; otherwise a round trip would move the value from a
+// property into a note.
+func citationQUAYRecords(citationID string, citation *Citation, quayKeys []string, expCtx *ExportContext) (*GEDCOMRecord, []*GEDCOMRecord) {
+	var quay *GEDCOMRecord
+	var notes []*GEDCOMRecord
+	for _, key := range quayKeys {
+		value, present := citation.Properties[key]
+		if !present {
+			continue
+		}
+		text, valid := citationQUAY(value)
+		if valid && len(quayKeys) == 1 {
+			quay = &GEDCOMRecord{Tag: GedcomTagQuay, Value: text}
+
+			continue
+		}
+		reason := "Invalid citation QUAY: expected an integer 0-3; preserved as a note"
+		if len(quayKeys) > 1 {
+			reason = "Ambiguous citation QUAY: vocabulary maps several properties to QUAY; preserved as a note"
+		}
+		expCtx.addExportWarning(EntityTypeCitations, citationID, reason)
+		notes = append(notes, &GEDCOMRecord{Tag: GedcomTagNote, Value: fmt.Sprintf("GEDCOM QUAY: %v", value)})
+	}
+
+	return quay, notes
+}
+
+// citationQUAY renders a numeric QUAY value decoded from YAML/JSON and
+// reports whether it is a single integer 0-3.
+func citationQUAY(value any) (string, bool) {
+	if _, isString := value.(string); isString {
 		return "", false
 	}
+	text := formatCountProperty(value)
+
+	return text, len(text) == 1 && text[0] >= '0' && text[0] <= '3'
 }

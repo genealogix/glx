@@ -167,13 +167,18 @@ func prepareCitationFromSOUR(sourRecord *GEDCOMRecord, conv *ConversionContext) 
 			} else {
 				// Preserve malformed, repeated, or unmapped values without inventing a rating.
 				citation.Notes = append(citation.Notes, "GEDCOM QUAY: "+sub.Value)
-				reason := "Invalid QUAY: expected an integer 0-3"
-				if !mapped {
-					reason = "Unmapped or ambiguous QUAY: citation vocabulary has no unique QUAY property"
-				} else if duplicate {
-					reason = "Repeated QUAY: citation already has an assessment"
+				// A vocabulary with no QUAY property at all is a deliberate choice,
+				// so the note is the whole outcome; warning per citation would bury
+				// real problems in large files.
+				if mapped || conv.GEDCOMIndex.CitationQUAYAmbiguous {
+					reason := "Invalid QUAY: expected an integer 0-3"
+					if !mapped {
+						reason = "Ambiguous QUAY: citation vocabulary has no unique QUAY property"
+					} else if duplicate {
+						reason = "Repeated QUAY: citation already has an assessment"
+					}
+					conv.addWarning(sub.Line, GedcomTagQuay, reason+"; preserved in citation notes")
 				}
-				conv.addWarning(sub.Line, GedcomTagQuay, reason+"; preserved in citation notes")
 			}
 
 		case GedcomTagNote:

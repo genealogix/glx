@@ -92,6 +92,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Fixed
 
+- **Citation `DATA` survives GEDCOM export** — `SOUR.DATA.DATE` and `DATA.TEXT` were read back from citation properties named `date` and `description`, which nothing writes; the importer and the citation vocabulary use `source_date` and `text_from_source`, so every export dropped them. Citation PAGE, DATE, TEXT and QUAY are now resolved from the vocabulary's `gedcom` mappings by the same rule as import. A GEDCOM tag mapped by several properties in any property vocabulary now resolves to the first key in sorted order instead of a random one, and identical person- and family-level `SOUR` references are emitted once, as event references already were. (#515)
+
 - **Media imports and merges preserve integrity across filesystem aliases** — Corrupt or unsupported GEDZIP media now fails an import even when an older destination file exists. Case-variant intermediate media symlinks are rejected, single-file merges report media inspection failures and dangling-reference risks, and canonical Unicode case-folding collisions receive distinct filenames. Follow-up to #1391. (#1447)
 
 - **`glx merge` warns about source media under a case-variant directory** — The warning for a single-file destination now finds `MEDIA/files` as well as `media/files`. (#1391)

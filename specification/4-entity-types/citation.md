@@ -213,3 +213,7 @@ silently promoted into structured metadata. To migrate an older archive, verify
 the note's origin and explicitly set the property. Invalid or repeated input
 values are preserved in notes with an import warning. Invalid property values
 are exported as notes with a warning, never coerced into a valid rating.
+When more than one citation property maps to `QUAY`, import and export both
+leave it unmapped: values are kept as notes with a warning, so a round trip does
+not move them between a property and a note. An archive vocabulary with no
+`QUAY` property keeps imported values as notes without a per-citation warning.

@@ -1576,10 +1576,18 @@ func TestCitationQUAYAmbiguousMappings(t *testing.T) {
 	}
 	output, result, err := ExportGEDCOM(archive, GEDCOM551, nil)
 	require.NoError(t, err)
-	assert.Contains(t, string(output), "3 QUAY 0")
-	assert.NotContains(t, string(output), "3 QUAY 3")
+	// Import cannot map an ambiguous QUAY, so export writes none either: both
+	// values become notes, and a round trip leaves them as notes.
+	assert.NotContains(t, string(output), "QUAY 0")
+	assert.NotContains(t, string(output), "QUAY 3")
+	assert.Contains(t, string(output), "NOTE GEDCOM QUAY: 0")
 	assert.Contains(t, string(output), "NOTE GEDCOM QUAY: 3")
 	require.NotEmpty(t, result.Statistics.Warnings)
+	roundtrip, _, err := ImportGEDCOM(strings.NewReader(string(output)), nil)
+	require.NoError(t, err)
+	for _, c := range roundtrip.Citations {
+		assert.ElementsMatch(t, NoteList{"GEDCOM QUAY: 0", "GEDCOM QUAY: 3"}, c.Notes)
+	}
 	for _, w := range result.Statistics.Warnings {
 		if w.EntityType == EntityTypeCitations {
 			assert.Contains(t, archive.Citations, w.EntityID)
@@ -1685,4 +1693,86 @@ func TestCitationQUAYAmbiguousImportMapping(t *testing.T) {
 		require.NotEmpty(t, conv.Stats.Warnings)
 		assert.Contains(t, conv.Stats.Warnings[0].Message, "no unique QUAY property")
 	}
+}
+
+// Citation DATA is exported from the vocabulary's DATE/TEXT keys, the same
+// keys import stores it under, so the date and transcription round-trip.
+func TestCitationDataRoundTrip(t *testing.T) {
+	for _, version := range []GEDCOMVersion{GEDCOM551, GEDCOM70} {
+		t.Run(fmt.Sprint(version), func(t *testing.T) {
+			archive, _, err := ImportGEDCOM(strings.NewReader(quayFixture("5.5.1", "2 SOUR @S1@\n3 PAGE p\n3 DATA\n4 DATE 2 JAN 1850\n4 TEXT Birth entry\n")), nil)
+			require.NoError(t, err)
+			output, _, err := ExportGEDCOM(archive, version, nil)
+			require.NoError(t, err)
+			assert.Contains(t, string(output), "3 DATA\n4 DATE 2 JAN 1850\n4 TEXT Birth entry\n")
+			roundtrip, _, err := ImportGEDCOM(strings.NewReader(string(output)), nil)
+			require.NoError(t, err)
+			require.NotEmpty(t, roundtrip.Citations)
+			for _, c := range roundtrip.Citations {
+				assert.Equal(t, "1850-01-02", c.Properties["source_date"])
+				assert.Equal(t, "Birth entry", c.Properties["text_from_source"])
+			}
+		})
+	}
+}
+
+// A QUAY that cannot be written follows the citation's own notes, so their
+// order is unchanged by a round trip.
+func TestCitationQUAYFallbackNoteFollowsCitationNotes(t *testing.T) {
+	archive, _, err := ImportGEDCOM(strings.NewReader(quayFixture("5.5.1", "2 SOUR @S1@\n3 PAGE p\n3 NOTE Copy\n")), nil)
+	require.NoError(t, err)
+	for _, c := range archive.Citations {
+		c.Properties["gedcom_quay"] = 7
+	}
+	output, _, err := ExportGEDCOM(archive, GEDCOM551, nil)
+	require.NoError(t, err)
+	assert.Contains(t, string(output), "3 NOTE Copy\n3 NOTE GEDCOM QUAY: 7\n")
+}
+
+// A vocabulary with no QUAY property keeps QUAY as a note without a warning
+// per citation; only an ambiguous mapping or a bad value warns.
+func TestCitationQUAYUnmappedVocabularyIsQuiet(t *testing.T) {
+	archive, _, err := ImportGEDCOM(strings.NewReader(quayFixture("5.5.1", "2 SOUR @S1@\n3 PAGE p\n")), nil)
+	require.NoError(t, err)
+	delete(archive.CitationProperties, "gedcom_quay")
+	conv := &ConversionContext{GLX: archive, GEDCOMIndex: buildGEDCOMIndex(archive), Logger: NewImportLogger(nil), SourceIDMap: map[string]string{"@S1@": "source-1"}}
+	result, err := prepareCitationFromSOUR(&GEDCOMRecord{Tag: GedcomTagSour, Value: "@S1@", SubRecords: []*GEDCOMRecord{{Tag: GedcomTagQuay, Value: "2"}}}, conv)
+	require.NoError(t, err)
+	citation := archive.Citations[result.CitationID]
+	require.NotNil(t, citation)
+	assert.Contains(t, citation.Notes, "GEDCOM QUAY: 2")
+	for _, w := range conv.Stats.Warnings {
+		assert.NotContains(t, w.Message, "QUAY")
+	}
+}
+
+// A GEDCOM tag mapped by several properties resolves to the first key in
+// sorted order on every import, never to a map-iteration winner.
+func TestGEDCOMPropertyIndexIsDeterministic(t *testing.T) {
+	archive, _, err := ImportGEDCOM(strings.NewReader(quayFixture("5.5.1", "")), nil)
+	require.NoError(t, err)
+	for _, key := range []string{"zz_page", "aa_page", "mm_page"} {
+		archive.CitationProperties[key] = archive.CitationProperties["locator"]
+	}
+	for range 20 {
+		assert.Equal(t, "aa_page", buildGEDCOMIndex(archive).CitationProperties[GedcomTagPage])
+	}
+}
+
+// Direct relationship evidence emits each identical SOUR once, as events do.
+func TestEntitySourceRefsAreDeduplicated(t *testing.T) {
+	input := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n0 @S1@ SOUR\n1 TITL Register\n0 @I1@ INDI\n1 NAME Jane /Doe/\n0 @F1@ FAM\n1 WIFE @I1@\n1 SOUR @S1@\n2 PAGE p\n0 TRLR\n"
+	archive, _, err := ImportGEDCOM(strings.NewReader(input), nil)
+	require.NoError(t, err)
+	require.Len(t, archive.Relationships, 1)
+	for _, rel := range archive.Relationships {
+		ids := extractStringList(rel.Properties[PropertyCitations])
+		require.Len(t, ids, 1)
+		rel.Properties[PropertyCitations] = []string{ids[0], ids[0]}
+		rel.Properties[PropertySources] = []string{"source-1", "source-1"}
+	}
+	output, _, err := ExportGEDCOM(archive, GEDCOM551, nil)
+	require.NoError(t, err)
+	assert.Equal(t, 1, strings.Count(string(output), "1 SOUR @S1@\n2 PAGE p\n"))
+	assert.Equal(t, 2, strings.Count(string(output), "1 SOUR @S1@\n"), "one bare and one detailed reference")
 }
