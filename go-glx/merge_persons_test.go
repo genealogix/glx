@@ -501,3 +501,41 @@ func TestMergePersons_TemporalScalarMatchesWrappedEntry(t *testing.T) {
 	assert.Equal(t, 0, result.PropertiesMerged)
 	assert.Empty(t, result.Conflicts)
 }
+
+// Both merge persons in one event role leave the survivor there twice; the
+// rows are kept and the result names them (#1493).
+func TestMergePersons_ReportsDuplicateEventParticipants(t *testing.T) {
+	glx := newTwoPersonArchive()
+	glx.Persons["person-child"] = &Person{}
+	glx.Events = map[string]*Event{
+		"event-1": {Type: "baptism", Participants: []Participant{
+			{Person: "person-child", Role: "principal"},
+			{Person: "person-keep", Role: "godparent"},
+			{Person: "person-drop", Role: "godparent"},
+		}},
+		"event-2": {Type: "census", Participants: []Participant{
+			{Person: "person-keep", Role: "head"},
+			{Person: "person-drop", Role: "witness"},
+		}},
+		// keep was already listed twice; the merge adds a third row.
+		"event-3": {Type: "baptism", Participants: []Participant{
+			{Person: "person-keep", Role: "witness"},
+			{Person: "person-keep", Role: "witness"},
+			{Person: "person-drop", Role: "witness"},
+		}},
+		// drop was listed twice on its own: a pre-existing duplicate.
+		"event-4": {Type: "baptism", Participants: []Participant{
+			{Person: "person-drop", Role: "witness"},
+			{Person: "person-drop", Role: "witness"},
+		}},
+	}
+
+	result, err := MergePersons(glx, "person-keep", "person-drop", MergePersonsOptions{})
+	require.NoError(t, err)
+
+	assert.Equal(t, []MergeDuplicateParticipant{
+		{EventID: "event-1", Role: "godparent", Indexes: []int{1, 2}, DropIndexes: []int{2}},
+		{EventID: "event-3", Role: "witness", Indexes: []int{0, 1, 2}, DropIndexes: []int{2}},
+	}, result.DuplicateParticipants)
+	assert.Len(t, glx.Events["event-1"].Participants, 3, "rows are kept, not folded")
+}

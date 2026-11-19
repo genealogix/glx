@@ -63,7 +63,7 @@ const (
 // repository on disk.
 type finding struct {
 	// File is the memory file the reference lives in, repo-relative with forward
-	// slashes (e.g. "CLAUDE.md", "go-glx/CLAUDE.md"). Used for display and
+	// slashes (e.g. "AGENTS.md", "go-glx/AGENTS.md"). Used for display and
 	// allowlist matching.
 	File string
 	// Line is the 1-based line of the reference in File.
