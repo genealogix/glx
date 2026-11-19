@@ -1696,7 +1696,12 @@ Compares all persons using a weighted scoring model based on:
   - Phonetic matching (Soundex — catches Schneider/Snider, Mueller/Miller, etc.)
   - Birth/death year proximity
   - Birth/death place match
-  - Shared relationships and events
+  - Shared relationships and events in matching roles
+
+Soundex folds Latin accents and sharp-s. Large archives compare exact and
+phonetic surname groups. Recorded sex differences and incompatible lifetimes
+suppress matches; surname-only or sparse social evidence is insufficient.
+Unknown or unrecorded sex stays neutral.
 
 Persons already linked by a direct relationship (parent-child, spouse, etc.)
 are automatically skipped since they are known to be distinct individuals.
