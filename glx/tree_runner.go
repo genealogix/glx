@@ -55,7 +55,7 @@ func newTreeContext(archive *glxlib.GLXFile) *treeContext {
 	return &treeContext{
 		archive:  archive,
 		parents:  buildParentIndex(archive),
-		children: buildChildIndex(archive),
+		children: buildChildIndex(newFamilyLinks(archive)),
 	}
 }
 
@@ -79,21 +79,17 @@ func buildParentIndex(archive *glxlib.GLXFile) map[string][]treeRelPerson {
 	return index
 }
 
-// buildChildIndex scans all relationships once and returns a map from
-// parent ID to their children. Links the archive has disproven are left out.
-func buildChildIndex(archive *glxlib.GLXFile) map[string][]treeRelPerson {
+// buildChildIndex returns a map from parent ID to their children in birth
+// order, read from familyLinks.childLinks as every other view reads them.
+// Links the archive has disproven are left out, and two relationships
+// recording the same link are drawn once (#1506).
+func buildChildIndex(fam *familyLinks) map[string][]treeRelPerson {
 	index := make(map[string][]treeRelPerson)
-
-	for _, link := range glxlib.ParentChildLinks(archive, nil) {
-		if link.Standing == glxlib.RelationshipStandingDisproven {
-			continue
+	for parentID := range fam.childrenOf {
+		for _, link := range fam.childLinks(parentID) {
+			index[parentID] = append(index[parentID], treeRelPersonFromLink(&link, link.ChildID))
 		}
-		index[link.ParentID] = append(index[link.ParentID], treeRelPersonFromLink(&link, link.ChildID))
-	}
-
-	for id := range index {
-		index[id] = dedupeRelatedPersons(index[id])
-		sortRelatedPersons(index[id])
+		index[parentID] = dedupeRelatedPersons(index[parentID])
 	}
 
 	return index

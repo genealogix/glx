@@ -798,27 +798,20 @@ func findParentIDs(personID string, archive *glxlib.GLXFile) []string {
 }
 
 // findChildIDs finds the IDs of a person's children (including stepchildren),
-// sorted by birth year, leaving out disproven links.
+// in birth order, leaving out disproven links.
 func findChildIDs(personID string, archive *glxlib.GLXFile) []string {
 	return edgeIDs(newFamilyLinks(archive).children(personID))
 }
 
-// birthYear returns the birth year for a person by looking up their birth event.
-// Returns 0 if no birth event is found.
-func birthYear(archive *glxlib.GLXFile, personID string) int {
-	_, event := glxlib.FindPersonEvent(archive, personID, glxlib.EventTypeBirth)
-	if event == nil {
-		return 0
-	}
-
-	return glxlib.ExtractFirstYear(string(event.Date))
-}
-
 // findSiblingIDs finds a person's siblings of every kind (full, half, and
-// step), sorted by ID, through surviving parent-child links and explicit
+// step), in birth order, through surviving parent-child links and explicit
 // sibling relationships.
 func findSiblingIDs(personID string, archive *glxlib.GLXFile) []string {
-	sibs := newFamilyLinks(archive).siblings(personID)
+	return siblingIDs(newFamilyLinks(archive).siblings(personID))
+}
+
+// siblingIDs returns the person IDs of sibs, in order.
+func siblingIDs(sibs []siblingEdge) []string {
 	ids := make([]string, 0, len(sibs))
 	for _, s := range sibs {
 		ids = append(ids, s.PersonID)

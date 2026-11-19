@@ -162,6 +162,10 @@ func validateVocabKey(archive *glxlib.GLXFile, vocabName, value string) error {
 		return fmt.Errorf("%w: unknown vocabulary %q", ErrAddVocabKeyUnknown, vocabName)
 	}
 	if _, ok := vocab[value]; !ok {
+		if hint := glxlib.MissingStandardSourceTypeHint(value); vocabName == glxlib.VocabSourceTypes && hint != "" {
+			return fmt.Errorf("%w: %s=%q; %s", ErrAddVocabKeyUnknown, vocabName, value, hint)
+		}
+
 		return fmt.Errorf("%w: %s=%q; %s", ErrAddVocabKeyUnknown, vocabName, value, vocabKeyHint(vocabName, vocab))
 	}
 

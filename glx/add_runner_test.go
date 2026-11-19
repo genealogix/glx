@@ -1679,7 +1679,7 @@ func TestAdd_CitationWithRepository(t *testing.T) {
 // option vars and invokes the handler directly. The actual entity-add
 // behavior is covered by the TestAdd_* tests above; this test only asserts
 // that no handler returns an error on a valid invocation, locking in the
-// "thin wrapper" contract from glx/CLAUDE.md.
+// "thin wrapper" contract from glx/AGENTS.md.
 func TestAdd_CobraWrappersDelegateCleanly(t *testing.T) {
 	dir := initArchiveDir(t)
 

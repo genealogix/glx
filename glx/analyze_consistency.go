@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
+	"github.com/genealogix/glx/go-glx/glxdate"
 )
 
 // extractEventYear looks up a person's event (e.g. birth or death) and returns
@@ -44,6 +45,7 @@ func analyzeConsistency(archive *glxlib.GLXFile) []AnalysisIssue {
 	issues = append(issues, checkBirthAfterDeath(archive)...)
 	issues = append(issues, checkParentYoungerThanChild(archive)...)
 	issues = append(issues, checkEventAfterDeath(archive)...)
+	issues = append(issues, checkVitalChronology(archive)...)
 	issues = append(issues, checkImplausibleLifespan(archive)...)
 	issues = append(issues, checkMarriageBeforeBirth(archive)...)
 	issues = append(issues, checkDuplicateSiblingNames(archive)...)
@@ -144,63 +146,94 @@ func checkParentYoungerThanChild(archive *glxlib.GLXFile) []AnalysisIssue {
 }
 
 // checkEventAfterDeath reports persons who participate in events dated after
-// their death (excluding burial/cremation/probate/will events).
+// their death, accounting for roles and posthumous records.
 func checkEventAfterDeath(archive *glxlib.GLXFile) []AnalysisIssue {
-	// Build death year index
-	deathYears := make(map[string]int)
+	type deathObservation struct {
+		event  *glxlib.Event
+		bounds glxdate.Bounds
+		axis   string
+	}
+	deaths := make(map[string]deathObservation)
 	for id, person := range archive.Persons {
 		if person == nil {
 			continue
 		}
-		year := extractEventYear(archive, id, glxlib.EventTypeDeath)
-		if year > 0 {
-			deathYears[id] = year
+		_, event := glxlib.FindPersonEvent(archive, id, glxlib.EventTypeDeath)
+		if event == nil {
+			continue
+		}
+		date, err := event.Date.Parse()
+		if err != nil {
+			continue
+		}
+		if bounds, axis := afterDeathBounds(date); bounds.Known && !bounds.Reversed {
+			deaths[id] = deathObservation{event, bounds, axis}
 		}
 	}
-
-	// Events that can legitimately occur after death
 	postDeathEvents := map[string]bool{
-		glxlib.EventTypeBurial:    true,
-		glxlib.EventTypeCremation: true,
-		glxlib.EventTypeProbate:   true,
-		glxlib.EventTypeWill:      true,
+		glxlib.EventTypeBurial: true, glxlib.EventTypeCremation: true,
+		glxlib.EventTypeProbate: true, glxlib.EventTypeWill: true,
 	}
-
 	var issues []AnalysisIssue
-
 	for _, event := range archive.Events {
 		if event == nil {
 			continue
 		}
-		if postDeathEvents[event.Type] {
+		date, err := event.Date.Parse()
+		if err != nil {
 			continue
 		}
-
-		eventYear := glxlib.ExtractFirstYear(string(event.Date))
-		if eventYear == 0 {
+		bounds, axis := afterDeathBounds(date)
+		if !bounds.Known || bounds.Reversed {
 			continue
 		}
-
-		for _, p := range event.Participants {
-			deathYear, ok := deathYears[p.Person]
-			if !ok {
+		for _, participant := range event.Participants {
+			participation := glxlib.ClassifyParticipation(event.Type, participant.Role, archive.ParticipantRoles)
+			if !participation.Present || postDeathEvents[event.Type] && participation.OwnRecord ||
+				mentionedRelativeAtEvent(event.Type, participant.Role, participation) {
 				continue
 			}
-
-			if eventYear > deathYear {
-				name := personName(archive, p.Person)
-				issues = append(issues, AnalysisIssue{
-					Category: "consistency",
-					Severity: "high",
-					Person:   p.Person,
-					Message: fmt.Sprintf("%s — %s event (%d) after death (%d)",
-						name, event.Type, eventYear, deathYear),
-				})
+			death, ok := deaths[participant.Person]
+			if !ok || death.axis != axis || bounds.Outer.Start < death.bounds.Outer.End {
+				continue
 			}
+			issues = append(issues, AnalysisIssue{
+				Category: "consistency", Severity: "high", Person: participant.Person,
+				Message: fmt.Sprintf("%s — %s event (%s) after death (%s)", personName(archive, participant.Person), event.Type, event.Date, death.event.Date),
+			})
 		}
 	}
-
 	return issues
+}
+
+// afterDeathBounds places a date on the axis it can be compared on. Gregorian
+// and Julian dates share the Julian-day axis; any other calendar is compared
+// only with dates in that same calendar, by its own civil bounds.
+func afterDeathBounds(date glxdate.Date) (glxdate.Bounds, string) {
+	if bounds := date.ChronologyBounds(glxlib.DefaultApproximationYears); bounds.Known {
+		return bounds, "chronology"
+	}
+
+	return date.ValueBounds(glxlib.DefaultApproximationYears), fmt.Sprintf("%v/%s", date.Calendar(), date.CalendarName())
+}
+
+// mentionedRelativeAtEvent reports whether a role names the person as a
+// relative of the record's principal rather than as someone present: a
+// parent on a child's marriage, birth or baptism (a posthumous child names
+// the late father), a parent or spouse on a death or burial. A role the
+// archive's vocabulary declares present (implies_presence: true) is never
+// discounted; one it declares absent never reaches this check.
+func mentionedRelativeAtEvent(eventType, role string, participation glxlib.Participation) bool {
+	if participation.DeclaredPresent {
+		return false
+	}
+	role = strings.ToLower(strings.TrimSpace(role))
+	eventType = strings.ToLower(strings.TrimSpace(eventType))
+	if isParentRole(role) && (eventType == glxlib.EventTypeMarriage || birthRecordEventTypes[eventType] || migrationDeathEventTypes[eventType]) {
+		return true
+	}
+
+	return migrationDeathEventTypes[eventType] && (role == glxlib.ParticipantRoleSpouse || role == "husband" || role == "wife")
 }
 
 // checkImplausibleLifespan reports persons with a lifespan exceeding 110 years.
@@ -740,6 +773,22 @@ func checkSiblingBirthplaceOutlier(archive *glxlib.GLXFile) []AnalysisIssue {
 				continue
 			}
 			issues = append(issues, buildSiblingOutlierIssue(archive, c, parentID, majorityPlace, majorityCount, len(withPlace), idx, relHypo))
+		}
+	}
+
+	return issues
+}
+
+func checkVitalChronology(archive *glxlib.GLXFile) []AnalysisIssue {
+	var issues []AnalysisIssue
+	for _, id := range sortedPersonIDs(archive.Persons) {
+		conflicts := glxlib.VitalChronologyConflicts(archive, id)
+		for i := range conflicts {
+			conflict := &conflicts[i]
+			issues = append(issues, AnalysisIssue{
+				Category: "consistency", Severity: "high", Person: id,
+				Message: fmt.Sprintf("%s — %s: %s", personName(archive, id), conflict.Subject, conflictValuesString(conflict)),
+			})
 		}
 	}
 

@@ -150,7 +150,7 @@ jobs:
         run: make check-code-drift
 
   check-memory-drift:
-    name: Memory-file drift (CLAUDE.md vs reality)
+    name: Memory-file drift (AGENTS.md vs reality)
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
