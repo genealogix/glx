@@ -92,45 +92,55 @@ func importIndividualAssociations(records []*GEDCOMRecord, conv *ConversionConte
 			if matcher == nil {
 				matcher = newAssociationMatcher(conv)
 			}
-			event := matcher.match(hostID, association)
-			if event != nil {
-				restoreAssociationRole(participant, association, conv)
-				participant.Notes = slices.DeleteFunc(participant.Notes, func(note string) bool {
-					return gedcom551ContextPattern.MatchString(note)
-				})
-				// A family event can be described under both spouses. Merge the
-				// repeated projection without creating duplicate participants.
-				appendAssociationParticipant(event, *participant)
+			if event := matcher.match(hostID, association); event != nil {
+				attachScopedAssociation(event, participant, association, conv)
 
 				continue
 			}
-			// An unscoped association is a social connection, not evidence of
-			// attendance at a guessed event. Retain RELA and all original notes.
-			notes := slices.Clone(participant.Notes)
-			for _, child := range association.SubRecords {
-				if child.Tag == GedcomTagRela && child.Value != "" {
-					note := "GEDCOM RELA: " + child.Value
-					if !slices.Contains(notes, note) {
-						notes = append(notes, note)
-					}
-				}
-			}
-			if hostID == participant.Person {
-				conv.addWarning(association.Line, GedcomTagAsso, "Self association retained in person notes")
-				conv.GLX.Persons[hostID].Notes = append(conv.GLX.Persons[hostID].Notes, notes...)
-
-				continue
-			}
-			id := generateRelationshipID(conv)
-			conv.GLX.Relationships[id] = &Relationship{
-				Type:         "associate",
-				Participants: []Participant{{Person: hostID, Role: ParticipantRoleAssociate}, {Person: participant.Person, Role: ParticipantRoleAssociate}},
-				Notes:        notes,
-			}
-			conv.Stats.RelationshipsCreated++
-			conv.addWarning(association.Line, GedcomTagAsso, fmt.Sprintf("Association with %s retained as an associate relationship; no unique event context", participant.Person))
+			retainUnscopedAssociation(hostID, participant, association, conv)
 		}
 	}
+}
+
+// attachScopedAssociation restores an association whose event context names
+// exactly one event as a participant of that event.
+func attachScopedAssociation(event *Event, participant *Participant, association *GEDCOMRecord, conv *ConversionContext) {
+	restoreAssociationRole(participant, association, conv)
+	participant.Notes = slices.DeleteFunc(participant.Notes, func(note string) bool {
+		return gedcom551ContextPattern.MatchString(note)
+	})
+	// A family event can be described under both spouses. Merge the
+	// repeated projection without creating duplicate participants.
+	appendAssociationParticipant(event, *participant)
+}
+
+// retainUnscopedAssociation keeps an association with no unique event context.
+// It is a social connection, not evidence of attendance at a guessed event, so
+// RELA and all original notes are retained.
+func retainUnscopedAssociation(hostID string, participant *Participant, association *GEDCOMRecord, conv *ConversionContext) {
+	notes := slices.Clone(participant.Notes)
+	for _, child := range association.SubRecords {
+		if child.Tag == GedcomTagRela && child.Value != "" {
+			note := "GEDCOM RELA: " + child.Value
+			if !slices.Contains(notes, note) {
+				notes = append(notes, note)
+			}
+		}
+	}
+	if hostID == participant.Person {
+		conv.addWarning(association.Line, GedcomTagAsso, "Self association retained in person notes")
+		conv.GLX.Persons[hostID].Notes = append(conv.GLX.Persons[hostID].Notes, notes...)
+
+		return
+	}
+	id := generateRelationshipID(conv)
+	conv.GLX.Relationships[id] = &Relationship{
+		Type:         "associate",
+		Participants: []Participant{{Person: hostID, Role: ParticipantRoleAssociate}, {Person: participant.Person, Role: ParticipantRoleAssociate}},
+		Notes:        notes,
+	}
+	conv.Stats.RelationshipsCreated++
+	conv.addWarning(association.Line, GedcomTagAsso, fmt.Sprintf("Association with %s retained as an associate relationship; no unique event context", participant.Person))
 }
 
 func (matcher *associationMatcher) match(hostID string, association *GEDCOMRecord) *Event {
