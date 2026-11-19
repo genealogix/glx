@@ -72,6 +72,7 @@ func buildParentIndex(archive *glxlib.GLXFile) map[string][]treeRelPerson {
 	}
 
 	for id := range index {
+		index[id] = dedupeRelatedPersons(index[id])
 		sortRelatedPersons(index[id])
 	}
 
@@ -80,13 +81,15 @@ func buildParentIndex(archive *glxlib.GLXFile) map[string][]treeRelPerson {
 
 // buildChildIndex returns a map from parent ID to their children in birth
 // order, read from familyLinks.childLinks as every other view reads them.
-// Links the archive has disproven are left out.
+// Links the archive has disproven are left out, and two relationships
+// recording the same link are drawn once (#1506).
 func buildChildIndex(fam *familyLinks) map[string][]treeRelPerson {
 	index := make(map[string][]treeRelPerson)
 	for parentID := range fam.childrenOf {
 		for _, link := range fam.childLinks(parentID) {
 			index[parentID] = append(index[parentID], treeRelPersonFromLink(&link, link.ChildID))
 		}
+		index[parentID] = dedupeRelatedPersons(index[parentID])
 	}
 
 	return index
@@ -235,6 +238,61 @@ func buildDescendantTree(tc *treeContext, personID string, maxGen, depth int, vi
 	}
 
 	return node
+}
+
+// dedupeRelatedPersons collapses edges that link the same person in the same
+// way, as two relationships recording one parent-child link do (#1506), so
+// the tree draws that person once. Two edges are the same link when they share
+// the step flag and their types overlap (glxlib.ParentChildTypesOverlap): the
+// same type, or the generic parent_child beside a specific type. Two specific
+// types (biological and adoptive) are different facts and both stay. When the
+// copies differ in standing, the accepted one is kept over a hypothesis, type
+// included; when they tie, the specific type is kept (see mergeRelatedPerson).
+func dedupeRelatedPersons(persons []treeRelPerson) []treeRelPerson {
+	type edgeKey struct {
+		personID string
+		step     bool
+	}
+	out := persons[:0]
+	at := make(map[edgeKey][]int, len(persons))
+	for _, p := range persons {
+		key := edgeKey{p.personID, p.step}
+		merged := false
+		for _, i := range at[key] {
+			if !glxlib.ParentChildTypesOverlap(out[i].relType, p.relType) {
+				continue
+			}
+			out[i] = mergeRelatedPerson(out[i], p)
+			merged = true
+
+			break
+		}
+		if merged {
+			continue
+		}
+		at[key] = append(at[key], len(out))
+		out = append(out, p)
+	}
+
+	return out
+}
+
+// mergeRelatedPerson combines two edges for the same link. The edge with
+// the stronger standing wins, type included, so a hypothetical specific type
+// never shows as an accepted one beside an accepted generic link. When the
+// standings tie, the specific type is kept over the generic parent_child.
+func mergeRelatedPerson(kept, other treeRelPerson) treeRelPerson {
+	switch {
+	case kept.hypothetical && !other.hypothetical:
+		return other
+	case !kept.hypothetical && other.hypothetical:
+		return kept
+	}
+	if strings.EqualFold(kept.relType, glxlib.RelationshipTypeParentChild) {
+		kept.relType = other.relType
+	}
+
+	return kept
 }
 
 // sortRelatedPersons sorts related persons by person ID for deterministic output.

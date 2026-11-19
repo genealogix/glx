@@ -383,3 +383,19 @@ func TestServeEditPreservesReadOnlySexAndGender(t *testing.T) {
 		}
 	}
 }
+
+// TestServeCreateRelationshipDuplicateIsConflict checks that a relationship refused
+// by the add-time duplicate check is answered 409 Conflict, not a server
+// error, now that the editor relies on that check (#1506).
+func TestServeCreateRelationshipDuplicateIsConflict(t *testing.T) {
+	srv := newEditTestServer(t)
+	req := relationshipCreateRequest{Type: "parent_child", PersonID: "person-grandpa", RelativeID: "person-mom", Relation: "child"}
+	rec := doEditRequest(t, srv, http.MethodPost, "/api/relationships", req)
+	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
+	rec = doEditRequest(t, srv, http.MethodPost, "/api/relationships", req)
+	assert.Equal(t, http.StatusConflict, rec.Code, rec.Body.String())
+
+	rec = httptest.NewRecorder()
+	writeEditError(rec, fmt.Errorf("%w: rel-x", ErrAddRelationshipDuplicate))
+	assert.Equal(t, http.StatusConflict, rec.Code)
+}
