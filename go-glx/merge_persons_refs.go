@@ -622,6 +622,18 @@ func rewriteTypedReferences(archive, prepared *GLXFile, target EntityType, oldID
 // EntityRefs naming target's oldID, and an assertion value whose property is
 // declared a reference to target.
 func rewriteStructuralReferences(entity mergeEntity, prepared *GLXFile, target EntityType, oldID, newID string, record func(string, any, any)) {
+	// A temporal place parent (#225) lives in ParentHistory, which carries no
+	// refType tag and is authoritative on write, so the walk below cannot see
+	// it. ReplaceParentRef rewrites the list and re-derives ParentID, leaving
+	// nothing for the walk to change.
+	if entity.kind == EntityTypePlaces && target == EntityTypePlaces {
+		place, _ := reflect.TypeAssert[*Place](entity.value.Addr())
+		if len(place.ParentHistory) > 0 {
+			for range place.ReplaceParentRef(oldID, newID) {
+				record(placeFieldParent, oldID, newID)
+			}
+		}
+	}
 	walkMergeStructural(entity.value, "", func(kind EntityType, path string, value reflect.Value) {
 		if kind == target && value.String() == oldID {
 			record(path, oldID, newID)
