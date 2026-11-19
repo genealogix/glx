@@ -64,7 +64,7 @@ done < <(find specification docs -name "*.md" \
 while IFS= read -r -d '' root_file; do
   extract_links "$root_file"
 done < <(find . .github -maxdepth 1 -type f -name "*.md" \
-  -not -name "CLAUDE.md" -not -name "PULL_REQUEST_TEMPLATE.md" \
+  -not -name "CLAUDE.md" -not -name "AGENTS.md" -not -name "PULL_REQUEST_TEMPLATE.md" \
   -print0 2>/dev/null) >> "$LINKS_FILE"
 
 # Validate each relative link

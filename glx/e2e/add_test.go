@@ -234,3 +234,57 @@ func TestAdd_ChainedCaptureBuildsValidArchive(t *testing.T) {
 	assert.Contains(t, string(data), "place: "+place)
 	assertArchiveValid(t, archive)
 }
+
+// Reproduce #1513 through init's embedded vocabulary, add's flag handling,
+// persisted sources, and validation. Also cover the standard-vocabulary
+// fallback when an archive has no source-types vocabulary of its own.
+func TestAdd_SourcePublicationKinds(t *testing.T) {
+	titles := map[string]string{
+		"article": "Seven Years' War (Wikipedia)",
+		"website": "Leeds Local History Website",
+	}
+	for _, vocabulary := range []string{"initialized", "standard fallback"} {
+		t.Run(vocabulary, func(t *testing.T) {
+			parent := t.TempDir()
+			init := runGLX(t, parent, "init", "references", "--no-git")
+			require.Equal(t, 0, init.exitCode, init.stdout+init.stderr)
+			archive := filepath.Join(parent, "references")
+			if vocabulary == "standard fallback" {
+				require.NoError(t, os.Remove(filepath.Join(archive, "vocabularies", "source-types.glx")))
+			}
+
+			for _, sourceType := range []string{"article", "website"} {
+				id := "source-" + sourceType
+				before := snapshotTree(t, archive)
+				res := runGLX(t, archive, "add", "source", "--id", id,
+					"--title", titles[sourceType], "--type", sourceType)
+				require.Equal(t, 0, res.exitCode, res.stdout+res.stderr)
+				assert.Equal(t, id+"\n", res.stdout)
+
+				data, err := os.ReadFile(filepath.Join(archive, "sources", id+".glx"))
+				require.NoError(t, err)
+				assert.Contains(t, string(data), "type: "+sourceType+"\n")
+				diff := diffTrees(before, snapshotTree(t, archive))
+				assert.Equal(t, []string{"sources/" + id + ".glx"}, diff.created)
+				assert.Empty(t, diff.changed)
+				assert.Empty(t, diff.removed)
+			}
+			assertArchiveValid(t, archive)
+		})
+	}
+}
+
+// New standard types must not silently extend an archive-owned vocabulary.
+func TestAdd_SourcePublicationKindsRespectArchiveVocabulary(t *testing.T) {
+	archive := copyExample(t, "basic-family")
+	vocabPath := filepath.Join(archive, "vocabularies", "source-types.glx")
+	require.NoError(t, os.WriteFile(vocabPath, []byte("source_types:\n  book:\n    label: Book\n"), 0o644))
+	before := snapshotTree(t, archive)
+
+	for _, sourceType := range []string{"article", "website"} {
+		res := runGLX(t, archive, "add", "source", "--title", "Reference work", "--type", sourceType)
+		assertExitWithStderr(t, res, `source_types="`+sourceType+`"`)
+		assert.Contains(t, res.stderr, "standard source type missing from this archive's vocabularies/source-types.glx")
+	}
+	assertTreeUnchanged(t, before, archive)
+}

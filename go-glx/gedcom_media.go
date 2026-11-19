@@ -16,9 +16,11 @@ package glx
 
 import (
 	"fmt"
+	"mime"
 	"net/url"
 	"path"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode"
@@ -167,6 +169,10 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 		Properties: make(map[string]any),
 	}
 
+	if key, ok := conv.GEDCOMIndex.MediaProperties[GedcomTagExid]; ok {
+		extractExternalIDs(objeRecord, key, media.Properties)
+	}
+
 	var fileRef string
 	var formatType string
 	var notes []string
@@ -229,6 +235,18 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 				notes = append(notes, noteText)
 			}
 
+		case GedcomTagOID:
+			if sub.Value != "" {
+				appendMultiValueProperty(media.Properties, MediaPropertyExternalIDs, NewExternalIDEntry(sub.Value, ExternalIDTypeAncestry))
+			}
+
+		case GedcomTagClon:
+			for _, clon := range sub.SubRecords {
+				if clon.Tag == GedcomTagOID && clon.Value != "" {
+					appendMultiValueProperty(media.Properties, MediaPropertyExternalIDs, NewExternalIDEntry(clon.Value, ExternalIDTypeAncestryClone))
+				}
+			}
+
 		case GedcomTagBlob:
 			// GEDCOM 5.5.1 BLOB data (deprecated binary embedding)
 			blobText = extractTextWithContinuation(sub)
@@ -238,10 +256,34 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 		}
 	}
 
+	// Media with no FILE: export kept the title and media type in notes
+	// because GEDCOM had no valid structure for them. Restore them.
+	if fileRef == "" {
+		notes = slices.DeleteFunc(notes, func(note string) bool {
+			if title, ok := strings.CutPrefix(note, filelessMediaTitlePrefix); ok && media.Title == "" && title != "" {
+				media.Title = title
+
+				return true
+			}
+			if mediaType, ok := strings.CutPrefix(note, filelessMediaTypePrefix); ok && media.MimeType == "" && mediaType != "" {
+				media.MimeType = mediaType
+
+				return true
+			}
+
+			return false
+		})
+	}
+
 	// Infer MIME type if not set (GEDCOM 5.5.1)
 	if media.MimeType == "" {
 		if formatType != "" {
 			media.MimeType = mapFormatToMimeType(formatType)
+			if conv.Version == GEDCOM70 {
+				if mediaType, _, err := mime.ParseMediaType(formatType); err == nil && strings.Contains(mediaType, "/") {
+					media.MimeType = formatType
+				}
+			}
 		} else if fileRef != "" {
 			media.MimeType = inferMimeType(fileRef)
 		}

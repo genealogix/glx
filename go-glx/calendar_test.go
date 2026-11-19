@@ -110,7 +110,7 @@ func TestFormatGEDCOMDate_CalendarPrefix(t *testing.T) {
 		{
 			name:     "Julian with qualifier",
 			input:    "JULIAN ABT 1731",
-			expected: "@#DJULIAN@ ABT 1731",
+			expected: "ABT @#DJULIAN@ 1731",
 		},
 		{
 			name:     "Hebrew raw passthrough",

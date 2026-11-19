@@ -82,7 +82,7 @@ func TestClassifyParticipation_VocabularyOverride(t *testing.T) {
 	}
 
 	assert.Equal(t, Participation{}, ClassifyParticipation(EventTypeProbate, "absent_heir", roles))
-	assert.Equal(t, Participation{Present: true}, ClassifyParticipation(EventTypeGeneric, "grantor", roles),
+	assert.Equal(t, Participation{Present: true, DeclaredPresent: true}, ClassifyParticipation(EventTypeGeneric, "grantor", roles),
 		"the archive says its grantors were there")
 	assert.Equal(t, Participation{}, ClassifyParticipation(EventTypeGeneric, "Visitor", roles),
 		"the vocabulary key is matched as declared")

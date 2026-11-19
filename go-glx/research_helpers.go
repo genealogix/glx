@@ -149,7 +149,7 @@ func appendVitalEventFields(out []proofAssertion, archive *GLXFile, eventID, key
 	seen := make(map[string]bool)
 	for i := range out {
 		pa := &out[i]
-		if pa.a.Subject.Event == eventID && fields[pa.a.Property] {
+		if pa.a.Subject.Event == eventID && pa.a.Participant == nil && fields[pa.a.Property] {
 			pa.factKey, pa.factProperty = key, pa.a.Property
 			seen[pa.a.Property] = true
 		}

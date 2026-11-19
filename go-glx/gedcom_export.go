@@ -154,7 +154,7 @@ func ExportGEDCOM(glx *GLXFile, version GEDCOMVersion, logWriter io.Writer) ([]b
 		expCtx.Stats.PersonsExported, expCtx.Stats.FamiliesExported, expCtx.Stats.RepositoriesExported, expCtx.Stats.SourcesExported, expCtx.Stats.MediaExported)
 
 	// Serialize to bytes
-	data := serializeGEDCOMRecords(records)
+	data := serializeGEDCOMVersion(records, version)
 
 	// Build result
 	versionStr := GEDCOMVersion551
