@@ -53,6 +53,7 @@ func (g *GLXFile) vocabFields() []vocabField[VocabularyEntry] {
 		{VocabSearchResultTypes, &g.SearchResultTypes},
 		{VocabResearchLogStatusTypes, &g.ResearchLogStatusTypes},
 		{VocabLeadStatuses, &g.LeadStatuses},
+		{VocabPersonStatuses, &g.PersonStatuses},
 		{VocabStudyTypes, &g.StudyTypes},
 		{VocabStudyStatuses, &g.StudyStatuses},
 	}

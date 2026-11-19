@@ -91,6 +91,7 @@ type GLXFile struct { //nolint:revive // GLXFile is the established name across 
 	SearchResultTypes      map[string]*VocabularyEntry `yaml:"search_result_types,omitempty"`
 	ResearchLogStatusTypes map[string]*VocabularyEntry `yaml:"research_log_status_types,omitempty"`
 	LeadStatuses           map[string]*VocabularyEntry `yaml:"lead_statuses,omitempty"`
+	PersonStatuses         map[string]*VocabularyEntry `yaml:"person_statuses,omitempty"`
 	StudyTypes             map[string]*VocabularyEntry `yaml:"study_types,omitempty"`
 	StudyStatuses          map[string]*VocabularyEntry `yaml:"study_statuses,omitempty"`
 	LegalStatuses          map[string]*VocabularyEntry `yaml:"legal_statuses,omitempty"`

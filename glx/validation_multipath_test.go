@@ -59,13 +59,27 @@ func TestValidatePaths_MultipleDirectoriesFormOneArchive(t *testing.T) {
 		assert.Contains(t, out.String(), "Validated 4 files.")
 	})
 
+	t.Run("references outside the selection resolve against the archive", func(t *testing.T) {
+		// Leave out citations/ and sources/: the assertion's citation is not
+		// selected, but it is in the archive around the selection (#1206).
+		streams, out, _ := newTestStreams()
+		require.NoError(t, validatePaths(streams, []string{dirs[0], dirs[3]}))
+		assert.Contains(t, out.String(), "Validated 2 files.")
+		assert.Contains(t, out.String(), "resolved against the archive")
+	})
+
 	t.Run("a directory after the first is really validated", func(t *testing.T) {
-		// Leave out citations/ and sources/: the assertion in the last
-		// argument now points at a citation that is not part of the load.
+		// A citation no file in the archive defines is still an error when
+		// the assertion citing it is in the last argument.
+		extra := filepath.Join(root, "assertions", "assertion-2.glx")
+		writeSkipTestFile(t, extra,
+			"assertions:\n  assertion-2:\n    subject:\n      person: person-1\n    property: occupation\n    value: cooper\n    citations:\n      - citation-missing\n")
+		t.Cleanup(func() { _ = os.Remove(extra) })
 		streams, _, errOut := newTestStreams()
 		err := validatePaths(streams, []string{dirs[0], dirs[3]})
 		require.Error(t, err)
-		assert.Contains(t, errOut.String(), "citation-1")
+		assert.Contains(t, errOut.String(), "citation-missing")
+		assert.NotContains(t, errOut.String(), "citation-1", "a citation the archive defines resolves")
 	})
 
 	t.Run("a broken file in a later directory fails structurally", func(t *testing.T) {
@@ -110,12 +124,15 @@ func TestCommonArchiveRoot(t *testing.T) {
 	assert.ErrorIs(t, err, errNoCommonArchiveRoot, "only the filesystem root in common is not an archive")
 }
 
+// handfasting is not a standard relationship type, so only the archive's own
+// vocabulary can define it: a standard type would be supplied by the
+// standard vocabularies when the archive has no file for them (#1355).
 func TestValidatePaths_SubsetIncludesArchiveVocabularies(t *testing.T) {
 	root := t.TempDir()
 	writeSkipTestFile(t, filepath.Join(root, "persons", "person-1.glx"),
 		"persons:\n  person-1:\n    properties:\n      primary_name: Alice\n  person-2:\n    properties:\n      primary_name: Bob\n")
 	writeSkipTestFile(t, filepath.Join(root, "relationships", "rel-1.glx"),
-		"relationships:\n  rel-1:\n    type: marriage\n    participants:\n      - person: person-1\n      - person: person-2\n")
+		"relationships:\n  rel-1:\n    type: handfasting\n    participants:\n      - person: person-1\n      - person: person-2\n")
 	persons := filepath.Join(root, "persons")
 	relationships := filepath.Join(root, "relationships")
 
@@ -127,7 +144,7 @@ func TestValidatePaths_SubsetIncludesArchiveVocabularies(t *testing.T) {
 	})
 
 	writeSkipTestFile(t, filepath.Join(root, "vocabularies", "relationship-types.glx"),
-		"relationship_types:\n  marriage:\n    label: Marriage\n")
+		"relationship_types:\n  handfasting:\n    label: Handfasting\n")
 
 	t.Run("vocabularies under the shared root are included automatically", func(t *testing.T) {
 		streams, out, _ := newTestStreams()
@@ -151,11 +168,20 @@ func TestValidatePaths_FileArgumentsFormOneArchive(t *testing.T) {
 		assert.Contains(t, out.String(), "Validated 4 files.")
 	})
 
+	t.Run("a reference to an unnamed file in the archive resolves", func(t *testing.T) {
+		streams, _, _ := newTestStreams()
+		require.NoError(t, validatePaths(streams, []string{files[0], files[3]}))
+	})
+
 	t.Run("a broken reference between named files is reported", func(t *testing.T) {
+		broken := filepath.Join(root, "assertions", "assertion-broken.glx")
+		writeSkipTestFile(t, broken,
+			"assertions:\n  assertion-broken:\n    subject:\n      person: person-1\n    property: occupation\n    value: cooper\n    citations:\n      - citation-missing\n")
+		t.Cleanup(func() { _ = os.Remove(broken) })
 		streams, _, errOut := newTestStreams()
-		err := validatePaths(streams, []string{files[0], files[3]})
+		err := validatePaths(streams, []string{files[0], broken})
 		require.Error(t, err)
-		assert.Contains(t, errOut.String(), "citation-1")
+		assert.Contains(t, errOut.String(), "citation-missing")
 	})
 
 	t.Run("duplicate IDs across named files are reported", func(t *testing.T) {
