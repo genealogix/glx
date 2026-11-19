@@ -29,6 +29,15 @@ Output formats:
 - multi: Multi-file directory structure (default, one file per entity)
 - single: Single YAML file
 
+Platform adapters:
+The software that exported the file is detected from its HEAD.SOUR record,
+and that platform's custom tags are rewritten into standard GEDCOM before
+conversion (for example Ancestry's _MILT becomes a military_service event,
+_DCAUSE the death event's cause, and a citation's _APID an external ID plus
+a link to the Ancestry record). Use --platform to force an adapter and
+--list-platforms to see them all. Custom tags no adapter maps are still
+preserved under gedcom_extensions on persons.
+
 ```
 glx import <file> [flags]
 ```
@@ -47,6 +56,12 @@ glx import <file> [flags]
 
   # Import without validation
   glx import family.ged -o family-archive --no-validate
+
+  # Force the Ancestry adapter instead of detecting it
+  glx import tree.ged -o family-archive --platform ancestry
+
+  # List the platform adapters
+  glx import --list-platforms
 ```
 
 ### Options
@@ -54,8 +69,10 @@ glx import <file> [flags]
 ```
   -f, --format string           Output format: multi or single (default "multi")
   -h, --help                    help for import
+      --list-platforms          List the platform adapters and exit
       --no-validate             Skip validation before saving
   -o, --output string           Output file or directory (required)
+      --platform string         Force a platform adapter instead of detecting it from HEAD.SOUR (see --list-platforms)
       --show-first-errors int   Number of validation errors to show (0 for all) (default 10)
   -v, --verbose                 Verbose output
 ```

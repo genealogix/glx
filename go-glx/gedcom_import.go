@@ -154,6 +154,21 @@ type ImportResult struct {
 	Statistics ImportStatistics
 	Version    string
 	MediaFiles []MediaFileSource
+
+	// Platform is the name of the GEDCOM platform adapter that ran
+	// ("generic" when none matched), and PlatformLabel its display name.
+	Platform      string
+	PlatformLabel string
+	// PlatformRewrites counts, per original tag, the platform-specific
+	// structures the adapter rewrote into standard GEDCOM.
+	PlatformRewrites GEDCOMAdapterRewrites
+}
+
+// ImportOptions configures a GEDCOM import.
+type ImportOptions struct {
+	// Platform forces a platform adapter by name (see GEDCOMPlatforms).
+	// GEDCOMPlatformAuto (empty) detects it from HEAD.SOUR.
+	Platform string
 }
 
 // ImportStatistics tracks import metrics
@@ -428,6 +443,12 @@ type FamilyLink struct {
 // If logWriter is non-nil, import progress and diagnostics are written to it.
 // The caller is responsible for closing the writer if needed.
 func ImportGEDCOM(reader io.Reader, logWriter io.Writer) (*GLXFile, *ImportResult, error) {
+	return ImportGEDCOMWithOptions(reader, logWriter, ImportOptions{})
+}
+
+// ImportGEDCOMWithOptions imports a GEDCOM file as ImportGEDCOM does, with
+// the given options.
+func ImportGEDCOMWithOptions(reader io.Reader, logWriter io.Writer, opts ImportOptions) (*GLXFile, *ImportResult, error) {
 	// Create logger
 	logger := NewImportLogger(logWriter)
 
@@ -442,6 +463,12 @@ func ImportGEDCOM(reader io.Reader, logWriter io.Writer) (*GLXFile, *ImportResul
 	}
 
 	logger.LogInfo("Detected GEDCOM version: " + versionString)
+
+	// Rewrite the exporting platform's dialect into standard GEDCOM (#96)
+	adapter, rewrites, err := applyGEDCOMAdapter(records, opts.Platform, logger)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	// Create GLX file
 	glx := &GLXFile{
@@ -501,8 +528,11 @@ func ImportGEDCOM(reader io.Reader, logWriter io.Writer) (*GLXFile, *ImportResul
 	// Build result
 	result := &ImportResult{
 		Statistics: conv.Stats,
-		Version:    versionString,
-		MediaFiles: conv.MediaFileSources,
+		Version:          versionString,
+		MediaFiles:       conv.MediaFileSources,
+		Platform:         adapter.Name(),
+		PlatformLabel:    adapter.Label(),
+		PlatformRewrites: rewrites,
 	}
 
 	return glx, result, nil

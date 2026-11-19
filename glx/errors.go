@@ -25,6 +25,7 @@ var (
 	ErrInvalidApproximation       = glxlib.ErrInvalidApproximation
 	ErrMissingArguments           = errors.New("missing required argument(s)")
 	ErrTooManyArguments           = errors.New("too many arguments")
+	ErrImportOutputRequired       = errors.New(`required flag(s) "output" not set`)
 	ErrMediaFileNotFound          = errors.New("file not found")
 	ErrUnknownCensusCountry       = glxlib.ErrUnknownCensusCountry
 	ErrValidationWithErrors       = errors.New("validation failed with errors")
