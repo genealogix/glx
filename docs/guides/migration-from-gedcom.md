@@ -82,7 +82,7 @@ Ancestry, Family Tree Maker, RootsMagic and other programs each write their own 
 | Findmypast | `findmypast` | `_UID` → `external_ids` |
 | Anything else | `generic` | Nothing |
 
-`_UID` is rewritten on individuals, sources and repositories, the records whose external IDs are kept. A custom tag no adapter maps is still preserved on persons under `gedcom_extensions`, exactly as without an adapter. A `_DCAUSE` that carries its own citations, or names a cause when the death event already has one, is left as an extension rather than merged.
+`_UID` is rewritten on individuals, sources and repositories, the records whose external IDs are kept. A custom tag no adapter maps is still preserved on persons under `gedcom_extensions`, exactly as without an adapter. A `_DCAUSE` that carries its own citations, or names a cause when the death event already has one, is left as an extension rather than merged. An adapter only rewrites a structure it can convert without loss: a `_MILT` whose value breaks onto a `CONT` line, or that holds a sub-record the event converter does not map (a vendor tag such as `_CUSTOM`, or `RESN`), is left as an extension whole, and a `_UID` or `_APID` with sub-records of its own is left as it is. A `CONC` continuation is folded into the `_MILT` value first. Stripping HTML keeps a link's destination, as `label (url)`, and a note with a link that cannot be paired with its closing tag is kept exactly as written.
 
 ### Single-File vs Multi-File
 

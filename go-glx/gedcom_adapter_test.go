@@ -15,6 +15,7 @@
 package glx
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -291,7 +292,11 @@ func TestStripNoteHTML(t *testing.T) {
 		{"angle brackets that are not markup untouched", "Father <unknown>, mother &amp; aunt", "Father <unknown>, mother &amp; aunt", false},
 		{"breaks become newlines", "Line one<br>Line two<br/>Line three", "Line one\nLine two\nLine three", true},
 		{"paragraphs and entities", "<p>A &amp; B</p><p>C&nbsp;D</p>", "A & B\nC D", true},
-		{"links keep their text", `See <a href="https://example.com">the record</a>.`, "See the record.", true},
+		{"links keep their destination", `See <a href="https://example.com">the record</a>.`, "See the record (https://example.com).", true},
+		{"single-quoted and bare hrefs", `<a target=_blank href='https://a.example/x?y=1&amp;z=2'>A</a> <a href=https://b.example>B</a>`, "A (https://a.example/x?y=1&z=2) B (https://b.example)", true},
+		{"link whose label is its url", `<a href="https://example.com">https://example.com</a>`, "https://example.com", true},
+		{"link with no label", `<p>Image: <a href="https://example.com/i.jpg"></a></p>`, "Image: https://example.com/i.jpg", true},
+		{"unclosed link left as written", `<p>See <a href="https://example.com">the record</p>`, `<p>See <a href="https://example.com">the record</p>`, false},
 		{"blank lines collapse", "<p>A</p><p></p><p></p><p>B</p>", "A\n\nB", true},
 	}
 	for _, tt := range tests {
@@ -340,4 +345,104 @@ func TestGenericImport_ReportsGenericPlatform(t *testing.T) {
 	_, result := importGEDCOMString(t, ged, ImportOptions{})
 	assert.Equal(t, GEDCOMPlatformGeneric, result.Platform)
 	assert.Empty(t, result.PlatformRewrites)
+}
+
+func TestRewriteMilitaryService_FoldsConcIntoValue(t *testing.T) {
+	indi := &GEDCOMRecord{Tag: GedcomTagIndi, SubRecords: []*GEDCOMRecord{
+		{Tag: "_MILT", Value: "US Army", SubRecords: []*GEDCOMRecord{
+			{Tag: GedcomTagConc, Value: ", 101st Airborne"},
+			{Tag: GedcomTagDate, Value: "1944"},
+		}},
+	}}
+	rewrites := GEDCOMAdapterRewrites{}
+	rewriteMilitaryService(indi, rewrites)
+	milt := indi.SubRecords[0]
+	assert.Equal(t, GedcomTagEven, milt.Tag)
+	assert.Equal(t, []*GEDCOMRecord{
+		{Tag: GedcomTagType, Value: "Military Service: US Army, 101st Airborne"},
+		{Tag: GedcomTagDate, Value: "1944"},
+	}, milt.SubRecords)
+	assert.Equal(t, 1, rewrites["_MILT"])
+}
+
+func TestRewriteMilitaryService_LeavesLossyStructuresIntact(t *testing.T) {
+	tests := map[string][]*GEDCOMRecord{
+		"unsupported child":        {{Tag: "_CUSTOM", Value: "Company B"}},
+		"unsupported standard tag": {{Tag: "RESN", Value: "privacy"}},
+		"vendor tag below a child": {{Tag: GedcomTagPlac, Value: "France", SubRecords: []*GEDCOMRecord{{Tag: "_PLACEID", Value: "42"}}}},
+		"CONT line break in value": {{Tag: GedcomTagCont, Value: "101st Airborne"}},
+	}
+	for name, children := range tests {
+		t.Run(name, func(t *testing.T) {
+			indi := &GEDCOMRecord{Tag: GedcomTagIndi, SubRecords: []*GEDCOMRecord{{Tag: "_MILT", Value: "US Army", SubRecords: children}}}
+			rewrites := GEDCOMAdapterRewrites{}
+			rewriteMilitaryService(indi, rewrites)
+			assert.Equal(t, "_MILT", indi.SubRecords[0].Tag)
+			assert.Equal(t, "US Army", indi.SubRecords[0].Value)
+			assert.Equal(t, children, indi.SubRecords[0].SubRecords)
+			assert.Empty(t, rewrites)
+		})
+	}
+}
+
+func TestVendorIDsWithChildrenAreLeftIntact(t *testing.T) {
+	indi := &GEDCOMRecord{Tag: GedcomTagIndi, SubRecords: []*GEDCOMRecord{{Tag: "_UID", Value: "ABC", SubRecords: []*GEDCOMRecord{{Tag: "_X", Value: "y"}}}}}
+	rewrites := GEDCOMAdapterRewrites{}
+	rewriteUIDs(indi, rewrites)
+	assert.Equal(t, "_UID", indi.SubRecords[0].Tag)
+
+	sour := &GEDCOMRecord{Tag: GedcomTagSour, Value: "@S1@", SubRecords: []*GEDCOMRecord{{Tag: "_APID", Value: "1,7602::123", SubRecords: []*GEDCOMRecord{{Tag: "_X", Value: "y"}}}}}
+	rewriteAPID(sour, false, rewrites)
+	assert.Equal(t, "_APID", sour.SubRecords[0].Tag)
+	assert.Len(t, sour.SubRecords, 1)
+	assert.Empty(t, rewrites)
+}
+
+// lossyAncestryGEDCOM holds the structures an adapter could drop if it
+// rewrote them carelessly: a link destination in an HTML note, a _MILT value
+// continued on a CONC line, and a _MILT with a child the event converter does
+// not map.
+const lossyAncestryGEDCOM = `0 HEAD
+1 SOUR Ancestry.com Family Trees
+2 NAME Ancestry.com Member Trees
+1 GEDC
+2 VERS 5.5.1
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME John /Smith/
+1 NOTE <p>See <a href="https://example.com/record/77">the draft card</a>.</p>
+1 _MILT US Army
+2 CONC , 101st Airborne
+2 DATE 1944
+1 _MILT Navy
+2 _CUSTOM Company B
+2 DATE 1950
+0 TRLR
+`
+
+// TestAncestryAdapter_KeepsEverythingGenericKeeps imports the same file with
+// the generic and the Ancestry adapter and checks that every value the
+// generic import preserves is still present after the adapter ran.
+func TestAncestryAdapter_KeepsEverythingGenericKeeps(t *testing.T) {
+	generic, _ := importGEDCOMString(t, lossyAncestryGEDCOM, ImportOptions{Platform: GEDCOMPlatformGeneric})
+	adapted, result := importGEDCOMString(t, lossyAncestryGEDCOM, ImportOptions{})
+	require.Equal(t, "ancestry", result.Platform)
+
+	genericJSON, err := json.Marshal(generic)
+	require.NoError(t, err)
+	adaptedJSON, err := json.Marshal(adapted)
+	require.NoError(t, err)
+
+	for _, value := range []string{"https://example.com/record/77", "the draft card", "US Army", "101st Airborne", "Navy", "Company B", "_CUSTOM"} {
+		assert.Contains(t, string(genericJSON), value, "generic import keeps %q", value)
+		assert.Contains(t, string(adaptedJSON), value, "ancestry import keeps %q", value)
+	}
+
+	person := singlePerson(t, adapted)
+	assert.Equal(t, NoteList{"See the draft card (https://example.com/record/77)."}, person.Notes)
+
+	military := eventsOfType(adapted, "military_service")
+	require.Len(t, military, 1, "only the lossless _MILT becomes an event")
+	assert.Equal(t, "US Army, 101st Airborne", military[0].Properties["event_subtype"])
+	assert.Equal(t, GEDCOMAdapterRewrites{"_MILT": 1, "NOTE (HTML)": 1}, result.PlatformRewrites)
 }

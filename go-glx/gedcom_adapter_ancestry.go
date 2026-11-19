@@ -85,16 +85,19 @@ const militaryServiceLabel = "Military Service"
 
 func rewriteMilitaryService(indi *GEDCOMRecord, rewrites GEDCOMAdapterRewrites) {
 	for _, sub := range indi.SubRecords {
-		if sub.Tag != "_MILT" {
+		if sub.Tag != "_MILT" || !militaryServiceConvertsLosslessly(sub) {
 			continue
 		}
 
 		var details []string
-		if value := strings.TrimSpace(sub.Value); value != "" {
+		if value := strings.TrimSpace(extractTextWithContinuation(sub)); value != "" {
 			details = append(details, value)
 		}
 		kept := make([]*GEDCOMRecord, 0, len(sub.SubRecords)+1)
 		for _, child := range sub.SubRecords {
+			if child.Tag == GedcomTagCont || child.Tag == GedcomTagConc {
+				continue
+			}
 			if child.Tag == GedcomTagType {
 				if value := strings.TrimSpace(child.Value); value != "" {
 					details = append([]string{value}, details...)
@@ -115,6 +118,43 @@ func rewriteMilitaryService(indi *GEDCOMRecord, rewrites GEDCOMAdapterRewrites) 
 		sub.SubRecords = append([]*GEDCOMRecord{{Tag: GedcomTagType, Value: typeValue, Line: sub.Line}}, kept...)
 		rewrites["_MILT"]++
 	}
+}
+
+// militaryEventChildTags are the sub-records the individual event converter
+// maps (plus the continuation lines folded into the _MILT value). A _MILT
+// carrying anything else is left as is, so the generic path preserves it whole
+// under gedcom_extensions instead of the event converter dropping the child.
+var militaryEventChildTags = map[string]bool{
+	GedcomTagDate: true, GedcomTagPlac: true, GedcomTagNote: true, GedcomTagAddr: true,
+	GedcomTagSour: true, GedcomTagObje: true, GedcomTagAge: true, GedcomTagCaus: true,
+	GedcomTagType: true, GedcomTagAsso: true, GedcomTagCont: true, GedcomTagConc: true,
+}
+
+// militaryServiceConvertsLosslessly reports whether rewriting a _MILT into an
+// EVEN keeps everything it holds: every child is one the event converter maps,
+// no vendor tag sits anywhere beneath it (other than an _APID, which this
+// adapter rewrites), and its value has no CONT line break, which an event
+// subtype cannot hold.
+func militaryServiceConvertsLosslessly(milt *GEDCOMRecord) bool {
+	for _, child := range milt.SubRecords {
+		if !militaryEventChildTags[child.Tag] {
+			return false
+		}
+	}
+	if strings.Contains(extractTextWithContinuation(milt), "\n") {
+		return false
+	}
+
+	lossless := true
+	for _, child := range milt.SubRecords {
+		walkGEDCOMRecord(child, func(r *GEDCOMRecord) {
+			if strings.HasPrefix(r.Tag, "_") && r.Tag != "_APID" {
+				lossless = false
+			}
+		})
+	}
+
+	return lossless
 }
 
 // rewriteDeathCause moves each _DCAUSE onto the first DEAT as CAUS. A
@@ -159,7 +199,7 @@ func rewriteDeathCause(indi *GEDCOMRecord, rewrites GEDCOMAdapterRewrites) {
 func rewriteAPID(sour *GEDCOMRecord, isSourceRecord bool, rewrites GEDCOMAdapterRewrites) {
 	var links []*GEDCOMRecord
 	for _, sub := range sour.SubRecords {
-		if sub.Tag != "_APID" || strings.TrimSpace(sub.Value) == "" {
+		if sub.Tag != "_APID" || strings.TrimSpace(sub.Value) == "" || len(sub.SubRecords) > 0 {
 			continue
 		}
 		sub.Tag = GedcomTagExid

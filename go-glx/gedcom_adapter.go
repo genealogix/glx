@@ -248,7 +248,7 @@ func rewriteUIDs(record *GEDCOMRecord, rewrites GEDCOMAdapterRewrites) {
 	}
 
 	for _, sub := range record.SubRecords {
-		if sub.Tag != "_UID" || sub.Value == "" {
+		if sub.Tag != "_UID" || sub.Value == "" || len(sub.SubRecords) > 0 {
 			continue
 		}
 		sub.Tag = GedcomTagExid
@@ -262,17 +262,50 @@ func rewriteUIDs(record *GEDCOMRecord, rewrites GEDCOMAdapterRewrites) {
 // "<unknown>") is never mistaken for markup.
 var htmlTagPattern = regexp.MustCompile(`(?i)</?(?:p|br|b|i|u|em|strong|div|span|font|a|ul|ol|li|sup|sub)(?:\s[^<>]*)?\s*/?>`)
 
+// htmlAnchorPattern matches a whole link whose opening tag carries an href,
+// capturing the destination (double-quoted, single-quoted or bare) and the
+// label.
+var htmlAnchorPattern = regexp.MustCompile(`(?is)<a\s[^<>]*?\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'<>]+))[^<>]*>(.*?)</a\s*>`)
+
+// htmlHrefPattern matches any href attribute, to catch a link the anchor
+// pattern could not pair with its closing tag.
+var htmlHrefPattern = regexp.MustCompile(`(?i)<a\s[^<>]*\bhref\s*=`)
+
 // htmlBreakPattern matches the tags that end a line of text.
 var htmlBreakPattern = regexp.MustCompile(`(?i)<br\s*/?>|</(?:p|div|li)\s*>`)
 
 var blankLinesPattern = regexp.MustCompile(`\n{3,}`)
 
-// stripNoteHTML removes formatting markup from note text, keeping its text
-// and line breaks. Text without recognized markup is returned unchanged, so
-// entities and angle brackets in plain notes are left alone.
+// stripNoteHTML removes formatting markup from note text, keeping its text,
+// line breaks and link destinations. Text without recognized markup, or with
+// a link whose destination cannot be kept, is returned unchanged, so entities
+// and angle brackets in plain notes are left alone.
 func stripNoteHTML(text string) (string, bool) {
+	original := text
 	if !htmlTagPattern.MatchString(text) {
 		return text, false
+	}
+
+	// A link keeps its destination: "label (url)", or just the url when the
+	// label is empty or repeats it.
+	text = htmlAnchorPattern.ReplaceAllStringFunc(text, func(anchor string) string {
+		groups := htmlAnchorPattern.FindStringSubmatch(anchor)
+		href := strings.TrimSpace(html.UnescapeString(groups[1] + groups[2] + groups[3]))
+		label := groups[4]
+		plainLabel := strings.TrimSpace(html.UnescapeString(htmlTagPattern.ReplaceAllString(label, "")))
+		if href == "" || plainLabel == href {
+			return label
+		}
+		if plainLabel == "" {
+			return href
+		}
+
+		return label + " (" + href + ")"
+	})
+	// An href left over (an unclosed or malformed link) would be lost by
+	// stripping, so the note is kept exactly as written.
+	if htmlHrefPattern.MatchString(text) {
+		return original, false
 	}
 
 	text = htmlBreakPattern.ReplaceAllString(text, "\n")
