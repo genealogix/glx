@@ -120,6 +120,17 @@ func TestReadCommands_JSONOutputParses(t *testing.T) {
 	}
 }
 
+// analyze --json is an alias for --format json, so naming both is a conflict
+// cobra reports rather than one of them being silently discarded.
+func TestAnalyzeJSONConflictsWithFormat(t *testing.T) {
+	archive := copyExample(t, "basic-family")
+	res := runGLX(t, archive, "analyze", "--json", "--format", "text")
+
+	require.NotEqual(t, 0, res.exitCode, res.stdout)
+	assert.Contains(t, res.stderr, "json")
+	assert.Contains(t, res.stderr, "format")
+}
+
 // Every read command fails, naming the path, when the archive is missing.
 func TestReadCommands_MissingArchiveFails(t *testing.T) {
 	work := t.TempDir()

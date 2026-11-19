@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"sort"
@@ -25,13 +26,13 @@ import (
 
 // treeNode represents a person in the ancestor/descendant tree.
 type treeNode struct {
-	PersonID     string
-	Name         string
-	Dates        string // "(1850 – 1920)" or similar
-	RelType      string // relationship type connecting to parent/child
-	Step         bool   // connected to parent/child through a step link
-	Hypothetical bool   // the connecting relationship is only a hypothesis
-	Children     []*treeNode
+	PersonID     string      `json:"person_id"`
+	Name         string      `json:"name"`
+	Dates        string      `json:"dates"`        // "(1850 – 1920)" or similar
+	RelType      string      `json:"rel_type"`     // relationship type connecting to parent/child
+	Step         bool        `json:"step"`         // connected to parent/child through a step link
+	Hypothetical bool        `json:"hypothetical"` // the connecting relationship is only a hypothesis
+	Children     []*treeNode `json:"children"`
 }
 
 // treeRelPerson holds a person ID and the relationship connecting them.
@@ -52,47 +53,55 @@ type treeContext struct {
 
 // newTreeContext builds a treeContext with precomputed parent/child indexes.
 func newTreeContext(archive *glxlib.GLXFile) *treeContext {
-	return &treeContext{
-		archive:  archive,
-		parents:  buildParentIndex(archive),
-		children: buildChildIndex(newFamilyLinks(archive)),
-	}
+	tree, _ := newTreeContextContext(context.Background(), archive)
+
+	return tree
 }
 
-// buildParentIndex scans all relationships once and returns a map from
-// child ID to their parents. Links the archive has disproven are left out.
-func buildParentIndex(archive *glxlib.GLXFile) map[string][]treeRelPerson {
-	index := make(map[string][]treeRelPerson)
-
-	for _, link := range glxlib.ParentChildLinks(archive, nil) {
+// newTreeContextContext scans all relationships once and indexes both
+// directions: child ID to parents and parent ID to children, the children in
+// birth order as every other view reads them (familyLinks.childLinks). Links
+// the archive has disproven are left out, and two relationships recording the
+// same link are drawn once (#1506). Canceled calls return no partial context.
+func newTreeContextContext(ctx context.Context, archive *glxlib.GLXFile) (*treeContext, error) {
+	links, err := glxlib.ParentChildLinksContext(ctx, archive, nil)
+	if err != nil {
+		return nil, err
+	}
+	tree := &treeContext{archive: archive, parents: make(map[string][]treeRelPerson), children: make(map[string][]treeRelPerson)}
+	childLinks := make(map[string][]glxlib.ParentChildLink)
+	for _, link := range links {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		if link.Standing == glxlib.RelationshipStandingDisproven {
 			continue
 		}
-		index[link.ChildID] = append(index[link.ChildID], treeRelPersonFromLink(&link, link.ParentID))
+		tree.parents[link.ChildID] = append(tree.parents[link.ChildID], treeRelPersonFromLink(&link, link.ParentID))
+		childLinks[link.ParentID] = append(childLinks[link.ParentID], link)
 	}
-
-	for id := range index {
-		index[id] = dedupeRelatedPersons(index[id])
-		sortRelatedPersons(index[id])
-	}
-
-	return index
-}
-
-// buildChildIndex returns a map from parent ID to their children in birth
-// order, read from familyLinks.childLinks as every other view reads them.
-// Links the archive has disproven are left out, and two relationships
-// recording the same link are drawn once (#1506).
-func buildChildIndex(fam *familyLinks) map[string][]treeRelPerson {
-	index := make(map[string][]treeRelPerson)
-	for parentID := range fam.childrenOf {
-		for _, link := range fam.childLinks(parentID) {
-			index[parentID] = append(index[parentID], treeRelPersonFromLink(&link, link.ChildID))
+	for id := range tree.parents {
+		if err := ctx.Err(); err != nil {
+			return nil, err
 		}
-		index[parentID] = dedupeRelatedPersons(index[parentID])
+		tree.parents[id] = dedupeRelatedPersons(tree.parents[id])
+		sortRelatedPersons(tree.parents[id])
+	}
+	if len(childLinks) > 0 {
+		order := glxlib.NewBirthOrder(archive)
+		for parentID, kids := range childLinks {
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
+			glxlib.SortByBirth(order, kids, func(l glxlib.ParentChildLink) string { return l.ChildID })
+			for i := range kids {
+				tree.children[parentID] = append(tree.children[parentID], treeRelPersonFromLink(&kids[i], kids[i].ChildID))
+			}
+			tree.children[parentID] = dedupeRelatedPersons(tree.children[parentID])
+		}
 	}
 
-	return index
+	return tree, ctx.Err()
 }
 
 // treeRelPersonFromLink converts a parent-child link into the tree's edge
@@ -140,10 +149,13 @@ func loadArchiveForTree(path string) (*glxlib.GLXFile, error) {
 
 // showAncestors loads the archive and prints the ancestor tree for a person.
 // When ancestors are missing, it appends research suggestions.
-func showAncestors(archivePath, personID string, maxGen int) error {
+func showAncestors(archivePath, personID string, maxGen int, jsonOutput ...bool) error {
 	archive, err := loadArchiveForTree(archivePath)
 	if err != nil {
 		return err
+	}
+	if explorationJSONEnabled(jsonOutput) {
+		return printExplorationJSON(buildTreeJSON(archive, personID, maxGen, true))
 	}
 
 	if _, ok := archive.Persons[personID]; !ok {
@@ -165,10 +177,13 @@ func showAncestors(archivePath, personID string, maxGen int) error {
 }
 
 // showDescendants loads the archive and prints the descendant tree for a person.
-func showDescendants(archivePath, personID string, maxGen int) error {
+func showDescendants(archivePath, personID string, maxGen int, jsonOutput ...bool) error {
 	archive, err := loadArchiveForTree(archivePath)
 	if err != nil {
 		return err
+	}
+	if explorationJSONEnabled(jsonOutput) {
+		return printExplorationJSON(buildTreeJSON(archive, personID, maxGen, false))
 	}
 
 	if _, ok := archive.Persons[personID]; !ok {

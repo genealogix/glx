@@ -16,6 +16,7 @@ package e2e
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -276,6 +277,40 @@ func checkValidationLimits(t *testing.T, work string, args []string, input strin
 					assert.Equal(t, first, res.stderr, "the displayed prefix must be stable across processes")
 				}
 			}
+		})
+	}
+}
+
+func TestValidateJSONSingleFileExtensionAndReferences(t *testing.T) {
+	archive := copyExample(t, "basic-family")
+	dir := t.TempDir()
+	joined := filepath.Join(dir, "joined.glx")
+	join := runGLX(t, dir, "join", archive, joined)
+	require.Zero(t, join.exitCode, join.stdout+join.stderr)
+	data, err := os.ReadFile(joined)
+	require.NoError(t, err)
+	broken := bytes.ReplaceAll(data, []byte("place: place-springfield"), []byte("place: place-DOES-NOT-EXIST"))
+	require.NotEqual(t, data, broken, "fixture must contain the reference being broken")
+	for _, name := range []string{"archive.glx", "archive.GLX", "archive.txt", "archive", "archive.yaml", "archive.yml"} {
+		t.Run(name, func(t *testing.T) {
+			file := filepath.Join(dir, name)
+			require.NoError(t, os.WriteFile(file, broken, 0o600))
+			result := runGLX(t, dir, "--quiet", "validate", "--json", file)
+			require.NotZero(t, result.exitCode, result.stdout+result.stderr)
+			if !strings.EqualFold(filepath.Ext(name), ".glx") {
+				require.Contains(t, result.stderr, "nothing to validate")
+				require.Empty(t, result.stdout, "unsupported input must not print a JSON success result")
+
+				return
+			}
+			var findings struct {
+				Valid  bool              `json:"valid"`
+				Errors []json.RawMessage `json:"errors"`
+			}
+			require.NoError(t, json.Unmarshal([]byte(result.stdout), &findings))
+			require.False(t, findings.Valid)
+			require.NotEmpty(t, findings.Errors)
+			require.Contains(t, result.stdout, "place-DOES-NOT-EXIST")
 		})
 	}
 }

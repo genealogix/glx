@@ -49,6 +49,7 @@ glx timeline <person> [flags]
 ```
   -a, --archive string   Archive path (directory or single file) (default ".")
   -h, --help             help for timeline
+      --json             Output as JSON
       --no-family        Exclude family events (show only direct events)
 ```
 

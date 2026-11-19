@@ -199,7 +199,7 @@ check-memory-drift: ## Deterministically detect AGENTS.md/CLAUDE.md drift vs the
 	@go run ./tools/memcheck
 
 test-scripts: ## Unit-test the Node drift-check scripts, npm audit gate and serve viewer
-	@node --test scripts/drift-checks/spec-schema-drift.test.mjs specification/schema-compat.test.mjs glx/web_test/app.test.mjs scripts/hooks/staged.test.mjs scripts/npm-audit-gate.test.mjs
+	@node --test scripts/drift-checks/spec-schema-drift.test.mjs specification/schema-compat.test.mjs glx/web_test/app.test.mjs scripts/hooks/staged.test.mjs scripts/npm-audit-gate.test.mjs scripts/check-mcp-license-exception.test.mjs
 
 test-website-security: ## Verify the website's picomatch backport (the npm audit gate's verify command)
 	cd website && npm run test:security
