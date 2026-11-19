@@ -20,7 +20,7 @@ permissions:
 # together (a batched `git push --tags`) and the middle tag's run is cancelled
 # before it starts, producing no archives, no checksums, no cosign signature, no
 # attestation and no announce, reported as "cancelled" rather than failed. Since
-# the sanctioned re-run flow (.github/CLAUDE.md, "never move a published tag")
+# the sanctioned re-run flow (.github/AGENTS.md, "never move a published tag")
 # cuts a NEW patch tag, distinct releases land in distinct groups and run in
 # parallel, which is what we want; the group still collapses a genuine duplicate
 # run of the same tag. cancel-in-progress MUST stay false — cancelling between
