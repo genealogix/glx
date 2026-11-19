@@ -59,6 +59,34 @@ Status legend: ✓ met · ◐ partial · ☐ not yet met
 | Continuous security posture scoring | ✓ | [OpenSSF Scorecard](https://github.com/genealogix/glx/blob/main/.github/workflows/scorecard.yml) runs on push to `main`, weekly on Mondays, and on `workflow_dispatch`. Results are published to the Scorecard REST API (`api.scorecard.dev`, which backs the badge) and uploaded to GitHub Code Scanning as SARIF. The workflow deliberately has **no** `pull_request` trigger: publishing requires OIDC (`id-token: write`), which fork PRs cannot safely hold, so per-PR Scorecard coverage would break the publish model rather than harden it. Advisories the *Vulnerabilities* check reports that do not apply to GLX are handled per [Vulnerability suppression](#vulnerability-suppression), not left to drift |
 | GitHub Actions pinned per a documented convention | ✓ | **Every** `uses:` reference in every workflow is pinned to a full commit SHA with a trailing version comment — third-party (including `github/*`) and first-party `actions/*` alike. No floating major tags and no exact-patch-tag references remain. See [Action pinning](#action-pinning) for the rationale and the mutable-ref threat it closes |
 
+#### Dependency license exception
+
+The MCP research server uses `github.com/modelcontextprotocol/go-sdk v1.8.0`.
+Its [upstream license](https://github.com/modelcontextprotocol/go-sdk/blob/v1.8.0/LICENSE)
+separates Apache-2.0 code/specification contributions and unrelicensed legacy MIT
+contributions from CC-BY-4.0 documentation. GitHub reports the entire module as
+`Apache-2.0 AND MIT AND CC-BY-4.0`, while the imported-code license check passes
+under the existing policy. GLX links SDK code; the imported SDK packages have no
+embedded files, and SDK documentation is not copied into GLX's docs or releases.
+
+[Dependency Review](https://github.com/genealogix/glx/blob/main/.github/workflows/dependency-review.yml) therefore has one
+package-specific license exception, not a global CC-BY-4.0 allowance. The pinned
+action [ignores versions when matching exception PURLs](https://github.com/actions/dependency-review-action/blob/a1d282b36b6f3519aa1f3fc636f609c47dddb294/src/purl.ts),
+so [a fail-closed guard](https://github.com/genealogix/glx/blob/main/scripts/check-mcp-license-exception.mjs) checks the exact
+SDK requirement, module checksums, action pin, and upstream license text preserved
+in [NOTICE](https://github.com/genealogix/glx/blob/main/NOTICE). It rejects SDK declarations in other tracked Go manifests,
+workspaces and replacements, so the package-wide exemption cannot silently cover
+another module/version. An upgrade, replacement, or changed notice requires a
+fresh license decision. Vulnerability checks and the independent imported-code
+license check remain enabled.
+
+The SDK and its newly linked dependencies are attributed in `NOTICE`, with their
+full upstream license texts. The existing release configuration includes that
+file in every archive, retaining the copyright, permission and disclaimer text
+rather than relying only on source-repository links. This exception does not
+approve copying CC-BY-4.0 SDK documentation; such reuse needs its own attribution
+assessment. (#198)
+
 #### Action pinning
 
 This section is the project's canonical statement of how GitHub Actions references are pinned. There is a single rule, applied to every `uses:` line in the repository.
@@ -83,7 +111,7 @@ A SHA pin is never "tidied" back down to a bare tag: upstream tags are force-rep
 
 #### Vulnerability suppression
 
-<!-- Last reviewed: 2026-10-14 -->
+<!-- Last reviewed: 2026-11-18 -->
 
 `govulncheck` decides applicability by reachability: it reports a dependency advisory only when the vulnerable symbol is actually called. The OpenSSF Scorecard *Vulnerabilities* check does not — it runs [osv-scanner](https://github.com/google/osv-scanner) over the manifests and reports every advisory that matches a resolved module version, whether or not the affected package is in the build graph. The two tools therefore disagree on advisories that are scoped to a package GLX does not import, and that disagreement is resolved in [`osv-scanner.toml`](https://github.com/genealogix/glx/blob/main/osv-scanner.toml) at the repository root, the file osv-scanner and Scorecard both read.
 
@@ -92,6 +120,8 @@ A SHA pin is never "tidied" back down to a bare tag: upstream tags are force-rep
 The rule for that file: an advisory is suppressed only when it cannot be cleared by upgrading **and** the affected package is provably outside the build graph, and every entry states the reason, the command that re-verifies it, and an `ignoreUntil` expiry by which that command must be re-run. An expired entry stops suppressing in osv-scanner and in the SARIF filter alike. An advisory that applies is fixed by bumping the dependency, never by an entry here — which is the same principle as [Action pinning](#action-pinning) above, where the control’s accepted consequence and its known limits are written down rather than papered over.
 
 Entries are keyed by advisory ID, because osv-scanner cannot scope one to a Go package; a revised advisory that starts covering an imported package is therefore hidden from osv-scanner until the entry expires, and `govulncheck` (reading the advisory's current package list) is the backstop that reports it in the meantime. The file covers the root `go.mod` only — osv-scanner applies a config to manifests in its own directory — so `ci-tools/go.mod` is scanned with no suppressions. The entries themselves, with the reasoning and re-verification command for each, live only in [`osv-scanner.toml`](https://github.com/genealogix/glx/blob/main/osv-scanner.toml); this section deliberately does not repeat them.
+
+The npm trees have their own gate and their own exception file, because osv-scanner does not run there and the rule above cannot hold for them: a website build dependency is always in the build graph, so the only way an npm advisory is accepted is a verified mitigation. [`npm-audit.yml`](https://github.com/genealogix/glx/blob/main/.github/workflows/npm-audit.yml) passes `npm audit --json` to [`scripts/npm-audit-gate.mjs`](https://github.com/genealogix/glx/blob/main/scripts/npm-audit-gate.mjs), which reads `<tree>/audit-accepted.json`. An entry there is accepted only when no fixed release exists, and it names the one advisory, the one package and exact installed version it covers, the reason, the command that proves the mitigation is in place, and an `ignoreUntil` expiry, the same three obligations as above. The gate fails the run when an entry is missing a field, has expired, or covers a version other than the one in the lockfile, and it runs each entry's verify command before reading the report, so an exception cannot outlive its mitigation. Any other advisory at or above the threshold still fails, whether or not it shares a dependency chain with an accepted one. As with `osv-scanner.toml`, the entries and their reasoning live only in that file (today, `website/audit-accepted.json` for the picomatch backport described in `website/patches/README.md`).
 
 ### Level 3 — Mature
 

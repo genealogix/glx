@@ -176,6 +176,8 @@ glx validate persons/ events/   # several directories are validated as one archi
 
 ## Features
 
+- **MCP research server**: `glx mcp serve` exposes read-only archive tools over stdio, including paginated text and external-identifier `search`; add `--watch` to reload archive changes automatically. See the [MCP guide](../docs/mcp.md).
+
 - [Shared conflict detection](../docs/guides/conflict-detection.md) across analysis, proof, evidence and person merges, with dated history and configurable approximate-date tolerance.
 
 - ✅ **Initialize Archives** - Create new single-file or multi-file genealogy archives
@@ -208,7 +210,7 @@ glx validate persons/ events/   # several directories are validated as one archi
 - ➕ **Add** - Create person, place, event, repository, source, citation, relationship, assertion, research log, or study entities from CLI flags with vocabulary and reference validation
 - 🧾 **Research Logging** - Append searches, including negative results, to a research log one at a time with `glx add search`
 - 🔄 **Migrate** - Convert deprecated person properties to birth/death events
-- 🖥️ **Serve** - Run a local web server with a browser-based read-only viewer (dashboard, person profiles, family tree, sources)
+- 🖥️ **Serve** - Run a local web server with a browser-based viewer (dashboard, person profiles, family tree, sources); `--edit` adds person and relationship editing
 - ⚡ **Cache** - Build a binary archive cache (`.glx/cache.bin`) so repeated commands skip the YAML parse; transparently used by read commands, with git + filesystem staleness detection
 
 ## Development

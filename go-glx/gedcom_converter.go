@@ -172,6 +172,8 @@ func (conv *ConversionContext) Convert(records []*GEDCOMRecord) error {
 		}
 	}
 
+	importIndividualAssociations(grouped[GedcomTagIndi], conv)
+
 	conv.Logger.LogInfof("Third pass complete: total %d relationships", conv.Stats.RelationshipsCreated)
 
 	return nil

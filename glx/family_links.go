@@ -15,7 +15,6 @@
 package main
 
 import (
-	"sort"
 	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
@@ -58,9 +57,11 @@ type siblingEdge struct {
 type familyLinks struct {
 	archive    *glxlib.GLXFile
 	standings  *glxlib.RelationshipStandingIndex
+	order      *glxlib.BirthOrder                  // built on first use by birthOrder
+	sorted     bool                                // childrenOf is in birth order (childLinks)
 	surviving  []glxlib.ParentChildLink            // non-disproven links, in relationship order
 	parentsOf  map[string][]glxlib.ParentChildLink // child ID -> surviving links
-	childrenOf map[string][]glxlib.ParentChildLink // parent ID -> surviving links
+	childrenOf map[string][]glxlib.ParentChildLink // parent ID -> surviving links; read through childLinks
 	excluded   map[string][]glxlib.ParentChildLink // child ID -> disproven links
 }
 
@@ -86,6 +87,32 @@ func newFamilyLinks(archive *glxlib.GLXFile) *familyLinks {
 	}
 
 	return f
+}
+
+// birthOrder returns the archive's birth order, building it on first use so
+// callers that only need parents never pay for it.
+func (f *familyLinks) birthOrder() *glxlib.BirthOrder {
+	if f.order == nil {
+		f.order = glxlib.NewBirthOrder(f.archive)
+	}
+
+	return f.order
+}
+
+// childLinks returns the parent's surviving child links in the children's
+// birth order. Every view that lists children (summary, publish, serve, the
+// tree commands) reads them here, so they cannot drift apart. The lists are
+// sorted once, on first use, so callers that only need parents never pay.
+func (f *familyLinks) childLinks(parentID string) []glxlib.ParentChildLink {
+	if !f.sorted {
+		order := f.birthOrder()
+		for _, links := range f.childrenOf {
+			glxlib.SortByBirth(order, links, func(l glxlib.ParentChildLink) string { return l.ChildID })
+		}
+		f.sorted = true
+	}
+
+	return f.childrenOf[parentID]
 }
 
 // mergeEdges folds links into one edge per relative, in first-seen order.
@@ -115,27 +142,11 @@ func (f *familyLinks) parents(personID string) []familyEdge {
 	return mergeEdges(f.parentsOf[personID], func(l glxlib.ParentChildLink) string { return l.ParentID })
 }
 
-// children returns the person's surviving children (including stepchildren),
-// ordered by birth year (unknown last), then by ID.
+// children returns the person's surviving children (including stepchildren)
+// in birth order: by birth date, falling back to christening and baptism,
+// undated children last, the ID breaking ties.
 func (f *familyLinks) children(personID string) []familyEdge {
-	edges := mergeEdges(f.childrenOf[personID], func(l glxlib.ParentChildLink) string { return l.ChildID })
-	sort.SliceStable(edges, func(i, j int) bool {
-		yi, yj := birthYear(f.archive, edges[i].PersonID), birthYear(f.archive, edges[j].PersonID)
-		if yi != yj {
-			if yi == 0 {
-				return false
-			}
-			if yj == 0 {
-				return true
-			}
-
-			return yi < yj
-		}
-
-		return edges[i].PersonID < edges[j].PersonID
-	})
-
-	return edges
+	return mergeEdges(f.childLinks(personID), func(l glxlib.ParentChildLink) string { return l.ChildID })
 }
 
 // excludedParents returns the people recorded as this person's parent only in
@@ -171,8 +182,8 @@ func (f *familyLinks) birthParentSet(personID string) map[string]bool {
 	return set
 }
 
-// siblings returns the person's siblings, sorted by ID, each classified as a
-// full sibling, half-sibling, or step-sibling:
+// siblings returns the person's siblings in birth order (as children sorts
+// them), each classified as a full sibling, half-sibling, or step-sibling:
 //
 //   - two people sharing a birth (non-step) parent are half-siblings when each
 //     has a birth parent the other lacks, and siblings otherwise (including
@@ -193,7 +204,7 @@ func (f *familyLinks) siblings(personID string) []siblingEdge {
 	for id := range cands {
 		ids = append(ids, id)
 	}
-	sort.Strings(ids)
+	f.birthOrder().Sort(ids)
 
 	out := make([]siblingEdge, 0, len(ids))
 	for _, id := range ids {

@@ -54,6 +54,8 @@ The standard vocabulary files are:
 
 When creating an archive with `glx init` or `glx import`, these files are automatically copied from the [Standard Vocabularies](../5-standard-vocabularies/) templates into a `vocabularies/` directory. You can reorganize or relocate them as you see fit — the parser discovers vocabulary definitions by their top-level keys, not by file path.
 
+A vocabulary the archive does not define at all falls back to the standard one, so an archive missing `source-types.glx` still accepts the standard source types. A vocabulary the archive does define replaces the standard one entirely: values it leaves out are not valid in that archive. Property vocabularies fall back per property: a property the archive does not define uses the standard definition.
+
 ---
 
 ## Event Types Vocabulary
@@ -319,7 +321,7 @@ source_types:
 
 ### Standard Source Types
 
-**Standard Source Types**: GENEALOGIX provides standardized source type codes including vital records, census, church registers, military records, newspapers, probate, land records, court records, immigration records, directories, books, databases, oral history, correspondence, photograph collections, population registers, tax records, notarial records, family Bibles, gravestones, DNA tests, memoirs, manuscripts, maps, social media, and other.
+**Standard Source Types**: GENEALOGIX provides standardized source type codes including vital records, census, church registers, military records, newspapers, probate, land records, court records, immigration records, directories, books, articles, websites, databases, oral history, correspondence, photograph collections, population registers, tax records, notarial records, family Bibles, gravestones, DNA tests, memoirs, manuscripts, maps, social media, and other.
 
 **Complete List**: See [Standard Vocabularies - Source Types](../5-standard-vocabularies/#source-types) for the complete default vocabulary file with all standard types.
 
@@ -1173,6 +1175,7 @@ Standard properties include:
 - `crop` - Crop coordinates for images
 - `medium` - Physical medium type
 - `original_filename` - Original filename when imported
+- `external_ids` - External media identifiers with optional authority (multi-value, GEDCOM: EXID or REFN)
 - `photographer` - Person who captured the media
 - `location` - Location where media was captured
 - `blob_size` - Length in bytes of the encoded GEDCOM 5.5.1 BLOB text (pre-decode), when imported from a BLOB record

@@ -42,7 +42,7 @@ func convertSource(sourRecord *GEDCOMRecord, conv *ConversionContext) error {
 	var description []string
 	var eventsRecorded []string
 
-	// Extract external IDs (GEDCOM 7.0 EXID tags) and store in properties
+	// The EXID vocabulary mapping selects the property; the shared reader consumes EXID and REFN.
 	if propertyKey, ok := conv.GEDCOMIndex.SourceProperties[GedcomTagExid]; ok {
 		extractExternalIDs(sourRecord, propertyKey, source.Properties)
 	}
@@ -195,6 +195,15 @@ func inferSourceType(title string) string {
 	}
 	if strings.Contains(titleLower, "newspaper") {
 		return SourceTypeNewspaper
+	}
+	// Articles and websites are checked before the broad "will" keyword below,
+	// which would otherwise claim a "William Penn - Wikipedia" article as a
+	// probate record (#1513).
+	if strings.Contains(titleLower, "wikipedia") || strings.Contains(titleLower, "encyclopedia") || strings.Contains(titleLower, "magazine") {
+		return SourceTypeArticle
+	}
+	if strings.Contains(titleLower, "website") || strings.Contains(titleLower, "web page") || strings.Contains(titleLower, "webpage") || strings.Contains(titleLower, "blog") {
+		return SourceTypeWebsite
 	}
 	if strings.Contains(titleLower, "will") || strings.Contains(titleLower, "probate") {
 		return SourceTypeProbate
