@@ -72,7 +72,8 @@ const config = {
   // Exclude vendored markdown so the build (and sitemap) only indexes our own
   // pages. Specifically:
   // - node_modules: vendored deps.
-  // - CLAUDE.md files anywhere: internal Claude collaboration guides; the
+  // - AGENTS.md and CLAUDE.md files anywhere: internal agent instruction files
+  //   (each CLAUDE.md is a one-line import stub of the AGENTS.md beside it); the
   //   `feedback_no_claude_artifacts` rule keeps these out of public output.
   // - docs/superpowers/**: internal planning and implementation specs that
   //   should not be served from the public site.
@@ -88,6 +89,7 @@ const config = {
   //   its README links to .claude/ files that VitePress doesn't build.
   srcExclude: [
     '**/node_modules/**',
+    '**/AGENTS.md',
     '**/CLAUDE.md',
     'docs/superpowers/**',
     'docs/gedcom-spec/**',
@@ -378,7 +380,10 @@ const config = {
             { text: 'glx descendants', link: '/cli/glx_descendants' },
             { text: 'glx cite', link: '/cli/glx_cite' },
             { text: 'glx path', link: '/cli/glx_path' },
-            { text: 'glx serve', link: '/cli/glx_serve' }
+            { text: 'glx serve', link: '/cli/glx_serve' },
+            { text: 'glx mcp', link: '/cli/glx_mcp' },
+            { text: 'glx mcp serve', link: '/cli/glx_mcp_serve' },
+            { text: 'MCP research guide', link: '/mcp' }
           ]
         },
         {

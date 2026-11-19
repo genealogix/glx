@@ -513,3 +513,107 @@ func TestAncestorSuggestions_PersonWithAllAncestors(t *testing.T) {
 	}
 	assert.False(t, hasFatherGap, "should not flag gap for person who has parents")
 }
+
+// TestBuildAncestorTree_DuplicateRelationship checks that two relationships
+// recording the same parent-child link draw the parent once (#1506).
+func TestBuildAncestorTree_DuplicateRelationship(t *testing.T) {
+	archive := threeGenArchive()
+	archive.Relationships["rel-father-child-again"] = &glxlib.Relationship{
+		Type: "parent_child",
+		Participants: []glxlib.Participant{
+			{Person: "person-father", Role: "parent"},
+			{Person: "person-child", Role: "child"},
+		},
+	}
+	tc := newTreeContext(archive)
+
+	assert.Len(t, findParents(tc, "person-child"), 2)
+	assert.Len(t, findChildren(tc, "person-father"), 2)
+
+	root := buildAncestorTree(tc, "person-child", 0, 0, make(map[string]bool))
+	require.Len(t, root.Children, 2)
+	assert.Equal(t, "person-father", root.Children[0].PersonID)
+	assert.Equal(t, "person-mother", root.Children[1].PersonID)
+}
+
+// TestDedupeRelatedPersons_AcceptedWins checks that when two copies of one
+// link differ in standing, the collapsed edge is accepted whichever copy
+// comes first (#1506).
+func TestDedupeRelatedPersons_AcceptedWins(t *testing.T) {
+	accepted := treeRelPerson{personID: "person-father", relType: "parent_child"}
+	hypo := treeRelPerson{personID: "person-father", relType: "Parent_Child", hypothetical: true}
+	other := treeRelPerson{personID: "person-mother", relType: "parent_child", hypothetical: true}
+
+	for name, in := range map[string][]treeRelPerson{
+		"hypothetical first": {hypo, other, accepted},
+		"accepted first":     {accepted, other, hypo},
+	} {
+		t.Run(name, func(t *testing.T) {
+			out := dedupeRelatedPersons(in)
+			require.Len(t, out, 2)
+			assert.Equal(t, "person-father", out[0].personID)
+			assert.False(t, out[0].hypothetical)
+			assert.True(t, out[1].hypothetical, "a distinct person keeps its own standing")
+		})
+	}
+
+	both := dedupeRelatedPersons([]treeRelPerson{hypo, hypo})
+	require.Len(t, both, 1)
+	assert.True(t, both[0].hypothetical, "two hypothetical copies stay hypothetical")
+}
+
+// TestDedupeRelatedPersons_GenericBesideSpecific checks that a generic
+// parent_child edge beside a specific one for the same person is drawn once,
+// with the specific type, while two specific types stay apart (#1506).
+func TestDedupeRelatedPersons_GenericBesideSpecific(t *testing.T) {
+	generic := treeRelPerson{personID: "person-father", relType: "parent_child"}
+	bio := treeRelPerson{personID: "person-father", relType: "biological_parent_child"}
+	adoptive := treeRelPerson{personID: "person-father", relType: "adoptive_parent_child"}
+
+	for name, in := range map[string][]treeRelPerson{
+		"generic first":  {generic, bio},
+		"specific first": {bio, generic},
+	} {
+		t.Run(name, func(t *testing.T) {
+			out := dedupeRelatedPersons(in)
+			require.Len(t, out, 1)
+			assert.Equal(t, "biological_parent_child", out[0].relType)
+		})
+	}
+
+	assert.Len(t, dedupeRelatedPersons([]treeRelPerson{bio, adoptive}), 2,
+		"biological and adoptive links are different facts")
+}
+
+// TestDedupeRelatedPersons_StandingDecidesType checks that when an accepted
+// generic parent_child edge meets a hypothetical specific one, the accepted
+// generic type is shown, not the hypothetical specific type, in either order;
+// and that with equal standing the specific type is kept (#1506).
+func TestDedupeRelatedPersons_StandingDecidesType(t *testing.T) {
+	generic := treeRelPerson{personID: "person-father", relType: "parent_child"}
+	hypoBio := treeRelPerson{personID: "person-father", relType: "biological_parent_child", hypothetical: true}
+
+	for name, in := range map[string][]treeRelPerson{
+		"generic first":  {generic, hypoBio},
+		"specific first": {hypoBio, generic},
+	} {
+		t.Run(name, func(t *testing.T) {
+			out := dedupeRelatedPersons(in)
+			require.Len(t, out, 1)
+			assert.Equal(t, "parent_child", out[0].relType)
+			assert.False(t, out[0].hypothetical)
+		})
+	}
+
+	bio := treeRelPerson{personID: "person-father", relType: "biological_parent_child"}
+	for name, in := range map[string][]treeRelPerson{
+		"generic first":  {generic, bio},
+		"specific first": {bio, generic},
+	} {
+		t.Run("tie "+name, func(t *testing.T) {
+			out := dedupeRelatedPersons(in)
+			require.Len(t, out, 1)
+			assert.Equal(t, "biological_parent_child", out[0].relType)
+		})
+	}
+}

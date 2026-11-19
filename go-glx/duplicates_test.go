@@ -61,7 +61,7 @@ func TestScoreNameSimilarity_SurnameMatchGivenDifferent(t *testing.T) {
 	a := &Person{Properties: map[string]any{"name": "John Smith"}}
 	b := &Person{Properties: map[string]any{"name": "James Smith"}}
 	score, _, hasData := scoreNameSimilarity(a, b)
-	assert.Greater(t, score, 0.5, "same surname should give partial credit")
+	assert.InDelta(t, 0.5, score, 1e-12, "unrelated given names receive no edit-distance credit")
 	assert.Less(t, score, 1.0, "different given name should not be perfect")
 	assert.True(t, hasData)
 }
@@ -226,7 +226,7 @@ func TestScorePhoneticSimilarity_CompoundInitialConstraints(t *testing.T) {
 		{"compatible leading initial", "J. Georg", "Johann Georg", true, 1},
 		{"compatible middle initial", "John W.", "John William Alexander", true, 1},
 		{"Unicode initial", "É. Marie", "Émilie Marie", true, 1},
-		{"full-word Soundex normalization unchanged", "İsmail", "Ismail", false, 0.5},
+		{"full-word Unicode folding", "İsmail", "Ismail", true, 1},
 		{"call name", "Georg", "Johann Georg", true, 1},
 		{"hyphenated name", "Anna-Maria", "Anna Maria", true, 1},
 		{"later full-word alignment", "J. John", "John J. John", true, 1},
@@ -522,6 +522,10 @@ func TestScoreSharedEvents_CommonEvent(t *testing.T) {
 		personEvents: map[string][]string{
 			"person-a": {"event-census-1860", "event-birth-a"},
 			"person-b": {"event-census-1860", "event-birth-b"},
+		},
+		personEventRoles: map[string]map[string]map[string]bool{
+			"person-a": {"event-census-1860": {"principal": true}, "event-birth-a": {"principal": true}},
+			"person-b": {"event-census-1860": {"principal": true}, "event-birth-b": {"principal": true}},
 		},
 	}
 	score, detail, hasData := scoreSharedEvents("person-a", "person-b", idx)

@@ -114,7 +114,7 @@ A typed record in a GENEALOGIX archive representing a person, event, place, rela
 
 ### Entity ID
 
-A unique identifier for each entity, used as the YAML map key. Format: 1-64 alphanumeric characters with hyphens. Can be descriptive (john-smith-1850) or random (a1b2c3d4).
+An identifier unique within its entity type, used as the YAML map key. Format: 1-64 alphanumeric characters with hyphens. Can be descriptive (john-smith-1850) or random (a1b2c3d4).
 
 > **See Also:** [ID (Identifier)](#id-identifier), [ID Format Standards](3-archive-organization.md#id-format-standards)
 
@@ -210,7 +210,7 @@ A validation error that must be fixed before the archive is considered valid. Ex
 
 ### ID (Identifier)
 
-A unique identifier for each entity, used as the map key in YAML. Format: 1-64 alphanumeric characters with hyphens. Compared case-insensitively, so `Person-A` and `person-a` collide and only one may exist.
+An identifier unique within its entity type, used as the map key in YAML. Format: 1-64 alphanumeric characters with hyphens. Compared case-insensitively, so two persons `Person-A` and `person-a` collide and only one may exist; entities of different types may share an ID.
 
 **Examples:**
 

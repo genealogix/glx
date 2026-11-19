@@ -21,16 +21,20 @@ import (
 	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
+	"github.com/genealogix/glx/go-glx/glxdate"
 )
 
 // timelineEntry represents a single row in the timeline output.
 type timelineEntry struct {
-	Date     string // Raw date string for display
-	SortKey  string // Normalized string for chronological sorting
-	Label    string // e.g., "Birth", "Marriage", "Birth of child (Jane)"
-	Detail   string // Place or other context
-	EventID  string // For deduplication
-	IsFamily bool   // Whether this came from relationship traversal
+	Date         string `json:"date"`      // Raw date string for display
+	SortKey      string `json:"sort_key"`  // Normalized string for chronological sorting
+	Label        string `json:"label"`     // e.g., "Birth", "Marriage", "Birth of child (Jane)"
+	Detail       string `json:"detail"`    // Place or other context
+	EventID      string `json:"event_id"`  // For deduplication
+	IsFamily     bool   `json:"is_family"` // Whether this came from relationship traversal
+	EventType    string `json:"event_type,omitempty"`
+	EventSubtype string `json:"event_subtype,omitempty"`
+	Title        string `json:"title,omitempty"`
 }
 
 // familyRelationshipTypes defines which relationship types count as "family"
@@ -49,10 +53,13 @@ var familyRelationshipTypes = map[string]bool{
 }
 
 // showTimeline loads an archive and displays a chronological timeline for a person.
-func showTimeline(archivePath, personQuery string, includeFamily bool) error {
+func showTimeline(archivePath, personQuery string, includeFamily bool, jsonOutput ...bool) error {
 	archive, err := loadArchiveForTimeline(archivePath)
 	if err != nil {
 		return err
+	}
+	if explorationJSONEnabled(jsonOutput) {
+		return printExplorationJSON(buildTimelineJSON(archive, personQuery, includeFamily))
 	}
 
 	personID, _, err := findPersonForTimeline(archive, personQuery)
@@ -165,18 +172,23 @@ func collectDirectEvents(personID string, archive *glxlib.GLXFile) []timelineEnt
 
 		date := string(event.Date)
 		label := formatEventTypeLabel(event.Type)
+		subtype, _ := event.Properties["event_subtype"].(string)
+		if strings.TrimSpace(subtype) != "" {
+			label += ": " + subtype
+		}
 		if !participation.OwnRecord {
 			label = glxlib.AppearanceLabel(event, archive) + " (" + role + ")"
 		}
 		detail := timelineResolvePlaceName(event.PlaceID, archive)
 
 		entries = append(entries, timelineEntry{
-			Date:     date,
-			SortKey:  dateSortKey(date),
-			Label:    label,
-			Detail:   detail,
-			EventID:  id,
-			IsFamily: false,
+			Date:      date,
+			SortKey:   dateSortKey(date),
+			Label:     label,
+			Detail:    detail,
+			EventID:   id,
+			IsFamily:  false,
+			EventType: event.Type, EventSubtype: subtype, Title: event.Title,
 		})
 	}
 
@@ -430,15 +442,17 @@ func relatedPersonTimelineEvents(rel relatedPerson, archive *glxlib.GLXFile) []t
 
 		date := string(event.Date)
 		label := fmt.Sprintf(labelTemplate, rel.Name)
+		subtype, _ := event.Properties["event_subtype"].(string)
 		detail := timelineResolvePlaceName(event.PlaceID, archive)
 
 		entries = append(entries, timelineEntry{
-			Date:     date,
-			SortKey:  dateSortKey(date),
-			Label:    label,
-			Detail:   detail,
-			EventID:  id,
-			IsFamily: true,
+			Date:      date,
+			SortKey:   dateSortKey(date),
+			Label:     label,
+			Detail:    detail,
+			EventID:   id,
+			IsFamily:  true,
+			EventType: event.Type, EventSubtype: subtype, Title: event.Title,
 		})
 	}
 
@@ -451,18 +465,20 @@ func deduplicateEntries(direct, family []timelineEntry) []timelineEntry {
 	seen := make(map[string]bool)
 	result := make([]timelineEntry, 0, len(direct)+len(family))
 
-	for _, e := range direct {
+	for i := range direct {
+		e := &direct[i]
 		if e.EventID != "" {
 			seen[e.EventID] = true
 		}
-		result = append(result, e)
+		result = append(result, *e)
 	}
 
-	for _, e := range family {
+	for i := range family {
+		e := &family[i]
 		if e.EventID != "" && seen[e.EventID] {
 			continue
 		}
-		result = append(result, e)
+		result = append(result, *e)
 	}
 
 	return result
@@ -475,16 +491,12 @@ func sortTimelineEntries(entries []timelineEntry) {
 	})
 }
 
-// dateSortKey returns a string that orders GLX dates chronologically by
-// their start (for a TO range, the end). It is built from the parsed date,
-// so qualifiers, calendar prefixes, tolerated spellings, and the BCE era
-// all sort where glx validate says they belong. A CE year is its 5-digit
-// form ("01850", "00800"), wide enough for the five-digit years glxdate
-// accepts in Hebrew and extension-calendar bodies, so "10000" never sorts
-// before "9999"; a BCE year is "-" followed by its complement so earlier
-// years sort first ("-99899" for 100 BCE, "-99955" for 44 BCE, both before
-// any CE key). Month and day follow when known. Dates with no determinable
-// year return "\xff" and sort last.
+// dateSortKey orders Gregorian and Julian observations on one day axis. A
+// BEF bound sorts before the date it bounds; an AFT observation sorts after
+// its written precision. A calendar with no conversion to that axis cannot be
+// placed among those dates, so its observations follow every Gregorian and
+// Julian one, ordered among themselves by their own civil date. An undated
+// observation sorts last.
 func dateSortKey(dateStr string) string {
 	d, _ := glxlib.DateString(dateStr).Parse()
 	year := d.Year()
@@ -492,9 +504,30 @@ func dateSortKey(dateStr string) string {
 		return "\xff"
 	}
 
-	key := fmt.Sprintf("%05d", year)
+	point := d.Start()
+	if d.IsOpenStart() {
+		point = d.End()
+	}
+	bounds := point.ChronologyBounds(0)
+	if bounds.Known {
+		rank := 1
+		sortPoint := bounds.Outer.Start
+		switch d.Qualifier() {
+		case glxdate.QualifierBefore:
+			sortPoint = bounds.Outer.End
+			rank = 0
+		case glxdate.QualifierAfter:
+			bounds = d.ChronologyBounds(0)
+			sortPoint = bounds.Outer.Start
+			rank = 0 // after the entire written day/month/year, before the next observation
+		}
+
+		return fmt.Sprintf("%s%09d:%d", dateSortChronologyPrefix, sortPoint+dateSortDayOffset, rank)
+	}
+
+	key := dateSortCivilPrefix + fmt.Sprintf("%05d", year)
 	if year < 0 {
-		key = fmt.Sprintf("-%05d", dateSortKeyMaxYear+year)
+		key = dateSortCivilPrefix + fmt.Sprintf("-%05d", dateSortKeyMaxYear+year)
 	}
 	if month, ok := d.Month(); ok {
 		key += fmt.Sprintf("-%02d", month)
@@ -506,8 +539,19 @@ func dateSortKey(dateStr string) string {
 	return key
 }
 
-// dateSortKeyMaxYear is the largest year a five-digit key can hold; BCE keys
-// count down from it so that 100 BCE sorts before 44 BCE.
+// dateSortChronologyPrefix and dateSortCivilPrefix keep the two key spaces
+// apart: a Julian-day number and a civil year in another calendar are not
+// comparable as strings. Both sort before the undated key "ÿ".
+const (
+	dateSortChronologyPrefix = "0"
+	dateSortCivilPrefix      = "1"
+)
+
+// dateSortDayOffset keeps supported BCE and CE Julian-day keys positive.
+const dateSortDayOffset = 100000000
+
+// dateSortKeyMaxYear bounds the civil-key fallback for unsupported calendars;
+// its BCE keys count down so that 100 BCE sorts before 44 BCE.
 const dateSortKeyMaxYear = 99999
 
 // formatEventTypeLabel converts an event type string to a display label.
@@ -547,7 +591,8 @@ func printTimeline(personID, personName string, entries []timelineEntry) {
 
 	// Find longest label for alignment
 	maxLabel := 0
-	for _, e := range entries {
+	for i := range entries {
+		e := &entries[i]
 		if len(e.Label) > maxLabel {
 			maxLabel = len(e.Label)
 		}
@@ -560,9 +605,10 @@ func printTimeline(personID, personName string, entries []timelineEntry) {
 
 	var undated []timelineEntry
 
-	for _, e := range entries {
+	for i := range entries {
+		e := &entries[i]
 		if e.SortKey == "\xff" {
-			undated = append(undated, e)
+			undated = append(undated, *e)
 
 			continue
 		}
@@ -579,7 +625,8 @@ func printTimeline(personID, personName string, entries []timelineEntry) {
 	if len(undated) > 0 {
 		fmt.Println()
 		fmt.Println("  Undated:")
-		for _, e := range undated {
+		for i := range undated {
+			e := &undated[i]
 			date := displayDate(e.Date)
 			if e.Detail != "" {
 				fmt.Printf("  %-18s  %-*s  %s\n", date, maxLabel, e.Label, e.Detail)

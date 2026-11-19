@@ -47,10 +47,13 @@ func loadArchiveForCite(path string) (*glxlib.GLXFile, error) {
 // showCitation generates and prints a formatted citation string for the given
 // citation ID. It assembles the citation from structured fields: source title,
 // source type, repository name, URL, and accessed date.
-func showCitation(archivePath, citationID string) error {
+func showCitation(archivePath, citationID string, jsonOutput ...bool) error {
 	archive, err := loadArchiveForCite(archivePath)
 	if err != nil {
 		return err
+	}
+	if explorationJSONEnabled(jsonOutput) {
+		return printExplorationJSON(buildCitationJSON(archive, citationID, false))
 	}
 
 	cit, ok := archive.Citations[citationID]
@@ -66,10 +69,13 @@ func showCitation(archivePath, citationID string) error {
 
 // showAllCitations generates formatted citation strings for all citations
 // in the archive.
-func showAllCitations(archivePath string) error {
+func showAllCitations(archivePath string, jsonOutput ...bool) error {
 	archive, err := loadArchiveForCite(archivePath)
 	if err != nil {
 		return err
+	}
+	if explorationJSONEnabled(jsonOutput) {
+		return printExplorationJSON(buildCitationJSON(archive, "", true))
 	}
 
 	ids := sortedKeys(archive.Citations)

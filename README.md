@@ -91,6 +91,7 @@ The `glx` CLI groups its commands into archive management, import/export, explor
 - [`glx cite`](docs/cli/glx_cite.md) — formatted citation text
 - [`glx path`](docs/cli/glx_path.md) — shortest relationship path between two people
 - [`glx serve`](docs/cli/glx_serve.md) — local browser-based read-only archive viewer
+- [`glx mcp`](docs/cli/glx_mcp.md) — read-only research tools for MCP-compatible AI clients
 
 ### Data Entry
 

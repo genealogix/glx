@@ -870,3 +870,22 @@ func TestPreflightFileOps_AllowsSymlinkedArchiveRoot(t *testing.T) {
 
 	require.NoError(t, err)
 }
+
+// Each file is renamed as a fragment holding no vocabulary, so which
+// properties are references comes from the whole archive: a declared
+// reference property is rewritten, and free text equal to the old ID is not
+// (#1440).
+func TestRenameEntities_RewritesOnlyTypedPropertyReferences(t *testing.T) {
+	root := t.TempDir()
+	writeSkipTestFile(t, filepath.Join(root, "places", "place-old.glx"), "places:\n  place-old:\n    name: Leeds\n")
+	writeSkipTestFile(t, filepath.Join(root, "persons", "person-1.glx"),
+		"persons:\n  person-1:\n    properties:\n      residence: place-old\n      occupation: place-old\n")
+
+	require.NoError(t, renameEntities(root, "place-old", "place-leeds", false))
+
+	archive, _, err := LoadArchiveWithOptions(root, false)
+	require.NoError(t, err)
+	properties := archive.Persons["person-1"].Properties
+	assert.Equal(t, "place-leeds", properties["residence"], "residence is a standard reference to places")
+	assert.Equal(t, "place-old", properties["occupation"], "occupation is free text")
+}

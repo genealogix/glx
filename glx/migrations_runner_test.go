@@ -525,3 +525,59 @@ func TestShowMigrations_FamilyText(t *testing.T) {
 		t.Errorf("family timeline missing from output:\n%s", output)
 	}
 }
+
+func TestMigrations_AttendanceDoesNotCreateMovements(t *testing.T) {
+	for _, role := range []string{"godparent", "sponsor", "witness", "informant", "officiant", "custom_visitor", "parent", " Parent ", "father"} {
+		t.Run(role, func(t *testing.T) {
+			archive := &glxlib.GLXFile{
+				Persons: map[string]*glxlib.Person{"p": {Properties: map[string]any{"name": "Elisabeth Roth"}}},
+				Places:  map[string]*glxlib.Place{"home": {Name: "Kirch-Göns", Type: "village"}, "away": {Name: "Pohl-Göns", Type: "village"}},
+				Events: map[string]*glxlib.Event{
+					"birth": {Type: "birth", Date: "1734", PlaceID: "home", Participants: []glxlib.Participant{{Person: "p", Role: "principal"}}},
+					"visit": {Type: "baptism", Date: "1768-05-15", PlaceID: "away", Participants: []glxlib.Participant{{Person: "p", Role: role}}},
+					"death": {Type: "death", Date: "1803", PlaceID: "home", Participants: []glxlib.Participant{{Person: "p", Role: "principal"}}},
+				},
+			}
+			entries := collectMigrationEntries("p", archive)
+			if len(entries) != 3 {
+				t.Fatalf("entries: %+v", entries)
+			}
+			movements := computeMovements(entries)
+			if isParentRole(role) {
+				if len(movements) != 2 {
+					t.Fatalf("parent at birth remains evidence: %+v", movements)
+				}
+
+				return
+			}
+			if len(movements) != 0 {
+				t.Fatalf("visit created moves: %+v", movements)
+			}
+			if !entries[1].Excluded || !strings.Contains(entries[1].Note, "visit") {
+				t.Fatalf("unmarked visit: %+v", entries[1])
+			}
+			if line := formatMigrationEntryLine(&entries[1], 20); !strings.Contains(line, "as "+role) {
+				t.Fatalf("missing role: %s", line)
+			}
+		})
+	}
+}
+
+func TestMigrations_DeclaredPresenceIsNotAVisit(t *testing.T) {
+	yes := true
+	archive := &glxlib.GLXFile{
+		Persons:          map[string]*glxlib.Person{"p": {Properties: map[string]any{"name": "Lewis"}}},
+		Places:           map[string]*glxlib.Place{"home": {Name: "Kirch-Göns", Type: "village"}, "away": {Name: "Pohl-Göns", Type: "village"}},
+		ParticipantRoles: map[string]*glxlib.VocabularyEntry{"witness": {ImpliesPresence: &yes}},
+		Events: map[string]*glxlib.Event{
+			"birth": {Type: "birth", Date: "1734", PlaceID: "home", Participants: []glxlib.Participant{{Person: "p", Role: "principal"}}},
+			"visit": {Type: "marriage", Date: "1768-05-15", PlaceID: "away", Participants: []glxlib.Participant{{Person: "p", Role: "witness"}}},
+		},
+	}
+	entries := collectMigrationEntries("p", archive)
+	for i := range entries {
+		if entries[i].Role == "witness" && entries[i].Excluded {
+			t.Fatalf("a role the archive declares present was discounted as a visit: %+v", entries[i])
+		}
+	}
+}

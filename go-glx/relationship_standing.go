@@ -15,6 +15,7 @@
 package glx
 
 import (
+	"context"
 	"sort"
 	"strings"
 )
@@ -146,21 +147,46 @@ type RelationshipStandingIndex struct {
 
 // NewRelationshipStandingIndex indexes the archive's relationship assertions.
 func NewRelationshipStandingIndex(archive *GLXFile) *RelationshipStandingIndex {
+	index, _ := buildRelationshipStandingIndex(archive, func() error { return nil })
+
+	return index
+}
+
+// NewRelationshipStandingIndexContext builds the same index while checking
+// cancellation during assertion collection. Canceled calls return no partial index.
+func NewRelationshipStandingIndexContext(ctx context.Context, archive *GLXFile) (*RelationshipStandingIndex, error) {
+	return buildRelationshipStandingIndex(archive, ctx.Err)
+}
+
+// buildRelationshipStandingIndex indexes the archive's relationship
+// assertions, calling canceled between steps and returning no partial index
+// once it reports an error. The synchronous constructor passes a check that
+// never fails, so it needs no context of its own.
+func buildRelationshipStandingIndex(archive *GLXFile, canceled func() error) (*RelationshipStandingIndex, error) {
+	if err := canceled(); err != nil {
+		return nil, err
+	}
 	idx := &RelationshipStandingIndex{
 		whole:       map[string][]*Assertion{},
 		participant: map[string]map[string][]*Assertion{},
 	}
 	if archive == nil {
-		return idx
+		return idx, nil
 	}
 
 	ids := make([]string, 0, len(archive.Assertions))
 	for id := range archive.Assertions {
+		if err := canceled(); err != nil {
+			return nil, err
+		}
 		ids = append(ids, id)
 	}
 	sort.Strings(ids)
 
 	for _, id := range ids {
+		if err := canceled(); err != nil {
+			return nil, err
+		}
 		a := archive.Assertions[id]
 		if a == nil || a.Subject.Relationship == "" || a.Property != "" {
 			continue
@@ -179,7 +205,11 @@ func NewRelationshipStandingIndex(archive *GLXFile) *RelationshipStandingIndex {
 		idx.whole[relID] = append(idx.whole[relID], a)
 	}
 
-	return idx
+	if err := canceled(); err != nil {
+		return nil, err
+	}
+
+	return idx, nil
 }
 
 // Relationship returns the standing of a relationship as a whole: its
@@ -281,55 +311,105 @@ type ParentChildLink struct {
 // and standing. Disproven edges are included; callers decide whether to drop
 // them or list them as excluded alternatives.
 func ParentChildLinks(archive *GLXFile, standings *RelationshipStandingIndex) []ParentChildLink {
+	links, _ := buildParentChildLinks(archive, standings, func() error { return nil })
+
+	return links
+}
+
+// ParentChildLinksContext returns the same ordered links as ParentChildLinks,
+// checking cancellation while constructing the standing index and graph.
+// Canceled calls return no partial graph.
+func ParentChildLinksContext(ctx context.Context, archive *GLXFile, standings *RelationshipStandingIndex) ([]ParentChildLink, error) {
+	return buildParentChildLinks(archive, standings, ctx.Err)
+}
+
+// buildParentChildLinks collects the links, calling canceled between steps
+// and returning no partial graph once it reports an error. The synchronous
+// ParentChildLinks passes a check that never fails, so it needs no context.
+func buildParentChildLinks(archive *GLXFile, standings *RelationshipStandingIndex, canceled func() error) ([]ParentChildLink, error) {
+	if err := canceled(); err != nil {
+		return nil, err
+	}
 	if archive == nil {
-		return nil
+		return nil, nil
 	}
 	if standings == nil {
-		standings = NewRelationshipStandingIndex(archive)
+		var err error
+		standings, err = buildRelationshipStandingIndex(archive, canceled)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	relIDs := make([]string, 0, len(archive.Relationships))
 	for id := range archive.Relationships {
+		if err := canceled(); err != nil {
+			return nil, err
+		}
 		relIDs = append(relIDs, id)
 	}
 	sort.Strings(relIDs)
 
 	var links []ParentChildLink
 	for _, relID := range relIDs {
+		if err := canceled(); err != nil {
+			return nil, err
+		}
 		rel := archive.Relationships[relID]
 		if rel == nil || !IsParentChildRelationshipType(rel.Type) {
 			continue
 		}
-		relIsStep := strings.EqualFold(rel.Type, RelationshipTypeStepParent)
-
-		var parents, children []Participant
-		for _, p := range rel.Participants {
-			if p.Person == "" {
-				continue
-			}
-			switch {
-			case IsParentSideRole(p.Role):
-				parents = append(parents, p)
-			case IsChildSideRole(p.Role):
-				children = append(children, p)
-			}
+		items, err := relationshipParentChildLinks(relID, rel, standings, canceled)
+		if err != nil {
+			return nil, err
 		}
+		links = append(links, items...)
+	}
 
-		for _, c := range children {
-			for _, p := range parents {
-				links = append(links, ParentChildLink{
-					RelationshipID:   relID,
-					RelationshipType: rel.Type,
-					ParentID:         p.Person,
-					ChildID:          c.Person,
-					Step:             relIsStep || IsStepRole(p.Role) || IsStepRole(c.Role),
-					Standing:         standings.Link(relID, p.Person, c.Person),
-				})
-			}
+	if err := canceled(); err != nil {
+		return nil, err
+	}
+
+	return links, nil
+}
+
+func relationshipParentChildLinks(relID string, rel *Relationship, standings *RelationshipStandingIndex, canceled func() error) ([]ParentChildLink, error) {
+	var links []ParentChildLink
+	relIsStep := strings.EqualFold(rel.Type, RelationshipTypeStepParent)
+
+	var parents, children []Participant
+	for _, p := range rel.Participants {
+		if err := canceled(); err != nil {
+			return nil, err
+		}
+		if p.Person == "" {
+			continue
+		}
+		switch {
+		case IsParentSideRole(p.Role):
+			parents = append(parents, p)
+		case IsChildSideRole(p.Role):
+			children = append(children, p)
 		}
 	}
 
-	return links
+	for _, c := range children {
+		for _, p := range parents {
+			if err := canceled(); err != nil {
+				return nil, err
+			}
+			links = append(links, ParentChildLink{
+				RelationshipID:   relID,
+				RelationshipType: rel.Type,
+				ParentID:         p.Person,
+				ChildID:          c.Person,
+				Step:             relIsStep || IsStepRole(p.Role) || IsStepRole(c.Role),
+				Standing:         standings.Link(relID, p.Person, c.Person),
+			})
+		}
+	}
+
+	return links, nil
 }
 
 // IsParentSideRole reports whether a participant role puts the person on the

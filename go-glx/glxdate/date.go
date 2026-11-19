@@ -434,7 +434,7 @@ type renderMode uint8
 const (
 	renderGLX       renderMode = iota // canonical GLX: "JULIAN 1850-03-15", "0044 BCE"
 	renderGEDCOM7                     // GEDCOM 7: calendar tag before each date, "JULIAN 15 MAR 1850", "0044 BCE"
-	renderGEDCOM551                   // GEDCOM 5.5.1: calendar escape first, "@#DJULIAN@ 15 MAR 1850", "0044 B.C."
+	renderGEDCOM551                   // GEDCOM 5.5.1: calendar escape before each date, "@#DJULIAN@ 15 MAR 1850", "0044 B.C."
 )
 
 // render writes the date in GLX form, or in GEDCOM spelling (calendar escape
@@ -450,9 +450,8 @@ func (v *dateValue) render(mode renderMode) string {
 		start, end = v.start.render(mode), v.end.render(mode)
 	}
 
-	// GLX and GEDCOM 5.5.1 put the calendar first ("JULIAN ABT 1731",
-	// "@#DJULIAN@ ABT 1731"); GEDCOM 7 puts it before each date, after the
-	// keyword ("ABT JULIAN 1731", "BET JULIAN 1700 AND JULIAN 1710").
+	// GLX puts the calendar first; both GEDCOM grammars put it inside
+	// each endpoint, after the qualifier or range keyword.
 	switch name := v.prefix(); {
 	case name == "":
 	case mode == renderGEDCOM7:
@@ -461,7 +460,10 @@ func (v *dateValue) render(mode renderMode) string {
 			end = name + " " + end
 		}
 	case mode == renderGEDCOM551:
-		b.WriteString(gedcomEscape551(name) + " ")
+		start = gedcomEscape551(name) + " " + start
+		if hasEnd {
+			end = gedcomEscape551(name) + " " + end
+		}
 	default:
 		b.WriteString(name + " ")
 	}

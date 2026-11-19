@@ -67,6 +67,7 @@ type migrationEntry struct {
 
 	sortKey  string   // chronological sort key; not serialized
 	location bool     // a residence value: an explicit statement of where the person lived
+	visit    bool     // attendance at someone else's record: places the visitor, not their residence
 	path     []string // normalized place hierarchy, outermost first, below the country/continent level
 }
 
@@ -235,6 +236,10 @@ func collectMigrationEntries(personID string, archive *glxlib.GLXFile) []migrati
 			// parish says nothing of where the father lived (#1370).
 			entry.Excluded = true
 			entry.Note = fmt.Sprintf("role %q on a %s places the deceased, not this person", role, strings.ToLower(formatEventTypeLabel(event.Type)))
+		case ok && !participation.OwnRecord && !participation.DeclaredPresent && !migrationParentAtBirth(event, personID):
+			// Excluded after residence periods are applied, so a dated
+			// residence that already explains the appearance keeps its note.
+			entry.visit = true
 		}
 		entries = append(entries, entry)
 	}
@@ -245,6 +250,12 @@ func collectMigrationEntries(personID string, archive *glxlib.GLXFile) []migrati
 	}
 
 	applyResidencePeriods(entries)
+	for i := range entries {
+		if e := &entries[i]; e.visit && !e.Excluded {
+			e.Excluded = true
+			e.Note = fmt.Sprintf("attendance as %q shows a visit, not residence", e.Role)
+		}
+	}
 	entries = dedupeMigrationEntries(entries)
 	sort.SliceStable(entries, func(i, j int) bool {
 		return entries[i].sortKey < entries[j].sortKey
@@ -281,12 +292,29 @@ var migrationDeathEventTypes = map[string]bool{
 	"funeral":                 true,
 }
 
+// birthRecordEventTypes are the event types that record a child's birth or
+// its rite, where the parents are named as part of the record.
+var birthRecordEventTypes = map[string]bool{
+	glxlib.EventTypeBirth:       true,
+	glxlib.EventTypeBaptism:     true,
+	glxlib.EventTypeChristening: true,
+}
+
 // migrationParentRoles are the roles that name a person as the parent of an
 // event's principal.
 var migrationParentRoles = map[string]bool{
 	glxlib.ParticipantRoleParent: true,
 	"father":                     true,
 	"mother":                     true,
+}
+
+// isParentRole reports whether a role names the person as a parent of the
+// record's principal: a parent-child relationship role (parent,
+// adoptive_parent, ...) or a register's father/mother.
+func isParentRole(role string) bool {
+	role = strings.ToLower(strings.TrimSpace(role))
+
+	return glxlib.IsParentSideRole(role) || migrationParentRoles[role]
 }
 
 // isParentAtDeathRecord reports whether personID takes part in a death-type
@@ -876,7 +904,11 @@ func printMigrationReportText(io *IOStreams, report *migrationReport) {
 // formatMigrationEntryLine renders one timeline row. An observation left out
 // of movement detection carries the reason after its label.
 func formatMigrationEntryLine(e *migrationEntry, placeWidth int) string {
-	line := fmt.Sprintf("  %-18s  %s  (%s)", displayDate(e.Date), padPlaceColumn(e.Place, placeWidth), e.Label)
+	label := e.Label
+	if e.visit && e.Role != "" {
+		label += ", as " + e.Role
+	}
+	line := fmt.Sprintf("  %-18s  %s  (%s)", displayDate(e.Date), padPlaceColumn(e.Place, placeWidth), label)
 	if e.Excluded {
 		line += " [not counted as a move: " + e.Note + "]"
 	}
@@ -934,4 +966,19 @@ func printMigrationPatternText(io *IOStreams, report migrationPatternReport) {
 	}
 
 	io.Printf("\n  %d %s\n\n", len(report.Matches), pluralize(len(report.Matches), "match", "matches"))
+}
+
+// A parent at a child's birth/baptism remains evidence of the household's
+// location. Other attendance roles place the visitor, not their residence.
+func migrationParentAtBirth(event *glxlib.Event, personID string) bool {
+	if !birthRecordEventTypes[strings.ToLower(strings.TrimSpace(event.Type))] {
+		return false
+	}
+	for _, participant := range event.Participants {
+		if participant.Person == personID && isParentRole(participant.Role) {
+			return true
+		}
+	}
+
+	return false
 }
