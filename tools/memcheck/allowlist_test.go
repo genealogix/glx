@@ -35,17 +35,17 @@ func TestParseAllowlistEmptyAndPresent(t *testing.T) {
 func TestAllowlistPartition(t *testing.T) {
 	a := &allowlist{entries: []allowEntry{
 		{Token: "a/b.go", Reason: "any-file/kind"},
-		{Token: "x/y.go", File: "go-glx/CLAUDE.md", Reason: "scoped to one file"},
+		{Token: "x/y.go", File: "go-glx/AGENTS.md", Reason: "scoped to one file"},
 		{Token: "make foo", Kind: "unknown-make-target", Reason: "scoped to kind"},
 	}}
 
 	findings := []finding{
-		{File: "CLAUDE.md", Token: "a/b.go", Kind: kindPath},            // suppressed (token-only)
-		{File: "CLAUDE.md", Token: "x/y.go", Kind: kindPath},            // NOT suppressed (wrong file)
-		{File: "go-glx/CLAUDE.md", Token: "x/y.go", Kind: kindPath},     // suppressed (file matches)
-		{File: "CLAUDE.md", Token: "make foo", Kind: kindMakeTarget},    // suppressed (kind matches)
-		{File: "CLAUDE.md", Token: "make foo", Kind: kindPath},          // NOT suppressed (wrong kind)
-		{File: "CLAUDE.md", Token: "untouched.go/x.go", Kind: kindPath}, // NOT suppressed (no entry)
+		{File: "AGENTS.md", Token: "a/b.go", Kind: kindPath},            // suppressed (token-only)
+		{File: "AGENTS.md", Token: "x/y.go", Kind: kindPath},            // NOT suppressed (wrong file)
+		{File: "go-glx/AGENTS.md", Token: "x/y.go", Kind: kindPath},     // suppressed (file matches)
+		{File: "AGENTS.md", Token: "make foo", Kind: kindMakeTarget},    // suppressed (kind matches)
+		{File: "AGENTS.md", Token: "make foo", Kind: kindPath},          // NOT suppressed (wrong kind)
+		{File: "AGENTS.md", Token: "untouched.go/x.go", Kind: kindPath}, // NOT suppressed (no entry)
 	}
 
 	surviving, suppressed := a.partition(findings)
