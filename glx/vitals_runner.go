@@ -24,15 +24,18 @@ import (
 
 // vitalRecord holds one row in the vitals output.
 type vitalRecord struct {
-	Label string
-	Value string
+	Label string `json:"label"`
+	Value string `json:"value"`
 }
 
 // showVitals loads an archive and displays vitals for a person.
-func showVitals(archivePath, personQuery string) error {
+func showVitals(archivePath, personQuery string, jsonOutput ...bool) error {
 	archive, err := loadArchiveForVitals(archivePath)
 	if err != nil {
 		return err
+	}
+	if explorationJSONEnabled(jsonOutput) {
+		return printExplorationJSON(buildVitalsJSON(archive, personQuery))
 	}
 
 	personID, person, err := findPerson(archive, personQuery)
@@ -168,7 +171,7 @@ func collectVitals(personID string, person *glxlib.Person, archive *glxlib.GLXFi
 func findEventByType(personID, eventType string, eventIDs []string, archive *glxlib.GLXFile) string {
 	for _, id := range eventIDs {
 		event := archive.Events[id]
-		if !strings.EqualFold(event.Type, eventType) {
+		if event == nil || !strings.EqualFold(event.Type, eventType) {
 			continue
 		}
 		if !isPrincipalParticipant(personID, event) {
@@ -184,6 +187,9 @@ func findEventByType(personID, eventType string, eventIDs []string, archive *glx
 // isPrincipalParticipant checks if a person is a principal/subject participant.
 // Only matches principal, subject, or empty roles — excludes witnesses, informants, etc.
 func isPrincipalParticipant(personID string, event *glxlib.Event) bool {
+	if event == nil {
+		return false
+	}
 	for _, p := range event.Participants {
 		if p.Person == personID && (p.Role == glxlib.ParticipantRolePrincipal || p.Role == glxlib.ParticipantRoleSubject || p.Role == "") {
 			return true

@@ -250,6 +250,7 @@ func init() {
 	rootCmd.AddCommand(publishCmd)
 	rootCmd.AddCommand(serveCmd)
 	rootCmd.AddCommand(cacheCmd)
+	rootCmd.AddCommand(mcpCmd)
 	rootCmd.AddCommand(docsCmd)
 }
 
@@ -590,6 +591,9 @@ func init() {
 }
 
 func runValidate(_ *cobra.Command, args []string) error {
+	if validateJSON {
+		return showValidationJSON(args, validateReport)
+	}
 	if validateStdin && validateReport {
 		return errStdinReportExclusive
 	}
@@ -736,6 +740,9 @@ func runPlaces(_ *cobra.Command, args []string) error {
 		path = args[0]
 	}
 
+	if placesJSON {
+		return showPlacesJSON(path)
+	}
 	return analyzePlaces(path)
 }
 
@@ -840,6 +847,7 @@ func init() {
 func runQuery(_ *cobra.Command, args []string) error {
 	return queryEntities(glxlib.EntityType(args[0]), &queryOpts{
 		Archive:    queryArchive,
+		JSON:       queryJSON,
 		Name:       queryName,
 		Phonetic:   queryPhonetic,
 		BornBefore: queryBornBefore,
@@ -898,6 +906,9 @@ func runStats(_ *cobra.Command, args []string) error {
 		path = args[0]
 	}
 
+	if statsJSON {
+		return showStatsJSON(path)
+	}
 	return showStats(path)
 }
 
@@ -936,10 +947,10 @@ func init() {
 
 func runCite(_ *cobra.Command, args []string) error {
 	if len(args) == 1 {
-		return showCitation(citeArchive, args[0])
+		return showCitation(citeArchive, args[0], citeJSON)
 	}
 
-	return showAllCitations(citeArchive)
+	return showAllCitations(citeArchive, citeJSON)
 }
 
 // Ancestors Command
@@ -979,7 +990,7 @@ func init() {
 }
 
 func runAncestors(_ *cobra.Command, args []string) error {
-	return showAncestors(ancestorsArchive, args[0], ancestorsMaxGen)
+	return showAncestors(ancestorsArchive, args[0], ancestorsMaxGen, ancestorsJSON)
 }
 
 // ============================================================================
@@ -1020,7 +1031,7 @@ func init() {
 }
 
 func runDescendants(_ *cobra.Command, args []string) error {
-	return showDescendants(descendantsArchive, args[0], descendantsMaxGen)
+	return showDescendants(descendantsArchive, args[0], descendantsMaxGen, descendantsJSON)
 }
 
 // ============================================================================
@@ -1067,7 +1078,7 @@ func init() {
 }
 
 func runSummary(_ *cobra.Command, args []string) error {
-	return showSummary(summaryArchive, args[0])
+	return showSummary(summaryArchive, args[0], summaryJSON)
 }
 
 // ============================================================================
@@ -1184,7 +1195,7 @@ func init() {
 }
 
 func runTimeline(_ *cobra.Command, args []string) error {
-	return showTimeline(timelineArchive, args[0], !timelineNoFamily)
+	return showTimeline(timelineArchive, args[0], !timelineNoFamily, timelineJSON)
 }
 
 // ============================================================================
@@ -1322,7 +1333,7 @@ func init() {
 }
 
 func runVitals(_ *cobra.Command, args []string) error {
-	return showVitals(vitalsArchive, args[0])
+	return showVitals(vitalsArchive, args[0], vitalsJSON)
 }
 
 // ============================================================================
@@ -1885,7 +1896,12 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		person = args[0]
 	}
 
-	return showAnalysis(analyzeArchive, person, analyzeCheck, analyzeFormat, analyzeCountry, opts)
+	format := analyzeFormat
+	if analyzeJSON {
+		format = "json"
+	}
+
+	return showAnalysis(analyzeArchive, person, analyzeCheck, format, analyzeCountry, opts)
 }
 
 // ============================================================================
@@ -2608,4 +2624,69 @@ func init() {
 
 func runDocs(_ *cobra.Command, _ []string) error {
 	return runDocsGen(rootCmd, docsOutput)
+}
+
+// MCP Command
+var mcpCmd = &cobra.Command{
+	Use: "mcp", Short: "Expose an archive to AI clients using Model Context Protocol",
+	Args: cobra.NoArgs, RunE: showHelp,
+}
+
+var mcpServeCmd = &cobra.Command{
+	Use: "serve [archive-path]", Short: "Serve read-only research tools over stdio",
+	Long: `Load one archive snapshot and expose sixteen read-only research tools,
+archive statistics and vocabulary resources, and a genealogy research prompt
+using the Model Context Protocol over stdin/stdout. No network listener is opened.
+
+The optional path defaults to the current directory and may be a directory or
+single-file archive. A fresh existing binary cache is reused; this command never
+writes a cache or archive files, even with GLX_CACHE=auto. Restart to see edits,
+or pass --watch to reload stable source changes automatically without a cache.
+Watch mode retains the previous snapshot on read/parse errors and reports them
+on stderr. Each request uses one complete snapshot. stdout is reserved for MCP
+messages.
+
+Archive data may include living people's personal information. Connect only a
+trusted MCP client and check its model provider's data-handling policy. The
+server does not contact any AI provider itself.`,
+	Example: "  glx mcp serve ./family-archive\n  glx mcp serve --watch ./family-archive\n  glx mcp serve archive.glx",
+	Args:    cobra.MaximumNArgs(1), RunE: runMCPServe,
+}
+
+func runMCPServe(cmd *cobra.Command, args []string) error {
+	path := "."
+	if len(args) > 0 {
+		path = args[0]
+	}
+
+	watch, err := cmd.Flags().GetBool("watch")
+	if err != nil {
+		return err
+	}
+
+	return serveMCP(cmd.Context(), path, watch)
+}
+
+func init() {
+	mcpServeCmd.Flags().Bool("watch", false, "Automatically reload stable archive changes; retain the previous snapshot on errors")
+	mcpCmd.AddCommand(mcpServeCmd)
+}
+
+var queryJSON, vitalsJSON, timelineJSON, summaryJSON, ancestorsJSON, descendantsJSON, citeJSON, statsJSON, placesJSON, validateJSON, analyzeJSON bool
+
+func init() {
+	queryCmd.Flags().BoolVar(&queryJSON, "json", false, "Output complete matching records as JSON")
+	vitalsCmd.Flags().BoolVar(&vitalsJSON, "json", false, "Output as JSON")
+	timelineCmd.Flags().BoolVar(&timelineJSON, "json", false, "Output as JSON")
+	summaryCmd.Flags().BoolVar(&summaryJSON, "json", false, "Output as JSON")
+	ancestorsCmd.Flags().BoolVar(&ancestorsJSON, "json", false, "Output as JSON")
+	descendantsCmd.Flags().BoolVar(&descendantsJSON, "json", false, "Output as JSON")
+	citeCmd.Flags().BoolVar(&citeJSON, "json", false, "Output as JSON")
+	statsCmd.Flags().BoolVar(&statsJSON, "json", false, "Output as JSON")
+	placesCmd.Flags().BoolVar(&placesJSON, "json", false, "Output as JSON")
+	validateCmd.Flags().BoolVar(&validateJSON, "json", false, "Validate one complete archive and output JSON (not --stdin or fragments)")
+	analyzeCmd.Flags().BoolVar(&analyzeJSON, "json", false, "Output as JSON (alias for --format json)")
+	validateCmd.MarkFlagsMutuallyExclusive("json", "stdin")
+	validateCmd.MarkFlagsMutuallyExclusive("json", "entity-type")
+	analyzeCmd.MarkFlagsMutuallyExclusive("json", "format")
 }

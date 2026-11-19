@@ -38,6 +38,7 @@ For installation instructions, see [`glx/README.md`](../../glx/README.md). For a
 - [`glx cite`](glx_cite.md) — formatted citation text
 - [`glx path`](glx_path.md) — shortest relationship path between two people
 - [`glx serve`](glx_serve.md) — local browser-based read-only archive viewer
+- [`glx mcp`](glx_mcp.md) — read-only research tools for MCP-compatible AI clients
 
 ### Data Entry
 
