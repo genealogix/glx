@@ -16,6 +16,7 @@ package glx
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"sort"
 	"strings"
@@ -77,30 +78,8 @@ func relationshipBoundsCompatible(a, b *Relationship) bool {
 // relationship it matches that comes before it by ID; free, when set, may
 // match one after it (a candidate that has no place in the order yet).
 func classifyDuplicates(ids []string, rels map[string]*Relationship, free string) map[string][]string {
-	matches := make(map[string][]string, len(ids))
-	for i, a := range ids {
-		for _, b := range ids[i+1:] {
-			if relationshipBoundsCompatible(rels[a], rels[b]) {
-				matches[a] = append(matches[a], b)
-				matches[b] = append(matches[b], a)
-			}
-		}
-	}
-
-	ambiguous := make(map[string]bool)
-	for _, id := range ids {
-		m := matches[id]
-	scan:
-		for i, p := range m {
-			for _, q := range m[i+1:] {
-				if !relationshipBoundsCompatible(rels[p], rels[q]) {
-					ambiguous[id] = true
-
-					break scan
-				}
-			}
-		}
-	}
+	matches := compatibleMatches(ids, rels)
+	ambiguous := ambiguousRelationships(ids, matches, rels)
 
 	out := make(map[string][]string)
 	for _, id := range ids {
@@ -115,21 +94,70 @@ func classifyDuplicates(ids []string, rels map[string]*Relationship, free string
 
 			continue
 		}
-		best := ""
-		for _, other := range m {
-			if ambiguous[other] || (other > id && id != free) {
-				continue
-			}
-			if best == "" || other < best {
-				best = other
-			}
-		}
-		if best != "" {
+		if best := earliestRepeated(id, m, ambiguous, free); best != "" {
 			out[id] = []string{best}
 		}
 	}
 
 	return out
+}
+
+// compatibleMatches maps each relationship in ids to the others in ids whose
+// boundaries are compatible with it.
+func compatibleMatches(ids []string, rels map[string]*Relationship) map[string][]string {
+	matches := make(map[string][]string, len(ids))
+	for i, a := range ids {
+		for _, b := range ids[i+1:] {
+			if relationshipBoundsCompatible(rels[a], rels[b]) {
+				matches[a] = append(matches[a], b)
+				matches[b] = append(matches[b], a)
+			}
+		}
+	}
+
+	return matches
+}
+
+// ambiguousRelationships reports the relationships whose matches include two
+// that are not compatible with each other (see classifyDuplicates).
+func ambiguousRelationships(ids []string, matches map[string][]string, rels map[string]*Relationship) map[string]bool {
+	ambiguous := make(map[string]bool)
+	for _, id := range ids {
+		if hasIncompatiblePair(matches[id], rels) {
+			ambiguous[id] = true
+		}
+	}
+
+	return ambiguous
+}
+
+// hasIncompatiblePair reports whether two of ids have conflicting boundaries.
+func hasIncompatiblePair(ids []string, rels map[string]*Relationship) bool {
+	for i, p := range ids {
+		for _, q := range ids[i+1:] {
+			if !relationshipBoundsCompatible(rels[p], rels[q]) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+// earliestRepeated returns the earliest unambiguous match of id that comes
+// before it by ID, or any unambiguous match when id is free, or "".
+func earliestRepeated(id string, matches []string, ambiguous map[string]bool, free string) string {
+	best := ""
+	for _, other := range matches {
+		if ambiguous[other] || (other > id && id != free) {
+			continue
+		}
+		if best == "" || other < best {
+			best = other
+		}
+	}
+
+	return best
 }
 
 // relationshipGroups returns the archive's relationships grouped by
@@ -204,9 +232,7 @@ func DuplicateRelationships(archive *GLXFile) map[string][]string {
 		if len(group) < 2 {
 			continue
 		}
-		for id, of := range classifyDuplicates(group, archive.Relationships, "") {
-			dups[id] = of
-		}
+		maps.Copy(dups, classifyDuplicates(group, archive.Relationships, ""))
 	}
 
 	return dups
