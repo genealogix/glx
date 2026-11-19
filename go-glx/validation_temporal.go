@@ -110,7 +110,7 @@ func (glx *GLXFile) validateParentChildAges(result *ValidationResult) {
 					result.Warnings = append(result.Warnings, ValidationWarning{
 						SourceType: EntityTypeRelationships,
 						SourceID:   relID,
-						Field:      "participants",
+						Field:      fieldParticipants,
 						Message: fmt.Sprintf("%s[%s]: parent %s (born %d) is born after child %s (born %d)",
 							EntityTypeRelationships, relID, parentID, parentBirth, childID, childBirth),
 					})

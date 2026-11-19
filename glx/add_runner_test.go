@@ -1789,3 +1789,93 @@ func TestStripEntityPrefix(t *testing.T) {
 		}
 	}
 }
+
+// TestAdd_RelationshipRefusesDuplicate checks that a second relationship of
+// the same type between the same participants in the same roles is refused
+// naming the existing one, and accepted with --force (#1506).
+func TestAdd_RelationshipRefusesDuplicate(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, errOut := TestIOStreams()
+	for _, given := range []string{"Hans", "Ann"} {
+		if err := addPerson(io, &addPersonOptions{
+			ArchivePath: dir,
+			Given:       given,
+		}); err != nil {
+			t.Fatalf("addPerson: %v", err)
+		}
+	}
+	opts := func(id string, force bool) *addRelationshipOptions {
+		return &addRelationshipOptions{
+			ArchivePath: dir,
+			OverrideID:  id,
+			Force:       force,
+			Type:        "parent_child",
+			Parents:     []string{"person-hans"},
+			Children:    []string{"person-ann"},
+		}
+	}
+	if err := addRelationship(io, opts("rel-1", false)); err != nil {
+		t.Fatalf("first addRelationship: %v", err)
+	}
+
+	err := addRelationship(io, opts("rel-2", false))
+	if !errors.Is(err, ErrAddRelationshipDuplicate) {
+		t.Fatalf("expected ErrAddRelationshipDuplicate, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "rel-1") {
+		t.Errorf("error should name rel-1: %v", err)
+	}
+
+	// Replacing rel-1 in place with --force is not a duplicate of itself.
+	if err := addRelationship(io, opts("rel-1", true)); err != nil {
+		t.Fatalf("overwrite rel-1: %v", err)
+	}
+
+	if err := addRelationship(io, opts("rel-2", true)); err != nil {
+		t.Fatalf("addRelationship --force: %v", err)
+	}
+	if !strings.Contains(errOut.String(), "rel-2 duplicates rel-1") {
+		t.Errorf("expected a duplicate warning on stderr, got %q", errOut.String())
+	}
+}
+
+// TestAdd_RelationshipRefusesRecordedLinks checks that a parent-child
+// relationship whose every link another relationship already records is
+// refused, and one that adds a new link beside a recorded one is accepted
+// with a warning (#1506).
+func TestAdd_RelationshipRefusesRecordedLinks(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, errOut := TestIOStreams()
+	for _, given := range []string{"Hans", "Maria", "Ann", "Kurt"} {
+		if err := addPerson(io, &addPersonOptions{ArchivePath: dir, Given: given}); err != nil {
+			t.Fatalf("addPerson: %v", err)
+		}
+	}
+	if err := addRelationship(io, &addRelationshipOptions{
+		ArchivePath: dir, OverrideID: "rel-family", Type: "parent_child",
+		Parents: []string{"person-hans", "person-maria"}, Children: []string{"person-ann"},
+	}); err != nil {
+		t.Fatalf("family addRelationship: %v", err)
+	}
+
+	err := addRelationship(io, &addRelationshipOptions{
+		ArchivePath: dir, OverrideID: "rel-father", Type: "parent_child",
+		Parents: []string{"person-hans"}, Children: []string{"person-ann"},
+	})
+	if !errors.Is(err, ErrAddRelationshipDuplicate) {
+		t.Fatalf("expected ErrAddRelationshipDuplicate, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "rel-family") {
+		t.Errorf("error should name rel-family: %v", err)
+	}
+
+	if err := addRelationship(io, &addRelationshipOptions{
+		ArchivePath: dir, OverrideID: "rel-father", Type: "parent_child",
+		Parents: []string{"person-hans"}, Children: []string{"person-ann", "person-kurt"},
+	}); err != nil {
+		t.Fatalf("partly new addRelationship: %v", err)
+	}
+	if !strings.Contains(errOut.String(), "person-hans to person-ann in rel-family") {
+		t.Errorf("expected a recorded-link warning on stderr, got %q", errOut.String())
+	}
+}
