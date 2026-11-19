@@ -445,7 +445,7 @@ const (
 // GEDCOM Tags - Citation/Evidence
 const (
 	GedcomTagPage = "PAGE" // Page/location within source
-	GedcomTagQuay = "QUAY" // Quality assessment (preserved in citation notes)
+	GedcomTagQuay = "QUAY" // Citation quality assessment (citation property gedcom_quay; notes when invalid)
 	GedcomTagCont = "CONT" // Continuation on new line
 	GedcomTagConc = "CONC" // Concatenation (same line)
 )

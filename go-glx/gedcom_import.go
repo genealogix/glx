@@ -271,6 +271,10 @@ type GEDCOMIndex struct {
 
 	// MediaProperties maps GEDCOM media tags to GLX property keys (e.g., "MEDI" → "medium")
 	MediaProperties map[string]string
+
+	// CitationQUAYAmbiguous is set when more than one citation property maps to
+	// QUAY; QUAY is then left out of CitationProperties and kept as a note.
+	CitationQUAYAmbiguous bool
 }
 
 // buildGEDCOMIndex constructs reverse lookup indices from vocabularies in the GLXFile.
@@ -310,50 +314,52 @@ func buildGEDCOMIndex(glx *GLXFile) *GEDCOMIndex {
 		}
 	}
 
-	// Build property indices from vocabularies
-	for key, propDef := range glx.PersonProperties {
-		if propDef.GEDCOM != "" {
-			index.PersonProperties[propDef.GEDCOM] = key
-		}
+	// Build property indices from vocabularies. Keys are visited in sorted
+	// order so a tag mapped by several properties always resolves to the same
+	// one instead of a random map-iteration winner; export uses the same rule.
+	index.PersonProperties, _ = gedcomPropertyIndex(glx.PersonProperties)
+	index.EventProperties, _ = gedcomPropertyIndex(glx.EventProperties)
+	index.RelationshipProperties, _ = gedcomPropertyIndex(glx.RelationshipProperties)
+
+	var ambiguousCitationTags map[string]bool
+	index.CitationProperties, ambiguousCitationTags = gedcomPropertyIndex(glx.CitationProperties)
+	// An ambiguous QUAY has a lossless fallback (a citation note), so it is
+	// left unmapped rather than assigned to whichever key sorts first.
+	if ambiguousCitationTags[GedcomTagQuay] {
+		delete(index.CitationProperties, GedcomTagQuay)
+		index.CitationQUAYAmbiguous = true
 	}
 
-	for key, propDef := range glx.EventProperties {
-		if propDef.GEDCOM != "" {
-			index.EventProperties[propDef.GEDCOM] = key
-		}
-	}
-
-	for key, propDef := range glx.RelationshipProperties {
-		if propDef.GEDCOM != "" {
-			index.RelationshipProperties[propDef.GEDCOM] = key
-		}
-	}
-
-	for key, propDef := range glx.CitationProperties {
-		if propDef.GEDCOM != "" {
-			index.CitationProperties[propDef.GEDCOM] = key
-		}
-	}
-
-	for key, propDef := range glx.SourceProperties {
-		if propDef.GEDCOM != "" {
-			index.SourceProperties[propDef.GEDCOM] = key
-		}
-	}
-
-	for key, propDef := range glx.RepositoryProperties {
-		if propDef.GEDCOM != "" {
-			index.RepositoryProperties[propDef.GEDCOM] = key
-		}
-	}
-
-	for key, propDef := range glx.MediaProperties {
-		if propDef.GEDCOM != "" {
-			index.MediaProperties[propDef.GEDCOM] = key
-		}
-	}
+	index.SourceProperties, _ = gedcomPropertyIndex(glx.SourceProperties)
+	index.RepositoryProperties, _ = gedcomPropertyIndex(glx.RepositoryProperties)
+	index.MediaProperties, _ = gedcomPropertyIndex(glx.MediaProperties)
 
 	return index
+}
+
+// gedcomPropertyIndex maps each GEDCOM tag in a property vocabulary to the
+// first property key (in sorted order) that declares it, and reports the tags
+// that more than one property declares.
+func gedcomPropertyIndex(defs map[string]*PropertyDefinition) (map[string]string, map[string]bool) {
+	index := make(map[string]string)
+	var ambiguous map[string]bool
+	for _, key := range sortedKeys(defs) {
+		tag := defs[key].GEDCOM
+		if tag == "" {
+			continue
+		}
+		if _, taken := index[tag]; taken {
+			if ambiguous == nil {
+				ambiguous = make(map[string]bool)
+			}
+			ambiguous[tag] = true
+
+			continue
+		}
+		index[tag] = key
+	}
+
+	return index, ambiguous
 }
 
 // ConversionContext holds state during GEDCOM conversion
