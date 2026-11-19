@@ -84,6 +84,7 @@ var (
 	ErrAddAssertionPayloadConflict         = errors.New("--property/--value and --participant are mutually exclusive")
 	ErrAddPersonNameRequired               = errors.New("at least one of --given, --surname, or --id is required")
 	ErrAddRelationshipParticipantsRequired = errors.New("a relationship needs at least two participants (use --parent/--child or --participant)")
+	ErrAddRelationshipDuplicate            = errors.New("duplicate relationship")
 	ErrAddPlaceNameRequired                = errors.New("--name is required")
 	ErrAddEventTypeRequired                = errors.New("--type is required")
 	ErrAddEventParticipantsRequired        = errors.New("an event needs at least one participant (use --principal or --participant)")
@@ -138,7 +139,6 @@ var (
 	ErrServeRelationshipSelfLink = errors.New("a person cannot be related to themselves")
 	ErrServePropertyNotSimple    = errors.New("property is not a single value; edit it in a text editor")
 	ErrServeSerializePerson      = errors.New("serializing person")
-	ErrServeRelationshipExists   = errors.New("that relationship is already recorded")
 
 	// `glx cache` errors
 	ErrCacheNotDirectory = errors.New("binary cache is only supported for multi-file (directory) archives")

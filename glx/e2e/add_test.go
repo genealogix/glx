@@ -235,6 +235,45 @@ func TestAdd_ChainedCaptureBuildsValidArchive(t *testing.T) {
 	assertArchiveValid(t, archive)
 }
 
+// TestAdd_DuplicateRelationship walks the reproduction from #1506: a second
+// parent_child relationship between the same parent and child is refused
+// without --force, reported by validate when forced in, and drawn once by
+// ancestors.
+func TestAdd_DuplicateRelationship(t *testing.T) {
+	work := t.TempDir()
+	require.Equal(t, 0, runGLX(t, work, "init", "a", "--no-git").exitCode)
+	archive := filepath.Join(work, "a")
+
+	for _, args := range [][]string{
+		{"add", "person", "--id", "p-f", "--given", "Hans", "--surname", "X", "--sex", "male"},
+		{"add", "person", "--id", "p-c", "--given", "Ann", "--surname", "X", "--sex", "female"},
+		{"add", "relationship", "--id", "rel-1", "--type", "parent_child", "--parent", "p-f", "--child", "p-c"},
+	} {
+		res := runGLX(t, archive, args...)
+		require.Equal(t, 0, res.exitCode, res.stderr)
+	}
+
+	dup := make([]string, 0, 11)
+	dup = append(dup, "add", "relationship", "--id", "rel-2", "--type", "parent_child", "--parent", "p-f", "--child", "p-c")
+	before := snapshotTree(t, archive)
+	res := runGLX(t, archive, dup...)
+	assertTreeUnchanged(t, before, archive)
+	assert.NotEqual(t, 0, res.exitCode)
+	assert.Contains(t, res.stderr, "rel-1")
+	assert.Contains(t, res.stderr, "--force")
+
+	res = runGLX(t, archive, append(dup, "--force")...)
+	require.Equal(t, 0, res.exitCode, res.stderr)
+	assert.Contains(t, res.stderr, "rel-2 duplicates rel-1")
+
+	res = runGLX(t, archive, "validate")
+	assert.Contains(t, res.stdout+res.stderr, "relationships[rel-2]: duplicates relationships[rel-1]")
+
+	res = runGLX(t, archive, "ancestors", "p-c")
+	require.Equal(t, 0, res.exitCode, res.stderr)
+	assert.Equal(t, 1, strings.Count(res.stdout, "p-f"), res.stdout)
+}
+
 // Reproduce #1513 through init's embedded vocabulary, add's flag handling,
 // persisted sources, and validation. Also cover the standard-vocabulary
 // fallback when an archive has no source-types vocabulary of its own.
