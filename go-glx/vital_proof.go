@@ -35,16 +35,8 @@ func structuralVitalFieldAvailable(archive *GLXFile, personID, eventID, property
 	}
 	asserted := false
 	for _, claim := range archive.Assertions {
-		if claim == nil || claim.Participant != nil {
-			continue
-		}
-		direct := claim.Subject.Event == eventID && claim.Property == property
-		legacy := false
-		if !direct && claim.Subject.Person == personID {
-			kind, field := legacyVitalProperty(claim.Property)
-			legacy = kind == event.Type && field == property
-		}
-		if !direct && !legacy {
+		direct, matches := claimTargetsVitalField(claim, personID, eventID, event.Type, property)
+		if !matches {
 			continue
 		}
 		definition := ConflictProperty(archive, claim.Subject, claim.Property)
@@ -69,6 +61,24 @@ func structuralVitalFieldAvailable(archive *GLXFile, personID, eventID, property
 	}
 
 	return !asserted
+}
+
+// claimTargetsVitalField reports whether claim speaks to the given field of
+// the event, either directly on the event or through a legacy person-level
+// vital property, and whether it did so directly.
+func claimTargetsVitalField(claim *Assertion, personID, eventID, eventType, property string) (direct, matches bool) {
+	if claim == nil || claim.Participant != nil {
+		return false, false
+	}
+	if claim.Subject.Event == eventID && claim.Property == property {
+		return true, true
+	}
+	if claim.Subject.Person != personID {
+		return false, false
+	}
+	kind, field := legacyVitalProperty(claim.Property)
+
+	return false, kind == eventType && field == property
 }
 
 func proofPrimaryEvent(archive *GLXFile, personID, eventType string) (string, *Event) {
