@@ -204,7 +204,7 @@ func exportPerson(personID string, person *Person, expCtx *ExportContext) *GEDCO
 			if event == nil {
 				continue
 			}
-			eventRecord := exportPersonEvent(eventID, event, expCtx)
+			eventRecord := exportPersonEvent(eventID, event, expCtx, personID)
 			if eventRecord != nil {
 				record.SubRecords = append(record.SubRecords, eventRecord)
 				hosts := eventHostIDs(event)
@@ -539,7 +539,7 @@ func normalizeGEDCOMSex(value string, expCtx *ExportContext) string {
 
 // exportPersonEvent converts a GLX Event to a GEDCOM event subrecord of INDI.
 // Returns nil if the event type has no GEDCOM mapping.
-func exportPersonEvent(eventID string, event *Event, expCtx *ExportContext) *GEDCOMRecord {
+func exportPersonEvent(eventID string, event *Event, expCtx *ExportContext, personIDs ...string) *GEDCOMRecord {
 	gedcomTag, ok := expCtx.ExportIndex.EventTypes[event.Type]
 	if !ok || gedcomTag == "" {
 		return nil
@@ -574,10 +574,25 @@ func exportPersonEvent(eventID string, event *Event, expCtx *ExportContext) *GED
 		record.SubRecords = append(record.SubRecords, placRecords...)
 	}
 
+	// AGE belongs to this INDI's own participation, never a witness's.
+	age := ""
+	if len(personIDs) > 0 {
+		for _, participant := range event.Participants {
+			if participant.Person == personIDs[0] {
+				age, _ = getStringProperty(participant.Properties, "age_at_event")
+
+				break
+			}
+		}
+	}
+	if age != "" {
+		record.SubRecords = append(record.SubRecords, &GEDCOMRecord{Tag: GedcomTagAge, Value: age})
+	}
+
 	// Event properties (AGE, CAUS, TYPE). A generic EVEN's TYPE above already
 	// carries the event subtype.
 	for _, propRec := range exportEventPropertySubrecords(event, expCtx) {
-		if genericType != nil && propRec.Tag == GedcomTagType {
+		if genericType != nil && propRec.Tag == GedcomTagType || age != "" && propRec.Tag == GedcomTagAge {
 			continue
 		}
 		record.SubRecords = append(record.SubRecords, propRec)
@@ -759,6 +774,11 @@ func exportMappedPersonProperties(personID string, person *Person, expCtx *Expor
 		}
 
 		val := person.Properties[key]
+		if gedcomTag == GedcomTagExid {
+			records = append(records, exportExternalIDs(val, expCtx.Version)...)
+
+			continue
+		}
 
 		// Collect property items — single string, or list of strings/{value:, date:} maps
 		type propItem struct {

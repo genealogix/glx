@@ -250,7 +250,7 @@ func (d Date) GEDCOM() string {
 }
 
 // GEDCOM551 renders the date as a GEDCOM 5.5.1 DATE payload: a calendar
-// escape first ("@#DJULIAN@ ABT 15 MAR 1731") and "B.C." for the era.
+// escape before each endpoint ("ABT @#DJULIAN@ 15 MAR 1731") and "B.C." for the era.
 func (d Date) GEDCOM551() string {
 	return d.val().render(renderGEDCOM551)
 }

@@ -471,7 +471,7 @@ type Media struct {
 	Title      string         `yaml:"title,omitempty"`
 	Date       DateString     `yaml:"date,omitempty"`
 	Source     string         `refType:"sources"           yaml:"source,omitempty"`
-	Properties map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (description, subjects, width, height, duration, file_size, crop, medium, photographer, location, original_filename, blob_size)
+	Properties map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (description, subjects, width, height, duration, file_size, crop, medium, photographer, location, original_filename, blob_size, external_ids)
 	Notes      NoteList       `yaml:"notes,omitempty"`
 }
 
