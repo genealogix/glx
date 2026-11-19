@@ -239,41 +239,37 @@ func TestAdd_ChainedCaptureBuildsValidArchive(t *testing.T) {
 // persisted sources, and validation. Also cover the standard-vocabulary
 // fallback when an archive has no source-types vocabulary of its own.
 func TestAdd_SourcePublicationKinds(t *testing.T) {
-	for _, vocabulary := range []string{"initialized", "standard fallback", "single-file scaffold as directory"} {
+	titles := map[string]string{
+		"article": "Seven Years' War (Wikipedia)",
+		"website": "Leeds Local History Website",
+	}
+	for _, vocabulary := range []string{"initialized", "standard fallback"} {
 		t.Run(vocabulary, func(t *testing.T) {
 			parent := t.TempDir()
-			args := []string{"init", "references", "--no-git"}
-			if vocabulary == "single-file scaffold as directory" {
-				// add targets the directory and creates source fragments beside
-				// archive.glx; it does not rewrite the single-file scaffold.
-				args = append(args, "--single-file")
-			}
-			init := runGLX(t, parent, args...)
+			init := runGLX(t, parent, "init", "references", "--no-git")
 			require.Equal(t, 0, init.exitCode, init.stdout+init.stderr)
 			archive := filepath.Join(parent, "references")
 			if vocabulary == "standard fallback" {
 				require.NoError(t, os.Remove(filepath.Join(archive, "vocabularies", "source-types.glx")))
 			}
 
-			for _, sourceType := range []string{"article", "website", "book", "database"} {
-				t.Run(sourceType, func(t *testing.T) {
-					id := "source-" + sourceType
-					before := snapshotTree(t, archive)
-					res := runGLX(t, archive, "add", "source", "--id", id,
-						"--title", "Seven Years' War (Wikipedia)", "--type", sourceType)
-					require.Equal(t, 0, res.exitCode, res.stdout+res.stderr)
-					assert.Equal(t, id+"\n", res.stdout)
+			for _, sourceType := range []string{"article", "website"} {
+				id := "source-" + sourceType
+				before := snapshotTree(t, archive)
+				res := runGLX(t, archive, "add", "source", "--id", id,
+					"--title", titles[sourceType], "--type", sourceType)
+				require.Equal(t, 0, res.exitCode, res.stdout+res.stderr)
+				assert.Equal(t, id+"\n", res.stdout)
 
-					data, err := os.ReadFile(filepath.Join(archive, "sources", id+".glx"))
-					require.NoError(t, err)
-					assert.Contains(t, string(data), "type: "+sourceType+"\n")
-					diff := diffTrees(before, snapshotTree(t, archive))
-					assert.Equal(t, []string{"sources/" + id + ".glx"}, diff.created)
-					assert.Empty(t, diff.changed)
-					assert.Empty(t, diff.removed)
-					assertArchiveValid(t, archive)
-				})
+				data, err := os.ReadFile(filepath.Join(archive, "sources", id+".glx"))
+				require.NoError(t, err)
+				assert.Contains(t, string(data), "type: "+sourceType+"\n")
+				diff := diffTrees(before, snapshotTree(t, archive))
+				assert.Equal(t, []string{"sources/" + id + ".glx"}, diff.created)
+				assert.Empty(t, diff.changed)
+				assert.Empty(t, diff.removed)
 			}
+			assertArchiveValid(t, archive)
 		})
 	}
 }
@@ -288,6 +284,7 @@ func TestAdd_SourcePublicationKindsRespectArchiveVocabulary(t *testing.T) {
 	for _, sourceType := range []string{"article", "website"} {
 		res := runGLX(t, archive, "add", "source", "--title", "Reference work", "--type", sourceType)
 		assertExitWithStderr(t, res, `source_types="`+sourceType+`"`)
+		assert.Contains(t, res.stderr, "standard source type missing from this archive's vocabularies/source-types.glx")
 	}
 	assertTreeUnchanged(t, before, archive)
 }

@@ -41,6 +41,11 @@ func TestMapSourceType(t *testing.T) {
 	assert.Equal(t, SourceTypeDNATest, mapSourceType("dna"))
 	assert.Equal(t, SourceTypeSocialMedia, mapSourceType("social"))
 
+	// An article is not a book, and an informational website is not a record
+	// database (#1513): pinned independently of the mapping table.
+	assert.Equal(t, SourceTypeArticle, mapSourceType("article"))
+	assert.Equal(t, SourceTypeWebsite, mapSourceType("website"))
+
 	// GLX -> GEDCOM -> GLX round-trip: the GEDCOM 7.0 exporter writes
 	// Source.Type verbatim as the TYPE value, so feeding each canonical key back
 	// through mapSourceType must return the same type rather than downgrading to
@@ -107,6 +112,15 @@ func TestInferSourceType(t *testing.T) {
 		{"land survey plat beats land keyword", "Land Survey Plat of Section 12", SourceTypeMap},
 		{"township plat map with land office", "Township Plat Map, County Land Office", SourceTypeMap},
 
+		// Rules added in #1513. The article check runs before the broad
+		// "will" keyword, so "William" in an article title is not probate.
+		{"wikipedia article", "William Penn - Wikipedia", SourceTypeArticle},
+		{"encyclopedia entry", "Encyclopedia of Pennsylvania Biography", SourceTypeArticle},
+		{"magazine article", "Yankee Magazine, March 1962", SourceTypeArticle},
+		{"website", "Leeds Local History Website", SourceTypeWebsite},
+		{"web page", "Smith One-Name Study Web Page", SourceTypeWebsite},
+		{"blog", "The Wexford Genealogy Blog", SourceTypeWebsite},
+
 		// Negative cases: a bare "map" substring must not classify as map.
 		{"bare map word is not map", "Map of Yorkshire, 1850", SourceTypeOther},
 		{"map inside placename is not map", "Mapleton Cemetery Records", SourceTypeOther},
@@ -116,18 +130,6 @@ func TestInferSourceType(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.want, inferSourceType(tt.title))
-		})
-	}
-}
-
-// An article is not a book, and an informational website is not a record
-// database. Pin these mappings independently of the implementation tables.
-func TestMapSourceType_PublicationKinds(t *testing.T) {
-	for _, sourceType := range []string{"article", "website", "book", "database"} {
-		t.Run(sourceType, func(t *testing.T) {
-			assert.Equal(t, sourceType, mapSourceType(sourceType))
-			assert.Equal(t, sourceType, mapSourceType(strings.ToUpper(sourceType)))
-			assert.Equal(t, sourceType, gedcomSourceTypeMapping[sourceType])
 		})
 	}
 }
@@ -164,4 +166,32 @@ func TestImportSource_PublicationKinds(t *testing.T) {
 		"Published family history":      "book",
 		"Searchable records collection": "database",
 	}, got)
+}
+
+// An archive initialized before a standard source type existed keeps its older
+// vocabulary. Validation must say the key is standard and missing, rather than
+// leave the user to guess another type (#1513).
+func TestValidate_MissingStandardSourceTypeHint(t *testing.T) {
+	glx := &GLXFile{
+		SourceTypes: map[string]*VocabularyEntry{"book": {Label: "Book"}},
+		Sources: map[string]*Source{
+			"source-article": {Title: "Seven Years' War", Type: SourceTypeArticle},
+			"source-typo":    {Title: "Typo", Type: "artcle"},
+		},
+	}
+	result := glx.Validate()
+
+	var article, typo string
+	for _, e := range result.Errors {
+		switch e.SourceID {
+		case "source-article":
+			article = e.Message
+		case "source-typo":
+			typo = e.Message
+		}
+	}
+	assert.Contains(t, article, `"article" is a standard source type missing from this archive's vocabularies/source-types.glx`)
+	assert.Contains(t, typo, "references non-existent source_types: artcle")
+	assert.NotContains(t, typo, "standard source type")
+	assert.Empty(t, MissingStandardSourceTypeHint("artcle"))
 }

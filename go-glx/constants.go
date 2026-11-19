@@ -529,7 +529,7 @@ const (
 	SourceTypeBook               = "book"                // Published genealogies, family histories
 	SourceTypeArticle            = "article"             // Journal, magazine, and reference articles
 	SourceTypeWebsite            = "website"             // Websites, informational web pages, and blogs
-	SourceTypeDatabase           = "database"            // Structured, searchable record collections
+	SourceTypeDatabase           = "database"            // Searchable record collections and compiled databases
 	SourceTypeOralHistory        = "oral_history"        // Interviews, recorded memories
 	SourceTypeCorrespondence     = "correspondence"      // Letters, emails, personal papers
 	SourceTypePhotograph         = "photograph"          // Photograph collections
@@ -581,6 +581,19 @@ var standardSourceTypes = map[string]bool{
 	SourceTypeMap:                true,
 	SourceTypeSocialMedia:        true,
 	SourceTypeOther:              true,
+}
+
+// MissingStandardSourceTypeHint explains a source type rejected by an
+// archive's own source_types vocabulary when the key is a standard type: an
+// archive initialized before the type was added keeps its older vocabulary,
+// so the fix is to copy the entry, not to pick another type. It returns ""
+// for a key that is not a standard source type.
+func MissingStandardSourceTypeHint(key string) string {
+	if !standardSourceTypes[key] {
+		return ""
+	}
+
+	return `"` + key + `" is a standard source type missing from this archive's vocabularies/source-types.glx; copy its entry from the standard source-types vocabulary`
 }
 
 // gedcomSourceTypeMapping maps GEDCOM source type values to GLX source types.
