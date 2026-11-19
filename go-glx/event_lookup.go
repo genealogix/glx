@@ -38,13 +38,19 @@ func FindPersonEvent(archive *GLXFile, personID, eventType string) (string, *Eve
 			continue
 		}
 		for _, p := range event.Participants {
-			if p.Person == personID && (isSubjectRole(p.Role) || isResearchPrincipal(event.Type, p.Role)) {
+			if p.Person == personID && isPersonEventRole(event.Type, p.Role) {
 				return id, event
 			}
 		}
 	}
 
 	return "", nil
+}
+
+// isPersonEventRole reports whether a participant in role is the person whose
+// event this is, as FindPersonEvent and NewBirthOrder both decide it.
+func isPersonEventRole(eventType, role string) bool {
+	return isSubjectRole(role) || isResearchPrincipal(eventType, role)
 }
 
 // isSubjectRole returns true for participant roles that indicate the person

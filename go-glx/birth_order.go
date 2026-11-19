@@ -15,7 +15,6 @@
 package glx
 
 import (
-	"math"
 	"sort"
 )
 
@@ -28,29 +27,31 @@ var birthOrderEventTypes = []string{EventTypeBirth, EventTypeChristening, EventT
 // family's children and siblings in the same order. Build it once with
 // NewBirthOrder and reuse it; lookups are constant time.
 type BirthOrder struct {
-	keys map[string]int // person ID -> first civil day of the dating event
+	keys map[string]int // person ID -> Julian Day Number of the dating event
 }
 
 // NewBirthOrder indexes each person's birth date, falling back to their
 // christening and then their baptism when the birth is missing or undated.
-// Only the person's own records count (ClassifyParticipation's OwnRecord, so
-// a godchild's baptism is theirs and a witness's is not), and among several
-// dated events of one type the lowest event ID wins, as in FindPersonEvent.
-// It makes one pass over the archive's events.
+// For each type it takes the event FindPersonEvent returns, the lowest-ID
+// event in which the person holds their own role, so the date a view shows
+// for a person is the date that person sorts by. Dates are compared as Julian
+// Day Numbers, so JULIAN dates sort among Gregorian ones; a BEF date sorts
+// just before the day it names. It makes one pass over the archive's events.
 func NewBirthOrder(archive *GLXFile) *BirthOrder {
 	bo := &BirthOrder{keys: map[string]int{}}
 	if archive == nil {
 		return bo
 	}
 
-	// byType[t][person] is the earliest-ID dated event of type t.
-	type dated struct {
+	// byType[t][person] is the person's lowest-ID event of type t, dated or not.
+	type candidate struct {
 		eventID string
 		key     int
+		dated   bool
 	}
-	byType := make(map[string]map[string]dated, len(birthOrderEventTypes))
+	byType := make(map[string]map[string]candidate, len(birthOrderEventTypes))
 	for _, t := range birthOrderEventTypes {
-		byType[t] = map[string]dated{}
+		byType[t] = map[string]candidate{}
 	}
 	for id, event := range archive.Events {
 		if event == nil {
@@ -60,24 +61,21 @@ func NewBirthOrder(archive *GLXFile) *BirthOrder {
 		if !ok {
 			continue
 		}
-		key, ok := birthOrderKey(event.Date)
-		if !ok {
-			continue
-		}
+		key, dated := birthOrderKey(event.Date)
 		for _, p := range event.Participants {
-			if p.Person == "" || !ClassifyParticipation(event.Type, p.Role, nil).OwnRecord {
+			if p.Person == "" || !isPersonEventRole(event.Type, p.Role) {
 				continue
 			}
 			if prev, seen := found[p.Person]; !seen || id < prev.eventID {
-				found[p.Person] = dated{eventID: id, key: key}
+				found[p.Person] = candidate{eventID: id, key: key, dated: dated}
 			}
 		}
 	}
 
 	for _, t := range birthOrderEventTypes {
-		for person, d := range byType[t] {
-			if _, ok := bo.keys[person]; !ok {
-				bo.keys[person] = d.key
+		for person, c := range byType[t] {
+			if _, ok := bo.keys[person]; !ok && c.dated {
+				bo.keys[person] = c.key
 			}
 		}
 	}
@@ -85,19 +83,15 @@ func NewBirthOrder(archive *GLXFile) *BirthOrder {
 	return bo
 }
 
-// birthOrderKey returns the first civil day a date can fall on, or false when
-// the date is empty or cannot be placed.
+// birthOrderKey returns the date's ordering day (see glxdate.Date.OrderingDay),
+// or false when the date is empty or cannot be placed.
 func birthOrderKey(date DateString) (int, bool) {
 	if date == "" {
 		return 0, false
 	}
 	parsed, _ := date.Parse()
-	bounds := parsed.Timing()
-	if !bounds.Known || bounds.Outer.Start == math.MinInt {
-		return 0, false
-	}
 
-	return bounds.Outer.Start, true
+	return parsed.OrderingDay()
 }
 
 // Less reports whether person a sorts before person b: dated people by date,
@@ -117,5 +111,11 @@ func (bo *BirthOrder) Less(a, b string) bool {
 
 // Sort orders person IDs in place by birth order (see Less).
 func (bo *BirthOrder) Sort(ids []string) {
-	sort.SliceStable(ids, func(i, j int) bool { return bo.Less(ids[i], ids[j]) })
+	SortByBirth(bo, ids, func(id string) string { return id })
+}
+
+// SortByBirth orders items in place by the birth order of the person each one
+// names, as id picks it out.
+func SortByBirth[T any](bo *BirthOrder, items []T, id func(T) string) {
+	sort.SliceStable(items, func(i, j int) bool { return bo.Less(id(items[i]), id(items[j])) })
 }

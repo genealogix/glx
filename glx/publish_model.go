@@ -320,7 +320,6 @@ func (idx *siteIndex) indexParentChild() {
 		}
 		edge := [2]string{link.ParentID, link.ChildID}
 		idx.parents[link.ChildID] = appendUnique(idx.parents[link.ChildID], link.ParentID)
-		idx.children[link.ParentID] = appendUnique(idx.children[link.ParentID], link.ChildID)
 		if link.Standing == glxlib.RelationshipStandingAccepted {
 			accepted[edge] = true
 			delete(idx.hypotheticalEdges, edge)
@@ -329,9 +328,13 @@ func (idx *siteIndex) indexParentChild() {
 		}
 	}
 	// The descendant chart draws children in birth order, as the family
-	// groups on each person page list them.
-	for _, kids := range idx.children {
-		idx.family.birthOrder().Sort(kids)
+	// groups on each person page list them: both read familyLinks.childLinks.
+	for parentID := range idx.family.childrenOf {
+		for _, link := range idx.family.childLinks(parentID) {
+			if !link.Step {
+				idx.children[parentID] = appendUnique(idx.children[parentID], link.ChildID)
+			}
+		}
 	}
 }
 

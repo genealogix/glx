@@ -807,7 +807,11 @@ func findChildIDs(personID string, archive *glxlib.GLXFile) []string {
 // step), in birth order, through surviving parent-child links and explicit
 // sibling relationships.
 func findSiblingIDs(personID string, archive *glxlib.GLXFile) []string {
-	sibs := newFamilyLinks(archive).siblings(personID)
+	return siblingIDs(newFamilyLinks(archive).siblings(personID))
+}
+
+// siblingIDs returns the person IDs of sibs, in order.
+func siblingIDs(sibs []siblingEdge) []string {
 	ids := make([]string, 0, len(sibs))
 	for _, s := range sibs {
 		ids = append(ids, s.PersonID)

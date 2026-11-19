@@ -614,12 +614,13 @@ func (s *viewerServer) personEvents(id string) []eventDTO {
 
 func (s *viewerServer) personFamily(id string) familyDTO {
 	a := s.archive
-	parentIDs := findParentIDs(id, a)
+	links := newFamilyLinks(a) // one family graph and birth order per request
+	parentIDs := edgeIDs(links.parents(id))
 
 	fam := familyDTO{
 		Parents:  s.personRefs(parentIDs),
-		Children: s.personRefs(findChildIDs(id, a)),
-		Siblings: s.personRefs(findSiblingIDs(id, a)),
+		Children: s.personRefs(edgeIDs(links.children(id))),
+		Siblings: s.personRefs(siblingIDs(links.siblings(id))),
 		Spouses:  []personRefDTO{},
 	}
 	for _, sp := range findSpouses(id, a) {
@@ -753,24 +754,20 @@ type treeRelIndex struct {
 	children map[string][]string // parent ID -> child IDs
 }
 
-// buildTreeRelIndex scans the parent-child relationships once and records both
-// directions, leaving out disproven links. It mirrors findParentIDs/findChildIDs: parents keep first-seen
-// order; children are in birth order (glxlib.BirthOrder) for a stable chart.
+// buildTreeRelIndex records both directions of the surviving parent-child
+// links (familyLinks leaves out disproven ones, rejected alternatives rather
+// than family). It mirrors findParentIDs/findChildIDs: parents keep
+// first-seen order; children are in birth order (familyLinks.childLinks).
 func buildTreeRelIndex(a *glxlib.GLXFile) *treeRelIndex {
 	idx := &treeRelIndex{parents: map[string][]string{}, children: map[string][]string{}}
-	for _, link := range glxlib.ParentChildLinks(a, nil) {
-		// A link the archive has disproven is a rejected alternative, not
-		// family; it stays out of the chart.
-		if link.Standing == glxlib.RelationshipStandingDisproven {
-			continue
-		}
-		idx.children[link.ParentID] = appendUniqueString(idx.children[link.ParentID], link.ChildID)
+	fam := newFamilyLinks(a)
+	for _, link := range fam.surviving {
 		idx.parents[link.ChildID] = appendUniqueString(idx.parents[link.ChildID], link.ParentID)
 	}
-
-	order := glxlib.NewBirthOrder(a)
-	for _, kids := range idx.children {
-		order.Sort(kids)
+	for parentID := range fam.childrenOf {
+		for _, link := range fam.childLinks(parentID) {
+			idx.children[parentID] = appendUniqueString(idx.children[parentID], link.ChildID)
+		}
 	}
 
 	return idx

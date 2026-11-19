@@ -41,8 +41,8 @@ func TestBirthOrder_Sort(t *testing.T) {
 		// An undated birth falls back to the dated baptism.
 		"e6": birthOrderEvent(EventTypeBirth, "", "p-undated-birth", ParticipantRolePrincipal),
 		"e7": birthOrderEvent(EventTypeBaptism, "1705-01-01", "p-undated-birth", ParticipantRolePrincipal),
-		// A godchild's baptism is their own record.
-		"e11": birthOrderEvent(EventTypeBaptism, "1690-02-02", "p-godchild", ParticipantRoleGodchild),
+		// A child-role birth is the child's own, as FindPersonEvent reads it.
+		"e11": birthOrderEvent(EventTypeBirth, "1690-02-02", "p-child-role", ParticipantRoleChild),
 		// Of two dated births, the lowest event ID wins.
 		"e12": birthOrderEvent(EventTypeBirth, "1720", "p-two", ParticipantRolePrincipal),
 		"e13": birthOrderEvent(EventTypeBirth, "1600", "p-two", ParticipantRolePrincipal),
@@ -53,11 +53,11 @@ func TestBirthOrder_Sort(t *testing.T) {
 		"e10": birthOrderEvent(EventTypeBirth, "1688-11-04", "p-twin", ParticipantRolePrincipal),
 	}}
 
-	ids := []string{"p-two", "p-godchild", "p-witness", "p-chr", "p-birth", "p-none", "p-undated-birth", "p-year", "p-twin", "p-bapt"}
+	ids := []string{"p-two", "p-child-role", "p-witness", "p-chr", "p-birth", "p-none", "p-undated-birth", "p-year", "p-twin", "p-bapt"}
 	NewBirthOrder(archive).Sort(ids)
 
 	assert.Equal(t, []string{
-		"p-bapt", "p-twin", "p-godchild", "p-birth", "p-undated-birth", "p-year", "p-chr",
+		"p-bapt", "p-twin", "p-child-role", "p-birth", "p-undated-birth", "p-year", "p-chr",
 		"p-two", "p-none", "p-witness",
 	}, ids)
 }
@@ -66,4 +66,49 @@ func TestBirthOrder_NilArchive(t *testing.T) {
 	ids := []string{"b", "a"}
 	NewBirthOrder(nil).Sort(ids)
 	assert.Equal(t, []string{"a", "b"}, ids)
+}
+
+// The date a person sorts by is the one FindPersonEvent shows: its lowest-ID
+// event of the type. When that event is undated the next type is used, never a
+// later dated event of the same type the views do not display.
+func TestBirthOrder_MatchesFindPersonEvent(t *testing.T) {
+	archive := &GLXFile{Events: map[string]*Event{
+		"e1": birthOrderEvent(EventTypeBirth, "", "p-a", ParticipantRolePrincipal),
+		"e2": birthOrderEvent(EventTypeBirth, "1600", "p-a", ParticipantRolePrincipal),
+		"e3": birthOrderEvent(EventTypeBirth, "1700", "p-b", ParticipantRolePrincipal),
+	}}
+	id, _ := FindPersonEvent(archive, "p-a", EventTypeBirth)
+	assert.Equal(t, "e1", id)
+
+	ids := []string{"p-a", "p-b"}
+	NewBirthOrder(archive).Sort(ids)
+	assert.Equal(t, []string{"p-b", "p-a"}, ids, "p-a's shown birth is undated, so p-a is undated")
+}
+
+// A BEF birth sorts just before the day it names rather than last, and a
+// JULIAN date is converted before it is compared with a Gregorian one.
+func TestBirthOrder_OpenStartAndJulian(t *testing.T) {
+	archive := &GLXFile{Events: map[string]*Event{
+		"e1": birthOrderEvent(EventTypeBirth, "BEF 1690", "p-bef", ParticipantRolePrincipal),
+		"e2": birthOrderEvent(EventTypeBirth, "1690", "p-1690", ParticipantRolePrincipal),
+		"e3": birthOrderEvent(EventTypeBirth, "1710", "p-1710", ParticipantRolePrincipal),
+		// JULIAN 20 Feb 1700 is Gregorian 3 Mar 1700, after Gregorian 25 Feb.
+		"e4": birthOrderEvent(EventTypeBirth, "JULIAN 1700-02-20", "p-julian", ParticipantRolePrincipal),
+		"e5": birthOrderEvent(EventTypeBirth, "1700-02-25", "p-greg", ParticipantRolePrincipal),
+	}}
+
+	ids := []string{"p-1710", "p-julian", "p-greg", "p-1690", "p-bef"}
+	NewBirthOrder(archive).Sort(ids)
+	assert.Equal(t, []string{"p-bef", "p-1690", "p-greg", "p-julian", "p-1710"}, ids)
+}
+
+func TestSortByBirth(t *testing.T) {
+	type kid struct{ id string }
+	archive := &GLXFile{Events: map[string]*Event{
+		"e1": birthOrderEvent(EventTypeBirth, "1700", "b", ParticipantRolePrincipal),
+		"e2": birthOrderEvent(EventTypeBirth, "1690", "a", ParticipantRolePrincipal),
+	}}
+	kids := []kid{{"b"}, {"a"}, {"c"}}
+	SortByBirth(NewBirthOrder(archive), kids, func(k kid) string { return k.id })
+	assert.Equal(t, []kid{{"a"}, {"b"}, {"c"}}, kids)
 }
