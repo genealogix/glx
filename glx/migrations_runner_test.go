@@ -527,7 +527,7 @@ func TestShowMigrations_FamilyText(t *testing.T) {
 }
 
 func TestMigrations_AttendanceDoesNotCreateMovements(t *testing.T) {
-	for _, role := range []string{"godparent", "sponsor", "witness", "informant", "officiant", "custom_visitor", "parent"} {
+	for _, role := range []string{"godparent", "sponsor", "witness", "informant", "officiant", "custom_visitor", "parent", " Parent ", "father"} {
 		t.Run(role, func(t *testing.T) {
 			archive := &glxlib.GLXFile{
 				Persons: map[string]*glxlib.Person{"p": {Properties: map[string]any{"name": "Elisabeth Roth"}}},
@@ -543,7 +543,7 @@ func TestMigrations_AttendanceDoesNotCreateMovements(t *testing.T) {
 				t.Fatalf("entries: %+v", entries)
 			}
 			movements := computeMovements(entries)
-			if role == "parent" {
+			if isParentRole(role) {
 				if len(movements) != 2 {
 					t.Fatalf("parent at birth remains evidence: %+v", movements)
 				}

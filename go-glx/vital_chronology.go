@@ -39,7 +39,8 @@ type vitalChronologyGroup struct {
 }
 
 func vitalChronologyConflicts(archive *GLXFile, personID string, assertions []proofAssertion, opts ComparisonOptions) []ConflictGroup {
-	groups := groupVitalChronologyDates(vitalChronologyDates(archive, personID, assertions), opts)
+	dates, ownEvents := vitalChronologyDates(archive, personID, assertions)
+	groups := groupVitalChronologyDates(dates, ownEvents, opts)
 	var conflicts []ConflictGroup
 	for i := range groups {
 		burial := &groups[i]
@@ -108,17 +109,25 @@ func compareVitalChronologyGroups(burial, death *vitalChronologyGroup) (Conflict
 	return result, true
 }
 
-func groupVitalChronologyDates(dates []proofAssertion, opts ComparisonOptions) []vitalChronologyGroup {
+// groupVitalChronologyDates gathers the date claims of each vital observation.
+// A claim belongs to the observation of the kind its property names (a
+// death_date recorded on a burial is a death date). A legacy person-level
+// claim, or an event-scoped alias of another kind, joins the person's own
+// event of that kind when there is exactly one, so the same burial is never
+// compared twice; with none or several it stays a separate observation.
+func groupVitalChronologyDates(dates []proofAssertion, ownEvents map[string][]string, opts ComparisonOptions) []vitalChronologyGroup {
 	type groupKey struct{ kind, subjectType, subjectID string }
 	positions := make(map[groupKey]int)
 	var groups []vitalChronologyGroup
 	for i := range dates {
 		claim := &dates[i]
-		kind := claim.eventType
-		if claim.a.Subject.Person != "" {
-			kind, _ = legacyVitalProperty(claim.a.Property)
-		}
+		kind := vitalChronologyKind(claim)
 		key := groupKey{kind, claim.a.Subject.Type().String(), claim.subjectID}
+		if claim.a.Subject.Person != "" || kind != claim.eventType {
+			if ids := ownEvents[kind]; len(ids) == 1 {
+				key = groupKey{kind, EntityTypeEvents.String(), ids[0]}
+			}
+		}
 		position, exists := positions[key]
 		if !exists {
 			position = len(groups)
@@ -137,31 +146,72 @@ func groupVitalChronologyDates(dates []proofAssertion, opts ComparisonOptions) [
 	return groups
 }
 
-func vitalChronologyDates(archive *GLXFile, personID string, assertions []proofAssertion) []proofAssertion {
+// vitalChronologyKind is the vital kind a date claim describes: the kind its
+// property names (died_on, burial_date, ...) or else its event's type.
+func vitalChronologyKind(claim *proofAssertion) string {
+	if kind, field := legacyVitalProperty(claim.a.Property); field == conflictDateType {
+		return kind
+	}
+
+	return claim.eventType
+}
+
+// vitalChronologyDates selects the person's death and burial date claims:
+// legacy person-level dates, the date of each of their own death-type events,
+// and death/burial date aliases recorded on those events. A stored event date
+// that a surviving assertion no longer supports is not synthesized back.
+func vitalChronologyDates(archive *GLXFile, personID string, assertions []proofAssertion) ([]proofAssertion, map[string][]string) {
 	all := slices.Clone(assertions)
 	canonicalLegacyVitalFacts(all, archive, personID)
 	events := make(map[string]bool)
+	ownEvents := make(map[string][]string)
 	for _, id := range sortedKeys(archive.Events) {
 		event := archive.Events[id]
 		if event == nil || !isDeathEventType(event.Type) || !isEventVitalPrincipal(event, personID) {
 			continue
 		}
 		events[id] = true
+		ownEvents[event.Type] = append(ownEvents[event.Type], id)
 		all = appendVitalEventFields(all, archive, id, id, map[string]bool{conflictDateType: true})
 	}
 	var dates []proofAssertion
 	for i := range all {
-		claim := &all[i]
-		if claim.a.Participant != nil || AssertionIsDisproven(claim.a) {
-			continue
-		}
-		legacyKind, _ := legacyVitalProperty(claim.a.Property)
-		legacy := claim.a.Subject.Person == personID && claim.factProperty == conflictDateType && (legacyKind == EventTypeDeath || legacyKind == EventTypeBurial)
-		structural := claim.a.Subject.Event != "" && events[claim.subjectID] && claim.a.Property == conflictDateType
-		if structural || legacy {
-			dates = append(dates, *claim)
+		if isVitalChronologyDate(archive, personID, events, &all[i]) {
+			dates = append(dates, all[i])
 		}
 	}
 
-	return dates
+	return dates, ownEvents
+}
+
+// isVitalChronologyDate reports whether a collected claim is one of the
+// person's surviving death or burial dates.
+func isVitalChronologyDate(archive *GLXFile, personID string, events map[string]bool, claim *proofAssertion) bool {
+	if claim.a.Participant != nil || AssertionIsDisproven(claim.a) {
+		return false
+	}
+	if claim.synthetic && claim.a.Subject.Event != "" &&
+		!structuralVitalFieldAvailable(archive, personID, claim.a.Subject.Event, claim.a.Property, claim.a.Value) {
+		return false
+	}
+	legacyKind, legacyField := legacyVitalProperty(claim.a.Property)
+	deathOrBurial := (legacyKind == EventTypeDeath || legacyKind == EventTypeBurial) && legacyField == conflictDateType
+	if claim.a.Subject.Person == personID {
+		return deathOrBurial && claim.factProperty == conflictDateType
+	}
+	if claim.a.Subject.Event == "" || !events[claim.subjectID] {
+		return false
+	}
+
+	return claim.a.Property == conflictDateType || deathOrBurial && vitalAliasIsDate(archive, claim)
+}
+
+// vitalAliasIsDate reports whether a died_on/death_date/buried_on alias on an
+// event can be read as a date. Proof reads an undefined alias as the vital
+// date it names; an archive that defines the property otherwise (a custom
+// type, a vocabulary) keeps its own meaning.
+func vitalAliasIsDate(archive *GLXFile, claim *proofAssertion) bool {
+	definition := ConflictProperty(archive, claim.a.Subject, claim.a.Property)
+
+	return definition == nil || hasVitalSemantics(definition, conflictDateType)
 }

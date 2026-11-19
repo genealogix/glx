@@ -182,3 +182,43 @@ func TestVitalReview_DecedentRoleIsTheVitalPrincipal(t *testing.T) {
 	require.NoError(t, MergeStandardVocabularies(archive))
 	assert.Len(t, VitalChronologyConflicts(archive, "p"), 1)
 }
+
+func TestVitalReview_DisprovenLegacyDateDoesNotReturnThroughEventDate(t *testing.T) {
+	archive := chronologyArchive("burial", "1635", "1653")
+	delete(archive.Assertions, "death-date")
+	archive.Assertions["legacy"] = &Assertion{Subject: EntityRef{Person: "p"}, Property: "died_on", Value: "1653", Citations: []string{"c"}, Confidence: "high", Status: "disproven"}
+	require.NoError(t, MergeStandardVocabularies(archive))
+	assert.Empty(t, VitalChronologyConflicts(archive, "p"), "the rejected 1653 death date is not rebuilt from the event field")
+	proof, err := BuildProof(archive, "p", "death", ProofOptions{})
+	require.NoError(t, err)
+	assert.NotEqual(t, "CONFLICTED", proof.Conclusion)
+}
+
+func TestVitalReview_DeathDateRecordedOnBurialIsCompared(t *testing.T) {
+	for _, property := range []string{"death_date", "died_on"} {
+		archive := chronologyArchive("burial", "1700-01-01", "")
+		delete(archive.Events, "death")
+		delete(archive.Assertions, "death-date")
+		archive.Assertions["death-on-burial"] = &Assertion{Subject: EntityRef{Event: "burial"}, Property: property, Value: "1700-01-03", Citations: []string{"c"}, Confidence: "high", Status: "proven"}
+		require.NoError(t, MergeStandardVocabularies(archive))
+		conflicts := VitalChronologyConflicts(archive, "p")
+		require.Len(t, conflicts, 1, property)
+		proof, err := BuildProof(archive, "p", "death", ProofOptions{})
+		require.NoError(t, err)
+		assert.Equal(t, "CONFLICTED", proof.Conclusion, property)
+	}
+}
+
+func TestVitalReview_LegacyAndEventBurialAreOneObservation(t *testing.T) {
+	archive := chronologyArchive("burial", "1635", "1653")
+	archive.Assertions["legacy-burial"] = &Assertion{Subject: EntityRef{Person: "p"}, Property: "buried_on", Value: "1635", Citations: []string{"c"}, Confidence: "high", Status: "proven"}
+	archive.Assertions["legacy-death"] = &Assertion{Subject: EntityRef{Person: "p"}, Property: "died_on", Value: "1653", Citations: []string{"c"}, Confidence: "high", Status: "proven"}
+	require.NoError(t, MergeStandardVocabularies(archive))
+	conflicts := VitalChronologyConflicts(archive, "p")
+	require.Len(t, conflicts, 1, "one burial and one death give one conflict")
+	assert.Len(t, conflicts[0].Facts, 4, "both raw facts of each observation are kept")
+	// Two burial events stay separate observations; the legacy claim cannot
+	// be assigned to either.
+	archive.Events["second-burial"] = &Event{Type: "burial", Date: "1636", Participants: []Participant{{Person: "p", Role: "principal"}}}
+	assert.Len(t, VitalChronologyConflicts(archive, "p"), 3)
+}

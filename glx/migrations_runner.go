@@ -312,7 +312,9 @@ var migrationParentRoles = map[string]bool{
 // record's principal: a parent-child relationship role (parent,
 // adoptive_parent, ...) or a register's father/mother.
 func isParentRole(role string) bool {
-	return glxlib.IsParentSideRole(role) || migrationParentRoles[strings.ToLower(strings.TrimSpace(role))]
+	role = strings.ToLower(strings.TrimSpace(role))
+
+	return glxlib.IsParentSideRole(role) || migrationParentRoles[role]
 }
 
 // isParentAtDeathRecord reports whether personID takes part in a death-type
