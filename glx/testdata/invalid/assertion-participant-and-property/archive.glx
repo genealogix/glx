@@ -9,10 +9,22 @@ persons:
         fields:
           given: "John"
           surname: "Smith"
+  person-mary:
+    properties:
+      name:
+        value: "Mary Brown"
+        fields:
+          given: "Mary"
+          surname: "Brown"
 
 events:
   event-marriage:
     type: marriage
+    participants:
+      - person: person-john
+        role: groom
+      - person: person-mary
+        role: bride
 
 sources:
   source-cert:
@@ -34,3 +46,29 @@ assertions:
     citations:
       - citation-cert
     confidence: high
+
+# Only the vocabulary entries this fixture uses, so the one error it is about
+# is the only error it produces.
+event_types:
+  marriage:
+    label: "Marriage"
+    description: "Marriage ceremony"
+    category: "lifecycle"
+
+participant_roles:
+  groom:
+    label: "Groom"
+    description: "Male marriage participant"
+    applies_to:
+      - event
+  bride:
+    label: "Bride"
+    description: "Female marriage participant"
+    applies_to:
+      - event
+
+confidence_levels:
+  high:
+    label: "High Confidence"
+    description: "Multiple high-quality sources agree, minimal uncertainty"
+    rank: 3

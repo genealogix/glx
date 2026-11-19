@@ -176,6 +176,7 @@ const (
 	PersonPropertyResidence  = "residence"
 	PersonPropertyOccupation = "occupation"
 	PersonPropertyLiving     = "living" // Boolean; opt-in marker honored by export privacy filters
+	PersonPropertyStatus     = "status" // Research placeholder state from the person_statuses vocabulary
 )
 
 // Standard Relationship Property Names - commonly used properties on Relationship entities
@@ -432,21 +433,21 @@ const (
 	GedcomTagForm   = "FORM"   // Format
 	GedcomTagCrop   = "CROP"   // Crop coordinates (GEDCOM 7.0)
 	GedcomTagOrig   = "_ORIG"  // Original filename under FILE (GLX extension, written by glx export)
-	GedcomTagOID    = "_OID"   // Ancestry media object id
-	GedcomTagClon   = "_CLON"  // Ancestry clone provenance block
-	GedcomTagMime   = "MIME"   // MIME type (GEDCOM 7.0)
+	GedcomTagMime   = "MIME"   // Legacy nonstandard MIME tag (read for compatibility)
 	GedcomTagMedi   = "MEDI"   // Media type (GEDCOM 5.5.1)
 	GedcomTagTop    = "TOP"    // Top coordinate
 	GedcomTagLeft   = "LEFT"   // Left coordinate
 	GedcomTagHeight = "HEIGHT" // Height
 	GedcomTagWidth  = "WIDTH"  // Width
 	GedcomTagBlob   = "BLOB"   // Binary large object (GEDCOM 5.5.1, deprecated)
+	GedcomTagOID    = "_OID"   // Ancestry media object id
+	GedcomTagClon   = "_CLON"  // Ancestry clone provenance block
 )
 
 // GEDCOM Tags - Citation/Evidence
 const (
 	GedcomTagPage = "PAGE" // Page/location within source
-	GedcomTagQuay = "QUAY" // Quality assessment (preserved in citation notes)
+	GedcomTagQuay = "QUAY" // Citation quality assessment (citation property gedcom_quay; notes when invalid)
 	GedcomTagCont = "CONT" // Continuation on new line
 	GedcomTagConc = "CONC" // Concatenation (same line)
 )
@@ -460,6 +461,9 @@ const (
 	GedcomTagVers = "VERS" // Version
 	GedcomTagCorp = "CORP" // Corporation
 )
+
+// GedcomTagRefn is the GEDCOM 5.5.1 user reference number tag.
+const GedcomTagRefn = "REFN"
 
 // GEDCOM Tags - GEDCOM 7.0 Specific
 const (
@@ -514,6 +518,16 @@ const (
 	LeadStatusConfirmed  = "confirmed"
 )
 
+// Standard Person Statuses - from person-statuses.glx vocabulary.
+// Used by the person `status` property to mark a research placeholder for
+// someone who has not been identified. A person with no status is an ordinary
+// person.
+const (
+	PersonStatusHypothetical = "hypothetical"
+	PersonStatusPredicted    = "predicted"
+	PersonStatusResolved     = "resolved"
+)
+
 // Standard Source Types - from source-types.glx vocabulary
 const (
 	SourceTypeVitalRecord        = "vital_record"        // Birth, marriage, death certificates
@@ -527,7 +541,9 @@ const (
 	SourceTypeImmigration        = "immigration"         // Passenger lists, naturalization records
 	SourceTypeDirectory          = "directory"           // City directories, telephone books
 	SourceTypeBook               = "book"                // Published genealogies, family histories
-	SourceTypeDatabase           = "database"            // Online databases, compiled records
+	SourceTypeArticle            = "article"             // Journal, magazine, and reference articles
+	SourceTypeWebsite            = "website"             // Websites, informational web pages, and blogs
+	SourceTypeDatabase           = "database"            // Searchable record collections and compiled databases
 	SourceTypeOralHistory        = "oral_history"        // Interviews, recorded memories
 	SourceTypeCorrespondence     = "correspondence"      // Letters, emails, personal papers
 	SourceTypePhotograph         = "photograph"          // Photograph collections
@@ -562,6 +578,8 @@ var standardSourceTypes = map[string]bool{
 	SourceTypeImmigration:        true,
 	SourceTypeDirectory:          true,
 	SourceTypeBook:               true,
+	SourceTypeArticle:            true,
+	SourceTypeWebsite:            true,
 	SourceTypeDatabase:           true,
 	SourceTypeOralHistory:        true,
 	SourceTypeCorrespondence:     true,
@@ -579,12 +597,25 @@ var standardSourceTypes = map[string]bool{
 	SourceTypeOther:              true,
 }
 
+// MissingStandardSourceTypeHint explains a source type rejected by an
+// archive's own source_types vocabulary when the key is a standard type: an
+// archive initialized before the type was added keeps its older vocabulary,
+// so the fix is to copy the entry, not to pick another type. It returns ""
+// for a key that is not a standard source type.
+func MissingStandardSourceTypeHint(key string) string {
+	if !standardSourceTypes[key] {
+		return ""
+	}
+
+	return `"` + key + `" is a standard source type missing from this archive's vocabularies/source-types.glx; copy its entry from the standard source-types vocabulary`
+}
+
 // gedcomSourceTypeMapping maps GEDCOM source type values to GLX source types.
 // Package-level to avoid allocation on every call.
 var gedcomSourceTypeMapping = map[string]string{
 	"book":       SourceTypeBook,
-	"article":    SourceTypeBook,
-	"website":    SourceTypeDatabase,
+	"article":    SourceTypeArticle,
+	"website":    SourceTypeWebsite,
 	"database":   SourceTypeDatabase,
 	"census":     SourceTypeCensus,
 	"vital":      SourceTypeVitalRecord,
@@ -734,6 +765,7 @@ const (
 	VocabSearchResultTypes      = "search_result_types"
 	VocabResearchLogStatusTypes = "research_log_status_types"
 	VocabLeadStatuses           = "lead_statuses"
+	VocabPersonStatuses         = "person_statuses"
 	VocabStudyTypes             = "study_types"
 	VocabStudyStatuses          = "study_statuses"
 	VocabLegalStatuses          = "legal_statuses"

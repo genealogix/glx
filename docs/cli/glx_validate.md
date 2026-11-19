@@ -30,14 +30,18 @@ Validation behavior:
   fragment's siblings, which are not being validated
 - Directory: Validates all .glx files with full cross-reference validation
 - No arguments: Validates current directory with full cross-reference validation
-- Several paths (directories, .glx files, or a mix): Loaded together as one
-  archive rooted at the enclosing archive directory — their deepest common
-  directory, or its parent when that is itself an entity directory such as
-  events/ — so cross-references between them resolve and duplicate IDs across
-  them are caught. The archive's vocabularies/ under that root is included
-  automatically; files that are not .glx are ignored. References to entities
-  outside the named paths are errors: the selection is validated as the
-  archive it would be on its own.
+- Part of an archive (an entity directory such as events/, or several paths —
+  directories, .glx files, or a mix): the enclosing archive directory is their
+  deepest common directory, or its parent when that is itself an entity
+  directory. The whole archive is read so references, types and properties
+  resolve as they do when it is validated whole, and only findings about the
+  named files are reported; files that are not .glx are ignored. Paths that
+  share no recognizable archive directory are validated together on their
+  own, and references outside them are errors.
+
+Vocabularies the archive does not define fall back to the standard ones, so an
+archive without source-types.glx still accepts the standard source types. A
+vocabulary the archive defines replaces the standard one.
 
 Dot-prefixed directories and files (.git, .glx, .worktrees, ._name.glx) are not
 archive content and are skipped when a directory is walked, including symlinks
@@ -84,6 +88,7 @@ glx validate [paths...] [flags]
 ```
       --entity-type string      Entity or vocabulary type for --stdin — an entity singular (person, event, place, source, citation, repository, media, relationship, assertion, research-log, study) or a vocabulary collection key (e.g. event_types, place_types, confidence_levels, participant_roles)
   -h, --help                    help for validate
+      --json                    Validate one complete archive and output JSON (not --stdin or fragments)
       --report                  Generate confidence summary report
       --show-first-errors int   Number of validation errors to show (0 for all) (default 10)
       --stdin                   Read one entity as YAML on stdin and validate it against its entity-type schema (no path args)

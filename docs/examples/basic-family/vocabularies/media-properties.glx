@@ -85,6 +85,7 @@ media_properties:
         label: "Identifier Type"
         description: "Authority or system that issued this identifier: ancestry for an Ancestry _OID, ancestry_clone for the _OID in an Ancestry _CLON block, or a GEDCOM 7 EXID.TYPE URI."
 
+
   photographer:
     label: "Photographer"
     description: "Person who created the media (photographer, videographer, etc.)"

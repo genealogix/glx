@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Command memcheck deterministically detects drift between the repository's
-// agent-memory files (every CLAUDE.md, and AGENTS.md if adopted) and reality. It
+// agent-memory files (every AGENTS.md, and any CLAUDE.md) and reality. It
 // is the offline, API-key-free counterpart to the LLM-based check-* drift suite,
 // asserting three cheap invariants on every PR:
 //
@@ -46,8 +46,9 @@ var (
 	errNoModule = errors.New("no module line in go.mod")
 )
 
-// The agent-memory filenames memcheck scans. AGENTS.md is included for when the
-// repo adopts it; it is harmless to look for before then.
+// The agent-memory filenames memcheck scans. AGENTS.md holds the instructions;
+// each CLAUDE.md is a one-line `@AGENTS.md` import stub for Claude Code, still
+// scanned so rules that creep into a stub are checked too.
 const (
 	memoryFileClaude = "CLAUDE.md"
 	memoryFileAgents = "AGENTS.md"

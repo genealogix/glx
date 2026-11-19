@@ -20,7 +20,7 @@
     "properties": {
       "type": "object",
       "additionalProperties": true,
-      "description": "Vocabulary-defined properties (description, subjects, width, height, duration, file_size, crop, medium, photographer, location, original_filename, blob_size; validated against media_properties vocabulary)"
+      "description": "Vocabulary-defined properties (description, subjects, width, height, duration, file_size, crop, medium, photographer, location, original_filename, blob_size, external_ids; validated against media_properties vocabulary)"
     },
     "notes": {
       "oneOf": [

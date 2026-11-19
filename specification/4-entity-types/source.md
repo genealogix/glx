@@ -20,6 +20,8 @@ Sources can include:
 - Military records and service files
 - Newspapers and periodicals
 - Published family histories and genealogies
+- Journal, magazine, and reference articles
+- Websites, informational web pages, and blogs
 - Wills, probate records, and court documents
 - Land records and deeds
 - Immigration and naturalization records
@@ -74,7 +76,7 @@ sources:
 ### Entity ID (map key)
 
 - Format: Any alphanumeric string with hyphens, 1-64 characters
-- Must be unique within the archive
+- Must be unique among entities of this type, ignoring case
 - Example formats:
   - Descriptive: `birth-register`, `1851-census`
   - Random hex: `a1b2c3d4`
@@ -114,7 +116,9 @@ Common source types:
 - `immigration` - Passenger lists, naturalization records
 - `directory` - City directories, telephone books
 - `book` - Published genealogies, family histories
-- `database` - Online databases, compiled records
+- `article` - Journal, magazine, and reference articles, whether print or online
+- `website` - Websites, informational web pages, and blogs
+- `database` - Structured, searchable record collections and compiled databases, such as indexes and online family trees, whether online or offline
 - `oral_history` - Interviews, recorded memories
 - `correspondence` - Letters, emails, personal papers
 - `photograph` - Photo collections
@@ -130,10 +134,15 @@ Common source types:
 - `social_media` - Social media posts and profiles
 - `other` - Other source types
 
+Use `article` for individual journal, magazine, and encyclopedia articles, and `website` for websites, informational pages, or blogs without a more specific source type. A post or profile on a social-media platform is `social_media`; a blog on its own site is a `website`. Use `database` for searchable record collections and compiled databases such as indexes and online family trees, and `book` for published monographs. Online access does not change the type: a digitized birth certificate remains a `vital_record`.
+
 Example:
 
 ```yaml
-type: church_register
+sources:
+  source-seven-years-war:
+    title: "Seven Years' War (Wikipedia)"
+    type: article
 ```
 
 ### `authors`
@@ -514,6 +523,8 @@ Media
 - If `media` array is present, all IDs must reference existing Media entities
 - `date` should follow the [date format standard](../2-core-concepts.md#date-format-standard) (e.g. `1851`, `1851-03-30`, `FROM 1840 TO 1860`, `ABT 1850`)
 - If `type` is specified, it must be from the [source types vocabulary](vocabularies.md#source-types-vocabulary)
+- A title that mentions a census with a `type` other than `census` is a warning: `glx census add` finds an existing census source by its title and type `census`, so a census source typed anything else is not found and a duplicate is created
+- `title`, `type` and `date` are fields of the source itself. Written inside `properties` they are reported with a hint to move them to the top level
 
 ## GEDCOM Mapping
 

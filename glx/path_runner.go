@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -167,11 +168,23 @@ func resolvePersonForPath(archive *glxlib.GLXFile, query string) (string, error)
 // is a recorded, rejected alternative and gets no edge; a hypothetical link
 // gets an edge flagged Hypothetical.
 func buildPathAdjacency(archive *glxlib.GLXFile) map[string][]pathEdge {
+	adj, _ := buildPathAdjacencyContext(context.Background(), archive)
+
+	return adj
+}
+
+func buildPathAdjacencyContext(ctx context.Context, archive *glxlib.GLXFile) (map[string][]pathEdge, error) {
 	adj := make(map[string][]pathEdge)
-	standings := glxlib.NewRelationshipStandingIndex(archive)
+	standings, err := glxlib.NewRelationshipStandingIndexContext(ctx, archive)
+	if err != nil {
+		return nil, err
+	}
 
 	relIDs := sortedKeys(archive.Relationships)
 	for _, relID := range relIDs {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		rel := archive.Relationships[relID]
 		if rel == nil {
 			continue
@@ -183,6 +196,9 @@ func buildPathAdjacency(archive *glxlib.GLXFile) map[string][]pathEdge {
 				continue
 			}
 			for j, pj := range rel.Participants {
+				if err := ctx.Err(); err != nil {
+					return nil, err
+				}
 				if i == j || pj.Person == "" {
 					continue
 				}
@@ -201,7 +217,7 @@ func buildPathAdjacency(archive *glxlib.GLXFile) map[string][]pathEdge {
 		}
 	}
 
-	return adj
+	return adj, ctx.Err()
 }
 
 // acceptedPathAdjacency returns adj without its hypothetical edges, for
@@ -235,8 +251,17 @@ type bfsNode struct {
 // the fewest hypothetical edges, so a hypothesis is never followed where an
 // equally short accepted route exists; other ties go to adjacency order.
 func bfsPath(startID, goalID string, adj map[string][]pathEdge, maxHops int) []*bfsNode {
+	path, _ := bfsPathContext(context.Background(), startID, goalID, adj, maxHops)
+
+	return path
+}
+
+func bfsPathContext(ctx context.Context, startID, goalID string, adj map[string][]pathEdge, maxHops int) ([]*bfsNode, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if startID == goalID {
-		return nil
+		return nil, nil
 	}
 
 	reached := map[string]*bfsNode{startID: {PersonID: startID}}
@@ -245,44 +270,61 @@ func bfsPath(startID, goalID string, adj map[string][]pathEdge, maxHops int) []*
 	for depth := 0; depth < maxHops && len(frontier) > 0; depth++ {
 		var next []*bfsNode
 		for _, current := range frontier {
-			for _, edge := range adj[current.PersonID] {
-				hypo := current.Hypothetical
-				if edge.Hypothetical {
-					hypo++
-				}
-
-				if seen, ok := reached[edge.PersonID]; ok {
-					// A person first reached in this layer has not been
-					// expanded yet, so a less hypothetical route to it can
-					// still replace the one recorded.
-					if seen.Depth == depth+1 && hypo < seen.Hypothetical {
-						edgeCopy := edge
-						seen.Edge, seen.Parent, seen.Hypothetical = &edgeCopy, current, hypo
-					}
-
-					continue
-				}
-
-				edgeCopy := edge
-				node := &bfsNode{
-					PersonID:     edge.PersonID,
-					Edge:         &edgeCopy,
-					Parent:       current,
-					Depth:        depth + 1,
-					Hypothetical: hypo,
-				}
-				reached[edge.PersonID] = node
-				next = append(next, node)
+			if err := ctx.Err(); err != nil {
+				return nil, err
 			}
+			expanded, err := expandBFSNodeContext(ctx, current, adj[current.PersonID], reached, depth)
+			if err != nil {
+				return nil, err
+			}
+			next = append(next, expanded...)
 		}
 
 		if goal, ok := reached[goalID]; ok {
-			return reconstructPath(goal)
+			return reconstructPath(goal), ctx.Err()
 		}
 		frontier = next
 	}
 
-	return nil
+	return nil, nil
+}
+
+func expandBFSNodeContext(ctx context.Context, current *bfsNode, edges []pathEdge, reached map[string]*bfsNode, depth int) ([]*bfsNode, error) {
+	var next []*bfsNode
+	for _, edge := range edges {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		hypo := current.Hypothetical
+		if edge.Hypothetical {
+			hypo++
+		}
+
+		if seen, ok := reached[edge.PersonID]; ok {
+			// A person first reached in this layer has not been
+			// expanded yet, so a less hypothetical route to it can
+			// still replace the one recorded.
+			if seen.Depth == depth+1 && hypo < seen.Hypothetical {
+				edgeCopy := edge
+				seen.Edge, seen.Parent, seen.Hypothetical = &edgeCopy, current, hypo
+			}
+
+			continue
+		}
+
+		edgeCopy := edge
+		node := &bfsNode{
+			PersonID:     edge.PersonID,
+			Edge:         &edgeCopy,
+			Parent:       current,
+			Depth:        depth + 1,
+			Hypothetical: hypo,
+		}
+		reached[edge.PersonID] = node
+		next = append(next, node)
+	}
+
+	return next, nil
 }
 
 // reconstructPath walks back-pointers to build the path from start to goal.

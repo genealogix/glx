@@ -68,7 +68,7 @@ media:
 ### Entity ID (map key)
 
 - Format: Any alphanumeric string with hyphens, 1-64 characters
-- Must be unique within the archive
+- Must be unique among entities of this type, ignoring case
 - Example formats:
   - Descriptive: `birth-cert`, `john-portrait`
   - Random hex: `a1b2c3d4`
@@ -187,7 +187,7 @@ Media entities support vocabulary-defined properties through the `properties` fi
 | `location` | reference (places) | Place where the media was created |
 | `original_filename` | string | Original filename before import or renaming. Exported to GEDCOM as `FILE._ORIG` |
 | `source_path` | string | The media file's path as the imported GEDCOM's `FILE` reference wrote it. Recorded only by `glx import --media-source-paths` |
-| `external_ids` | string (multi-value) | Identifiers from external systems, such as an Ancestry media object id; `fields.type` names the system |
+| `external_ids` | string (multi-value) | Identifiers from external media systems; optional `fields.type` retains the authority |
 | `blob_size` | integer | Length in bytes of the encoded BLOB text imported from GEDCOM 5.5.1 BLOB records, as the BLOB/CONT lines joined with newlines (pre-decode; includes the line separators, and is not the decoded file size) |
 
 ### Example with Properties
@@ -404,7 +404,7 @@ When using external URIs, no local file is stored. The media entity simply refer
 - `uri` must be a valid URI or path
 - `type` must be from the [media types vocabulary](vocabularies.md#media-types-vocabulary)
 - If `mime_type` is specified, it should follow standard MIME type format
-- If `hash` is specified, it should follow `algorithm:hexstring` format
+- If `hash` is specified, it should follow `algorithm:hexstring` format; otherwise validation warns. For `md5`, `sha1`, `sha224`, `sha256`, `sha384` and `sha512` it also warns when the digest has the wrong number of hex digits. Other algorithm names are accepted at any length
 - If `date` is specified, it should follow standard date formats
 - If `source` is specified, it must reference an existing Source entity
 

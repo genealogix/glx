@@ -42,27 +42,37 @@ func (glx *GLXFile) Validate() *ValidationResult {
 		PropertyVocabs: make(map[string]map[string]*PropertyDefinition),
 	}
 
+	// An empty entity node (`persons: {my-person-id: }`) decodes to a nil
+	// pointer. Report each one, then run every other check on a view without
+	// them so no check has to guard against nil (#1406).
+	nullFindings, view := glx.nullEntityFindings()
+	result.Errors = append(result.Errors, nullFindings...)
+
 	// Phase 1: Build existence maps
-	glx.buildEntityMaps(result)
-	glx.buildVocabularyMaps(result)
-	glx.buildPropertyVocabMaps(result)
+	view.buildEntityMaps(result)
+	view.buildVocabularyMaps(result)
+	view.buildPropertyVocabMaps(result)
+	view.validateIDCaseCollisions(result)
 
 	// Phase 2: Validate all references using reflection
-	glx.validateAllReferences(result)
+	view.validateAllReferences(result)
 
 	// Phase 3: Validate entity properties
-	glx.validateAllProperties(result)
+	view.validateAllProperties(result)
+	view.validateAssertionPropertyNames(result)
 
 	// Phase 4: Validate structural constraints
-	glx.validatePlaceHierarchyCycles(result)
-	glx.validateParticipantRoleContexts(result)
+	view.validatePlaceHierarchyCycles(result)
+	view.validateParticipantRoleContexts(result)
+	view.validateDuplicateParticipants(result)
 
 	// Phase 5: Validate entity-level field formats
-	glx.validateEntityFieldFormats(result)
-	glx.validateCensusHouseholds(result)
+	view.validateEntityFieldFormats(result)
+	view.validateCensusHouseholds(result)
+	view.validateAdvisories(result)
 
 	// Phase 6: Temporal consistency checks
-	glx.validateTemporalConsistency(result)
+	view.validateTemporalConsistency(result)
 
 	// The checks above walk entity maps, whose iteration order Go randomizes,
 	// so put the findings in a stable order: every caller then shows the same
@@ -131,6 +141,7 @@ func (glx *GLXFile) buildVocabularyMaps(result *ValidationResult) {
 	result.Vocabularies[VocabSearchResultTypes] = buildIDSet(glx.SearchResultTypes)
 	result.Vocabularies[VocabResearchLogStatusTypes] = buildIDSet(glx.ResearchLogStatusTypes)
 	result.Vocabularies[VocabLeadStatuses] = buildIDSet(glx.LeadStatuses)
+	result.Vocabularies[VocabPersonStatuses] = buildIDSet(glx.PersonStatuses)
 	result.Vocabularies[VocabStudyTypes] = buildIDSet(glx.StudyTypes)
 	result.Vocabularies[VocabStudyStatuses] = buildIDSet(glx.StudyStatuses)
 	result.Vocabularies[VocabLegalStatuses] = buildIDSet(glx.LegalStatuses)
@@ -343,7 +354,9 @@ func (glx *GLXFile) checkReference(
 		suggestion := glx.suggestReferenceKey(targetTypes, refID, result)
 		msg := fmt.Sprintf("%s[%s].%s references non-existent %s: %s",
 			entityType, entityID, fieldName, refType, refID)
-		if suggestion != "" {
+		if hint := MissingStandardSourceTypeHint(refID); refType == VocabSourceTypes && hint != "" {
+			msg += " (" + hint + ")"
+		} else if suggestion != "" {
 			msg += fmt.Sprintf(" (did you mean '%s'?)", suggestion)
 		}
 		result.Errors = append(result.Errors, ValidationError{
@@ -412,23 +425,33 @@ func (glx *GLXFile) validateAllProperties(result *ValidationResult) {
 	relPropVocab := result.PropertyVocabs[PropRelationshipProperties]
 	glx.validateParticipantProperties(EntityTypeEvents, PropEventProperties, glx.Events, eventPropVocab, result)
 	glx.validateParticipantProperties(EntityTypeRelationships, PropRelationshipProperties, glx.Relationships, relPropVocab, result)
-	glx.validateAssertionParticipantProperties(eventPropVocab, result)
+	glx.validateAssertionParticipantProperties(eventPropVocab, relPropVocab, result)
 }
 
 // validateAssertionParticipantProperties validates properties on assertion participants.
 // Unlike events and relationships, assertions have no top-level Properties field, so
 // this is the only place where "missing vocab" warnings for assertion participants
 // can be emitted.
+//
+// The vocabulary follows the assertion's subject, as it does for the
+// participants of the subject itself: event_properties for an event subject,
+// relationship_properties for a relationship subject (#1225). Any other
+// subject cannot carry participants and is reported by the reference checks,
+// so it is checked against event_properties as before rather than skipped.
 func (glx *GLXFile) validateAssertionParticipantProperties(
-	propVocab map[string]*PropertyDefinition,
+	eventPropVocab, relPropVocab map[string]*PropertyDefinition,
 	result *ValidationResult,
 ) {
 	for assertionID, assertion := range glx.Assertions {
 		if assertion.Participant == nil || len(assertion.Participant.Properties) == 0 {
 			continue
 		}
+		vocabKey, propVocab := PropEventProperties, eventPropVocab
+		if assertion.Subject.Type() == EntityTypeRelationships {
+			vocabKey, propVocab = PropRelationshipProperties, relPropVocab
+		}
 		participantEntityID := assertionID + " participant"
-		glx.validateProperties(EntityTypeAssertions, participantEntityID, PropEventProperties, assertion.Participant.Properties, propVocab, result)
+		glx.validateProperties(EntityTypeAssertions, participantEntityID, vocabKey, reflect.TypeFor[Participant](), assertion.Participant.Properties, propVocab, result)
 	}
 }
 
@@ -497,7 +520,7 @@ func (glx *GLXFile) validateParticipantProperties(
 			}
 			if properties, ok := propsField.Interface().(map[string]any); ok {
 				participantEntityID := fmt.Sprintf("%s participants[%d]", entityID, i)
-				glx.validateProperties(entityType, participantEntityID, propVocabKey, properties, propVocab, result)
+				glx.validateProperties(entityType, participantEntityID, propVocabKey, participant.Type(), properties, propVocab, result)
 			}
 		}
 	}
@@ -523,7 +546,7 @@ func (glx *GLXFile) validateEntityProperties(
 			continue
 		}
 		if properties, ok := propsField.Interface().(map[string]any); ok {
-			glx.validateProperties(entityType, entityID, propVocabKey, properties, propVocab, result)
+			glx.validateProperties(entityType, entityID, propVocabKey, entity.Type(), properties, propVocab, result)
 		}
 	}
 }
@@ -540,8 +563,12 @@ var removedProperties = map[string]string{
 }
 
 // validateProperties validates a single `properties` map against its vocabulary.
+// holder is the type whose `properties` field this is: a key inside the map
+// that names one of holder's own fields, and that the vocabulary does not
+// define, was almost certainly meant to sit beside `properties` (#648).
 func (glx *GLXFile) validateProperties(
 	entityType EntityType, entityID, propVocabKey string,
+	holder reflect.Type,
 	properties map[string]any,
 	propVocab map[string]*PropertyDefinition,
 	result *ValidationResult,
@@ -560,7 +587,23 @@ func (glx *GLXFile) validateProperties(
 			}
 		}
 	}
-	if len(properties) > 0 && len(propVocab) == 0 {
+	misplaced := topLevelFieldNames(holder)
+	vocabProperties := 0
+	for propName := range properties {
+		if _, defined := propVocab[propName]; defined || !misplaced[propName] {
+			vocabProperties++
+
+			continue
+		}
+		result.Warnings = append(result.Warnings, ValidationWarning{
+			SourceType: entityType,
+			SourceID:   entityID,
+			Field:      "properties." + propName,
+			Message: fmt.Sprintf("%s[%s]: '%s' is a field of the entity, not a property; move it out of properties to the top level",
+				entityType, entityID, propName),
+		})
+	}
+	if vocabProperties > 0 && len(propVocab) == 0 {
 		result.Warnings = append(result.Warnings, ValidationWarning{
 			SourceType: entityType,
 			SourceID:   entityID,
@@ -576,6 +619,9 @@ func (glx *GLXFile) validateProperties(
 			continue
 		}
 		propDef, exists := propVocab[propName]
+		if !exists && misplaced[propName] {
+			continue // reported above as a misplaced field
+		}
 		if !exists {
 			result.Warnings = append(result.Warnings, ValidationWarning{
 				SourceType: entityType,

@@ -15,6 +15,7 @@
 package glx
 
 import (
+	"encoding/json"
 	"fmt"
 	"slices"
 	"sort"
@@ -93,6 +94,13 @@ func genericEventTypeRecord(event *Event, expCtx *ExportContext) *GEDCOMRecord {
 		return nil
 	}
 
+	return eventTypeLabelRecord(event, expCtx)
+}
+
+// eventTypeLabelRecord returns a TYPE subrecord naming the event's type by
+// its vocabulary label, followed by ": <subtype>" when the event also has an
+// event subtype, whether or not the type has a GEDCOM tag of its own.
+func eventTypeLabelRecord(event *Event, expCtx *ExportContext) *GEDCOMRecord {
 	value := vocabularyLabel(expCtx.GLX.EventTypes, event.Type)
 	if subtype := eventSubtype(event, expCtx); subtype != "" {
 		value += genericEventSubtypeSeparator + subtype
@@ -474,21 +482,29 @@ func queueGEDCOM551EventAssociations(eventID string, event *Event, gedcomTag str
 
 func gedcom551EventContext(eventID string, event *Event, gedcomTag string, hostIDs []string, expCtx *ExportContext) string {
 	context := "Event: " + vocabularyLabel(expCtx.GLX.EventTypes, event.Type) + " (" + gedcomTag + "; " + eventID + ")"
-	if event.Date != "" {
-		context += "; date: " + string(event.Date)
-	}
-	if place := expCtx.PlaceStrings[event.PlaceID]; place != "" {
-		context += "; place: " + place
-	}
 	var names []string
 	for _, personID := range hostIDs {
 		if person := expCtx.GLX.Persons[personID]; person != nil {
 			names = append(names, PersonDisplayName(person))
 		}
 	}
-	if len(names) > 0 {
-		context += "; subjects: " + strings.Join(names, ", ")
+	attributes := map[string]string{conflictDateType: string(event.Date), eventFieldPlace: expCtx.PlaceStrings[event.PlaceID], "subjects": strings.Join(names, ", ")}
+	for _, value := range attributes {
+		if strings.Contains(value, "; ") || strings.ContainsAny(value, "\r\n") {
+			// Encode delimiter-bearing values together so arbitrary labels in a
+			// place or name cannot masquerade as another context attribute.
+			if encoded, err := json.Marshal(attributes); err == nil {
+				return context + gedcom551EncodedContextPrefix + string(encoded)
+			}
+		}
 	}
+	var contextSb494 strings.Builder
+	for _, key := range []string{conflictDateType, eventFieldPlace, "subjects"} {
+		if value := attributes[key]; value != "" {
+			contextSb494.WriteString("; " + key + ": " + value)
+		}
+	}
+	context += contextSb494.String()
 
 	return context
 }

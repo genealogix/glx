@@ -178,7 +178,7 @@ Assertions reference citations by ID regardless of where the citation file lives
 | `properties.text_from_source` | SOUR.TEXT, SOUR.DATA.TEXT | Transcribed text |
 | `properties.source_date` | SOUR.DATA.DATE | Date when source recorded the information |
 | `properties.external_ids` | SOUR.EXID | External identifiers (GEDCOM 7.0 EXID within source citation context) |
-| `notes` | SOUR.QUAY (import only) | Quality indicator (0-3) is not mapped to `confidence`; import preserves it as a `GEDCOM QUAY: n` note on the citation. Export writes notes as `SOUR.NOTE` and never reconstructs a QUAY record |
+| `properties.gedcom_quay` | SOUR.QUAY | Original integer 0–3, preserved independently on each citation. Zero differs from an absent assessment. Never maps to assertion confidence |
 
 ## Validation Rules
 
@@ -200,3 +200,20 @@ See [citation.schema.json](../schema/v1/citation.schema.json) for the complete J
 - [Source Entity](source.md) - Bibliographic resource
 - [Assertion Entity](assertion.md) - Evidence conclusions
 - [Repository Entity](repository.md) - Where sources are held
+
+### GEDCOM quality assessment compatibility
+
+New imports store valid `QUAY` values as `properties.gedcom_quay`, using the
+citation-properties vocabulary. Export reconstructs `SOUR.QUAY` in GEDCOM 5.5.1
+and 7.0. Existing archives should add the `gedcom_quay` entry from the standard
+citation-properties vocabulary before adding this property manually.
+
+Older `GEDCOM QUAY: n` notes remain notes on export; arbitrary note text is not
+silently promoted into structured metadata. To migrate an older archive, verify
+the note's origin and explicitly set the property. Invalid or repeated input
+values are preserved in notes with an import warning. Invalid property values
+are exported as notes with a warning, never coerced into a valid rating.
+When more than one citation property maps to `QUAY`, import and export both
+leave it unmapped: values are kept as notes with a warning, so a round trip does
+not move them between a property and a note. An archive vocabulary with no
+`QUAY` property keeps imported values as notes without a per-citation warning.

@@ -29,7 +29,7 @@ func TestBuildReportClean(t *testing.T) {
 }
 
 func TestBuildReportCleanWithSuppressed(t *testing.T) {
-	supp := []suppression{{finding: finding{File: "CLAUDE.md", Line: 3, Token: "a/b.go", Kind: kindPath}, entry: allowEntry{Reason: "example"}}}
+	supp := []suppression{{finding: finding{File: "AGENTS.md", Line: 3, Token: "a/b.go", Kind: kindPath}, entry: allowEntry{Reason: "example"}}}
 	out := buildReport(5, testAllowlist, nil, supp, true)
 	if !strings.Contains(out, "1 finding(s) suppressed") {
 		t.Errorf("missing suppressed count:\n%s", out)
@@ -44,8 +44,8 @@ func TestBuildReportCleanWithSuppressed(t *testing.T) {
 // and the footer — not the hard-coded default.
 func TestBuildReportEffectiveAllowlistPath(t *testing.T) {
 	const custom = "config/my-allowlist.yaml"
-	supp := []suppression{{finding: finding{File: "CLAUDE.md", Line: 3, Token: "a/b.go", Kind: kindPath}, entry: allowEntry{Reason: "example"}}}
-	findings := []finding{{File: "CLAUDE.md", Line: 10, Kind: kindPath, Severity: severityMajor, Token: "x/y.ged", Message: "missing"}}
+	supp := []suppression{{finding: finding{File: "AGENTS.md", Line: 3, Token: "a/b.go", Kind: kindPath}, entry: allowEntry{Reason: "example"}}}
+	findings := []finding{{File: "AGENTS.md", Line: 10, Kind: kindPath, Severity: severityMajor, Token: "x/y.ged", Message: "missing"}}
 
 	out := buildReport(5, custom, findings, supp, true)
 	if strings.Contains(out, testAllowlist) {
@@ -58,14 +58,14 @@ func TestBuildReportEffectiveAllowlistPath(t *testing.T) {
 
 func TestBuildReportFindings(t *testing.T) {
 	findings := []finding{
-		{File: "CLAUDE.md", Line: 10, Kind: kindPath, Severity: severityMajor, Token: "x/y.ged", Message: "references file `x/y.ged`, which does not exist"},
-		{File: "go-glx/CLAUDE.md", Line: 4, Kind: kindMakeTarget, Severity: severityMajor, Token: "make foo", Message: "references `make foo`, which is not a target in the Makefile"},
+		{File: "AGENTS.md", Line: 10, Kind: kindPath, Severity: severityMajor, Token: "x/y.ged", Message: "references file `x/y.ged`, which does not exist"},
+		{File: "go-glx/AGENTS.md", Line: 4, Kind: kindMakeTarget, Severity: severityMajor, Token: "make foo", Message: "references `make foo`, which is not a target in the Makefile"},
 	}
 	out := buildReport(5, testAllowlist, findings, nil, false)
 	for _, want := range []string{
 		"Memory drift detected: 2 finding(s)",
-		"## CLAUDE.md",
-		"## go-glx/CLAUDE.md",
+		"## AGENTS.md",
+		"## go-glx/AGENTS.md",
 		"Summary: 2 major, 0 minor, 0 info",
 		"memory-drift-allowlist.yaml",
 	} {

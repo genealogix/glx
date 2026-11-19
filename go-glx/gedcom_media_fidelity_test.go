@@ -103,10 +103,12 @@ func TestImportGEDCOM_MediaExternalIDs(t *testing.T) {
 		"0 TRLR\n")
 	require.Len(t, glx.Media, 1)
 	for _, media := range glx.Media {
+		// The vocabulary-mapped EXID is read before the record's other
+		// subrecords, so it comes first.
 		assert.Equal(t, []any{
+			NewExternalIDEntry("12345", "https://example.org/media"),
 			NewExternalIDEntry("0a1b2c3d-4e5f-6789-abcd-ef0123456789", ExternalIDTypeAncestry),
 			NewExternalIDEntry("99999999-0000-1111-2222-333333333333", ExternalIDTypeAncestryClone),
-			NewExternalIDEntry("12345", "https://example.org/media"),
 		}, media.Properties[MediaPropertyExternalIDs])
 	}
 }

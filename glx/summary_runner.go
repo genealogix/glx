@@ -17,6 +17,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -28,27 +29,27 @@ import (
 
 // nameVariant holds a single name variant with its type classification.
 type nameVariant struct {
-	Value    string
-	NameType string // e.g., "birth", "married", "as_recorded"
+	Value    string `json:"value"`
+	NameType string `json:"name_type"` // e.g., "birth", "married", "as_recorded"
 }
 
 // spouseInfo holds details about a spouse relationship.
 type spouseInfo struct {
-	PersonID      string
-	PersonName    string
-	RelType       string
-	MarriageDate  string
-	MarriagePlace string
-	Hypothetical  bool // the archive records the union only as a hypothesis
+	PersonID      string `json:"person_id"`
+	PersonName    string `json:"person_name"`
+	RelType       string `json:"rel_type"`
+	MarriageDate  string `json:"marriage_date"`
+	MarriagePlace string `json:"marriage_place"`
+	Hypothetical  bool   `json:"hypothetical"` // the archive records the union only as a hypothesis
 }
 
 // otherRelInfo holds a non-family relationship for display.
 type otherRelInfo struct {
-	RelType      string
-	Label        string // how the other participant relates to the person (see otherRelationshipLabel)
-	OtherName    string
-	OtherID      string
-	Hypothetical bool // the archive records the relationship only as a hypothesis
+	RelType      string `json:"rel_type"`
+	Label        string `json:"label"` // how the other participant relates to the person (see otherRelationshipLabel)
+	OtherName    string `json:"other_name"`
+	OtherID      string `json:"other_id"`
+	Hypothetical bool   `json:"hypothetical"` // the archive records the relationship only as a hypothesis
 }
 
 // parentChildRelTypes maps relationship types that represent parent-child connections.
@@ -135,10 +136,13 @@ func loadArchiveForSummary(path string) (*glxlib.GLXFile, error) {
 }
 
 // showSummary loads an archive and displays a comprehensive person profile.
-func showSummary(archivePath, personQuery string) error {
+func showSummary(archivePath, personQuery string, jsonOutput ...bool) error {
 	archive, err := loadArchiveForSummary(archivePath)
 	if err != nil {
 		return err
+	}
+	if explorationJSONEnabled(jsonOutput) {
+		return printExplorationJSON(buildSummaryJSON(archive, personQuery))
 	}
 
 	personID, person, err := findPersonByQuery(archive, personQuery)
@@ -177,6 +181,9 @@ func findPersonByQuery(archive *glxlib.GLXFile, query string) (string, *glxlib.P
 	var matches []string
 
 	for id, person := range archive.Persons {
+		if person == nil {
+			continue
+		}
 		names := extractAllNameValues(person)
 		for _, name := range names {
 			if strings.Contains(strings.ToLower(name), lowerQuery) {
@@ -317,6 +324,10 @@ func printIdentitySection(person *glxlib.Person) {
 
 	if identity := displayableGenderIdentity(person); identity != "" {
 		fmt.Printf("  %-18s%s\n", "Gender:", identity)
+	}
+
+	if status := glxlib.PersonStatus(person); status != "" {
+		fmt.Printf("  %-18s%s\n", "Status:", sanitizeForTerminal(status))
 	}
 
 	variants := extractAllNameVariants(person)
@@ -794,27 +805,20 @@ func findParentIDs(personID string, archive *glxlib.GLXFile) []string {
 }
 
 // findChildIDs finds the IDs of a person's children (including stepchildren),
-// sorted by birth year, leaving out disproven links.
+// in birth order, leaving out disproven links.
 func findChildIDs(personID string, archive *glxlib.GLXFile) []string {
 	return edgeIDs(newFamilyLinks(archive).children(personID))
 }
 
-// birthYear returns the birth year for a person by looking up their birth event.
-// Returns 0 if no birth event is found.
-func birthYear(archive *glxlib.GLXFile, personID string) int {
-	_, event := glxlib.FindPersonEvent(archive, personID, glxlib.EventTypeBirth)
-	if event == nil {
-		return 0
-	}
-
-	return glxlib.ExtractFirstYear(string(event.Date))
-}
-
 // findSiblingIDs finds a person's siblings of every kind (full, half, and
-// step), sorted by ID, through surviving parent-child links and explicit
+// step), in birth order, through surviving parent-child links and explicit
 // sibling relationships.
 func findSiblingIDs(personID string, archive *glxlib.GLXFile) []string {
-	sibs := newFamilyLinks(archive).siblings(personID)
+	return siblingIDs(newFamilyLinks(archive).siblings(personID))
+}
+
+// siblingIDs returns the person IDs of sibs, in order.
+func siblingIDs(sibs []siblingEdge) []string {
 	ids := make([]string, 0, len(sibs))
 	for _, s := range sibs {
 		ids = append(ids, s.PersonID)
@@ -1068,24 +1072,7 @@ func generateLifeHistory(personID string, person *glxlib.Person, archive *glxlib
 		sentences = append(sentences, c)
 	}
 
-	// Notable events (first of each type)
-	notableTypes := []string{"immigration", "naturalization", "military_service"}
-	for _, evType := range notableTypes {
-		evDate, evPlace := findEventDatePlace(personID, evType, archive)
-		if evDate == "" && evPlace == "" {
-			continue
-		}
-		label := strings.ToLower(snakeCaseToTitle(evType))
-		s := possessive + " " + label + " was recorded"
-		if evDate != "" {
-			s += " " + narrativeDate(evDate)
-		}
-		if evPlace != "" {
-			s += " in " + evPlace
-		}
-		s = capitalize(s)
-		sentences = append(sentences, s+".")
-	}
+	sentences = append(sentences, notableLifeSentences(personID, possessive, archive)...)
 
 	// Death
 	deathDate, deathPlace := findEventDatePlace(personID, "death", archive)
@@ -1101,6 +1088,38 @@ func generateLifeHistory(personID string, person *glxlib.Person, archive *glxlib
 	}
 
 	return strings.Join(sentences, " ")
+}
+
+// Keep separate proceedings, including declarations and final admissions, in
+// date order. The timeline retains their IDs; prose preserves recorded subtype
+// or title without interpreting either as a legal conclusion.
+func notableLifeSentences(personID, possessive string, archive *glxlib.GLXFile) []string {
+	var sentences []string
+	entries := collectTimelineEntries(personID, archive, false)
+	for i := range entries {
+		entry := &entries[i]
+		event := archive.Events[entry.EventID]
+		if !slices.Contains([]string{"immigration", "naturalization", "military_service"}, strings.ToLower(event.Type)) || !ownsSummaryEvent(personID, event, archive) {
+			continue
+		}
+		label := strings.ToLower(snakeCaseToTitle(event.Type))
+		subtype, _ := event.Properties["event_subtype"].(string)
+		if subtype = strings.TrimSpace(subtype); subtype != "" {
+			label += " (" + subtype + ")"
+		} else if title := strings.TrimSpace(event.Title); title != "" {
+			label += " (" + title + ")"
+		}
+		s := possessive + " " + label + " was recorded"
+		if event.Date != "" {
+			s += " " + narrativeDate(string(event.Date))
+		}
+		if place := resolvePlaceName(event.PlaceID, archive); place != "" {
+			s += " in " + place
+		}
+		sentences = append(sentences, capitalize(s)+".")
+	}
+
+	return sentences
 }
 
 // parentSentences narrates a person's parents, then step-parents

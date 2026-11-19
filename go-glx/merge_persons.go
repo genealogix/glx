@@ -86,6 +86,22 @@ type MergePersonsResult struct {
 	// InterpretationChanges compares existing evidence, standing and coverage
 	// semantics before and after the merge. It does not invent researcher statuses.
 	InterpretationChanges []MergeInterpretationChange
+	// DuplicateParticipants lists events where the merge leaves the survivor
+	// in one role more than once because both merge persons held that role.
+	// Duplicates that predate the merge are not reported. The rows are kept,
+	// not folded; callers should review them.
+	DuplicateParticipants []MergeDuplicateParticipant
+}
+
+// MergeDuplicateParticipant identifies an event that lists the surviving
+// person more than once in Role after a merge. Indexes are the participant
+// positions of all the survivor's rows in that role, in order; DropIndexes
+// is the subset that named the dropped person before the merge.
+type MergeDuplicateParticipant struct {
+	EventID     string
+	Role        string
+	Indexes     []int
+	DropIndexes []int
 }
 
 // MergePersons consolidates two person entities, retaining keepID and folding
@@ -112,6 +128,8 @@ type MergePersonsResult struct {
 //
 // Property-merge rules:
 //   - Missing properties are copied, and identical values agree silently.
+//   - An unresolved placeholder status (hypothetical, predicted) does not survive
+//     a merge with an identified person, whichever side is kept.
 //   - TemporalValue, []TemporalValue and mixed lists are normalized to GLX
 //     value/date objects before comparison; pointer forms are also accepted.
 //   - Fixed-property refinements retain the narrower date or descendant place.
@@ -190,6 +208,7 @@ func MergePersons(glx *GLXFile, keepID, dropID string, opts MergePersonsOptions)
 
 	delete(planned.Persons, dropID)
 	result.RefsUpdated = rewriteMergedPersonReferences(planned, prepared, dropID, keepID, result)
+	result.DuplicateParticipants = mergeDuplicateParticipants(glx, planned, keepID, dropID)
 	if err := validateMergeReferences(glx, planned); err != nil {
 		return nil, err
 	}
@@ -263,6 +282,12 @@ func mergePersonProperties(archive *GLXFile, keep, drop *Person, opts MergePerso
 	for property, value := range keep.Properties {
 		keep.Properties[property] = normalizeTemporalProperty(value)
 	}
+	// Merging an unresolved placeholder with an identified person resolves it,
+	// so the survivor must not stay marked as (or become) a placeholder (#191).
+	keepOpen, dropOpen := IsUnresolvedPlaceholder(keep), IsUnresolvedPlaceholder(drop)
+	if keepOpen && !dropOpen {
+		delete(keep.Properties, PersonPropertyStatus)
+	}
 	if len(drop.Properties) == 0 {
 		return 0, nil
 	}
@@ -275,6 +300,9 @@ func mergePersonProperties(archive *GLXFile, keep, drop *Person, opts MergePerso
 	}
 	sort.Strings(properties)
 	for _, prop := range properties {
+		if prop == PersonPropertyStatus && dropOpen && !keepOpen {
+			continue
+		}
 		dropVal := normalizeTemporalProperty(drop.Properties[prop])
 		keepVal, exists := keep.Properties[prop]
 		if !exists {

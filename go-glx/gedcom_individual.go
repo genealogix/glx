@@ -41,7 +41,7 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 		Properties: make(map[string]any),
 	}
 
-	// Extract external IDs (GEDCOM 7.0 EXID tags)
+	// The EXID vocabulary mapping selects the property; the shared reader consumes EXID and REFN.
 	if propertyKey, ok := conv.GEDCOMIndex.PersonProperties[GedcomTagExid]; ok {
 		extractExternalIDs(indiRecord, propertyKey, person.Properties)
 	}
@@ -147,6 +147,16 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 				LinkType:     ParticipantRoleChild,
 				PedigreeType: pedigreeType,
 			})
+
+		case GedcomTagAsso:
+			// INDI associations are resolved after families.
+
+		case GedcomTagExid, GedcomTagRefn:
+			// Read above when the vocabulary maps EXID; otherwise keep the value
+			// as an administrative property rather than dropping it.
+			if _, mapped := conv.GEDCOMIndex.PersonProperties[GedcomTagExid]; !mapped && sub.Value != "" {
+				person.Properties[strings.ToLower(sub.Tag)] = sub.Value
+			}
 
 		case GedcomTagFams:
 			// Family as spouse - defer for family processing
@@ -289,6 +299,11 @@ func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOM
 			Person: personID,
 			Role:   ParticipantRolePrincipal,
 		},
+	}
+
+	if age, ok := event.Properties["age_at_event"]; ok {
+		event.Participants[0].Properties = map[string]any{"age_at_event": age}
+		delete(event.Properties, "age_at_event")
 	}
 
 	// Add ASSO participants (witnesses, officiants, etc.). Fixes #527.

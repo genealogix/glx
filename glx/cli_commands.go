@@ -17,8 +17,11 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
+	"runtime/debug"
 	"strings"
+	"sync"
 
 	"github.com/spf13/cobra"
 
@@ -48,11 +51,9 @@ GENEALOGIX is a modern, evidence-first, Git-native genealogy data standard.
 Use GLX to initialize new archives, validate files, and ensure data quality.`,
 	Version:       versionString(),
 	SilenceErrors: true,
-	// SilenceUsage is set in PersistentPreRun (after arg validation) so that
-	// arg-count errors still show usage but runtime errors from RunE do not.
-	PersistentPreRun: func(cmd *cobra.Command, _ []string) {
-		cmd.SilenceUsage = true
-	},
+	// run prints usage itself, and only for errors raised before a command's
+	// RunE started (see runStarted), so Cobra never does.
+	SilenceUsage: true,
 }
 
 // showHelp is the RunE of a parent command that only groups subcommands (add,
@@ -77,29 +78,98 @@ func (e *silentExitError) Error() string {
 	return fmt.Sprintf("silent exit %d", e.code)
 }
 
-// Execute runs the root command.
-//
-// A *silentExitError returned by a RunE means "exit with this code, do not
-// print a message" — see runMergeDriverCmd for the canonical use. Any other
-// non-nil error is printed to stderr before exiting with code 1. The message
-// is passed through sanitizeForTerminal first: errors routinely embed
-// archive-controlled text (a symlink's filename from a containment failure,
-// an entity ID from a reference error), and this is the one print site that
-// every runner's returned error funnels through.
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		if silent, ok := errors.AsType[*silentExitError](err); ok {
-			os.Exit(silent.code)
+// runStarted records whether the invoked command's own RunE (or Run) began.
+// An error returned before that point came from Cobra itself or from the
+// command's argument, flag or PreRunE checks: the invocation was wrong, not
+// the data. Cobra validates required flags and flag groups only after the
+// persistent pre-run hooks, so a PersistentPreRun cannot draw this line.
+var runStarted bool
+
+// markRunStartOnce wraps every command's RunE and Run, once per process, so
+// they set runStarted before doing anything else. It runs at the first call
+// to run rather than in init so it sees every command, whichever file's init
+// registered it.
+var markRunStartOnce sync.Once
+
+func markRunStart(cmd *cobra.Command) {
+	if runE := cmd.RunE; runE != nil {
+		cmd.RunE = func(c *cobra.Command, args []string) error {
+			runStarted = true
+
+			return runE(c, args)
 		}
-		fmt.Fprintln(os.Stderr, sanitizeForTerminal(err.Error()))
-		os.Exit(exitCodeForError(err))
+	}
+	if runFn := cmd.Run; runFn != nil {
+		cmd.Run = func(c *cobra.Command, args []string) {
+			runStarted = true
+			runFn(c, args)
+		}
+	}
+	for _, sub := range cmd.Commands() {
+		markRunStart(sub)
 	}
 }
 
-// exitBadInvocation is the process exit code for CLI misuse on the --stdin path
-// (issue #910) — distinct from exit 1, which signals a structural/semantic
+// run executes the root command with args and returns the process exit code.
+// main passes the result to os.Exit; keeping the exit out of run lets tests
+// drive every branch below.
+//
+// A *silentExitError returned by a RunE means "exit with this code, do not
+// print a message" — see runMergeDriverCmd for the canonical use. Any other
+// non-nil error is printed to stderr. The message is passed through
+// sanitizeForTerminal first: errors routinely embed archive-controlled text (a
+// symlink's filename from a containment failure, an entity ID from a reference
+// error), and this is the one print site that every runner's returned error
+// funnels through. An error raised before the command's RunE started is a
+// misuse (unknown flag or subcommand, wrong argument count, missing required
+// flag): its usage is printed first and the code is exitBadInvocation.
+// Otherwise exitCodeForError picks the code.
+//
+// A panic is recovered here so it cannot exit with Go's own status 2, which
+// would read as exitBadInvocation, and so its text is sanitized like any error.
+func run(args []string, stderr io.Writer) (code int) {
+	defer func() {
+		if r := recover(); r != nil {
+			_, _ = fmt.Fprintf(stderr, "glx: internal error: %s\n%s",
+				sanitizeForTerminal(fmt.Sprint(r)), sanitizeForTerminal(string(debug.Stack())))
+			code = exitInternalError
+		}
+	}()
+
+	stop := watchInterrupts(stderr)
+	defer stop()
+
+	markRunStartOnce.Do(func() { markRunStart(rootCmd) })
+	runStarted = false
+	rootCmd.SetArgs(args)
+
+	cmd, err := rootCmd.ExecuteC()
+	if err == nil {
+		return 0
+	}
+	if silent, ok := errors.AsType[*silentExitError](err); ok {
+		return silent.code
+	}
+	if !runStarted {
+		_, _ = fmt.Fprintln(stderr, cmd.UsageString())
+		_, _ = fmt.Fprintln(stderr, sanitizeForTerminal(err.Error()))
+
+		return exitBadInvocation
+	}
+	_, _ = fmt.Fprintln(stderr, sanitizeForTerminal(err.Error()))
+
+	return exitCodeForError(err)
+}
+
+// exitBadInvocation is the process exit code for CLI misuse: the --stdin
+// sentinels below (issue #910) and every error raised before a command's RunE
+// started (see run) — distinct from exit 1, which signals a structural/semantic
 // validation failure on otherwise well-formed input.
 const exitBadInvocation = 2
+
+// exitInternalError is the process exit code for a recovered panic: a glx bug,
+// not a problem with the invocation or the archive.
+const exitInternalError = 3
 
 // exitCodeForError maps a root-command error to a process exit code. The
 // --stdin invocation sentinels yield 2 so callers and CI can tell "you invoked
@@ -180,6 +250,7 @@ func init() {
 	rootCmd.AddCommand(publishCmd)
 	rootCmd.AddCommand(serveCmd)
 	rootCmd.AddCommand(cacheCmd)
+	rootCmd.AddCommand(mcpCmd)
 	rootCmd.AddCommand(docsCmd)
 }
 
@@ -471,14 +542,18 @@ Validation behavior:
   fragment's siblings, which are not being validated
 - Directory: Validates all .glx files with full cross-reference validation
 - No arguments: Validates current directory with full cross-reference validation
-- Several paths (directories, .glx files, or a mix): Loaded together as one
-  archive rooted at the enclosing archive directory — their deepest common
-  directory, or its parent when that is itself an entity directory such as
-  events/ — so cross-references between them resolve and duplicate IDs across
-  them are caught. The archive's vocabularies/ under that root is included
-  automatically; files that are not .glx are ignored. References to entities
-  outside the named paths are errors: the selection is validated as the
-  archive it would be on its own.
+- Part of an archive (an entity directory such as events/, or several paths —
+  directories, .glx files, or a mix): the enclosing archive directory is their
+  deepest common directory, or its parent when that is itself an entity
+  directory. The whole archive is read so references, types and properties
+  resolve as they do when it is validated whole, and only findings about the
+  named files are reported; files that are not .glx are ignored. Paths that
+  share no recognizable archive directory are validated together on their
+  own, and references outside them are errors.
+
+Vocabularies the archive does not define fall back to the standard ones, so an
+archive without source-types.glx still accepts the standard source types. A
+vocabulary the archive defines replaces the standard one.
 
 Dot-prefixed directories and files (.git, .glx, .worktrees, ._name.glx) are not
 archive content and are skipped when a directory is walked, including symlinks
@@ -526,6 +601,9 @@ func init() {
 }
 
 func runValidate(_ *cobra.Command, args []string) error {
+	if validateJSON {
+		return showValidationJSON(args, validateReport)
+	}
 	if validateStdin && validateReport {
 		return errStdinReportExclusive
 	}
@@ -672,6 +750,9 @@ func runPlaces(_ *cobra.Command, args []string) error {
 		path = args[0]
 	}
 
+	if placesJSON {
+		return showPlacesJSON(path)
+	}
 	return analyzePlaces(path)
 }
 
@@ -706,7 +787,7 @@ relationships, places, citations, repositories, media, research_logs,
 studies.
 
 Filters vary by entity type:
-  persons:       --name, --born-before, --born-after, --birthplace
+  persons:       --name, --born-before, --born-after, --birthplace, --status
   events:        --type, --before, --after
   assertions:    --confidence, --status, --source, --citation, --subject
   sources:       --name, --type
@@ -766,7 +847,7 @@ func init() {
 	queryCmd.Flags().IntVar(&queryBefore, "before", 0, "Filter events with date before this year")
 	queryCmd.Flags().IntVar(&queryAfter, "after", 0, "Filter events with date after this year")
 	queryCmd.Flags().StringVar(&queryConfidence, "confidence", "", "Filter assertions by confidence level")
-	queryCmd.Flags().StringVar(&queryStatus, "status", "", "Filter assertions or research logs by status")
+	queryCmd.Flags().StringVar(&queryStatus, "status", "", "Filter persons, assertions or research logs by status")
 	queryCmd.Flags().StringVar(&querySource, "source", "", "Filter assertions by source ID (direct or via citation)")
 	queryCmd.Flags().StringVar(&queryCitation, "citation", "", "Filter assertions by citation ID")
 	queryCmd.Flags().StringVar(&querySubject, "subject", "", "Filter assertions or research logs by subject entity ID or person name substring")
@@ -776,6 +857,7 @@ func init() {
 func runQuery(_ *cobra.Command, args []string) error {
 	return queryEntities(glxlib.EntityType(args[0]), &queryOpts{
 		Archive:    queryArchive,
+		JSON:       queryJSON,
 		Name:       queryName,
 		Phonetic:   queryPhonetic,
 		BornBefore: queryBornBefore,
@@ -834,6 +916,9 @@ func runStats(_ *cobra.Command, args []string) error {
 		path = args[0]
 	}
 
+	if statsJSON {
+		return showStatsJSON(path)
+	}
 	return showStats(path)
 }
 
@@ -872,10 +957,10 @@ func init() {
 
 func runCite(_ *cobra.Command, args []string) error {
 	if len(args) == 1 {
-		return showCitation(citeArchive, args[0])
+		return showCitation(citeArchive, args[0], citeJSON)
 	}
 
-	return showAllCitations(citeArchive)
+	return showAllCitations(citeArchive, citeJSON)
 }
 
 // Ancestors Command
@@ -915,7 +1000,7 @@ func init() {
 }
 
 func runAncestors(_ *cobra.Command, args []string) error {
-	return showAncestors(ancestorsArchive, args[0], ancestorsMaxGen)
+	return showAncestors(ancestorsArchive, args[0], ancestorsMaxGen, ancestorsJSON)
 }
 
 // ============================================================================
@@ -956,7 +1041,7 @@ func init() {
 }
 
 func runDescendants(_ *cobra.Command, args []string) error {
-	return showDescendants(descendantsArchive, args[0], descendantsMaxGen)
+	return showDescendants(descendantsArchive, args[0], descendantsMaxGen, descendantsJSON)
 }
 
 // ============================================================================
@@ -1003,7 +1088,7 @@ func init() {
 }
 
 func runSummary(_ *cobra.Command, args []string) error {
-	return showSummary(summaryArchive, args[0])
+	return showSummary(summaryArchive, args[0], summaryJSON)
 }
 
 // ============================================================================
@@ -1095,6 +1180,9 @@ The person argument can be an exact entity ID (e.g., person-john-smith)
 or a name to search for (e.g., "John Smith"). If the name matches
 multiple persons, all matches are listed for disambiguation.
 
+Gregorian and Julian dates share chronological ordering. A BEF observation
+precedes the date that bounds it.
+
 Use --no-family to exclude family events and show only direct events.`,
 	Example: `  # Timeline by person ID
   glx timeline person-john-smith
@@ -1117,7 +1205,7 @@ func init() {
 }
 
 func runTimeline(_ *cobra.Command, args []string) error {
-	return showTimeline(timelineArchive, args[0], !timelineNoFamily)
+	return showTimeline(timelineArchive, args[0], !timelineNoFamily, timelineJSON)
 }
 
 // ============================================================================
@@ -1152,11 +1240,14 @@ person's role does not put them at its place (a grantor or grantee of a deed,
 a legatee or heir of an estate, someone merely mentioned) is shown but not
 counted, and so is a parent named on a child's death or burial, which places
 the child rather than the parent's household; an archive can mark its own roles with implies_presence in the
-participant roles vocabulary. A bounded residence value overrides an event
+participant roles vocabulary. Godparent, witness, sponsor, informant, officiant
+and other attendance-only appearances are labeled visits and do not start
+or end a movement, unless the vocabulary marks the role implies_presence: true.
+A parent at a child's birth or baptism still counts as household evidence. A bounded residence value overrides an event
 elsewhere only when the event's whole possible date span fits within that
 residence: the event remains visible but is not counted as a move. Open-ended
-event spans remain included. Dates in different calendars are not compared
-without conversion.
+event spans remain included. Gregorian and Julian observations share
+chronological ordering; unsupported calendar conversions are not assumed.
 
 With --pattern, searches all persons in the archive for a migration pattern
 instead: a comma-separated list of places that must appear in chronological
@@ -1252,7 +1343,7 @@ func init() {
 }
 
 func runVitals(_ *cobra.Command, args []string) error {
-	return showVitals(vitalsArchive, args[0])
+	return showVitals(vitalsArchive, args[0], vitalsJSON)
 }
 
 // ============================================================================
@@ -1626,7 +1717,12 @@ Compares all persons using a weighted scoring model based on:
   - Phonetic matching (Soundex — catches Schneider/Snider, Mueller/Miller, etc.)
   - Birth/death year proximity
   - Birth/death place match
-  - Shared relationships and events
+  - Shared relationships and events in matching roles
+
+Soundex folds Latin accents and sharp-s. Large archives compare exact and
+phonetic surname groups. Recorded sex differences and incompatible lifetimes
+suppress matches; surname-only or sparse social evidence is insufficient.
+Unknown or unrecorded sex stays neutral.
 
 Persons already linked by a direct relationship (parent-child, spouse, etc.)
 are automatically skipped since they are known to be distinct individuals.
@@ -1810,7 +1906,12 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		person = args[0]
 	}
 
-	return showAnalysis(analyzeArchive, person, analyzeCheck, analyzeFormat, analyzeCountry, opts)
+	format := analyzeFormat
+	if analyzeJSON {
+		format = "json"
+	}
+
+	return showAnalysis(analyzeArchive, person, analyzeCheck, format, analyzeCountry, opts)
 }
 
 // ============================================================================
@@ -1836,6 +1937,12 @@ surfaces evidence gaps from the coverage checklist, flags conflicting assertions
 (and whether they have been resolved via the assertion ` + "`status`" + ` field), lists any
 logged searches that document a reasonably exhaustive search, and ends with a
 conclusion: PROVEN, PROBABLE, POSSIBLE, INSUFFICIENT EVIDENCE, or CONFLICTED.
+
+Baptism/christening and burial/cremation evidence bounds birth/death; its date
+is not presented as the exact vital date. A burial certainly before death
+is a chronology conflict, including in merge-persons preview interpretations.
+Only the target person's own participant assertions support their vital proof.
+Equivalent Gregorian and Julian dates agree.
 
 Supported research questions:
   parentage   Who are the person's parents?
@@ -1988,6 +2095,12 @@ var renameCmd = &cobra.Command{
 	Short: "Rename an entity ID and update all references",
 	Long: `Rename an entity ID throughout the archive, atomically updating all
 cross-references in events, relationships, assertions, citations, and other entities.
+
+Only typed references are rewritten: fields that refer to an entity of the
+renamed type, and properties whose vocabulary definition declares that
+reference_type (for example residence, which refers to places). A free-text
+property that happens to equal the old ID, or a reference to a same-ID entity
+of another type, is left as written.
 
 Works with any entity type: persons, events, relationships, places, sources,
 citations, repositories, assertions, and media.`,
@@ -2158,6 +2271,10 @@ Archives with duplicate entity IDs are refused, including in --dry-run;
 resolve the duplicates first. Relationships containing both merge IDs must
 be resolved before merging, except the binary possibly_same_person candidates
 that this command removes and reports. It never silently collapses participants.
+When both persons hold the same role in one event, the survivor keeps both
+rows; the preview names each such event, and which row was the dropped
+person's, so the rows can be reviewed and folded by hand. glx validate
+warns about such rows when their notes and properties are also identical.
 Merges refuse changes to linked GLX files (including Windows Git
 symlink placeholders) before approval, preserving the link and its target.
 Unchanged linked files in directory archives are retained. Run with exclusive
@@ -2304,12 +2421,14 @@ func runLink(_ *cobra.Command, args []string) error {
 var (
 	serveHost string
 	servePort int
+	serveEdit bool
 )
 
 var serveCmd = &cobra.Command{
 	Use:   "serve [path]",
 	Short: "Serve a local browser-based viewer for a GLX archive (prints a URL to open)",
-	Long: `Serve a read-only, browser-based viewer for a GENEALOGIX archive.
+	Long: `Serve a browser-based viewer for a GENEALOGIX archive, read-only unless
+--edit is given.
 
 Starts a small local web server and prints a URL to open in your browser
 (it does not open the browser for you). The viewer is interactive and shows:
@@ -2321,6 +2440,12 @@ Starts a small local web server and prints a URL to open in your browser
 The server binds to localhost by default so the archive stays on your machine.
 The archive is loaded once at startup; restart the server to pick up external
 edits made by the CLI or a text editor.
+
+With --edit, the viewer can also add people, edit a person's name, sex and
+gender, and add parent, child and spouse relationships. Additions go through
+the same checks as 'glx add person' and 'glx add relationship' and write the
+same files; an edit rewrites only that person's file, and is refused if the
+file changed since the page loaded. Editing needs a multi-file directory.
 
 Accepts either a multi-file directory or a single .glx file.
 If no path is given, the current directory is used.`,
@@ -2334,7 +2459,10 @@ If no path is given, the current directory is used.`,
   glx serve family.glx --port 9000
 
   # Pick any free port (printed on startup)
-  glx serve --port 0`,
+  glx serve --port 0
+
+  # Allow adding and editing people in the browser
+  glx serve my-family-archive --edit`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runServe,
 }
@@ -2342,6 +2470,7 @@ If no path is given, the current directory is used.`,
 func init() {
 	serveCmd.Flags().StringVar(&serveHost, "host", serveDefaultHost, "Host/interface to bind (use 127.0.0.1 to keep the viewer local)")
 	serveCmd.Flags().IntVarP(&servePort, "port", "p", serveDefaultPort, "Port to listen on (0 picks any free port)")
+	serveCmd.Flags().BoolVar(&serveEdit, "edit", false, "Allow adding and editing people and relationships (directory archives only)")
 }
 
 func runServe(_ *cobra.Command, args []string) error {
@@ -2354,6 +2483,7 @@ func runServe(_ *cobra.Command, args []string) error {
 		ArchivePath: path,
 		Host:        serveHost,
 		Port:        servePort,
+		Edit:        serveEdit,
 	})
 }
 
@@ -2504,4 +2634,69 @@ func init() {
 
 func runDocs(_ *cobra.Command, _ []string) error {
 	return runDocsGen(rootCmd, docsOutput)
+}
+
+// MCP Command
+var mcpCmd = &cobra.Command{
+	Use: "mcp", Short: "Expose an archive to AI clients using Model Context Protocol",
+	Args: cobra.NoArgs, RunE: showHelp,
+}
+
+var mcpServeCmd = &cobra.Command{
+	Use: "serve [archive-path]", Short: "Serve read-only research tools over stdio",
+	Long: `Load one archive snapshot and expose sixteen read-only research tools,
+archive statistics and vocabulary resources, and a genealogy research prompt
+using the Model Context Protocol over stdin/stdout. No network listener is opened.
+
+The optional path defaults to the current directory and may be a directory or
+single-file archive. A fresh existing binary cache is reused; this command never
+writes a cache or archive files, even with GLX_CACHE=auto. Restart to see edits,
+or pass --watch to reload stable source changes automatically without a cache.
+Watch mode retains the previous snapshot on read/parse errors and reports them
+on stderr. Each request uses one complete snapshot. stdout is reserved for MCP
+messages.
+
+Archive data may include living people's personal information. Connect only a
+trusted MCP client and check its model provider's data-handling policy. The
+server does not contact any AI provider itself.`,
+	Example: "  glx mcp serve ./family-archive\n  glx mcp serve --watch ./family-archive\n  glx mcp serve archive.glx",
+	Args:    cobra.MaximumNArgs(1), RunE: runMCPServe,
+}
+
+func runMCPServe(cmd *cobra.Command, args []string) error {
+	path := "."
+	if len(args) > 0 {
+		path = args[0]
+	}
+
+	watch, err := cmd.Flags().GetBool("watch")
+	if err != nil {
+		return err
+	}
+
+	return serveMCP(cmd.Context(), path, watch)
+}
+
+func init() {
+	mcpServeCmd.Flags().Bool("watch", false, "Automatically reload stable archive changes; retain the previous snapshot on errors")
+	mcpCmd.AddCommand(mcpServeCmd)
+}
+
+var queryJSON, vitalsJSON, timelineJSON, summaryJSON, ancestorsJSON, descendantsJSON, citeJSON, statsJSON, placesJSON, validateJSON, analyzeJSON bool
+
+func init() {
+	queryCmd.Flags().BoolVar(&queryJSON, "json", false, "Output complete matching records as JSON")
+	vitalsCmd.Flags().BoolVar(&vitalsJSON, "json", false, "Output as JSON")
+	timelineCmd.Flags().BoolVar(&timelineJSON, "json", false, "Output as JSON")
+	summaryCmd.Flags().BoolVar(&summaryJSON, "json", false, "Output as JSON")
+	ancestorsCmd.Flags().BoolVar(&ancestorsJSON, "json", false, "Output as JSON")
+	descendantsCmd.Flags().BoolVar(&descendantsJSON, "json", false, "Output as JSON")
+	citeCmd.Flags().BoolVar(&citeJSON, "json", false, "Output as JSON")
+	statsCmd.Flags().BoolVar(&statsJSON, "json", false, "Output as JSON")
+	placesCmd.Flags().BoolVar(&placesJSON, "json", false, "Output as JSON")
+	validateCmd.Flags().BoolVar(&validateJSON, "json", false, "Validate one complete archive and output JSON (not --stdin or fragments)")
+	analyzeCmd.Flags().BoolVar(&analyzeJSON, "json", false, "Output as JSON (alias for --format json)")
+	validateCmd.MarkFlagsMutuallyExclusive("json", "stdin")
+	validateCmd.MarkFlagsMutuallyExclusive("json", "entity-type")
+	analyzeCmd.MarkFlagsMutuallyExclusive("json", "format")
 }

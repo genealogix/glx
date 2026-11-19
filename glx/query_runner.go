@@ -27,6 +27,7 @@ import (
 
 // queryOpts holds all filter options for the query command.
 type queryOpts struct {
+	JSON       bool
 	Archive    string
 	Name       string
 	Phonetic   bool
@@ -87,7 +88,7 @@ func validateQueryFlags(entityType glxlib.EntityType, opts *queryOpts) error {
 
 	// Map each entity type to its supported flags.
 	supported := map[glxlib.EntityType]map[string]bool{
-		glxlib.EntityTypePersons:       {"--name": true, "--phonetic": true, "--born-before": true, "--born-after": true, "--birthplace": true},
+		glxlib.EntityTypePersons:       {"--name": true, "--phonetic": true, "--born-before": true, "--born-after": true, "--birthplace": true, "--status": true},
 		glxlib.EntityTypeEvents:        {"--type": true, "--before": true, "--after": true},
 		glxlib.EntityTypeAssertions:    {"--confidence": true, "--status": true, "--source": true, "--citation": true, "--subject": true},
 		glxlib.EntityTypeSources:       {"--name": true, "--type": true},
@@ -128,6 +129,10 @@ func queryEntities(entityType glxlib.EntityType, opts *queryOpts) error {
 	archive, err := loadArchiveForQuery(opts.Archive)
 	if err != nil {
 		return err
+	}
+
+	if opts.JSON {
+		return printExplorationJSON(buildQueryJSON(archive, entityType, opts))
 	}
 
 	// Pre-lowercase filter strings for case-insensitive comparisons
@@ -188,70 +193,17 @@ func queryPersons(archive *glxlib.GLXFile, opts queryOpts) error {
 	ids := sortedKeys(archive.Persons)
 	var count int
 
-	// Precompute Soundex codes for query words once (used only when --phonetic is set).
-	var queryCodes map[string]bool
-	if opts.Phonetic && opts.Name != "" {
-		queryCodes = make(map[string]bool)
-		for qWord := range strings.FieldsSeq(opts.Name) {
-			if code := glxlib.Soundex(qWord); code != "" {
-				queryCodes[code] = true
-			}
-		}
-	}
-
 	for _, id := range ids {
 		person := archive.Persons[id]
 		if person == nil {
 			continue
 		}
 
+		if !personMatchesQuery(archive, id, person, &opts) {
+			continue
+		}
+		status := glxlib.PersonStatus(person)
 		allNames := extractAllNames(person)
-
-		if opts.Name != "" {
-			matched := false
-			if opts.Phonetic {
-				for _, n := range allNames {
-					for nameWord := range strings.FieldsSeq(n) {
-						if code := glxlib.Soundex(nameWord); code != "" && queryCodes[code] {
-							matched = true
-
-							break
-						}
-					}
-					if matched {
-						break
-					}
-				}
-			} else {
-				for _, n := range allNames {
-					if containsFold(n, opts.Name) {
-						matched = true
-
-						break
-					}
-				}
-			}
-			if !matched {
-				continue
-			}
-		}
-		if opts.Birthplace != "" {
-			if !personMatchesBirthplace(id, opts.Birthplace, archive) {
-				continue
-			}
-		}
-		if opts.BornBefore > 0 || opts.BornAfter > 0 {
-			var year int
-			if _, birthEvent := glxlib.FindPersonEvent(archive, id, glxlib.EventTypeBirth); birthEvent != nil {
-				year = extractDateYear(string(birthEvent.Date))
-			}
-			if opts.BornBefore > 0 && (year == 0 || year >= opts.BornBefore) {
-				continue
-			}
-			if opts.BornAfter > 0 && (year == 0 || year <= opts.BornAfter) {
-				continue
-			}
-		}
 
 		name := "(unnamed)"
 		if len(allNames) > 0 {
@@ -266,6 +218,9 @@ func queryPersons(archive *glxlib.GLXFile, opts queryOpts) error {
 		}
 
 		detail := name
+		if status != "" {
+			detail += " [" + status + "]"
+		}
 		switch {
 		case bornOn != "" && diedOn != "":
 			detail += fmt.Sprintf("  (%s – %s)", bornOn, diedOn)
@@ -305,14 +260,7 @@ func queryEvents(archive *glxlib.GLXFile, opts *queryOpts) error {
 	for _, id := range ids {
 		event := archive.Events[id]
 
-		if opts.Type != "" && !strings.EqualFold(event.Type, opts.Type) {
-			continue
-		}
-		dateYear := extractDateYear(string(event.Date))
-		if opts.Before > 0 && (dateYear == 0 || dateYear >= opts.Before) {
-			continue
-		}
-		if opts.After > 0 && (dateYear == 0 || dateYear <= opts.After) {
+		if event == nil || !matchesQueryEntity(archive, id, event, opts) {
 			continue
 		}
 
@@ -333,7 +281,6 @@ func queryEvents(archive *glxlib.GLXFile, opts *queryOpts) error {
 func queryAssertions(archive *glxlib.GLXFile, opts *queryOpts) error {
 	ids := sortedKeys(archive.Assertions)
 	var count int
-	lowerSubject := strings.ToLower(opts.Subject)
 
 	for _, id := range ids {
 		a := archive.Assertions[id]
@@ -341,19 +288,7 @@ func queryAssertions(archive *glxlib.GLXFile, opts *queryOpts) error {
 			continue
 		}
 
-		if lowerSubject != "" && !assertionMatchesSubject(a, lowerSubject, archive) {
-			continue
-		}
-		if opts.Confidence != "" && !strings.EqualFold(a.Confidence, opts.Confidence) {
-			continue
-		}
-		if opts.Status != "" && !strings.EqualFold(a.Status, opts.Status) {
-			continue
-		}
-		if opts.Source != "" && !assertionReferencesSource(a, archive, opts.Source) {
-			continue
-		}
-		if opts.Citation != "" && !slices.Contains(a.Citations, opts.Citation) {
+		if a == nil || !matchesQueryEntity(archive, id, a, opts) {
 			continue
 		}
 
@@ -385,10 +320,7 @@ func querySources(archive *glxlib.GLXFile, opts *queryOpts) error {
 	for _, id := range ids {
 		source := archive.Sources[id]
 
-		if opts.Name != "" && !containsFold(source.Title, opts.Name) {
-			continue
-		}
-		if opts.Type != "" && !strings.EqualFold(source.Type, opts.Type) {
+		if source == nil || !matchesQueryEntity(archive, id, source, opts) {
 			continue
 		}
 
@@ -409,7 +341,7 @@ func queryRelationships(archive *glxlib.GLXFile, opts *queryOpts) error {
 	for _, id := range ids {
 		rel := archive.Relationships[id]
 
-		if opts.Type != "" && !strings.EqualFold(rel.Type, opts.Type) {
+		if rel == nil || !matchesQueryEntity(archive, id, rel, opts) {
 			continue
 		}
 
@@ -434,7 +366,7 @@ func queryPlaces(archive *glxlib.GLXFile, opts *queryOpts) error {
 	for _, id := range ids {
 		place := archive.Places[id]
 
-		if opts.Name != "" && !containsFold(place.Name, opts.Name) {
+		if place == nil || !matchesQueryEntity(archive, id, place, opts) {
 			continue
 		}
 
@@ -473,7 +405,7 @@ func queryRepositories(archive *glxlib.GLXFile, opts *queryOpts) error {
 	for _, id := range ids {
 		repo := archive.Repositories[id]
 
-		if opts.Name != "" && !containsFold(repo.Name, opts.Name) {
+		if repo == nil || !matchesQueryEntity(archive, id, repo, opts) {
 			continue
 		}
 
@@ -509,7 +441,6 @@ func queryMedia(archive *glxlib.GLXFile) error {
 // candidate person in one of its leads).
 func queryResearchLogs(archive *glxlib.GLXFile, opts *queryOpts) error {
 	ids := sortedKeys(archive.ResearchLogs)
-	lowerSubject := strings.ToLower(opts.Subject)
 	var count int
 
 	for _, id := range ids {
@@ -517,10 +448,7 @@ func queryResearchLogs(archive *glxlib.GLXFile, opts *queryOpts) error {
 		if log == nil {
 			continue
 		}
-		if opts.Status != "" && !strings.EqualFold(log.Status, opts.Status) {
-			continue
-		}
-		if lowerSubject != "" && !researchLogMatchesSubject(log, lowerSubject, archive) {
+		if log == nil || !matchesQueryEntity(archive, id, log, opts) {
 			continue
 		}
 

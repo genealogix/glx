@@ -16,7 +16,7 @@ relationships, places, citations, repositories, media, research_logs,
 studies.
 
 Filters vary by entity type:
-  persons:       --name, --born-before, --born-after, --birthplace
+  persons:       --name, --born-before, --born-after, --birthplace, --status
   events:        --type, --before, --after
   assertions:    --confidence, --status, --source, --citation, --subject
   sources:       --name, --type
@@ -72,10 +72,11 @@ glx query <entity-type> [flags]
       --citation string     Filter assertions by citation ID
       --confidence string   Filter assertions by confidence level
   -h, --help                help for query
+      --json                Output complete matching records as JSON
       --name string         Filter by name (substring match, case-insensitive)
       --phonetic            Use phonetic (Soundex) matching for --name
       --source string       Filter assertions by source ID (direct or via citation)
-      --status string       Filter assertions or research logs by status
+      --status string       Filter persons, assertions or research logs by status
       --subject string      Filter assertions or research logs by subject entity ID or person name substring
       --type string         Filter by type (event type, relationship type, etc.)
 ```

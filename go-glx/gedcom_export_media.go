@@ -46,6 +46,13 @@ func buildMimeToGEDCOMFormat() map[string]string {
 	return result
 }
 
+// Note prefixes that carry a fileless media object's title and media type,
+// which GEDCOM can only hold under the missing FILE. Import reads them back.
+const (
+	filelessMediaTitlePrefix = "Media title: "
+	filelessMediaTypePrefix  = "Media type: "
+)
+
 // exportMedia converts a GLX Media to a GEDCOM OBJE record.
 func exportMedia(mediaID string, media *Media, expCtx *ExportContext) *GEDCOMRecord {
 	xref := expCtx.MediaXRefMap[mediaID]
@@ -75,10 +82,10 @@ func exportMedia(mediaID string, media *Media, expCtx *ExportContext) *GEDCOMRec
 		}
 
 		if expCtx.Version == GEDCOM70 {
-			// GEDCOM 7.0: MIME under FILE
+			// GEDCOM 7.0: FORM holds the media type under FILE
 			if media.MimeType != "" {
 				fileRecord.SubRecords = append(fileRecord.SubRecords, &GEDCOMRecord{
-					Tag:   GedcomTagMime,
+					Tag:   GedcomTagForm,
 					Value: media.MimeType,
 				})
 			}
@@ -137,6 +144,18 @@ func exportMedia(mediaID string, media *Media, expCtx *ExportContext) *GEDCOMRec
 			if cropRecord != nil {
 				record.SubRecords = append(record.SubRecords, cropRecord)
 			}
+		}
+	}
+
+	// EXID/REFN identify the object, independently of whether a file exists.
+	record.SubRecords = append(record.SubRecords, exportEntityExternalIDs(media.Properties, expCtx.ExportIndex.MediaProperties, expCtx.Version)...)
+	if media.URI == "" {
+		expCtx.addExportWarning(EntityTypeMedia, mediaID, "media has no URI; GEDCOM requires a FILE reference, so the object cannot be fully represented; available title and media type are retained in valid structures or notes where supported")
+		if expCtx.Version == GEDCOM70 && media.Title != "" {
+			record.SubRecords = append(record.SubRecords, &GEDCOMRecord{Tag: GedcomTagNote, Value: filelessMediaTitlePrefix + media.Title})
+		}
+		if media.MimeType != "" {
+			record.SubRecords = append(record.SubRecords, &GEDCOMRecord{Tag: GedcomTagNote, Value: filelessMediaTypePrefix + media.MimeType})
 		}
 	}
 

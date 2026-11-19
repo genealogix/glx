@@ -294,6 +294,7 @@ func atomicWriteStreamChecked(path string, perm os.FileMode, write func(w io.Wri
 		return fmt.Errorf("creating temp file: %w", err)
 	}
 	tmpPath := tmp.Name()
+	defer trackTemp(tmpPath)()
 
 	// Clean up temp file on any failure
 	success := false

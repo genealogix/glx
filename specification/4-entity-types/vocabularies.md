@@ -35,6 +35,7 @@ The standard vocabulary files are:
 - `search-result-types.glx`
 - `research-log-status-types.glx`
 - `lead-statuses.glx`
+- `person-statuses.glx`
 - `person-properties.glx`
 - `event-properties.glx`
 - `relationship-properties.glx`
@@ -52,6 +53,8 @@ The standard vocabulary files are:
 - `information-types.glx`
 
 When creating an archive with `glx init` or `glx import`, these files are automatically copied from the [Standard Vocabularies](../5-standard-vocabularies/) templates into a `vocabularies/` directory. You can reorganize or relocate them as you see fit — the parser discovers vocabulary definitions by their top-level keys, not by file path.
+
+A vocabulary the archive does not define at all falls back to the standard one, so an archive missing `source-types.glx` still accepts the standard source types. A vocabulary the archive does define replaces the standard one entirely: values it leaves out are not valid in that archive. Property vocabularies fall back per property: a property the archive does not define uses the standard definition.
 
 ---
 
@@ -318,7 +321,7 @@ source_types:
 
 ### Standard Source Types
 
-**Standard Source Types**: GENEALOGIX provides standardized source type codes including vital records, census, church registers, military records, newspapers, probate, land records, court records, immigration records, directories, books, databases, oral history, correspondence, photograph collections, population registers, tax records, notarial records, family Bibles, gravestones, DNA tests, memoirs, manuscripts, maps, social media, and other.
+**Standard Source Types**: GENEALOGIX provides standardized source type codes including vital records, census, church registers, military records, newspapers, probate, land records, court records, immigration records, directories, books, articles, websites, databases, oral history, correspondence, photograph collections, population registers, tax records, notarial records, family Bibles, gravestones, DNA tests, memoirs, manuscripts, maps, social media, and other.
 
 **Complete List**: See [Standard Vocabularies - Source Types](../5-standard-vocabularies/#source-types) for the complete default vocabulary file with all standard types.
 
@@ -805,6 +808,38 @@ See [ResearchLog Entity - Leads](research-log.md#researchlead) for guidance on r
 
 ---
 
+## Person Statuses Vocabulary
+
+**Default file**: `vocabularies/person-statuses.glx`
+
+**Used By**: [Person Entity](person.md#research-placeholders) (the `status` property)
+
+**Purpose**: Marks a person as a research placeholder for someone not yet identified, and records when that placeholder has been resolved. A person with no status is an ordinary person. Status does not express confidence, which stays on assertions.
+
+**Standard Templates**: See [Standard Vocabularies - Person Statuses](../5-standard-vocabularies/#person-statuses) for the complete default vocabulary.
+
+### Structure
+
+```yaml
+person_statuses:
+  predicted:
+    label: "Predicted"
+    description: "Inferred from indirect evidence, such as DNA match clusters, but not yet identified."
+```
+
+### Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `label` | Yes | Human-readable label |
+| `description` | No | Detailed description |
+
+### Standard Person Statuses
+
+`hypothetical` and `predicted` mark an unresolved placeholder; `resolved` marks one that has been identified. Archives can add their own values, but tools treat a custom status like any other person. See [Person Entity - Research Placeholders](person.md#research-placeholders).
+
+---
+
 ## Study Types Vocabulary
 
 **Default file**: `vocabularies/study-types.glx`
@@ -1141,7 +1176,7 @@ Standard properties include:
 - `medium` - Physical medium type
 - `original_filename` - Original filename when imported
 - `source_path` - The imported GEDCOM's `FILE` reference, when recorded with `glx import --media-source-paths`
-- `external_ids` - Identifiers from external systems, such as an Ancestry media object id
+- `external_ids` - External media identifiers with optional authority (multi-value, GEDCOM: EXID or REFN)
 - `photographer` - Person who captured the media
 - `location` - Location where media was captured
 - `blob_size` - Length in bytes of the encoded GEDCOM 5.5.1 BLOB text (pre-decode), when imported from a BLOB record
@@ -1862,6 +1897,7 @@ Each vocabulary type has a corresponding JSON Schema for validation:
 | Search Result Types | [search-result-types.schema.json](../schema/v1/vocabularies/search-result-types.schema.json) |
 | Research Log Status Types | [research-log-status-types.schema.json](../schema/v1/vocabularies/research-log-status-types.schema.json) |
 | Lead Statuses | [lead-statuses.schema.json](../schema/v1/vocabularies/lead-statuses.schema.json) |
+| Person Statuses | [person-statuses.schema.json](../schema/v1/vocabularies/person-statuses.schema.json) |
 | Person Properties | [person-properties.schema.json](../schema/v1/vocabularies/person-properties.schema.json) |
 | Event Properties | [event-properties.schema.json](../schema/v1/vocabularies/event-properties.schema.json) |
 | Relationship Properties | [relationship-properties.schema.json](../schema/v1/vocabularies/relationship-properties.schema.json) |

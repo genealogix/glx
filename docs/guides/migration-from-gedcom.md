@@ -8,6 +8,8 @@ layout: doc
 
 Guide for converting GEDCOM files to GENEALOGIX format using the automated import tool.
 
+Use the [browser converter](../../website/convert.md) to download a single GLX file or a ZIP of a multi-file archive from a GEDCOM file. Extract the ZIP to get the archive folder.
+
 ## Key Differences
 
 Understanding how GENEALOGIX differs from GEDCOM helps you get the most out of your migration.
@@ -267,7 +269,7 @@ If no `TYPE` tag is present, the importer infers the source type from keywords i
 | `DATA.DATE` | `citation.properties.source_date` | When the source recorded the information |
 | `DATA.TEXT` | `citation.properties.text_from_source` | Transcription from source |
 | `TEXT` | `citation.properties.text_from_source` | GEDCOM 5.5.1 direct text |
-| `QUAY` | `citation.notes` | Quality assessment preserved as note |
+| `QUAY` | `citation.properties.gedcom_quay` | Original integer 0–3 retained for GEDCOM round-trip; not assertion confidence |
 | `NOTE` | `citation.notes` | |
 | `OBJE` | `citation.media` | |
 
@@ -555,8 +557,8 @@ Most differences are handled transparently by the importer, but it helps to know
 | Feature | GEDCOM 5.5.1 | GEDCOM 7.0 |
 |---------|-------------|------------|
 | **Shared notes** | `NOTE` records with XRef | `SNOTE` tag |
-| **Media MIME types** | Inferred from `FORM` tag | Explicit `MIME` tag |
-| **External IDs** | Not supported | `EXID` tag with optional `TYPE` |
+| **Media MIME types** | Format name in `FILE.FORM` | Media type in `FILE.FORM` |
+| **External IDs** | `REFN` with `TYPE` | `EXID` with authority `TYPE` |
 | **Negative assertions** | Not supported | `NO` tag (e.g., `NO BIRT`) |
 | **Crop coordinates** | Not supported | `CROP` tag on media |
 | **Extension schemas** | Convention only (`_` prefix) | `SCHMA` tag with URI definitions |
@@ -564,7 +566,26 @@ Most differences are handled transparently by the importer, but it helps to know
 | **Binary data** | `BLOB` tag (deprecated) | Not supported |
 | **Void pointers** | Not used | `@VOID@` for embedded structures |
 
-GEDCOM 5.5.1 exports associations between people using standard person-level structures. Family-event associations appear on each known spouse, with event type, archive event ID, date, place and subjects in notes. These notes describe the event link; the importer does not reconstruct event participants from person-level associations. Choose GEDCOM 7.0 to round-trip structured event associations and participant roles.
+GEDCOM 5.5.1 exports associations between people using standard person-level structures. Family-event associations appear on each known spouse, with event type, archive event ID, date, place and subjects in notes. The importer restores participants when these notes identify one event; otherwise it retains a referenced social relationship and warns. GEDCOM 7.0 uses structured event associations directly.
+
+## Export and round trips
+
+When exporting back to GEDCOM, identifier authorities are retained as
+`REFN.TYPE` in 5.5.1 and `EXID.TYPE` in 7.0. Known short authority names such
+as `wikitree` become authority URIs in 7.0; unknown names use an opaque
+`urn:glx:external-id:` URI. A bare identifier remains untyped.
+
+An individual's event age belongs to that participant and exports as `AGE`.
+In 5.5.1, an event's other participants use individual-level `ASSO` records
+with an event-context note. Import restores them when that context identifies
+one event. Unscoped or ambiguous associations become referenced `associate`
+relationships with the original relation and notes, plus an import warning.
+
+GEDCOM 7.0 media types use `FILE.FORM`. Media with no URI cannot supply the
+required file reference: export warns, keeps identifiers at the object level,
+and retains the available title and media type in notes where necessary.
+It never invents a filename. Long 7.0 values stay on one line, with `CONT`
+only for actual newlines; 5.5.1 retains `CONC` wrapping.
 
 ## See Also
 
