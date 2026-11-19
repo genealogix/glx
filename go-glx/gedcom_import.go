@@ -647,6 +647,20 @@ func parseGEDCOMFields(text string) (level int, xref, tag, value string, err err
 		tag = token
 	}
 
+	// Text payload whitespace is data, including at CONC boundaries. Consume
+	// just the grammar's single delimiter; trimming it corrupts long notes.
+	if tag == GedcomTagNote || tag == GedcomTagCont || tag == GedcomTagConc || tag == GedcomTagText {
+		if pos < n {
+			value = text[pos+1:]
+		}
+		// A pointer is not text: "1 NOTE @N1@ " still references @N1@.
+		if trimmed := strings.TrimSpace(value); isGEDCOMPointer(trimmed) && !strings.Contains(trimmed, " ") {
+			value = trimmed
+		}
+
+		return level, xref, tag, value, nil
+	}
+
 	for pos < n && text[pos] == ' ' {
 		pos++
 	}

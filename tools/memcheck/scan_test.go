@@ -136,7 +136,7 @@ func TestClassifyPathClaim(t *testing.T) {
 }
 
 // TestScanFileNoFalsePositives feeds a realistic memory file modeled on the
-// repo's own CLAUDE.md (every observed look-alike token) and asserts the scan is
+// repo's own AGENTS.md (every observed look-alike token) and asserts the scan is
 // silent once the genuinely-referenced files are present.
 func TestScanFileNoFalsePositives(t *testing.T) {
 	content := "# Guide\n" +
@@ -151,7 +151,7 @@ func TestScanFileNoFalsePositives(t *testing.T) {
 		"```\n"
 	r := testRepo([]string{"go-glx/types.go"}, []string{"test", "check-code-drift", "build"})
 
-	if got := scanFile("CLAUDE.md", content, r); len(got) != 0 {
+	if got := scanFile("AGENTS.md", content, r); len(got) != 0 {
 		t.Fatalf("expected no findings, got %d: %+v", len(got), got)
 	}
 }
@@ -166,7 +166,7 @@ func TestScanFilePathDrift(t *testing.T) {
 	// thing.go resolves only relative to the memory file's dir (go-glx/).
 	r := testRepo([]string{"go-glx/sub/thing.go"}, nil)
 
-	got := scanFile("go-glx/CLAUDE.md", content, r)
+	got := scanFile("go-glx/AGENTS.md", content, r)
 	if len(got) != 2 {
 		t.Fatalf("expected 2 findings, got %d: %+v", len(got), got)
 	}
@@ -183,7 +183,7 @@ func TestScanFilePathDrift(t *testing.T) {
 func TestScanFileRootRelativeResolution(t *testing.T) {
 	content := "see `go-glx/serializer.go`\n"
 	r := testRepo([]string{"go-glx/serializer.go"}, nil)
-	if got := scanFile("specification/CLAUDE.md", content, r); len(got) != 0 {
+	if got := scanFile("specification/AGENTS.md", content, r); len(got) != 0 {
 		t.Fatalf("root-relative path should resolve, got %+v", got)
 	}
 }
@@ -199,7 +199,7 @@ func TestScanFileMakeTargets(t *testing.T) {
 		"```\n"
 	r := testRepo(nil, []string{"build"})
 
-	got := scanFile("CLAUDE.md", content, r)
+	got := scanFile("AGENTS.md", content, r)
 	if len(got) != 1 {
 		t.Fatalf("expected exactly 1 make finding, got %d: %+v", len(got), got)
 	}
@@ -213,11 +213,11 @@ func TestScanFileMakeTargets(t *testing.T) {
 // `check_schemas` isn't truncated at the underscore into a spurious `make check`.
 func TestMakeTargetGrammar(t *testing.T) {
 	// Underscore target present -> no finding.
-	if got := scanFile("CLAUDE.md", "run `make check_schemas`\n", testRepo(nil, []string{"check_schemas"})); len(got) != 0 {
+	if got := scanFile("AGENTS.md", "run `make check_schemas`\n", testRepo(nil, []string{"check_schemas"})); len(got) != 0 {
 		t.Fatalf("underscore target should resolve, got %+v", got)
 	}
 	// Underscore target absent -> one finding carrying the full target token.
-	got := scanFile("CLAUDE.md", "run `make check_schemas`\n", testRepo(nil, []string{"build"}))
+	got := scanFile("AGENTS.md", "run `make check_schemas`\n", testRepo(nil, []string{"build"}))
 	if len(got) != 1 || got[0].Token != "make check_schemas" {
 		t.Fatalf("expected one finding for the full target, got %+v", got)
 	}
@@ -233,7 +233,7 @@ func TestScanFileChainedMakeInFence(t *testing.T) {
 		"```\n"
 	r := testRepo(nil, []string{"build"})
 
-	got := scanFile("CLAUDE.md", content, r)
+	got := scanFile("AGENTS.md", content, r)
 	if len(got) != 1 {
 		t.Fatalf("expected 1 chained-make finding, got %d: %+v", len(got), got)
 	}
@@ -249,16 +249,16 @@ func TestScanFileDirTypeMismatch(t *testing.T) {
 	// `docs/cli` exists on disk as a FILE; the directory claim `docs/cli/` must
 	// still be reported as missing.
 	r := testRepo([]string{"docs/cli"}, nil)
-	if got := scanFile("CLAUDE.md", "see `docs/cli/`\n", r); len(got) != 1 || got[0].Token != "docs/cli/" {
+	if got := scanFile("AGENTS.md", "see `docs/cli/`\n", r); len(got) != 1 || got[0].Token != "docs/cli/" {
 		t.Fatalf("dir claim over a file should be flagged, got %+v", got)
 	}
 	// A real directory resolves it.
 	rd := testRepo([]string{"docs/cli/"}, nil)
-	if got := scanFile("CLAUDE.md", "see `docs/cli/`\n", rd); len(got) != 0 {
+	if got := scanFile("AGENTS.md", "see `docs/cli/`\n", rd); len(got) != 0 {
 		t.Fatalf("dir claim over a directory should resolve, got %+v", got)
 	}
 	// Symmetric: a file claim resolving to a directory of the same name is flagged.
-	if got := scanFile("CLAUDE.md", "see `docs/cli.go`\n", testRepo([]string{"docs/cli.go/"}, nil)); len(got) != 1 {
+	if got := scanFile("AGENTS.md", "see `docs/cli.go`\n", testRepo([]string{"docs/cli.go/"}, nil)); len(got) != 1 {
 		t.Fatalf("file claim over a directory should be flagged, got %+v", got)
 	}
 }
@@ -267,7 +267,7 @@ func TestScanFileDirTypeMismatch(t *testing.T) {
 // (and thus allowlist-matched) with the surrounding quotes stripped, so the
 // natural verbatim allowlist entry suppresses it.
 func TestPathFindingTokenNormalized(t *testing.T) {
-	got := scanFile("CLAUDE.md", "see `\"go-glx/types.go\"` (quoted)\n", testRepo(nil, nil))
+	got := scanFile("AGENTS.md", "see `\"go-glx/types.go\"` (quoted)\n", testRepo(nil, nil))
 	if len(got) != 1 {
 		t.Fatalf("expected 1 finding, got %d: %+v", len(got), got)
 	}
@@ -318,7 +318,7 @@ func TestImportFindings(t *testing.T) {
 		},
 	}
 	for _, tt := range cases {
-		got := importFindings("CLAUDE.md", strings.Split(tt.content, "\n"), tt.r)
+		got := importFindings("AGENTS.md", strings.Split(tt.content, "\n"), tt.r)
 		if len(got) != tt.want {
 			t.Errorf("%s: got %d findings, want %d: %+v", tt.name, len(got), tt.want, got)
 		}
@@ -351,7 +351,7 @@ func TestFenceTrackingAcrossLines(t *testing.T) {
 		"```\n" +
 		"outside `testdata/outside.ged`\n" // real claim
 	r := testRepo(nil, nil)
-	got := scanFile("CLAUDE.md", content, r)
+	got := scanFile("AGENTS.md", content, r)
 	if len(got) != 1 || got[0].Line != 4 || got[0].Token != "testdata/outside.ged" {
 		t.Fatalf("fence handling wrong, got %+v", got)
 	}

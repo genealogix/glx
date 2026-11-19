@@ -481,7 +481,7 @@ func TestMigrateGenderToSex_TemporalShapeValues(t *testing.T) {
 
 // TestMigrateArchive_SingleFileRoundTrip exercises the full archive
 // load → migrate → write → reload pipeline on a single-file archive.
-// In-memory unit tests can miss serialization bugs (see CLAUDE.md /
+// In-memory unit tests can miss serialization bugs (see AGENTS.md /
 // release_smoke_test_demo_repo feedback).
 func TestMigrateArchive_SingleFileRoundTrip(t *testing.T) {
 	dir := t.TempDir()

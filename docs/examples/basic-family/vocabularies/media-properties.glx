@@ -69,6 +69,18 @@ media_properties:
     description: "Original filename before import or renaming"
     value_type: string
 
+  external_ids:
+    label: "External Identifiers"
+    description: "Identifiers from external systems, such as Ancestry's media object id (_OID)"
+    value_type: string
+    multi_value: true
+    gedcom: "EXID"
+    fields:
+      type:
+        label: "Identifier Type"
+        description: "Authority or system that issued this identifier: ancestry for an Ancestry _OID, ancestry_clone for the _OID in an Ancestry _CLON block, or a GEDCOM 7 EXID.TYPE URI."
+
+
   photographer:
     label: "Photographer"
     description: "Person who created the media (photographer, videographer, etc.)"

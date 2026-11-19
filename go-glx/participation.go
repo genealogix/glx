@@ -38,6 +38,12 @@ type Participation struct {
 	// Present is true when the role implies the person was at the event's
 	// place on its date, so the place is evidence of where they were.
 	Present bool
+
+	// DeclaredPresent is true when the archive's participant role vocabulary
+	// sets implies_presence: true for the role, so the archive itself says the
+	// role places the person there. Heuristics that would otherwise discount
+	// the appearance (a visit, a mention of a relative) defer to it.
+	DeclaredPresent bool
 }
 
 // Mentioned reports whether the person is only named in the record: it is
@@ -46,7 +52,10 @@ func (p Participation) Mentioned() bool {
 	return !p.OwnRecord && !p.Present
 }
 
-const participationRoleDeceased = "deceased"
+const (
+	participationRoleDeceased = "deceased"
+	participationRoleDecedent = "decedent"
+)
 
 // ownRecordRoles are roles that make an event the participant's own record
 // whatever the event type. The empty role is the participant default
@@ -59,7 +68,7 @@ var ownRecordRoles = map[string]bool{
 	ParticipantRoleBride:        true,
 	ParticipantRoleGodchild:     true, // the person baptized
 	ParticipantRoleAdoptedChild: true,
-	"decedent":                  true,
+	participationRoleDecedent:   true,
 	participationRoleDeceased:   true,
 	"testator":                  true, // the will is theirs, signed where they were
 	"testatrix":                 true,
@@ -167,6 +176,7 @@ func ClassifyParticipation(eventType, role string, roles map[string]*VocabularyE
 
 	if entry := participantRoleEntry(declared, roles); entry != nil && entry.ImpliesPresence != nil {
 		p.Present = *entry.ImpliesPresence
+		p.DeclaredPresent = *entry.ImpliesPresence
 	}
 
 	return p
@@ -209,6 +219,7 @@ func EventParticipation(event *Event, personID string, roles map[string]*Vocabul
 		}
 		result.OwnRecord = result.OwnRecord || c.OwnRecord
 		result.Present = result.Present || c.Present
+		result.DeclaredPresent = result.DeclaredPresent || c.DeclaredPresent
 	}
 
 	return result, bestRole, bestRank >= 0

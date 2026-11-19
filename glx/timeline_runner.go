@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
+	"github.com/genealogix/glx/go-glx/glxdate"
 )
 
 // timelineEntry represents a single row in the timeline output.
@@ -475,16 +476,12 @@ func sortTimelineEntries(entries []timelineEntry) {
 	})
 }
 
-// dateSortKey returns a string that orders GLX dates chronologically by
-// their start (for a TO range, the end). It is built from the parsed date,
-// so qualifiers, calendar prefixes, tolerated spellings, and the BCE era
-// all sort where glx validate says they belong. A CE year is its 5-digit
-// form ("01850", "00800"), wide enough for the five-digit years glxdate
-// accepts in Hebrew and extension-calendar bodies, so "10000" never sorts
-// before "9999"; a BCE year is "-" followed by its complement so earlier
-// years sort first ("-99899" for 100 BCE, "-99955" for 44 BCE, both before
-// any CE key). Month and day follow when known. Dates with no determinable
-// year return "\xff" and sort last.
+// dateSortKey orders Gregorian and Julian observations on one day axis. A
+// BEF bound sorts before the date it bounds; an AFT observation sorts after
+// its written precision. A calendar with no conversion to that axis cannot be
+// placed among those dates, so its observations follow every Gregorian and
+// Julian one, ordered among themselves by their own civil date. An undated
+// observation sorts last.
 func dateSortKey(dateStr string) string {
 	d, _ := glxlib.DateString(dateStr).Parse()
 	year := d.Year()
@@ -492,9 +489,30 @@ func dateSortKey(dateStr string) string {
 		return "\xff"
 	}
 
-	key := fmt.Sprintf("%05d", year)
+	point := d.Start()
+	if d.IsOpenStart() {
+		point = d.End()
+	}
+	bounds := point.ChronologyBounds(0)
+	if bounds.Known {
+		rank := 1
+		sortPoint := bounds.Outer.Start
+		switch d.Qualifier() {
+		case glxdate.QualifierBefore:
+			sortPoint = bounds.Outer.End
+			rank = 0
+		case glxdate.QualifierAfter:
+			bounds = d.ChronologyBounds(0)
+			sortPoint = bounds.Outer.Start
+			rank = 0 // after the entire written day/month/year, before the next observation
+		}
+
+		return fmt.Sprintf("%s%09d:%d", dateSortChronologyPrefix, sortPoint+dateSortDayOffset, rank)
+	}
+
+	key := dateSortCivilPrefix + fmt.Sprintf("%05d", year)
 	if year < 0 {
-		key = fmt.Sprintf("-%05d", dateSortKeyMaxYear+year)
+		key = dateSortCivilPrefix + fmt.Sprintf("-%05d", dateSortKeyMaxYear+year)
 	}
 	if month, ok := d.Month(); ok {
 		key += fmt.Sprintf("-%02d", month)
@@ -506,8 +524,19 @@ func dateSortKey(dateStr string) string {
 	return key
 }
 
-// dateSortKeyMaxYear is the largest year a five-digit key can hold; BCE keys
-// count down from it so that 100 BCE sorts before 44 BCE.
+// dateSortChronologyPrefix and dateSortCivilPrefix keep the two key spaces
+// apart: a Julian-day number and a civil year in another calendar are not
+// comparable as strings. Both sort before the undated key "ÿ".
+const (
+	dateSortChronologyPrefix = "0"
+	dateSortCivilPrefix      = "1"
+)
+
+// dateSortDayOffset keeps supported BCE and CE Julian-day keys positive.
+const dateSortDayOffset = 100000000
+
+// dateSortKeyMaxYear bounds the civil-key fallback for unsupported calendars;
+// its BCE keys count down so that 100 BCE sorts before 44 BCE.
 const dateSortKeyMaxYear = 99999
 
 // formatEventTypeLabel converts an event type string to a display label.
