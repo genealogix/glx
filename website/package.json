@@ -7,6 +7,8 @@
     "build": "npm run copy-static && vitepress build",
     "preview": "vitepress preview",
     "copy-static": "node scripts/copy-static.mjs",
+    "build:converter": "node scripts/build-converter.mjs",
+    "test:converter": "playwright test",
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"**/*.{js,vue,json,md}\"",
@@ -23,6 +25,7 @@
   "license": "Apache-2.0",
   "devDependencies": {
     "@eslint/js": "^10.0.0",
+    "@playwright/test": "1.65.0",
     "eslint": "^10.14.0",
     "eslint-plugin-vue": "^10.12.1",
     "globals": "^17.14.0",

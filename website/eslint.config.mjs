@@ -4,7 +4,7 @@ import globals from 'globals'
 
 export default [
   {
-    ignores: ['node_modules/', '.vitepress/dist/', '.vitepress/cache/']
+    ignores: ['node_modules/', '.vitepress/dist/', '.vitepress/cache/', 'converter/generated/', 'test-results/']
   },
   js.configs.recommended,
   ...pluginVue.configs['flat/recommended'],

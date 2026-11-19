@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Added
 
+- **Browser converter** — Convert GEDCOM to a single GLX file or a ZIP of a multi-file GLX archive. Export single-file GLX as GEDCOM 5.5.1 or 7.0. The converter runs on your device and displays conversion warnings. (#1446)
 - Add a read-only stdio MCP research server with sixteen structured tools, archive resources, a research prompt, extensible Go protocol API, and JSON output for research commands. Optional `glx mcp serve --watch` reloads stable source changes without reconnecting and keeps the previous snapshot available on read/parse errors. Release notices include the new dependencies; the SDK's documentation-only license metadata exception is scoped and pinned by a tested guard (#198).
 
 - MCP `summary` returns compact research log references and counts by default; `include_research_logs: true` restores complete logs, and CLI JSON summaries keep their full-log output. New `get_entity` retrieves a complete record by exact collection and case-sensitive ID across all eleven collections. Timeline/narrative output preserves event subtypes and separate notable proceedings; conflict analysis identifies other people's events with the scoped person's role and navigable event context (#1528).
@@ -107,6 +108,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **`renovate.json` — Renovate retired, Dependabot is the sole dependency updater** — The repository ran two update bots on paper but only one in practice: `renovate.json` carried a top-level `"enabled": false`, so Renovate opened no PRs while Dependabot handled every bump. The config file is deleted and `.reuse/dep5` no longer lists it. Note that this also removes the repository's only scheduled lockfile-maintenance mechanism (Renovate's `lockFileMaintenance` block, itself disabled by the top-level switch, so nothing changes in practice) — Dependabot refreshes `go.sum` and the npm lockfiles as a side effect of the bumps it opens, and `make mod-tidy` / `make tidy-check` cover the rest. #810, which reported the disabled `lockFileMaintenance` override, is obsoleted as written by this deletion and needs closing or re-scoping to the remaining gap (an unattended periodic refresh of transitive pins no bump happens to touch); it is deliberately left open here for a maintainer to decide. `SECURITY.md` is corrected in the same change: it described Dependabot as running "daily", where `.github/dependabot.yml` actually schedules weekly staggered runs (Go Monday, npm Tuesday, GitHub Actions Wednesday) with release cooldowns that security updates bypass. (#257)
 
 ### Fixed
+
+- **Browser conversion of large GEDCOM files** — Write single-file GLX in batches so temporary YAML buffers can be reclaimed while preparing the download. (#1446)
 
 - Reject named pipes and other special files in JSON validation instead of blocking on archive reads. (#1528)
 

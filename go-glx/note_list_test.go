@@ -115,6 +115,19 @@ func TestNoteList_RoundtripMultiple(t *testing.T) {
 	assert.Equal(t, original.Notes, roundtripped.Notes)
 }
 
+func TestNoteList_RoundtripLeadingTabs(t *testing.T) {
+	indented := "\t\tA legacy note\n\nA second line"
+	for _, notes := range []NoteList{{indented}, {"First note", indented}, {"\n  \tIndented\nNext line"}} {
+		original := &GLXFile{Persons: map[string]*Person{"person-1": {Notes: notes}}}
+		serializer := NewSerializer(&SerializerOptions{Validate: false})
+		data, err := serializer.SerializeSingleFileBytes(original)
+		require.NoError(t, err)
+		archive, err := serializer.DeserializeSingleFileBytes(data)
+		require.NoError(t, err)
+		assert.Equal(t, notes, archive.Persons["person-1"].Notes)
+	}
+}
+
 func TestNoteList_String(t *testing.T) {
 	n := NoteList{"First", "Second", "Third"}
 	assert.Equal(t, "First\n\nSecond\n\nThird", n.String())

@@ -17,6 +17,7 @@ package glx
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"go.yaml.in/yaml/v3"
@@ -74,10 +75,28 @@ func (n NoteList) MarshalYAML() (any, error) {
 		return nil, nil
 	}
 	if len(n) == 1 {
-		return n[0], nil
+		return marshalNote(n[0]), nil
+	}
+	if slices.ContainsFunc(n, needsQuotedText) {
+		notes := make([]any, len(n))
+		for i, value := range n {
+			notes[i] = marshalNote(value)
+		}
+
+		return notes, nil
 	}
 
 	return []string(n), nil
+}
+
+// marshalNote quotes a note here as well as in marshalYAML, so callers that
+// pass a NoteList straight to yaml.Marshal still write a readable file.
+func marshalNote(note string) any {
+	if needsQuotedText(note) {
+		return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: note, Style: yaml.DoubleQuotedStyle}
+	}
+
+	return note
 }
 
 // String returns all notes joined with double newlines (for display).
