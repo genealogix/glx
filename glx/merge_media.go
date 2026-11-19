@@ -31,8 +31,10 @@ import (
 // into the destination archive before the merge is published. Several Media
 // entities may reference the same binary, so the plan is keyed by source
 // file: SrcMedia captures the src.Media entries by ID at planning time so
-// execution can use pointer identity — rather than a URI coincidence — to
-// detect entities that survived the merge.
+// execution can use pointer identity, rather than a URI coincidence, to detect
+// entities that survived the merge. adoptIdenticalMedia swaps in the
+// destination's pointer where the merge kept an identical destination entity
+// that names this very file.
 type plannedMediaCopy struct {
 	SrcPath       string                   // absolute path of the source binary
 	SrcRoot       string                   // source archive root for confined reads
@@ -341,18 +343,7 @@ func executeMediaCopiesWithRollback(plan []plannedMediaCopy, destPath string, me
 		if p.ReuseExisting {
 			continue
 		}
-		// Copy the binary if at least one src Media entity for this plan
-		// entry made it into the merged archive (same pointer, since Merge()
-		// preserves the src entity by reference when there's no conflict).
-		var referenced bool
-		for id, srcM := range p.SrcMedia {
-			if mergedM, ok := merged.Media[id]; ok && mergedM != nil && mergedM == srcM {
-				referenced = true
-
-				break
-			}
-		}
-		if !referenced {
+		if !plannedMediaIsReferenced(p, merged) {
 			skipped++
 
 			continue
@@ -373,6 +364,57 @@ func executeMediaCopiesWithRollback(plan []plannedMediaCopy, destPath string, me
 		defer func() { _ = root.Close() }()
 		rollbackCommittedMedia(root, committed)
 	}, nil
+}
+
+// plannedMediaIsReferenced reports whether a Media entity this plan entry
+// serves is the one the merged archive holds under its ID.
+func plannedMediaIsReferenced(p *plannedMediaCopy, merged *glxlib.GLXFile) bool {
+	for id, source := range p.SrcMedia {
+		if destination := merged.Media[id]; source != nil && destination == source {
+			return true
+		}
+	}
+
+	return false
+}
+
+// adoptIdenticalMedia runs after MergeArchive, which keeps the destination's
+// entity wherever the source's was identical. When that kept entity names
+// exactly the file this entry would write, the entry serves it: its pointer
+// replaces the source's, so the binary is copied (destination file missing) or
+// its reuse revalidated. An identical entity naming any other file already has
+// the destination's own binary, so it drops out of the entry, and an entry left
+// serving nobody is removed rather than reported as an entity conflict.
+func adoptIdenticalMedia(plan []plannedMediaCopy, merged *glxlib.GLXFile, identicalIDs []string) []plannedMediaCopy {
+	if len(identicalIDs) == 0 {
+		return plan
+	}
+	identical := make(map[string]bool, len(identicalIDs))
+	for _, id := range identicalIDs {
+		identical[id] = true
+	}
+	kept := plan[:0]
+	for _, p := range plan {
+		target := path.Join(plannedMediaTargetDir(&p), p.TargetName)
+		shared := false
+		for id := range p.SrcMedia {
+			if !identical[id] {
+				continue
+			}
+			shared = true
+			if destination := merged.Media[id]; destination != nil && destination.URI == target {
+				p.SrcMedia[id] = destination
+			} else {
+				delete(p.SrcMedia, id)
+			}
+		}
+		if shared && len(p.SrcMedia) == 0 {
+			continue
+		}
+		kept = append(kept, p)
+	}
+
+	return kept
 }
 
 func copyPlannedMedia(root *os.Root, p *plannedMediaCopy) (committedMediaFile, error) {
@@ -402,15 +444,7 @@ func validateReusedMergeMedia(plan []plannedMediaCopy, destPath string, merged *
 		if !p.ReuseExisting {
 			continue
 		}
-		var referenced bool
-		for id, source := range p.SrcMedia {
-			if merged.Media[id] == source {
-				referenced = true
-
-				break
-			}
-		}
-		if !referenced {
+		if !plannedMediaIsReferenced(p, merged) {
 			continue
 		}
 		dir := filepath.Join(destPath, filepath.FromSlash(plannedMediaTargetDir(p)))
