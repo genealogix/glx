@@ -1,0 +1,76 @@
+# go-glx Library — Agent Guide
+
+This is the core GLX library (`package glx`). It is a **pure library** — all I/O happens in the `glx/` CLI package.
+
+## Critical Rule: No Filesystem I/O
+
+Source of truth: [ADR-0006](../docs/decisions/0006-go-glx-library-pure.md)
+(`../docs/decisions/0006-go-glx-library-pure.md`) — read it for the full
+prohibited/allowed lists, the worked example, and the rationale.
+
+Summary: production code in go-glx must NEVER touch the filesystem directly. No
+`os.*` file or directory calls, no `filepath.Walk`, no path building combined with
+file operations. Take and return `io.Reader`, `io.Writer`, `io/fs.FS` (`fs.FS`), or
+`[]byte`; use `go:embed` for data the library owns. Direct filesystem work belongs
+to the `glx/` CLI package.
+
+Two carve-outs the ADR spells out, so don't "fix" them: walking a caller-supplied
+`fs.FS` with `fs.WalkDir` is fine (the caller picks the backing store — see
+`ImportGEDZIP`), and unexported test-only helpers may open fixture files.
+
+## Key Files
+
+- `types.go` — core GLX entity type definitions (read first)
+- `gedcom_converter.go` — main GEDCOM conversion orchestrator
+- `serializer.go` — single/multi-file serialization
+- `vocabularies.go` — vocabulary embedding via `go:embed` + `sync.Once` cache
+- `glxdate/` — the single date parser (`glxdate.Parse`). Never add a second date regex or month table: import, validation (`validateDateFormat`), and year extraction (`DateString.Year`/`ExtractFirstYear`) all go through it. GEDCOM encoding lives there too (`glxdate/gedcom.go`: `FromGEDCOM`, `Canonicalize`, `Date.GEDCOM`); `gedcom_date.go` in this package is only the `DateString` adapter. Corpus outcomes are pinned in `glxdate/testdata/gedcom_dates.golden.tsv` (`go test ./go-glx/glxdate/ -run TestCorpus_Golden -update` to regenerate; review the diff).
+
+## Performance Profiling
+
+```bash
+go test -bench='BenchmarkName' -benchtime=1x -memprofile=/tmp/prof.out ./go-glx/
+go tool pprof -top -flat /tmp/prof.out           # direct allocators
+go tool pprof -top -cum /tmp/prof.out            # call tree
+go tool pprof -top -flat -focus='glx' /tmp/prof.out  # package only
+```
+
+Common pitfalls:
+- Map literals in function bodies allocate every call — use package-level vars
+- `LogInfo(fmt.Sprintf(...))` allocates even when disabled — use `LogInfof`
+- `append` doubling — use `make([]T, exactSize)` when size is known
+- Vocabularies cached via `sync.Once` — don't add a second load path
+
+## Serializer Architecture
+
+- Vocabulary embedding: `go:embed` in binary
+- Entity filenames: deterministic, derived from entity ID (e.g., `person-john-smith.glx`), lowercased to prevent case-insensitive filesystem collisions
+- Write strategy: sequential (no parallelization)
+- Validation: default on via `SerializerOptions.Validate` (CLI exposes `--no-validate` flag)
+
+## GEDCOM Import
+
+- GEDCOM 5.5.1: `@REF@` references, NOTE records
+- GEDCOM 7.0: `@VOID@` references, SNOTE records
+- Features without GLX equivalent go in `Properties` field
+
+### Adding GEDCOM Tag Support
+
+1. Find converter file (e.g., `gedcom_individual.go`)
+2. Add tag handling in `switch` statement
+3. Map to GLX entity
+4. Add a test in the matching `gedcom_*_test.go` file (e.g. `gedcom_import_test.go`, `gedcom_source_test.go`); add an export round-trip case in `gedcom_export_roundtrip_test.go` if the tag is exported
+
+### Debugging Import
+
+1. Enable verbose logging: `conv.Logger.LogInfof(...)`
+2. Check `ConversionContext` entity maps
+3. Run `make test`
+4. Check `conv.Stats.Errors` / `conv.Stats.Warnings` accumulation
+
+## GEDCOM Specification PDFs
+
+Do NOT read full PDFs — they are too large. Use the split versions:
+- 5.5.1: `docs/gedcom-spec/GEDCOM_5.5.1_Specification/part_*.pdf` (6 parts)
+- 7.0: `docs/gedcom-spec/GEDCOM_7.0_Specification/part_*.pdf` (6 parts)
+- Also available: 3.0, 4.0, 5.0, 5.3, 5.4, 5.5, 5.5.5, 5.6, GEDZIP 0.1/0.2

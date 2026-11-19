@@ -187,22 +187,22 @@ func TestAssertionRelevant(t *testing.T) {
 	nameProp := &proofAssertion{a: &Assertion{Property: PersonPropertyName}}
 	occProp := &proofAssertion{a: &Assertion{Property: "occupation"}}
 
-	assert.True(t, assertionRelevant("parentage", parentRel))
-	assert.False(t, assertionRelevant("parentage", parentRelAsParent), "parent-as-parent is not the child's parentage evidence")
-	assert.False(t, assertionRelevant("parentage", marriageRel))
+	assert.True(t, assertionRelevant("parentage", parentRel, "person-test"))
+	assert.False(t, assertionRelevant("parentage", parentRelAsParent, "person-test"), "parent-as-parent is not the child's parentage evidence")
+	assert.False(t, assertionRelevant("parentage", marriageRel, "person-test"))
 
-	assert.True(t, assertionRelevant("birth", birthEvent))
-	assert.False(t, assertionRelevant("birth", deathEvent))
+	assert.True(t, assertionRelevant("birth", birthEvent, "person-test"))
+	assert.False(t, assertionRelevant("birth", deathEvent, "person-test"))
 
-	assert.True(t, assertionRelevant("death", deathEvent))
-	assert.True(t, assertionRelevant("death", burialEvent))
-	assert.False(t, assertionRelevant("death", birthEvent))
+	assert.True(t, assertionRelevant("death", deathEvent, "person-test"))
+	assert.True(t, assertionRelevant("death", burialEvent, "person-test"))
+	assert.False(t, assertionRelevant("death", birthEvent, "person-test"))
 
-	assert.True(t, assertionRelevant("marriage", marriageRel))
-	assert.True(t, assertionRelevant("marriage", partnerRel))
+	assert.True(t, assertionRelevant("marriage", marriageRel, "person-test"))
+	assert.True(t, assertionRelevant("marriage", partnerRel, "person-test"))
 
-	assert.True(t, assertionRelevant("identity", nameProp))
-	assert.False(t, assertionRelevant("identity", occProp))
+	assert.True(t, assertionRelevant("identity", nameProp, "person-test"))
+	assert.False(t, assertionRelevant("identity", occProp, "person-test"))
 }
 
 func TestBuildProof_BirthResolvedConflict(t *testing.T) {

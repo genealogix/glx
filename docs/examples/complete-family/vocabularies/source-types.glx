@@ -47,9 +47,17 @@ source_types:
     label: "Published Book"
     description: "Published genealogies, family histories"
   
+  article:
+    label: "Article"
+    description: "Journal, magazine, and reference articles, whether print or online"
+
+  website:
+    label: "Website"
+    description: "Websites, informational web pages, and blogs"
+
   database:
-    label: "Online Database"
-    description: "Online databases, compiled records"
+    label: "Database"
+    description: "Structured, searchable record collections and compiled databases, such as indexes and online family trees, whether online or offline"
   
   oral_history:
     label: "Oral History"

@@ -294,3 +294,30 @@ func TestMergePersonsRefusesNewRelationshipSelfLink(t *testing.T) {
 		assertTreeUnchanged(t, before, archive)
 	}
 }
+
+// Both merge persons in one event role: the merge reports the duplicate and
+// validate warns about it afterwards (#1493).
+func TestMergePersons_ReportsDuplicateEventParticipant(t *testing.T) {
+	archive := t.TempDir()
+	for _, args := range [][]string{
+		{"init", "."},
+		{"add", "person", "--id", "p-child", "--given", "Anna"},
+		{"add", "person", "--id", "p-elisabeth", "--given", "Elisabeth"},
+		{"add", "person", "--id", "p-catharina", "--given", "Catharina"},
+		{
+			"add", "event", "--id", "ev-bapt", "--type", "baptism", "--date", "1641-07-11", "--principal", "p-child",
+			"--participant", "p-elisabeth:godparent", "--participant", "p-catharina:godparent",
+		},
+	} {
+		res := runGLX(t, archive, args...)
+		require.Equal(t, 0, res.exitCode, res.stderr)
+	}
+
+	res := runGLX(t, archive, "merge-persons", "p-elisabeth", "p-catharina", "--yes", "--quiet")
+	require.Equal(t, 0, res.exitCode, res.stderr)
+	assert.Contains(t, res.stderr, "Duplicate participant: events[ev-bapt] lists p-elisabeth with role 'godparent' at participants[1], participants[2] (participants[2] was p-catharina)")
+
+	res = runGLX(t, archive, "validate", ".")
+	require.Equal(t, 0, res.exitCode, res.stderr)
+	assert.Contains(t, res.stdout+res.stderr, "events[ev-bapt].participants[2]: person 'p-elisabeth' already appears with role 'godparent' at participants[1]")
+}

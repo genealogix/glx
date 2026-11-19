@@ -186,6 +186,7 @@ Media entities support vocabulary-defined properties through the `properties` fi
 | `photographer` | reference (persons) | Person who created the media |
 | `location` | reference (places) | Place where the media was created |
 | `original_filename` | string | Original filename before import or renaming |
+| `external_ids` | string (multi-value) | Identifiers from external media systems; optional `fields.type` retains the authority |
 | `blob_size` | integer | Length in bytes of the encoded BLOB text imported from GEDCOM 5.5.1 BLOB records, as the BLOB/CONT lines joined with newlines (pre-decode; includes the line separators, and is not the decoded file size) |
 
 ### Example with Properties
