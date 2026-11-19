@@ -20,6 +20,12 @@ surfaces evidence gaps from the coverage checklist, flags conflicting assertions
 logged searches that document a reasonably exhaustive search, and ends with a
 conclusion: PROVEN, PROBABLE, POSSIBLE, INSUFFICIENT EVIDENCE, or CONFLICTED.
 
+Baptism/christening and burial/cremation evidence bounds birth/death; its date
+is not presented as the exact vital date. A burial certainly before death
+is a chronology conflict, including in merge-persons preview interpretations.
+Only the target person's own participant assertions support their vital proof.
+Equivalent Gregorian and Julian dates agree.
+
 Supported research questions:
   parentage   Who are the person's parents?
   birth       When and where was the person born?
