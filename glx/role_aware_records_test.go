@@ -113,8 +113,14 @@ func TestMigrations_ChildBurialElsewhereIsNotAMove(t *testing.T) {
 	assert.Equal(t, "parent", burial.Role)
 	assert.Contains(t, burial.Note, `role "parent" on a burial`)
 
-	// The father's own baptism record of his child still places him at home.
-	assert.False(t, migrationEntryByLabel(t, entries, "Baptism").Excluded)
+	// His godparent appearance is a visit. The child's baptism still
+	// places the parent at the household location.
+	assert.True(t, migrationEntryByLabel(t, entries, "Baptism").Excluded, "a godparent appearance is a visit")
+	for _, entry := range entries {
+		if entry.Date == "1645-10-12" {
+			assert.False(t, entry.Excluded)
+		}
+	}
 }
 
 func TestMigrations_MoveBetweenVillagesOfOneDistrict(t *testing.T) {
@@ -123,7 +129,7 @@ func TestMigrations_MoveBetweenVillagesOfOneDistrict(t *testing.T) {
 	require.Len(t, movements, 1, "movements: %+v", movements)
 	assert.Equal(t, migrationMovement{
 		FromRegion: "Niederkleen", ToRegion: "Pohl-Göns",
-		FromDate: "ABT 1621", ToDate: "1642-07-03",
+		FromDate: "ABT 1621", ToDate: "1644-02-26",
 	}, movements[0])
 }
 
@@ -261,6 +267,7 @@ func TestMigrations_PatternKeepsMoreSpecificStop(t *testing.T) {
 	archive := parishRegisterArchive()
 	archive.Events["ev-birth"].PlaceID = "pl-amt"
 	archive.Events["ev-bapt-other"].PlaceID = "pl-nk"
+	archive.Events["ev-bapt-other"].Participants[1].Role = glxlib.ParticipantRoleParent
 	report := matchMigrationPattern(archive, []string{"Niederkleen", "Pohl-Göns"})
 	require.Len(t, report.Matches, 1)
 	require.Len(t, report.Matches[0].Stops, 2)

@@ -201,7 +201,13 @@ func compareValues(a, b string, def *PropertyDefinition, places map[string]*Plac
 			if ad.Equal(bd) {
 				return VerdictAgree
 			}
-			if !x.Known || !y.Known || x.Reversed || y.Reversed || ad.Calendar() != bd.Calendar() || ad.CalendarName() != bd.CalendarName() {
+			if ad.Calendar() != bd.Calendar() || ad.CalendarName() != bd.CalendarName() {
+				x, y = ad.ChronologyBounds(opts.approximationWidth()), bd.ChronologyBounds(opts.approximationWidth())
+				if x.Known && y.Known && !x.Uncertain && !y.Uncertain && x.Outer == y.Outer {
+					return VerdictAgree
+				}
+			}
+			if !x.Known || !y.Known || x.Reversed || y.Reversed {
 				return VerdictPossible
 			}
 			if x.Outer.Intersects(y.Outer) {
