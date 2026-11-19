@@ -121,9 +121,11 @@ func reconstructFamilies(expCtx *ExportContext) {
 	// family of its parent set, synthesizing a FAM when no marriage matches.
 	attachChildrenToFamilies(expCtx, relIDs, parentToFamilies, parentPairToFamily)
 
-	// Step 3: Sort children within each family and assign XRefs
+	// Step 3: Put children in birth order within each family, as GEDCOM
+	// expects CHIL lines to run, and assign XRefs
+	order := NewBirthOrder(expCtx.GLX)
 	for i, family := range expCtx.Families {
-		sort.Strings(family.ChildIDs)
+		order.Sort(family.ChildIDs)
 		xref := fmt.Sprintf("@F%d@", i+1)
 		family.FamilyXRef = xref
 		expCtx.FamilyXRefMap[family.RelationshipID] = xref
@@ -179,7 +181,7 @@ func exportFamily(family *ExportFamily, expCtx *ExportContext) *GEDCOMRecord {
 		}
 	}
 
-	// CHIL (sorted by child person ID)
+	// CHIL (in birth order, undated children last, the ID breaking ties)
 	for _, childID := range family.ChildIDs {
 		if xref, ok := expCtx.PersonXRefMap[childID]; ok {
 			record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
