@@ -202,6 +202,10 @@ func printPersonMerge(streams *IOStreams, keepID, dropID string, result *glxlib.
 	for _, reference := range result.ReferenceChanges {
 		streams.Printf("  Reference %s: %s[%s].%s: %v → %v\n", reference.Action, reference.EntityType, reference.ID, reference.Path, reference.OldValue, reference.NewValue)
 	}
+	for _, duplicate := range result.DuplicateParticipants {
+		streams.Printf("  Duplicate participant: events[%s] lists %s %s at %s (%s was %s); review and fold the rows if they record one appearance\n",
+			duplicate.EventID, keepID, glxlib.DescribeParticipantRole(duplicate.Role), participantPaths(duplicate.Indexes), participantPaths(duplicate.DropIndexes), dropID)
+	}
 	for _, conflict := range result.Conflicts {
 		streams.Printf("  Conflict on %q: keep=%v drop=%v (%s; %s)\n", conflict.Property, glxlib.FormatPropertyValue(conflict.KeepValue), glxlib.FormatPropertyValue(conflict.DropValue), conflict.Resolution, conflict.Verdict)
 	}
@@ -218,4 +222,15 @@ func printPersonMerge(streams *IOStreams, keepID, dropID string, result *glxlib.
 		streams.Println("Deleted claims no longer influence current evidence, proof or coverage; existing inference rules recompute normally.")
 	}
 	streams.Println("Recovery requires a recorded pre-merge version. This command does not create a Git commit.")
+}
+
+// participantPaths renders indexes as participant paths, as validate prints
+// them: "participants[1], participants[2]".
+func participantPaths(indexes []int) string {
+	paths := make([]string, len(indexes))
+	for n, i := range indexes {
+		paths[n] = fmt.Sprintf("participants[%d]", i)
+	}
+
+	return strings.Join(paths, ", ")
 }
