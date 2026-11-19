@@ -48,6 +48,14 @@ func TestOrderingDay(t *testing.T) {
 	assert.Less(t, day("1700-02-28"), day("1700-02-29"))
 	assert.LessOrEqual(t, day("1700-02-29"), day("1700-03-01"))
 
+	// An open end in February is the real last day of the month, so it
+	// sorts before 1 March rather than tying with it.
+	assert.Equal(t, day("1700-02-28"), day("BEF 1700-03"), "1700 is a common Gregorian year")
+	assert.Equal(t, day("1700-02-28"), day("TO 1700-02"))
+	assert.Equal(t, day("1704-02-29"), day("BEF 1704-03"), "1704 is a leap year")
+	assert.Equal(t, day("1600-02-29"), day("BEF 1600-03"), "1600 is a Gregorian leap year")
+	assert.Equal(t, day("JULIAN 1700-02-29"), day("JULIAN BEF 1700-03"), "1700 is a Julian leap year")
+
 	for _, s := range []string{"", "HEBREW 5460", "BET 1700 AND 1690"} {
 		d, _ := Parse(s)
 		_, ok := d.OrderingDay()

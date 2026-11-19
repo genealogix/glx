@@ -30,25 +30,55 @@ func (d Date) OrderingDay() (int, bool) {
 	if !b.Known {
 		return 0, false
 	}
-	var ordinal int
-	switch {
-	case b.Outer.Start != math.MinInt:
-		ordinal = b.Outer.Start
-	case b.Outer.End != math.MaxInt:
-		ordinal = b.Outer.End - 1
-	default:
-		return 0, false
-	}
-	year, month, day := decodeOrdinal(ordinal)
-
+	var gregorian bool
 	switch d.Calendar() {
 	case CalendarGregorian:
-		return julianDayNumber(year, month, day, true), true
+		gregorian = true
 	case CalendarJulian:
-		return julianDayNumber(year, month, day, false), true
+		gregorian = false
 	default:
 		return 0, false
 	}
+	var year, month, day int
+	switch {
+	case b.Outer.Start != math.MinInt:
+		year, month, day = decodeOrdinal(b.Outer.Start)
+	case b.Outer.End != math.MaxInt:
+		year, month, day = decodeOrdinal(b.Outer.End - 1)
+		// Civil ordinals give every February 29 days. The last day of an
+		// open end is that nominal day, so in a common year it is really
+		// 28 February: left as the 29th it would roll into 1 March and
+		// tie with the day it should precede (BEF 1700-03).
+		if month == 2 && day == daysInMonth[2] && !isLeapYear(year, gregorian) {
+			day--
+		}
+	default:
+		return 0, false
+	}
+
+	return julianDayNumber(year, month, day, gregorian), true
+}
+
+// isLeapYear reports whether the astronomical year has 29 February in the
+// Gregorian (gregorian=true) or Julian calendar.
+func isLeapYear(year int, gregorian bool) bool {
+	const (
+		leapCycle      = 4
+		centuryCycle   = 100
+		gregorianCycle = 400
+	)
+	if floorMod(year, leapCycle) != 0 {
+		return false
+	}
+	if !gregorian {
+		return true
+	}
+
+	return floorMod(year, centuryCycle) != 0 || floorMod(year, gregorianCycle) == 0
+}
+
+func floorMod(a, b int) int {
+	return a - floorDiv(a, b)*b
 }
 
 // decodeOrdinal inverts pointBounds: it splits a civil-day ordinal into an
