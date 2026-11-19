@@ -563,14 +563,18 @@ Validation behavior:
   fragment's siblings, which are not being validated
 - Directory: Validates all .glx files with full cross-reference validation
 - No arguments: Validates current directory with full cross-reference validation
-- Several paths (directories, .glx files, or a mix): Loaded together as one
-  archive rooted at the enclosing archive directory — their deepest common
-  directory, or its parent when that is itself an entity directory such as
-  events/ — so cross-references between them resolve and duplicate IDs across
-  them are caught. The archive's vocabularies/ under that root is included
-  automatically; files that are not .glx are ignored. References to entities
-  outside the named paths are errors: the selection is validated as the
-  archive it would be on its own.
+- Part of an archive (an entity directory such as events/, or several paths —
+  directories, .glx files, or a mix): the enclosing archive directory is their
+  deepest common directory, or its parent when that is itself an entity
+  directory. The whole archive is read so references, types and properties
+  resolve as they do when it is validated whole, and only findings about the
+  named files are reported; files that are not .glx are ignored. Paths that
+  share no recognizable archive directory are validated together on their
+  own, and references outside them are errors.
+
+Vocabularies the archive does not define fall back to the standard ones, so an
+archive without source-types.glx still accepts the standard source types. A
+vocabulary the archive defines replaces the standard one.
 
 Dot-prefixed directories and files (.git, .glx, .worktrees, ._name.glx) are not
 archive content and are skipped when a directory is walked, including symlinks
@@ -798,7 +802,7 @@ relationships, places, citations, repositories, media, research_logs,
 studies.
 
 Filters vary by entity type:
-  persons:       --name, --born-before, --born-after, --birthplace
+  persons:       --name, --born-before, --born-after, --birthplace, --status
   events:        --type, --before, --after
   assertions:    --confidence, --status, --source, --citation, --subject
   sources:       --name, --type
@@ -858,7 +862,7 @@ func init() {
 	queryCmd.Flags().IntVar(&queryBefore, "before", 0, "Filter events with date before this year")
 	queryCmd.Flags().IntVar(&queryAfter, "after", 0, "Filter events with date after this year")
 	queryCmd.Flags().StringVar(&queryConfidence, "confidence", "", "Filter assertions by confidence level")
-	queryCmd.Flags().StringVar(&queryStatus, "status", "", "Filter assertions or research logs by status")
+	queryCmd.Flags().StringVar(&queryStatus, "status", "", "Filter persons, assertions or research logs by status")
 	queryCmd.Flags().StringVar(&querySource, "source", "", "Filter assertions by source ID (direct or via citation)")
 	queryCmd.Flags().StringVar(&queryCitation, "citation", "", "Filter assertions by citation ID")
 	queryCmd.Flags().StringVar(&querySubject, "subject", "", "Filter assertions or research logs by subject entity ID or person name substring")
@@ -2081,6 +2085,12 @@ var renameCmd = &cobra.Command{
 	Long: `Rename an entity ID throughout the archive, atomically updating all
 cross-references in events, relationships, assertions, citations, and other entities.
 
+Only typed references are rewritten: fields that refer to an entity of the
+renamed type, and properties whose vocabulary definition declares that
+reference_type (for example residence, which refers to places). A free-text
+property that happens to equal the old ID, or a reference to a same-ID entity
+of another type, is left as written.
+
 Works with any entity type: persons, events, relationships, places, sources,
 citations, repositories, assertions, and media.`,
 	Example: `  # Rename a person
@@ -2396,12 +2406,14 @@ func runLink(_ *cobra.Command, args []string) error {
 var (
 	serveHost string
 	servePort int
+	serveEdit bool
 )
 
 var serveCmd = &cobra.Command{
 	Use:   "serve [path]",
 	Short: "Serve a local browser-based viewer for a GLX archive (prints a URL to open)",
-	Long: `Serve a read-only, browser-based viewer for a GENEALOGIX archive.
+	Long: `Serve a browser-based viewer for a GENEALOGIX archive, read-only unless
+--edit is given.
 
 Starts a small local web server and prints a URL to open in your browser
 (it does not open the browser for you). The viewer is interactive and shows:
@@ -2413,6 +2425,12 @@ Starts a small local web server and prints a URL to open in your browser
 The server binds to localhost by default so the archive stays on your machine.
 The archive is loaded once at startup; restart the server to pick up external
 edits made by the CLI or a text editor.
+
+With --edit, the viewer can also add people, edit a person's name, sex and
+gender, and add parent, child and spouse relationships. Additions go through
+the same checks as 'glx add person' and 'glx add relationship' and write the
+same files; an edit rewrites only that person's file, and is refused if the
+file changed since the page loaded. Editing needs a multi-file directory.
 
 Accepts either a multi-file directory or a single .glx file.
 If no path is given, the current directory is used.`,
@@ -2426,7 +2444,10 @@ If no path is given, the current directory is used.`,
   glx serve family.glx --port 9000
 
   # Pick any free port (printed on startup)
-  glx serve --port 0`,
+  glx serve --port 0
+
+  # Allow adding and editing people in the browser
+  glx serve my-family-archive --edit`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runServe,
 }
@@ -2434,6 +2455,7 @@ If no path is given, the current directory is used.`,
 func init() {
 	serveCmd.Flags().StringVar(&serveHost, "host", serveDefaultHost, "Host/interface to bind (use 127.0.0.1 to keep the viewer local)")
 	serveCmd.Flags().IntVarP(&servePort, "port", "p", serveDefaultPort, "Port to listen on (0 picks any free port)")
+	serveCmd.Flags().BoolVar(&serveEdit, "edit", false, "Allow adding and editing people and relationships (directory archives only)")
 }
 
 func runServe(_ *cobra.Command, args []string) error {
@@ -2446,6 +2468,7 @@ func runServe(_ *cobra.Command, args []string) error {
 		ArchivePath: path,
 		Host:        serveHost,
 		Port:        servePort,
+		Edit:        serveEdit,
 	})
 }
 

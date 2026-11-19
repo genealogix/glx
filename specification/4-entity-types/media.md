@@ -68,7 +68,7 @@ media:
 ### Entity ID (map key)
 
 - Format: Any alphanumeric string with hyphens, 1-64 characters
-- Must be unique within the archive
+- Must be unique among entities of this type, ignoring case
 - Example formats:
   - Descriptive: `birth-cert`, `john-portrait`
   - Random hex: `a1b2c3d4`
@@ -402,7 +402,7 @@ When using external URIs, no local file is stored. The media entity simply refer
 - `uri` must be a valid URI or path
 - `type` must be from the [media types vocabulary](vocabularies.md#media-types-vocabulary)
 - If `mime_type` is specified, it should follow standard MIME type format
-- If `hash` is specified, it should follow `algorithm:hexstring` format
+- If `hash` is specified, it should follow `algorithm:hexstring` format; otherwise validation warns. For `md5`, `sha1`, `sha224`, `sha256`, `sha384` and `sha512` it also warns when the digest has the wrong number of hex digits. Other algorithm names are accepted at any length
 - If `date` is specified, it should follow standard date formats
 - If `source` is specified, it must reference an existing Source entity
 

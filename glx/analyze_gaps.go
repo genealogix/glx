@@ -27,12 +27,15 @@ func analyzeGaps(archive *glxlib.GLXFile) []AnalysisIssue {
 
 	personEvents := buildPersonEventIndex(archive)
 	childHasParents := buildChildHasParentsIndex(archive)
+	childHasPlaceholderParents := buildChildHasPlaceholderParentsIndex(archive)
 	spouseRels := buildSpouseRelIndex(archive)
 	marriagePairs := buildMarriagePairIndex(archive)
 
 	for _, id := range sortedPersonIDs(archive.Persons) {
 		person := archive.Persons[id]
-		if person == nil {
+		// A placeholder has no records to find until it is identified;
+		// analyzeSuggestions reports it as open instead (#191).
+		if person == nil || glxlib.IsUnresolvedPlaceholder(person) {
 			continue
 		}
 
@@ -41,17 +44,24 @@ func analyzeGaps(archive *glxlib.GLXFile) []AnalysisIssue {
 		issues = append(issues, checkMissingBirth(archive, id, name)...)
 		issues = append(issues, checkMissingDeath(archive, id, name)...)
 		if !childHasParents[id] {
+			message := name + " — no parents (no parent_child relationship as child)"
+			if childHasPlaceholderParents[id] {
+				message = name + " — no identified parents (only unresolved placeholders)"
+			}
 			issues = append(issues, AnalysisIssue{
 				Category: "gap",
 				Severity: "medium",
 				Person:   id,
-				Message:  name + " — no parents (no parent_child relationship as child)",
+				Message:  message,
 			})
 		}
 		issues = append(issues, checkNoEvents(id, name, personEvents)...)
 
 		// Check each spouse relationship for a corresponding marriage event
 		for _, sp := range spouseRels[id] {
+			if glxlib.IsUnresolvedPlaceholder(archive.Persons[sp.spouseID]) {
+				continue
+			}
 			pairKey := marriagePairKey(id, sp.spouseID)
 			evidence := marriagePairs[pairKey]
 			switch {
@@ -82,11 +92,25 @@ func analyzeGaps(archive *glxlib.GLXFile) []AnalysisIssue {
 }
 
 // buildChildHasParentsIndex returns a set of person IDs that appear as a child
-// in at least one parent-child relationship.
+// in at least one parent-child relationship, other than one whose parents are
+// all unresolved placeholders: those people are still brick walls (#191).
 func buildChildHasParentsIndex(archive *glxlib.GLXFile) map[string]bool {
+	return buildChildParentIndex(archive, false)
+}
+
+// buildChildHasPlaceholderParentsIndex returns a set of person IDs that appear
+// as a child in a parent-child relationship whose parents are all unresolved
+// placeholders.
+func buildChildHasPlaceholderParentsIndex(archive *glxlib.GLXFile) map[string]bool {
+	return buildChildParentIndex(archive, true)
+}
+
+// buildChildParentIndex indexes the children of parent-child relationships,
+// selecting those whose parents are all placeholders or those whose are not.
+func buildChildParentIndex(archive *glxlib.GLXFile, placeholderParents bool) map[string]bool {
 	index := make(map[string]bool)
 	for _, rel := range archive.Relationships {
-		if rel == nil || !isParentChildType(rel.Type) {
+		if rel == nil || !isParentChildType(rel.Type) || relationshipParentsArePlaceholders(archive, rel) != placeholderParents {
 			continue
 		}
 		for _, p := range rel.Participants {
@@ -97,6 +121,23 @@ func buildChildHasParentsIndex(archive *glxlib.GLXFile) map[string]bool {
 	}
 
 	return index
+}
+
+// relationshipParentsArePlaceholders reports whether a parent-child relationship
+// names at least one parent and every parent is an unresolved placeholder.
+func relationshipParentsArePlaceholders(archive *glxlib.GLXFile, rel *glxlib.Relationship) bool {
+	hasParent := false
+	for _, p := range rel.Participants {
+		if p.Role == glxlib.ParticipantRoleChild {
+			continue
+		}
+		if !glxlib.IsUnresolvedPlaceholder(archive.Persons[p.Person]) {
+			return false
+		}
+		hasParent = true
+	}
+
+	return hasParent
 }
 
 // spouseRef holds a spouse person ID for gap analysis.

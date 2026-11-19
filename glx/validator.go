@@ -379,7 +379,7 @@ func ValidateGLXFileStructure(doc map[string]any) []string {
 	if verr := compiledSchema.Validate(inst); verr != nil {
 		var ve *jsonschema.ValidationError
 		if errors.As(verr, &ve) {
-			issues = append(issues, flattenValidationErrors(ve)...)
+			issues = append(issues, flattenValidationErrors(ve, doc)...)
 		} else {
 			issues = append(issues, fmt.Sprintf("schema validation failed: %v", verr))
 		}
@@ -405,8 +405,9 @@ func ValidateGLXFileStructure(doc map[string]any) []string {
 
 // flattenValidationErrors converts a jsonschema.ValidationError tree into a
 // flat list of "<instance-location>: <message>" strings, one per leaf cause.
-// Uses BasicOutput, which already flattens the cause tree for us.
-func flattenValidationErrors(ve *jsonschema.ValidationError) []string {
+// Uses BasicOutput, which already flattens the cause tree for us. doc is the
+// validated document, read to explain a missing required field (#648).
+func flattenValidationErrors(ve *jsonschema.ValidationError, doc map[string]any) []string {
 	out := ve.BasicOutput()
 	msgs := make([]string, 0, len(out.Errors))
 	for _, unit := range out.Errors {
@@ -422,10 +423,61 @@ func flattenValidationErrors(ve *jsonschema.ValidationError) []string {
 		if loc == "" {
 			loc = "(root)"
 		}
-		msgs = append(msgs, fmt.Sprintf("%s: %s", loc, unit.Error))
+		msg := fmt.Sprintf("%s: %s", loc, unit.Error)
+		if required, ok := unit.Error.Kind.(*kind.Required); ok {
+			msg += misplacedRequiredHint(doc, unit.InstanceLocation, required.Missing)
+		}
+		msgs = append(msgs, msg)
 	}
 
 	return msgs
+}
+
+// misplacedRequiredHint explains a missing required field that the author did
+// write, but inside the entity's `properties` map instead of beside it:
+// `title is required` is correct and unhelpful when the title is right there
+// one level down (#648). It returns "" when none of the missing fields is
+// under properties.
+func misplacedRequiredHint(doc map[string]any, location string, missing []string) string {
+	entity, ok := jsonPointerObject(doc, location)
+	if !ok {
+		return ""
+	}
+	properties, ok := entity["properties"].(map[string]any)
+	if !ok {
+		return ""
+	}
+	var found []string
+	for _, name := range missing {
+		if _, present := properties[name]; present {
+			found = append(found, name)
+		}
+	}
+	if len(found) == 0 {
+		return ""
+	}
+	slices.Sort(found)
+
+	return fmt.Sprintf(" (found %s inside properties; move it to the top level of the entity)", strings.Join(found, ", "))
+}
+
+// jsonPointerObject returns the object at a JSON pointer such as
+// "/sources/source-id" within doc.
+func jsonPointerObject(doc map[string]any, pointer string) (map[string]any, bool) {
+	current := doc
+	for token := range strings.SplitSeq(strings.TrimPrefix(pointer, "/"), "/") {
+		if token == "" {
+			continue
+		}
+		token = strings.NewReplacer("~1", "/", "~0", "~").Replace(token)
+		next, ok := current[token].(map[string]any)
+		if !ok {
+			return nil, false
+		}
+		current = next
+	}
+
+	return current, true
 }
 
 func isValidEntityID(id string) bool {
