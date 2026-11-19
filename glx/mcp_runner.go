@@ -39,12 +39,13 @@ var (
 )
 
 // mcpArchiveBackend owns one snapshot. The protocol adapter serializes its
-// calls, including the lazy validation cache; no handler reopens files. A watcher
+// calls, including the lazy validation and tree caches; no handler reopens files. A watcher
 // replaces the whole backend rather than mutating a published archive.
 type mcpArchiveBackend struct {
 	archive    *glxlib.GLXFile
 	duplicates []string
 	validation *validationJSONResult
+	treeIndex  *treeContext
 }
 
 func serveMCP(ctx context.Context, archivePath string, watch bool) error {
@@ -99,6 +100,11 @@ func loadMCPArchiveContext(ctx context.Context, path string) (*mcpArchiveBackend
 	var archive *glxlib.GLXFile
 	var duplicates []string
 	if info.IsDir() {
+		// A journal marks a half-applied write whether or not a cache is
+		// fresh, so check it before either load path.
+		if err := checkMCPWatchJournal(path); err != nil {
+			return nil, err
+		}
 		// Reading a fresh cache is permitted, but serving never creates or
 		// rewrites a cache even when GLX_CACHE=auto is set in the environment.
 		var cached bool

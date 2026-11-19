@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 
-	glxlib "github.com/genealogix/glx/go-glx"
 	glxmcp "github.com/genealogix/glx/mcp"
 )
 
@@ -56,7 +55,7 @@ func (b *mcpArchiveBackend) tree(ctx context.Context, a glxmcp.TreeArgs, ancesto
 	if err != nil {
 		return nil, err
 	}
-	tree, err := newMCPTreeContext(ctx, b.archive)
+	tree, err := b.treeContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -111,30 +110,17 @@ func (w *mcpTreeWalker) build(ctx context.Context, id string, depth int, visited
 	return node, nil
 }
 
-func newMCPTreeContext(ctx context.Context, archive *glxlib.GLXFile) (*treeContext, error) {
-	links, err := glxlib.ParentChildLinksContext(ctx, archive, nil)
-	if err != nil {
-		return nil, err
-	}
-	tree := &treeContext{archive: archive, parents: make(map[string][]treeRelPerson), children: make(map[string][]treeRelPerson)}
-	for _, link := range links {
-		if err := ctx.Err(); err != nil {
+// treeContext builds the snapshot's parent/child indexes once. The snapshot is
+// immutable and calls are serialized, so later traversals reuse the same index;
+// a watch reload replaces the whole backend, and with it this cache.
+func (b *mcpArchiveBackend) treeContext(ctx context.Context) (*treeContext, error) {
+	if b.treeIndex == nil {
+		tree, err := newTreeContextContext(ctx, b.archive)
+		if err != nil {
 			return nil, err
 		}
-		if link.Standing == glxlib.RelationshipStandingDisproven {
-			continue
-		}
-		tree.parents[link.ChildID] = append(tree.parents[link.ChildID], treeRelPersonFromLink(&link, link.ParentID))
-		tree.children[link.ParentID] = append(tree.children[link.ParentID], treeRelPersonFromLink(&link, link.ChildID))
-	}
-	for _, index := range []map[string][]treeRelPerson{tree.parents, tree.children} {
-		for id := range index {
-			if err := ctx.Err(); err != nil {
-				return nil, err
-			}
-			sortRelatedPersons(index[id])
-		}
+		b.treeIndex = tree
 	}
 
-	return tree, ctx.Err()
+	return b.treeIndex, nil
 }

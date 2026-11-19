@@ -21,7 +21,6 @@ import (
 	"syscall"
 )
 
-const mcpWatchNonblock = 0
 
 func openMCPWatchSingleFile(path string) (*os.File, os.FileInfo, error) {
 	// Go forwards this flag to CreateFile, opening the reparse point itself.

@@ -191,7 +191,7 @@ func validateJSONPath(path string, report bool) (*validationJSONResult, error) {
 // replacement race; the descriptor check does not rely on the earlier stat.
 func readValidationJSONFile(path string) ([]byte, error) {
 	// #nosec G304 -- explicit CLI input; MCP validation never reads paths.
-	file, err := os.OpenFile(path, os.O_RDONLY|mcpWatchNonblock, 0)
+	file, err := os.OpenFile(path, os.O_RDONLY|nonblockOpenFlag, 0)
 	if err != nil {
 		return nil, err
 	}

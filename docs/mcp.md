@@ -26,7 +26,10 @@ If a watched file is replaced by a symlink, serving retains the previous
 snapshot until a regular file is restored; ordinary atomic file saves still
 reload normally.
 An unusable cache, including a cache path that resolves outside the selected
-archive, is ignored in favor of read-only source loading.
+archive, is ignored in favor of read-only source loading. A `.glx-write-journal`
+left in a directory archive by an interrupted write prevents startup in both
+modes, even when the cache is fresh; the error names the journal and how to
+restore the files it lists.
 
 ## Watch for edits
 
@@ -51,7 +54,8 @@ prefer the default snapshot mode if that disk I/O is unwelcome.
 
 Read/parse failures keep the last successfully loaded snapshot available and
 produce a warning on stderr, deduplicated until source recovery or a
-different error. Fixing the source allows automatic recovery. A missing archive
+different error. Fixing the source allows automatic recovery; unchanged source bytes that
+already failed to parse are not parsed again. A missing archive
 path or a `.glx-write-journal` from an ongoing/interrupted directory write also
 pauses reloads. An unreadable, unparseable or journal-blocked archive at startup
 still prevents the server from starting. Normal validation findings, such as

@@ -188,6 +188,24 @@ func TestLoadMCPArchiveReadOnlyCacheAndSnapshot(t *testing.T) {
 	require.Equal(t, "Updated Name", extractPersonName(single.archive.Persons["person-one"]))
 }
 
+func TestLoadMCPArchiveJournalBlocksCachedAndSourceLoads(t *testing.T) {
+	t.Setenv("GLX_CACHE", "auto")
+	dir := t.TempDir()
+	writeMCPWatchSource(t, filepath.Join(dir, "person.glx"), "First")
+	backend, err := loadMCPArchive(dir)
+	require.NoError(t, err)
+	require.NoError(t, writeCache(dir, backend.archive, nil))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, inPlaceJournalFile), []byte("[]"), 0o600))
+	for _, mode := range []string{"auto", "off"} {
+		t.Setenv("GLX_CACHE", mode)
+		_, err = loadMCPArchive(dir)
+		// A fresh cache must not hide a half-applied write, and the error
+		// carries the writers' recovery instructions rather than a wait.
+		require.ErrorIs(t, err, errMCPWatchJournal, "GLX_CACHE=%s", mode)
+		require.ErrorIs(t, err, ErrInterruptedInPlaceWrite, "GLX_CACHE=%s", mode)
+	}
+}
+
 func TestLoadMCPArchiveReportsInvalidSourcesAndDuplicates(t *testing.T) {
 	t.Setenv("GLX_CACHE", "off")
 	dir := t.TempDir()
@@ -236,4 +254,19 @@ func TestMCPJSONCommandAdapters(t *testing.T) {
 	for _, watch := range []bool{false, true} {
 		require.ErrorIs(t, serveMCP(t.Context(), missing, watch), os.ErrNotExist)
 	}
+}
+
+func TestMCPTreeIndexBuiltOncePerSnapshot(t *testing.T) {
+	t.Setenv("GLX_CACHE", "off")
+	backend, err := loadMCPArchive("../docs/examples/complete-family")
+	require.NoError(t, err)
+	require.Nil(t, backend.treeIndex)
+	_, err = backend.CallTool(t.Context(), "ancestors", json.RawMessage(`{"person":"person-jane-smith-1876"}`))
+	require.NoError(t, err)
+	index := backend.treeIndex
+	require.NotNil(t, index)
+	_, err = backend.CallTool(t.Context(), "descendants", json.RawMessage(`{"person":"person-john-smith-1850"}`))
+	require.NoError(t, err)
+	require.Same(t, index, backend.treeIndex, "later traversals reuse the snapshot's index")
+	require.Equal(t, newTreeContext(backend.archive), index, "the MCP index matches the CLI tree index")
 }

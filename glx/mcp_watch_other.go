@@ -18,7 +18,6 @@ package main
 
 import "os"
 
-const mcpWatchNonblock = 0
 
 func openMCPWatchSingleFile(path string) (*os.File, os.FileInfo, error) {
 	expected, err := os.Lstat(path)

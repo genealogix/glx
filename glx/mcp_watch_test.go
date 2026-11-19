@@ -104,6 +104,16 @@ func TestMCPWatchDebounceFailureAndRecovery(t *testing.T) {
 	require.False(t, changed)
 	require.False(t, backend.hasPending)
 	require.Same(t, previous, backend.current.Load(), "parse errors must retain the last successful snapshot")
+	failedErr := backend.failedErr
+	require.Error(t, failedErr)
+	for range 3 {
+		// Unchanged broken bytes report the remembered failure on every
+		// poll instead of rearming the debounce and parsing them again.
+		changed, err = backend.poll(t.Context())
+		require.Equal(t, failedErr, err)
+		require.False(t, changed)
+		require.False(t, backend.hasPending)
+	}
 	writeMCPWatchSource(t, path, "Fixed")
 	pollMCPWatch(t, backend, false)
 	pollMCPWatch(t, backend, true)

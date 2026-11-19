@@ -22,6 +22,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
+	"runtime/debug"
 
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -97,7 +99,10 @@ var errBackendFailure = errors.New("GLX tool failed unexpectedly; run validate t
 
 func (b *serialBackend) callJSON(ctx context.Context, name string, args json.RawMessage) (result json.RawMessage, err error) {
 	defer func() {
-		if recover() != nil {
+		if recovered := recover(); recovered != nil {
+			// The client sees only a generic error; keep the panic and its
+			// stack on the host's log (stderr by default; stdout is the protocol).
+			slog.Error("GLX MCP backend panicked", "operation", name, "panic", recovered, "stack", string(debug.Stack()))
 			result = nil
 			err = errBackendFailure
 		}

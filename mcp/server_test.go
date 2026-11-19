@@ -15,10 +15,12 @@
 package mcp
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -183,6 +185,10 @@ func TestNilBackend(t *testing.T) {
 }
 
 func TestBackendPanicIsToolErrorAndSessionSurvives(t *testing.T) {
+	var logged bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logged, nil)))
+	t.Cleanup(func() { slog.SetDefault(previous) })
 	server, err := NewServer(BackendFunc(func(_ context.Context, name string, _ json.RawMessage) (any, error) {
 		if name == "vitals" {
 			panic("untrusted panic detail")
@@ -198,6 +204,10 @@ func TestBackendPanicIsToolErrorAndSessionSurvives(t *testing.T) {
 	data, err := json.Marshal(result)
 	require.NoError(t, err)
 	require.NotContains(t, string(data), "untrusted panic detail")
+	// The detail stays host-side, on the log, with the operation and a stack.
+	require.Contains(t, logged.String(), "untrusted panic detail")
+	require.Contains(t, logged.String(), "operation=vitals")
+	require.Contains(t, logged.String(), "stack=")
 	result, err = client.CallTool(t.Context(), &mcpsdk.CallToolParams{Name: "stats", Arguments: struct{}{}})
 	require.NoError(t, err)
 	require.False(t, result.IsError)

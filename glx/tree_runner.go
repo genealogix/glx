@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"sort"
@@ -52,49 +53,40 @@ type treeContext struct {
 
 // newTreeContext builds a treeContext with precomputed parent/child indexes.
 func newTreeContext(archive *glxlib.GLXFile) *treeContext {
-	return &treeContext{
-		archive:  archive,
-		parents:  buildParentIndex(archive),
-		children: buildChildIndex(archive),
-	}
+	tree, _ := newTreeContextContext(context.Background(), archive)
+
+	return tree
 }
 
-// buildParentIndex scans all relationships once and returns a map from
-// child ID to their parents. Links the archive has disproven are left out.
-func buildParentIndex(archive *glxlib.GLXFile) map[string][]treeRelPerson {
-	index := make(map[string][]treeRelPerson)
-
-	for _, link := range glxlib.ParentChildLinks(archive, nil) {
+// newTreeContextContext scans all relationships once and indexes both
+// directions: child ID to parents and parent ID to children. Links the archive
+// has disproven are left out. Canceled calls return no partial context.
+func newTreeContextContext(ctx context.Context, archive *glxlib.GLXFile) (*treeContext, error) {
+	links, err := glxlib.ParentChildLinksContext(ctx, archive, nil)
+	if err != nil {
+		return nil, err
+	}
+	tree := &treeContext{archive: archive, parents: make(map[string][]treeRelPerson), children: make(map[string][]treeRelPerson)}
+	for _, link := range links {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		if link.Standing == glxlib.RelationshipStandingDisproven {
 			continue
 		}
-		index[link.ChildID] = append(index[link.ChildID], treeRelPersonFromLink(&link, link.ParentID))
+		tree.parents[link.ChildID] = append(tree.parents[link.ChildID], treeRelPersonFromLink(&link, link.ParentID))
+		tree.children[link.ParentID] = append(tree.children[link.ParentID], treeRelPersonFromLink(&link, link.ChildID))
 	}
-
-	for id := range index {
-		sortRelatedPersons(index[id])
-	}
-
-	return index
-}
-
-// buildChildIndex scans all relationships once and returns a map from
-// parent ID to their children. Links the archive has disproven are left out.
-func buildChildIndex(archive *glxlib.GLXFile) map[string][]treeRelPerson {
-	index := make(map[string][]treeRelPerson)
-
-	for _, link := range glxlib.ParentChildLinks(archive, nil) {
-		if link.Standing == glxlib.RelationshipStandingDisproven {
-			continue
+	for _, index := range []map[string][]treeRelPerson{tree.parents, tree.children} {
+		for id := range index {
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
+			sortRelatedPersons(index[id])
 		}
-		index[link.ParentID] = append(index[link.ParentID], treeRelPersonFromLink(&link, link.ChildID))
 	}
 
-	for id := range index {
-		sortRelatedPersons(index[id])
-	}
-
-	return index
+	return tree, ctx.Err()
 }
 
 // treeRelPersonFromLink converts a parent-child link into the tree's edge

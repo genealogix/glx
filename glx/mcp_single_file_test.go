@@ -151,7 +151,7 @@ func TestMCPSingleFileRejectsReplacedDescriptor(t *testing.T) {
 				writeMCPWatchSource(t, replacement, "OutsideSyntheticMarker")
 			}
 			require.NoError(t, os.Rename(replacement, selected))
-			file, err := root.OpenFile("archive.glx", os.O_RDONLY|mcpWatchNonblock, 0)
+			file, err := root.OpenFile("archive.glx", os.O_RDONLY|nonblockOpenFlag, 0)
 			require.NoError(t, err)
 			data, err := readMCPWatchRegularFile(file, expected)
 			require.ErrorIs(t, err, errMCPWatchFileChanged)

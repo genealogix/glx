@@ -2667,4 +2667,5 @@ func init() {
 	analyzeCmd.Flags().BoolVar(&analyzeJSON, "json", false, "Output as JSON (alias for --format json)")
 	validateCmd.MarkFlagsMutuallyExclusive("json", "stdin")
 	validateCmd.MarkFlagsMutuallyExclusive("json", "entity-type")
+	analyzeCmd.MarkFlagsMutuallyExclusive("json", "format")
 }

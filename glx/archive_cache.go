@@ -479,7 +479,7 @@ func openCache(root string) (*os.File, *gob.Decoder, *CacheHeader, error) {
 
 	// Nonblocking open plus descriptor validation prevents a FIFO (including
 	// one swapped in between lookup and open) from hanging cache consumers.
-	f, err := archiveRoot.OpenFile(filepath.Join(cacheDirName, cacheFileName), os.O_RDONLY|mcpWatchNonblock, 0)
+	f, err := archiveRoot.OpenFile(filepath.Join(cacheDirName, cacheFileName), os.O_RDONLY|nonblockOpenFlag, 0)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil, nil, ErrCacheNotFound

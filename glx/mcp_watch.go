@@ -24,7 +24,6 @@ import (
 	"io"
 	"maps"
 	"os"
-	"path/filepath"
 	"slices"
 	"sync/atomic"
 	"time"
@@ -37,7 +36,7 @@ const mcpWatchInterval = time.Second
 var (
 	errMCPWatchSourceType  = errors.New("archive path must remain a regular file or directory of its original type")
 	errMCPWatchFileChanged = errors.New("archive file changed while opening")
-	errMCPWatchJournal     = errors.New("archive write journal is present; waiting for the write to finish or be recovered")
+	errMCPWatchJournal     = errors.New("archive write journal is present")
 )
 
 // mcpArchiveSource always reads source bytes, not a metadata-based binary cache.
@@ -120,7 +119,7 @@ func readMCPWatchFile(root *os.Root, path string) ([]byte, error) {
 	if !info.Mode().IsRegular() {
 		return nil, errMCPWatchSourceType
 	}
-	file, err := root.OpenFile(path, os.O_RDONLY|mcpWatchNonblock, 0)
+	file, err := root.OpenFile(path, os.O_RDONLY|nonblockOpenFlag, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -158,16 +157,18 @@ func readMCPWatchRegularFile(file *os.File, expected os.FileInfo) ([]byte, error
 	return io.ReadAll(file)
 }
 
+// checkMCPWatchJournal reuses the writers' journal check, so the server and
+// in-place writers agree on what marks a write as in progress or interrupted.
 func checkMCPWatchJournal(path string) error {
-	_, err := os.Lstat(filepath.Join(path, inPlaceJournalFile))
-	if err == nil {
-		return errMCPWatchJournal
-	}
-	if errors.Is(err, os.ErrNotExist) {
-		return nil
+	if err := checkInPlaceJournal(path); err != nil {
+		if errors.Is(err, ErrInterruptedInPlaceWrite) {
+			return fmt.Errorf("%w: %w", errMCPWatchJournal, err)
+		}
+
+		return err
 	}
 
-	return err
+	return nil
 }
 
 func mcpSourceFingerprint(files map[string][]byte) [sha256.Size]byte {
@@ -214,6 +215,10 @@ type mcpWatchingBackend struct {
 	fingerprint [sha256.Size]byte
 	pending     [sha256.Size]byte
 	hasPending  bool
+	// failed remembers the last stable capture that did not load, so an
+	// archive left broken is not reparsed on every debounce cycle.
+	failed    [sha256.Size]byte
+	failedErr error
 }
 
 func newMCPWatchingBackend(ctx context.Context, path string) (*mcpWatchingBackend, error) {
@@ -256,9 +261,16 @@ func (b *mcpWatchingBackend) poll(ctx context.Context) (bool, error) {
 		return false, err
 	}
 	if capture.fingerprint == b.fingerprint {
-		b.hasPending = false
+		b.hasPending, b.failedErr = false, nil
 
 		return false, nil
+	}
+	if b.failedErr != nil && capture.fingerprint == b.failed {
+		// Parsing is deterministic in the captured bytes: report the same
+		// failure without loading them again until the source changes.
+		b.hasPending = false
+
+		return false, b.failedErr
 	}
 	if !b.hasPending || capture.fingerprint != b.pending {
 		b.pending, b.hasPending = capture.fingerprint, true
@@ -268,13 +280,15 @@ func (b *mcpWatchingBackend) poll(ctx context.Context) (bool, error) {
 	b.hasPending = false
 	backend, err := b.source.load(capture)
 	if err != nil {
+		b.failed, b.failedErr = capture.fingerprint, err
+
 		return false, err
 	}
 	if err := ctx.Err(); err != nil {
 		return false, err
 	}
 	b.current.Store(backend)
-	b.fingerprint = capture.fingerprint
+	b.fingerprint, b.failedErr = capture.fingerprint, nil
 
 	return true, nil
 }
