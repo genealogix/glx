@@ -1939,7 +1939,22 @@ Supported research questions:
   birth       When and where was the person born?
   death       When and where did the person die?
   marriage    Whom did the person marry?
-  identity    Who was the person (name)?
+  children    Who were the person's children?
+  occupation  What occupation or office did the person hold?
+  identity    Who was the person, and which namesakes are they told apart from?
+
+Questions with several possible answers (parents, spouses, children, occupations,
+same-person links) resolve each candidate on its own: proven, probable,
+speculative, or unsupported answers are listed with their own status, and the
+question stands at its weakest answer. A candidate whose assertions are all
+disproven, or all disputed, is listed under "Alternatives Excluded" and never
+counts; one with both a proven and a disproven assertion is a conflict.
+
+Searches are listed under the question their research log serves: set the log's
+` + "`question`" + ` property (e.g. ` + "`question: parentage`" + `), or give it a marriage, parent_child or
+event subject. Other logs about the person are counted as other research, and
+serve the identity question. A gap searched in a source of its type is marked
+with the search results and no longer heads the next steps.
 
 Only definite unresolved conflicts make a conclusion CONFLICTED. Possible
 conflicts are marked "possible — check" and reduce support. Undated temporal
@@ -1964,7 +1979,7 @@ The person argument can be an exact entity ID or a name substring.`,
 
 func init() {
 	proofCmd.Flags().StringVarP(&proofArchive, "archive", "a", ".", "Archive path (directory or single file)")
-	proofCmd.Flags().StringVar(&proofQuestion, "question", "", "Research question (parentage, birth, death, marriage, identity)")
+	proofCmd.Flags().StringVar(&proofQuestion, "question", "", "Research question (parentage, birth, death, marriage, children, occupation, identity)")
 	proofCmd.Flags().StringVarP(&proofFormat, "format", "f", "", "Output format (text, json, markdown)")
 	_ = proofCmd.MarkFlagRequired("question")
 }

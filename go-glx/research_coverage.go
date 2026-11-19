@@ -717,7 +717,7 @@ func buildOtherRecords(sources, events []personSourceInfo, probateHighPriority b
 	probateFound := probateRef != "" || hasSourceType(sources, SourceTypeProbate, "")
 	rec := CoverageRecord{
 		Category: coverageCategoryOther,
-		Label:    "Probate/will",
+		Label:    coverageLabelProbate,
 		Found:    probateFound,
 	}
 	if probateFound {

@@ -33,11 +33,13 @@ const (
 
 // Canonical research-question topic keys.
 const (
-	topicParentage = "parentage"
-	topicBirth     = "birth"
-	topicDeath     = "death"
-	topicMarriage  = "marriage"
-	topicIdentity  = "identity"
+	topicParentage  = "parentage"
+	topicBirth      = "birth"
+	topicDeath      = "death"
+	topicMarriage   = "marriage"
+	topicChildren   = "children"
+	topicOccupation = "occupation"
+	topicIdentity   = "identity"
 )
 
 // Assertion status values that drive conflict resolution. These are free-text
@@ -89,6 +91,9 @@ type ProofEvidence struct {
 	Status            string         `json:"status,omitempty"`
 	Notes             string         `json:"notes,omitempty"`
 	Support           []ProofSupport `json:"support,omitempty"`
+	// Counterparts are the people the assertion relates the person to: the
+	// parent of a parent_child line, the spouse of a marriage line.
+	Counterparts []string `json:"counterparts,omitempty"`
 }
 
 // ProofGap is a missing record that would strengthen the proof (GPS element 1 —
@@ -97,6 +102,10 @@ type ProofGap struct {
 	Label       string `json:"label"`
 	Priority    string `json:"priority,omitempty"`
 	Description string `json:"description,omitempty"`
+	// Searched summarizes this question's logged searches in a source of the
+	// gap's type, e.g. "12 searches: 11 not_found, 1 requires_visit". A
+	// searched gap is still listed but no longer heads the next steps.
+	Searched string `json:"searched,omitempty"`
 }
 
 // ConflictValue is one competing value within a conflict.
@@ -125,6 +134,8 @@ type ConflictGroup struct {
 // ProofSearch is one logged search, including searches that found nothing
 // (negative evidence supporting GPS element 1).
 type ProofSearch struct {
+	Log        string `json:"log,omitempty"`
+	SourceType string `json:"source_type,omitempty"`
 	Query      string `json:"query,omitempty"`
 	Collection string `json:"collection,omitempty"`
 	Repository string `json:"repository,omitempty"`
@@ -133,28 +144,41 @@ type ProofSearch struct {
 	Notes      string `json:"notes,omitempty"`
 }
 
-// ProofExcludedAlternative is a parent candidate whose links have all been
-// disproven. It remains visible apart from the parents identified.
+// ProofExcludedAlternative is a candidate answer the evidence rules out (every
+// assertion about it disproven) or leaves contested (every surviving assertion
+// disputed): a parent, a spouse, a child, a same-person link. It remains
+// visible apart from the answers, and never counts toward the conclusion.
 type ProofExcludedAlternative struct {
-	PersonID     string `json:"person_id"`
-	Name         string `json:"name"`
-	Relationship string `json:"relationship"`
+	PersonID     string   `json:"person_id,omitempty"`
+	Name         string   `json:"name"`
+	Relationship string   `json:"relationship,omitempty"`
+	Event        string   `json:"event,omitempty"`
+	Role         string   `json:"role,omitempty"`
+	Value        string   `json:"value,omitempty"`
+	Status       string   `json:"status,omitempty"`
+	Assertions   []string `json:"assertions,omitempty"`
+	Citations    []string `json:"citations,omitempty"`
+	Notes        string   `json:"notes,omitempty"`
 }
 
 // ProofResult is the full structured proof argument for one research question.
 type ProofResult struct {
-	Excluded     []ProofExcludedAlternative `json:"alternatives_excluded,omitempty"`
-	Undated      []ProofEvidence            `json:"undated,omitempty"`
-	PersonID     string                     `json:"person_id"`
-	PersonName   string                     `json:"person_name"`
-	Question     string                     `json:"question"`
-	QuestionText string                     `json:"question_text"`
-	Evidence     []ProofEvidence            `json:"evidence"`
-	Gaps         []ProofGap                 `json:"gaps,omitempty"`
-	Conflicts    []ConflictGroup            `json:"conflicts"`
-	Searches     []ProofSearch              `json:"searches,omitempty"`
-	Conclusion   string                     `json:"conclusion"`
-	Summary      string                     `json:"summary,omitempty"`
+	Answers  []ProofAnswer              `json:"answers,omitempty"`
+	Excluded []ProofExcludedAlternative `json:"alternatives_excluded,omitempty"`
+	// OtherSearches are the searches of research logs about the person that
+	// do not serve this question (see ResearchLogQuestionProperty).
+	OtherSearches []ProofSearch   `json:"other_searches,omitempty"`
+	Undated       []ProofEvidence `json:"undated,omitempty"`
+	PersonID      string          `json:"person_id"`
+	PersonName    string          `json:"person_name"`
+	Question      string          `json:"question"`
+	QuestionText  string          `json:"question_text"`
+	Evidence      []ProofEvidence `json:"evidence"`
+	Gaps          []ProofGap      `json:"gaps,omitempty"`
+	Conflicts     []ConflictGroup `json:"conflicts"`
+	Searches      []ProofSearch   `json:"searches,omitempty"`
+	Conclusion    string          `json:"conclusion"`
+	Summary       string          `json:"summary,omitempty"`
 }
 
 // buildProof assembles the proof argument for a person and research topic.
@@ -165,20 +189,21 @@ func buildProof(personID string, person *Person, topic string, archive *GLXFile,
 	}
 
 	all := collectPersonProofAssertions(archive, personID)
+	all = appendClaimOnlyParticipations(all, archive, personID)
 	all = appendProxyVitalProofFields(all, archive, personID, topic)
+	standings := NewRelationshipStandingIndex(archive)
 	var parentLinks []ParentChildLink
-	var standings *RelationshipStandingIndex
-	if topic == topicParentage {
-		standings = NewRelationshipStandingIndex(archive)
+	if topic == topicParentage || topic == topicChildren {
 		parentLinks = ParentChildLinks(archive, standings)
 	}
 
 	var relevant []proofAssertion
 	for i := range all {
-		if assertionRelevant(topic, &all[i], personID) && (topic != topicParentage || parentageLinkRelevant(&all[i], personID, parentLinks)) {
+		if assertionRelevant(topic, &all[i], personID) && (topic != topicParentage || parentageLinkRelevant(&all[i], personID, parentLinks, archive)) {
 			relevant = append(relevant, all[i])
 		}
 	}
+	candidates := buildProofCandidates(topic, personID, archive, relevant, parentLinks, standings)
 
 	evidence := make([]ProofEvidence, 0, len(relevant))
 	var undated []ProofEvidence
@@ -186,7 +211,7 @@ func buildProof(personID string, person *Person, topic string, archive *GLXFile,
 		if relevant[i].synthetic {
 			continue
 		}
-		ev := buildProofEvidence(&relevant[i], archive)
+		ev := buildProofEvidence(&relevant[i], personID, archive)
 		def := ConflictProperty(archive, relevant[i].a.Subject, relevant[i].a.Property)
 		date, _ := relevant[i].a.Date.Parse()
 		if IsTemporalProperty(def) && !date.Timing().Known {
@@ -202,40 +227,116 @@ func buildProof(personID string, person *Person, topic string, archive *GLXFile,
 
 		return a.Timing().Outer.Start < b.Timing().Outer.Start
 	})
-	conflicts := detectProofConflicts(relevant, archive, opts.Comparison)
+	conflicts := withoutRejectedDisputes(detectProofConflicts(relevant, archive, opts.Comparison), relevant, candidates.rejected)
 	if topic == topicDeath {
 		conflicts = append(conflicts, vitalChronologyConflicts(archive, personID, all, opts.Comparison)...)
 	}
+	conflicts = append(conflicts, candidates.conflicts...)
 	conclusionEvidence := relevant
-	var excluded []ProofExcludedAlternative
+	excluded := candidates.alternatives
 	if topic == topicParentage {
-		var candidates []parentCandidate
-		candidates, excluded = parentageCandidates(personID, archive, parentLinks, standings)
-		conflicts = append(conflicts, parentageConflicts(personID, candidates, archive, opts.Comparison)...)
+		parents, _ := parentageCandidates(personID, archive, parentLinks, standings)
+		parents = slices.DeleteFunc(parents, func(c parentCandidate) bool { return !answersInclude(candidates.answers, c.personID) })
+		conflicts = append(conflicts, parentageConflicts(personID, parents, archive, opts.Comparison)...)
 		conclusionEvidence = parentageSupport(relevant, personID, parentLinks, standings)
 	}
+	conclusionEvidence = slices.DeleteFunc(slices.Clone(conclusionEvidence), func(pa proofAssertion) bool { return candidates.rejected[pa.a] })
 	gaps := collectProofGaps(personID, person, topic, archive, opts.Coverage)
 	if gap := proxyVitalProofGap(topic, relevant, archive, personID); gap != nil {
 		gaps = append(gaps, *gap)
 	}
-	searches := collectProofSearches(personID, archive)
+	if topic == topicMarriage {
+		drop := alternativeGapLabels(excluded, archive)
+		gaps = slices.DeleteFunc(gaps, func(g ProofGap) bool { return drop[g.Label] })
+	}
+	searches, otherSearches := collectScopedProofSearches(personID, topic, archive)
+	markSearchedGaps(gaps, searches)
 
-	conclusion, summary := concludeProof(topic, personID, archive, conclusionEvidence, conflicts, gaps)
+	conclusion, summary := concludeProof(topic, personID, archive, conclusionEvidence, conflicts, gaps, &candidates, searches)
 
 	return &ProofResult{
-		PersonID:     personID,
-		PersonName:   name,
-		Question:     topic,
-		QuestionText: questionText(topic, name),
-		Evidence:     evidence,
-		Undated:      undated,
-		Gaps:         gaps,
-		Conflicts:    conflicts,
-		Excluded:     excluded,
-		Searches:     searches,
-		Conclusion:   conclusion,
-		Summary:      summary,
+		PersonID:      personID,
+		PersonName:    name,
+		Question:      topic,
+		QuestionText:  questionText(topic, name),
+		Evidence:      evidence,
+		Undated:       undated,
+		Gaps:          gaps,
+		Conflicts:     conflicts,
+		Answers:       candidates.answers,
+		Excluded:      excluded,
+		Searches:      searches,
+		OtherSearches: otherSearches,
+		Conclusion:    conclusion,
+		Summary:       summary,
 	}
+}
+
+// answersInclude reports whether a person is among the surviving answers.
+func answersInclude(answers []ProofAnswer, personID string) bool {
+	for i := range answers {
+		if answers[i].PersonID == personID {
+			return true
+		}
+	}
+
+	return false
+}
+
+// withoutRejectedDisputes drops the participation and existence disputes of
+// an excluded or contested alternative: a rejected candidate is listed under
+// the alternatives, not reported as a conflict about the answer.
+func withoutRejectedDisputes(conflicts []ConflictGroup, relevant []proofAssertion, rejected map[*Assertion]bool) []ConflictGroup {
+	if len(rejected) == 0 {
+		return conflicts
+	}
+	rejectedIDs := map[string]bool{}
+	for i := range relevant {
+		if rejected[relevant[i].a] {
+			rejectedIDs[relevant[i].id] = true
+		}
+	}
+
+	return slices.DeleteFunc(conflicts, func(c ConflictGroup) bool {
+		if c.Property != "participation" && c.Property != "existence" {
+			return false
+		}
+		for i := range c.Facts {
+			if !rejectedIDs[c.Facts[i].ID] {
+				return false
+			}
+		}
+
+		return len(c.Facts) > 0
+	})
+}
+
+// appendClaimOnlyParticipations adds the assertions that name the person as a
+// participant of an event or relationship that does not list them: a claim
+// that they took part, or, disproven, a record ruled out as theirs.
+func appendClaimOnlyParticipations(all []proofAssertion, archive *GLXFile, personID string) []proofAssertion {
+	seen := make(map[string]bool, len(all))
+	for i := range all {
+		seen[all[i].id] = true
+	}
+	for _, id := range sortedKeys(archive.Assertions) {
+		a := archive.Assertions[id]
+		if a == nil || seen[id] || a.Participant == nil || a.Participant.Person != personID {
+			continue
+		}
+		switch {
+		case a.Subject.Event != "":
+			if event := archive.Events[a.Subject.Event]; event != nil {
+				all = append(all, proofAssertion{id: id, a: a, subjectID: a.Subject.Event, eventType: event.Type, personRole: a.Participant.Role})
+			}
+		case a.Subject.Relationship != "":
+			if rel := archive.Relationships[a.Subject.Relationship]; rel != nil {
+				all = append(all, proofAssertion{id: id, a: a, subjectID: a.Subject.Relationship, relType: rel.Type, personRole: a.Participant.Role})
+			}
+		}
+	}
+
+	return all
 }
 
 // proofTopic defines a supported research question and the input aliases that
@@ -252,6 +353,8 @@ var proofTopics = []proofTopic{
 	{key: topicBirth, aliases: []string{"born", "birthdate"}},
 	{key: topicDeath, aliases: []string{"died", "deathdate", EventTypeBurial}},
 	{key: topicMarriage, aliases: []string{ParticipantRoleSpouse, "marriages"}},
+	{key: topicChildren, aliases: []string{ParticipantRoleChild, "family", "issue", "offspring"}},
+	{key: topicOccupation, aliases: []string{"office", "profession", "trade"}},
 	{key: topicIdentity, aliases: []string{PersonPropertyName, "who"}},
 }
 
@@ -291,6 +394,10 @@ func questionText(topic, name string) string {
 		return "When and where did " + name + " die?"
 	case topicMarriage:
 		return "Whom did " + name + " marry?"
+	case topicChildren:
+		return "Who were the children of " + name + "?"
+	case topicOccupation:
+		return "What occupation or office did " + name + " hold?"
 	case topicIdentity:
 		return "Who was " + name + "?"
 	default:
@@ -359,18 +466,41 @@ func assertionRelevant(topic string, pa *proofAssertion, personID string) bool {
 		}
 
 		return isMarriageEventType(pa.eventType) && isMarriagePrincipal(pa.personRole)
+	case topicChildren:
+		return childrenAssertionRelevant(pa)
+	case topicOccupation:
+		return pa.a.Property == PersonPropertyOccupation &&
+			(pa.subjectIsPerson() || pa.eventType != "" && pa.a.Participant != nil && pa.a.Participant.Person == personID)
 	case topicIdentity:
-		return pa.subjectIsPerson() && pa.a.Property == PersonPropertyName
+		// Who a person was rests on everything recorded about them: their own
+		// assertions, the events they take part in (in whatever role), and the
+		// possibly_same_person links that join or separate them from a namesake.
+		return pa.subjectIsPerson() ||
+			pa.eventType != "" && (pa.a.Participant == nil || pa.a.Participant.Person == personID) ||
+			pa.relType == RelationshipTypePossiblySamePerson
 	default:
 		return false
 	}
+}
+
+// childrenAssertionRelevant reports whether an assertion bears on the person's
+// children: a non-step parent_child link where the person is the parent, or a
+// birth or baptism in which the person is recorded as parent.
+func childrenAssertionRelevant(pa *proofAssertion) bool {
+	if IsParentChildRelationshipType(pa.relType) {
+		return !strings.EqualFold(pa.relType, RelationshipTypeStepParent) && IsParentSideRole(pa.personRole) && !IsStepRole(pa.personRole) &&
+			(pa.a.Property == "" || pa.a.Property == relationshipPropertyType)
+	}
+
+	return isBirthEventType(pa.eventType) && IsParentSideRole(pa.personRole) && !IsStepRole(pa.personRole)
 }
 
 func parentageAssertionRelevant(pa *proofAssertion) bool {
 	if IsParentChildRelationshipType(pa.relType) && IsChildSideRole(pa.personRole) {
 		return true
 	}
-	if pa.eventType == EventTypeBirth {
+	if isBirthEventType(pa.eventType) {
+		// A baptism or christening names the parents as a birth record does.
 		if !isVitalPrincipal(pa.eventType, pa.personRole) {
 			return false
 		}
@@ -405,19 +535,21 @@ func isMarriageEventType(t string) bool {
 
 // buildProofEvidence converts a relevant assertion into a display-ready
 // evidence record with resolved citations and values.
-func buildProofEvidence(pa *proofAssertion, archive *GLXFile) ProofEvidence {
+func buildProofEvidence(pa *proofAssertion, personID string, archive *GLXFile) ProofEvidence {
 	a := pa.a
+	subject, counterparts := describeProofEvidenceSubject(pa, personID, archive)
 
 	evidence := ProofEvidence{
-		AssertionID: pa.id,
-		Subject:     describeProofSubject(pa, archive),
-		Property:    a.Property,
-		Value:       proofAssertionValue(a, archive),
-		Date:        string(a.Date),
-		Confidence:  a.Confidence,
-		Status:      a.Status,
-		Notes:       firstLine(a.Notes.String()),
-		Support:     buildProofSupport(a, archive),
+		AssertionID:  pa.id,
+		Subject:      subject,
+		Counterparts: counterparts,
+		Property:     a.Property,
+		Value:        proofAssertionValue(a, archive),
+		Date:         string(a.Date),
+		Confidence:   a.Confidence,
+		Status:       a.Status,
+		Notes:        firstLine(a.Notes.String()),
+		Support:      buildProofSupport(a, archive),
 	}
 	if a.Participant != nil {
 		evidence.ParticipantPerson = a.Participant.Person
@@ -443,6 +575,81 @@ func describeProofSubject(pa *proofAssertion, archive *GLXFile) string {
 	default:
 		return ""
 	}
+}
+
+// describeProofEvidenceSubject labels an evidence line's subject from the
+// person's side, naming the other party a relationship assertion is about:
+// "child of Hans Roth (p-hans) [rel-pc]", "marriage to Eva (p-eva) [rel-m]".
+// Event subjects keep their date and add the person's role when it is not a
+// principal one. It also returns the counterparts' person IDs.
+func describeProofEvidenceSubject(pa *proofAssertion, personID string, archive *GLXFile) (string, []string) {
+	if pa.eventType != "" {
+		label := describeProofSubject(pa, archive)
+		if pa.a.Participant == nil && pa.personRole != "" && !isVitalPrincipal(pa.eventType, pa.personRole) && !isMarriagePrincipal(pa.personRole) {
+			label += " as " + pa.personRole
+		}
+
+		return label, nil
+	}
+	rel := archive.Relationships[pa.subjectID]
+	if pa.relType == "" || rel == nil {
+		return describeProofSubject(pa, archive), nil
+	}
+	prefix, want := relationshipCounterpartRule(rel.Type, pa.personRole)
+	if want == nil {
+		return describeProofSubject(pa, archive), nil
+	}
+	ids := relationshipCounterparts(pa, personID, rel, want)
+	if len(ids) == 0 {
+		return describeProofSubject(pa, archive), nil
+	}
+	names := make([]string, len(ids))
+	for i, id := range ids {
+		names[i] = personName(archive, id)
+		if names[i] != id {
+			names[i] += " (" + id + ")"
+		}
+	}
+
+	return prefix + strings.Join(names, " and ") + " [" + pa.subjectID + "]", ids
+}
+
+// relationshipCounterpartRule returns how an evidence line names the other
+// party of a relationship from the person's side, and which participants count
+// as that party; nil when the relationship type has no such reading.
+func relationshipCounterpartRule(relType, personRole string) (string, func(Participant) bool) {
+	anyone := func(Participant) bool { return true }
+	switch {
+	case IsParentChildRelationshipType(relType) && IsChildSideRole(personRole):
+		return "child of ", func(p Participant) bool { return IsParentSideRole(p.Role) }
+	case IsParentChildRelationshipType(relType) && IsParentSideRole(personRole):
+		return "parent of ", func(p Participant) bool { return IsChildSideRole(p.Role) }
+	case relType == RelationshipTypeMarriage:
+		return "marriage to ", anyone
+	case relType == RelationshipTypePartner:
+		return "partnership with ", anyone
+	case relType == RelationshipTypePossiblySamePerson:
+		return "possibly same person as ", anyone
+	default:
+		return "", nil
+	}
+}
+
+// relationshipCounterparts returns the other party an assertion is about: its
+// participant when that is someone else, otherwise every participant on the
+// other side of the relationship.
+func relationshipCounterparts(pa *proofAssertion, personID string, rel *Relationship, want func(Participant) bool) []string {
+	if p := pa.a.Participant; p != nil && p.Person != "" && p.Person != personID {
+		return []string{p.Person}
+	}
+	var ids []string
+	for _, p := range rel.Participants {
+		if p.Person != "" && p.Person != personID && want(p) && !slices.Contains(ids, p.Person) {
+			ids = append(ids, p.Person)
+		}
+	}
+
+	return ids
 }
 
 // buildProofSupport resolves an assertion's citations, sources and media into complete,
@@ -675,9 +882,15 @@ func collectProofGaps(personID string, person *Person, topic string, archive *GL
 		if rec.Found || !gapRelevant(topic, rec) {
 			continue
 		}
+		priority := rec.Priority
+		if topic == topicParentage && rec.Label == coverageLabelProbate && priority == severityHigh {
+			// The person's own probate names their heirs, not their parents; a
+			// candidate parent's probate is the record that would.
+			priority = severityMedium
+		}
 		gaps = append(gaps, ProofGap{
 			Label:       rec.Label,
-			Priority:    rec.Priority,
+			Priority:    priority,
 			Description: rec.Description,
 		})
 	}
@@ -691,14 +904,21 @@ func gapRelevant(topic string, rec *CoverageRecord) bool {
 	case topicParentage:
 		// Records that name or place a person within their family of origin.
 		return rec.Category == coverageCategoryCensus ||
-			labelContains(rec.Label, "Birth record", "Death record", "Church records", "Probate/will")
+			labelContains(rec.Label, "Birth record", "Death record", "Church records", coverageLabelProbate)
 	case topicBirth:
 		return rec.Category == coverageCategoryCensus ||
 			labelContains(rec.Label, "Birth record", "Church records")
 	case topicDeath:
-		return labelContains(rec.Label, "Death record", "Probate/will", "Church records")
+		return labelContains(rec.Label, "Death record", coverageLabelProbate, "Church records")
 	case topicMarriage:
 		return labelContains(rec.Label, "Marriage record")
+	case topicChildren:
+		// Records that name a person's children: households, registers, estates.
+		return rec.Category == coverageCategoryCensus ||
+			labelContains(rec.Label, "Church records", coverageLabelProbate)
+	case topicOccupation:
+		return rec.Category == coverageCategoryCensus ||
+			labelContains(rec.Label, "Church records", coverageLabelProbate, "Land records", "Military records")
 	case topicIdentity:
 		return true
 	default:
@@ -717,39 +937,12 @@ func labelContains(label string, substrings ...string) bool {
 	return false
 }
 
-// collectProofSearches gathers searches from research logs whose subject is the
-// person, documenting the reasonably exhaustive search (including negative
-// evidence from searches that found nothing).
-func collectProofSearches(personID string, archive *GLXFile) []ProofSearch {
-	var searches []ProofSearch
-
-	for _, logID := range sortedKeys(archive.ResearchLogs) {
-		log := archive.ResearchLogs[logID]
-		if log == nil || log.Subject == nil || log.Subject.Person != personID {
-			continue
-		}
-		for i := range log.Searches {
-			s := &log.Searches[i]
-			searches = append(searches, ProofSearch{
-				Query:      s.Query,
-				Collection: s.Collection,
-				Repository: s.RepositoryID,
-				Source:     s.SourceID,
-				Result:     s.Result,
-				Notes:      strings.Join(s.Notes, "; "),
-			})
-		}
-	}
-
-	return searches
-}
-
 // conflictedSummary is the one-line summary returned whenever the evidence is
 // judged to contain an unresolved conflict.
 const conflictedSummary = "Conflicting evidence remains unresolved — resolve before drawing a conclusion."
 
 // concludeProof determines the conclusion level and a one-line summary.
-func concludeProof(topic, personID string, archive *GLXFile, relevant []proofAssertion, conflicts []ConflictGroup, gaps []ProofGap) (string, string) {
+func concludeProof(topic, personID string, archive *GLXFile, relevant []proofAssertion, conflicts []ConflictGroup, gaps []ProofGap, candidates *proofCandidates, searches []ProofSearch) (string, string) {
 	for i := range conflicts {
 		if !conflicts[i].Resolved && (conflicts[i].Definite || conflicts[i].Verdict == "") {
 			return proofConclusionConflicted, conflictedSummary
@@ -757,30 +950,18 @@ func concludeProof(topic, personID string, archive *GLXFile, relevant []proofAss
 	}
 
 	caveat := proofConflictCaveat(conflicts)
+	if candidates == nil {
+		candidates = &proofCandidates{}
+	}
+	byCandidates := candidates.used && topic != topicIdentity
 
 	answer, found := deriveProofAnswer(topic, personID, archive)
-	proxyBound := false
-	if (topic == topicBirth || topic == topicDeath) && !primaryStructuralVitalDate(archive, personID, topic) {
-		if hasPrimaryVitalDateAssertion(relevant, topic) {
-			answer, found = answerFromAssertions(relevant, archive, topic, personID)
-		} else if bound, known := proxyVitalAnswer(relevant, archive, topic); known {
-			if found {
-				answer += " " + bound
-			} else {
-				answer = bound
-			}
-			found, proxyBound = true, true
-		}
+	if byCandidates {
+		answer, found = candidates.answerText, candidates.found
 	}
-	for i := range conflicts {
-		c := &conflicts[i]
-		if c.Resolved && proofResolutionAnswersQuestion(c, topic, personID) {
-			if asserted, ok := answerFromAssertions(relevant, archive, topic, personID); ok {
-				answer, found = asserted, true
-			}
-
-			break
-		}
+	answer, found, proxyBound := vitalProofAnswer(topic, personID, archive, relevant, answer, found)
+	if !byCandidates || !found {
+		answer, found = resolvedConflictAnswer(topic, personID, archive, relevant, conflicts, answer, found)
 	}
 	if !found {
 		// The archive's structural data (events/relationships/name) yields no
@@ -793,10 +974,16 @@ func concludeProof(topic, personID string, archive *GLXFile, relevant []proofAss
 		answer, found = answerFromAssertions(relevant, archive, topic, personID)
 	}
 	if !found {
-		return proofConclusionInsufficient, insufficientSummary(topic, gaps)
+		return concludeUnanswered(topic, gaps, candidates, searches)
 	}
+	answer = joinSentences(append([]string{answer}, candidates.notes...)...)
 
 	level := supportLevel(relevant, topic, personID)
+	if byCandidates && candidates.found {
+		// One answer per candidate: the question stands at its weakest
+		// surviving answer, never lifted by a stronger one beside it.
+		level = candidates.level
+	}
 	if caveat != "" {
 		level = min(level, supportWeak)
 		answer += " " + caveat
@@ -809,11 +996,96 @@ func concludeProof(topic, personID string, archive *GLXFile, relevant []proofAss
 	case supportWeak:
 		return proofConclusionPossible, appendNextSteps(answer+" Limited evidence — further research needed.", gaps)
 	default:
-		if proxyBound {
-			return proofConclusionInsufficient, insufficientSummary(topic, gaps) + " " + answer
-		}
-		return proofConclusionInsufficient, insufficientSummary(topic, gaps)
+		return proofConclusionInsufficient, unsupportedSummary(topic, answer, gaps, candidates, byCandidates, proxyBound)
 	}
+}
+
+// vitalProofAnswer replaces or bounds a birth or death answer when no
+// structural date stands: from a primary dated assertion, or from the rite
+// (baptism, burial) that bounds the vital event.
+func vitalProofAnswer(topic, personID string, archive *GLXFile, relevant []proofAssertion, answer string, found bool) (string, bool, bool) {
+	if (topic != topicBirth && topic != topicDeath) || primaryStructuralVitalDate(archive, personID, topic) {
+		return answer, found, false
+	}
+	if hasPrimaryVitalDateAssertion(relevant, topic) {
+		answer, found = answerFromAssertions(relevant, archive, topic, personID)
+
+		return answer, found, false
+	}
+	bound, known := proxyVitalAnswer(relevant, archive, topic)
+	if !known {
+		return answer, found, false
+	}
+	if found {
+		return answer + " " + bound, true, true
+	}
+
+	return bound, true, true
+}
+
+// resolvedConflictAnswer lets a resolved conflict about the question supply
+// the surviving asserted answer.
+func resolvedConflictAnswer(topic, personID string, archive *GLXFile, relevant []proofAssertion, conflicts []ConflictGroup, answer string, found bool) (string, bool) {
+	for i := range conflicts {
+		c := &conflicts[i]
+		if !c.Resolved || !proofResolutionAnswersQuestion(c, topic, personID) {
+			continue
+		}
+		if asserted, ok := answerFromAssertions(relevant, archive, topic, personID); ok {
+			return asserted, true
+		}
+
+		break
+	}
+
+	return answer, found
+}
+
+// unsupportedSummary is the summary of a question answered without support:
+// the answers no assertion supports are named, and a rite's bound is kept.
+func unsupportedSummary(topic, answer string, gaps []ProofGap, candidates *proofCandidates, byCandidates, proxyBound bool) string {
+	switch {
+	case byCandidates && candidates.found && allUnsupported(candidates.answers):
+		return appendNextSteps(joinSentences(insufficientSummary(topic, nil), recordedWithoutAssertionText(candidates.answers)), gaps)
+	case byCandidates && candidates.found:
+		return appendNextSteps(joinSentences(answer, unsupportedAnswerText(candidates.answers)), gaps)
+	case proxyBound:
+		return insufficientSummary(topic, gaps) + " " + answer
+	default:
+		return insufficientSummary(topic, gaps)
+	}
+}
+
+// concludeUnanswered concludes a question nothing answers. Excluded candidates
+// are named, not counted. For children, logged searches that all came back
+// empty support the negative conclusion that there were none.
+func concludeUnanswered(topic string, gaps []ProofGap, candidates *proofCandidates, searches []ProofSearch) (string, string) {
+	excluded := excludedAlternativeText(candidates.alternatives)
+	if topic == topicChildren {
+		note, negative := negativeSearchSummary(searches)
+		if negative {
+			return proofConclusionProbable, joinSentences("No children found.", note, excluded, "Confirm the searches cover the whole span of the marriage.")
+		}
+		excluded = joinSentences(excluded, note)
+	}
+	summary := insufficientSummary(topic, nil)
+	if excluded != "" {
+		summary = joinSentences(summary, excluded)
+	}
+
+	return proofConclusionInsufficient, appendNextSteps(summary, gaps)
+}
+
+// joinSentences joins the non-empty sentences with single spaces.
+func joinSentences(parts ...string) string {
+	var out []string
+	for _, p := range parts {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+
+	return strings.Join(out, " ")
 }
 
 func proofConflictCaveat(conflicts []ConflictGroup) string {
@@ -852,20 +1124,17 @@ func supportLevel(relevant []proofAssertion, topic, personID string) int {
 }
 
 // assertionSupportScore scores how strongly a single assertion backs a claim,
-// reusing the shared confidenceRank (lower rank = higher confidence). A `proven`
-// status is treated as strong regardless of the recorded confidence.
+// from the shared status resolver: an explicit status (`proven`, `probable`,
+// `speculative`) wins over the recorded confidence. A `disputed` assertion is
+// scored by its confidence; the dispute itself caps the conclusion through the
+// conflict it raises.
 func assertionSupportScore(a *Assertion) int {
-	if strings.EqualFold(a.Status, statusProven) {
-		return supportStrong
+	status := AssertionProofStatus(a)
+	if status == ProofStatusDisputed {
+		status = confidenceProofStatus(a.Confidence)
 	}
-	switch researchConfidenceRank(a.Confidence) {
-	case 0: // high
-		return supportStrong
-	case 1, 2: // medium-high, medium
-		return supportModerate
-	default: // low or unspecified
-		return supportWeak
-	}
+
+	return proofStatusSupport(status)
 }
 
 // deriveProofAnswer extracts the current best answer to the research question
@@ -979,6 +1248,10 @@ func proofAssertionSupportsQuestion(pa *proofAssertion, topic, personID string) 
 		return true
 	}
 	p := pa.a.Participant
+	if topic == topicIdentity && p != nil && p.Person == personID {
+		// The person's own participation in a record evidences who they were.
+		return true
+	}
 
 	return topic == topicParentage && p != nil && p.Person == personID &&
 		IsParentChildRelationshipType(pa.relType) && !strings.EqualFold(pa.relType, RelationshipTypeStepParent) &&
@@ -1033,6 +1306,8 @@ func participantAnswersQuestion(participant *Participant, topic, personID string
 		return IsParentSideRole(participant.Role) && !IsStepRole(participant.Role)
 	case topicMarriage:
 		return participant.Role == ParticipantRoleSpouse || participant.Role == ParticipantRoleBride || participant.Role == ParticipantRoleGroom
+	case topicChildren:
+		return IsChildSideRole(participant.Role) && !IsStepRole(participant.Role)
 	default:
 		return false
 	}
@@ -1090,6 +1365,10 @@ func insufficientSummary(topic string, gaps []ProofGap) string {
 		base = "Death not yet established."
 	case topicMarriage:
 		base = "No marriage established."
+	case topicChildren:
+		base = "No children identified."
+	case topicOccupation:
+		base = "Occupation not yet established."
 	case topicIdentity:
 		base = "Identity not yet established."
 	}
@@ -1102,7 +1381,7 @@ func insufficientSummary(topic string, gaps []ProofGap) string {
 func appendNextSteps(summary string, gaps []ProofGap) string {
 	var high []string
 	for i := range gaps {
-		if gaps[i].Priority == severityHigh {
+		if gaps[i].Priority == severityHigh && gaps[i].Searched == "" {
 			high = append(high, gaps[i].Label)
 		}
 	}

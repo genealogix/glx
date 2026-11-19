@@ -52,11 +52,12 @@ func TestParentageProof_SharedStanding(t *testing.T) {
 		require.Equal(t, ConclusionPossible, result.Conclusion)
 		require.Empty(t, result.Conflicts)
 		require.Len(t, result.Evidence, 2)
-		require.Equal(t, []ProofExcludedAlternative{{PersonID: "father-b", Name: "Alex", Relationship: "rel-b"}}, result.Excluded)
-		require.Contains(t, result.Summary, "Parents identified: Alex.")
+		// Two candidates named Alex are told apart by ID (#1492).
+		require.Equal(t, []ProofExcludedAlternative{{PersonID: "father-b", Name: "Alex (father-b)", Relationship: "rel-b", Role: "father", Status: ProofStatusDisproven, Assertions: []string{"b"}}}, result.Excluded)
+		require.Contains(t, result.Summary, "Parents identified: Alex (father-a).")
 		data, err := json.Marshal(result)
 		require.NoError(t, err)
-		require.Contains(t, string(data), `"alternatives_excluded":[{"person_id":"father-b","name":"Alex","relationship":"rel-b"}]`)
+		require.Contains(t, string(data), `"alternatives_excluded":[{"person_id":"father-b","name":"Alex (father-b)","relationship":"rel-b","role":"father","status":"disproven","assertions":["b"]}]`)
 		result.Excluded[0].Name = "changed"
 		result.Evidence[0].Status = "changed"
 		after, err := json.Marshal(archive)
@@ -70,7 +71,8 @@ func TestParentageProof_SharedStanding(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, ConclusionInsufficient, result.Conclusion)
 		require.Len(t, result.Excluded, 2)
-		require.NotContains(t, result.Summary, "Alex")
+		require.NotContains(t, result.Summary, "Parents identified")
+		require.Contains(t, result.Summary, "Excluded: Alex (father-a), Alex (father-b).")
 	})
 	t.Run("participant scope leaves the other parent", func(t *testing.T) {
 		archive := parentageTestArchive()
@@ -99,15 +101,18 @@ func TestParentageProof_SharedStanding(t *testing.T) {
 		require.Equal(t, ConclusionPossible, result.Conclusion)
 		require.Empty(t, result.Conflicts)
 		require.Len(t, result.Excluded, 1)
-		require.Contains(t, result.Summary, "Parents identified: Alex.")
+		require.Contains(t, result.Summary, "Parents identified: Alex (father-a).")
 	})
-	t.Run("proven survivor overrides weak and rejected claims", func(t *testing.T) {
+	t.Run("proven and disproven claims on one link are a conflict", func(t *testing.T) {
 		archive := parentageTestArchive()
 		archive.Assertions["proven"] = &Assertion{Subject: EntityRef{Relationship: "rel-a"}, Confidence: "low", Status: "proven"}
 		archive.Assertions["rejected"] = &Assertion{Subject: EntityRef{Relationship: "rel-a"}, Confidence: "high", Status: "disproven"}
 		result, err := BuildProof(archive, "child", topicParentage, ProofOptions{})
 		require.NoError(t, err)
-		require.Equal(t, ConclusionProven, result.Conclusion)
+		// The proof does not pick between a proven and a disproven claim about
+		// the same link (#1520); the standing index, used to draw the tree, still
+		// keeps the link.
+		require.Equal(t, ConclusionConflicted, result.Conclusion)
 		require.Len(t, result.Excluded, 1)
 		require.Equal(t, RelationshipStandingAccepted, NewRelationshipStandingIndex(archive).Link("rel-a", "child", "father-a"))
 	})
