@@ -47,8 +47,8 @@ var (
 )
 
 // The agent-memory filenames memcheck scans. AGENTS.md holds the instructions;
-// CLAUDE.md is no longer used but is still scanned so one that reappears is
-// checked too.
+// each CLAUDE.md is a one-line `@AGENTS.md` import stub for Claude Code, still
+// scanned so rules that creep into a stub are checked too.
 const (
 	memoryFileClaude = "CLAUDE.md"
 	memoryFileAgents = "AGENTS.md"

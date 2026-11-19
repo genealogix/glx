@@ -1,7 +1,7 @@
 # memcheck — deterministic memory-file drift detector
 
-`memcheck` checks the repository's agent-memory files — every `AGENTS.md`, and any
-`CLAUDE.md` that reappears — against reality and fails when an instruction has
+`memcheck` checks the repository's agent-memory files — every `AGENTS.md`, and the
+`CLAUDE.md` import stubs beside them — against reality and fails when an instruction has
 rotted. It is the offline, API-key-free counterpart to the LLM-based
 [`check-*` drift suite](../../.claude/skills/check-suite/README.md)
 (genealogix/glx#1053): stale instructions are worse than missing ones, because an
@@ -64,7 +64,7 @@ example path, or a `make` target that is documented before it exists in the
 ```yaml
 - token: path/to/example.go      # the reference, verbatim
   kind: stale-path               # optional: stale-path | unknown-make-target | import-path-drift
-  file: docs/AGENTS.md            # optional: restrict to one memory file
+  file: docs/AGENTS.md           # optional: restrict to one memory file
   reason: "Illustrative example, not a real file (#1234)"
 ```
 

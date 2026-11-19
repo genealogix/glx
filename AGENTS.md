@@ -5,8 +5,9 @@
 **Repository**: genealogix/glx | **Language**: Go | **Status**: Active development
 
 This file is the instruction set for AI coding agents working in this repository. It
-follows the [AGENTS.md](https://agents.md) convention, which Claude Code and other
-agents load directly; don't add a `CLAUDE.md` alongside it.
+follows the [AGENTS.md](https://agents.md) convention. Claude Code reads `CLAUDE.md`
+rather than `AGENTS.md`, so each directory with an `AGENTS.md` also has a one-line
+`CLAUDE.md` that imports it (`@AGENTS.md`); put rules here, never in those stubs.
 Subdirectories carry their own `AGENTS.md` with narrower rules: `go-glx/`, `glx/`,
 `specification/`, `.github/`.
 
@@ -108,7 +109,7 @@ Always push with `-u` flag. Retry up to 4 times with exponential backoff (2s, 4s
 - **Markdown links are relative repo paths ending in `.md`** (`../docs/quickstart.md`), never website routes like `/quickstart` or extensionless targets: both 404 on GitHub. The website maps relative links via `website/.vitepress/relative-links.js`; `make check-links` enforces it
 - **Agent memory files are never the source of truth** — record policies, conventions, and decisions in project files (`SECURITY-POSTURE.md`, `CONTRIBUTING.md`, `docs/`, `specification/`, `docs/decisions/`); `AGENTS.md` may only summarize and point at them, and public docs must never link to an `AGENTS.md` or `CLAUDE.md`
 - **When given "Never do X" / "Always do Y" instructions**, update the appropriate `AGENTS.md` (and the project file that owns the rule, if there is one)
-- **Never invent genealogical facts, citations, or GEDCOM spec claims** — check GEDCOM behavior against the split spec PDFs (see `go-glx/AGENTS.md`), and keep example and fixture people fictional or historical, never living
+- **Never invent genealogical facts, citations, or GEDCOM spec claims** — check GEDCOM behavior against the split spec PDFs (see `go-glx/AGENTS.md`), and keep example and fixture people fictional or long dead, never living
 
 ## Entity Types
 
@@ -117,7 +118,7 @@ Person, Event, Relationship, Place, Source, Citation, Repository, Media, Asserti
 ## Testing
 
 - Unit tests for all new functions; integration tests for conversion paths; E2E for CLI commands
-- Codecov gates merges: patch coverage at least 80%, project coverage may drop at most 1%
+- Codecov reports against `codecov.yml` targets (patch coverage at least 80%, project coverage may drop at most 1%); it is not a required check, but treat a miss as something to fix
 - **E2E harness lives in `glx/e2e/`** — `TestMain` builds the real binary once, `runGLX(t, workDir, args...)` executes it with a cwd and returns stdout/stderr/exit code, `copyExample` stages a `docs/examples/*` archive, and `snapshotTree`/`diffTrees` assert exactly which files a command changed. Runner-level tests (`*_runner_test.go`) call the function below cobra and cannot see flag parsing, argument validation, or cwd-dependent behaviour — every command that writes to an archive should have at least one `glx/e2e/<command>_test.go` case
 - Key test files: `glx/testdata/gedcom/5.5.1/shakespeare-family/shakespeare.ged` (31 persons), `glx/testdata/gedcom/7.0/minimal-valid/minimal70.ged`
 

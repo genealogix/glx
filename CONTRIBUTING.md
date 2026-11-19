@@ -521,8 +521,9 @@ point it at these rather than writing your own:
 
 - **`AGENTS.md`** at the root and in `go-glx/`, `glx/`, `specification/` and
   `.github/` holds the agent instructions, following the
-  [AGENTS.md](https://agents.md) convention. Claude Code and other agents load these
-  directly, so the repository keeps no tool-specific copies such as `CLAUDE.md`.
+  [AGENTS.md](https://agents.md) convention. Claude Code reads `CLAUDE.md` instead,
+  so each of those directories also has a one-line `CLAUDE.md` that imports the
+  `AGENTS.md` beside it. Edit the `AGENTS.md`; the `CLAUDE.md` stubs hold no rules.
 - **Agent files summarize; they don't decide.** Policies and conventions live in this
   guide, [SECURITY-POSTURE.md](SECURITY-POSTURE.md), `docs/decisions/` and
   `specification/`. Change the project file first and the `AGENTS.md` summary second,
