@@ -131,16 +131,16 @@ func buildAnalysisJSONContext(ctx context.Context, archive *glxlib.GLXFile, pers
 	checks := map[string]func() ([]AnalysisIssue, error){
 		analysisGapsCheck: func() ([]AnalysisIssue, error) { return analyzeGapsContext(ctx, archive) },
 		analysisEvidenceCategory: func() ([]AnalysisIssue, error) {
-			return runAnalysisChecksContext(ctx, archive, checkUnsupportedAssertions, checkSingleSourcePersons, checkOrphanedCitations, checkOrphanedSources, checkUncitedNotes)
+			return runAnalysisChecksContext(ctx, archive, evidenceChecks()...)
 		},
 		analysisConsistencyCategory: func() ([]AnalysisIssue, error) {
-			return runAnalysisChecksContext(ctx, archive, checkBirthAfterDeath, checkParentYoungerThanChild, checkEventAfterDeath, checkImplausibleLifespan, checkMarriageBeforeBirth, checkDuplicateSiblingNames, checkSiblingBirthplaceOutlier)
+			return runAnalysisChecksContext(ctx, archive, consistencyChecks()...)
 		},
 		conflictsCheck: func() ([]AnalysisIssue, error) {
 			return analyzeConflictsWithOptions(archive, comparisonOptions(options))
 		},
 		analysisSuggestionsCheck: func() ([]AnalysisIssue, error) {
-			return runAnalysisChecksContext(ctx, archive, suggestCensusSearches, suggestVitalRecords, suggestChildCensusRecords, reportResearchPlaceholders)
+			return runAnalysisChecksContext(ctx, archive, suggestionChecks()...)
 		},
 	}
 	aliases := map[string]string{analysisGapCategory: analysisGapsCheck, analysisSuggestionCategory: analysisSuggestionsCheck, conflictCategory: conflictsCheck}

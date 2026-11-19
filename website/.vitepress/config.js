@@ -70,7 +70,8 @@ export default defineConfig({
   // Exclude vendored markdown so the build (and sitemap) only indexes our own
   // pages. Specifically:
   // - node_modules: vendored deps.
-  // - CLAUDE.md files anywhere: internal Claude collaboration guides; the
+  // - AGENTS.md and CLAUDE.md files anywhere: internal agent instruction files
+  //   (each CLAUDE.md is a one-line import stub of the AGENTS.md beside it); the
   //   `feedback_no_claude_artifacts` rule keeps these out of public output.
   // - docs/superpowers/**: internal planning and implementation specs that
   //   should not be served from the public site.
@@ -86,6 +87,7 @@ export default defineConfig({
   //   its README links to .claude/ files that VitePress doesn't build.
   srcExclude: [
     '**/node_modules/**',
+    '**/AGENTS.md',
     '**/CLAUDE.md',
     'docs/superpowers/**',
     'docs/gedcom-spec/**',

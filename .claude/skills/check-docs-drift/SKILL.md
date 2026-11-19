@@ -99,7 +99,7 @@ Use the Glob tool to enumerate `docs/**/*.md`. **Exclude** the following paths �
 
 **Also read** these cross-reference surfaces when checking CLI examples and sidebar coverage. Do NOT flag these as drifting documentation — they are source-of-truth surfaces, not documentation files:
 
-- `glx/cli_commands.go` — Cobra `Use`/`Short`/`Long`/`Example` declarations (the canonical CLI registry, per project `CLAUDE.md`)
+- `glx/cli_commands.go` — Cobra `Use`/`Short`/`Long`/`Example` declarations (the canonical CLI registry, per project `AGENTS.md`)
 - `glx/*_runner.go` — handler implementations where flags and runtime behaviour are defined
 - `website/.vitepress/config.js` — sidebar navigation; cross-check that every published doc appears
 
@@ -188,7 +188,7 @@ Use category `vocabulary`.
 ## Step 6 — Internal links
 
 - Verify internal cross-doc links resolve to actual files (`make check-links` does this deterministically for file targets; it strips `#fragments`, so verify heading anchors by hand)
-- Internal links must be relative repository paths ending in `.md` (e.g. `../specification/2-core-concepts.md`), per root `CLAUDE.md` and PR #1214. Website routes (`/quickstart`) and extensionless targets 404 on GitHub; the website's markdown plugin rewrites `.md` links to routes at build time. A link *without* `.md` is the drift, not one with it.
+- Internal links must be relative repository paths ending in `.md` (e.g. `../specification/2-core-concepts.md`), per root `AGENTS.md` and PR #1214. Website routes (`/quickstart`) and extensionless targets 404 on GitHub; the website's markdown plugin rewrites `.md` links to routes at build time. A link *without* `.md` is the drift, not one with it.
 
 Use category `cross_reference`.
 
@@ -264,7 +264,7 @@ Then emit the machine-readable block (the eval harness greps for the info-string
 - Examples in prose with invalid YAML syntax
 - References to deprecated or renamed fields (e.g., `state` vs `state_province` — the latter is the current field name)
 - Wrong vocabulary type names
-- Internal links written as website routes or without the `.md` extension (should be relative `.md` paths per root `CLAUDE.md` / #1214)
+- Internal links written as website routes or without the `.md` extension (should be relative `.md` paths per root `AGENTS.md` / #1214)
 
 ## Notes
 

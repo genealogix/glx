@@ -1072,7 +1072,7 @@ func TestImportGEDZIPToMultiFile_SerializationFailureLeavesMediaUncommitted(t *t
 	// Media has to commit before the entity files are written, so serialization
 	// and validation run first: a GLXFile that cannot be serialized must fail
 	// before any media lands in the output directory. Two person IDs differing
-	// only by case collide at serialize time (see glx/CLAUDE.md).
+	// only by case collide at serialize time (see glx/AGENTS.md).
 	gdz := buildGEDZIP(t, map[string][]byte{
 		"gedcom.ged":  []byte(minimalGEDCOM7),
 		"photo-1.jpg": []byte("jpeg-bytes"),

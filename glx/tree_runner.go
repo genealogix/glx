@@ -59,14 +59,17 @@ func newTreeContext(archive *glxlib.GLXFile) *treeContext {
 }
 
 // newTreeContextContext scans all relationships once and indexes both
-// directions: child ID to parents and parent ID to children. Links the archive
-// has disproven are left out. Canceled calls return no partial context.
+// directions: child ID to parents and parent ID to children, the children in
+// birth order as every other view reads them (familyLinks.childLinks). Links
+// the archive has disproven are left out, and two relationships recording the
+// same link are drawn once (#1506). Canceled calls return no partial context.
 func newTreeContextContext(ctx context.Context, archive *glxlib.GLXFile) (*treeContext, error) {
 	links, err := glxlib.ParentChildLinksContext(ctx, archive, nil)
 	if err != nil {
 		return nil, err
 	}
 	tree := &treeContext{archive: archive, parents: make(map[string][]treeRelPerson), children: make(map[string][]treeRelPerson)}
+	childLinks := make(map[string][]glxlib.ParentChildLink)
 	for _, link := range links {
 		if err := ctx.Err(); err != nil {
 			return nil, err
@@ -75,14 +78,26 @@ func newTreeContextContext(ctx context.Context, archive *glxlib.GLXFile) (*treeC
 			continue
 		}
 		tree.parents[link.ChildID] = append(tree.parents[link.ChildID], treeRelPersonFromLink(&link, link.ParentID))
-		tree.children[link.ParentID] = append(tree.children[link.ParentID], treeRelPersonFromLink(&link, link.ChildID))
+		childLinks[link.ParentID] = append(childLinks[link.ParentID], link)
 	}
-	for _, index := range []map[string][]treeRelPerson{tree.parents, tree.children} {
-		for id := range index {
+	for id := range tree.parents {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		tree.parents[id] = dedupeRelatedPersons(tree.parents[id])
+		sortRelatedPersons(tree.parents[id])
+	}
+	if len(childLinks) > 0 {
+		order := glxlib.NewBirthOrder(archive)
+		for parentID, kids := range childLinks {
 			if err := ctx.Err(); err != nil {
 				return nil, err
 			}
-			sortRelatedPersons(index[id])
+			glxlib.SortByBirth(order, kids, func(l glxlib.ParentChildLink) string { return l.ChildID })
+			for i := range kids {
+				tree.children[parentID] = append(tree.children[parentID], treeRelPersonFromLink(&kids[i], kids[i].ChildID))
+			}
+			tree.children[parentID] = dedupeRelatedPersons(tree.children[parentID])
 		}
 	}
 
@@ -238,6 +253,61 @@ func buildDescendantTree(tc *treeContext, personID string, maxGen, depth int, vi
 	}
 
 	return node
+}
+
+// dedupeRelatedPersons collapses edges that link the same person in the same
+// way, as two relationships recording one parent-child link do (#1506), so
+// the tree draws that person once. Two edges are the same link when they share
+// the step flag and their types overlap (glxlib.ParentChildTypesOverlap): the
+// same type, or the generic parent_child beside a specific type. Two specific
+// types (biological and adoptive) are different facts and both stay. When the
+// copies differ in standing, the accepted one is kept over a hypothesis, type
+// included; when they tie, the specific type is kept (see mergeRelatedPerson).
+func dedupeRelatedPersons(persons []treeRelPerson) []treeRelPerson {
+	type edgeKey struct {
+		personID string
+		step     bool
+	}
+	out := persons[:0]
+	at := make(map[edgeKey][]int, len(persons))
+	for _, p := range persons {
+		key := edgeKey{p.personID, p.step}
+		merged := false
+		for _, i := range at[key] {
+			if !glxlib.ParentChildTypesOverlap(out[i].relType, p.relType) {
+				continue
+			}
+			out[i] = mergeRelatedPerson(out[i], p)
+			merged = true
+
+			break
+		}
+		if merged {
+			continue
+		}
+		at[key] = append(at[key], len(out))
+		out = append(out, p)
+	}
+
+	return out
+}
+
+// mergeRelatedPerson combines two edges for the same link. The edge with
+// the stronger standing wins, type included, so a hypothetical specific type
+// never shows as an accepted one beside an accepted generic link. When the
+// standings tie, the specific type is kept over the generic parent_child.
+func mergeRelatedPerson(kept, other treeRelPerson) treeRelPerson {
+	switch {
+	case kept.hypothetical && !other.hypothetical:
+		return other
+	case !kept.hypothetical && other.hypothetical:
+		return kept
+	}
+	if strings.EqualFold(kept.relType, glxlib.RelationshipTypeParentChild) {
+		kept.relType = other.relType
+	}
+
+	return kept
 }
 
 // sortRelatedPersons sorts related persons by person ID for deterministic output.

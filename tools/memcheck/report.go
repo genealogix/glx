@@ -27,7 +27,7 @@ import (
 // in use rather than a hard-coded default.
 func buildReport(memFiles int, allowlistPath string, findings []finding, suppressed []suppression, verbose bool) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "memcheck: checked %d memory file(s) (CLAUDE.md/AGENTS.md) against the repository\n", memFiles)
+	fmt.Fprintf(&b, "memcheck: checked %d memory file(s) (AGENTS.md/CLAUDE.md) against the repository\n", memFiles)
 
 	if verbose && len(suppressed) > 0 {
 		fmt.Fprintf(&b, "\nSuppressed by %s (%d):\n", allowlistPath, len(suppressed))

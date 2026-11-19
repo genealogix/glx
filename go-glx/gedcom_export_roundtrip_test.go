@@ -1430,3 +1430,57 @@ func TestRoundtrip_ExtensionTags(t *testing.T) {
 	require.Len(t, famSubs, 1)
 	assert.Equal(t, map[string]any{ExtensionEntryTag: "NOTE", ExtensionEntryValue: "family-level extension note"}, famSubs[0])
 }
+
+// TestGEDCOMRoundtrip_AnnulmentEndEvent checks that a marriage ended by an
+// annulment exports as ANUL and re-imports with the annulment linked as the
+// relationship's end_event (#1498).
+func TestGEDCOMRoundtrip_AnnulmentEndEvent(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME Hans /Roth/
+1 SEX M
+1 FAMS @F1@
+0 @I2@ INDI
+1 NAME Anna /Seitz/
+1 SEX F
+1 FAMS @F1@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 MARR
+2 DATE 7 JUL 1691
+1 ANUL
+2 DATE 25 JAN 1694
+0 TRLR
+`
+	endEventType := func(archive *GLXFile) string {
+		t.Helper()
+		require.Len(t, archive.Relationships, 1)
+		for _, rel := range archive.Relationships {
+			require.NotEmpty(t, rel.EndEvent, "relationship has no end_event")
+			event := archive.Events[rel.EndEvent]
+			require.NotNil(t, event)
+
+			return event.Type
+		}
+
+		return ""
+	}
+
+	imported, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+	assert.Equal(t, EventTypeAnnulment, endEventType(imported))
+
+	exported, _, err := ExportGEDCOM(imported, GEDCOM551, nil)
+	require.NoError(t, err)
+	exportedStr := string(exported)
+	assert.Contains(t, exportedStr, "1 ANUL\n")
+	assert.NotContains(t, exportedStr, "1 DIV")
+
+	roundtripped, _, err := ImportGEDCOM(strings.NewReader(exportedStr), nil)
+	require.NoError(t, err)
+	assert.Equal(t, EventTypeAnnulment, endEventType(roundtripped))
+}

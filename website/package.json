@@ -9,7 +9,9 @@
     "copy-static": "node scripts/copy-static.mjs",
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix",
-    "format": "prettier --write \"**/*.{js,vue,json,md}\""
+    "format": "prettier --write \"**/*.{js,vue,json,md}\"",
+    "postinstall": "node scripts/patch-picomatch.mjs",
+    "test:security": "node --test scripts/picomatch-security.test.mjs"
   },
   "keywords": [
     "genealogy",
@@ -22,7 +24,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.0",
     "eslint": "^10.14.0",
-    "eslint-plugin-vue": "^10.12.0",
+    "eslint-plugin-vue": "^10.12.1",
     "globals": "^17.14.0",
     "prettier": "^3.9.10",
     "vitepress": "^2.0.0-alpha.21"
