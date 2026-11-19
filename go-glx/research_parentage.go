@@ -144,11 +144,13 @@ func parentageConflicts(personID string, candidates []parentCandidate, archive *
 
 // Relationship properties and step links are context rather than parentage
 // evidence. Participant claims apply only to the edges naming that person.
-func parentageLinkRelevant(pa *proofAssertion, personID string, links []ParentChildLink) bool {
+func parentageLinkRelevant(pa *proofAssertion, personID string, links []ParentChildLink, archive *GLXFile) bool {
 	if pa.a.Subject.Relationship == "" {
 		return true
 	}
-	if pa.a.Property != "" {
+	// An assertion of the relationship's own type claims the relationship
+	// exists as recorded (#1548); any other property is context.
+	if pa.a.Property != "" && !relationshipTypeAssertion(pa.a, archive) {
 		return false
 	}
 	for _, link := range links {

@@ -549,20 +549,36 @@ func printFamilySection(personID string, archive *glxlib.GLXFile) {
 	// Two or more surviving birth fathers (or mothers) are alternatives the
 	// research has not yet decided between, not several fathers.
 	competing := fam.competingBirthParents(personID)
+	excluded := fam.excludedParents(personID)
+	// Two people in this block with one display name (cousins, a father and
+	// his namesake) carry their life dates and ID so they can be told apart.
+	blockIDs := make([]string, 0, len(ownParents)+len(stepParents)+len(excluded))
+	for _, e := range append(slices.Clone(ownParents), stepParents...) {
+		blockIDs = append(blockIDs, e.PersonID)
+	}
+	blockIDs = append(blockIDs, excluded...)
+	labels := glxlib.DistinguishPersonNames(archive, blockIDs)
+	label := func(id string) string {
+		if p, ok := archive.Persons[id]; !ok || p == nil {
+			return summaryPersonName(id, archive)
+		}
+
+		return labels[id]
+	}
 	for _, e := range ownParents {
-		name := withHypotheticalMarker(summaryPersonName(e.PersonID, archive), e.Hypothetical)
+		name := withHypotheticalMarker(label(e.PersonID), e.Hypothetical)
 		if competing[e.PersonID] {
 			name += "  (alternative)"
 		}
 		fmt.Printf("  %-18s%s\n", parentLabel(summaryPersonSex(e.PersonID, archive))+":", name)
 	}
 	for _, e := range stepParents {
-		fmt.Printf("  %-18s%s\n", stepParentLabel(summaryPersonSex(e.PersonID, archive))+":", withHypotheticalMarker(summaryPersonName(e.PersonID, archive), e.Hypothetical))
+		fmt.Printf("  %-18s%s\n", stepParentLabel(summaryPersonSex(e.PersonID, archive))+":", withHypotheticalMarker(label(e.PersonID), e.Hypothetical))
 	}
-	if excluded := fam.excludedParents(personID); len(excluded) > 0 {
+	if len(excluded) > 0 {
 		names := make([]string, 0, len(excluded))
 		for _, id := range excluded {
-			names = append(names, summaryPersonName(id, archive))
+			names = append(names, label(id))
 		}
 		fmt.Printf("  %-18s%s\n", "Excluded:", strings.Join(names, ", ")+"  (disproven parent)")
 	}

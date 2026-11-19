@@ -45,6 +45,7 @@ type addResearchLogOptions struct {
 	Researcher          string
 	Conclusions         string
 	Citations           []string
+	Questions           []string
 }
 
 // addResearchLog mints a ResearchLog entity from the supplied flags. The
@@ -71,6 +72,10 @@ func addResearchLog(io *IOStreams, opts *addResearchLogOptions) error {
 		if err := validateRefExists(ctx.archive, glxlib.EntityTypeCitations, cid); err != nil {
 			return err
 		}
+	}
+	questions, err := researchLogQuestionFlags(opts.Questions)
+	if err != nil {
+		return err
 	}
 
 	// The derived ID reads best from a title, then from what the log is
@@ -104,10 +109,38 @@ func addResearchLog(io *IOStreams, opts *addResearchLogOptions) error {
 	if len(opts.Notes) > 0 {
 		log.Notes = glxlib.NoteList(opts.Notes)
 	}
+	if len(questions) > 0 {
+		log.Properties = map[string]any{glxlib.ResearchLogQuestionProperty: questions}
+	}
 
 	partial := &glxlib.GLXFile{ResearchLogs: map[string]*glxlib.ResearchLog{id: log}}
 
 	return finalizeAdd(io, &opts.addCommonOptions, ctx, glxlib.EntityTypeResearchLogs, id, partial)
+}
+
+// researchLogQuestionFlags canonicalizes the --question values to proof
+// question keys, once each, in the order given. An unknown question is an error
+// rather than a property proof would silently ignore.
+func researchLogQuestionFlags(values []string) ([]any, error) {
+	var out []any
+	seen := map[string]bool{}
+	for _, value := range values {
+		for part := range strings.SplitSeq(value, ",") {
+			if strings.TrimSpace(part) == "" {
+				continue
+			}
+			key, ok := glxlib.CanonicalProofQuestion(part)
+			if !ok {
+				return nil, fmt.Errorf("%w %q for --question (valid: %s)", errUnknownQuestion, part, strings.Join(glxlib.ProofQuestions(), ", "))
+			}
+			if !seen[key] {
+				seen[key] = true
+				out = append(out, key)
+			}
+		}
+	}
+
+	return out, nil
 }
 
 // resolveOptionalSubject enforces "at most one of --subject-*" and returns the

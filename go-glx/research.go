@@ -124,11 +124,13 @@ func PersonConflicts(archive *GLXFile, personID string, opts ComparisonOptions) 
 
 // Canonical question keys accepted by BuildProof.
 const (
-	QuestionParentage = topicParentage
-	QuestionBirth     = topicBirth
-	QuestionDeath     = topicDeath
-	QuestionMarriage  = topicMarriage
-	QuestionIdentity  = topicIdentity
+	QuestionParentage  = topicParentage
+	QuestionBirth      = topicBirth
+	QuestionDeath      = topicDeath
+	QuestionMarriage   = topicMarriage
+	QuestionChildren   = topicChildren
+	QuestionOccupation = topicOccupation
+	QuestionIdentity   = topicIdentity
 )
 
 // Proof conclusion values, also serialized in ProofResult.Conclusion.

@@ -320,3 +320,66 @@ func TestRenderProof_FullResult(t *testing.T) {
 	assert.Contains(t, md.String(), "Unresolved")
 	assert.Contains(t, md.String(), "**HIGH PRIORITY**")
 }
+
+func TestProofCandidateLines(t *testing.T) {
+	assert.Equal(t, "father: Johann Schopp [rel-pc] -- PROBABLE", answerLine(&proofAnswer{Label: "Johann Schopp", Role: "father", Relationship: "rel-pc", Status: glxlib.ProofStatusProbable, Conclusion: glxlib.ConclusionProbable}))
+	assert.Equal(t, "church elder (1762) [ev-1] -- POSSIBLE (speculative)", answerLine(&proofAnswer{Label: "church elder (1762)", Role: glxlib.PersonPropertyOccupation, Event: "ev-1", Status: glxlib.ProofStatusSpeculative, Conclusion: glxlib.ConclusionPossible}))
+	assert.Equal(t, "same person: Hans [rel-s] -- INSUFFICIENT EVIDENCE (unsupported)", answerLine(&proofAnswer{Label: "Hans", Role: "same_person", Relationship: "rel-s", Status: glxlib.ProofStatusUnsupported, Conclusion: glxlib.ConclusionInsufficient}))
+
+	disputed := proofExcludedAlternative{Name: "Johannes Roth", Relationship: "rel-m", Status: glxlib.ProofStatusDisputed}
+	assert.Equal(t, "Johannes Roth (rel-m) -- every surviving assertion disputed", excludedAlternativeLine(&disputed, " -- ", ""))
+	namesake := proofExcludedAlternative{Name: "Hans (p-b)", Relationship: "rel-s", Event: "ev-m", Role: "distinguished_from", Status: glxlib.ProofStatusDisproven, Assertions: []string{"a"}, Citations: []string{"c1", "c2"}, Notes: "not him"}
+	assert.Equal(t, "distinguished from Hans (p-b) (`rel-s`, `ev-m`) — all assertions disproven", excludedAlternativeLine(&namesake, " — ", "`"))
+	assert.Equal(t, "assertions: a; citations: c1, c2; not him", excludedAlternativeDetail(&namesake))
+	assert.Empty(t, excludedAlternativeDetail(&disputed))
+
+	assert.Empty(t, otherResearchLine(nil))
+	assert.Contains(t, otherResearchLine([]proofSearch{{Log: "a"}, {Log: "b"}, {Log: "b"}}), "3 searches in 2 research logs")
+	assert.Equal(t, "[~]", gapMarker(&proofGap{Searched: "1 search: 1 not_found"}))
+	assert.Equal(t, "[ ]", gapMarker(&proofGap{}))
+	assert.Equal(t, "Church records -- searched: 1 search: 1 not_found", gapLine(&proofGap{Label: "Church records", Searched: "1 search: 1 not_found"}, " -- ", "HIGH"))
+}
+
+func TestResearchLogQuestionFlags(t *testing.T) {
+	got, err := researchLogQuestionFlags([]string{"parents, issue", "parentage", " "})
+	require.NoError(t, err)
+	assert.Equal(t, []any{"parentage", "children"}, got)
+	_, err = researchLogQuestionFlags([]string{"bogus"})
+	require.ErrorIs(t, err, errUnknownQuestion)
+	got, err = researchLogQuestionFlags(nil)
+	require.NoError(t, err)
+	assert.Empty(t, got)
+}
+
+func TestShowProof_CandidateSections(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"a": {Properties: map[string]any{glxlib.PersonPropertyName: "Johann", glxlib.PersonPropertySex: glxlib.SexMale}},
+			"w": {Properties: map[string]any{glxlib.PersonPropertyName: "Catharina"}},
+			"x": {Properties: map[string]any{glxlib.PersonPropertyName: "Anna"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"r1": {Type: glxlib.RelationshipTypeMarriage, Participants: []glxlib.Participant{{Person: "a", Role: "spouse"}, {Person: "w", Role: "spouse"}}},
+			"r2": {Type: glxlib.RelationshipTypeMarriage, Participants: []glxlib.Participant{{Person: "a", Role: "spouse"}, {Person: "x", Role: "spouse"}}},
+		},
+		Assertions: map[string]*glxlib.Assertion{
+			"a1": {Subject: glxlib.EntityRef{Relationship: "r1"}, Participant: &glxlib.Participant{Person: "w", Role: "spouse"}, Confidence: "high", Status: "proven"},
+			"a2": {Subject: glxlib.EntityRef{Relationship: "r2"}, Participant: &glxlib.Participant{Person: "x", Role: "spouse"}, Confidence: "high", Status: "disproven"},
+		},
+		ResearchLogs: map[string]*glxlib.ResearchLog{"log": {Subject: &glxlib.EntityRef{Person: "a"}, Searches: []glxlib.Search{{Query: "q", Result: "not_found"}}}},
+	}
+	result, err := glxlib.BuildProof(archive, "a", glxlib.QuestionMarriage, glxlib.ProofOptions{})
+	require.NoError(t, err)
+
+	streams, out, _ := TestIOStreams()
+	printProofText(streams, result)
+	assert.Contains(t, out.String(), "  Answers:\n    = spouse: Catharina [r1] -- PROVEN\n")
+	assert.Contains(t, out.String(), "    x Anna (r2) -- all assertions disproven\n      assertions: a2\n")
+	assert.Contains(t, out.String(), "Other research on this person: 1 search in 1 research log")
+
+	out.Reset()
+	printProofMarkdown(streams, result)
+	assert.Contains(t, out.String(), "## Answers\n\n- spouse: Catharina [r1] — PROVEN\n")
+	assert.Contains(t, out.String(), "- Anna (`r2`) — all assertions disproven\n  - assertions: a2\n")
+	assert.Contains(t, out.String(), "_Other research on this person:")
+}

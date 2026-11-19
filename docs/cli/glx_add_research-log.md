@@ -20,6 +20,10 @@ At most one of --subject-person, --subject-event, --subject-relationship,
 research_log_status_types vocabulary. The derived ID is "research-log-" plus
 the --title, else the subject, else the --objective; --id overrides it.
 Repeated --citation IDs are included once, in the order first supplied.
+--question names the proof question the log serves (parentage, birth, death,
+marriage, children, occupation, identity, or an alias); it is stored as the
+log's `question` property, and "glx proof" lists the log's searches only under
+that question.
 
 ```
 glx add research-log [flags]
@@ -36,6 +40,10 @@ glx add research-log [flags]
   # Log with a title, researcher and date
   glx add research-log --title "1860 census, Jane Webb" --researcher "I. Schepp" \
     --date 2026-09-17 --status open --archive ./archive
+
+  # Log that serves the parentage proof
+  glx add research-log --id rl-parents --subject-person person-jane-webb \
+    --question parentage --archive ./archive
 ```
 
 ### Options
@@ -51,6 +59,7 @@ glx add research-log [flags]
       --id string                     Override the derived entity ID
       --note stringArray              Free-text note (repeatable)
       --objective string              Research question or goal
+      --question stringArray          Proof question the log serves, e.g. parentage (repeatable; see glx proof)
       --researcher string             Name or identifier of the researcher
       --skip-validate                 Skip whole-archive validation after adding (vocab and reference checks still run)
       --status string                 Status (vocabulary key in research_log_status_types)
