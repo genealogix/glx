@@ -16,6 +16,7 @@ package glx
 
 import (
 	"fmt"
+	"reflect"
 	"slices"
 	"sort"
 	"strconv"
@@ -223,6 +224,8 @@ func exportFamily(family *ExportFamily, expCtx *ExportContext) *GEDCOMRecord {
 			// FAM-level relationship properties mapped to GEDCOM tags (e.g. NCHI)
 			record.SubRecords = append(record.SubRecords, exportMappedRelationshipProperties(rel, expCtx)...)
 
+			exportEntitySourceRefs(EntityTypeRelationships, family.RelationshipID, rel.Properties, expCtx, record)
+
 			// NOTE from relationship
 			for _, note := range rel.Notes {
 				record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
@@ -277,15 +280,20 @@ func exportMappedRelationshipProperties(rel *Relationship, expCtx *ExportContext
 }
 
 // formatCountProperty renders an integer-typed property value as a GEDCOM
-// payload. YAML decoding yields int (or int64/float64 depending on source), and
+// payload. YAML decoding yields int (or int64/float64 depending on source; any
+// Go integer or float kind is accepted for values built in code), and
 // a non-numeric value imported from a malformed NCHI is preserved as a string.
 // Returns "" for absent or unsupported value shapes.
 func formatCountProperty(value any) string {
 	switch v := value.(type) {
 	case int:
 		return strconv.Itoa(v)
-	case int64:
-		return strconv.FormatInt(v, 10)
+	case int8, int16, int32, int64:
+		return strconv.FormatInt(reflect.ValueOf(v).Int(), 10)
+	case uint, uint8, uint16, uint32, uint64:
+		return strconv.FormatUint(reflect.ValueOf(v).Uint(), 10)
+	case float32:
+		return strconv.FormatFloat(float64(v), 'f', -1, 32)
 	case float64:
 		// Render losslessly rather than truncating: an integral float (3.0)
 		// becomes "3", while a fractional value (3.5) keeps its precision
