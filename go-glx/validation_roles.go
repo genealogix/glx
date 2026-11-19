@@ -16,6 +16,7 @@ package glx
 
 import (
 	"fmt"
+	"reflect"
 	"slices"
 	"strings"
 )
@@ -104,4 +105,92 @@ func articleFor(word string) string {
 	}
 
 	return "a"
+}
+
+// participantRoleKey identifies the rows of a participant list that name one
+// person in one role.
+type participantRoleKey struct{ Person, Role string }
+
+// participantRoleRows groups participant indexes by person and role, in order
+// of first appearance. Rows without a person are skipped. It is the single
+// definition of "the same person in the same role" shared by validation and
+// the merge-persons report (#1493).
+func participantRoleRows(participants []Participant) ([]participantRoleKey, map[participantRoleKey][]int) {
+	var keys []participantRoleKey
+	rows := map[participantRoleKey][]int{}
+	for i, participant := range participants {
+		if participant.Person == "" {
+			continue
+		}
+		key := participantRoleKey{participant.Person, participant.Role}
+		if _, seen := rows[key]; !seen {
+			keys = append(keys, key)
+		}
+		rows[key] = append(rows[key], i)
+	}
+
+	return keys, rows
+}
+
+// DescribeParticipantRole renders a participant role for messages:
+// "with role 'godparent'", or "with no role" when the role is empty.
+func DescribeParticipantRole(role string) string {
+	if role == "" {
+		return "with no role"
+	}
+
+	return "with role '" + role + "'"
+}
+
+// sameParticipantRow reports whether two rows for one person and role also
+// carry the same notes and properties. Rows that differ there may record
+// distinct appearances (a GEDCOM ASSO per detail, say) and are left alone.
+func sameParticipantRow(a, b Participant) bool {
+	if len(a.Notes) != len(b.Notes) || len(a.Properties) != len(b.Properties) {
+		return false
+	}
+	if len(a.Notes) != 0 && !reflect.DeepEqual(a.Notes, b.Notes) {
+		return false
+	}
+
+	return len(a.Properties) == 0 || reflect.DeepEqual(a.Properties, b.Properties)
+}
+
+// validateDuplicateParticipants warns when an event or relationship lists one
+// person more than once in the same role with the same notes and properties.
+// Such rows usually come from merging two records of one person who were both
+// read into the same event (#1493).
+func (glx *GLXFile) validateDuplicateParticipants(result *ValidationResult) {
+	check := func(entityType EntityType, id string, participants []Participant) {
+		keys, rows := participantRoleRows(participants)
+		for _, key := range keys {
+			indexes := rows[key]
+			for n, i := range indexes {
+				for _, j := range indexes[:n] {
+					if !sameParticipantRow(participants[j], participants[i]) {
+						continue
+					}
+					result.Warnings = append(result.Warnings, ValidationWarning{
+						SourceType: entityType,
+						SourceID:   id,
+						Field:      fmt.Sprintf("participants[%d]", i),
+						Message: fmt.Sprintf("%s[%s].participants[%d]: person '%s' already appears %s at participants[%d] with the same notes and properties; fold the rows into one if they record the same appearance",
+							entityType, id, i, key.Person, DescribeParticipantRole(key.Role), j),
+					})
+
+					break
+				}
+			}
+		}
+	}
+	for _, id := range sortedKeys(glx.Events) {
+		if event := glx.Events[id]; event != nil {
+			check(EntityTypeEvents, id, event.Participants)
+		}
+	}
+	for _, id := range sortedKeys(glx.Relationships) {
+		if rel := glx.Relationships[id]; rel != nil {
+			check(EntityTypeRelationships, id, rel.Participants)
+		}
+	}
 }
