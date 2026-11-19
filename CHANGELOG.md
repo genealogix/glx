@@ -102,6 +102,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Fixed
 
+- **Archive merge previews show only actual differences** — Identical entities are counted separately; conflicts name the fields and both values. Identical media metadata retains available source binaries when the destination file is missing, and reused binaries are revalidated before publication. Destination metadata is preserved, and genuinely conflicting media still skips the source binary. Identical media whose destination already holds a different binary under its name keeps that binary and is no longer reported as a URI conflict. Loading duplicate entity definitions within one archive remains an error. **Go API:** `GLXFile.MergeArchive` returns an `ArchiveMergeResult` with the conflicts, both counts and the identical IDs by entity type. (#1461)
+
 - **Duplicate matching rejects a birth certainly after the other record's death** — Actual birth dates are compared with the counterpart's death/burial bound in both directions, including when the only dated observations are vital records. Overlapping dates and later posthumous rites remain eligible. (#1483, PR #1535)
 
 - **Cross-archive duplicate matching keeps assertion provenance** — A source claim about a colliding subject or participant ID is excluded when the destination retained a different entity. Claims about identical retained subjects still participate, and neither input archive is modified. A source claim whose assertion ID the destination already uses for a different claim is kept alongside it rather than replaced. (PR #1535)
