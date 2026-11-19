@@ -356,7 +356,9 @@ func (glx *GLXFile) checkReference(
 		suggestion := glx.suggestReferenceKey(targetTypes, refID, result)
 		msg := fmt.Sprintf("%s[%s].%s references non-existent %s: %s",
 			entityType, entityID, fieldName, refType, refID)
-		if suggestion != "" {
+		if hint := MissingStandardSourceTypeHint(refID); refType == VocabSourceTypes && hint != "" {
+			msg += " (" + hint + ")"
+		} else if suggestion != "" {
 			msg += fmt.Sprintf(" (did you mean '%s'?)", suggestion)
 		}
 		result.Errors = append(result.Errors, ValidationError{
