@@ -33,12 +33,13 @@ func TestMergeReview_IdenticalMediaRetainsSourceBinary(t *testing.T) {
 	merged := &glxlib.GLXFile{Media: map[string]*glxlib.Media{"shared": destMedia}}
 	require.NoError(t, os.MkdirAll(filepath.Join(source, glxlib.MediaFilesDir), dirPermissions))
 	require.NoError(t, os.WriteFile(filepath.Join(source, sourceMedia.URI), []byte("source photo"), filePermissions))
-	plan, err := planSourceMediaCopies(source, dest, src)
-	require.NoError(t, err)
 	result := mergeArchivesInMemory(merged, src)
 	require.Empty(t, result.Conflicts)
 	require.Equal(t, 1, result.IdenticalEntities)
 	require.Same(t, destMedia, merged.Media["shared"], "destination metadata must still win")
+	plan, err := planSourceMediaCopies(source, dest, src)
+	require.NoError(t, err)
+	plan = adoptIdenticalMedia(plan, merged, result.IdenticalMedia)
 
 	copied, skipped, rollback, err := executeMediaCopiesWithRollback(plan, dest, merged)
 	require.NoError(t, err)
@@ -62,9 +63,10 @@ func TestMergeReview_ReusedIdenticalMediaIsRevalidated(t *testing.T) {
 				require.NoError(t, os.WriteFile(filepath.Join(root, glxlib.MediaFilesDir, "photo.jpg"), []byte("expected"), filePermissions))
 			}
 			require.NoError(t, os.WriteFile(filepath.Join(source, glxlib.MediaFilesDir, "new.jpg"), []byte("new"), filePermissions))
+			result := mergeArchivesInMemory(merged, src)
 			plan, err := planSourceMediaCopies(source, dest, src)
 			require.NoError(t, err)
-			mergeArchivesInMemory(merged, src)
+			plan = adoptIdenticalMedia(plan, merged, result.IdenticalMedia)
 			require.NotSame(t, src.Media["shared"], merged.Media["shared"])
 			target := filepath.Join(dest, glxlib.MediaFilesDir, "photo.jpg")
 			if mutation == "source-changed" {
@@ -81,4 +83,47 @@ func TestMergeReview_ReusedIdenticalMediaIsRevalidated(t *testing.T) {
 			assert.NoFileExists(t, filepath.Join(dest, "media/shared.glx"))
 		})
 	}
+}
+
+// The destination already holds a different binary under the name its
+// identical metadata names. The planner would place the source's copy under a
+// new name; that must neither turn the identical entity into a URI conflict
+// nor copy an orphan binary nobody references.
+func TestMergeReview_IdenticalMediaWithDifferentDestinationBinary(t *testing.T) {
+	source, dest := t.TempDir(), t.TempDir()
+	src := &glxlib.GLXFile{Media: map[string]*glxlib.Media{"shared": {URI: "media/files/photo.jpg", Title: "Shared"}}}
+	destMedia := &glxlib.Media{URI: "media/files/photo.jpg", Title: "Shared"}
+	merged := &glxlib.GLXFile{Media: map[string]*glxlib.Media{"shared": destMedia}}
+	for root, content := range map[string]string{source: "source photo", dest: "destination photo"} {
+		require.NoError(t, os.MkdirAll(filepath.Join(root, glxlib.MediaFilesDir), dirPermissions))
+		require.NoError(t, os.WriteFile(filepath.Join(root, glxlib.MediaFilesDir, "photo.jpg"), []byte(content), filePermissions))
+	}
+	result := mergeArchivesInMemory(merged, src)
+	require.Empty(t, result.Conflicts)
+	require.Equal(t, []string{"shared"}, result.IdenticalMedia)
+	plan, err := planSourceMediaCopies(source, dest, src)
+	require.NoError(t, err)
+	require.Len(t, plan, 1, "the planner still places the source binary under a new name")
+	plan = adoptIdenticalMedia(plan, merged, result.IdenticalMedia)
+	assert.Empty(t, plan, "the destination's own binary serves its identical metadata")
+	assert.Equal(t, "media/files/photo.jpg", merged.Media["shared"].URI)
+	data, err := os.ReadFile(filepath.Join(dest, glxlib.MediaFilesDir, "photo.jpg"))
+	require.NoError(t, err)
+	assert.Equal(t, "destination photo", string(data))
+}
+
+// Two source entities share one binary: one is identical to the destination,
+// the other is new. The entry still serves the new one.
+func TestMergeReview_AdoptKeepsEntryForNewSharer(t *testing.T) {
+	destMedia := &glxlib.Media{URI: "media/files/photo.jpg"}
+	newMedia := &glxlib.Media{URI: "media/files/photo-1.jpg"}
+	merged := &glxlib.GLXFile{Media: map[string]*glxlib.Media{"shared": destMedia, "fresh": newMedia}}
+	plan := []plannedMediaCopy{{TargetName: "photo-1.jpg", SrcMedia: map[string]*glxlib.Media{
+		"shared": {URI: "media/files/photo-1.jpg"},
+		"fresh":  newMedia,
+	}}}
+	plan = adoptIdenticalMedia(plan, merged, []string{"shared"})
+	require.Len(t, plan, 1)
+	assert.Equal(t, map[string]*glxlib.Media{"fresh": newMedia}, plan[0].SrcMedia)
+	assert.True(t, plannedMediaIsReferenced(&plan[0], merged))
 }

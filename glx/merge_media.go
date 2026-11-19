@@ -15,7 +15,6 @@
 package main
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -25,8 +24,6 @@ import (
 	"sort"
 	"strings"
 
-	"go.yaml.in/yaml/v3"
-
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
@@ -34,8 +31,10 @@ import (
 // into the destination archive before the merge is published. Several Media
 // entities may reference the same binary, so the plan is keyed by source
 // file: SrcMedia captures the src.Media entries by ID at planning time so
-// execution recognizes both retained source entities and identical destination
-// entities. A shared URI alone does not establish that a source entity survived.
+// execution can use pointer identity, rather than a URI coincidence, to detect
+// entities that survived the merge. adoptIdenticalMedia swaps in the
+// destination's pointer where the merge kept an identical destination entity
+// that names this very file.
 type plannedMediaCopy struct {
 	SrcPath       string                   // absolute path of the source binary
 	SrcRoot       string                   // source archive root for confined reads
@@ -367,26 +366,55 @@ func executeMediaCopiesWithRollback(plan []plannedMediaCopy, destPath string, me
 	}, nil
 }
 
-// MergeArchive retains the destination pointer for identical entities. Match
-// its YAML equality semantics, including omitted/empty optional fields, when
-// deciding whether a planned binary still has a reference in the merged archive.
+// plannedMediaIsReferenced reports whether a Media entity this plan entry
+// serves is the one the merged archive holds under its ID.
 func plannedMediaIsReferenced(p *plannedMediaCopy, merged *glxlib.GLXFile) bool {
 	for id, source := range p.SrcMedia {
-		destination := merged.Media[id]
-		if source == nil || destination == nil {
-			continue
-		}
-		if destination == source {
-			return true
-		}
-		sourceYAML, sourceErr := yaml.Marshal(source)
-		destinationYAML, destinationErr := yaml.Marshal(destination)
-		if sourceErr == nil && destinationErr == nil && bytes.Equal(sourceYAML, destinationYAML) {
+		if destination := merged.Media[id]; source != nil && destination == source {
 			return true
 		}
 	}
 
 	return false
+}
+
+// adoptIdenticalMedia runs after MergeArchive, which keeps the destination's
+// entity wherever the source's was identical. When that kept entity names
+// exactly the file this entry would write, the entry serves it: its pointer
+// replaces the source's, so the binary is copied (destination file missing) or
+// its reuse revalidated. An identical entity naming any other file already has
+// the destination's own binary, so it drops out of the entry, and an entry left
+// serving nobody is removed rather than reported as an entity conflict.
+func adoptIdenticalMedia(plan []plannedMediaCopy, merged *glxlib.GLXFile, identicalIDs []string) []plannedMediaCopy {
+	if len(identicalIDs) == 0 {
+		return plan
+	}
+	identical := make(map[string]bool, len(identicalIDs))
+	for _, id := range identicalIDs {
+		identical[id] = true
+	}
+	kept := plan[:0]
+	for _, p := range plan {
+		target := path.Join(plannedMediaTargetDir(&p), p.TargetName)
+		shared := false
+		for id := range p.SrcMedia {
+			if !identical[id] {
+				continue
+			}
+			shared = true
+			if destination := merged.Media[id]; destination != nil && destination.URI == target {
+				p.SrcMedia[id] = destination
+			} else {
+				delete(p.SrcMedia, id)
+			}
+		}
+		if shared && len(p.SrcMedia) == 0 {
+			continue
+		}
+		kept = append(kept, p)
+	}
+
+	return kept
 }
 
 func copyPlannedMedia(root *os.Root, p *plannedMediaCopy) (committedMediaFile, error) {

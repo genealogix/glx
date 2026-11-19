@@ -677,14 +677,29 @@ func TestMergeArchive_IdenticalEntitiesAndFieldConflicts(t *testing.T) {
 		Persons: map[string]*Person{"p": {Properties: map[string]any{"name": "Anna"}, Notes: []string{}}},
 		Events:  map[string]*Event{"e": {Type: "burial", Date: "BET 1702-01-01 AND 1702-01-02"}},
 	}
-	conflicts, identical, vocabulary := dest.MergeArchive(src)
-	require.Len(t, conflicts, 1)
-	assert.Contains(t, conflicts[0], "conflict events ID: e; date:")
-	assert.Contains(t, conflicts[0], `"1702-01-01" here`)
-	assert.Contains(t, conflicts[0], `"BET 1702-01-01 AND 1702-01-02" in source`)
-	assert.Equal(t, 1, identical)
-	assert.Zero(t, vocabulary)
+	result := dest.MergeArchive(src)
+	require.Len(t, result.Conflicts, 1)
+	assert.Contains(t, result.Conflicts[0], "conflict events ID: e; date:")
+	assert.Contains(t, result.Conflicts[0], `"1702-01-01" here`)
+	assert.Contains(t, result.Conflicts[0], `"BET 1702-01-01 AND 1702-01-02" in source`)
+	assert.Equal(t, 1, result.IdenticalEntities)
+	assert.Equal(t, map[string][]string{"persons": {"p"}}, result.Identical)
+	assert.Zero(t, result.IdenticalVocabulary)
 	assert.Equal(t, DateString("1702-01-01"), dest.Events["e"].Date)
 	strict, _ := dest.Merge(src)
 	assert.Len(t, strict, 2, "duplicate file definitions must still be reported")
+}
+
+func TestDescribeConflict_NamesTheDifferingField(t *testing.T) {
+	message := describeConflict("events", "e", &Event{Type: "birth"}, &Event{Type: "death"})
+	assert.Equal(t, `conflict events ID: e; type: "birth" here, "death" in source`, message)
+}
+
+func TestMergeArchive_VocabularyConflictsNameFieldsInOrder(t *testing.T) {
+	dest := &GLXFile{EventTypes: map[string]*VocabularyEntry{"b": {Label: "B"}, "a": {Label: "A"}}}
+	src := &GLXFile{EventTypes: map[string]*VocabularyEntry{"b": {Label: "B2"}, "a": {Label: "A2"}}}
+	result := dest.MergeArchive(src)
+	require.Len(t, result.Conflicts, 2)
+	assert.Equal(t, `conflict event_types ID: a; label: "A" here, "A2" in source`, result.Conflicts[0])
+	assert.Contains(t, result.Conflicts[1], "conflict event_types ID: b")
 }

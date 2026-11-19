@@ -54,6 +54,35 @@ func TestMerge_IdenticalMediaRestoresMissingDestinationBinary(t *testing.T) {
 	assertArchiveValid(t, dest)
 }
 
+func TestMerge_IdenticalMediaKeepsDifferentDestinationBinary(t *testing.T) {
+	source, dest := copyExample(t, "minimal"), copyExample(t, "minimal")
+	metadata := "media:\n  media-shared:\n    uri: media/files/photo.jpg\n    title: Shared photograph\n    mime_type: image/jpeg\n"
+	for root, photo := range map[string]string{source: "source photo", dest: "destination photo"} {
+		require.NoError(t, os.MkdirAll(filepath.Join(root, "media/files"), 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(root, "media/shared.glx"), []byte(metadata), 0o600))
+		require.NoError(t, os.WriteFile(filepath.Join(root, "media/files/photo.jpg"), []byte(photo), 0o600))
+	}
+	sourceBefore := snapshotTree(t, source)
+	preview := runGLX(t, dest, "merge", source, "--preview")
+	require.Zero(t, preview.exitCode, preview.stderr)
+	assert.Contains(t, preview.stdout, "2 identical entities skipped")
+	assert.NotContains(t, preview.stdout, "Conflicts (")
+	assert.NotContains(t, preview.stdout, "Would copy")
+	result := runGLX(t, dest, "merge", source)
+	require.Zero(t, result.exitCode, result.stderr)
+	assert.NotContains(t, result.stdout, "Conflicts (")
+	assert.NotContains(t, result.stdout, "skipped (entity conflict)")
+	entries, err := os.ReadDir(filepath.Join(dest, "media/files"))
+	require.NoError(t, err)
+	require.Len(t, entries, 1, "no orphan copy of the source binary")
+	data, err := os.ReadFile(filepath.Join(dest, "media/files/photo.jpg"))
+	require.NoError(t, err)
+	assert.Equal(t, "destination photo", string(data))
+	assert.Equal(t, "media/files/photo.jpg", importedMediaEntity(t, dest, "multi", "media-shared").URI)
+	assertTreeUnchanged(t, sourceBefore, source)
+	assertArchiveValid(t, dest)
+}
+
 func TestMerge_FromInsideDestination_DefaultIntoFlag(t *testing.T) {
 	// cwd is the destination and --into defaults to ".": the #1192 shape.
 	dest := copyExample(t, "basic-family")
