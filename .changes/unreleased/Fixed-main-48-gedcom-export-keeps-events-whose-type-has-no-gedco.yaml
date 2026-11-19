@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**GEDCOM export keeps events whose type has no GEDCOM tag** — `taxation`, `voter_registration`, and archive-defined types were dropped without a warning. They now export as `EVEN` with a `TYPE` naming the event type, with their date, place, notes and sources, under a person or a family; import reads the `TYPE` back into the original type'
+time: '2026-10-09T00:00:20Z'
+custom:
+  Issue: '#1320'

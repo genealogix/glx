@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**Residence overrides require the event''s whole possible date span** — `glx migrations` excludes a conflicting event only when its complete possible span fits within a bounded residence in the same calendar. Wider uncertain dates, open-ended spans and incomparable calendars remain included; mixed year/month/day precision uses the shared civil-date bounds. Evidence coverage wording now identifies assertion reachability, including unsourced/disproven assertions and place ancestry scaffolding, rather than a sourced or proven percentage.'
+time: '2026-10-07T00:00:13Z'
+custom:
+  Issue: 'PR #1350'

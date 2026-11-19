@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**A baptism or christening is birth evidence for `glx analyze` and `glx proof`** — Before civil registration the baptism entry is the birth record, and many registers give no birth date at all. `glx analyze --check gaps` no longer reports HIGH "no birth date or place" for someone with a dated or placed baptism or christening, and the coverage checklist behind `glx proof` and `glx coverage` counts the person''s own evidenced baptism or christening as the "Birth record" when no birth event is evidenced (a baptism the person attended in another role, such as godparent, does not count).'
+time: '2026-10-11T00:00:10Z'
+custom:
+  Issue: '#1365'

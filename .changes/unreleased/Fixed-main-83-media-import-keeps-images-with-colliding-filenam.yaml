@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**Media import keeps images with colliding filenames distinct** — GEDCOM and GEDZIP imports skip occupied numbered, case-equivalent and Unicode-equivalent filenames, including files already in the destination `media/files/`. Importing `photo.jpg`, `photo-2.jpg` and another `photo.jpg`, or importing into a directory used by an earlier archive, retains every image and its correct media reference instead of overwriting bytes.'
+time: '2026-11-11T00:00:10Z'
+custom:
+  Issue: '#1390'

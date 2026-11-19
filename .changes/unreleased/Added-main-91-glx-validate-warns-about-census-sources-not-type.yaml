@@ -1,0 +1,6 @@
+kind: Added
+body: |-
+  **`glx validate` warns about census sources not typed `census`** — A source titled "1851 England Census" with type `book`, or no type, is not found by `glx census add`, which matches an existing source by title and type `census`, so the next census entry created a second source beside it. Validation now warns and says to set `type: census`.
+time: 2026-11-18T15:15:28Z
+custom:
+  Issue: "#497"

@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**`glx summary` labels asymmetric relationships by the other person''s role** — The Relationships block used the relationship type as the label, so a godparent''s line read `Godparent: <godchild>`. When the two participants hold different roles the line now names the other one''s role (`Godchild: Adam Little`, `Ward: Rachel Call`); symmetric relationships keep the type label.'
+time: '2026-10-07T00:00:27Z'
+custom:
+  Issue: '#1326'

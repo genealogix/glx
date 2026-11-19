@@ -1,0 +1,5 @@
+kind: Added
+body: '**`glx add research-log`, `glx add search` and `glx add study`** — Research logs and studies can now be written from the CLI instead of by hand in YAML. `add research-log` creates a log (`--subject-person`/`--subject-event`/`--subject-relationship`/`--subject-place`, `--objective`, `--status`, `--title`, `--date`, `--researcher`, `--conclusions`, `--citation`); `add search --log <id>` appends one search entry (`--source`, `--repository`, `--collection`, `--query`, `--result`, `--citation`, `--date`, `--note`) to an existing log, rewriting only the file that holds the log and keeping its existing formatting, and rolls a `--citation` up into the log''s `citations` list; `add study` creates a study (`--title`, `--type`, `--status`, `--date-range`, repeatable `--place`/`--source`). Status, result and type values are checked against the archive''s loaded vocabularies, so archive-defined values are accepted.'
+time: '2026-10-09T00:00:06Z'
+custom:
+  Issue: '#1336'

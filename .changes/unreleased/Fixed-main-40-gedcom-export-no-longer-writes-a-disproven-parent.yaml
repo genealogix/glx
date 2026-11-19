@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**GEDCOM export no longer writes a disproven parent or marriage as a family** — Family reconstruction read every `parent_child` and `marriage` relationship, so a child whose only recorded father was a rejected candidate (`status: disproven`) was exported with him as `HUSB` of the child''s `FAMC` family. A parent-child link or a marriage the archive has disproven is now left out, using the same standing rules as the display commands, and each one dropped is named in an export warning. Hypothetical links are still exported, since GEDCOM has no way to mark them.'
+time: '2026-10-09T00:00:12Z'
+custom:
+  Issue: '#208'

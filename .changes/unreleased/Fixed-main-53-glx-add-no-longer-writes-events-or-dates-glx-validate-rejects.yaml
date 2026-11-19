@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**`glx add` no longer writes events or dates that `glx validate` rejects** — `glx add event` now requires at least one `--principal` or `--participant`; an event written without one failed the schema''s `minItems` and left the whole archive unloadable. Every date flag (`--date` on `add event`, `source`, `assertion`, `research-log` and `search`; `--source-date` and `--accessed` on `add citation`; `--date-range` on `add study`; and any `--property` whose `value_type` is `date`) is now parsed with the GLX date grammar, and a value it rejects (`Dom. 12 Trin 1643`, `1643-02-30`, `1702-01-02 JULIAN`) or a reversed range fails the command with the flag, the value and the grammar''s reason, writing nothing. Previously these were written and surfaced only as `glx validate` warnings. Display code also no longer formats an ISO date the grammar rejects as a real one: `1643-02-30` prints as written instead of "February 30, 1643".'
+time: '2026-10-10T00:00:02Z'
+custom:
+  Issue: '#1373'

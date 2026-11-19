@@ -1,0 +1,6 @@
+kind: Fixed
+body: |-
+  **Empty entity nodes no longer panic validation** — An entity written as `persons: {my-person-id: }` decodes to a nil pointer, and `DeserializeMultiFileFromMap`, `DeserializeSingleFileBytes` and `GLXFile.Validate` panicked on it with a reflection error. Each one is now reported as a validation error naming the entity, and every other check still runs.
+time: 2026-11-18T15:15:28Z
+custom:
+  Issue: "#1406"

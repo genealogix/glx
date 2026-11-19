@@ -1,0 +1,6 @@
+kind: Added
+body: |-
+  **`glx serve --edit`: add and edit people in the browser** — The first slice of the visual editor's Phase 2. With `--edit`, the viewer gains an *Add person* form, an *Edit* form on each profile (structured name parts, sex, gender), and an *Add relative* form that links the person to an existing person as parent, child or spouse. Additions run through the same code as `glx add person` and `glx add relationship`, so they are checked and written exactly as the CLI writes them. An edit rewrites only `persons/<id>.glx`, keeps every property and name key the form does not show, and is refused with a conflict if the file changed since the form loaded or if the person does not live alone in that file. A plain-string name is shown as stored rather than split into guessed parts, and a person with several names (a temporal list) can have the other fields edited but not the names. The served snapshot reloads from disk after every write. Write requests must be same-origin JSON addressed to localhost or an IP address, which shuts out cross-site form posts and DNS rebinding. Editing needs a directory archive; without `--edit` the viewer stays read-only.
+time: 2026-11-18T15:15:28Z
+custom:
+  Issue: "#93"

@@ -1,0 +1,5 @@
+kind: Added
+body: '**More `glx add` flags for sources, persons and events** — `glx add source` gains `--url`, `--publication-info`, `--call-number`, `--source-nature` and `--information-type` (the last two validated against the `source_natures` and `information_types` vocabularies); `glx add person` gains a repeatable `--external-id type:value` (e.g. `wikitree:Little-20642`) for the `external_ids` property; `glx add event` gains a repeatable `--property key=value` for any key defined in `event_properties`.'
+time: '2026-10-09T00:00:07Z'
+custom:
+  Issue: '#1336'

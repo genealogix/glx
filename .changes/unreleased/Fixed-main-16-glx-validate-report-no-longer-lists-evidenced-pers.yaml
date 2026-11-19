@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**`glx validate --report` no longer lists evidenced persons as having no assertions** — "Entities with no assertions" used the direct-subject count, so a person named in six participant assertions was listed. It now uses the same evidence coverage as `glx stats`'
+time: '2026-10-07T00:00:16Z'
+custom:
+  Issue: '#713'

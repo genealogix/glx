@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**`glx timeline` and the publish timeline say whose record an event is** — An event in which the person is named but which is someone else''s record was printed as a bare event type, so a father''s line for his infant son''s burial read `Burial` and a husband named on his wife''s death had two `Death` lines. Such an event now reads the way `coverage`''s "Appears in" list reads, with the person''s role: `Burial of Michell Father (parent)`, `Death of Anna Wife (spouse)`, `Baptism of Hans Other (godparent)`. With `--family`, a relative''s birth or death comes only from the relative''s own record. The label helper is exported as `glxlib.AppearanceLabel`.'
+time: '2026-10-11T00:00:06Z'
+custom:
+  Issue: '#1363'

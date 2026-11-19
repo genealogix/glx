@@ -1,0 +1,6 @@
+kind: Fixed
+body: |-
+  **`glx rename` rewrites only typed references** — Rename replaced every string equal to the old ID: any property value, whatever its vocabulary said, and any reference field of any type. So a free-text property such as `occupation: smith` was rewritten as if it were a reference, and, since IDs are unique per type, renaming person `smith` also redirected references to a place `smith`. Rename now uses the vocabulary-aware walker that `glx merge-persons` uses. It rewrites only fields that refer to the renamed entity type and properties whose definition declares that `reference_type`, read from the whole archive with the standard vocabularies filling any it lacks. Study and research-log properties have no vocabulary and are no longer rewritten. **Go API:** `RenameInFragment` gains an `archive *GLXFile` argument that supplies the property vocabularies; pass the fragment itself when it is the whole archive.
+time: 2026-11-18T15:15:28Z
+custom:
+  Issue: "#1440"
