@@ -203,17 +203,21 @@ func exportFamily(family *ExportFamily, expCtx *ExportContext) *GEDCOMRecord {
 				}
 			}
 
-			// DIV from end_event
-			if rel.EndEvent != "" {
-				divRecord := exportFamilyEvent(rel.EndEvent, GedcomTagDiv, expCtx, family.HusbandID, family.WifeID)
-				if divRecord != nil {
-					record.SubRecords = append(record.SubRecords, divRecord)
+			// DIV or ANUL from end_event, only when the end event is a
+			// divorce or annulment. A marriage ended by a death writes
+			// nothing on the FAM: the death is exported on the person (#1498).
+			endEventID := ""
+			if endTag := familyEndEventTag(rel.EndEvent, expCtx); endTag != "" {
+				endEventID = rel.EndEvent
+				endRecord := exportFamilyEvent(rel.EndEvent, endTag, expCtx, family.HusbandID, family.WifeID)
+				if endRecord != nil {
+					record.SubRecords = append(record.SubRecords, endRecord)
 				}
 			}
 
 			// Other family events: events where both spouses participate with role "spouse"
 			familyEvents := findFamilyEvents(family.HusbandID, family.WifeID,
-				rel.StartEvent, rel.EndEvent, expCtx)
+				rel.StartEvent, endEventID, expCtx)
 			record.SubRecords = append(record.SubRecords, familyEvents...)
 
 			// FAM-level relationship properties mapped to GEDCOM tags (e.g. NCHI)
@@ -295,6 +299,28 @@ func formatCountProperty(value any) string {
 	}
 }
 
+// familyEndEventTag returns the FAM tag that a relationship's end event is
+// written as: DIV for a divorce, ANUL for an annulment. Any other end event
+// (a death or burial, most often) has no FAM tag meaning "ended by this", so
+// it returns "" and the event is left to its own exporter (#1498).
+func familyEndEventTag(eventID string, expCtx *ExportContext) string {
+	if eventID == "" {
+		return ""
+	}
+	event, ok := expCtx.GLX.Events[eventID]
+	if !ok || event == nil {
+		return ""
+	}
+	// Read the tag from the vocabulary, as every other export path does, so a
+	// custom event type mapped to DIV or ANUL is written the same way.
+	switch tag := expCtx.ExportIndex.EventTypes[event.Type]; tag {
+	case GedcomTagDiv, GedcomTagAnul:
+		return tag
+	default:
+		return ""
+	}
+}
+
 // exportFamilyEvent creates a family event subrecord (MARR, DIV, etc.)
 // from a GLX event ID, using the given GEDCOM tag.
 func exportFamilyEvent(eventID, gedcomTag string, expCtx *ExportContext, hostIDs ...string) *GEDCOMRecord {
@@ -354,7 +380,14 @@ func exportFamilyEvent(eventID, gedcomTag string, expCtx *ExportContext, hostIDs
 	// TYPE: a generic EVEN names its event type (#1320); otherwise the
 	// marriage_type property takes precedence, then event_subtype via exportEventPropertySubrecords
 	hasExplicitType := false
-	if genericType := genericEventTypeRecord(event, expCtx); genericType != nil && gedcomTag == GedcomTagEven {
+	genericType := genericEventTypeRecord(event, expCtx)
+	if ownTag := expCtx.ExportIndex.EventTypes[event.Type]; genericType == nil && gedcomTag == GedcomTagEven &&
+		ownTag != "" && !gedcomFamilyEventTags[ownTag] {
+		// An event whose own tag cannot go under FAM, written as EVEN
+		// (see findFamilyEvents): TYPE names its event type.
+		genericType = eventTypeLabelRecord(event, expCtx)
+	}
+	if genericType != nil && gedcomTag == GedcomTagEven {
 		record.SubRecords = append(record.SubRecords, genericType)
 		hasExplicitType = true
 	} else if marriageType, ok := event.Properties[PropertyMarriageType].(string); ok && marriageType != "" {
@@ -424,6 +457,16 @@ func findFamilyEvents(husbandID, wifeID, startEventID, endEventID string, expCtx
 		gedcomTag, ok := expCtx.ExportIndex.EventTypes[event.Type]
 		if !ok || gedcomTag == "" {
 			continue
+		}
+		if !gedcomFamilyEventTags[gedcomTag] {
+			// Individual-only tags (DEAT, BURI, EMIG, ...) never go under FAM,
+			// even when both spouses are listed with role "spouse" (#1498).
+			// An INDI that hosts the event carries it; one no INDI hosts stays
+			// on the FAM as an EVEN naming its type, so it is not dropped.
+			if len(eventHostIDs(event)) > 0 {
+				continue
+			}
+			gedcomTag = GedcomTagEven
 		}
 
 		// Reuse exportFamilyEvent to get full sub-record export (DATE, PLAC, NOTE, SOUR, properties)

@@ -94,6 +94,13 @@ func genericEventTypeRecord(event *Event, expCtx *ExportContext) *GEDCOMRecord {
 		return nil
 	}
 
+	return eventTypeLabelRecord(event, expCtx)
+}
+
+// eventTypeLabelRecord returns a TYPE subrecord naming the event's type by
+// its vocabulary label, followed by ": <subtype>" when the event also has an
+// event subtype, whether or not the type has a GEDCOM tag of its own.
+func eventTypeLabelRecord(event *Event, expCtx *ExportContext) *GEDCOMRecord {
 	value := vocabularyLabel(expCtx.GLX.EventTypes, event.Type)
 	if subtype := eventSubtype(event, expCtx); subtype != "" {
 		value += genericEventSubtypeSeparator + subtype
