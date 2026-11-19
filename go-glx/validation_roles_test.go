@@ -210,3 +210,34 @@ func TestStandardVocabulariesLandTerritorySearchResults(t *testing.T) {
 	assert.Contains(t, archive.SearchResultTypes, SearchResultUnavailable)
 	assert.Contains(t, archive.SearchResultTypes, SearchResultRequiresVisit)
 }
+
+func TestValidateDuplicateParticipants(t *testing.T) {
+	archive := &GLXFile{
+		Persons: map[string]*Person{"person-a": {}, "person-b": {}},
+		Events: map[string]*Event{"event-1": {Type: EventTypeBirth, Participants: []Participant{
+			{Person: "person-a", Role: "principal"},
+			{Person: "person-b", Role: "witness"},
+			{Person: "person-b", Role: "witness"},
+			{Person: "person-a", Role: "witness"},
+			// Same person and role, different notes: a distinct appearance.
+			{Person: "person-a", Role: "witness", Notes: NoteList{"Second signature"}},
+		}}},
+		Relationships: map[string]*Relationship{"rel-1": {Type: RelationshipTypeAssociate, Participants: []Participant{
+			{Person: "person-a"}, {Person: "person-b"}, {Person: "person-a"},
+		}}},
+	}
+	require.NoError(t, MergeStandardVocabularies(archive))
+
+	var warnings []ValidationWarning
+	for _, warning := range archive.Validate().Warnings {
+		if strings.Contains(warning.Message, "already appears") {
+			warnings = append(warnings, warning)
+		}
+	}
+	require.Len(t, warnings, 2)
+	assert.Equal(t, EntityTypeEvents, warnings[0].SourceType)
+	assert.Equal(t, "participants[2]", warnings[0].Field)
+	assert.Contains(t, warnings[0].Message, "person 'person-b' already appears with role 'witness' at participants[1]")
+	assert.Equal(t, EntityTypeRelationships, warnings[1].SourceType)
+	assert.Contains(t, warnings[1].Message, "person 'person-a' already appears with no role at participants[0]")
+}

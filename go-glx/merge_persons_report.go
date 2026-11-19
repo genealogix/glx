@@ -432,3 +432,36 @@ func collectMergeAffectedPeople(archive *GLXFile, assertion *Assertion, people m
 		people[participant.Person] = true
 	}
 }
+
+// mergeDuplicateParticipants reads the merged archive for events that list
+// keepID more than once in one role, and keeps those where the merge caused
+// it: the group mixes rows that named dropID before the merge with rows that
+// did not. A survivor already listed twice, or a dropped person listed twice
+// on their own, is a pre-existing duplicate and validation reports it.
+func mergeDuplicateParticipants(original, merged *GLXFile, keepID, dropID string) []MergeDuplicateParticipant {
+	var duplicates []MergeDuplicateParticipant
+	for _, id := range sortedKeys(merged.Events) {
+		event, before := merged.Events[id], original.Events[id]
+		if event == nil || before == nil {
+			continue
+		}
+		keys, rows := participantRoleRows(event.Participants)
+		for _, key := range keys {
+			indexes := rows[key]
+			if key.Person != keepID || len(indexes) < 2 {
+				continue
+			}
+			var fromDrop []int
+			for _, i := range indexes {
+				if i < len(before.Participants) && before.Participants[i].Person == dropID {
+					fromDrop = append(fromDrop, i)
+				}
+			}
+			if len(fromDrop) != 0 && len(fromDrop) != len(indexes) {
+				duplicates = append(duplicates, MergeDuplicateParticipant{EventID: id, Role: key.Role, Indexes: indexes, DropIndexes: fromDrop})
+			}
+		}
+	}
+
+	return duplicates
+}
