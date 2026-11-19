@@ -584,3 +584,36 @@ func TestDedupeRelatedPersons_GenericBesideSpecific(t *testing.T) {
 	assert.Len(t, dedupeRelatedPersons([]treeRelPerson{bio, adoptive}), 2,
 		"biological and adoptive links are different facts")
 }
+
+// TestDedupeRelatedPersons_StandingDecidesType checks that when an accepted
+// generic parent_child edge meets a hypothetical specific one, the accepted
+// generic type is shown, not the hypothetical specific type, in either order;
+// and that with equal standing the specific type is kept (#1506).
+func TestDedupeRelatedPersons_StandingDecidesType(t *testing.T) {
+	generic := treeRelPerson{personID: "person-father", relType: "parent_child"}
+	hypoBio := treeRelPerson{personID: "person-father", relType: "biological_parent_child", hypothetical: true}
+
+	for name, in := range map[string][]treeRelPerson{
+		"generic first":  {generic, hypoBio},
+		"specific first": {hypoBio, generic},
+	} {
+		t.Run(name, func(t *testing.T) {
+			out := dedupeRelatedPersons(in)
+			require.Len(t, out, 1)
+			assert.Equal(t, "parent_child", out[0].relType)
+			assert.False(t, out[0].hypothetical)
+		})
+	}
+
+	bio := treeRelPerson{personID: "person-father", relType: "biological_parent_child"}
+	for name, in := range map[string][]treeRelPerson{
+		"generic first":  {generic, bio},
+		"specific first": {bio, generic},
+	} {
+		t.Run("tie "+name, func(t *testing.T) {
+			out := dedupeRelatedPersons(in)
+			require.Len(t, out, 1)
+			assert.Equal(t, "biological_parent_child", out[0].relType)
+		})
+	}
+}
