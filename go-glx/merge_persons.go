@@ -86,19 +86,22 @@ type MergePersonsResult struct {
 	// InterpretationChanges compares existing evidence, standing and coverage
 	// semantics before and after the merge. It does not invent researcher statuses.
 	InterpretationChanges []MergeInterpretationChange
-	// DuplicateParticipants lists events where both merge persons held the
-	// same role, so the survivor now appears in that role more than once.
-	// The rows are kept, not folded; callers should review them.
+	// DuplicateParticipants lists events where the merge leaves the survivor
+	// in one role more than once because both merge persons held that role.
+	// Duplicates that predate the merge are not reported. The rows are kept,
+	// not folded; callers should review them.
 	DuplicateParticipants []MergeDuplicateParticipant
 }
 
 // MergeDuplicateParticipant identifies an event that lists the surviving
 // person more than once in Role after a merge. Indexes are the participant
-// positions of those rows, in order.
+// positions of all the survivor's rows in that role, in order; DropIndexes
+// is the subset that named the dropped person before the merge.
 type MergeDuplicateParticipant struct {
-	EventID string
-	Role    string
-	Indexes []int
+	EventID     string
+	Role        string
+	Indexes     []int
+	DropIndexes []int
 }
 
 // MergePersons consolidates two person entities, retaining keepID and folding
@@ -195,7 +198,7 @@ func MergePersons(glx *GLXFile, keepID, dropID string, opts MergePersonsOptions)
 	if err != nil {
 		return nil, err
 	}
-	result := &MergePersonsResult{DuplicateParticipants: mergeDuplicateParticipants(glx, keepID, dropID)}
+	result := &MergePersonsResult{}
 	cleanupResolvedPersonRelationships(planned, prepared, keepID, dropID, result)
 	keep := planned.Persons[keepID]
 	drop := planned.Persons[dropID]
@@ -205,6 +208,7 @@ func MergePersons(glx *GLXFile, keepID, dropID string, opts MergePersonsOptions)
 
 	delete(planned.Persons, dropID)
 	result.RefsUpdated = rewriteMergedPersonReferences(planned, prepared, dropID, keepID, result)
+	result.DuplicateParticipants = mergeDuplicateParticipants(glx, planned, keepID, dropID)
 	if err := validateMergeReferences(glx, planned); err != nil {
 		return nil, err
 	}

@@ -219,6 +219,8 @@ func TestValidateDuplicateParticipants(t *testing.T) {
 			{Person: "person-b", Role: "witness"},
 			{Person: "person-b", Role: "witness"},
 			{Person: "person-a", Role: "witness"},
+			// Same person and role, different notes: a distinct appearance.
+			{Person: "person-a", Role: "witness", Notes: NoteList{"Second signature"}},
 		}}},
 		Relationships: map[string]*Relationship{"rel-1": {Type: RelationshipTypeAssociate, Participants: []Participant{
 			{Person: "person-a"}, {Person: "person-b"}, {Person: "person-a"},

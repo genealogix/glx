@@ -315,7 +315,7 @@ func TestMergePersons_ReportsDuplicateEventParticipant(t *testing.T) {
 
 	res := runGLX(t, archive, "merge-persons", "p-elisabeth", "p-catharina", "--yes", "--quiet")
 	require.Equal(t, 0, res.exitCode, res.stderr)
-	assert.Contains(t, res.stderr, "Duplicate participant: events[ev-bapt] lists p-elisabeth as godparent at participants[1 2]")
+	assert.Contains(t, res.stderr, "Duplicate participant: events[ev-bapt] lists p-elisabeth with role 'godparent' at participants[1], participants[2] (participants[2] was p-catharina)")
 
 	res = runGLX(t, archive, "validate", ".")
 	require.Equal(t, 0, res.exitCode, res.stderr)
