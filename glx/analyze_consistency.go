@@ -151,6 +151,7 @@ func checkEventAfterDeath(archive *glxlib.GLXFile) []AnalysisIssue {
 	type deathObservation struct {
 		event  *glxlib.Event
 		bounds glxdate.Bounds
+		axis   string
 	}
 	deaths := make(map[string]deathObservation)
 	for id, person := range archive.Persons {
@@ -165,9 +166,8 @@ func checkEventAfterDeath(archive *glxlib.GLXFile) []AnalysisIssue {
 		if err != nil {
 			continue
 		}
-		bounds := date.ChronologyBounds(glxlib.DefaultApproximationYears)
-		if bounds.Known && !bounds.Reversed {
-			deaths[id] = deathObservation{event, bounds}
+		if bounds, axis := afterDeathBounds(date); bounds.Known && !bounds.Reversed {
+			deaths[id] = deathObservation{event, bounds, axis}
 		}
 	}
 	postDeathEvents := map[string]bool{
@@ -183,18 +183,18 @@ func checkEventAfterDeath(archive *glxlib.GLXFile) []AnalysisIssue {
 		if err != nil {
 			continue
 		}
-		bounds := date.ChronologyBounds(glxlib.DefaultApproximationYears)
+		bounds, axis := afterDeathBounds(date)
 		if !bounds.Known || bounds.Reversed {
 			continue
 		}
 		for _, participant := range event.Participants {
 			participation := glxlib.ClassifyParticipation(event.Type, participant.Role, archive.ParticipantRoles)
 			if !participation.Present || postDeathEvents[event.Type] && participation.OwnRecord ||
-				mentionedRelativeAtEvent(event.Type, participant.Role, archive.ParticipantRoles) {
+				mentionedRelativeAtEvent(event.Type, participant.Role, participation) {
 				continue
 			}
 			death, ok := deaths[participant.Person]
-			if !ok || bounds.Outer.Start < death.bounds.Outer.End {
+			if !ok || death.axis != axis || bounds.Outer.Start < death.bounds.Outer.End {
 				continue
 			}
 			issues = append(issues, AnalysisIssue{
@@ -206,19 +206,30 @@ func checkEventAfterDeath(archive *glxlib.GLXFile) []AnalysisIssue {
 	return issues
 }
 
-func mentionedRelativeAtEvent(eventType, role string, roles map[string]*glxlib.VocabularyEntry) bool {
-	declared := strings.TrimSpace(role)
-	role = strings.ToLower(declared)
+// afterDeathBounds places a date on the axis it can be compared on. Gregorian
+// and Julian dates share the Julian-day axis; any other calendar is compared
+// only with dates in that same calendar, by its own civil bounds.
+func afterDeathBounds(date glxdate.Date) (glxdate.Bounds, string) {
+	if bounds := date.ChronologyBounds(glxlib.DefaultApproximationYears); bounds.Known {
+		return bounds, "chronology"
+	}
+
+	return date.ValueBounds(glxlib.DefaultApproximationYears), fmt.Sprintf("%v/%s", date.Calendar(), date.CalendarName())
+}
+
+// mentionedRelativeAtEvent reports whether a role names the person as a
+// relative of the record's principal rather than as someone present: a
+// parent on a child's marriage, birth or baptism (a posthumous child names
+// the late father), a parent or spouse on a death or burial. A role the
+// archive's vocabulary declares present (implies_presence: true) is never
+// discounted; one it declares absent never reaches this check.
+func mentionedRelativeAtEvent(eventType, role string, participation glxlib.Participation) bool {
+	if participation.DeclaredPresent {
+		return false
+	}
+	role = strings.ToLower(strings.TrimSpace(role))
 	eventType = strings.ToLower(strings.TrimSpace(eventType))
-	// Explicit presence evidence overrides the contextual reference heuristic.
-	definition := roles[declared]
-	if definition == nil {
-		definition = roles[role]
-	}
-	if definition != nil && definition.ImpliesPresence != nil {
-		return !*definition.ImpliesPresence
-	}
-	if glxlib.IsParentSideRole(role) && (eventType == glxlib.EventTypeMarriage || migrationDeathEventTypes[eventType]) {
+	if isParentRole(role) && (eventType == glxlib.EventTypeMarriage || birthRecordEventTypes[eventType] || migrationDeathEventTypes[eventType]) {
 		return true
 	}
 

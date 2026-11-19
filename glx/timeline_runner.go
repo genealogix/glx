@@ -478,8 +478,10 @@ func sortTimelineEntries(entries []timelineEntry) {
 
 // dateSortKey orders Gregorian and Julian observations on one day axis. A
 // BEF bound sorts before the date it bounds; an AFT observation sorts after
-// its written precision. Other calendars retain their civil-date ordering.
-// An undated observation sorts last.
+// its written precision. A calendar with no conversion to that axis cannot be
+// placed among those dates, so its observations follow every Gregorian and
+// Julian one, ordered among themselves by their own civil date. An undated
+// observation sorts last.
 func dateSortKey(dateStr string) string {
 	d, _ := glxlib.DateString(dateStr).Parse()
 	year := d.Year()
@@ -505,12 +507,12 @@ func dateSortKey(dateStr string) string {
 			rank = 0 // after the entire written day/month/year, before the next observation
 		}
 
-		return fmt.Sprintf("%09d:%d", sortPoint+dateSortDayOffset, rank)
+		return fmt.Sprintf("%s%09d:%d", dateSortChronologyPrefix, sortPoint+dateSortDayOffset, rank)
 	}
 
-	key := fmt.Sprintf("%05d", year)
+	key := dateSortCivilPrefix + fmt.Sprintf("%05d", year)
 	if year < 0 {
-		key = fmt.Sprintf("-%05d", dateSortKeyMaxYear+year)
+		key = dateSortCivilPrefix + fmt.Sprintf("-%05d", dateSortKeyMaxYear+year)
 	}
 	if month, ok := d.Month(); ok {
 		key += fmt.Sprintf("-%02d", month)
@@ -521,6 +523,14 @@ func dateSortKey(dateStr string) string {
 
 	return key
 }
+
+// dateSortChronologyPrefix and dateSortCivilPrefix keep the two key spaces
+// apart: a Julian-day number and a civil year in another calendar are not
+// comparable as strings. Both sort before the undated key "ÿ".
+const (
+	dateSortChronologyPrefix = "0"
+	dateSortCivilPrefix      = "1"
+)
 
 // dateSortDayOffset keeps supported BCE and CE Julian-day keys positive.
 const dateSortDayOffset = 100000000

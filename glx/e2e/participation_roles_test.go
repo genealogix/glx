@@ -113,7 +113,7 @@ func TestMigrations_RemoteDeedIsNotAMove(t *testing.T) {
 	require.Equal(t, 0, res.exitCode, res.stderr)
 
 	assert.Contains(t, res.stdout, `(Deed) [not counted as a move: role "grantor" does not imply presence]`)
-	assert.Contains(t, res.stdout, `as witness) [not counted as a move: attendance as "witness" shows a visit, not residence]`)
+	assert.Contains(t, res.stdout, "[not counted as a move: inside residence FROM 1809 TO 1810")
 	assert.Contains(t, res.stdout, "North Carolina → Indiana")
 	assert.NotContains(t, res.stdout, "Indiana → North Carolina")
 }

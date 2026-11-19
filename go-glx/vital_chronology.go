@@ -143,17 +143,11 @@ func vitalChronologyDates(archive *GLXFile, personID string, assertions []proofA
 	events := make(map[string]bool)
 	for _, id := range sortedKeys(archive.Events) {
 		event := archive.Events[id]
-		if event == nil || !isDeathEventType(event.Type) {
+		if event == nil || !isDeathEventType(event.Type) || !isEventVitalPrincipal(event, personID) {
 			continue
 		}
-		for _, participant := range event.Participants {
-			if participant.Person == personID && isVitalPrincipal(event.Type, participant.Role) {
-				events[id] = true
-				all = appendVitalEventFields(all, archive, id, id, map[string]bool{conflictDateType: true})
-
-				break
-			}
-		}
+		events[id] = true
+		all = appendVitalEventFields(all, archive, id, id, map[string]bool{conflictDateType: true})
 	}
 	var dates []proofAssertion
 	for i := range all {

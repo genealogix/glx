@@ -279,7 +279,7 @@ func TestCollectMigrationEntries_ResidenceWinsOverEventPlace(t *testing.T) {
 
 	wedding := migrationEntryByLabel(t, entries, "Wedding of a cousin")
 	assert.True(t, wedding.Excluded)
-	assert.Contains(t, wedding.Note, `attendance as "witness" shows a visit`)
+	assert.Equal(t, "inside residence FROM 1809 TO 1810 Dearborn County, Indiana Territory, United States", wedding.Note)
 
 	census := migrationEntryByLabel(t, entries, "1810 Census")
 	assert.False(t, census.Excluded)
@@ -305,7 +305,7 @@ func TestCollectMigrationEntries_VocabularyImpliesPresence(t *testing.T) {
 	deed := migrationEntryByLabel(t, entries, "Deed")
 	// Present now, but still inside the Dearborn residence period
 	assert.True(t, deed.Excluded)
-	assert.Contains(t, deed.Note, `attendance as "grantor" shows a visit`)
+	assert.Contains(t, deed.Note, "inside residence FROM 1809 TO 1810")
 }
 
 func TestPrintMigrationReportText_ExcludedNote(t *testing.T) {

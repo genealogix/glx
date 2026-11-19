@@ -160,3 +160,25 @@ func TestVitalReview_LegacyBurialAliasesAreDeathBounds(t *testing.T) {
 		}
 	}
 }
+
+func TestVitalReview_DisprovenDifferentValueKeepsStoredField(t *testing.T) {
+	archive := chronologyArchive("burial", "1653-11-03", "1653-11-01")
+	archive.Assertions["death-date"].Value = "1700-01-01"
+	archive.Assertions["death-date"].Status = "disproven"
+	require.NoError(t, MergeStandardVocabularies(archive))
+	proof, err := BuildProof(archive, "p", "death", ProofOptions{})
+	require.NoError(t, err)
+	assert.Contains(t, proof.Summary, "1653-11-01", "ruling out 1700 does not withdraw the stored 1653 date")
+	// Disproving the stored date's year still withdraws the day within it.
+	archive.Assertions["death-date"].Value = "1653"
+	proof, err = BuildProof(archive, "p", "death", ProofOptions{})
+	require.NoError(t, err)
+	assert.NotContains(t, proof.Summary, "1653-11-01")
+}
+
+func TestVitalReview_DecedentRoleIsTheVitalPrincipal(t *testing.T) {
+	archive := chronologyArchive("burial", "1635", "1653")
+	archive.Events["burial"].Participants[0].Role = "decedent"
+	require.NoError(t, MergeStandardVocabularies(archive))
+	assert.Len(t, VitalChronologyConflicts(archive, "p"), 1)
+}

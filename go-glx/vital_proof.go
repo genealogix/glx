@@ -23,6 +23,8 @@ import (
 // Structural fields are denormalized copies. Once a field is asserted, only a
 // surviving claim that agrees with the stored value permits that copy to answer
 // a proof question. The assertions themselves can still supply a different value.
+// A disproven claim of a different value rules out only that value, so it does
+// not withdraw the stored one.
 func structuralVitalFieldAvailable(archive *GLXFile, personID, eventID, property, value string) bool {
 	if value == "" {
 		return false
@@ -36,21 +38,32 @@ func structuralVitalFieldAvailable(archive *GLXFile, personID, eventID, property
 		if claim == nil || claim.Participant != nil {
 			continue
 		}
-		kind, field := legacyVitalProperty(claim.Property)
 		direct := claim.Subject.Event == eventID && claim.Property == property
-		legacy := claim.Subject.Person == personID && kind == event.Type && field == property
+		legacy := false
+		if !direct && claim.Subject.Person == personID {
+			kind, field := legacyVitalProperty(claim.Property)
+			legacy = kind == event.Type && field == property
+		}
+		if !direct && !legacy {
+			continue
+		}
 		definition := ConflictProperty(archive, claim.Subject, claim.Property)
-		if (!direct && !legacy) || !hasVitalSemantics(definition, property) {
+		if !hasVitalSemantics(definition, property) {
 			continue
 		}
 		comparison := compareFacts([]FactValue{{Value: claim.Value, Date: claim.Date}, {Value: value}}, definition, archive.Places, ComparisonOptions{})
 		agrees := len(comparison) > 0 && comparison[0].Verdict == VerdictAgree
+		disproven := AssertionIsDisproven(claim)
+		// Disproving a value that certainly differs says nothing against the
+		// stored one; disproving an overlapping value (the year of a stored
+		// day) still withdraws it.
+		ruledOutOther := disproven && len(comparison) > 0 && comparison[0].Verdict == VerdictDefinite
 		// A legacy claim about a different value does not reject this
 		// independent structural observation. Normal fact comparison handles it.
-		if direct || agrees {
+		if direct && !ruledOutOther || agrees {
 			asserted = true
 		}
-		if agrees && !AssertionIsDisproven(claim) {
+		if agrees && !disproven {
 			return true
 		}
 	}
@@ -61,17 +74,24 @@ func structuralVitalFieldAvailable(archive *GLXFile, personID, eventID, property
 func proofPrimaryEvent(archive *GLXFile, personID, eventType string) (string, *Event) {
 	for _, id := range sortedKeys(archive.Events) {
 		event := archive.Events[id]
-		if event == nil || event.Type != eventType {
-			continue
-		}
-		for _, participant := range event.Participants {
-			if participant.Person == personID && isVitalPrincipal(eventType, participant.Role) {
-				return id, event
-			}
+		if event != nil && event.Type == eventType && isEventVitalPrincipal(event, personID) {
+			return id, event
 		}
 	}
 
 	return "", nil
+}
+
+// isEventVitalPrincipal reports whether the event is personID's own vital
+// record: they take part in it in a principal role for its type.
+func isEventVitalPrincipal(event *Event, personID string) bool {
+	for _, participant := range event.Participants {
+		if participant.Person == personID && isVitalPrincipal(event.Type, participant.Role) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func primaryStructuralVitalDate(archive *GLXFile, personID, topic string) bool {
@@ -158,15 +178,7 @@ func appendProxyVitalProofFields(all []proofAssertion, archive *GLXFile, personI
 		if event == nil || !isProxyVitalType(topic, event.Type) {
 			continue
 		}
-		principal := false
-		for _, participant := range event.Participants {
-			if participant.Person == personID && isVitalPrincipal(event.Type, participant.Role) {
-				principal = true
-
-				break
-			}
-		}
-		if !principal {
+		if !isEventVitalPrincipal(event, personID) {
 			continue
 		}
 		for _, field := range []struct{ property, value string }{{conflictDateType, string(event.Date)}, {eventFieldPlace, event.PlaceID}} {

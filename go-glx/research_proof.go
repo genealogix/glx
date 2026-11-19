@@ -932,16 +932,7 @@ func eventAnswer(personID string, archive *GLXFile, eventType, label string) (st
 // The topic context is already carried by the result's question text, so the
 // summary only needs the supporting values.
 func answerFromAssertions(relevant []proofAssertion, archive *GLXFile, topic, personID string) (string, bool) {
-	primaryVitalDate := false
-	if topic == topicBirth || topic == topicDeath {
-		for i := range relevant {
-			if primaryVitalDateAssertion(&relevant[i], topic) {
-				primaryVitalDate = true
-
-				break
-			}
-		}
-	}
+	primaryVitalDate := (topic == topicBirth || topic == topicDeath) && hasPrimaryVitalDateAssertion(relevant, topic)
 	seen := make(map[string]bool)
 	var values []string
 	for i := range relevant {

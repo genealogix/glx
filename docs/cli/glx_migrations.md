@@ -29,8 +29,8 @@ counted, and so is a parent named on a child's death or burial, which places
 the child rather than the parent's household; an archive can mark its own roles with implies_presence in the
 participant roles vocabulary. Godparent, witness, sponsor, informant, officiant
 and other attendance-only appearances are labeled visits and do not start
-or end a movement. A parent at a child's birth or baptism still counts as
-household evidence. A bounded residence value overrides an event
+or end a movement, unless the vocabulary marks the role implies_presence: true.
+A parent at a child's birth or baptism still counts as household evidence. A bounded residence value overrides an event
 elsewhere only when the event's whole possible date span fits within that
 residence: the event remains visible but is not counted as a move. Open-ended
 event spans remain included. Gregorian and Julian observations share
