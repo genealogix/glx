@@ -70,14 +70,34 @@ func importMediaLockPath(archiveDir string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("resolving media directory %s: %w", archiveDir, err)
 	}
-	if resolved, err := filepath.EvalSymlinks(abs); err == nil {
-		abs = resolved
-	}
-	key := filepath.Clean(abs)
+	key := canonicalDir(filepath.Clean(abs))
 	if runtime.GOOS == goosWindows || runtime.GOOS == "darwin" {
 		key = strings.ToLower(key)
 	}
 	sum := sha256.Sum256([]byte(key))
 
 	return filepath.Join(os.TempDir(), "glx-media-"+hex.EncodeToString(sum[:8])+".lock"), nil
+}
+
+// canonicalDir resolves symlinks in the longest existing ancestor of abs and
+// appends the components that do not exist yet. Resolving only a path that
+// exists would key a lock taken before the output directory is created
+// differently from one taken after, wherever an ancestor is a symlink (macOS
+// /tmp is /private/tmp), and the two imports would then not exclude each
+// other. Resolving the existing part keeps the key the same either side of
+// the import creating the directory.
+func canonicalDir(abs string) string {
+	dir := abs
+	var missing []string
+	for {
+		if resolved, err := filepath.EvalSymlinks(dir); err == nil {
+			return filepath.Join(append([]string{resolved}, missing...)...)
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return abs
+		}
+		missing = append([]string{filepath.Base(dir)}, missing...)
+		dir = parent
+	}
 }

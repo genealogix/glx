@@ -132,3 +132,42 @@ func TestGEDCOMRoundTrip_KeepsOriginalFilename(t *testing.T) {
 		})
 	}
 }
+
+// A GEDCOM 7.0 FILE is a URI reference, so a local path is percent-encoded on
+// export: a file literally named photo%20.jpg and one named "photo .jpg" stay
+// two different names through GLX → GEDCOM 7.0 → GLX, instead of the first
+// exporting verbatim and coming back as the second. 5.5.1 writes plain paths.
+func TestGEDCOMRoundTrip_LiteralPercentAndSpaceStayDistinct(t *testing.T) {
+	archive := &GLXFile{Media: map[string]*Media{
+		"media-literal": {URI: "media/files/photo%20.jpg", MimeType: "image/jpeg"},
+		"media-space":   {URI: "media/files/photo .jpg", MimeType: "image/jpeg"},
+	}}
+
+	exported, _ := exportGEDCOMString(t, archive, GEDCOM70)
+	assert.Contains(t, exported, "FILE media/files/photo%2520.jpg\n")
+	assert.Contains(t, exported, "FILE media/files/photo%20.jpg\n")
+
+	reimported, result := importGEDCOMString(t, exported)
+	require.Len(t, reimported.Media, 2)
+	names := make([]string, 0, len(result.MediaFiles))
+	for _, mf := range result.MediaFiles {
+		names = append(names, mf.OriginalFilename)
+	}
+	assert.ElementsMatch(t, []string{"photo%20.jpg", "photo .jpg"}, names)
+
+	again, _ := exportGEDCOMString(t, reimported, GEDCOM70)
+	assert.Contains(t, again, "FILE media/files/photo%2520.jpg\n")
+	assert.Contains(t, again, "FILE media/files/photo%20.jpg\n")
+
+	plain, _ := exportGEDCOMString(t, archive, GEDCOM551)
+	assert.Contains(t, plain, "FILE media/files/photo%20.jpg\n")
+	assert.Contains(t, plain, "FILE media/files/photo .jpg\n")
+	assert.NotContains(t, plain, "%2520")
+}
+
+// URLs are already URIs and are written as they are.
+func TestExportFileRef(t *testing.T) {
+	assert.Equal(t, "media/files/Charlotte%20Bront%C3%AB.jpg", exportFileRef("media/files/Charlotte Brontë.jpg", GEDCOM70))
+	assert.Equal(t, "https://example.com/a%20b.jpg", exportFileRef("https://example.com/a%20b.jpg", GEDCOM70))
+	assert.Equal(t, "media/files/a b.jpg", exportFileRef("media/files/a b.jpg", GEDCOM551))
+}

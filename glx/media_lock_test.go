@@ -75,3 +75,43 @@ func TestImportMediaLockPath(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEqual(t, a, other)
 }
+
+// A lock taken on an output directory that does not exist yet, under a
+// symlinked parent (macOS /tmp), keeps its key once the import creates the
+// directory, so a second import still waits for the first.
+func TestImportMediaLock_SymlinkedParentBeforeAndAfterCreation(t *testing.T) {
+	realDir := t.TempDir()
+	link := filepath.Join(t.TempDir(), "link")
+	if err := os.Symlink(realDir, link); err != nil {
+		t.Skipf("cannot create a symlink here: %v", err)
+	}
+	if err := os.Mkdir(filepath.Join(link, "probe"), dirPermissions); err != nil {
+		t.Skipf("cannot create a directory through a symlink here: %v", err)
+	}
+	archive := filepath.Join(link, "new", "archive")
+
+	before, err := importMediaLockPath(archive)
+	require.NoError(t, err)
+	release, err := lockImportMedia(archive, &bytes.Buffer{})
+	require.NoError(t, err)
+	defer release()
+
+	require.NoError(t, os.MkdirAll(archive, dirPermissions))
+	after, err := importMediaLockPath(archive)
+	require.NoError(t, err)
+	assert.Equal(t, before, after, "creating the directory must not change the lock key")
+
+	viaReal, err := importMediaLockPath(filepath.Join(realDir, "new", "archive"))
+	require.NoError(t, err)
+	assert.Equal(t, before, viaReal, "the symlinked and resolved spellings must share a lock")
+
+	f, err := os.OpenFile(after, os.O_CREATE|os.O_RDWR, filePermissions)
+	require.NoError(t, err)
+	defer func() { _ = f.Close() }()
+	locked, err := tryLockFile(f)
+	require.NoError(t, err)
+	if locked {
+		_ = unlockFile(f)
+	}
+	assert.False(t, locked, "a second lock must not be acquired while the first is held")
+}
