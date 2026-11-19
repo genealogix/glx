@@ -87,7 +87,8 @@ function fail(message) {
 function showDownload(message) {
   const extension = isImport.value ? `.${glxFormat.value}` : '.ged'
   const baseName = file.value.name.replace(/\.(ged(com)?|glx)$/i, '') || 'archive'
-  const blob = new Blob([message.output], { type: isZIP.value ? 'application/zip' : 'application/octet-stream' })
+  // The worker sends the output as an array of chunks.
+  const blob = new Blob(message.output, { type: isZIP.value ? 'application/zip' : 'application/octet-stream' })
   download.value = {
     url: URL.createObjectURL(blob),
     name: baseName + extension,

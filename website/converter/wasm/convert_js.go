@@ -56,51 +56,58 @@ type summary struct {
 	Diagnostics []diagnostic `json:"diagnostics"`
 }
 
-func convert(data []byte, destination string, prepare func()) ([]byte, summary, error) {
+// convert writes the converted file to output as it is produced, so the
+// caller can hand it on in chunks rather than hold it whole.
+func convert(data []byte, destination string, prepare func(), output io.Writer) (summary, error) {
 	if len(bytes.TrimSpace(data)) == 0 {
-		return nil, summary{}, errEmptyFile
+		return summary{}, errEmptyFile
 	}
 	if bytes.HasPrefix(data, []byte("PK\x03\x04")) || bytes.HasPrefix(data, []byte("PK\x05\x06")) {
-		return nil, summary{}, errGEDZIP
+		return summary{}, errGEDZIP
 	}
 
 	// Conversion reports library diagnostics. Archive validation is a separate operation.
 	serializer := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false})
 	switch destination {
 	case singleFileGLX, multiFileGLX:
-		return importGEDCOM(data, serializer, destination, prepare)
+		return importGEDCOM(data, serializer, destination, prepare, output)
 	case "5.5.1":
-		return exportGEDCOM(data, glxlib.GEDCOM551)
+		return exportGEDCOM(data, glxlib.GEDCOM551, output)
 	case "7.0":
-		return exportGEDCOM(data, glxlib.GEDCOM70)
+		return exportGEDCOM(data, glxlib.GEDCOM70, output)
 	default:
-		return nil, summary{}, errDestination
+		return summary{}, errDestination
 	}
 }
 
-func importGEDCOM(data []byte, serializer *glxlib.DefaultSerializer, destination string, prepare func()) ([]byte, summary, error) {
+func importGEDCOM(data []byte, serializer *glxlib.DefaultSerializer, destination string, prepare func(), output io.Writer) (summary, error) {
 	// The importer tolerates legacy headers and encodings. Check the first
 	// record here so unrelated text cannot produce an empty archive.
 	header := bytes.TrimSpace(bytes.TrimPrefix(data, []byte("\xef\xbb\xbf")))
 	if bytes.HasPrefix(header, []byte{0, '0'}) || bytes.HasPrefix(header, []byte{'0', 0}) ||
 		bytes.HasPrefix(header, []byte{0xff, 0xfe}) || bytes.HasPrefix(header, []byte{0xfe, 0xff}) {
-		return nil, summary{}, errUTF16
+		return summary{}, errUTF16
 	}
 	if end := bytes.IndexAny(header, "\r\n"); end >= 0 {
 		header = header[:end]
 	}
 	fields := bytes.Fields(header)
 	if len(fields) < 2 || !bytes.Equal(fields[0], []byte("0")) || !bytes.Equal(fields[1], []byte("HEAD")) {
-		return nil, summary{}, errGEDCOM
+		return summary{}, errGEDCOM
+	}
+	// Refuse embedded media before spending the whole import on it.
+	if hasBLOBTag(data) {
+		return summary{}, errEmbeddedMedia
 	}
 
 	archive, result, err := glxlib.ImportGEDCOM(bytes.NewReader(data), nil)
 	if err != nil {
-		return nil, summary{}, fmt.Errorf("could not read GEDCOM: %w", err)
+		return summary{}, fmt.Errorf("could not read GEDCOM: %w", err)
 	}
+	// The line scan splits on LF; this catches a BLOB in a CR-only file.
 	for i := range result.MediaFiles {
 		if result.MediaFiles[i].SourceType == glxlib.MediaSourceBlob {
-			return nil, summary{}, errEmbeddedMedia
+			return summary{}, errEmbeddedMedia
 		}
 	}
 	stats := result.Statistics
@@ -125,19 +132,40 @@ func importGEDCOM(data []byte, serializer *glxlib.DefaultSerializer, destination
 	}
 	prepare()
 	if destination == multiFileGLX {
-		var output bytes.Buffer
-		if err := serializer.WriteMultiFileZIP(archive, &output); err != nil {
-			return nil, summary{}, fmt.Errorf("could not write the GLX ZIP: %w", err)
+		if err := serializer.WriteMultiFileZIP(archive, output); err != nil {
+			return summary{}, fmt.Errorf("could not write the GLX ZIP: %w", err)
 		}
 
-		return output.Bytes(), report, nil
+		return report, nil
 	}
-	output, err := serializer.SerializeSingleFileBatchedBytes(archive)
-	if err != nil {
-		return nil, summary{}, fmt.Errorf("could not write GLX: %w", err)
+	if err := serializer.WriteSingleFileBatched(archive, output); err != nil {
+		return summary{}, fmt.Errorf("could not write GLX: %w", err)
 	}
 
-	return output, report, nil
+	return report, nil
+}
+
+// hasBLOBTag reports whether any LF-terminated GEDCOM line is a BLOB record
+// ("<level> BLOB"), the GEDCOM 5.5 form of embedded multimedia.
+func hasBLOBTag(data []byte) bool {
+	for line := range bytes.Lines(data) {
+		line = bytes.TrimLeft(line, " \t")
+		level := 0
+		for level < len(line) && line[level] >= '0' && line[level] <= '9' {
+			level++
+		}
+		rest := line[level:]
+		tag := bytes.TrimLeft(rest, " \t")
+		if level == 0 || len(tag) == len(rest) {
+			continue // not "<level><delimiter>..."
+		}
+		if tail, found := bytes.CutPrefix(tag, []byte("BLOB")); found &&
+			(len(tail) == 0 || bytes.ContainsAny(tail[:1], " \t\r\n")) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func importMessage(line int, tag, message string) string {
@@ -148,32 +176,34 @@ func importMessage(line int, tag, message string) string {
 	return fmt.Sprintf("Line %d (%s): %s", line, tag, message)
 }
 
-func exportGEDCOM(data []byte, version glxlib.GEDCOMVersion) ([]byte, summary, error) {
+func exportGEDCOM(data []byte, version glxlib.GEDCOMVersion, output io.Writer) (summary, error) {
 	// Reject unknown structural fields before decoding can silently discard them.
 	// Property maps stay extensible; this is not full archive validation.
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
 	decoder.KnownFields(true)
 	var archive *glxlib.GLXFile
 	if err := decoder.Decode(&archive); err != nil {
-		return nil, summary{}, fmt.Errorf("could not read GLX: %w", err)
+		return summary{}, fmt.Errorf("could not read GLX: %w", err)
 	}
 	if archive == nil {
-		return nil, summary{}, errGLX
+		return summary{}, errGLX
 	}
 	// A single-file archive is one YAML document, not a stream. Never ignore
 	// later documents (including malformed ones) and export only the first.
 	var extra any
 	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
-		return nil, summary{}, errGLX
+		return summary{}, errGLX
 	}
 
-	if err := checkCompatibilityFields(data); err != nil {
-		return nil, summary{}, fmt.Errorf("could not read GLX: %w", err)
+	if len(archive.Sources) > 0 || len(archive.Media) > 0 {
+		if err := checkCompatibilityFields(data); err != nil {
+			return summary{}, fmt.Errorf("could not read GLX: %w", err)
+		}
 	}
 
-	output, result, err := glxlib.ExportGEDCOM(archive, version, nil)
+	gedcom, result, err := glxlib.ExportGEDCOM(archive, version, nil)
 	if err != nil {
-		return nil, summary{}, fmt.Errorf("could not write GEDCOM: %w", err)
+		return summary{}, fmt.Errorf("could not write GEDCOM: %w", err)
 	}
 	stats := result.Statistics
 	diagnostics := make([]diagnostic, 0, len(stats.Warnings))
@@ -191,13 +221,18 @@ func exportGEDCOM(data []byte, version glxlib.GEDCOMVersion) ([]byte, summary, e
 		},
 		Diagnostics: diagnostics,
 	}
+	if _, err := output.Write(gedcom); err != nil {
+		return summary{}, fmt.Errorf("could not write GEDCOM: %w", err)
+	}
 
-	return output, report, nil
+	return report, nil
 }
 
 // Source and Media have legacy-description unmarshallers that use Node.Decode,
 // which does not inherit KnownFields. Check these records without those methods
 // before allowing their compatibility conversion to hide misspelled fields.
+// TestCompatibilityCheckCoversEveryStructUnmarshaller fails if another struct
+// in the archive gains such an unmarshaller without being added here.
 func checkCompatibilityFields(data []byte) error {
 	type sourceFields glxlib.Source
 	type mediaFields glxlib.Media
@@ -210,10 +245,12 @@ func checkCompatibilityFields(data []byte) error {
 			mediaFields `yaml:",inline"`
 			Description string `yaml:"description,omitempty"`
 		} `yaml:"media"`
-		Other map[string]any `yaml:",inline"`
+		// Other sections were already checked by the GLXFile decoder above.
+		// A yaml.Node takes them as a shallow copy of the parsed tree rather
+		// than rebuilding every person and event as generic maps.
+		Other map[string]yaml.Node `yaml:",inline"`
 	}
 	// Keep the full document so aliases can refer to anchors in other sections.
-	// Other sections were already checked by the GLXFile decoder above.
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
 	decoder.KnownFields(true)
 

@@ -77,7 +77,7 @@ func (n NoteList) MarshalYAML() (any, error) {
 	if len(n) == 1 {
 		return marshalNote(n[0]), nil
 	}
-	if slices.ContainsFunc(n, needsQuotedNote) {
+	if slices.ContainsFunc(n, needsQuotedText) {
 		notes := make([]any, len(n))
 		for i, value := range n {
 			notes[i] = marshalNote(value)
@@ -89,18 +89,14 @@ func (n NoteList) MarshalYAML() (any, error) {
 	return []string(n), nil
 }
 
+// marshalNote quotes a note here as well as in marshalYAML, so callers that
+// pass a NoteList straight to yaml.Marshal still write a readable file.
 func marshalNote(note string) any {
-	if needsQuotedNote(note) {
+	if needsQuotedText(note) {
 		return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: note, Style: yaml.DoubleQuotedStyle}
 	}
 
 	return note
-}
-
-func needsQuotedNote(note string) bool {
-	// go-yaml can choose an unmarked block scalar for a multiline string
-	// starting with a tab, then reject that same tab while reading the file.
-	return strings.HasPrefix(strings.TrimLeft(note, "\n\r "), "\t") && strings.ContainsAny(note, "\n\r")
 }
 
 // String returns all notes joined with double newlines (for display).

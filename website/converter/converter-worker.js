@@ -23,16 +23,23 @@ self.addEventListener('message', async ({ data: { file, destination } }) => {
     void runtime.then(reportExit, reportExit)
 
     setStage('reading')
-    const input = new Uint8Array(await file.arrayBuffer())
+    let input = new Uint8Array(await file.arrayBuffer())
     setStage('converting')
-    const result = self.convertGLX(input, destination, () => setStage('preparing'))
+    // Go copies the input and the getter drops this reference, so the file's
+    // bytes can be reclaimed while the conversion runs.
+    const takeInput = () => {
+      const value = input
+      input = null
+      return value
+    }
+    const result = self.convertGLX(takeInput, destination, () => setStage('preparing'))
     if (result.error) {
       self.postMessage({ type: 'error', message: result.error })
       return
     }
 
-    const output = result.output.buffer
-    self.postMessage({ type: 'result', output, summary: JSON.parse(result.summary) }, [output])
+    const output = result.output
+    self.postMessage({ type: 'result', output, summary: JSON.parse(result.summary) }, output.map((chunk) => chunk.buffer))
   } catch {
     const messages = {
       loading: 'Could not load the converter. Check your connection and try again.',

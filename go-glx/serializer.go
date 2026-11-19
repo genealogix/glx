@@ -98,7 +98,7 @@ func (s *DefaultSerializer) SerializeSingleFileBytes(glx *GLXFile) ([]byte, erro
 	// Normalize empty metadata so omitempty suppresses it.
 	glx = withoutEmptyMetadata(glx)
 
-	yamlBytes, err := yaml.Marshal(glx)
+	yamlBytes, err := marshalYAML(glx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal YAML: %w", err)
 	}
@@ -159,7 +159,7 @@ func (s *DefaultSerializer) serializeMultiFile(glx *GLXFile, writeFile func(stri
 	// Serialize metadata if present and non-empty
 	if glx.ImportMetadata != nil && glx.ImportMetadata.hasContent() {
 		metaWrapper := map[string]*Metadata{"metadata": glx.ImportMetadata}
-		yamlBytes, err := yaml.Marshal(metaWrapper)
+		yamlBytes, err := marshalYAML(metaWrapper)
 		if err != nil {
 			return fmt.Errorf("failed to marshal metadata: %w", err)
 		}
@@ -226,7 +226,7 @@ func serializeEntitiesWrapped[T any](entities map[string]*T, dirName, entityType
 		}
 
 		// Marshal to YAML
-		yamlBytes, err := yaml.Marshal(wrapper)
+		yamlBytes, err := marshalYAML(wrapper)
 		if err != nil {
 			return fmt.Errorf("failed to marshal %s %s: %w", entityType, entityID, err)
 		}

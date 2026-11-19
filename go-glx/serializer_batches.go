@@ -17,12 +17,11 @@ package glx
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"reflect"
 	"runtime"
 	"slices"
 	"strings"
-
-	"go.yaml.in/yaml/v3"
 )
 
 const (
@@ -31,11 +30,23 @@ const (
 )
 
 // SerializeSingleFileBatchedBytes serializes a single GLX archive in small YAML
-// batches for memory-constrained callers. Mapping keys have a deterministic
-// order, which may differ from SerializeSingleFileBytes.
+// batches for memory-constrained callers. The bytes are the same as
+// SerializeSingleFileBytes produces.
 func (s *DefaultSerializer) SerializeSingleFileBatchedBytes(archive *GLXFile) ([]byte, error) {
+	var output bytes.Buffer
+	if err := s.WriteSingleFileBatched(archive, &output); err != nil {
+		return nil, err
+	}
+
+	return output.Bytes(), nil
+}
+
+// WriteSingleFileBatched writes the bytes SerializeSingleFileBatchedBytes
+// returns to output batch by batch, so a caller that streams them elsewhere
+// never holds the whole encoding in one buffer.
+func (s *DefaultSerializer) WriteSingleFileBatched(archive *GLXFile, output io.Writer) error {
 	if archive == nil {
-		return nil, ErrGLXFileNil
+		return ErrGLXFileNil
 	}
 
 	fields := reflect.ValueOf(archive).Elem()
@@ -45,21 +56,26 @@ func (s *DefaultSerializer) SerializeSingleFileBatchedBytes(archive *GLXFile) ([
 		}
 		if s.Options.Validate {
 			if err := validateGLXFile(archive); err != nil {
-				return nil, fmt.Errorf("validation failed: %w", err)
+				return fmt.Errorf("validation failed: %w", err)
 			}
 		}
 
-		return marshalArchiveInBatches(reflect.ValueOf(withoutEmptyMetadata(archive)).Elem())
+		return marshalArchiveInBatches(reflect.ValueOf(withoutEmptyMetadata(archive)).Elem(), output)
 	}
 
-	return s.SerializeSingleFileBytes(archive)
+	encoded, err := s.SerializeSingleFileBytes(archive)
+	if err != nil {
+		return err
+	}
+	_, err = output.Write(encoded)
+
+	return err
 }
 
 // go-yaml retains an emitter slot for each event until the encoder finishes.
 // Start a new encoder for each batch so the slots for a whole archive do not
 // have to fit in memory. All batches still form one YAML mapping document.
-func marshalArchiveInBatches(fields reflect.Value) ([]byte, error) {
-	var output bytes.Buffer
+func marshalArchiveInBatches(fields reflect.Value, output io.Writer) error {
 	for descriptor, field := range fields.Fields() {
 		tag := descriptor.Tag.Get("yaml")
 		if tag == "" || field.IsZero() {
@@ -67,8 +83,8 @@ func marshalArchiveInBatches(fields reflect.Value) ([]byte, error) {
 		}
 		key, _, _ := strings.Cut(tag, ",")
 		if field.Kind() == reflect.Map && field.Len() > yamlBatchSize {
-			if err := appendYAMLCollection(&output, key, field); err != nil {
-				return nil, err
+			if err := appendYAMLCollection(output, key, field); err != nil {
+				return err
 			}
 
 			continue
@@ -76,19 +92,32 @@ func marshalArchiveInBatches(fields reflect.Value) ([]byte, error) {
 		if field.Kind() == reflect.Map && field.Len() == 0 {
 			continue
 		}
-		encoded, err := yaml.Marshal(map[string]any{key: field.Interface()})
+		encoded, err := marshalYAML(map[string]any{key: field.Interface()})
 		if err != nil {
-			return nil, err
+			return err
 		}
-		output.Write(encoded)
+		if _, err := output.Write(encoded); err != nil {
+			return err
+		}
 	}
 
-	return output.Bytes(), nil
+	return nil
 }
 
-func appendYAMLCollection(output *bytes.Buffer, key string, collection reflect.Value) error {
+func appendYAMLCollection(output io.Writer, key string, collection reflect.Value) error {
 	keys := collection.MapKeys()
-	slices.SortFunc(keys, func(a, b reflect.Value) int { return strings.Compare(a.String(), b.String()) })
+	// Split in go-yaml's own key order, so the batches concatenate to the
+	// same listing as one encoding of the whole map.
+	slices.SortFunc(keys, func(a, b reflect.Value) int {
+		switch {
+		case yamlKeyLess(a.String(), b.String()):
+			return -1
+		case yamlKeyLess(b.String(), a.String()):
+			return 1
+		default:
+			return 0
+		}
+	})
 
 	for offset := 0; offset < len(keys); offset += yamlBatchSize {
 		chunk := keys[offset:min(offset+yamlBatchSize, len(keys))]
@@ -97,7 +126,7 @@ func appendYAMLCollection(output *bytes.Buffer, key string, collection reflect.V
 			batch.SetMapIndex(id, collection.MapIndex(id))
 		}
 
-		encoded, err := yaml.Marshal(map[string]any{key: batch.Interface()})
+		encoded, err := marshalYAML(map[string]any{key: batch.Interface()})
 		if err != nil {
 			return err
 		}
@@ -106,10 +135,13 @@ func appendYAMLCollection(output *bytes.Buffer, key string, collection reflect.V
 			// already have the indentation for that collection.
 			_, encoded, _ = bytes.Cut(encoded, []byte("\n"))
 		}
-		output.Write(encoded)
+		if _, err := output.Write(encoded); err != nil {
+			return err
+		}
 		// A long synchronous js/wasm callback can allocate faster than
-		// concurrent GC can finish. Reclaim the completed batches together.
-		if runtime.GOARCH == "wasm" && offset%wasmGCInterval == 0 {
+		// concurrent GC can finish. Reclaim the completed batches together,
+		// once there are some to reclaim.
+		if runtime.GOARCH == "wasm" && offset > 0 && offset%wasmGCInterval == 0 {
 			runtime.GC()
 		}
 	}

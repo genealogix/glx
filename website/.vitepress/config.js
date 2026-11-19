@@ -534,7 +534,15 @@ export default defineConfig(({ command, mode }) => {
   // Cloudflare Pages invokes VitePress directly. Generate the same assets
   // for that build and local development, and let preview use the built files.
   if (command === 'build' || mode === 'development') {
-    execFileSync(process.execPath, [path.resolve(__dirname, '../scripts/build-converter.mjs')], { stdio: 'inherit' })
+    try {
+      execFileSync(process.execPath, [path.resolve(__dirname, '../scripts/build-converter.mjs')], { stdio: 'inherit' })
+    } catch (error) {
+      // A published build must ship the converter, so it still fails. A docs
+      // contributor without Go can preview every other page in development;
+      // only the converter page's Convert button stops working.
+      if (command === 'build') throw error
+      console.warn(`The converter was not built (${error.message}). Install Go from go.mod to use /convert locally.`)
+    }
   }
   return config
 })
