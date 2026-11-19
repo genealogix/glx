@@ -2077,3 +2077,54 @@ func TestExportGEDCOM_HostlessCoupleEventStaysOnFAM(t *testing.T) {
 		})
 	}
 }
+
+// GEDCOM expects a family's CHIL lines in birth order; the export follows the
+// same order as glx descendants and summary, not the child IDs (#1504).
+func TestReconstructFamilies_ChildrenInBirthOrder(t *testing.T) {
+	birth := func(person, date string) *Event {
+		return &Event{
+			Type:         EventTypeBirth,
+			Date:         DateString(date),
+			Participants: []Participant{{Person: person, Role: ParticipantRolePrincipal}},
+		}
+	}
+	rels := map[string]*Relationship{}
+	for _, child := range []string{"p-a", "p-b", "p-c", "p-d"} {
+		rels["rel-"+child] = &Relationship{
+			Type: RelationshipTypeParentChild,
+			Participants: []Participant{
+				{Person: "p-mother", Role: ParticipantRoleParent},
+				{Person: child, Role: ParticipantRoleChild},
+			},
+		}
+	}
+	expCtx := &ExportContext{
+		GLX: &GLXFile{
+			Persons: map[string]*Person{
+				"p-mother": {Properties: map[string]any{PersonPropertySex: "female"}},
+				"p-a":      {Properties: map[string]any{}},
+				"p-b":      {Properties: map[string]any{}},
+				"p-c":      {Properties: map[string]any{}},
+				"p-d":      {Properties: map[string]any{}},
+			},
+			Relationships: rels,
+			Events: map[string]*Event{
+				"ev-a": birth("p-a", "1711-05-03"),
+				"ev-b": birth("p-b", "1688-11-04"),
+				"ev-c": birth("p-c", "1700-10-24"),
+			},
+		},
+		PersonXRefMap: map[string]string{"p-mother": "@I1@", "p-a": "@I2@", "p-b": "@I3@", "p-c": "@I4@", "p-d": "@I5@"},
+		ExportIndex: &ExportIndex{
+			EventTypes:        make(map[string]string),
+			RelationshipTypes: make(map[string]string),
+		},
+		PlaceStrings: make(map[string]string),
+		Stats:        ExportStatistics{},
+	}
+
+	reconstructFamilies(expCtx)
+
+	require.Len(t, expCtx.Families, 1)
+	assert.Equal(t, []string{"p-b", "p-c", "p-a", "p-d"}, expCtx.Families[0].ChildIDs, "undated p-d last")
+}

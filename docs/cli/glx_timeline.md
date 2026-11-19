@@ -19,6 +19,9 @@ The person argument can be an exact entity ID (e.g., person-john-smith)
 or a name to search for (e.g., "John Smith"). If the name matches
 multiple persons, all matches are listed for disambiguation.
 
+Gregorian and Julian dates share chronological ordering. A BEF observation
+precedes the date that bounds it.
+
 Use --no-family to exclude family events and show only direct events.
 
 ```

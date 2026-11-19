@@ -17,20 +17,29 @@ package glx
 import (
 	"sort"
 	"strings"
+
+	"golang.org/x/text/unicode/norm"
+)
+
+// NFD handles accented letters; these Latin letters do not decompose to ASCII.
+var soundexLatinReplacer = strings.NewReplacer(
+	"ß", "ss", "ẞ", "SS", "Æ", "AE", "æ", "ae", "Œ", "OE", "œ", "oe",
+	"Ø", "O", "ø", "o", "Ł", "L", "ł", "l", "Đ", "D", "đ", "d",
+	"Ð", "D", "ð", "d", "Þ", "TH", "þ", "th",
 )
 
 // Soundex computes the American Soundex code for a name, following the
 // NARA (National Archives) algorithm used by the US Census Bureau.
 // Returns a 4-character code (letter + 3 digits), or empty string if the
-// input is empty or contains no ASCII letters (A-Z).
+// input is empty or contains no Latin letters that fold to A-Z.
 func Soundex(name string) string {
 	if name == "" {
 		return ""
 	}
 
-	// Normalize: uppercase, ASCII letters only (Soundex is defined for A-Z)
+	// Fold Latin diacritics and consonants before the A-Z Soundex algorithm.
 	var letters []byte
-	for _, r := range strings.ToUpper(name) {
+	for _, r := range strings.ToUpper(norm.NFD.String(soundexLatinReplacer.Replace(name))) {
 		if r >= 'A' && r <= 'Z' {
 			letters = append(letters, byte(r))
 		}

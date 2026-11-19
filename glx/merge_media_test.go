@@ -605,28 +605,26 @@ func TestPublishMergedMultiFileArchive_PreservesAmbiguousDirectoriesWithoutCopie
 }
 
 func TestExecuteMediaCopies_SkipsWhenSameIDButDestEntityKept(t *testing.T) {
-	// Conflict scenario: src and dest both define media-shared. Merge keeps
-	// dest's. merged.Media[media-shared] is dest's pointer, not src's — so
-	// pointer-check correctly skips the copy even though the URI happens to
-	// match the planned target. Copying would import src's binary under
-	// dest's preserved metadata, which would misattribute it.
+	// Different metadata for the same ID remains a conflict even when the URI
+	// matches. Importing src's binary under dest's metadata would misattribute it.
 	destDir := t.TempDir()
 	srcMediaDir := t.TempDir()
 	srcBinary := filepath.Join(srcMediaDir, "photo.jpg")
 	require.NoError(t, os.WriteFile(srcBinary, []byte("SRC"), 0o644))
 
-	srcEntity := &glxlib.Media{URI: "media/files/photo.jpg"}
-	destEntity := &glxlib.Media{URI: "media/files/photo.jpg"} // same URI by coincidence
+	srcEntity := &glxlib.Media{URI: "media/files/photo.jpg", Title: "Source"}
+	destEntity := &glxlib.Media{URI: "media/files/photo.jpg", Title: "Destination"}
 
 	plan := []plannedMediaCopy{{
 		SrcPath:    srcBinary,
 		TargetName: "photo.jpg",
 		SrcMedia:   map[string]*glxlib.Media{"media-shared": srcEntity},
 	}}
-	// merged kept dest's entity (different pointer).
 	merged := &glxlib.GLXFile{Media: map[string]*glxlib.Media{
 		"media-shared": destEntity,
 	}}
+	result := mergeArchivesInMemory(merged, &glxlib.GLXFile{Media: map[string]*glxlib.Media{"media-shared": srcEntity}})
+	require.Len(t, result.Conflicts, 1)
 
 	copied, skipped, _, err := executeMediaCopiesWithRollback(plan, destDir, merged)
 	require.NoError(t, err)

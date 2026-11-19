@@ -1175,6 +1175,7 @@ Standard properties include:
 - `crop` - Crop coordinates for images
 - `medium` - Physical medium type
 - `original_filename` - Original filename when imported
+- `external_ids` - External media identifiers with optional authority (multi-value, GEDCOM: EXID or REFN)
 - `photographer` - Person who captured the media
 - `location` - Location where media was captured
 - `blob_size` - Length in bytes of the encoded GEDCOM 5.5.1 BLOB text (pre-decode), when imported from a BLOB record

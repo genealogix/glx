@@ -1029,6 +1029,34 @@
     "temporal": true
   },
   {
+    "name": "date values JULIAN 1900-03-01 / 1900-03-14 are the same day",
+    "property": "date",
+    "kind": "date",
+    "values": [
+      {
+        "value": "JULIAN 1900-03-01"
+      },
+      {
+        "value": "1900-03-14"
+      }
+    ],
+    "verdict": "agree"
+  },
+  {
+    "name": "date values JULIAN 1900-03-01 / 1900-03-01 are thirteen days apart",
+    "property": "date",
+    "kind": "date",
+    "values": [
+      {
+        "value": "JULIAN 1900-03-01"
+      },
+      {
+        "value": "1900-03-01"
+      }
+    ],
+    "verdict": "definite"
+  },
+  {
     "name": "different calendars JULIAN 1900-03-01 / 1900-03-14",
     "property": "residence",
     "temporal": true,
