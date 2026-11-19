@@ -68,11 +68,9 @@ func (s *DefaultSerializer) SerializeSingleFileBytes(glx *GLXFile) ([]byte, erro
 }
 ```
 
-Everything on the prohibited list lives in the `glx/` CLI package. The one carve-out
-is unexported test helpers that exist purely to feed fixtures to the library's own
-tests — `go-glx/gedcom_test_helpers.go` opens files for that reason. They are not part
-of the library's API and no production path reaches them; nothing exported may rely on
-them.
+Everything on the prohibited list lives in the `glx/` CLI package. The library's own
+tests may read fixture files, but only from `_test.go` files (such as
+`go-glx/gedcom_test_helpers_test.go`), which are not compiled into the package.
 
 ## Consequences
 

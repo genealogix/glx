@@ -444,17 +444,8 @@ func ImportGEDCOM(reader io.Reader, logWriter io.Writer) (*GLXFile, *ImportResul
 	logger.LogInfo("Detected GEDCOM version: " + versionString)
 
 	// Create GLX file
-	glx := &GLXFile{
-		Persons:       make(map[string]*Person),
-		Events:        make(map[string]*Event),
-		Relationships: make(map[string]*Relationship),
-		Places:        make(map[string]*Place),
-		Sources:       make(map[string]*Source),
-		Repositories:  make(map[string]*Repository),
-		Media:         make(map[string]*Media),
-		Citations:     make(map[string]*Citation),
-		Assertions:    make(map[string]*Assertion),
-	}
+	glx := &GLXFile{}
+	glx.initMaps()
 
 	// Load standard vocabularies into GLXFile so validation works
 	if err := LoadStandardVocabulariesIntoGLX(glx); err != nil {
