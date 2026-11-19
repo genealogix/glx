@@ -165,15 +165,23 @@ func ClassifyParticipation(eventType, role string, roles map[string]*VocabularyE
 		p = Participation{Present: true}
 	}
 
-	entry := roles[declared]
-	if entry == nil {
-		entry = roles[role]
-	}
-	if entry != nil && entry.ImpliesPresence != nil {
+	if entry := participantRoleEntry(declared, roles); entry != nil && entry.ImpliesPresence != nil {
 		p.Present = *entry.ImpliesPresence
 	}
 
 	return p
+}
+
+// participantRoleEntry looks a role up in the participant role vocabulary,
+// by its declared spelling first and then case-folded, as
+// ClassifyParticipation does.
+func participantRoleEntry(role string, roles map[string]*VocabularyEntry) *VocabularyEntry {
+	declared := strings.TrimSpace(role)
+	if entry := roles[declared]; entry != nil {
+		return entry
+	}
+
+	return roles[strings.ToLower(declared)]
 }
 
 // EventParticipation classifies personID's participation in event, returning

@@ -523,6 +523,10 @@ func TestScoreSharedEvents_CommonEvent(t *testing.T) {
 			"person-a": {"event-census-1860", "event-birth-a"},
 			"person-b": {"event-census-1860", "event-birth-b"},
 		},
+		personEventRoles: map[string]map[string]map[string]bool{
+			"person-a": {"event-census-1860": {"principal": true}, "event-birth-a": {"principal": true}},
+			"person-b": {"event-census-1860": {"principal": true}, "event-birth-b": {"principal": true}},
+		},
 	}
 	score, detail, hasData := scoreSharedEvents("person-a", "person-b", idx)
 	assert.Positive(t, score, "should have positive score for shared event")

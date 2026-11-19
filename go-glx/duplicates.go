@@ -119,6 +119,15 @@ type duplicateIndex struct {
 	personBirthYear       map[string]int                        // person ID → year extracted from their birth event (0 if unknown)
 	personEventRoles      map[string]map[string]map[string]bool // person -> event -> role set
 	personFirstParentYear map[string]int                        // person ID → earliest year they appear as role=parent (0 if never)
+	eventDates            map[*Event]duplicateEventDate         // event → its date, parsed once for the lifetime gate
+}
+
+// duplicateEventDate is an event date parsed once per index, so the
+// lifetime gate does not re-parse the same dates for every candidate pair.
+type duplicateEventDate struct {
+	date   glxdate.Date
+	bounds glxdate.Bounds
+	parsed bool
 }
 
 // FindCrossArchiveDuplicates detects potential duplicate persons between two
@@ -195,12 +204,20 @@ func buildCombinedView(dest, src *GLXFile) *GLXFile {
 
 	maps.Copy(combined.Places, src.Places)
 	maps.Copy(combined.Places, dest.Places)
-	for id, claim := range src.Assertions {
-		if duplicateSourceClaimRetained(claim, dest, src) {
-			combined.Assertions[id] = claim
-		}
-	}
 	maps.Copy(combined.Assertions, dest.Assertions)
+	for id, claim := range src.Assertions {
+		if !duplicateSourceClaimRetained(claim, dest, src) {
+			continue
+		}
+		// Assertion IDs are per archive: a source claim whose ID a different
+		// destination claim already uses is kept under a view-only key rather
+		// than silently replaced.
+		key := id
+		if retained, collision := combined.Assertions[key]; collision && retained != claim && !yamlEqual(retained, claim) {
+			key = "\x00source\x00" + id
+		}
+		combined.Assertions[key] = claim
+	}
 	maps.Copy(combined.ParticipantRoles, src.ParticipantRoles)
 	maps.Copy(combined.ParticipantRoles, dest.ParticipantRoles)
 
@@ -362,8 +379,17 @@ func buildSurnameBlocks(archive *GLXFile) map[string][]string {
 			key = "_nosurname"
 		}
 		blocks["exact:"+key] = append(blocks["exact:"+key], id)
+		// Phonetic surname blocks are split by the given name's first folded
+		// letter: a common code (S530 covers Schmidt, Smith, Schmitt and Smyth)
+		// would otherwise make one block of thousands. Exact-surname blocks
+		// still pair every spelling of the given name.
 		if code := Soundex(surname); code != "" {
-			blocks["soundex:"+code] = append(blocks["soundex:"+code], id)
+			given, _ := duplicateNameParts(person)
+			initial := "_"
+			if givenCode := Soundex(given); givenCode != "" {
+				initial = givenCode[:1]
+			}
+			blocks["soundex:"+code+":"+initial] = append(blocks["soundex:"+code+":"+initial], id)
 		}
 	}
 
@@ -438,6 +464,7 @@ func buildDuplicateIndex(archive *GLXFile) *duplicateIndex {
 		personDeathEvent:      make(map[string]*Event),
 		personBirthYear:       make(map[string]int),
 		personFirstParentYear: make(map[string]int),
+		eventDates:            make(map[*Event]duplicateEventDate, len(archive.Events)),
 	}
 
 	// Index events by participant; pre-bind birth/death events per person so
@@ -455,6 +482,7 @@ func buildDuplicateIndex(archive *GLXFile) *duplicateIndex {
 		if event == nil {
 			continue
 		}
+		idx.eventDates[event] = parseDuplicateEventDate(event)
 		eventYear := ExtractFirstYear(string(event.Date))
 		for _, p := range event.Participants {
 			if p.Person == "" {
@@ -475,8 +503,8 @@ func buildDuplicateIndex(archive *GLXFile) *duplicateIndex {
 			if !isVitalPrincipal(event.Type, role) {
 				continue
 			}
-			switch event.Type {
-			case EventTypeBirth, "baptism", "christening":
+			switch {
+			case isBirthEventType(event.Type):
 				if previous := idx.personBirthEvent[p.Person]; previous == nil || event.Type == EventTypeBirth && previous.Type != EventTypeBirth {
 					idx.personBirthEvent[p.Person] = event
 					// A baptism is an upper bound on birth, not a lower bound
@@ -485,7 +513,7 @@ func buildDuplicateIndex(archive *GLXFile) *duplicateIndex {
 						idx.personBirthYear[p.Person] = eventYear
 					}
 				}
-			case EventTypeDeath, "burial", "cremation":
+			case isDeathEventType(event.Type):
 				if previous := idx.personDeathEvent[p.Person]; previous == nil || event.Type == EventTypeDeath && previous.Type != EventTypeDeath {
 					idx.personDeathEvent[p.Person] = event
 				}
@@ -510,7 +538,7 @@ func buildDuplicateIndex(archive *GLXFile) *duplicateIndex {
 			if p.Person == "" || standing.Link(relID, p.Person) == RelationshipStandingDisproven {
 				continue
 			}
-			roles[p.Person] = p.Role
+			roles[p.Person] = strings.ToLower(strings.TrimSpace(p.Role))
 			personIDs = append(personIDs, p.Person)
 			if !isParentChild {
 				continue
@@ -529,7 +557,13 @@ func buildDuplicateIndex(archive *GLXFile) *duplicateIndex {
 				recordParentYear(idx, parentID, childYear)
 			}
 		}
-		// Record all pairwise relationships
+		// Record all pairwise relationships. Parent-child subtypes share one
+		// peer kind: being C's parent corroborates identity whichever subtype
+		// each archive chose.
+		peerKind := strings.ToLower(strings.TrimSpace(rel.Type))
+		if isParentChild {
+			peerKind = RelationshipTypeParentChild
+		}
 		for i := 0; i < len(personIDs); i++ {
 			for j := i + 1; j < len(personIDs); j++ {
 				a, b := personIDs[i], personIDs[j]
@@ -541,12 +575,12 @@ func buildDuplicateIndex(archive *GLXFile) *duplicateIndex {
 				if idx.personRelPeers[personIDs[i]] == nil {
 					idx.personRelPeers[personIDs[i]] = make(map[string]bool)
 				}
-				idx.personRelPeers[personIDs[i]][rel.Type+"\x00"+roles[personIDs[i]]+"\x00"+roles[personIDs[j]]+"\x00"+personIDs[j]] = true
+				idx.personRelPeers[personIDs[i]][peerKind+"\x00"+roles[personIDs[i]]+"\x00"+roles[personIDs[j]]+"\x00"+personIDs[j]] = true
 
 				if idx.personRelPeers[personIDs[j]] == nil {
 					idx.personRelPeers[personIDs[j]] = make(map[string]bool)
 				}
-				idx.personRelPeers[personIDs[j]][rel.Type+"\x00"+roles[personIDs[j]]+"\x00"+roles[personIDs[i]]+"\x00"+personIDs[i]] = true
+				idx.personRelPeers[personIDs[j]][peerKind+"\x00"+roles[personIDs[j]]+"\x00"+roles[personIDs[i]]+"\x00"+personIDs[i]] = true
 			}
 		}
 	}
@@ -707,7 +741,10 @@ func scorePair(idA, idB string, personA, personB *Person, archive *GLXFile, idx 
 		totalScore *= ageScore
 	}
 
-	if effectiveWeight < weightName+weightPhonetic-1e-9 {
+	// A name on both sides is the minimum identity evidence. This does not
+	// also require the phonetic dimension: Soundex is undefined outside the
+	// Latin script, and identical Cyrillic or CJK names must not be dropped.
+	if !nameHas {
 		signals = append(signals, DuplicateSignal{"Identity evidence", 0, 0, "too little independent evidence", true})
 		totalScore = 0
 	}
@@ -1372,10 +1409,20 @@ func isInitialMatch(a, b string) bool {
 	return false
 }
 
+// duplicateNameParts returns the given name and surname used by the
+// identity gates. Structured fields win; a missing given name is recovered
+// from the display name only when its last word is the recorded surname, so
+// {surname: Roth} with value "Anna Roth" still has a given name, while a bare
+// "Roth" does not.
 func duplicateNameParts(person *Person) (string, string) {
 	given, surname := ExtractNameFields(person.Properties[PersonPropertyName])
 	if given == "" && surname == "" {
 		return splitFullName(PersonDisplayName(person))
+	}
+	if given == "" {
+		if displayGiven, displaySurname := splitFullName(PersonDisplayName(person)); displaySurname != "" && strings.EqualFold(displaySurname, surname) {
+			given = displayGiven
+		}
 	}
 
 	return given, surname
@@ -1394,11 +1441,15 @@ func duplicateRecordedSex(person *Person) string {
 func duplicateLifetimeConflict(idA, idB string, archive *GLXFile, idx *duplicateIndex) string {
 	for _, direction := range [][2]string{{idA, idB}, {idB, idA}} {
 		known, candidate := direction[0], direction[1]
-		death := duplicateDateBounds(idx.personDeathEvent[known])
-		birth := duplicateDateBounds(idx.personBirthEvent[known])
+		knownDeath := idx.eventDate(idx.personDeathEvent[known])
+		knownBirthEvent := idx.personBirthEvent[known]
+		var knownBirth duplicateEventDate
+		if knownBirthEvent != nil && knownBirthEvent.Type == EventTypeBirth {
+			knownBirth = idx.eventDate(knownBirthEvent)
+		}
 		if born := idx.personBirthEvent[candidate]; born != nil && born.Type == EventTypeBirth {
-			candidateBirth := duplicateDateBounds(born)
-			if death.Known && candidateBirth.Known && duplicateCalendarsAgree(idx.personDeathEvent[known], born) && candidateBirth.Outer.Start >= death.Outer.End {
+			candidateBirth := idx.eventDate(born)
+			if knownDeath.calendarAgrees(candidateBirth) && candidateBirth.bounds.Outer.Start >= knownDeath.bounds.Outer.End {
 				return fmt.Sprintf("%s born on %s after %s's death/burial", candidate, born.Date, known)
 			}
 		}
@@ -1407,14 +1458,11 @@ func duplicateLifetimeConflict(idA, idB string, archive *GLXFile, idx *duplicate
 			if !duplicateEventNeedsLivingPerson(event, candidate, archive.ParticipantRoles) {
 				continue
 			}
-			activity := duplicateDateBounds(event)
-			if !activity.Known {
-				continue
-			}
-			if death.Known && duplicateCalendarsAgree(idx.personDeathEvent[known], event) && activity.Outer.Start >= death.Outer.End {
+			activity := idx.eventDate(event)
+			if knownDeath.calendarAgrees(activity) && activity.bounds.Outer.Start >= knownDeath.bounds.Outer.End {
 				return fmt.Sprintf("%s active at %s after %s's death/burial", candidate, event.Date, known)
 			}
-			if born := idx.personBirthEvent[known]; born != nil && born.Type == EventTypeBirth && birth.Known && duplicateCalendarsAgree(born, event) && activity.Outer.End <= birth.Outer.Start {
+			if knownBirth.calendarAgrees(activity) && activity.bounds.Outer.End <= knownBirth.bounds.Outer.Start {
 				return fmt.Sprintf("%s active at %s before %s's birth", candidate, event.Date, known)
 			}
 		}
@@ -1423,16 +1471,36 @@ func duplicateLifetimeConflict(idA, idB string, archive *GLXFile, idx *duplicate
 	return ""
 }
 
-func duplicateDateBounds(event *Event) glxdate.Bounds {
+func parseDuplicateEventDate(event *Event) duplicateEventDate {
 	if event == nil {
-		return glxdate.Bounds{}
+		return duplicateEventDate{}
 	}
 	date, err := glxdate.Parse(string(event.Date))
 	if err != nil {
-		return glxdate.Bounds{}
+		return duplicateEventDate{}
 	}
 
-	return date.ValueBounds(2)
+	return duplicateEventDate{date: date, bounds: date.ValueBounds(2), parsed: true}
+}
+
+// eventDate returns the event's date parsed at index time, parsing on demand
+// only for an event the index did not see.
+func (idx *duplicateIndex) eventDate(event *Event) duplicateEventDate {
+	if event == nil {
+		return duplicateEventDate{}
+	}
+	if parsed, ok := idx.eventDates[event]; ok {
+		return parsed
+	}
+
+	return parseDuplicateEventDate(event)
+}
+
+// calendarAgrees reports whether both dates are known and written in the same
+// calendar, the precondition for comparing their bounds.
+func (d duplicateEventDate) calendarAgrees(other duplicateEventDate) bool {
+	return d.parsed && other.parsed && d.bounds.Known && other.bounds.Known &&
+		d.date.Calendar() == other.date.Calendar() && d.date.CalendarName() == other.date.CalendarName()
 }
 
 // Multiple roles union their evidence. A parent reference alone does not
@@ -1445,16 +1513,12 @@ func duplicateEventNeedsLivingPerson(event *Event, personID string, roles map[st
 		if participant.Person != personID {
 			continue
 		}
-		role := strings.ToLower(strings.TrimSpace(participant.Role))
 		participation := ClassifyParticipation(event.Type, participant.Role, roles)
 		if !participation.Present || participation.OwnRecord && (isBirthEventType(event.Type) || isDeathEventType(event.Type) || event.Type == EventTypeProbate) {
 			continue
 		}
-		definition := roles[strings.TrimSpace(participant.Role)]
-		if definition == nil {
-			definition = roles[role]
-		}
-		if IsParentSideRole(role) && (definition == nil || definition.ImpliesPresence == nil) {
+		definition := participantRoleEntry(participant.Role, roles)
+		if IsParentSideRole(strings.ToLower(strings.TrimSpace(participant.Role))) && (definition == nil || definition.ImpliesPresence == nil) {
 			continue
 		}
 
@@ -1465,9 +1529,6 @@ func duplicateEventNeedsLivingPerson(event *Event, personID string, roles map[st
 }
 
 func duplicateEventRolesOverlap(idA, idB, eventID string, idx *duplicateIndex) bool {
-	if idx.personEventRoles == nil {
-		return true
-	}
 	for role := range idx.personEventRoles[idA][eventID] {
 		if idx.personEventRoles[idB][eventID][role] {
 			return true
@@ -1475,14 +1536,4 @@ func duplicateEventRolesOverlap(idA, idB, eventID string, idx *duplicateIndex) b
 	}
 
 	return false
-}
-
-func duplicateCalendarsAgree(a, b *Event) bool {
-	if a == nil || b == nil {
-		return false
-	}
-	first, errA := glxdate.Parse(string(a.Date))
-	second, errB := glxdate.Parse(string(b.Date))
-
-	return errA == nil && errB == nil && first.Calendar() == second.Calendar() && first.CalendarName() == second.CalendarName()
 }
