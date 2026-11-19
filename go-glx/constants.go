@@ -527,7 +527,9 @@ const (
 	SourceTypeImmigration        = "immigration"         // Passenger lists, naturalization records
 	SourceTypeDirectory          = "directory"           // City directories, telephone books
 	SourceTypeBook               = "book"                // Published genealogies, family histories
-	SourceTypeDatabase           = "database"            // Online databases, compiled records
+	SourceTypeArticle            = "article"             // Journal, magazine, and reference articles
+	SourceTypeWebsite            = "website"             // Websites, informational web pages, and blogs
+	SourceTypeDatabase           = "database"            // Searchable record collections and compiled databases
 	SourceTypeOralHistory        = "oral_history"        // Interviews, recorded memories
 	SourceTypeCorrespondence     = "correspondence"      // Letters, emails, personal papers
 	SourceTypePhotograph         = "photograph"          // Photograph collections
@@ -562,6 +564,8 @@ var standardSourceTypes = map[string]bool{
 	SourceTypeImmigration:        true,
 	SourceTypeDirectory:          true,
 	SourceTypeBook:               true,
+	SourceTypeArticle:            true,
+	SourceTypeWebsite:            true,
 	SourceTypeDatabase:           true,
 	SourceTypeOralHistory:        true,
 	SourceTypeCorrespondence:     true,
@@ -579,12 +583,25 @@ var standardSourceTypes = map[string]bool{
 	SourceTypeOther:              true,
 }
 
+// MissingStandardSourceTypeHint explains a source type rejected by an
+// archive's own source_types vocabulary when the key is a standard type: an
+// archive initialized before the type was added keeps its older vocabulary,
+// so the fix is to copy the entry, not to pick another type. It returns ""
+// for a key that is not a standard source type.
+func MissingStandardSourceTypeHint(key string) string {
+	if !standardSourceTypes[key] {
+		return ""
+	}
+
+	return `"` + key + `" is a standard source type missing from this archive's vocabularies/source-types.glx; copy its entry from the standard source-types vocabulary`
+}
+
 // gedcomSourceTypeMapping maps GEDCOM source type values to GLX source types.
 // Package-level to avoid allocation on every call.
 var gedcomSourceTypeMapping = map[string]string{
 	"book":       SourceTypeBook,
-	"article":    SourceTypeBook,
-	"website":    SourceTypeDatabase,
+	"article":    SourceTypeArticle,
+	"website":    SourceTypeWebsite,
 	"database":   SourceTypeDatabase,
 	"census":     SourceTypeCensus,
 	"vital":      SourceTypeVitalRecord,
