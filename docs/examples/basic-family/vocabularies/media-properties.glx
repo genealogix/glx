@@ -66,7 +66,12 @@ media_properties:
 
   original_filename:
     label: "Original Filename"
-    description: "Original filename before import or renaming"
+    description: "Original filename before import or renaming. glx export writes it as _ORIG under FILE, and glx import reads it back, so a GEDCOM round trip keeps it."
+    value_type: string
+
+  source_path:
+    label: "Source Path"
+    description: "The media file's path as the imported GEDCOM's FILE reference wrote it, relative to the GEDCOM file (or the GEDZIP root). Recorded only by glx import --media-source-paths, because folder names can be private."
     value_type: string
 
   external_ids:

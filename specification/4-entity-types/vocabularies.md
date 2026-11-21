@@ -1175,6 +1175,7 @@ Standard properties include:
 - `crop` - Crop coordinates for images
 - `medium` - Physical medium type
 - `original_filename` - Original filename when imported
+- `source_path` - The imported GEDCOM's `FILE` reference, when recorded with `glx import --media-source-paths`
 - `external_ids` - External media identifiers with optional authority (multi-value, GEDCOM: EXID or REFN)
 - `photographer` - Person who captured the media
 - `location` - Location where media was captured
