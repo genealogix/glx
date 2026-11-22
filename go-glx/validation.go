@@ -64,6 +64,7 @@ func (glx *GLXFile) Validate() *ValidationResult {
 	// Phase 4: Validate structural constraints
 	view.validatePlaceHierarchyCycles(result)
 	view.validateParticipantRoleContexts(result)
+	view.validateDuplicateParticipants(result)
 
 	// Phase 5: Validate entity-level field formats
 	view.validateEntityFieldFormats(result)
@@ -337,7 +338,9 @@ func (glx *GLXFile) checkReference(
 		suggestion := glx.suggestReferenceKey(targetTypes, refID, result)
 		msg := fmt.Sprintf("%s[%s].%s references non-existent %s: %s",
 			entityType, entityID, fieldName, refType, refID)
-		if suggestion != "" {
+		if hint := MissingStandardSourceTypeHint(refID); refType == VocabSourceTypes && hint != "" {
+			msg += " (" + hint + ")"
+		} else if suggestion != "" {
 			msg += fmt.Sprintf(" (did you mean '%s'?)", suggestion)
 		}
 		result.Errors = append(result.Errors, ValidationError{

@@ -63,22 +63,22 @@ func loadArchiveForReport(path string) (*glxlib.GLXFile, error) {
 
 // reportData holds the analyzed confidence report data.
 type reportData struct {
-	TotalAssertions   int
-	ByConfidence      map[string]int     // confidence level -> count
-	NoConfidence      []assertionSummary // assertions with no confidence set
-	NoCitations       []assertionSummary // assertions with no citations
-	UnbackedPersons   []string           // person IDs no assertion reaches (see glxlib.AssertionCoverage)
-	UnbackedEvents    []string           // event IDs no assertion targets
-	UnbackedRelations []string           // relationship IDs no assertion reaches
-	ConfidenceOrder   []string           // ordered confidence levels for display
+	TotalAssertions   int                `json:"total_assertions"`
+	ByConfidence      map[string]int     `json:"by_confidence"`      // confidence level -> count
+	NoConfidence      []assertionSummary `json:"no_confidence"`      // assertions with no confidence set
+	NoCitations       []assertionSummary `json:"no_citations"`       // assertions with no citations
+	UnbackedPersons   []string           `json:"unbacked_persons"`   // person IDs no assertion reaches (see glxlib.AssertionCoverage)
+	UnbackedEvents    []string           `json:"unbacked_events"`    // event IDs no assertion targets
+	UnbackedRelations []string           `json:"unbacked_relations"` // relationship IDs no assertion reaches
+	ConfidenceOrder   []string           `json:"confidence_order"`   // ordered confidence levels for display
 }
 
 // assertionSummary is a short description of an assertion for display.
 type assertionSummary struct {
-	ID          string
-	SubjectType glxlib.EntityType
-	SubjectID   string
-	Property    string
+	ID          string            `json:"id"`
+	SubjectType glxlib.EntityType `json:"subject_type"`
+	SubjectID   string            `json:"subject_id"`
+	Property    string            `json:"property"`
 }
 
 // buildConfidenceReport analyzes assertions in the archive and returns report data.

@@ -250,6 +250,7 @@ func init() {
 	rootCmd.AddCommand(publishCmd)
 	rootCmd.AddCommand(serveCmd)
 	rootCmd.AddCommand(cacheCmd)
+	rootCmd.AddCommand(mcpCmd)
 	rootCmd.AddCommand(docsCmd)
 }
 
@@ -269,6 +270,10 @@ var (
 	importNoValidate      bool
 	importVerbose         bool
 	importShowFirstErrors int
+	// importMediaSourcePaths records each media file's FILE reference as
+	// properties.source_path (#1144). Package-level, like the other flags,
+	// because importGEDCOM is called directly by many tests.
+	importMediaSourcePaths bool
 )
 
 var importCmd = &cobra.Command{
@@ -303,7 +308,11 @@ Output formats:
   glx import family.ged -o family.glx --format single
 
   # Import without validation
-  glx import family.ged -o family-archive --no-validate`,
+  glx import family.ged -o family-archive --no-validate
+
+  # Keep each media file's source path, so photos/a.jpg and backup/a.jpg
+  # stay distinguishable after both become media/files/a*.jpg
+  glx import family.ged -o family-archive --media-source-paths`,
 	Args: cobra.ExactArgs(1),
 	RunE: runImport,
 }
@@ -314,6 +323,8 @@ func init() {
 	importCmd.Flags().BoolVar(&importNoValidate, "no-validate", false, "Skip validation before saving")
 	importCmd.Flags().BoolVarP(&importVerbose, "verbose", "v", false, "Verbose output")
 	importCmd.Flags().IntVar(&importShowFirstErrors, "show-first-errors", defaultShowFirstErrors, "Number of validation errors to show (0 for all)")
+	importCmd.Flags().BoolVar(&importMediaSourcePaths, "media-source-paths", false,
+		"Record each media file's path as written in the GEDCOM (properties.source_path); off by default because folder names can be private")
 
 	_ = importCmd.MarkFlagRequired("output")
 }
@@ -590,6 +601,9 @@ func init() {
 }
 
 func runValidate(_ *cobra.Command, args []string) error {
+	if validateJSON {
+		return showValidationJSON(args, validateReport)
+	}
 	if validateStdin && validateReport {
 		return errStdinReportExclusive
 	}
@@ -736,6 +750,9 @@ func runPlaces(_ *cobra.Command, args []string) error {
 		path = args[0]
 	}
 
+	if placesJSON {
+		return showPlacesJSON(path)
+	}
 	return analyzePlaces(path)
 }
 
@@ -840,6 +857,7 @@ func init() {
 func runQuery(_ *cobra.Command, args []string) error {
 	return queryEntities(glxlib.EntityType(args[0]), &queryOpts{
 		Archive:    queryArchive,
+		JSON:       queryJSON,
 		Name:       queryName,
 		Phonetic:   queryPhonetic,
 		BornBefore: queryBornBefore,
@@ -898,6 +916,9 @@ func runStats(_ *cobra.Command, args []string) error {
 		path = args[0]
 	}
 
+	if statsJSON {
+		return showStatsJSON(path)
+	}
 	return showStats(path)
 }
 
@@ -936,10 +957,10 @@ func init() {
 
 func runCite(_ *cobra.Command, args []string) error {
 	if len(args) == 1 {
-		return showCitation(citeArchive, args[0])
+		return showCitation(citeArchive, args[0], citeJSON)
 	}
 
-	return showAllCitations(citeArchive)
+	return showAllCitations(citeArchive, citeJSON)
 }
 
 // Ancestors Command
@@ -979,7 +1000,7 @@ func init() {
 }
 
 func runAncestors(_ *cobra.Command, args []string) error {
-	return showAncestors(ancestorsArchive, args[0], ancestorsMaxGen)
+	return showAncestors(ancestorsArchive, args[0], ancestorsMaxGen, ancestorsJSON)
 }
 
 // ============================================================================
@@ -1020,7 +1041,7 @@ func init() {
 }
 
 func runDescendants(_ *cobra.Command, args []string) error {
-	return showDescendants(descendantsArchive, args[0], descendantsMaxGen)
+	return showDescendants(descendantsArchive, args[0], descendantsMaxGen, descendantsJSON)
 }
 
 // ============================================================================
@@ -1067,7 +1088,7 @@ func init() {
 }
 
 func runSummary(_ *cobra.Command, args []string) error {
-	return showSummary(summaryArchive, args[0])
+	return showSummary(summaryArchive, args[0], summaryJSON)
 }
 
 // ============================================================================
@@ -1159,6 +1180,9 @@ The person argument can be an exact entity ID (e.g., person-john-smith)
 or a name to search for (e.g., "John Smith"). If the name matches
 multiple persons, all matches are listed for disambiguation.
 
+Gregorian and Julian dates share chronological ordering. A BEF observation
+precedes the date that bounds it.
+
 Use --no-family to exclude family events and show only direct events.`,
 	Example: `  # Timeline by person ID
   glx timeline person-john-smith
@@ -1181,7 +1205,7 @@ func init() {
 }
 
 func runTimeline(_ *cobra.Command, args []string) error {
-	return showTimeline(timelineArchive, args[0], !timelineNoFamily)
+	return showTimeline(timelineArchive, args[0], !timelineNoFamily, timelineJSON)
 }
 
 // ============================================================================
@@ -1216,11 +1240,14 @@ person's role does not put them at its place (a grantor or grantee of a deed,
 a legatee or heir of an estate, someone merely mentioned) is shown but not
 counted, and so is a parent named on a child's death or burial, which places
 the child rather than the parent's household; an archive can mark its own roles with implies_presence in the
-participant roles vocabulary. A bounded residence value overrides an event
+participant roles vocabulary. Godparent, witness, sponsor, informant, officiant
+and other attendance-only appearances are labeled visits and do not start
+or end a movement, unless the vocabulary marks the role implies_presence: true.
+A parent at a child's birth or baptism still counts as household evidence. A bounded residence value overrides an event
 elsewhere only when the event's whole possible date span fits within that
 residence: the event remains visible but is not counted as a move. Open-ended
-event spans remain included. Dates in different calendars are not compared
-without conversion.
+event spans remain included. Gregorian and Julian observations share
+chronological ordering; unsupported calendar conversions are not assumed.
 
 With --pattern, searches all persons in the archive for a migration pattern
 instead: a comma-separated list of places that must appear in chronological
@@ -1316,7 +1343,7 @@ func init() {
 }
 
 func runVitals(_ *cobra.Command, args []string) error {
-	return showVitals(vitalsArchive, args[0])
+	return showVitals(vitalsArchive, args[0], vitalsJSON)
 }
 
 // ============================================================================
@@ -1690,7 +1717,12 @@ Compares all persons using a weighted scoring model based on:
   - Phonetic matching (Soundex — catches Schneider/Snider, Mueller/Miller, etc.)
   - Birth/death year proximity
   - Birth/death place match
-  - Shared relationships and events
+  - Shared relationships and events in matching roles
+
+Soundex folds Latin accents and sharp-s. Large archives compare exact and
+phonetic surname groups. Recorded sex differences and incompatible lifetimes
+suppress matches; surname-only or sparse social evidence is insufficient.
+Unknown or unrecorded sex stays neutral.
 
 Persons already linked by a direct relationship (parent-child, spouse, etc.)
 are automatically skipped since they are known to be distinct individuals.
@@ -1874,7 +1906,12 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		person = args[0]
 	}
 
-	return showAnalysis(analyzeArchive, person, analyzeCheck, analyzeFormat, analyzeCountry, opts)
+	format := analyzeFormat
+	if analyzeJSON {
+		format = "json"
+	}
+
+	return showAnalysis(analyzeArchive, person, analyzeCheck, format, analyzeCountry, opts)
 }
 
 // ============================================================================
@@ -1900,6 +1937,12 @@ surfaces evidence gaps from the coverage checklist, flags conflicting assertions
 (and whether they have been resolved via the assertion ` + "`status`" + ` field), lists any
 logged searches that document a reasonably exhaustive search, and ends with a
 conclusion: PROVEN, PROBABLE, POSSIBLE, INSUFFICIENT EVIDENCE, or CONFLICTED.
+
+Baptism/christening and burial/cremation evidence bounds birth/death; its date
+is not presented as the exact vital date. A burial certainly before death
+is a chronology conflict, including in merge-persons preview interpretations.
+Only the target person's own participant assertions support their vital proof.
+Equivalent Gregorian and Julian dates agree.
 
 Supported research questions:
   parentage   Who are the person's parents?
@@ -2228,6 +2271,10 @@ Archives with duplicate entity IDs are refused, including in --dry-run;
 resolve the duplicates first. Relationships containing both merge IDs must
 be resolved before merging, except the binary possibly_same_person candidates
 that this command removes and reports. It never silently collapses participants.
+When both persons hold the same role in one event, the survivor keeps both
+rows; the preview names each such event, and which row was the dropped
+person's, so the rows can be reviewed and folded by hand. glx validate
+warns about such rows when their notes and properties are also identical.
 Merges refuse changes to linked GLX files (including Windows Git
 symlink placeholders) before approval, preserving the link and its target.
 Unchanged linked files in directory archives are retained. Run with exclusive
@@ -2587,4 +2634,69 @@ func init() {
 
 func runDocs(_ *cobra.Command, _ []string) error {
 	return runDocsGen(rootCmd, docsOutput)
+}
+
+// MCP Command
+var mcpCmd = &cobra.Command{
+	Use: "mcp", Short: "Expose an archive to AI clients using Model Context Protocol",
+	Args: cobra.NoArgs, RunE: showHelp,
+}
+
+var mcpServeCmd = &cobra.Command{
+	Use: "serve [archive-path]", Short: "Serve read-only research tools over stdio",
+	Long: `Load one archive snapshot and expose sixteen read-only research tools,
+archive statistics and vocabulary resources, and a genealogy research prompt
+using the Model Context Protocol over stdin/stdout. No network listener is opened.
+
+The optional path defaults to the current directory and may be a directory or
+single-file archive. A fresh existing binary cache is reused; this command never
+writes a cache or archive files, even with GLX_CACHE=auto. Restart to see edits,
+or pass --watch to reload stable source changes automatically without a cache.
+Watch mode retains the previous snapshot on read/parse errors and reports them
+on stderr. Each request uses one complete snapshot. stdout is reserved for MCP
+messages.
+
+Archive data may include living people's personal information. Connect only a
+trusted MCP client and check its model provider's data-handling policy. The
+server does not contact any AI provider itself.`,
+	Example: "  glx mcp serve ./family-archive\n  glx mcp serve --watch ./family-archive\n  glx mcp serve archive.glx",
+	Args:    cobra.MaximumNArgs(1), RunE: runMCPServe,
+}
+
+func runMCPServe(cmd *cobra.Command, args []string) error {
+	path := "."
+	if len(args) > 0 {
+		path = args[0]
+	}
+
+	watch, err := cmd.Flags().GetBool("watch")
+	if err != nil {
+		return err
+	}
+
+	return serveMCP(cmd.Context(), path, watch)
+}
+
+func init() {
+	mcpServeCmd.Flags().Bool("watch", false, "Automatically reload stable archive changes; retain the previous snapshot on errors")
+	mcpCmd.AddCommand(mcpServeCmd)
+}
+
+var queryJSON, vitalsJSON, timelineJSON, summaryJSON, ancestorsJSON, descendantsJSON, citeJSON, statsJSON, placesJSON, validateJSON, analyzeJSON bool
+
+func init() {
+	queryCmd.Flags().BoolVar(&queryJSON, "json", false, "Output complete matching records as JSON")
+	vitalsCmd.Flags().BoolVar(&vitalsJSON, "json", false, "Output as JSON")
+	timelineCmd.Flags().BoolVar(&timelineJSON, "json", false, "Output as JSON")
+	summaryCmd.Flags().BoolVar(&summaryJSON, "json", false, "Output as JSON")
+	ancestorsCmd.Flags().BoolVar(&ancestorsJSON, "json", false, "Output as JSON")
+	descendantsCmd.Flags().BoolVar(&descendantsJSON, "json", false, "Output as JSON")
+	citeCmd.Flags().BoolVar(&citeJSON, "json", false, "Output as JSON")
+	statsCmd.Flags().BoolVar(&statsJSON, "json", false, "Output as JSON")
+	placesCmd.Flags().BoolVar(&placesJSON, "json", false, "Output as JSON")
+	validateCmd.Flags().BoolVar(&validateJSON, "json", false, "Validate one complete archive and output JSON (not --stdin or fragments)")
+	analyzeCmd.Flags().BoolVar(&analyzeJSON, "json", false, "Output as JSON (alias for --format json)")
+	validateCmd.MarkFlagsMutuallyExclusive("json", "stdin")
+	validateCmd.MarkFlagsMutuallyExclusive("json", "entity-type")
+	analyzeCmd.MarkFlagsMutuallyExclusive("json", "format")
 }

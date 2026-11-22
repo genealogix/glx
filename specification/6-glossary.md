@@ -380,7 +380,7 @@ The complete history of how information came to be known, including source attri
 
 ### QUAY
 
-GEDCOM quality indicator (0-3 scale) on a source citation. It is not mapped to assertion `confidence`; on import the value is preserved as a `GEDCOM QUAY: n` note on the citation.
+GEDCOM quality indicator (0-3 scale) on a source citation. It is not mapped to assertion `confidence`; valid values are preserved in the citation property `gedcom_quay` and exported as `SOUR.QUAY`. Zero is distinct from absence. Invalid or repeated input values remain `GEDCOM QUAY: n` notes with a warning; legacy notes are not automatically promoted. See [citation compatibility](4-entity-types/citation.md#gedcom-quality-assessment-compatibility).
 
 > **See Also:** [Citation Entity - GEDCOM Mapping](4-entity-types/citation.md#gedcom-mapping)
 

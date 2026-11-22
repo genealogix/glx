@@ -15,9 +15,10 @@
 package glx
 
 import (
-	"bytes"
 	"fmt"
+	"maps"
 	"path"
+	"slices"
 	"sort"
 	"strings"
 
@@ -50,8 +51,7 @@ type SerializerOptions struct {
 	// Pretty determines whether to use pretty-print formatting (indentation, etc.)
 	Pretty bool
 
-	// Indent is the indentation of YAML output, as a run of spaces (default:
-	// two). Empty means the default.
+	// Indent specifies the indentation string for YAML output (default: "  ")
 	Indent string
 
 	// StandardVocabularyFallback makes DeserializeMultiFileFromMap fill every
@@ -104,18 +104,10 @@ func (s *DefaultSerializer) SerializeSingleFileBytes(glx *GLXFile) ([]byte, erro
 		return nil, ErrGLXFileNil
 	}
 
-	// Normalize empty metadata to nil so omitempty suppresses it.
-	// Save and restore the original value to avoid mutating the caller's data.
-	origMetadata := glx.ImportMetadata
-	if glx.ImportMetadata != nil && !glx.ImportMetadata.hasContent() {
-		glx.ImportMetadata = nil
-	}
+	// Normalize empty metadata so omitempty suppresses it.
+	glx = withoutEmptyMetadata(glx)
 
-	// Marshal to YAML
 	yamlBytes, err := marshalYAML(glx, s.Options.Indent)
-
-	glx.ImportMetadata = origMetadata
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal YAML: %w", err)
 	}
@@ -123,30 +115,54 @@ func (s *DefaultSerializer) SerializeSingleFileBytes(glx *GLXFile) ([]byte, erro
 	return yamlBytes, nil
 }
 
+func withoutEmptyMetadata(archive *GLXFile) *GLXFile {
+	if archive.ImportMetadata == nil || archive.ImportMetadata.hasContent() {
+		return archive
+	}
+	normalized := *archive
+	normalized.ImportMetadata = nil
+
+	return &normalized
+}
+
 // SerializeMultiFileToMap serializes a GLX archive to a map of relative paths to file contents.
 // Map keys are relative paths like "persons/person-001.glx", "vocabularies/event-types.glx".
 func (s *DefaultSerializer) SerializeMultiFileToMap(glx *GLXFile) (map[string][]byte, error) {
+	files := make(map[string][]byte)
+	if err := s.serializeMultiFile(glx, func(filename string, data []byte) error {
+		files[filename] = data
+
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return files, nil
+}
+
+func (s *DefaultSerializer) serializeMultiFile(glx *GLXFile, writeFile func(string, []byte) error) error {
 	// Validate if requested
 	if s.Options.Validate {
 		if err := validateGLXFile(glx); err != nil {
-			return nil, fmt.Errorf("validation failed: %w", err)
+			return fmt.Errorf("validation failed: %w", err)
 		}
 	}
 
 	// Guard against nil input when validation is disabled.
 	if glx == nil {
-		return nil, ErrGLXFileNil
+		return ErrGLXFileNil
 	}
-
-	files := make(map[string][]byte)
 
 	// Add standard vocabularies.
 	// path.Join (forward slashes), not filepath.Join: these are logical
 	// archive keys, not disk paths, and must be OS-independent so the same
 	// GLXFile produces the same map on Linux and Windows. See issue #900.
-	for filename, content := range StandardVocabularies() {
+	vocabularies := StandardVocabularies()
+	for _, filename := range slices.Sorted(maps.Keys(vocabularies)) {
 		vocabPath := path.Join("vocabularies", filename)
-		files[vocabPath] = content
+		if err := writeFile(vocabPath, vocabularies[filename]); err != nil {
+			return err
+		}
 	}
 
 	// Serialize metadata if present and non-empty
@@ -154,87 +170,54 @@ func (s *DefaultSerializer) SerializeMultiFileToMap(glx *GLXFile) (map[string][]
 		metaWrapper := map[string]*Metadata{"metadata": glx.ImportMetadata}
 		yamlBytes, err := marshalYAML(metaWrapper, s.Options.Indent)
 		if err != nil {
-			return nil, fmt.Errorf("failed to marshal metadata: %w", err)
+			return fmt.Errorf("failed to marshal metadata: %w", err)
 		}
-		files["metadata.glx"] = yamlBytes
+		if err := writeFile("metadata.glx", yamlBytes); err != nil {
+			return err
+		}
 	}
 
 	// Serialize entities by type
-	if err := s.serializeEntitiesToMap(glx.Persons, "persons", "person", files); err != nil {
-		return nil, err
+	if err := serializeEntitiesWrapped(glx.Persons, "persons", "person", s.Options.Indent, writeFile); err != nil {
+		return err
 	}
-	if err := s.serializeEntitiesToMap(glx.Events, "events", "event", files); err != nil {
-		return nil, err
+	if err := serializeEntitiesWrapped(glx.Events, "events", "event", s.Options.Indent, writeFile); err != nil {
+		return err
 	}
-	if err := s.serializeEntitiesToMap(glx.Relationships, "relationships", "relationship", files); err != nil {
-		return nil, err
+	if err := serializeEntitiesWrapped(glx.Relationships, "relationships", "relationship", s.Options.Indent, writeFile); err != nil {
+		return err
 	}
-	if err := s.serializeEntitiesToMap(glx.Places, "places", "place", files); err != nil {
-		return nil, err
+	if err := serializeEntitiesWrapped(glx.Places, "places", "place", s.Options.Indent, writeFile); err != nil {
+		return err
 	}
-	if err := s.serializeEntitiesToMap(glx.Sources, "sources", "source", files); err != nil {
-		return nil, err
+	if err := serializeEntitiesWrapped(glx.Sources, "sources", "source", s.Options.Indent, writeFile); err != nil {
+		return err
 	}
-	if err := s.serializeEntitiesToMap(glx.Citations, "citations", "citation", files); err != nil {
-		return nil, err
+	if err := serializeEntitiesWrapped(glx.Citations, "citations", "citation", s.Options.Indent, writeFile); err != nil {
+		return err
 	}
-	if err := s.serializeEntitiesToMap(glx.Repositories, "repositories", "repository", files); err != nil {
-		return nil, err
+	if err := serializeEntitiesWrapped(glx.Repositories, "repositories", "repository", s.Options.Indent, writeFile); err != nil {
+		return err
 	}
-	if err := s.serializeEntitiesToMap(glx.Media, "media", "media", files); err != nil {
-		return nil, err
+	if err := serializeEntitiesWrapped(glx.Media, "media", "media", s.Options.Indent, writeFile); err != nil {
+		return err
 	}
-	if err := s.serializeEntitiesToMap(glx.Assertions, "assertions", "assertion", files); err != nil {
-		return nil, err
+	if err := serializeEntitiesWrapped(glx.Assertions, "assertions", "assertion", s.Options.Indent, writeFile); err != nil {
+		return err
 	}
-	if err := s.serializeEntitiesToMap(glx.ResearchLogs, "research_logs", "research-log", files); err != nil {
-		return nil, err
-	}
-	if err := s.serializeEntitiesToMap(glx.Studies, "studies", "study", files); err != nil {
-		return nil, err
+	if err := serializeEntitiesWrapped(glx.ResearchLogs, "research_logs", "research-log", s.Options.Indent, writeFile); err != nil {
+		return err
 	}
 
-	return files, nil
-}
-
-// serializeEntitiesToMap serializes entities to the files map with deterministic filenames.
-// Each entity file uses the standard GLX structure: {collectionKey: {entityID: entity}}
-func (s *DefaultSerializer) serializeEntitiesToMap(entities any, dirName, entityType string, files map[string][]byte) error {
-	// Type switch to handle different entity map types
-	switch typedEntities := entities.(type) {
-	case map[string]*Person:
-		return serializeEntitiesWrapped(typedEntities, dirName, entityType, s.Options.Indent, files)
-	case map[string]*Event:
-		return serializeEntitiesWrapped(typedEntities, dirName, entityType, s.Options.Indent, files)
-	case map[string]*Relationship:
-		return serializeEntitiesWrapped(typedEntities, dirName, entityType, s.Options.Indent, files)
-	case map[string]*Place:
-		return serializeEntitiesWrapped(typedEntities, dirName, entityType, s.Options.Indent, files)
-	case map[string]*Source:
-		return serializeEntitiesWrapped(typedEntities, dirName, entityType, s.Options.Indent, files)
-	case map[string]*Citation:
-		return serializeEntitiesWrapped(typedEntities, dirName, entityType, s.Options.Indent, files)
-	case map[string]*Repository:
-		return serializeEntitiesWrapped(typedEntities, dirName, entityType, s.Options.Indent, files)
-	case map[string]*Media:
-		return serializeEntitiesWrapped(typedEntities, dirName, entityType, s.Options.Indent, files)
-	case map[string]*Assertion:
-		return serializeEntitiesWrapped(typedEntities, dirName, entityType, s.Options.Indent, files)
-	case map[string]*ResearchLog:
-		return serializeEntitiesWrapped(typedEntities, dirName, entityType, s.Options.Indent, files)
-	case map[string]*Study:
-		return serializeEntitiesWrapped(typedEntities, dirName, entityType, s.Options.Indent, files)
-	default:
-		return fmt.Errorf("%w: %T", ErrUnsupportedEntityType, entities)
-	}
+	return serializeEntitiesWrapped(glx.Studies, "studies", "study", s.Options.Indent, writeFile)
 }
 
 // serializeEntitiesWrapped serializes each entity as a standard GLX file:
 // {collectionKey: {entityID: entity}}. Derives filenames deterministically from entity IDs.
-func serializeEntitiesWrapped[T any](entities map[string]T, dirName, entityType, indent string, files map[string][]byte) error {
+func serializeEntitiesWrapped[T any](entities map[string]*T, dirName, entityType, indent string, writeFile func(string, []byte) error) error {
 	lowercaseToID := make(map[string]string, len(entities))
 
-	for entityID, entity := range entities {
+	for _, entityID := range sortedKeys(entities) {
 		filename, err := EntityIDToFilename(entityID)
 		if err != nil {
 			return fmt.Errorf("entity %s %s: %w", entityType, entityID, err)
@@ -247,8 +230,8 @@ func serializeEntitiesWrapped[T any](entities map[string]T, dirName, entityType,
 		lowercaseToID[filename] = entityID
 
 		// Wrap as standard GLX structure: {collectionKey: {entityID: entity}}
-		wrapper := map[string]map[string]T{
-			dirName: {entityID: entity},
+		wrapper := map[string]map[string]*T{
+			dirName: {entityID: entities[entityID]},
 		}
 
 		// Marshal to YAML
@@ -260,34 +243,12 @@ func serializeEntitiesWrapped[T any](entities map[string]T, dirName, entityType,
 		// path.Join, not filepath.Join — same rationale as vocabPath in
 		// SerializeMultiFileToMap above (issue #900).
 		filePath := path.Join(dirName, filename)
-		files[filePath] = yamlBytes
+		if err := writeFile(filePath, yamlBytes); err != nil {
+			return err
+		}
 	}
 
 	return nil
-}
-
-// defaultYAMLIndent is the indentation glx writes when SerializerOptions.Indent
-// is empty: two spaces, as in the specification and the examples (#1427).
-const defaultYAMLIndent = 2
-
-// marshalYAML encodes v as YAML indented by indent, a run of spaces. yaml.v3's
-// Marshal always indents by four, which is why Indent used to have no effect.
-func marshalYAML(v any, indent string) ([]byte, error) {
-	width := len(indent)
-	if width == 0 || strings.Trim(indent, " ") != "" {
-		width = defaultYAMLIndent
-	}
-	var buf bytes.Buffer
-	enc := yaml.NewEncoder(&buf)
-	enc.SetIndent(width)
-	if err := enc.Encode(v); err != nil {
-		return nil, err
-	}
-	if err := enc.Close(); err != nil {
-		return nil, err
-	}
-
-	return buf.Bytes(), nil
 }
 
 // DeserializeSingleFileBytes loads a GLX archive from YAML bytes (single-file format).

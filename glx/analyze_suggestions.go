@@ -82,13 +82,22 @@ func extractDateString(raw any) string {
 // analyzeSuggestions generates research recommendations based on archive data.
 func analyzeSuggestions(archive *glxlib.GLXFile) []AnalysisIssue {
 	var issues []AnalysisIssue
-
-	issues = append(issues, suggestCensusSearches(archive)...)
-	issues = append(issues, suggestVitalRecords(archive)...)
-	issues = append(issues, suggestChildCensusRecords(archive)...)
-	issues = append(issues, reportResearchPlaceholders(archive)...)
+	for _, check := range suggestionChecks() {
+		issues = append(issues, check(archive)...)
+	}
 
 	return issues
+}
+
+// suggestionChecks lists the research suggestions in report order. The CLI and the MCP server both run this list,
+// so a new check reaches both.
+func suggestionChecks() []func(*glxlib.GLXFile) []AnalysisIssue {
+	return []func(*glxlib.GLXFile) []AnalysisIssue{
+		suggestCensusSearches,
+		suggestVitalRecords,
+		suggestChildCensusRecords,
+		reportResearchPlaceholders,
+	}
 }
 
 // reportResearchPlaceholders lists each unresolved placeholder person and closes

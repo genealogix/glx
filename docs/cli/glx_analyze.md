@@ -64,6 +64,7 @@ glx analyze [person] [flags]
       --country string            Country whose census schedule to assume for persons whose places name no country (default "none", which suggests no census records)
   -f, --format string             Output format (json for machine-readable)
   -h, --help                      help for analyze
+      --json                      Output as JSON (alias for --format json)
   -p, --person string             Filter results to a specific person (ID or name)
 ```
 

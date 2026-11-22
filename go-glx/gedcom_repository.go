@@ -36,7 +36,7 @@ func convertRepository(repoRecord *GEDCOMRecord, conv *ConversionContext) error 
 	var emails []string
 	var notes []string
 
-	// Extract external IDs (GEDCOM 7.0 EXID tags)
+	// The EXID vocabulary mapping selects the property; the shared reader consumes EXID and REFN.
 	if propertyKey, ok := conv.GEDCOMIndex.RepositoryProperties[GedcomTagExid]; ok {
 		extractExternalIDs(repoRecord, propertyKey, repository.Properties)
 	}

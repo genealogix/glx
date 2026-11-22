@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
@@ -61,9 +62,59 @@ func analyzeConflictsWithOptions(archive *glxlib.GLXFile, opts glxlib.Comparison
 		if subject != "" {
 			label = subject + " " + label
 		}
-		issues = append(issues, AnalysisIssue{Subject: subject, Category: conflictCategory, Severity: finding.Severity, Person: personID, Property: c.Property, Message: fmt.Sprintf("%s — %s%s has %d conflicting values: %s", personName(archive, personID), qualifier, label, len(c.Values), strings.Join(parts, ", "))})
+		events := conflictEventContext(archive, personID, c.Facts)
+		var appearances []string
+		for _, event := range events {
+			if !event.OwnRecord {
+				appearances = append(appearances, fmt.Sprintf("%s [%s] (%s)", event.Label, event.EventID, event.PersonRole))
+			}
+		}
+		if len(appearances) > 0 {
+			label = strings.Join(appearances, "; ") + " " + c.Property
+		}
+		issues = append(issues, AnalysisIssue{Subject: subject, Events: events, Category: conflictCategory, Severity: finding.Severity, Person: personID, Property: c.Property, Message: fmt.Sprintf("%s — %s%s has %d conflicting values: %s", personName(archive, personID), qualifier, label, len(c.Values), strings.Join(parts, ", "))})
 	}
 	sortIssues(issues)
 
 	return issues, nil
+}
+
+// Contextual event conflicts remain useful association evidence, but must not
+// read as the informant's or witness's own vital facts. Preserve the legacy
+// Subject display label and add navigable event references rather than parsing it.
+type analysisConflictEvent struct {
+	EventID      string   `json:"event_id"`
+	Title        string   `json:"title,omitempty"`
+	Date         string   `json:"date,omitempty"`
+	Label        string   `json:"label"`
+	PrincipalIDs []string `json:"principal_ids"`
+	PersonRole   string   `json:"person_role"`
+	OwnRecord    bool     `json:"own_record"`
+}
+
+func conflictEventContext(archive *glxlib.GLXFile, personID string, facts []glxlib.ResearchFact) []analysisConflictEvent {
+	var result []analysisConflictEvent
+	seen := make(map[string]bool)
+	for i := range facts {
+		fact := &facts[i]
+		id := fact.Subject.Event
+		event := archive.Events[id]
+		if event == nil || seen[id] {
+			continue
+		}
+		seen[id] = true
+		participation, role, _ := glxlib.EventParticipation(event, personID, archive.ParticipantRoles)
+		principals := []string{}
+		for _, participant := range event.Participants {
+			if participant.Person != "" && !slices.Contains(principals, participant.Person) && glxlib.ClassifyParticipation(event.Type, participant.Role, archive.ParticipantRoles).OwnRecord {
+				principals = append(principals, participant.Person)
+			}
+		}
+		result = append(result, analysisConflictEvent{
+			EventID: id, Title: event.Title, Date: string(event.Date), Label: glxlib.AppearanceLabel(event, archive),
+			PrincipalIDs: principals, PersonRole: role, OwnRecord: participation.OwnRecord,
+		})
+	}
+
+	return result
 }

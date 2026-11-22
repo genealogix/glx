@@ -43,6 +43,7 @@ glx places [path] [flags]
 
 ```
   -h, --help   help for places
+      --json   Output as JSON
 ```
 
 ### Options inherited from parent commands
