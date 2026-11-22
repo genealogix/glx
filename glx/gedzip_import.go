@@ -90,11 +90,28 @@ func importGEDZIPWithPlatform(gedzipPath, outputPath, format, platform string, v
 		return err
 	}
 
+	if verbose {
+		reportImportPlatform(output, result)
+	}
+
 	// Surface any non-standard GEDCOM entry or other import warnings
 	for _, w := range result.Statistics.Warnings {
 		if w.Tag == glxlib.WarningTagGEDZIP {
 			_, _ = fmt.Fprintf(output, "Warning: %s\n", w.Message)
 		}
+	}
+	if importMediaSourcePaths {
+		recordMediaSourcePaths(glx, result.MediaFiles)
+	}
+	// Hold the media directory from allocation through publication or
+	// rollback, so a concurrent import cannot reuse a binary this one may
+	// still roll back (#1443).
+	if len(result.MediaFiles) > 0 {
+		unlock, err := lockImportMedia(importMediaDir(outputPath, format), output)
+		if err != nil {
+			return err
+		}
+		defer unlock()
 	}
 	if err := allocateImportMediaDestinations(glx, result.MediaFiles, importMediaDir(outputPath, format), "", limitedBundle); err != nil {
 		return fmt.Errorf("reserving media destinations: %w", err)

@@ -15,6 +15,8 @@
 package e2e
 
 import (
+	"archive/zip"
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -81,6 +83,35 @@ func TestImport_DetectsAncestryAndMapsItsTags(t *testing.T) {
 	citations := readArchiveDir(t, filepath.Join(archive, "citations"))
 	assert.Contains(t, citations, "https://www.ancestry.com/discoveryui-content/view/4512345:6482")
 	assertArchiveValid(t, archive)
+}
+
+func TestImport_GEDZIPReportsTheSamePlatformRewrites(t *testing.T) {
+	work := t.TempDir()
+	ged := writeGEDCOM(t, work, ancestryExport)
+
+	var bundle bytes.Buffer
+	writer := zip.NewWriter(&bundle)
+	entry, err := writer.Create("gedcom.ged")
+	require.NoError(t, err)
+	_, err = entry.Write([]byte(ancestryExport))
+	require.NoError(t, err)
+	require.NoError(t, writer.Close())
+	gdz := filepath.Join(work, "tree.gdz")
+	require.NoError(t, os.WriteFile(gdz, bundle.Bytes(), 0o600))
+
+	const report = "Platform: Ancestry export — applying Ancestry-specific handling\n" +
+		"  _APID: 1 rewritten\n  _DCAUSE: 1 rewritten\n  _MILT: 1 rewritten\n"
+	for name, src := range map[string]string{"ged": ged, "gdz": gdz} {
+		t.Run(name, func(t *testing.T) {
+			res := runGLX(t, work, "import", src, "-o", name, "-v")
+			require.Equal(t, 0, res.exitCode, res.stderr)
+			assert.Contains(t, res.stdout, report)
+
+			res = runGLX(t, work, "import", src, "-o", name+"-quiet")
+			require.Equal(t, 0, res.exitCode, res.stderr)
+			assert.NotContains(t, res.stdout, "Platform:")
+		})
+	}
 }
 
 func TestImport_ForcedPlatform(t *testing.T) {

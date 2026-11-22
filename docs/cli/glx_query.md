@@ -72,6 +72,7 @@ glx query <entity-type> [flags]
       --citation string     Filter assertions by citation ID
       --confidence string   Filter assertions by confidence level
   -h, --help                help for query
+      --json                Output complete matching records as JSON
       --name string         Filter by name (substring match, case-insensitive)
       --phonetic            Use phonetic (Soundex) matching for --name
       --source string       Filter assertions by source ID (direct or via citation)

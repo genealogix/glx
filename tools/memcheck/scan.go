@@ -92,7 +92,7 @@ var (
 // scanFile runs every check over one memory file's content and returns the
 // findings. memPath is the repo-relative path of the file (forward slashes),
 // used both to label findings and to resolve paths relative to the file's own
-// directory (so a reference in go-glx/CLAUDE.md may be written relative to
+// directory (so a reference in go-glx/AGENTS.md may be written relative to
 // go-glx/ as well as to the repo root).
 func scanFile(memPath, content string, r repo) []finding {
 	var out []finding

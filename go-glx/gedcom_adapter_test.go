@@ -16,6 +16,7 @@ package glx
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -23,7 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func importGEDCOMString(t *testing.T, ged string, opts ImportOptions) (*GLXFile, *ImportResult) {
+func importGEDCOMWithAdapter(t *testing.T, ged string, opts ImportOptions) (*GLXFile, *ImportResult) {
 	t.Helper()
 	glxFile, result, err := ImportGEDCOMWithOptions(strings.NewReader(ged), nil, opts)
 	require.NoError(t, err)
@@ -136,7 +137,7 @@ const ancestryGEDCOM = `0 HEAD
 `
 
 func TestAncestryAdapter_Import(t *testing.T) {
-	glxFile, result := importGEDCOMString(t, ancestryGEDCOM, ImportOptions{})
+	glxFile, result := importGEDCOMWithAdapter(t, ancestryGEDCOM, ImportOptions{})
 
 	assert.Equal(t, "ancestry", result.Platform)
 	assert.Equal(t, "Ancestry", result.PlatformLabel)
@@ -193,7 +194,7 @@ func TestAncestryAdapter_Import(t *testing.T) {
 }
 
 func TestAncestryTags_WithoutAdapterArePreservedNotMapped(t *testing.T) {
-	glxFile, result := importGEDCOMString(t, ancestryGEDCOM, ImportOptions{Platform: GEDCOMPlatformGeneric})
+	glxFile, result := importGEDCOMWithAdapter(t, ancestryGEDCOM, ImportOptions{Platform: GEDCOMPlatformGeneric})
 
 	assert.Equal(t, GEDCOMPlatformGeneric, result.Platform)
 	assert.Empty(t, result.PlatformRewrites)
@@ -211,10 +212,10 @@ func TestAncestryTags_WithoutAdapterArePreservedNotMapped(t *testing.T) {
 func TestForcedPlatform_OverridesDetection(t *testing.T) {
 	ged := strings.Replace(ancestryGEDCOM, "1 SOUR Ancestry.com Family Trees\n2 VERS (2010.3)\n2 NAME Ancestry.com Member Trees\n2 CORP Ancestry.com\n", "1 SOUR GRAMPS\n", 1)
 
-	_, result := importGEDCOMString(t, ged, ImportOptions{})
+	_, result := importGEDCOMWithAdapter(t, ged, ImportOptions{})
 	assert.Equal(t, GEDCOMPlatformGeneric, result.Platform)
 
-	glxFile, result := importGEDCOMString(t, ged, ImportOptions{Platform: "ancestry"})
+	glxFile, result := importGEDCOMWithAdapter(t, ged, ImportOptions{Platform: "ancestry"})
 	assert.Equal(t, "ancestry", result.Platform)
 	assert.Len(t, eventsOfType(glxFile, "military_service"), 1)
 
@@ -330,7 +331,7 @@ func TestRootsMagicAdapter_Import(t *testing.T) {
 1 NOTE <p>kept as written</p>
 0 TRLR
 `
-	glxFile, result := importGEDCOMString(t, ged, ImportOptions{})
+	glxFile, result := importGEDCOMWithAdapter(t, ged, ImportOptions{})
 	assert.Equal(t, "rootsmagic", result.Platform)
 	assert.Equal(t, GEDCOMAdapterRewrites{"_UID": 1}, result.PlatformRewrites)
 
@@ -342,7 +343,7 @@ func TestRootsMagicAdapter_Import(t *testing.T) {
 
 func TestGenericImport_ReportsGenericPlatform(t *testing.T) {
 	ged := "0 HEAD\n1 SOUR GRAMPS\n1 GEDC\n2 VERS 5.5.1\n0 @I1@ INDI\n1 NAME A /B/\n0 TRLR\n"
-	_, result := importGEDCOMString(t, ged, ImportOptions{})
+	_, result := importGEDCOMWithAdapter(t, ged, ImportOptions{})
 	assert.Equal(t, GEDCOMPlatformGeneric, result.Platform)
 	assert.Empty(t, result.PlatformRewrites)
 }
@@ -424,8 +425,8 @@ const lossyAncestryGEDCOM = `0 HEAD
 // the generic and the Ancestry adapter and checks that every value the
 // generic import preserves is still present after the adapter ran.
 func TestAncestryAdapter_KeepsEverythingGenericKeeps(t *testing.T) {
-	generic, _ := importGEDCOMString(t, lossyAncestryGEDCOM, ImportOptions{Platform: GEDCOMPlatformGeneric})
-	adapted, result := importGEDCOMString(t, lossyAncestryGEDCOM, ImportOptions{})
+	generic, _ := importGEDCOMWithAdapter(t, lossyAncestryGEDCOM, ImportOptions{Platform: GEDCOMPlatformGeneric})
+	adapted, result := importGEDCOMWithAdapter(t, lossyAncestryGEDCOM, ImportOptions{})
 	require.Equal(t, "ancestry", result.Platform)
 
 	genericJSON, err := json.Marshal(generic)
@@ -445,4 +446,39 @@ func TestAncestryAdapter_KeepsEverythingGenericKeeps(t *testing.T) {
 	require.Len(t, military, 1, "only the lossless _MILT becomes an event")
 	assert.Equal(t, "US Army, 101st Airborne", military[0].Properties["event_subtype"])
 	assert.Equal(t, GEDCOMAdapterRewrites{"_MILT": 1, "NOTE (HTML)": 1}, result.PlatformRewrites)
+}
+
+func TestMilitaryServiceAdapter_PreservesNonLeafType(t *testing.T) {
+	const gedcom = `0 HEAD
+1 SOUR %s
+1 GEDC
+2 VERS 5.5.1
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME John /Smith/
+1 _MILT US Army
+2 TYPE Active
+3 CONC  duty
+2 DATE 1944
+1 _MILT Navy
+2 TYPE Reserve
+3 CONT Second line
+2 NOTE <p>Original extension text</p>
+2 DATE 1950
+0 TRLR
+`
+	for source, platform := range map[string]string{"Ancestry.com Family Trees": "ancestry", "FTM": "ftm"} {
+		t.Run(platform, func(t *testing.T) {
+			input := fmt.Sprintf(gedcom, source)
+			generic, _ := importGEDCOMWithAdapter(t, input, ImportOptions{Platform: GEDCOMPlatformGeneric})
+			adapted, result := importGEDCOMWithAdapter(t, input, ImportOptions{})
+			require.Equal(t, platform, result.Platform)
+			assert.Empty(t, result.PlatformRewrites)
+			assert.Empty(t, eventsOfType(adapted, "military_service"))
+
+			raw := singlePerson(t, generic).Properties[PropertyGEDCOMExtensions]
+			require.Len(t, raw, 2)
+			assert.Equal(t, raw, singlePerson(t, adapted).Properties[PropertyGEDCOMExtensions])
+		})
+	}
 }

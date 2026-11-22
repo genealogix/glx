@@ -25,14 +25,23 @@ import (
 // analyzeEvidence checks for unsupported or weakly supported claims.
 func analyzeEvidence(archive *glxlib.GLXFile) []AnalysisIssue {
 	var issues []AnalysisIssue
-
-	issues = append(issues, checkUnsupportedAssertions(archive)...)
-	issues = append(issues, checkSingleSourcePersons(archive)...)
-	issues = append(issues, checkOrphanedCitations(archive)...)
-	issues = append(issues, checkOrphanedSources(archive)...)
-	issues = append(issues, checkUncitedNotes(archive)...)
+	for _, check := range evidenceChecks() {
+		issues = append(issues, check(archive)...)
+	}
 
 	return issues
+}
+
+// evidenceChecks lists the evidence checks in report order. The CLI and the MCP server both run this list,
+// so a new check reaches both.
+func evidenceChecks() []func(*glxlib.GLXFile) []AnalysisIssue {
+	return []func(*glxlib.GLXFile) []AnalysisIssue{
+		checkUnsupportedAssertions,
+		checkSingleSourcePersons,
+		checkOrphanedCitations,
+		checkOrphanedSources,
+		checkUncitedNotes,
+	}
 }
 
 // checkUnsupportedAssertions finds assertions with no citations and no sources.

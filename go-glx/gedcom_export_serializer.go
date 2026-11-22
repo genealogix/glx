@@ -27,17 +27,21 @@ const gedcomMaxLineValueLength = 248
 
 // serializeGEDCOMRecords converts a tree of GEDCOMRecord structs to GEDCOM text format.
 func serializeGEDCOMRecords(records []*GEDCOMRecord) []byte {
+	return serializeGEDCOMVersion(records, GEDCOM551)
+}
+
+func serializeGEDCOMVersion(records []*GEDCOMRecord, version GEDCOMVersion) []byte {
 	var buf bytes.Buffer
 
 	for _, record := range records {
-		serializeRecord(record, 0, &buf)
+		serializeRecord(record, 0, &buf, version)
 	}
 
 	return buf.Bytes()
 }
 
 // serializeRecord recursively writes a single record and its subrecords.
-func serializeRecord(record *GEDCOMRecord, level int, buf *bytes.Buffer) {
+func serializeRecord(record *GEDCOMRecord, level int, buf *bytes.Buffer, version GEDCOMVersion) {
 	// Build the line prefix: "LEVEL [XREF] TAG"
 	var prefix string
 	if record.XRef != "" {
@@ -51,29 +55,29 @@ func serializeRecord(record *GEDCOMRecord, level int, buf *bytes.Buffer) {
 		buf.WriteString(prefix)
 		buf.WriteByte('\n')
 	} else {
-		writeValueWithContinuation(prefix, record.Value, level, buf)
+		writeValueWithContinuation(prefix, record.Value, level, buf, version)
 	}
 
 	// Recursively serialize subrecords
 	for _, sub := range record.SubRecords {
-		serializeRecord(sub, level+1, buf)
+		serializeRecord(sub, level+1, buf, version)
 	}
 }
 
 // writeValueWithContinuation writes a GEDCOM value, splitting long lines with CONC
 // and handling newlines with CONT.
-func writeValueWithContinuation(prefix, value string, level int, buf *bytes.Buffer) {
+func writeValueWithContinuation(prefix, value string, level int, buf *bytes.Buffer, version GEDCOMVersion) {
 	// Split on newlines first (CONT for each new line)
 	lines := strings.Split(value, "\n")
 
 	for i, line := range lines {
 		if i == 0 {
 			// First line: write with the original prefix
-			writeLineSplitByCONC(prefix, line, level, buf)
+			writeVersionedLine(prefix, line, level, buf, version)
 		} else {
 			// Subsequent lines: use CONT tag
 			contPrefix := fmt.Sprintf("%d %s", level+1, GedcomTagCont)
-			writeLineSplitByCONC(contPrefix, line, level, buf)
+			writeVersionedLine(contPrefix, line, level, buf, version)
 		}
 	}
 }
@@ -114,6 +118,21 @@ func writeLineSplitByCONC(prefix, value string, level int, buf *bytes.Buffer) {
 			byteOffset += size
 		}
 
+		// Readers commonly trim line values, so never split next to a space
+		// (GEDCOM 5.5.1 CONC rule): back the split up to a non-space pair.
+		if byteOffset < len(remaining) {
+			for split := byteOffset; split > 0; {
+				prev, size := utf8.DecodeLastRuneInString(remaining[:split])
+				next, _ := utf8.DecodeRuneInString(remaining[split:])
+				if prev != ' ' && next != ' ' {
+					byteOffset = split
+
+					break
+				}
+				split -= size
+			}
+		}
+
 		chunk := remaining[:byteOffset]
 		remaining = remaining[byteOffset:]
 
@@ -127,4 +146,18 @@ func writeLineSplitByCONC(prefix, value string, level int, buf *bytes.Buffer) {
 			fmt.Fprintf(buf, "%d %s %s\n", level+1, GedcomTagConc, chunk)
 		}
 	}
+}
+
+func writeVersionedLine(prefix, value string, level int, buf *bytes.Buffer, version GEDCOMVersion) {
+	if version != GEDCOM70 {
+		writeLineSplitByCONC(prefix, value, level, buf)
+
+		return
+	}
+	buf.WriteString(prefix)
+	if value != "" {
+		buf.WriteByte(' ')
+		buf.WriteString(value)
+	}
+	buf.WriteByte('\n')
 }

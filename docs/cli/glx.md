@@ -42,6 +42,7 @@ Use GLX to initialize new archives, validate files, and ensure data quality.
 * [glx init](glx_init.md)	 - Initialize a new GENEALOGIX archive in the specified directory
 * [glx join](glx_join.md)	 - Join a multi-file GLX archive into single-file format
 * [glx link](glx_link.md)	 - Create a FamilySearch citation from an ARK
+* [glx mcp](glx_mcp.md)	 - Expose an archive to AI clients using Model Context Protocol
 * [glx merge](glx_merge.md)	 - Merge another archive into the destination archive
 * [glx merge-persons](glx_merge-persons.md)	 - Merge two person entities, keeping the first and folding in the second
 * [glx migrate](glx_migrate.md)	 - Migrate an archive to the current format

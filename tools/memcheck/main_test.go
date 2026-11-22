@@ -142,7 +142,7 @@ func TestRunExitCodes(t *testing.T) {
 	root := t.TempDir()
 	mustWrite(t, filepath.Join(root, "go.mod"), "module github.com/genealogix/glx\n")
 	mustWrite(t, filepath.Join(root, "Makefile"), "build:\n\tgo build ./...\n")
-	mustWrite(t, filepath.Join(root, "CLAUDE.md"), "see `data/fixture.ged` and run `make build`\n")
+	mustWrite(t, filepath.Join(root, "AGENTS.md"), "see `data/fixture.ged` and run `make build`\n")
 
 	opts := options{root: root, allowlistFile: ".claude/memory-drift-allowlist.yaml"}
 
@@ -167,7 +167,7 @@ func TestRunAllowlistSuppression(t *testing.T) {
 	root := t.TempDir()
 	mustWrite(t, filepath.Join(root, "go.mod"), "module github.com/genealogix/glx\n")
 	mustWrite(t, filepath.Join(root, "Makefile"), "build:\n\tgo build ./...\n")
-	mustWrite(t, filepath.Join(root, "CLAUDE.md"), "illustrative `path/to/example.go`\n")
+	mustWrite(t, filepath.Join(root, "AGENTS.md"), "illustrative `path/to/example.go`\n")
 	mustWrite(t, filepath.Join(root, ".claude", "memory-drift-allowlist.yaml"),
 		"- token: path/to/example.go\n  reason: documentation example\n")
 

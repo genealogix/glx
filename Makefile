@@ -195,11 +195,11 @@ check-drift-allowlist: ## Validate .claude/drift-allowlist.yaml against its sche
 check-code-drift: ## Deterministically detect go-glx type vs JSON-schema drift
 	@go run ./tools/driftcheck
 
-check-memory-drift: ## Deterministically detect CLAUDE.md/AGENTS.md drift vs the repo
+check-memory-drift: ## Deterministically detect AGENTS.md/CLAUDE.md drift vs the repo
 	@go run ./tools/memcheck
 
 test-scripts: ## Unit-test the Node drift-check scripts, npm audit gate and serve viewer
-	@node --test scripts/drift-checks/spec-schema-drift.test.mjs specification/schema-compat.test.mjs glx/web_test/app.test.mjs scripts/hooks/staged.test.mjs scripts/npm-audit-gate.test.mjs
+	@node --test scripts/drift-checks/spec-schema-drift.test.mjs specification/schema-compat.test.mjs glx/web_test/app.test.mjs scripts/hooks/staged.test.mjs scripts/npm-audit-gate.test.mjs scripts/check-mcp-license-exception.test.mjs
 
 test-website-security: ## Verify the website's picomatch backport (the npm audit gate's verify command)
 	cd website && npm run test:security

@@ -36,10 +36,12 @@ var (
 
 // Serialization errors
 var (
-	ErrValidationFailed         = errors.New("validation failed")
-	ErrNoEntitiesProvided       = errors.New("no entities provided")
-	ErrInvalidEntityType        = errors.New("invalid entity type")
-	ErrFileWriteFailed          = errors.New("failed to write file")
+	ErrValidationFailed   = errors.New("validation failed")
+	ErrNoEntitiesProvided = errors.New("no entities provided")
+	ErrInvalidEntityType  = errors.New("invalid entity type")
+	ErrFileWriteFailed    = errors.New("failed to write file")
+	// Deprecated: no function in this package returns ErrUnsupportedEntityType
+	// since multi-file serialization became generic over the entity maps.
 	ErrUnsupportedEntityType    = errors.New("unsupported entity type")
 	ErrCaseInsensitiveCollision = errors.New("case-insensitive filename collision: two entity IDs produce the same lowercase filename")
 	ErrUnsafeEntityID           = errors.New("entity ID contains unsafe characters for use as filename")

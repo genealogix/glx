@@ -22,14 +22,16 @@ import (
 // pointer.
 const AncestryAPIDTypeURI = "https://www.ancestry.com/apid"
 
+const gedcomPlatformAncestry = "ancestry"
+
 // ancestryAdapter handles Ancestry.com member-tree exports.
 type ancestryAdapter struct{}
 
-func (ancestryAdapter) Name() string  { return "ancestry" }
+func (ancestryAdapter) Name() string  { return gedcomPlatformAncestry }
 func (ancestryAdapter) Label() string { return "Ancestry" }
 
 func (ancestryAdapter) Detect(head GEDCOMHeaderSource) bool {
-	return headerMentions("ancestry", head.SystemID, head.Name)
+	return headerMentions(gedcomPlatformAncestry, head.SystemID, head.Name)
 }
 
 func (ancestryAdapter) TransformRecord(record *GEDCOMRecord, rewrites GEDCOMAdapterRewrites) {
@@ -71,21 +73,36 @@ func transformAncestryRecord(record *GEDCOMRecord, rewrites GEDCOMAdapterRewrite
 
 	rewriteUIDs(record, rewrites)
 
-	walkGEDCOMRecord(record, func(r *GEDCOMRecord) {
+	rewriteDetails := func(r *GEDCOMRecord) {
 		stripNoteRecordHTML(r, rewrites)
 		if r.Tag == GedcomTagSour {
 			rewriteAPID(r, r == record, rewrites)
 		}
-	})
+	}
+	if record.Tag != GedcomTagIndi {
+		walkGEDCOMRecord(record, rewriteDetails)
+
+		return
+	}
+	for _, child := range record.SubRecords {
+		// A _MILT kept because its TYPE has children is a raw extension.
+		// Do not alter notes or citations inside its preserved subtree.
+		if child.Tag == gedcomTagMilitaryExtension && hasNonLeafMilitaryType(child) {
+			continue
+		}
+		walkGEDCOMRecord(child, rewriteDetails)
+	}
 }
 
 // militaryServiceLabel is the label of the military_service event type, which
 // EVEN + TYPE resolves back to that type.
 const militaryServiceLabel = "Military Service"
 
+const gedcomTagMilitaryExtension = "_MILT"
+
 func rewriteMilitaryService(indi *GEDCOMRecord, rewrites GEDCOMAdapterRewrites) {
 	for _, sub := range indi.SubRecords {
-		if sub.Tag != "_MILT" || !militaryServiceConvertsLosslessly(sub) {
+		if sub.Tag != gedcomTagMilitaryExtension || !militaryServiceConvertsLosslessly(sub) {
 			continue
 		}
 
@@ -116,7 +133,7 @@ func rewriteMilitaryService(indi *GEDCOMRecord, rewrites GEDCOMAdapterRewrites) 
 		sub.Tag = GedcomTagEven
 		sub.Value = ""
 		sub.SubRecords = append([]*GEDCOMRecord{{Tag: GedcomTagType, Value: typeValue, Line: sub.Line}}, kept...)
-		rewrites["_MILT"]++
+		rewrites[gedcomTagMilitaryExtension]++
 	}
 }
 
@@ -133,9 +150,12 @@ var militaryEventChildTags = map[string]bool{
 // militaryServiceConvertsLosslessly reports whether rewriting a _MILT into an
 // EVEN keeps everything it holds: every child is one the event converter maps,
 // no vendor tag sits anywhere beneath it (other than an _APID, which this
-// adapter rewrites), and its value has no CONT line break, which an event
-// subtype cannot hold.
+// adapter rewrites), TYPE has no sub-records that would be discarded, and
+// the event value has no CONT line break, which a subtype cannot hold.
 func militaryServiceConvertsLosslessly(milt *GEDCOMRecord) bool {
+	if hasNonLeafMilitaryType(milt) {
+		return false
+	}
 	for _, child := range milt.SubRecords {
 		if !militaryEventChildTags[child.Tag] {
 			return false
@@ -155,6 +175,18 @@ func militaryServiceConvertsLosslessly(milt *GEDCOMRecord) bool {
 	}
 
 	return lossless
+}
+
+// hasNonLeafMilitaryType reports whether replacing the TYPE record would
+// discard child records. The original _MILT must be preserved in that case.
+func hasNonLeafMilitaryType(milt *GEDCOMRecord) bool {
+	for _, child := range milt.SubRecords {
+		if child.Tag == GedcomTagType && len(child.SubRecords) > 0 {
+			return true
+		}
+	}
+
+	return false
 }
 
 // rewriteDeathCause moves each _DCAUSE onto the first DEAT as CAUS. A

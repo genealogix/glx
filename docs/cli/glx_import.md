@@ -57,6 +57,10 @@ glx import <file> [flags]
   # Import without validation
   glx import family.ged -o family-archive --no-validate
 
+  # Keep each media file's source path, so photos/a.jpg and backup/a.jpg
+  # stay distinguishable after both become media/files/a*.jpg
+  glx import family.ged -o family-archive --media-source-paths
+
   # Force the Ancestry adapter instead of detecting it
   glx import tree.ged -o family-archive --platform ancestry
 
@@ -70,6 +74,7 @@ glx import <file> [flags]
   -f, --format string           Output format: multi or single (default "multi")
   -h, --help                    help for import
       --list-platforms          List the platform adapters and exit
+      --media-source-paths      Record each media file's path as written in the GEDCOM (properties.source_path); off by default because folder names can be private
       --no-validate             Skip validation before saving
   -o, --output string           Output file or directory (required)
       --platform string         Force a platform adapter instead of detecting it from HEAD.SOUR (see --list-platforms)

@@ -629,50 +629,11 @@ func (s *viewerServer) handleCreateRelationship(w http.ResponseWriter, r *http.R
 		return
 	}
 	opts.ArchivePath = s.archivePath
-	if existing := findSameRelationship(s.archive, opts); existing != "" {
-		writeEditError(w, fmt.Errorf("%w: %s", ErrServeRelationshipExists, existing))
 
-		return
-	}
-
+	// A relationship the archive already records is refused by addRelationship
+	// itself (ErrAddRelationshipDuplicate, answered 409): from a form a second
+	// copy is almost always a double-submit rather than a second relationship.
 	s.finishCreate(w, func(streams *IOStreams) error { return addRelationship(streams, opts) })
-}
-
-// findSameRelationship returns the ID of a relationship that already records
-// what opts would add (same type, same people in the same roles), or "".
-// `glx add relationship` would mint a "-2" twin instead, which from a form is
-// almost always a double-submit rather than a second relationship.
-func findSameRelationship(archive *glxlib.GLXFile, opts *addRelationshipOptions) string {
-	want := map[string]string{}
-	for _, p := range opts.Parents {
-		want[p] = glxlib.ParticipantRoleParent
-	}
-	for _, c := range opts.Children {
-		want[c] = glxlib.ParticipantRoleChild
-	}
-	for _, sp := range opts.Spouses {
-		want[sp] = glxlib.ParticipantRoleSpouse
-	}
-
-	for _, id := range sortedKeys(archive.Relationships) {
-		rel := archive.Relationships[id]
-		if rel == nil || rel.Type != opts.Type || len(rel.Participants) != len(want) {
-			continue
-		}
-		same := true
-		for _, p := range rel.Participants {
-			if role, ok := want[p.Person]; !ok || role != p.Role {
-				same = false
-
-				break
-			}
-		}
-		if same {
-			return id
-		}
-	}
-
-	return ""
 }
 
 // relationshipOptions turns the "add relative" form into `glx add
@@ -732,7 +693,7 @@ var editConflictErrors = []error{
 	ErrServePersonChangedOnDisk,
 	ErrServeTemporalName,
 	ErrServePropertyNotSimple,
-	ErrServeRelationshipExists,
+	ErrAddRelationshipDuplicate,
 }
 
 // editInputErrors are refusals of the request itself, from the editor or from

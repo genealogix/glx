@@ -106,7 +106,7 @@ func (glx *GLXFile) validateTallyRows(id string, event *Event, result *Validatio
 		result.Warnings = append(result.Warnings, ValidationWarning{
 			SourceType: EntityTypeEvents,
 			SourceID:   id,
-			Field:      "participants",
+			Field:      fieldParticipants,
 			Message: fmt.Sprintf("%s[%s]: %d participants are marked named: false but the household tally counts only %d persons",
 				EntityTypeEvents, id, unnamed, total),
 		})

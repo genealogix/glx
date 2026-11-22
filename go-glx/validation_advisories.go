@@ -28,6 +28,7 @@ import (
 func (glx *GLXFile) validateAdvisories(result *ValidationResult) {
 	glx.validateCensusSourceTypes(result)
 	glx.validateMediaHashes(result)
+	glx.validateDuplicateRelationships(result)
 }
 
 // validateCensusSourceTypes warns when a source's title mentions a census but
