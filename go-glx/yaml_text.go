@@ -49,19 +49,42 @@ func needsQuotedText(text string) bool {
 // a copy of the value in which each such string is a unique plain-scalar
 // token, then swaps every token for the double-quoted original. Only the
 // containers on the path to a replaced string are copied; the caller's value
-// is never modified. With no such string the output is yaml.Marshal's exactly.
-func marshalYAML(value any) ([]byte, error) {
+// is never modified. The output uses the requested indentation in both paths.
+func marshalYAML(value any, indent string) ([]byte, error) {
 	quoter := textQuoter{}
 	rewritten, changed := quoter.rewrite(reflect.ValueOf(value))
 	if !changed {
-		return yaml.Marshal(value)
+		return encodeYAML(value, indent)
 	}
-	encoded, err := yaml.Marshal(rewritten.Interface())
+	encoded, err := encodeYAML(rewritten.Interface(), indent)
 	if err != nil {
 		return nil, err
 	}
 
 	return quoter.restore(encoded)
+}
+
+// defaultYAMLIndent is the indentation glx writes when SerializerOptions.Indent
+// is empty or invalid: two spaces, as in the specification and the examples (#1427).
+const defaultYAMLIndent = 2
+
+// encodeYAML encodes value with an indentation string made up of spaces.
+func encodeYAML(value any, indent string) ([]byte, error) {
+	width := len(indent)
+	if width == 0 || strings.Trim(indent, " ") != "" {
+		width = defaultYAMLIndent
+	}
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(width)
+	if err := enc.Encode(value); err != nil {
+		return nil, err
+	}
+	if err := enc.Close(); err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
 }
 
 type textQuoter struct {
