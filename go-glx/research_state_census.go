@@ -50,27 +50,30 @@ func resolveStateFromPlace(placeRef string, archive *GLXFile) string {
 	return resolveStateFromPlaceAt(placeRef, "", archive)
 }
 
-// resolveStateFromPlaceAt is resolveStateFromPlace for the hierarchy as it
-// stood at date (#225): a county that was in a territory on that date has no
-// state ancestor then. An empty date uses default parents.
+// resolveStateFromPlaceAt reports a state only when every feasible path
+// names the same one. In particular a state record is not marked found from
+// an event with an ambiguous location.
 func resolveStateFromPlaceAt(placeRef string, date DateString, archive *GLXFile) string {
-	if placeRef == "" || archive == nil {
+	if archive == nil {
 		return ""
 	}
-
-	visited := make(map[string]bool)
-	current := placeRef
-
-	for current != "" && !visited[current] {
-		visited[current] = true
-		place, ok := archive.Places[current]
-		if !ok || place == nil {
+	var state string
+	for i, path := range archive.PlacePathsAt(placeRef, date) {
+		name := stateOnPath(path, archive)
+		if i != 0 && state != name {
 			return ""
 		}
-		if place.Type == PlaceTypeState {
-			return place.Name
+		state = name
+	}
+
+	return state
+}
+
+func stateOnPath(path []string, archive *GLXFile) string {
+	for _, id := range path {
+		if p := archive.Places[id]; p != nil && p.Type == PlaceTypeState {
+			return p.Name
 		}
-		current = place.ParentAt(date)
 	}
 
 	return ""
@@ -99,8 +102,10 @@ func collectPersonStates(archive *GLXFile, events []personSourceInfo) []string {
 		if ev.PlaceID == "" {
 			continue
 		}
-		if s := resolveStateFromPlaceAt(ev.PlaceID, ev.Date, archive); s != "" {
-			stateSet[s] = true
+		for _, path := range archive.PlacePathsAt(ev.PlaceID, ev.Date) {
+			if state := stateOnPath(path, archive); state != "" {
+				stateSet[state] = true
+			}
 		}
 	}
 

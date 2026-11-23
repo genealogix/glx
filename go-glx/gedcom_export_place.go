@@ -94,27 +94,15 @@ func buildPlaceString(placeID string, date DateString, expCtx *ExportContext) st
 		return ""
 	}
 
-	// Walk parent chain, collecting names from specific to general
-	var parts []string
-	visited := make(map[string]struct{})
-	currentID := placeID
-
-	for currentID != "" {
-		// Circular reference protection
-		if _, seen := visited[currentID]; seen {
-			expCtx.addExportWarning(EntityTypePlaces, placeID, "circular place reference detected")
-
-			break
+	path, cycle := expCtx.GLX.placePathProjection(placeID, date)
+	if cycle {
+		expCtx.addExportWarning(EntityTypePlaces, placeID, "circular place reference detected")
+	}
+	parts := make([]string, 0, len(path))
+	for _, id := range path {
+		if place := expCtx.GLX.Places[id]; place != nil {
+			parts = append(parts, place.Name)
 		}
-		visited[currentID] = struct{}{}
-
-		current, exists := expCtx.GLX.Places[currentID]
-		if !exists {
-			break
-		}
-
-		parts = append(parts, current.Name)
-		currentID = current.ParentAt(date)
 	}
 
 	return strings.Join(parts, ", ")

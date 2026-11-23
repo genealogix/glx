@@ -15,9 +15,10 @@
 package glx
 
 import (
+	"errors"
 	"fmt"
 	"math"
-	"time"
+	"slices"
 
 	"go.yaml.in/yaml/v3"
 
@@ -34,12 +35,13 @@ import (
 //	  - value: place-indiana
 //	    date: "FROM 1816-12-11"
 //
-// Place.ParentID always holds the *default* parent (DefaultParentOf), which is
-// what date-unaware code walks. Code that has a date in hand (an event's date)
-// calls Place.ParentAt to get the parent that applied then.
+// Place.EffectiveParentID returns the default parent (DefaultParentOf).
+// For date-scoped ancestry, use GLXFile.PlacePathsAt or GLXFile.PlaceHasAncestorAt.
 
 // placeFieldParent is the YAML key of a place's parent.
 const placeFieldParent = "parent"
+
+var errDuplicatePlaceParent = errors.New("place parent: duplicate parent key")
 
 // PlaceParentPeriod is one entry of a temporal place parent: Value is the
 // parent place ID, Date the period it applied (any GLX date; typically a
@@ -67,13 +69,13 @@ func DefaultParentOf(periods []PlaceParentPeriod) string {
 	}
 
 	best := -1
-	var bestSpan daySpan
+	var bestSpan glxdate.Interval
 	for i, p := range periods {
 		span, ok := parentPeriodSpan(p.Date)
 		if !ok {
-			span = daySpan{lo: math.MinInt64, hi: math.MinInt64}
+			span = glxdate.Interval{Start: math.MinInt, End: math.MinInt}
 		}
-		if best < 0 || span.hi > bestSpan.hi || (span.hi == bestSpan.hi && span.lo >= bestSpan.lo) {
+		if best < 0 || span.End > bestSpan.End || (span.End == bestSpan.End && span.Start >= bestSpan.Start) {
 			best, bestSpan = i, span
 		}
 	}
@@ -91,16 +93,31 @@ func (p *Place) HasTemporalParent() bool {
 }
 
 // SetParentHistory replaces the place's temporal parent list and recomputes
-// ParentID as its default parent. A nil or empty list clears the history and
-// leaves ParentID as it is.
+// ParentID as its default parent. A nil or empty list clears the history,
+// retaining the effective default as the scalar parent.
 func (p *Place) SetParentHistory(periods []PlaceParentPeriod) {
 	if len(periods) == 0 {
+		p.ParentID = p.EffectiveParentID()
 		p.ParentHistory = nil
 
 		return
 	}
-	p.ParentHistory = periods
+	p.ParentHistory = slices.Clone(periods)
 	p.ParentID = DefaultParentOf(periods)
+}
+
+// EffectiveParentID returns the current default parent. Temporal history is
+// authoritative, including for Places built or edited directly by SDK callers.
+// ParentID remains available for scalar parents and compatibility.
+func (p *Place) EffectiveParentID() string {
+	if p == nil {
+		return ""
+	}
+	if p.HasTemporalParent() {
+		return DefaultParentOf(p.ParentHistory)
+	}
+
+	return p.ParentID
 }
 
 // ParentIDs returns every distinct parent place ID the place has ever had,
@@ -123,7 +140,7 @@ func (p *Place) ParentIDs() []string {
 		seen[id] = struct{}{}
 		ids = append(ids, id)
 	}
-	add(p.ParentID)
+	add(p.EffectiveParentID())
 	for _, period := range p.ParentHistory {
 		add(period.Value)
 	}
@@ -135,7 +152,7 @@ func (p *Place) ParentIDs() []string {
 // parent changed over time. The rules:
 //
 //   - a place with a plain (non-temporal) parent, an empty date, or a date
-//     that cannot be placed on a timeline gets ParentID (the default parent);
+//     that cannot be placed on a timeline gets its effective default parent;
 //   - otherwise the dated entry whose period overlaps date the most wins
 //     ("1816" falls mostly in "FROM 1811 TO 1816-12-10"); ties go to the
 //     earlier entry in the list;
@@ -147,15 +164,15 @@ func (p *Place) ParentAt(date DateString) string {
 		return ""
 	}
 	if len(p.ParentHistory) == 0 || date == "" {
-		return p.ParentID
+		return p.EffectiveParentID()
 	}
-	at, ok := pointDateSpan(date)
+	at, ok := parentPeriodSpan(date)
 	if !ok {
-		return p.ParentID
+		return p.EffectiveParentID()
 	}
 
-	best, bestOverlap := -1, int64(0)
-	nearest, nearestGap := -1, int64(math.MaxInt64)
+	best, bestOverlap := -1, 0
+	nearest, nearestGap := -1, math.MaxInt
 	undated := -1
 	for i, period := range p.ParentHistory {
 		if period.Date == "" {
@@ -169,10 +186,10 @@ func (p *Place) ParentAt(date DateString) string {
 		if !ok {
 			continue
 		}
-		if overlap := span.overlap(at); overlap > bestOverlap {
+		if overlap := chronologyOverlap(span, at); overlap > bestOverlap {
 			best, bestOverlap = i, overlap
 		}
-		if gap := span.gap(at); gap < nearestGap {
+		if gap := chronologyGap(span, at); gap < nearestGap {
 			nearest, nearestGap = i, gap
 		}
 	}
@@ -186,7 +203,7 @@ func (p *Place) ParentAt(date DateString) string {
 		return p.ParentHistory[nearest].Value
 	}
 
-	return p.ParentID
+	return ""
 }
 
 // ReplaceParentRef rewrites every parent reference equal to oldID (the default
@@ -259,10 +276,16 @@ func (p *Place) UnmarshalYAML(value *yaml.Node) error {
 	var history []PlaceParentPeriod
 	hasHistory := false
 	if node.Kind == yaml.MappingNode {
+		parentIndex := -1
 		for i := 0; i+1 < len(node.Content); i += 2 {
-			if node.Content[i].Value != placeFieldParent {
-				continue
+			if node.Content[i].Value == placeFieldParent {
+				if parentIndex >= 0 {
+					return errDuplicatePlaceParent
+				}
+				parentIndex = i
 			}
+		}
+		if i := parentIndex; i >= 0 {
 			parentNode := node.Content[i+1]
 			if parentNode.Kind == yaml.AliasNode && parentNode.Alias != nil {
 				parentNode = parentNode.Alias
@@ -280,8 +303,6 @@ func (p *Place) UnmarshalYAML(value *yaml.Node) error {
 				stripped.Content = append(stripped.Content, node.Content[i+2:]...)
 				node = &stripped
 			}
-
-			break
 		}
 	}
 
@@ -330,162 +351,88 @@ func (p Place) MarshalYAML() (any, error) {
 	return &node, nil
 }
 
-// daySpan is an inclusive interval of days since the Unix epoch.
-// math.MinInt64 / math.MaxInt64 stand for an open start / end.
-type daySpan struct {
-	lo, hi int64
-}
-
-// overlap returns the number of days two spans share (0 when disjoint).
-// The receiver may be open-ended; other must be finite.
-func (s daySpan) overlap(other daySpan) int64 {
-	lo := max(s.lo, other.lo)
-	hi := min(s.hi, other.hi)
-	if hi < lo {
+// chronologyOverlap counts shared elapsed days. An unbounded overlap ranks
+// ahead of a finite one for the single-parent display projection.
+func chronologyOverlap(a, b glxdate.Interval) int {
+	lo, hi := max(a.Start, b.Start), min(a.End, b.End)
+	if lo >= hi {
 		return 0
 	}
+	if lo == math.MinInt || hi == math.MaxInt {
+		return math.MaxInt
+	}
 
-	return hi - lo + 1
+	return hi - lo
 }
 
-// gap returns the number of days between two disjoint spans (0 when they
-// overlap). The receiver may be open-ended; other must be finite.
-func (s daySpan) gap(other daySpan) int64 {
+// chronologyGap uses the bounds of disjoint half-open spans.
+func chronologyGap(a, b glxdate.Interval) int {
 	switch {
-	case s.hi < other.lo:
-		return other.lo - s.hi
-	case s.lo > other.hi:
-		return s.lo - other.hi
-	}
-
-	return 0
-}
-
-// pointDateSpan returns the days a date may denote, ignoring qualifiers: "1816"
-// is the whole of 1816, "FROM 1811 TO 1816" spans both years, "BEF 1820" is
-// treated as 1820. Used for the date being looked up. ok is false for dates
-// with no year, or in a calendar whose years are not Gregorian-like.
-func pointDateSpan(ds DateString) (daySpan, bool) {
-	d, _ := ds.Parse()
-	if !d.IsRange() {
-		return dateBounds(d)
-	}
-	first := d.Start()
-	if d.IsOpenStart() {
-		first = d.End()
-	}
-	last := d.End()
-	if d.IsOpenEnded() {
-		last = d.Start()
-	}
-	lo, okLo := dateBounds(first)
-	hi, okHi := dateBounds(last)
-	if !okLo || !okHi {
-		return daySpan{}, false
-	}
-
-	return daySpan{lo: lo.lo, hi: hi.hi}, true
-}
-
-// parentPeriodSpan returns the days a parent period may cover: "FROM a TO b"
-// and "BET a AND b" run from the first day of a to the last day of b; an open
-// "FROM a" / "AFT a" never ends; "TO b" / "BEF b" has no start; a single date
-// covers just that date.
-func parentPeriodSpan(ds DateString) (daySpan, bool) {
-	d, _ := ds.Parse()
-	if d.IsRange() {
-		span := daySpan{lo: math.MinInt64, hi: math.MaxInt64}
-		if !d.IsOpenStart() {
-			start, ok := dateBounds(d.Start())
-			if !ok {
-				return daySpan{}, false
-			}
-			span.lo = start.lo
-		}
-		if !d.IsOpenEnded() {
-			end, ok := dateBounds(d.End())
-			if !ok {
-				return daySpan{}, false
-			}
-			span.hi = end.hi
-		}
-
-		return span, true
-	}
-
-	bounds, ok := dateBounds(d)
-	if !ok {
-		return daySpan{}, false
-	}
-	switch d.Qualifier() {
-	case glxdate.QualifierBefore:
-		return daySpan{lo: math.MinInt64, hi: bounds.lo - 1}, true
-	case glxdate.QualifierAfter:
-		return daySpan{lo: bounds.hi + 1, hi: math.MaxInt64}, true
+	case a.End <= b.Start:
+		return b.Start - a.End
+	case a.Start >= b.End:
+		return a.Start - b.End
 	default:
-		return bounds, true
+		return 0
 	}
 }
 
-// parentPeriodCore returns the days a parent period certainly covers: the
-// period with its imprecise boundaries shrunk inward, so "FROM 1840 TO 1972"
-// and "FROM 1972" (which share the year 1972 only at year precision) do not
-// overlap. ok is false when the period is empty or cannot be placed.
-func parentPeriodCore(ds DateString) (daySpan, bool) {
-	d, _ := ds.Parse()
-	if !d.IsRange() {
-		return parentPeriodSpan(ds)
+// parentChronology rejects malformed, reversed and empty dates instead of
+// giving the parser's recoverable components historical force.
+func parentChronology(ds DateString) (glxdate.Date, glxdate.Bounds, bool) {
+	d, err := ds.Parse()
+	if err != nil {
+		return d, glxdate.Bounds{}, false
 	}
-	span := daySpan{lo: math.MinInt64, hi: math.MaxInt64}
-	if !d.IsOpenStart() {
-		start, ok := dateBounds(d.Start())
-		if !ok {
-			return daySpan{}, false
+	b := d.ChronologyBounds(0)
+	if !b.Known || b.Reversed || b.Outer.Start >= b.Outer.End {
+		return d, b, false
+	}
+	if d.IsRange() {
+		// A nominal date can be preserved by the parser while denoting no
+		// day in that calendar (e.g. unqualified February 29, 1900).
+		for _, endpoint := range []glxdate.Date{d.Start(), d.End()} {
+			if endpoint.IsZero() {
+				continue
+			}
+			x := endpoint.ChronologyBounds(0)
+			if !x.Known || x.Outer.Start >= x.Outer.End {
+				return d, b, false
+			}
 		}
-		span.lo = start.hi
-	}
-	if !d.IsOpenEnded() {
-		end, ok := dateBounds(d.End())
-		if !ok {
-			return daySpan{}, false
-		}
-		span.hi = end.lo
-	}
-	if span.hi < span.lo {
-		return daySpan{}, false
 	}
 
-	return span, true
+	return d, b, true
 }
 
-// dateBounds returns the first and last day a single (non-range) date can
-// denote at its precision: "1816" → 1 Jan–31 Dec 1816, "1816-12" → December.
-func dateBounds(d glxdate.Date) (daySpan, bool) {
-	if d.IsZero() || (d.Calendar() != glxdate.CalendarGregorian && d.Calendar() != glxdate.CalendarJulian) {
-		return daySpan{}, false
-	}
-	year := d.Year()
-	if year == 0 {
-		return daySpan{}, false
-	}
-	month, hasMonth := d.Month()
-	if !hasMonth {
-		return daySpan{lo: dayNumber(year, 1, 1), hi: dayNumber(year+1, 1, 1) - 1}, true
-	}
-	day, hasDay := d.Day()
-	if !hasDay {
-		return daySpan{lo: dayNumber(year, month, 1), hi: dayNumber(year, month+1, 1) - 1}, true
-	}
-	n := dayNumber(year, month, day)
+func parentPeriodSpan(ds DateString) (glxdate.Interval, bool) {
+	_, b, ok := parentChronology(ds)
 
-	return daySpan{lo: n, hi: n}, true
+	return b.Outer, ok
 }
 
-// dayNumber returns days since the Unix epoch for a proleptic Gregorian date.
-// time.Date normalizes month 13 to January of the next year.
-func dayNumber(year, month, day int) int64 {
-	return time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC).Unix() / secondsPerDay
+// parentPeriodCore returns days an entry certainly covers. A duration uses
+// inclusive actual-calendar boundary days; a coarse point, BET or qualified
+// event is not a guaranteed duration. FROM and TO supply one open boundary.
+func parentPeriodCore(ds DateString) (glxdate.Interval, bool) {
+	_, core, _, coreOK := parentPeriodBounds(ds)
+
+	return core, coreOK
 }
 
-// secondsPerDay converts Unix seconds to days.
-const secondsPerDay = 24 * 60 * 60
+func parentPeriodBounds(ds DateString) (outer, core glxdate.Interval, outerOK, coreOK bool) {
+	d, b, ok := parentChronology(ds)
+	if !ok {
+		return glxdate.Interval{}, glxdate.Interval{}, false, false
+	}
+	switch {
+	case d.IsOpenStart():
+		end := d.End().ChronologyBounds(0).Outer
+		b.Inner = glxdate.Interval{Start: math.MinInt, End: end.Start + 1}
+	case d.IsOpenEnded():
+		start := d.Start().ChronologyBounds(0).Outer
+		b.Inner = glxdate.Interval{Start: start.End - 1, End: math.MaxInt}
+	}
+
+	return b.Outer, b.Inner, true, b.Inner.Start < b.Inner.End
+}

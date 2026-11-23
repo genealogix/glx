@@ -277,6 +277,25 @@ test("a widening elsewhere does not hide a removed property", () => {
   assert.equal(classify(withField(ID), next).status, "breaking");
 });
 
+test("a widening under negation or an exclusive branch can reject old data", () => {
+  const wide = { oneOf: [ID, LIST] };
+  for (const wrap of [
+    (field) => ({ not: withField(field) }),
+    (field) => ({ oneOf: [withField(field), withField(LIST)] }),
+    (field) => ({ ...withField(field), not: { $ref: "#/properties/parent" } }),
+  ]) {
+    const old = wrap(ID);
+    const next = wrap(wide);
+    assert.deepEqual(collapseWidenings(old, next), next);
+    assert.equal(classify(old, next).breaking, true);
+  }
+  // The broader negated schema now rejects an array that used to pass.
+  const validate = new Ajv2020({strict: false});
+  const sample = {id: "x", parent: [{value: "p"}]};
+  assert.equal(validate.compile({not: withField(ID)})(sample), true);
+  assert.equal(validate.compile({not: withField(wide)})(sample), false);
+});
+
 test("collapseWidenings leaves enum/const data alone", () => {
   const base = { type: "object", const: { type: "string" } };
   const next = { type: "object", const: { anyOf: [{ type: "string" }] } };

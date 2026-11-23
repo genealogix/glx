@@ -433,7 +433,9 @@ func refinementPreference(keep, drop FactValue, def *PropertyDefinition, places 
 		return false, false
 	}
 	if def.ReferenceType == EntityTypePlaces.String() {
-		keepAncestor, dropAncestor := placeAncestor(keep.Value, drop.Value, places), placeAncestor(drop.Value, keep.Value, places)
+		archive := GLXFile{Places: places}
+		keepAncestor, _ := placeClaimContains(&archive, keep, drop, def)
+		dropAncestor, _ := placeClaimContains(&archive, drop, keep, def)
 
 		return keepAncestor, keepAncestor != dropAncestor
 	}

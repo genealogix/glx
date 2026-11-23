@@ -834,22 +834,12 @@ func placeFullNameAt(placeID string, date glxlib.DateString, archive *glxlib.GLX
 		return ""
 	}
 	var parts []string
-	seen := map[string]bool{}
-	current := placeID
-	for current != "" && !seen[current] {
-		seen[current] = true
-		place, ok := archive.Places[current]
-		if !ok || place == nil {
-			parts = append(parts, current)
-
-			break
-		}
-		name := place.Name
-		if name == "" {
-			name = current
+	for _, id := range archive.PlacePathAt(placeID, date) {
+		name := id
+		if place := archive.Places[id]; place != nil && place.Name != "" {
+			name = place.Name
 		}
 		parts = append(parts, name)
-		current = place.ParentAt(date)
 	}
 
 	return strings.Join(parts, ", ")

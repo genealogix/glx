@@ -313,8 +313,8 @@ func placeNode(id string, p *Place) map[string]any {
 	}
 	// containedInPlace is the default parent: JSON-LD has no dated form, so a
 	// temporal parent (#225) exports only its default (see DefaultParentOf).
-	if p.ParentID != "" {
-		node["containedInPlace"] = jsonLDPlacePrefix + p.ParentID
+	if parent := p.EffectiveParentID(); parent != "" {
+		node["containedInPlace"] = jsonLDPlacePrefix + parent
 	}
 	if p.Type != "" {
 		node["placeType"] = p.Type

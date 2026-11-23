@@ -136,7 +136,7 @@ func buildPlaceAnalysis(archive *glxlib.GLXFile) *placeAnalysis {
 		}
 
 		// No parent (exclude top-level types)
-		if place.ParentID == "" && !topLevelTypes[place.Type] {
+		if place.EffectiveParentID() == "" && !topLevelTypes[place.Type] {
 			a.NoParent = append(a.NoParent, id)
 		}
 
@@ -193,24 +193,12 @@ func buildCanonicalPath(placeID string, places map[string]*glxlib.Place) string 
 // empty date follows the default parents.
 func buildCanonicalPathAt(placeID string, date glxlib.DateString, places map[string]*glxlib.Place) string {
 	var parts []string
-	visited := make(map[string]bool)
-	current := placeID
-
-	for current != "" {
-		if visited[current] {
-			break // prevent cycles
+	for _, id := range (&glxlib.GLXFile{Places: places}).PlacePathAt(placeID, date) {
+		if place := places[id]; place != nil {
+			if name := strings.TrimSpace(place.Name); name != "" {
+				parts = append(parts, name)
+			}
 		}
-		visited[current] = true
-
-		place, ok := places[current]
-		if !ok || place == nil {
-			break
-		}
-		name := strings.TrimSpace(place.Name)
-		if name != "" {
-			parts = append(parts, name)
-		}
-		current = place.ParentAt(date)
 	}
 
 	return strings.Join(parts, ", ")

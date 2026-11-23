@@ -116,15 +116,6 @@ func TestCensusSchedulesForPerson_UsesEventDates(t *testing.T) {
 	assert.Equal(t, CensusCountryUnitedStates, schedules[0].Country)
 }
 
-func TestPlaceAncestor_TemporalParent(t *testing.T) {
-	places := indianaTerritoryArchive().Places
-
-	assert.True(t, placeAncestor("place-indiana-territory", "place-wayne-in", places))
-	assert.True(t, placeAncestor("place-indiana", "place-wayne-in", places))
-	assert.True(t, placeAncestor("place-wayne-in", "place-wayne-in", places))
-	assert.False(t, placeAncestor("place-wayne-in", "place-indiana", places))
-}
-
 func TestMarkPlaceAncestors_TemporalParent(t *testing.T) {
 	covered := map[string]bool{"place-wayne-in": true}
 	markPlaceAncestors(covered, indianaTerritoryArchive().Places)

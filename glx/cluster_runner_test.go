@@ -513,7 +513,7 @@ func TestResolvePersonForCluster_NilPerson(t *testing.T) {
 	assert.Contains(t, err.Error(), "no person found")
 }
 
-func TestPlaceIsDescendant(t *testing.T) {
+func TestEventInPlace_StaticHierarchy(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Places: map[string]*glxlib.Place{
 			"place-ironton": {Name: "Ironton", ParentID: "place-sauk-co"},
@@ -524,11 +524,11 @@ func TestPlaceIsDescendant(t *testing.T) {
 		},
 	}
 
-	assert.True(t, placeIsDescendant("place-ironton", "place-sauk-co", archive))
-	assert.True(t, placeIsDescendant("place-ironton", "place-wi", archive))
-	assert.False(t, placeIsDescendant("place-ironton", "place-ny", archive))
-	assert.False(t, placeIsDescendant("place-wi", "place-ironton", archive))
-	assert.False(t, placeIsDescendant("nonexistent", "place-wi", archive))
+	assert.True(t, eventInPlace(&glxlib.Event{PlaceID: "place-ironton"}, "place-sauk-co", archive))
+	assert.True(t, eventInPlace(&glxlib.Event{PlaceID: "place-ironton"}, "place-wi", archive))
+	assert.False(t, eventInPlace(&glxlib.Event{PlaceID: "place-ironton"}, "place-ny", archive))
+	assert.False(t, eventInPlace(&glxlib.Event{PlaceID: "place-wi"}, "place-ironton", archive))
+	assert.False(t, eventInPlace(&glxlib.Event{PlaceID: "nonexistent"}, "place-wi", archive))
 }
 
 func TestBuildCluster_PlaceDescendantFilter(t *testing.T) {

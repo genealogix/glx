@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
@@ -97,13 +98,13 @@ func TestMigrationPlacePathAt_TemporalParent(t *testing.T) {
 	assert.Equal(t, []string{"Wisconsin", "Dodge Co.", "Millbrook"}, migrationPlacePath("place-millbrook", archive.Places), "no date: default parent")
 }
 
-func TestPlaceIsDescendant_TemporalParent(t *testing.T) {
+func TestEventInPlace_UndatedTemporalParent(t *testing.T) {
 	archive := temporalParentArchive()
 
-	assert.True(t, placeIsDescendant("place-wayne-in", "place-indiana-territory", archive))
-	assert.True(t, placeIsDescendant("place-wayne-in", "place-indiana", archive))
-	assert.True(t, placeIsDescendant("place-wayne-in", "place-usa", archive))
-	assert.False(t, placeIsDescendant("place-indiana", "place-wayne-in", archive))
+	assert.True(t, eventInPlace(&glxlib.Event{PlaceID: "place-wayne-in"}, "place-indiana-territory", archive))
+	assert.True(t, eventInPlace(&glxlib.Event{PlaceID: "place-wayne-in"}, "place-indiana", archive))
+	assert.True(t, eventInPlace(&glxlib.Event{PlaceID: "place-wayne-in"}, "place-usa", archive))
+	assert.False(t, eventInPlace(&glxlib.Event{PlaceID: "place-indiana"}, "place-wayne-in", archive))
 }
 
 func TestBuildPlaceAnalysis_TemporalParent(t *testing.T) {
@@ -118,4 +119,97 @@ func TestBuildPlaceAnalysis_TemporalParent(t *testing.T) {
 	a = buildPlaceAnalysis(archive)
 	assert.Equal(t, []string{"place-wayne-in"}, a.DanglingParent)
 	assert.Equal(t, "place-indiana-territory", a.DanglingParentIDs["place-wayne-in"])
+}
+
+func TestHistoricalPlaceFilterUsesEachObservationBeforeGroupingByYear(t *testing.T) {
+	a := temporalParentArchive()
+	people := []glxlib.Participant{{Person: "person-1", Role: "subject"}, {Person: "other", Role: "member"}}
+	a.Events = map[string]*glxlib.Event{
+		"early": {Type: glxlib.EventTypeCensus, Date: "1816-12-10", PlaceID: "place-wayne-in", Participants: people},
+		"late":  {Type: glxlib.EventTypeCensus, Date: "1816-12-11", PlaceID: "place-wayne-in", Participants: people},
+		"neighbor": {
+			Type: "marriage", Date: "1816-12-11", PlaceID: "place-wayne-in",
+			Participants: []glxlib.Participant{{Person: "late-only", Role: "groom"}},
+		},
+	}
+	a.Persons["other"] = &glxlib.Person{}
+	a.Persons["late-only"] = &glxlib.Person{}
+	for _, tc := range []struct {
+		county, event string
+		overlap       bool
+	}{
+		{"place-indiana-territory", "early", false}, {"place-indiana", "late", true},
+	} {
+		t.Run(tc.county, func(t *testing.T) {
+			result := buildCluster("person-1", a, tc.county, 0, 1815)
+			var events []string
+			for _, associate := range result.Associates {
+				for _, link := range associate.Links {
+					if link.EventID != "" {
+						events = append(events, link.EventID)
+					}
+				}
+			}
+			require.Equal(t, []string{tc.event}, events)
+			if tc.overlap {
+				require.Len(t, result.Associates, 2)
+			} else {
+				require.Len(t, result.Associates, 1)
+			}
+			h := buildHouseholds(a, "person-1", householdsOptions{PlaceID: tc.county, Year: 1816})
+			require.Len(t, h.Households, 1)
+			require.Equal(t, tc.event, h.Households[0].EventID)
+		})
+	}
+}
+
+func TestRedistrictingIsNotMovementOrAVisit(t *testing.T) {
+	a := temporalParentArchive()
+	a.Places["town"] = &glxlib.Place{Name: "Town", ParentID: "place-wayne-in"}
+	a.Places["other"] = &glxlib.Place{Name: "Other town", ParentID: "place-indiana"}
+	entry := func(date, id string) migrationEntry { return newMigrationEntry(date, id, "Observation", a) }
+	before, after := entry("1814", "town"), entry("1820", "town")
+	coarse := entry("1818", "place-indiana")
+	run := make([]migrationEntry, 0, 4)
+	run = append(run, before, coarse, after)
+	require.Empty(t, computeMovements(run, a))
+	stops := migrationStops(run, a)
+	require.Len(t, stops, 1)
+	require.Equal(t, before.Place, stops[0].Place)
+	require.Nil(t, matchStopsAgainstTerms(stops, []string{"Indiana Territory", "Indiana"}))
+	move := computeMovements(append(run, entry("1821", "other")), a)
+	require.Len(t, move, 1)
+	require.Equal(t, "1820", move[0].FromDate)
+
+	home := entry("FROM 1813 TO 1821", "town")
+	home.location = true
+	observations := []migrationEntry{home, after, coarse, entry("1820", "other")}
+	applyResidencePeriods(observations, a)
+	require.False(t, observations[1].Excluded)
+	require.False(t, observations[2].Excluded)
+	require.True(t, observations[3].Excluded)
+}
+
+func TestResidenceSuccessorNameRequiresCompletePaths(t *testing.T) {
+	a := &glxlib.GLXFile{Places: map[string]*glxlib.Place{
+		"country":   {Name: "US", Type: glxlib.PlaceTypeCountry},
+		"state":     {Name: "Florida", ParentID: "country"},
+		"territory": {Name: "Florida Territory", ParentID: "country"},
+		"other":     {Name: "Elsewhere", ParentID: "country"},
+	}}
+	home := newMigrationEntry("FROM 1840 TO 1850", "state", "Residence", a)
+	home.location = true
+	entries := []migrationEntry{home, newMigrationEntry("1841", "territory", "Census", a), newMigrationEntry("1841", "other", "Census", a)}
+	applyResidencePeriods(entries, a)
+	require.False(t, entries[1].Excluded, "static normalized territory/state naming remains compatible")
+	require.True(t, entries[2].Excluded)
+
+	// A truncated village label at an unsupported date must not match
+	// an unrelated state just because its standalone name is also "Florida".
+	a.Places["village"] = &glxlib.Place{Name: "Florida", ParentHistory: []glxlib.PlaceParentPeriod{
+		{Value: "other", Date: "FROM 1900"},
+	}}
+	entries = []migrationEntry{home, newMigrationEntry("1841", "village", "Census", a)}
+	applyResidencePeriods(entries, a)
+	require.True(t, entries[1].Excluded)
 }

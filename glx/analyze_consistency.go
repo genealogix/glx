@@ -505,6 +505,7 @@ func buildRelationshipHypotheticalIndex(archive *glxlib.GLXFile) map[string]bool
 type siblingChildPlace struct {
 	childID string
 	placeID string
+	date    glxlib.DateString
 }
 
 // siblingOutlierDedupKey identifies a unique (child, majority-place, outlier-
@@ -568,7 +569,7 @@ func childrenWithBirthPlace(archive *glxlib.GLXFile, childIDs []string) []siblin
 		if birth == nil || birth.PlaceID == "" {
 			continue
 		}
-		withPlace = append(withPlace, siblingChildPlace{childID: cid, placeID: birth.PlaceID})
+		withPlace = append(withPlace, siblingChildPlace{childID: cid, placeID: birth.PlaceID, date: birth.Date})
 	}
 	sort.Slice(withPlace, func(i, j int) bool { return withPlace[i].childID < withPlace[j].childID })
 
@@ -764,10 +765,10 @@ func checkSiblingBirthplaceOutlier(archive *glxlib.GLXFile) []AnalysisIssue {
 				continue
 			}
 			emitted[key] = true
-			if placeIsDescendant(c.placeID, majorityPlace, archive) {
+			if archive.PlaceHasAncestorAt(c.placeID, majorityPlace, c.date) {
 				continue
 			}
-			if placeIsDescendant(majorityPlace, c.placeID, archive) {
+			if archive.PlaceHasAncestorAt(majorityPlace, c.placeID, c.date) {
 				issues = append(issues, buildLessSpecificBirthplaceIssue(archive, c, majorityPlace, majorityCount, len(withPlace)))
 
 				continue

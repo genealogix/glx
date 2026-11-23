@@ -159,10 +159,9 @@ func suggestCensusSearches(archive *glxlib.GLXFile) []AnalysisIssue {
 
 	addCensusYearFromSources(archive, personCensusYears)
 	personBurialYear := buildBurialYearIndex(archive)
-	personPlaces := buildPersonPlaceIndex(archive)
-	personDatedPlaces := buildPersonDatedPlaceIndex(archive)
+	personPlaces := personCensusPlaceIndex(archive)
 
-	plans := buildCensusSuggestionPlans(archive, personCensusYears, personBurialYear, personPlaces, personDatedPlaces)
+	plans := buildCensusSuggestionPlans(archive, personCensusYears, personBurialYear, personPlaces)
 	parentExtras, suppressed := consolidateParentChildCensus(archive, plans)
 
 	return emitCensusSuggestions(archive, plans, parentExtras, suppressed)
@@ -206,8 +205,7 @@ func buildCensusSuggestionPlans(
 	archive *glxlib.GLXFile,
 	personCensusYears map[string]map[int]bool,
 	personBurialYear map[string]int,
-	personPlaces map[string][]string,
-	personDatedPlaces map[string][]datedPlace,
+	personPlaces map[string][]glxlib.CensusPlaceObservation,
 ) map[string]*censusSuggestionPlan {
 	plans := make(map[string]*censusSuggestionPlan)
 	schedulesByCountry := make(map[string]*censusSchedule)
@@ -232,14 +230,14 @@ func buildCensusSuggestionPlans(
 
 		existing := personCensusYears[id]
 		plan := &censusSuggestionPlan{birthYear: birthYear, lossNotes: make(map[censusYearRef]string)}
-		for _, schedule := range censusSchedulesForPlaces(personPlaces[id], archive) {
+		for _, schedule := range censusSchedulesForObservations(archive, personPlaces[id]) {
 			// Plan keys share one snapshot per country within this analysis run.
 			if known := schedulesByCountry[schedule.Country]; known != nil {
 				schedule = known
 			} else {
 				schedulesByCountry[schedule.Country] = schedule
 			}
-			plan.addMissingCensuses(archive, schedule, upperBound, existing, personDatedPlaces[id])
+			plan.addMissingCensuses(archive, schedule, upperBound, existing, personPlaces[id])
 		}
 		if len(plan.missing) > 0 {
 			plans[id] = plan
@@ -250,12 +248,12 @@ func buildCensusSuggestionPlans(
 }
 
 // addMissingCensuses keeps only searchable census years within a person's life.
-func (plan *censusSuggestionPlan) addMissingCensuses(archive *glxlib.GLXFile, schedule *censusSchedule, upperBound int, existing map[int]bool, places []datedPlace) {
+func (plan *censusSuggestionPlan) addMissingCensuses(archive *glxlib.GLXFile, schedule *censusSchedule, upperBound int, existing map[int]bool, places []glxlib.CensusPlaceObservation) {
 	for _, year := range schedule.Years {
 		if year < plan.birthYear || year > upperBound || existing[year] {
 			continue
 		}
-		survival := schedule.Survival(year, places, archive)
+		survival := schedule.SurvivalAt(year, places, archive)
 		if survival.Lost {
 			continue
 		}
