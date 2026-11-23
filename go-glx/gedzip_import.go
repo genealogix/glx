@@ -49,6 +49,12 @@ const (
 // (url.PathUnescape) and case-insensitive matching. Unresolved media references emit
 // warnings on ImportResult rather than failing the import.
 func ImportGEDZIP(bundle fs.FS, logW io.Writer) (*GLXFile, *ImportResult, error) {
+	return ImportGEDZIPWithOptions(bundle, logW, ImportOptions{})
+}
+
+// ImportGEDZIPWithOptions imports a GEDZIP bundle as ImportGEDZIP does, with
+// the given options.
+func ImportGEDZIPWithOptions(bundle fs.FS, logW io.Writer, opts ImportOptions) (*GLXFile, *ImportResult, error) {
 	if isNilFS(bundle) {
 		return nil, nil, ErrGEDZIPNilBundle
 	}
@@ -76,7 +82,7 @@ func ImportGEDZIP(bundle fs.FS, logW io.Writer) (*GLXFile, *ImportResult, error)
 	}
 	defer f.Close()
 
-	glxFile, result, err := ImportGEDCOM(f, logW)
+	glxFile, result, err := ImportGEDCOMWithOptions(f, logW, opts)
 	if err != nil {
 		return nil, nil, err
 	}

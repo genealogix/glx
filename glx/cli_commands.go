@@ -270,6 +270,9 @@ var (
 	importNoValidate      bool
 	importVerbose         bool
 	importShowFirstErrors int
+	importPlatform        string
+	importListPlatforms   bool
+
 	// importMediaSourcePaths records each media file's FILE reference as
 	// properties.source_path (#1144). Package-level, like the other flags,
 	// because importGEDCOM is called directly by many tests.
@@ -297,7 +300,16 @@ The imported archive will include:
 
 Output formats:
 - multi: Multi-file directory structure (default, one file per entity)
-- single: Single YAML file`,
+- single: Single YAML file
+
+Platform adapters:
+The software that exported the file is detected from its HEAD.SOUR record,
+and that platform's custom tags are rewritten into standard GEDCOM before
+conversion (for example Ancestry's _MILT becomes a military_service event,
+_DCAUSE the death event's cause, and a citation's _APID an external ID plus
+a link to the Ancestry record). Use --platform to force an adapter and
+--list-platforms to see them all. Custom tags no adapter maps are still
+preserved under gedcom_extensions on persons.`,
 	Example: `  # Import GEDCOM to multi-file directory (default)
   glx import family.ged -o family-archive
 
@@ -312,8 +324,20 @@ Output formats:
 
   # Keep each media file's source path, so photos/a.jpg and backup/a.jpg
   # stay distinguishable after both become media/files/a*.jpg
-  glx import family.ged -o family-archive --media-source-paths`,
-	Args: cobra.ExactArgs(1),
+  glx import family.ged -o family-archive --media-source-paths
+
+  # Force the Ancestry adapter instead of detecting it
+  glx import tree.ged -o family-archive --platform ancestry
+
+  # List the platform adapters
+  glx import --list-platforms`,
+	Args: func(cmd *cobra.Command, args []string) error {
+		if importListPlatforms {
+			return cobra.NoArgs(cmd, args)
+		}
+
+		return cobra.ExactArgs(1)(cmd, args)
+	},
 	RunE: runImport,
 }
 
@@ -323,14 +347,23 @@ func init() {
 	importCmd.Flags().BoolVar(&importNoValidate, "no-validate", false, "Skip validation before saving")
 	importCmd.Flags().BoolVarP(&importVerbose, "verbose", "v", false, "Verbose output")
 	importCmd.Flags().IntVar(&importShowFirstErrors, "show-first-errors", defaultShowFirstErrors, "Number of validation errors to show (0 for all)")
+	importCmd.Flags().StringVar(&importPlatform, "platform", "", "Force a platform adapter instead of detecting it from HEAD.SOUR (see --list-platforms)")
+	importCmd.Flags().BoolVar(&importListPlatforms, "list-platforms", false, "List the platform adapters and exit")
 	importCmd.Flags().BoolVar(&importMediaSourcePaths, "media-source-paths", false,
 		"Record each media file's path as written in the GEDCOM (properties.source_path); off by default because folder names can be private")
-
-	_ = importCmd.MarkFlagRequired("output")
 }
 
 func runImport(_ *cobra.Command, args []string) error {
-	return importGEDCOM(args[0], importOutput, importFormat, !importNoValidate, importVerbose, importShowFirstErrors)
+	if importListPlatforms {
+		return listImportPlatforms(resolveOutputWriter())
+	}
+	// --output is required for an import but not for --list-platforms, so it
+	// is checked here rather than with MarkFlagRequired.
+	if importOutput == "" {
+		return ErrImportOutputRequired
+	}
+
+	return importGEDCOMWithPlatform(args[0], importOutput, importFormat, importPlatform, !importNoValidate, importVerbose, importShowFirstErrors)
 }
 
 // ============================================================================
