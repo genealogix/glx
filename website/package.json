@@ -29,7 +29,7 @@
     "eslint": "^10.14.0",
     "eslint-plugin-vue": "^10.12.1",
     "globals": "^17.14.0",
-    "prettier": "^3.9.10",
+    "prettier": "^3.10.1",
     "vitepress": "^2.0.0-alpha.21"
   },
   "overrides": {
