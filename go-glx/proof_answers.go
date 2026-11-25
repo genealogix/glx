@@ -582,15 +582,13 @@ func parentageAnswerCandidates(personID string, archive *GLXFile, relevant []pro
 			// The person is claimed as the child of a relationship that lists
 			// only the parents: its recorded parents are candidates.
 			relID := pa.a.Subject.Relationship
-			for _, parent := range archive.Relationships[relID].Participants {
-				if parent.Person != "" && parent.Person != personID && IsParentSideRole(parent.Role) && !IsStepRole(parent.Role) {
-					newParent("rel:"+relID+":"+parent.Person, parent.Person, relID).add(standings.LinkAssertions(relID, parent.Person, personID)...)
-				}
+			for _, parentID := range recordedParents(archive.Relationships[relID], personID) {
+				newParent("rel:"+relID+":"+parentID, parentID, relID).add(standings.LinkAssertions(relID, parentID, personID)...)
 			}
 
 			continue
 		}
-		if pa.synthetic || p == nil || p.Person == "" || p.Person == personID || !IsParentSideRole(p.Role) || IsStepRole(p.Role) {
+		if pa.synthetic || !isOtherParentClaim(p, personID) {
 			continue
 		}
 		switch {
@@ -610,6 +608,25 @@ func parentageAnswerCandidates(personID string, archive *GLXFile, relevant []pro
 	}
 
 	return set.order
+}
+
+// isOtherParentClaim reports whether a participant claim names someone other
+// than the person in a non-step parent role.
+func isOtherParentClaim(p *Participant, personID string) bool {
+	return p != nil && p.Person != "" && p.Person != personID && IsParentSideRole(p.Role) && !IsStepRole(p.Role)
+}
+
+// recordedParents returns the non-step parents a relationship lists, other
+// than the person.
+func recordedParents(rel *Relationship, personID string) []string {
+	var out []string
+	for _, p := range rel.Participants {
+		if p.Person != "" && p.Person != personID && IsParentSideRole(p.Role) && !IsStepRole(p.Role) {
+			out = append(out, p.Person)
+		}
+	}
+
+	return out
 }
 
 // candidateSet collects one question's candidates by key, in first-seen order.
@@ -1275,28 +1292,7 @@ func temporalPropertyEntries(raw any) []propertyEntry {
 // a property (two men holding one office), with the dates recorded for them:
 // on the person, on an event participation, or in a claim about either.
 func sharedPropertyHolders(personID, property, value string, archive *GLXFile) []string {
-	key := normalizeProofValue(value)
-	dates := map[string][]string{}
-	var ids []string
-	addDate := func(id, date string) {
-		if _, seen := dates[id]; !seen {
-			ids = append(ids, id)
-			dates[id] = nil
-		}
-		if date != "" && !slices.Contains(dates[id], date) {
-			dates[id] = append(dates[id], date)
-		}
-	}
-	addEntries := func(id string, entries []propertyEntry) {
-		if id == "" || id == personID {
-			return
-		}
-		for _, entry := range entries {
-			if normalizeProofValue(entry.value) == key {
-				addDate(id, entry.date)
-			}
-		}
-	}
+	h := &propertyHolders{personID: personID, key: normalizeProofValue(value), dates: map[string][]string{}}
 	for _, id := range sortedKeys(archive.Assertions) {
 		a := archive.Assertions[id]
 		if a == nil || AssertionIsDisproven(a) {
@@ -1304,34 +1300,66 @@ func sharedPropertyHolders(personID, property, value string, archive *GLXFile) [
 		}
 		switch {
 		case a.Participant != nil && a.Subject.Event != "":
-			addEntries(a.Participant.Person, assertionPropertyEntries(a, property))
+			h.add(a.Participant.Person, assertionPropertyEntries(a, property))
 		case a.Participant == nil:
-			addEntries(a.Subject.Person, assertionPropertyEntries(a, property))
+			h.add(a.Subject.Person, assertionPropertyEntries(a, property))
 		}
 	}
 	for _, eventID := range sortedKeys(archive.Events) {
 		if event := archive.Events[eventID]; event != nil {
 			for _, p := range event.Participants {
-				addEntries(p.Person, temporalPropertyEntries(p.Properties[property]))
+				h.add(p.Person, temporalPropertyEntries(p.Properties[property]))
 			}
 		}
 	}
 	for _, id := range sortedKeys(archive.Persons) {
-		person := archive.Persons[id]
-		if id == personID || person == nil {
+		if person := archive.Persons[id]; person != nil {
+			h.add(id, temporalPropertyEntries(person.Properties[property]))
+		}
+	}
+
+	return h.labels(archive)
+}
+
+// propertyHolders collects the other people holding one property value, in
+// first-seen order, with the dates recorded for each.
+type propertyHolders struct {
+	personID string
+	key      string
+	ids      []string
+	dates    map[string][]string
+}
+
+// add records the entries of the value held by one person.
+func (h *propertyHolders) add(id string, entries []propertyEntry) {
+	if id == "" || id == h.personID {
+		return
+	}
+	for _, entry := range entries {
+		if normalizeProofValue(entry.value) != h.key {
 			continue
 		}
-		addEntries(id, temporalPropertyEntries(person.Properties[property]))
+		if _, seen := h.dates[id]; !seen {
+			h.ids = append(h.ids, id)
+			h.dates[id] = nil
+		}
+		if entry.date != "" && !slices.Contains(h.dates[id], entry.date) {
+			h.dates[id] = append(h.dates[id], entry.date)
+		}
 	}
-	labels := DistinguishPersonNames(archive, append([]string{personID}, ids...))
-	out := make([]string, 0, len(ids))
-	for _, id := range ids {
+}
+
+// labels names each holder, told apart from namesakes, with their dates.
+func (h *propertyHolders) labels(archive *GLXFile) []string {
+	labels := DistinguishPersonNames(archive, append([]string{h.personID}, h.ids...))
+	out := make([]string, 0, len(h.ids))
+	for _, id := range h.ids {
 		label := labels[id]
 		if !strings.Contains(label, id) {
 			label += " (" + id + ")"
 		}
-		if len(dates[id]) > 0 {
-			label += " " + strings.Join(dates[id], "; ")
+		if len(h.dates[id]) > 0 {
+			label += " " + strings.Join(h.dates[id], "; ")
 		}
 		out = append(out, label)
 	}
