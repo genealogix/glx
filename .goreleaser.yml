@@ -78,6 +78,11 @@ release:
   # of /releases/latest and the "Latest" badge. Without this, GoReleaser's
   # default (false) published every beta as a full release (#1007).
   prerelease: auto
+  # Create the release as a draft. release.yml attaches the SLSA provenance
+  # bundle (glx.intoto.jsonl) and only then publishes it, so every asset is in
+  # place before publish, as Immutable Releases requires (#931). A run that
+  # fails partway leaves a draft, never a half-signed public release.
+  draft: true
 signs:
   - cmd: cosign
     artifacts: checksum

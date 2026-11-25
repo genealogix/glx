@@ -1,0 +1,5 @@
+kind: Changed
+body: '**Releases attach SLSA provenance as `glx.intoto.jsonl`** — the build-provenance attestation is now a release asset as well as an entry in GitHub''s attestation API, so it can be verified offline with `gh attestation verify --bundle glx.intoto.jsonl --repo genealogix/glx <file>` and is credited by OpenSSF Scorecard. GoReleaser now creates each release as a draft and the workflow publishes it once every asset is attached.'
+time: '2026-11-25T00:00:00Z'
+custom:
+  Issue: '#1570'

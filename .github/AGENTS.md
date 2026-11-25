@@ -73,9 +73,13 @@ If a tag's release workflow fails for a workflow-file reason:
 > permanently. There is also no operationally useful "safe window before
 > assets upload" — in a normal GoReleaser run that window is seconds.
 >
-> For a safe pre-publish re-run window, prefer GoReleaser
-> `release.draft: true` (assets upload to a still-mutable draft; flip to
-> published only when green) instead of any tag surgery.
+> GoReleaser runs with `release.draft: true`: assets upload to a
+> still-mutable draft, and the release only goes public when the last
+> `release.yml` step (attach `glx.intoto.jsonl`, then `gh release edit
+> --draft=false`) succeeds. A run that fails before that leaves a draft
+> behind. Delete that draft (`gh release delete <tag>`, keeping the tag),
+> fix forward, and cut the next patch tag. Do not hand-publish a draft that
+> is missing `glx.intoto.jsonl` or `checksums.txt.sigstore.json`.
 
 ## Drift gates that will fail your PR
 
