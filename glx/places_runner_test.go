@@ -17,6 +17,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -291,4 +292,46 @@ func TestBuildPlaceAnalysis_NilParentIsDangling(t *testing.T) {
 
 	// A nil place entry is skipped entirely (not included in Unreferenced)
 	assert.NotContains(t, a.Unreferenced, "place-nil")
+}
+
+func TestPrintPlaceAnalysis_EverySection(t *testing.T) {
+	a := &placeAnalysis{
+		Total: 3,
+		Canonical: map[string]string{
+			"place-a": "Springfield, Ohio",
+			"place-b": "Springfield, Illinois",
+			"place-c": "Nowhere",
+		},
+		Duplicates:         map[string][]string{"springfield": {"place-b", "place-a"}},
+		DuplicateOriginals: map[string]string{"springfield": "Springfield"},
+		MissingCoords:      []string{"place-c"},
+		MissingType:        []string{"place-c"},
+		NoParent:           []string{"place-c"},
+		DanglingParent:     []string{"place-b"},
+		DanglingParentIDs:  map[string]string{"place-b": "place-gone"},
+		Unreferenced:       []string{"place-c"},
+	}
+
+	out := captureStdout(t, func() { printPlaceAnalysis(a) })
+
+	for _, want := range []string{
+		"Place analysis: 3 places",
+		"Duplicate names (ambiguous):",
+		"\"Springfield\" appears 2 times:",
+		"Missing coordinates (1 of 3):",
+		"Missing type (1 of 3):",
+		"No parent (hierarchy gap):",
+		"Dangling parent (references missing place):",
+		"(parent: place-gone)",
+		"Unreferenced (not used by any event",
+	} {
+		assert.Contains(t, out, want)
+	}
+	assert.NotContains(t, out, "No issues found.")
+	assert.Less(t, strings.Index(out, "place-a"), strings.Index(out, "place-b"), "duplicate IDs are sorted")
+}
+
+func TestPrintPlaceAnalysis_NoIssues(t *testing.T) {
+	out := captureStdout(t, func() { printPlaceAnalysis(&placeAnalysis{Total: 1}) })
+	assert.Contains(t, out, "No issues found.")
 }
