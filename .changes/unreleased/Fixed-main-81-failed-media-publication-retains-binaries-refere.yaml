@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**Failed media publication retains binaries referenced by partially installed metadata** — GEDCOM and GEDZIP imports roll back newly committed media only when nonpublication is confirmed, including after metadata rename errors; merge failures retain binaries whenever metadata rollback is incomplete. Shared case-variant media directories keep their spelling so older references still resolve. Dense matching refreshes cache free suffixes, indexed reuse shares allocator claims, and canonical filename provenance follows the final allocation.'
+time: '2026-11-11T00:00:08Z'
+custom:
+  Issue: '#1391'

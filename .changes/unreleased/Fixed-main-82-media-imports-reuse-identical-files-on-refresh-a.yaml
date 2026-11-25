@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**Media imports reuse identical files on refresh and publish media before archive references** — GEDCOM and GEDZIP imports avoid duplicate binaries on repeated runs, resolve numbered and case-equivalent filename collisions, and leave the old archive in place when media staging fails. A refresh whose source image is unavailable keeps the reference to the existing file and warns that its contents were not verified. When binary media is present, output `media` and `media/files` directory symlinks are rejected with a clear error because writing through them could escape the archive.'
+time: '2026-11-11T00:00:09Z'
+custom:
+  Issue: '#1391'

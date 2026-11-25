@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**Sibling birthplace check understands the place hierarchy** — A child born in North Carolina was flagged MEDIUM as an outlier against siblings born in Rowan County, North Carolina. A birthplace that encloses the siblings'' majority place is now an INFO "birthplace less specific than siblings''" prompt (find a more specific record), and one inside the majority place is not reported. Different places on separate branches (two counties of one state) are still outliers.'
+time: '2026-10-07T00:00:18Z'
+custom:
+  Issue: '#1324'

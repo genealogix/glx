@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**Cross-archive duplicate matching keeps assertion provenance** — A source claim about a colliding subject or participant ID is excluded when the destination retained a different entity. Claims about identical retained subjects still participate, and neither input archive is modified. A source claim whose assertion ID the destination already uses for a different claim is kept alongside it rather than replaced.'
+time: '2026-11-24T00:01:31Z'
+custom:
+  Issue: 'PR #1535'

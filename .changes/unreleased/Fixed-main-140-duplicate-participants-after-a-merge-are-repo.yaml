@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**Duplicate participants after a merge are reported** — `glx merge-persons` now names, in the preview and the summary, each event where both merged persons held the same role, so the survivor appears in it twice, with the rows that were the dropped person''s; duplicates that predate the merge are not attributed to it. `glx validate` warns about an event or relationship listing one person twice in the same role with the same notes and properties; rows that differ there, such as one GEDCOM `ASSO` per detail, are distinct appearances and are not reported.'
+time: '2026-11-24T00:01:38Z'
+custom:
+  Issue: '#1493'

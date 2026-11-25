@@ -1,0 +1,5 @@
+kind: Changed
+body: '**`go-glx` media filename allocation API** — `ConversionContext.MediaFileNames` now holds `*FilenameAllocator` instead of `map[string]int`; SDK callers that construct the context must initialize it with `NewFilenameAllocator()`. Published media and person-page filenames also share portable collision handling, while existing source and place fragment numbering stays stable.'
+time: '2026-11-11T00:00:00Z'
+custom:
+  Issue: '#1391'

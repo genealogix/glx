@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**Media-free imports ignore unrelated sibling media paths** — GEDCOM and GEDZIP imports in both layouts skip binary staging and validation when no source media needs copying. Case-variant binary directories retain their existing names so references in sibling archives continue to resolve. Media entity YAML still rejects linked destination directories and files. Metadata failure snapshots use streaming hashes instead of retaining a second archive in memory.'
+time: '2026-11-11T00:00:07Z'
+custom:
+  Issue: '#1391'

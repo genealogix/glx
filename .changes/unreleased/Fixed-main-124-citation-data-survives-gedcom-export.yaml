@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**Citation `DATA` survives GEDCOM export** — `SOUR.DATA.DATE` and `DATA.TEXT` were read back from citation properties named `date` and `description`, which nothing writes; the importer and the citation vocabulary use `source_date` and `text_from_source`, so every export dropped them. Citation PAGE, DATE, TEXT and QUAY are now resolved from the vocabulary''s `gedcom` mappings by the same rule as import. A GEDCOM tag mapped by several properties in any property vocabulary now resolves to the first key in sorted order instead of a random one, and identical person- and family-level `SOUR` references are emitted once, as event references already were.'
+time: '2026-11-24T00:01:22Z'
+custom:
+  Issue: '#515'

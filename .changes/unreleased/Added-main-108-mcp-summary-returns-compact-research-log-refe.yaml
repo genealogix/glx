@@ -1,0 +1,5 @@
+kind: Added
+body: 'MCP `summary` returns compact research log references and counts by default; `include_research_logs: true` restores complete logs, and CLI JSON summaries keep their full-log output. New `get_entity` retrieves a complete record by exact collection and case-sensitive ID across all eleven collections. Timeline/narrative output preserves event subtypes and separate notable proceedings; conflict analysis identifies other people''s events with the scoped person''s role and navigable event context.'
+time: '2026-11-24T00:00:06Z'
+custom:
+  Issue: '#1528'

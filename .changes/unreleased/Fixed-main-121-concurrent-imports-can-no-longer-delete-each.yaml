@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**Concurrent imports can no longer delete each other''s media** — Two imports sharing a `media/files/` directory (single-file archives side by side) could interleave so that one reused a binary the other then removed while rolling back a failed publication. An import that writes media now holds an exclusive lock on the media directory from allocation to publication or rollback; a second one waits and says so.'
+time: '2026-11-24T00:01:19Z'
+custom:
+  Issue: '#1443'

@@ -1,0 +1,6 @@
+kind: Added
+body: |-
+  **`glx validate` checks the format of media hashes** — A media `hash` that is not `algorithm:hexstring` (`sha256:7d86…`) is a warning, as the media specification has long said it should be. For `md5`, `sha1`, `sha224`, `sha256`, `sha384` and `sha512` a digest of the wrong length warns too; other algorithm names are accepted at any length.
+time: 2026-11-18T15:15:28Z
+custom:
+  Issue: "#510"

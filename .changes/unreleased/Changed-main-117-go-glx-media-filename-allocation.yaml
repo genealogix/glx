@@ -1,0 +1,5 @@
+kind: Changed
+body: '**`go-glx` media filename allocation** — `FilenameAllocator.AllocateMatching` and `ClaimExisting` (both unreleased, #1391) are removed: the allocator keeps only its reservations, and `glx import` decides content reuse through one path for every family size. `resolveOBJE`-based SDK code sees `ConversionContext.MediaFileGroups` for multi-`FILE` objects.'
+time: '2026-11-24T00:00:43Z'
+custom:
+  Issue: '#1442'

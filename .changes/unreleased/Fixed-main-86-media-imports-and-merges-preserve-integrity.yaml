@@ -1,0 +1,6 @@
+kind: Fixed
+body: |-
+  **Media imports and merges preserve integrity across filesystem aliases** — Corrupt or unsupported GEDZIP media now fails an import even when an older destination file exists. Case-variant intermediate media symlinks are rejected, single-file merges report media inspection failures and dangling-reference risks, and canonical Unicode case-folding collisions receive distinct filenames. Follow-up to #1391.
+time: 2026-11-11T15:55:50Z
+custom:
+  Issue: "#1447"

@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**GEDCOM 5.5.1 event associations retain delimiter-bearing context** — Semicolons and attribute-like text in place names and subjects no longer prevent unique-context participant restoration. New context escapes ambiguous values; legacy notes preserve unlabelled semicolons. The event specification now describes restoration and ambiguous/unscoped fallback, and fileless-media diagnostics correctly describe metadata retained in structures or notes.'
+time: '2026-11-24T00:01:33Z'
+custom:
+  Issue: '#1459, PR #1536'

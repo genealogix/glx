@@ -1,0 +1,5 @@
+kind: Added
+body: '**`glx import --media-source-paths` records where each media file came from** — `original_filename` keeps only the basename, so `photos/photo.jpg` and `backup/photo.jpg` both read `photo.jpg` once imported as `photo.jpg` and `photo-2.jpg`. With the flag, `media.properties.source_path` keeps the `FILE` reference as written. It is off by default because a relative path can still name private folders.'
+time: '2026-11-24T00:00:01Z'
+custom:
+  Issue: '#1144'

@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**`original_filename` names the source file that was actually read** — For a GEDCOM 7.0 reference, the importer recorded the decoded name even when the only file present was the literal `%`-named one the copy then read. Directory imports and GEDZIP member resolution now record the spelling that resolved.'
+time: '2026-11-24T00:01:20Z'
+custom:
+  Issue: '#1153'

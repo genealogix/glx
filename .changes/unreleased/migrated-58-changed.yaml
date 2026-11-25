@@ -1,0 +1,6 @@
+kind: Changed
+body: |-
+  **`glx add` names the entity in the singular** — Every `add` subcommand printed its progress line by interpolating the `EntityType` value, which is the canonical *plural* — the top-level YAML key and archive directory name — straight against the new ID: `Adding assertions assertion-death-1807-date`. Two nouns run together with no separator parse as a list before they parse as a sentence, and this line is on the path of every entity a user creates. It now prints `Adding assertion: assertion-death-1807-date`, using the existing `EntityType.Singular()` — the same map that mints ID prefixes, so the label always matches the subcommand name and no second source of truth is introduced. Diagnostic output only: the line still goes to the `Out` stream (so `--quiet` suppresses it), and the bare ID echoed last on `MachineOut` — the documented contract for `id=$(glx add …)` shell substitution — is unchanged. `glx/e2e/add_test.go` is new and pins all three behaviours through the real binary.
+time: 2026-10-01T00:00:06Z
+custom:
+  Issue: "#1276"

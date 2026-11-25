@@ -1,0 +1,5 @@
+kind: Added
+body: '**`glx validate` warns when a participant role is used outside its `applies_to`** — e.g. `subject` on a relationship or `sibling` on an event. It is a warning, not an error, so existing archives still validate. A role that omits `applies_to` or declares an empty list applies to all contexts, including in JSON schema validation; this is now documented in `vocabularies.md`.'
+time: '2026-10-07T00:00:05Z'
+custom:
+  Issue: '#499'

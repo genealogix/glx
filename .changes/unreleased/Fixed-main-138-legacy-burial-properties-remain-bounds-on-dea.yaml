@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**Legacy burial properties remain bounds on death** — Person-level `buried_on`/`burial_date` and `buried_at`/`burial_place` receive the same qualified date and place labels and exact-date gap as burial events. A recorded primary death date takes precedence over the burial bound.'
+time: '2026-11-24T00:01:36Z'
+custom:
+  Issue: 'PR #1537'

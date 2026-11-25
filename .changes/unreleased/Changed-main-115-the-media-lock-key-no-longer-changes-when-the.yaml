@@ -1,0 +1,5 @@
+kind: Changed
+body: '**The media lock key no longer changes when the output directory is created** — The lock was keyed on the archive directory resolved through symlinks only when it existed, so under a symlinked parent (macOS `/tmp`) a lock taken before the import created the directory and one taken after had different keys and did not exclude each other. The longest existing ancestor is now resolved and the missing components appended.'
+time: '2026-11-24T00:00:41Z'
+custom:
+  Issue: '#1443'

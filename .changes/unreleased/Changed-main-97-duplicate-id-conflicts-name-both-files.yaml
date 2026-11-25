@@ -1,0 +1,6 @@
+kind: Changed
+body: |-
+  **Duplicate-ID conflicts name both files** — `conflict persons ID: person-a` is now `conflict persons ID: person-a (persons/a.glx vs backup/persons/a.glx)`, first definition first.
+time: 2026-11-18T15:15:28Z
+custom:
+  Issue: "#1232"

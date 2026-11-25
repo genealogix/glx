@@ -1,0 +1,5 @@
+kind: Changed
+body: '**The release job always downloads and verifies GoReleaser** — `goreleaser/goreleaser-action` is bumped to v7.3.0, which reuses a GoReleaser binary found in the runner tool cache without re-checking its checksum or cosign signature. `release.yml` now clears GoReleaser''s tool-cache entries right before that step, so a binary planted by the earlier syft installer (an accepted risk in `SECURITY-POSTURE.md`) cannot build and sign a release unverified. No GLX code changed.'
+time: '2026-10-11T00:00:02Z'
+custom:
+  Issue: 'PR #1413'

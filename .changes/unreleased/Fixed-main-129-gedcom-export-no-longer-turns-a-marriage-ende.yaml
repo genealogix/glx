@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**GEDCOM export no longer turns a marriage ended by death into a divorce** — `glx export` wrote a marriage relationship''s `end_event` as `DIV` on the FAM whatever the event was, so a wife''s death became a divorce dated the day she died, in both GEDCOM 5.5.1 and 7.0. The end event is now written as `DIV` only when its event type maps to `DIV` in the vocabulary (a divorce) and as `ANUL` when it maps to `ANUL` (an annulment). Any other end event, such as a death or burial, gets no FAM end record: it is written on the person who is its principal, and when no person is (both partners listed only with role `spouse`) it stays on the FAM as an `EVEN` whose `TYPE` names the event type. The same holds for any couple event whose tag cannot go under a FAM, such as an emigration: it is no longer written as an invalid FAM `DEAT` or `EMIG`. Import now links a FAM''s `ANUL` as the marriage''s end event when there is no `DIV`, so an annulment survives a round trip.'
+time: '2026-11-24T00:01:27Z'
+custom:
+  Issue: '#1498'

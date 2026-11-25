@@ -1,0 +1,5 @@
+kind: Changed
+body: '**One media entity per `FILE`** — A GEDCOM 7.0 `OBJE` with several `FILE`s became one media entity holding one of them, and the rest were dropped. Each `FILE` now becomes its own media entity with the object''s shared title, notes, crop and identifiers, and every record pointing to the `OBJE` links them all. Remote `https://` references stay URLs.'
+time: '2026-11-24T00:00:42Z'
+custom:
+  Issue: '#1308'

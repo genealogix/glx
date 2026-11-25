@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**Duplicate matching rejects a birth certainly after the other record''s death** — Actual birth dates are compared with the counterpart''s death/burial bound in both directions, including when the only dated observations are vital records. Overlapping dates and later posthumous rites remain eligible.'
+time: '2026-11-24T00:01:30Z'
+custom:
+  Issue: '#1483, PR #1535'

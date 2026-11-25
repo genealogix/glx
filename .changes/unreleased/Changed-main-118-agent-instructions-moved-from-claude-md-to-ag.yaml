@@ -1,0 +1,5 @@
+kind: Changed
+body: '**Agent instructions moved from `CLAUDE.md` to `AGENTS.md`** — the root and per-directory agent guides now follow the AGENTS.md convention so every coding agent reads the same rules; each `CLAUDE.md` is now a one-line `@AGENTS.md` import for Claude Code, which reads `CLAUDE.md` rather than `AGENTS.md`. Stale instructions were corrected in the move, and `CONTRIBUTING.md` now covers `Assisted-by` vs `Co-authored-by`, human-only DCO sign-off on agent commits, accuracy of genealogical and GEDCOM content, and the repository''s agent configuration.'
+time: '2026-11-24T00:00:44Z'
+custom:
+  Issue: 'PR #1540'

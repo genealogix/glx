@@ -1,0 +1,5 @@
+kind: Added
+body: '**Article and website source types** — Added `article` for journal, magazine, and reference articles (including Wikipedia), and `website` for informational web pages and blogs. Both survive GLX''s GEDCOM 7.0 round-trip, and new `glx init` archives include them. An archive with its own `vocabularies/source-types.glx` needs the two entries added explicitly; until then `glx add source` and `glx validate` name a missing standard type as such and say to copy its entry from the standard vocabulary. Existing sources are not reclassified.'
+time: '2026-11-24T00:00:09Z'
+custom:
+  Issue: '#1513, #562'

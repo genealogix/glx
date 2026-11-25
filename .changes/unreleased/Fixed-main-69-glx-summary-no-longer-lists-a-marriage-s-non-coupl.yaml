@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**`glx summary` no longer lists a marriage''s non-couple participants as spouses, or a spouse''s death as the person''s own** — Spouses taken from marriage events now come only from the couple (`groom`, `bride`, `spouse`, `husband`, `wife`, `principal`, `subject` or no role), and only for a person who is one of the couple, so the bride''s father (`parent`), a witness or the officiant is no longer anyone''s spouse and has no spouse himself from that event. Life History''s birth, death and notable-event sentences use only events that are the person''s own record (`glxlib.ClassifyParticipation`), so a husband entered as `spouse` on his wife''s death event no longer "died" on her date; the Vital Events block already did this.'
+time: '2026-10-11T00:00:14Z'
+custom:
+  Issue: '#1362'

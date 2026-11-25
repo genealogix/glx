@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**`glx proof --question parentage` counts an assertion on the child''s own participant** — A `parent_child` relationship asserted with `--participant <child>:child`, the natural way to record "this baptism shows her as the child", was listed under Evidence Collected and then ignored: the conclusion read `INSUFFICIENT EVIDENCE — Parents not yet identified` even though the relationship names both parents. Such an assertion now supports the conclusion like one on a parent participant or an existential one; it still never supplies the answer itself, and step relationships, step roles and disproven assertions are excluded as before.'
+time: '2026-10-11T00:00:09Z'
+custom:
+  Issue: '#1367'

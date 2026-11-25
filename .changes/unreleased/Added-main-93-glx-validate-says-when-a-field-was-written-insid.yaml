@@ -1,0 +1,6 @@
+kind: Added
+body: |-
+  **`glx validate` says when a field was written inside `properties`** — A source with its `title` under `properties:` failed with `missing property 'title'`, true and unhelpful. The error now adds `(found title inside properties; move it to the top level of the entity)`. Any other key inside `properties` that names one of the entity's own fields, such as a source's `type` or `date` or a participant's `role`, warns with the same advice instead of the generic `unknown property`.
+time: 2026-11-18T15:15:28Z
+custom:
+  Issue: "#648"

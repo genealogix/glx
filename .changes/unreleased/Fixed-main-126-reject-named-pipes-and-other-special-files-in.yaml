@@ -1,0 +1,5 @@
+kind: Fixed
+body: Reject named pipes and other special files in JSON validation instead of blocking on archive reads.
+time: '2026-11-24T00:01:24Z'
+custom:
+  Issue: '#1528'

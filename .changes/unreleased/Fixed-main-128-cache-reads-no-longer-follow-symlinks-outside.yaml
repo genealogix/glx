@@ -1,0 +1,5 @@
+kind: Fixed
+body: Cache reads no longer follow symlinks outside the selected archive. Unusable caches fall back to source loading; MCP tool and resource results are fully encoded before another backend call begins.
+time: '2026-11-24T00:01:26Z'
+custom:
+  Issue: 'PR #1528'

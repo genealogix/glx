@@ -1,0 +1,5 @@
+kind: Changed
+body: '**GEDCOM 7.0 export percent-encodes local media paths** — A 7.0 `FILE` is a URI reference and import decodes it, so a file literally named `photo%20.jpg` exported verbatim came back as `photo .jpg`. Export now encodes each segment of a local path (`photo%2520.jpg`, `photo%20.jpg` for `photo .jpg`), so the two stay distinct across a round trip. URLs and GEDCOM 5.5.1 paths are written unchanged.'
+time: '2026-11-24T00:00:40Z'
+custom:
+  Issue: 'PR #1478'

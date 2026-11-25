@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**The `GO-2026-5932` suppression in `osv-scanner.toml` now expires and states the dependency graph correctly** — Its reason said `golang.org/x/crypto` is reached only through go-git''s use of `hkdf`; the build graph also uses `ssh`, `ssh/agent`, `ssh/knownhosts`, `blowfish`, `cast5`, `argon2`, `sha3` and more (none of them `openpgp`), now listed with their importers. The entry gains an `ignoreUntil` expiry, its re-verification command now covers test imports and linux/darwin/windows build constraints (`go list -deps -test`), and it records that osv-scanner matches by advisory ID only, with govulncheck as the backstop. `scripts/filter-govulncheck-sarif.py` honours `ignoreUntil` the same way osv-scanner does and refuses config it does not implement (such as `[[PackageOverrides]]` or an entry without `id`) instead of silently diverging. The toml header names the filter as a consumer and notes that it covers the root `go.mod` only, so `ci-tools/go.mod` is scanned unsuppressed; `SECURITY-POSTURE.md` points at the toml instead of duplicating its reasoning. No GLX code changed.'
+time: '2026-10-11T00:00:08Z'
+custom:
+  Issue: 'PR #1393'

@@ -1,0 +1,6 @@
+kind: Changed
+body: |-
+  **Entity IDs are unique within each entity type** — The specification said IDs were unique across the whole archive while the serializer, the per-type directory layout and every typed reference (`person:`, `event:`) treat them per type. The specification, glossary and ADR-0005 now say per type, ignoring case: a person and an event may share an ID, two persons may not.
+time: 2026-11-18T15:15:28Z
+custom:
+  Issue: "#744"

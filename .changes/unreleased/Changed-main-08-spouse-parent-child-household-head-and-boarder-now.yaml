@@ -1,0 +1,5 @@
+kind: Changed
+body: '**`spouse`, `parent`, `child`, `household_head` and `boarder` now apply to events as well as relationships** — GEDCOM import already writes `spouse` on marriage events and `parent`/`child` from `ASSO ROLE`, baptism entries name parents, and a census names its head and boarders, so these roles'' `applies_to` now include `event` and the new `applies_to` warning does not fire on them.'
+time: '2026-10-07T00:00:08Z'
+custom:
+  Issue: '#499'

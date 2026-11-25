@@ -1,0 +1,5 @@
+kind: Added
+body: '**Media keep Ancestry''s media object id** — An Ancestry `OBJE` exports with an empty `FILE` and its only exact identifier in `_OID`. Import now keeps it in the new media `external_ids` property (type `ancestry`), with the `_OID` of a `_CLON` block as type `ancestry_clone` and any GEDCOM 7 `EXID` under the `OBJE` alongside.'
+time: '2026-11-24T00:00:02Z'
+custom:
+  Issue: '#944'

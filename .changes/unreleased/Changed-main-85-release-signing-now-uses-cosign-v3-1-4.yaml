@@ -1,0 +1,6 @@
+kind: Changed
+body: |-
+  **Release signing now uses cosign v3.1.4, and the install step is tested on pull requests** — `sigstore/cosign-installer` v4.1.3 bootstraps cosign v3.1.4, so keeping `release.yml` on v3.0.6 would have changed how cosign is installed. The installer would no longer use its digest-checked bootstrap binary as-is. Instead it would download v3.0.6, its signature bundles and a public key from `raw.githubusercontent.com`, and verify one cosign with the other. That adds network endpoints and failure points to the signing job, and they would surface only at a release. The pin now matches the bootstrap. v3.1.4's `sign-blob --bundle` writes the same `application/vnd.dev.sigstore.bundle.v0.3+json` structure as v3.0.6, each version verifies the other's bundles, and both verify the published `v0.0.0-beta.12` signature, so the verification command in `SECURITY-POSTURE.md` is unchanged. A new `Release cosign install` workflow runs on any change to `release.yml`. It fails when the `cosign-release` pin and the installer's bootstrap version drift apart, so an installer bump becomes a deliberate decision. It then runs the install step with the release job's own inputs, which no pull-request check did before because `release.yml` runs only on a tag push.
+time: 2026-11-11T16:32:48Z
+custom:
+  Issue: "#1450"
