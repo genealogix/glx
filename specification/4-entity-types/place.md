@@ -53,6 +53,45 @@ places:
     parent: place-yorkshire
 ```
 
+### Hierarchy That Changes Over Time
+
+Jurisdictions change: counties move between states, territories become states, districts are merged and reorganized. When a place's parent changed, write `parent` as a list of entries, each with the parent place as `value` and the period it applied as `date` — the same `{value, date}` shape as [temporal properties](../2-core-concepts.md#temporal-properties):
+
+```yaml
+places:
+  place-indiana-territory:
+    name: "Indiana Territory"
+    parent: place-usa
+
+  place-indiana:
+    name: "Indiana"
+    type: state
+    parent: place-usa
+
+  place-wayne-in:
+    name: "Wayne County"
+    type: county
+    parent:
+      - value: place-indiana-territory
+        date: "FROM 1811 TO 1816-12-10"
+      - value: place-indiana
+        date: "FROM 1816-12-11"
+```
+
+A marriage in Wayne County dated 1814 is then "Wayne County, Indiana Territory", and one dated 1817 is "Wayne County, Indiana". The plain string form remains valid and means the place had one parent throughout; use the list only where the hierarchy actually changed.
+
+**Historical paths.** Follow every parent edge within the days still possible after the preceding edges. A place can have more than one plausible jurisdiction for a year, but a chain whose edges never applied on the same day is not a historical path. Research tools can suggest all census schedules reached by plausible paths; they do not rank those schedules or infer where the person lived on census day. Proof treats a broader place as a refinement only when the dated evidence supports containment, not merely because one place once belonged to the other.
+
+A single historical label, such as an event's GEDCOM `PLAC`, uses the shared part of the plausible paths, starting at the recorded place. It stops when alternatives diverge or a time period has no recorded parent. Thus a marriage dated only `1816` has the label “Wayne County” in the example above. A label is a projection, not a substitute for the native place ID and its history: reimporting those GEDCOM labels cannot recover the original temporal links.
+
+For applications that explicitly request **one immediate parent**, the Go library's `ParentAt` uses the dated entry with the greatest overlap (earlier list position breaks a tie). With no overlap, it returns an explicit undated default, otherwise the nearest usable period. This convenience selects Indiana Territory for Wayne County in 1816; it is not proof of a jurisdiction and should not be chained to build a historical path.
+
+**Default parent.** Where no date applies (a list of all places, the place's own page, JSON-LD export), tools use the default parent: the first entry without a `date`, if any; otherwise the most recent entry — the one whose period ends last, an open-ended `FROM` period counting as ending last. In the example above the default parent of Wayne County is Indiana.
+
+Entry dates use the [date format](../2-core-concepts.md#date-format-standard). Use `FROM … TO …`, `FROM …` and `TO …` for a duration. An exact day in both parents' durations is a real overlap and produces a warning: if one parent ended on June 30, start the next on July 1. A shared year or month of transition need not mean any day was shared. An uncertain occurrence (`BET … AND …`, `ABT`, `CAL`, `EST`, `INT`) is not a certain duration. `BEF` and `AFT` exclude the stated boundary. Dates that cannot be placed on a timeline, including malformed or reversed dates, cannot establish a historical parent.
+
+The scalar form still works with older readers. A reader must support the list form before an archive can exchange parent histories with it. Native GLX retains the individual entries, their dates, their order and the place identity.
+
 ## Fields
 
 ### Required Fields
@@ -67,7 +106,7 @@ places:
 | Field | Type | Description |
 |-------|------|-------------|
 | `properties` | object | Vocabulary-defined properties of the place |
-| `parent` | string | Reference to parent place in hierarchy |
+| `parent` | string \| object[] | Reference to parent place in hierarchy: a place ID, or a list of `{value, date}` entries when the parent changed over time (see [Hierarchy That Changes Over Time](#hierarchy-that-changes-over-time)) |
 | `type` | string | Place type from `vocabularies/place-types.glx` |
 | `latitude` | number | WGS84 latitude coordinate |
 | `longitude` | number | WGS84 longitude coordinate |
@@ -226,7 +265,7 @@ places/
 |-----------|------------|-------|
 | Entity ID (map key) | (synthetic) | Not in GEDCOM; generated from place data |
 | `name` | PLAC | Text value of PLAC tag |
-| `parent` | (implicit) | Represented in hierarchical PLAC structure |
+| `parent` | (implicit) | Represented in hierarchical PLAC structure; for a parent that changed over time, each event's PLAC uses the parent that applied at the event's date |
 | `type` | PLAC.TYPE | Non-standard; used in extended GEDCOM |
 | `latitude` | PLAC.MAP.LATI | WGS84 latitude |
 | `longitude` | PLAC.MAP.LONG | WGS84 longitude |
@@ -234,10 +273,11 @@ places/
 
 ## Validation Rules
 
-- Place hierarchy must be acyclic (no circular parent references)
+- Place hierarchy must be acyclic (no circular parent references), counting the parents of every period of a temporal `parent`
 - Coordinates, if present, must be valid WGS84 values
 - `latitude` and `longitude` must be supplied together — setting one without the other is rejected by schema validation
-- Parent place must reference an existing Place entity
+- Parent place must reference an existing Place entity, including every entry of a temporal `parent`
+- Entries of a temporal `parent` naming different parents should not have overlapping periods (warning)
 - If `type` is specified, it must be from the [place types vocabulary](vocabularies.md#place-types-vocabulary)
 
 ## Schema Reference

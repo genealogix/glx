@@ -30,43 +30,15 @@ func resolvePlaceStrings(expCtx *ExportContext) {
 	}
 }
 
-// resolvePlaceString builds a single GEDCOM place string by walking the parent chain.
-// Returns "City, County, State, Country" format.
-// Uses a visited set to prevent infinite loops from circular references.
+// resolvePlaceString builds a single GEDCOM place string by walking the
+// default parent chain. Returns "City, County, State, Country" format.
 func resolvePlaceString(placeID string, expCtx *ExportContext) string {
 	// Check cache first
 	if cached, ok := expCtx.PlaceStrings[placeID]; ok {
 		return cached
 	}
 
-	if _, ok := expCtx.GLX.Places[placeID]; !ok {
-		return ""
-	}
-
-	// Walk parent chain, collecting names from specific to general
-	var parts []string
-	visited := make(map[string]struct{})
-	currentID := placeID
-
-	for currentID != "" {
-		// Circular reference protection
-		if _, seen := visited[currentID]; seen {
-			expCtx.addExportWarning(EntityTypePlaces, placeID, "circular place reference detected")
-
-			break
-		}
-		visited[currentID] = struct{}{}
-
-		current, exists := expCtx.GLX.Places[currentID]
-		if !exists {
-			break
-		}
-
-		parts = append(parts, current.Name)
-		currentID = current.ParentID
-	}
-
-	result := strings.Join(parts, ", ")
+	result := buildPlaceString(placeID, "", expCtx)
 
 	// Cache so subsequent lookups skip the parent-chain walk
 	expCtx.PlaceStrings[placeID] = result
@@ -74,15 +46,78 @@ func resolvePlaceString(placeID string, expCtx *ExportContext) string {
 	return result
 }
 
+// placeStringAt returns the GEDCOM place string for placeID as it stood at
+// date: a place whose parent changed over time (#225) is exported under the
+// parent that applied at the event's date. Archives with no temporal parents,
+// and undated events, use the pre-resolved default strings.
+func placeStringAt(placeID string, date DateString, expCtx *ExportContext) string {
+	if date == "" || !archiveHasTemporalPlaceParents(expCtx) {
+		return expCtx.PlaceStrings[placeID]
+	}
+	if expCtx.datedPlaceStrings == nil {
+		expCtx.datedPlaceStrings = make(map[string]string)
+	}
+	key := placeID + "|" + string(date)
+	if cached, ok := expCtx.datedPlaceStrings[key]; ok {
+		return cached
+	}
+	result := buildPlaceString(placeID, date, expCtx)
+	expCtx.datedPlaceStrings[key] = result
+
+	return result
+}
+
+// archiveHasTemporalPlaceParents reports (and caches) whether any place in
+// the export has a temporal parent.
+func archiveHasTemporalPlaceParents(expCtx *ExportContext) bool {
+	if expCtx.temporalPlaceParents == nil {
+		found := false
+		for _, place := range expCtx.GLX.Places {
+			if place.HasTemporalParent() {
+				found = true
+
+				break
+			}
+		}
+		expCtx.temporalPlaceParents = &found
+	}
+
+	return *expCtx.temporalPlaceParents
+}
+
+// buildPlaceString walks the parent chain from placeID, following at each
+// level the parent that applied at date (the default parent when date is
+// empty), and joins the names from specific to general. A visited set
+// prevents infinite loops from circular references.
+func buildPlaceString(placeID string, date DateString, expCtx *ExportContext) string {
+	if _, ok := expCtx.GLX.Places[placeID]; !ok {
+		return ""
+	}
+
+	path, cycle := expCtx.GLX.placePathProjection(placeID, date)
+	if cycle {
+		expCtx.addExportWarning(EntityTypePlaces, placeID, "circular place reference detected")
+	}
+	parts := make([]string, 0, len(path))
+	for _, id := range path {
+		if place := expCtx.GLX.Places[id]; place != nil {
+			parts = append(parts, place.Name)
+		}
+	}
+
+	return strings.Join(parts, ", ")
+}
+
 // exportPlaceSubrecords creates PLAC and optional MAP/LATI/LONG subrecords
-// for a given place ID.
-func exportPlaceSubrecords(placeID string, expCtx *ExportContext) []*GEDCOMRecord {
+// for a given place ID, with the place hierarchy as it stood at date (the
+// date of the event or fact the PLAC belongs to; empty for the default).
+func exportPlaceSubrecords(placeID string, date DateString, expCtx *ExportContext) []*GEDCOMRecord {
 	if placeID == "" {
 		return nil
 	}
 
-	placeStr, ok := expCtx.PlaceStrings[placeID]
-	if !ok || placeStr == "" {
+	placeStr := placeStringAt(placeID, date, expCtx)
+	if placeStr == "" {
 		return nil
 	}
 

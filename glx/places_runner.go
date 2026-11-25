@@ -108,15 +108,19 @@ func buildPlaceAnalysis(archive *glxlib.GLXFile) *placeAnalysis {
 		}
 
 		// No parent (exclude top-level types)
-		if place.ParentID == "" && !topLevelTypes[place.Type] {
+		if place.EffectiveParentID() == "" && !topLevelTypes[place.Type] {
 			a.NoParent = append(a.NoParent, id)
 		}
 
-		// Dangling parent (references a parent that doesn't exist or is nil)
-		if place.ParentID != "" {
-			if parent, ok := archive.Places[place.ParentID]; !ok || parent == nil {
+		// Dangling parent (references a parent that doesn't exist or is nil).
+		// Every parent of a temporal parent list counts; the first missing
+		// one is reported.
+		for _, parentID := range place.ParentIDs() {
+			if parent, ok := archive.Places[parentID]; !ok || parent == nil {
 				a.DanglingParent = append(a.DanglingParent, id)
-				a.DanglingParentIDs[id] = place.ParentID
+				a.DanglingParentIDs[id] = parentID
+
+				break
 			}
 		}
 	}
@@ -150,27 +154,23 @@ func buildPlaceAnalysis(archive *glxlib.GLXFile) *placeAnalysis {
 	return a
 }
 
-// buildCanonicalPath builds a full hierarchy path for a place (e.g., "Leeds, Yorkshire, England").
+// buildCanonicalPath builds a full hierarchy path for a place (e.g., "Leeds, Yorkshire, England"),
+// following each place's default parent.
 func buildCanonicalPath(placeID string, places map[string]*glxlib.Place) string {
+	return buildCanonicalPathAt(placeID, "", places)
+}
+
+// buildCanonicalPathAt builds the hierarchy path for a place as it stood at
+// date, following at each level the parent that applied then (#225). An
+// empty date follows the default parents.
+func buildCanonicalPathAt(placeID string, date glxlib.DateString, places map[string]*glxlib.Place) string {
 	var parts []string
-	visited := make(map[string]bool)
-	current := placeID
-
-	for current != "" {
-		if visited[current] {
-			break // prevent cycles
+	for _, id := range (&glxlib.GLXFile{Places: places}).PlacePathAt(placeID, date) {
+		if place := places[id]; place != nil {
+			if name := strings.TrimSpace(place.Name); name != "" {
+				parts = append(parts, name)
+			}
 		}
-		visited[current] = true
-
-		place, ok := places[current]
-		if !ok || place == nil {
-			break
-		}
-		name := strings.TrimSpace(place.Name)
-		if name != "" {
-			parts = append(parts, name)
-		}
-		current = place.ParentID
 	}
 
 	return strings.Join(parts, ", ")
@@ -210,11 +210,15 @@ func collectReferencedPlaces(archive *glxlib.GLXFile) map[string]struct{} {
 		}
 	}
 
-	// Places referenced as parents (only if the parent exists and is non-nil)
+	// Places referenced as parents in any period (only if the parent exists
+	// and is non-nil)
 	for _, place := range archive.Places {
-		if place != nil && place.ParentID != "" {
-			if parent, ok := archive.Places[place.ParentID]; ok && parent != nil {
-				referenced[place.ParentID] = struct{}{}
+		if place == nil {
+			continue
+		}
+		for _, parentID := range place.ParentIDs() {
+			if parent, ok := archive.Places[parentID]; ok && parent != nil {
+				referenced[parentID] = struct{}{}
 			}
 		}
 	}

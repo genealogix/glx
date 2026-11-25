@@ -131,8 +131,9 @@ func TestCollectMigrationEntries_ChildBirthDirectParticipationLabeled(t *testing
 }
 
 func TestComputeMovements_RegionChangeOnly(t *testing.T) {
-	entries := collectMigrationEntries("person-jane-webb", migrationArchive())
-	movements := computeMovements(entries)
+	archive := migrationArchive()
+	entries := collectMigrationEntries("person-jane-webb", archive)
+	movements := computeMovements(entries, archive)
 
 	if len(movements) != 1 {
 		t.Fatalf("len(movements) = %d, want 1: %+v", len(movements), movements)
@@ -152,7 +153,7 @@ func TestComputeMovements_SkipsUndated(t *testing.T) {
 		{Date: "", Region: "Ohio", sortKey: dateSortKey("")},
 		{Date: "1860", Region: "Florida", sortKey: dateSortKey("1860")},
 	}
-	if movements := computeMovements(entries); len(movements) != 0 {
+	if movements := computeMovements(entries, nil); len(movements) != 0 {
 		t.Errorf("undated entry caused movements: %+v", movements)
 	}
 }
@@ -542,7 +543,7 @@ func TestMigrations_AttendanceDoesNotCreateMovements(t *testing.T) {
 			if len(entries) != 3 {
 				t.Fatalf("entries: %+v", entries)
 			}
-			movements := computeMovements(entries)
+			movements := computeMovements(entries, archive)
 			if isParentRole(role) {
 				if len(movements) != 2 {
 					t.Fatalf("parent at birth remains evidence: %+v", movements)
