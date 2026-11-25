@@ -156,9 +156,12 @@ func (p *Place) ParentIDs() []string {
 //   - otherwise the dated entry whose period overlaps date the most wins
 //     ("1816" falls mostly in "FROM 1811 TO 1816-12-10"); ties go to the
 //     earlier entry in the list;
+//   - an open lookup ("BEF 1820", "AFT 1820") is read at its finite
+//     boundary first, and over its whole window only when no period covers
+//     that boundary;
 //   - when no dated period overlaps date, an undated entry is used if there
 //     is one, else the period nearest to date (a place's earliest parent for
-//     a date before its first period).
+//     a date before its first period), else the effective default parent.
 func (p *Place) ParentAt(date DateString) string {
 	if p == nil {
 		return ""
@@ -171,9 +174,34 @@ func (p *Place) ParentAt(date DateString) string {
 		return p.EffectiveParentID()
 	}
 
+	best, nearest, undated := p.parentPeriodAt(at)
+	// An open lookup (BEF/AFT) is read at its finite boundary first, so an
+	// open-ended period does not win on an unbounded overlap alone; the
+	// whole window decides only when no period covers the boundary.
+	if edge, clamped := clampOpenLookup(at); clamped {
+		if b, _, _ := p.parentPeriodAt(edge); b >= 0 {
+			best = b
+		}
+	}
+
+	switch {
+	case best >= 0:
+		return p.ParentHistory[best].Value
+	case undated >= 0:
+		return p.ParentHistory[undated].Value
+	case nearest >= 0:
+		return p.ParentHistory[nearest].Value
+	}
+
+	return p.EffectiveParentID()
+}
+
+// parentPeriodAt returns the indexes of the dated period overlapping at the
+// most, the period nearest to at, and the first undated period (-1 if none).
+func (p *Place) parentPeriodAt(at glxdate.Interval) (best, nearest, undated int) {
 	best, bestOverlap := -1, 0
 	nearest, nearestGap := -1, math.MaxInt
-	undated := -1
+	undated = -1
 	for i, period := range p.ParentHistory {
 		if period.Date == "" {
 			if undated < 0 {
@@ -194,16 +222,21 @@ func (p *Place) ParentAt(date DateString) string {
 		}
 	}
 
+	return best, nearest, undated
+}
+
+// clampOpenLookup narrows a half-open lookup window to the day at its finite
+// boundary ("BEF 1820" to the last day it allows). It reports false for a
+// bounded or wholly unbounded window.
+func clampOpenLookup(at glxdate.Interval) (glxdate.Interval, bool) {
 	switch {
-	case best >= 0:
-		return p.ParentHistory[best].Value
-	case undated >= 0:
-		return p.ParentHistory[undated].Value
-	case nearest >= 0:
-		return p.ParentHistory[nearest].Value
+	case at.Start == math.MinInt && at.End != math.MaxInt:
+		return glxdate.Interval{Start: at.End - 1, End: at.End}, true
+	case at.End == math.MaxInt && at.Start != math.MinInt:
+		return glxdate.Interval{Start: at.Start, End: at.Start + 1}, true
 	}
 
-	return ""
+	return at, false
 }
 
 // ReplaceParentRef rewrites every parent reference equal to oldID (the default

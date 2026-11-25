@@ -765,13 +765,19 @@ func checkSiblingBirthplaceOutlier(archive *glxlib.GLXFile) []AnalysisIssue {
 				continue
 			}
 			emitted[key] = true
-			if archive.PlaceHasAncestorAt(c.placeID, majorityPlace, c.date) {
+			// A birthplace that may lie inside the majority place is not an
+			// outlier: an undated birth or one near a boundary change leaves
+			// the temporal path open, and an open path proves nothing.
+			if archive.PlaceMayHaveAncestorAt(c.placeID, majorityPlace, c.date) {
 				continue
 			}
 			if archive.PlaceHasAncestorAt(majorityPlace, c.placeID, c.date) {
 				issues = append(issues, buildLessSpecificBirthplaceIssue(archive, c, majorityPlace, majorityCount, len(withPlace)))
 
 				continue
+			}
+			if archive.PlaceMayHaveAncestorAt(majorityPlace, c.placeID, c.date) {
+				continue // possibly less specific, but not certainly: skip
 			}
 			issues = append(issues, buildSiblingOutlierIssue(archive, c, parentID, majorityPlace, majorityCount, len(withPlace), idx, relHypo))
 		}

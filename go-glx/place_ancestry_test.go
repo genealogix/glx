@@ -47,7 +47,7 @@ func TestPlacePathsAtCarriesOneSharedObservationWindow(t *testing.T) {
 	assert.False(t, archive.PlaceHasAncestorAt("ridge", "canada", "1841"))
 	assert.True(t, archive.PlaceHasAncestorAt("ridge", "canada", "BET 1841-06-01 AND 1841-09-30"))
 	assert.False(t, archive.PlaceHasAncestorAt("ridge", "canada", "1841-10-01"))
-	assert.Equal(t, []string{"ridge"}, archive.PlacePathAt("ridge", "FROM 1850 TO 1841"))
+	assert.Equal(t, []string{"ridge", "south", "usa"}, archive.PlacePathAt("ridge", "FROM 1850 TO 1841"), "unplaced: default path")
 	assert.Equal(t, []string{"ridge", "south", "usa"}, archive.PlacePathAt("ridge", ""))
 
 	certain, possible := archive.placeAncestorForDates("ridge", "canada", "1841", "1841-07-01")
@@ -65,8 +65,12 @@ func TestPlacePathsAtCarriesOneSharedObservationWindow(t *testing.T) {
 	assert.False(t, archive.PlaceHasAncestorAt("ridge", "usa", ""))
 	assert.True(t, archive.PlaceMayHaveAncestorAt("ridge", "usa", ""))
 	for _, unplaced := range []DateString{"FROM 1850 TO 1841", "HEBREW 10 TSH 5600"} {
-		assert.Equal(t, []string{"ridge"}, archive.PlacePathAt("ridge", unplaced))
-		assert.False(t, archive.PlaceMayHaveAncestorAt("ridge", "usa", unplaced))
+		// A projection follows the defaults; a "may" query rules out only
+		// what no common day supports, as placeAncestorForDates does.
+		assert.Equal(t, []string{"ridge", "south", "usa"}, archive.PlacePathAt("ridge", unplaced))
+		assert.True(t, archive.PlaceMayHaveAncestorAt("ridge", "usa", unplaced))
+		assert.True(t, archive.PlaceMayHaveAncestorAt("ridge", "canada", unplaced))
+		assert.False(t, archive.PlaceMayHaveAncestorAt("ridge", "uk", unplaced))
 		certain, possible = archive.placeAncestorForDates("ridge", "usa", unplaced)
 		assert.False(t, certain)
 		assert.True(t, possible)

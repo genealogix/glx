@@ -273,9 +273,11 @@ func (s *CensusSchedule) SurvivalAt(year int, places []CensusPlaceObservation, a
 			continue // Observation is known to be in a different country.
 		}
 		if p.Date != censusDate {
-			var projected []censusJurisdictionLoss
-			projected, foreign = s.locationLosses(losses, p.PlaceID, censusDate, archive)
+			// Keep the observation date's uncertainty: a path that was
+			// foreign then still means the person may have left.
+			projected, projectedForeign := s.locationLosses(losses, p.PlaceID, censusDate, archive)
 			local = append(local, projected...)
+			foreign = foreign || projectedForeign
 		}
 		if foreign {
 			// A changed country does not prove this schedule's records were lost.

@@ -15,6 +15,7 @@
 package main
 
 import (
+	"maps"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -212,4 +213,56 @@ func TestResidenceSuccessorNameRequiresCompletePaths(t *testing.T) {
 	entries = []migrationEntry{home, newMigrationEntry("1841", "village", "Census", a)}
 	applyResidencePeriods(entries, a)
 	require.True(t, entries[1].Excluded)
+}
+
+// ambiguousWayneArchive has Wayne County in Indiana Territory to 10 Dec 1816
+// and in Indiana from the next day, so a year-only 1816 date matches both.
+func ambiguousWayneArchive() *glxlib.GLXFile {
+	archive := temporalParentArchive()
+	archive.Places["place-wayne-in"].SetParentHistory([]glxlib.PlaceParentPeriod{
+		{Value: "place-indiana-territory", Date: "TO 1816-12-10"},
+		{Value: "place-indiana", Date: "FROM 1816-12-11"},
+	})
+	archive.Places["place-town-a"] = &glxlib.Place{Name: "Town A", Type: glxlib.PlaceTypeCity, ParentID: "place-wayne-in"}
+	archive.Places["place-town-b"] = &glxlib.Place{Name: "Town B", Type: glxlib.PlaceTypeCity, ParentID: "place-wayne-in"}
+
+	return archive
+}
+
+// A path cut short at an ambiguous date is compared from a place both paths
+// contain, and its top is never reported as the region.
+func TestMigrationStops_AmbiguousDateAlignsPathsByID(t *testing.T) {
+	archive := ambiguousWayneArchive()
+	first := newMigrationEntry("1816", "place-town-a", "Residence", archive)
+	second := newMigrationEntry("1820", "place-town-b", "Residence", archive)
+
+	assert.Equal(t, "Indiana", first.Region, "region from the default hierarchy, not the truncated top")
+	assert.Equal(t, "Indiana", second.Region)
+
+	from, to, moved, _ := compareMigrationStops(&first, &second, archive)
+	assert.True(t, moved)
+	assert.Equal(t, "Town A", from)
+	assert.Equal(t, "Town B", to)
+
+	same := newMigrationEntry("1820", "place-wayne-in", "Residence", archive)
+	_, _, moved, refine := compareMigrationStops(&same, &first, archive)
+	assert.False(t, moved, "Town A is inside Wayne County")
+	assert.True(t, refine)
+}
+
+// An undated birth in a county with a dated parent history may lie in the
+// majority state, so it is not reported as a sibling birthplace outlier.
+func TestSiblingBirthplaceOutlier_UndatedTemporalChildNotFlagged(t *testing.T) {
+	archive := siblingBirthplaceArchive("person-parent", "", []struct{ id, place string }{
+		{"person-child-1", "place-indiana"},
+		{"person-child-2", "place-indiana"},
+		{"person-child-3", "place-indiana"},
+		{"person-child-4", "place-wayne-in"},
+	})
+	maps.Copy(archive.Places, temporalParentArchive().Places)
+	archive.Events["event-birth-person-child-4"].Date = ""
+
+	for _, issue := range checkSiblingBirthplaceOutlier(archive) {
+		assert.NotEqual(t, "person-child-4", issue.Person, issue.Message)
+	}
 }

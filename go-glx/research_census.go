@@ -393,13 +393,17 @@ func personCensusPlaceIndex(archive *GLXFile) map[string][]CensusPlaceObservatio
 		if event == nil || event.PlaceID == "" {
 			continue
 		}
+		// Decide presence per person over the whole event, as
+		// censusPlacesForPerson does, so analyze and tree agree.
 		seen := make(map[string]bool)
 		for _, p := range event.Participants {
-			if p.Person == "" || seen[p.Person] || !ClassifyParticipation(event.Type, p.Role, archive.ParticipantRoles).Present {
+			if p.Person == "" || seen[p.Person] {
 				continue
 			}
 			seen[p.Person] = true
-			index[p.Person] = append(index[p.Person], CensusPlaceObservation{PlaceID: event.PlaceID, Date: event.Date})
+			if participation, _, _ := EventParticipation(event, p.Person, archive.ParticipantRoles); participation.Present {
+				index[p.Person] = append(index[p.Person], CensusPlaceObservation{PlaceID: event.PlaceID, Date: event.Date})
+			}
 		}
 	}
 

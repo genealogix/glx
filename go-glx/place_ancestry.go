@@ -56,7 +56,8 @@ func (glx *GLXFile) PlacePathsAt(placeID string, date DateString) [][]string {
 
 // PlacePathAt returns the longest unambiguous prefix of the date-scoped
 // paths. Use it to project a single historical label without inventing an
-// ancestor for an ambiguous date.
+// ancestor for an ambiguous date. A date that cannot be placed on the
+// timeline projects through the effective default parents.
 func (glx *GLXFile) PlacePathAt(placeID string, date DateString) []string {
 	path, _ := glx.placePathProjection(placeID, date)
 
@@ -65,6 +66,13 @@ func (glx *GLXFile) PlacePathAt(placeID string, date DateString) []string {
 
 func (glx *GLXFile) placePathProjection(placeID string, date DateString) ([]string, bool) {
 	mode, window := placeDateScope(date)
+	if mode == placeUnplacedDate {
+		// A date we cannot place (another calendar, a nominal day, malformed
+		// text) gives no reason to prefer one period over another, so the
+		// projection follows the effective defaults, as Place.ParentAt does,
+		// rather than stopping at the first temporal place.
+		mode = placeDefaultPath
+	}
 	var prefix []string
 	cycle := glx.walkPlacePaths(placeID, mode, window, func(path []string, _ glxdate.Interval) {
 		if prefix == nil {
@@ -99,8 +107,14 @@ func (glx *GLXFile) PlaceMayHaveAncestorAt(placeID, ancestorID string, date Date
 		return false
 	}
 	mode, window := placeDateScope(date)
-	if mode == placeDefaultPath {
+	switch mode {
+	case placeDefaultPath:
 		mode = placePossiblePath
+	case placeUnplacedDate:
+		// A valid date we cannot place on the timeline rules nothing out:
+		// every period, including one in an unconverted calendar, remains
+		// possible over the unbounded window placeDateScope returned.
+		mode = placeFactualPossiblePath
 	}
 	found := false
 	glx.walkPlacePaths(placeID, mode, window, func(path []string, _ glxdate.Interval) {

@@ -69,6 +69,7 @@ type migrationEntry struct {
 	location bool     // a residence value: an explicit statement of where the person lived
 	visit    bool     // attendance at someone else's record: places the visitor, not their residence
 	path     []string // normalized place hierarchy, outermost first, below the country/continent level
+	ids      []string // place IDs of the date-scoped path, most specific first (entity places only)
 }
 
 // migrationMovement is a detected change of place between two consecutive
@@ -531,11 +532,11 @@ func newMigrationEntry(date, placeRef, label string, archive *glxlib.GLXFile) mi
 
 	if place, ok := archive.Places[placeRef]; ok && place != nil {
 		entry.PlaceID = placeRef
-		entry.Place = buildCanonicalPathAt(placeRef, glxlib.DateString(date), archive.Places)
-		entry.path = migrationPlacePathAt(placeRef, glxlib.DateString(date), archive.Places)
-		if len(entry.path) > 0 {
-			entry.Region = entry.path[0]
-		}
+		at := glxlib.DateString(date)
+		entry.Place = buildCanonicalPathAt(placeRef, at, archive.Places)
+		entry.ids = archive.PlacePathAt(placeRef, at)
+		entry.path = migrationNamesForIDs(entry.ids, archive.Places)
+		entry.Region = migrationRegionAt(placeRef, at, entry.ids, archive)
 	} else {
 		entry.Place = placeRef
 		entry.Region = regionFromFreeform(placeRef)
@@ -635,6 +636,69 @@ func placesCompatible(a, b []string) bool {
 var migrationContainerTypes = map[string]bool{
 	glxlib.PlaceTypeCountry: true,
 	"continent":             true,
+}
+
+// migrationPathTruncated reports whether a date-scoped ID path stops at a
+// place that still has parents: the date matched more than one jurisdiction
+// above it, so its top is not a region.
+func migrationPathTruncated(ids []string, places map[string]*glxlib.Place) bool {
+	if len(ids) == 0 {
+		return false
+	}
+	root := places[ids[len(ids)-1]]
+
+	return root != nil && (root.HasTemporalParent() || root.ParentID != "")
+}
+
+// migrationRegionAt takes the region from the unambiguous path when it is
+// complete. When the date leaves the path open above some place, it uses the
+// region all the possible paths share, else the region of the default
+// hierarchy, never the truncated path's own top.
+func migrationRegionAt(placeID string, date glxlib.DateString, ids []string, archive *glxlib.GLXFile) string {
+	if !migrationPathTruncated(ids, archive.Places) {
+		if path := migrationNamesForIDs(ids, archive.Places); len(path) > 0 {
+			return path[0]
+		}
+
+		return ""
+	}
+	region := ""
+	for i, path := range archive.PlacePathsAt(placeID, date) {
+		if migrationPathTruncated(path, archive.Places) {
+			region = ""
+
+			break
+		}
+		names := migrationNamesForIDs(path, archive.Places)
+		if len(names) == 0 || (i > 0 && !strings.EqualFold(names[0], region)) {
+			region = ""
+
+			break
+		}
+		region = names[0]
+	}
+	if region != "" {
+		return region
+	}
+
+	return regionForPlace(placeID, archive.Places)
+}
+
+// alignMigrationIDs trims two most-specific-first ID paths to a shared top
+// when either was cut short at an ambiguous date, so they compare from the
+// same place downward. It reports false when neither top is in the other path.
+func alignMigrationIDs(a, b []string) ([]string, []string, bool) {
+	if len(a) == 0 || len(b) == 0 {
+		return nil, nil, false
+	}
+	if i := slices.Index(b, a[len(a)-1]); i >= 0 {
+		return a, b[:i+1], true
+	}
+	if i := slices.Index(a, b[len(b)-1]); i >= 0 {
+		return a[:i+1], b, true
+	}
+
+	return nil, nil, false
 }
 
 // regionForPlace walks a place's parent hierarchy and returns the normalized
@@ -781,6 +845,14 @@ func compareMigrationStops(anchor, next *migrationEntry, archive *glxlib.GLXFile
 		}
 	}
 	a, b := anchor.placePath(), next.placePath()
+	if len(anchor.ids) > 0 && len(next.ids) > 0 &&
+		(migrationPathTruncated(anchor.ids, archive.Places) || migrationPathTruncated(next.ids, archive.Places)) {
+		// Paths of unequal depth from an ambiguous date are not aligned at
+		// their tops; compare them from a place both contain instead.
+		if ai, bi, ok := alignMigrationIDs(anchor.ids, next.ids); ok {
+			a, b = migrationNamesForIDs(ai, archive.Places), migrationNamesForIDs(bi, archive.Places)
+		}
+	}
 	from, to, moved = placeDivergence(a, b)
 
 	return from, to, moved, !moved && len(b) > len(a)
