@@ -32,7 +32,7 @@ func splitArchive(inputPath, outputDir string, validate, verbose bool, showFirst
 
 	// Load single-file archive
 	if verbose {
-		fmt.Printf("Loading archive: %s\n", inputPath)
+		termPrintf("Loading archive: %s\n", inputPath)
 	}
 
 	glx, err := readSingleFileArchive(inputPath, validate)
@@ -46,7 +46,7 @@ func splitArchive(inputPath, outputDir string, validate, verbose bool, showFirst
 
 	// Serialize to multi-file format
 	if verbose {
-		fmt.Printf("\nWriting multi-file archive: %s\n", outputDir)
+		termPrintf("\nWriting multi-file archive: %s\n", outputDir)
 	}
 
 	// Write archive (no validation on save since we already validated on load)

@@ -1,0 +1,3 @@
+Place analysis: 3 places
+
+No issues found.

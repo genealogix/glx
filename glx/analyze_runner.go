@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 
@@ -53,46 +52,13 @@ type AnalysisResult struct {
 	Issues  []AnalysisIssue `json:"issues"`
 }
 
-// loadArchiveForAnalyze loads a GLX archive for analysis.
-func loadArchiveForAnalyze(path string) (*glxlib.GLXFile, error) {
-	info, err := os.Stat(path)
-	if err != nil {
-		return nil, fmt.Errorf("cannot access path: %w", err)
-	}
-
-	if info.IsDir() {
-		archive, duplicates, loadErr := LoadArchiveCached(path)
-		if loadErr != nil {
-			return nil, loadErr
-		}
-		if len(duplicates) > 0 {
-			fmt.Fprintf(os.Stderr, "Warning: %d duplicate entity IDs found:\n", len(duplicates))
-			for _, d := range duplicates {
-				fmt.Fprintf(os.Stderr, "  - %s\n", d)
-			}
-		}
-
-		return archive, nil
-	}
-
-	archive, err := readSingleFileArchive(path, false)
-	if err != nil {
-		return nil, err
-	}
-	if err := mergeStandardVocabularies(archive); err != nil {
-		return nil, err
-	}
-
-	return archive, nil
-}
-
 // showAnalysis runs the analysis engine and prints results.
 func showAnalysis(archivePath, personFilter, checkFilter, format, country string, options ...glxlib.ComparisonOptions) error {
 	if err := applyCensusCountry(country); err != nil {
 		return err
 	}
 
-	archive, err := loadArchiveForAnalyze(archivePath)
+	archive, err := loadArchiveForRead(SystemIOStreams(), archivePath)
 	if err != nil {
 		return fmt.Errorf("failed to load archive: %w", err)
 	}
@@ -260,7 +226,7 @@ func printAnalysisJSON(result AnalysisResult) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal JSON: %w", err)
 	}
-	fmt.Println(string(data))
+	machinePrintln(string(data))
 
 	return nil
 }
@@ -269,12 +235,12 @@ func printAnalysisJSON(result AnalysisResult) error {
 func printAnalysisTerminal(result AnalysisResult) {
 	total := len(result.Issues)
 	if total == 0 {
-		fmt.Println("No issues found — archive looks good!")
+		termPrintln("No issues found — archive looks good!")
 
 		return
 	}
 
-	fmt.Printf("=== Research Gap Analysis: %d issues found ===\n", total)
+	termPrintf("=== Research Gap Analysis: %d issues found ===\n", total)
 
 	categories := []struct {
 		key   string
@@ -293,12 +259,12 @@ func printAnalysisTerminal(result AnalysisResult) {
 			continue
 		}
 
-		fmt.Printf("\n%s (%d)\n", cat.label, len(catIssues))
+		termPrintf("\n%s (%d)\n", cat.label, len(catIssues))
 		for i := range catIssues {
 			printIssue(&catIssues[i])
 		}
 	}
-	fmt.Println()
+	termPrintln()
 }
 
 // filterCategory returns issues matching a category.
@@ -330,10 +296,10 @@ func printIssue(issue *AnalysisIssue) {
 
 	switch issue.Category {
 	case analysisSuggestionCategory:
-		fmt.Printf("  →   %-30s %s\n", ref, msg)
+		termPrintf("  →   %-30s %s\n", ref, msg)
 	default:
 		sev := strings.ToUpper(issue.Severity)
-		fmt.Printf("  %-4s %-30s %s\n", sev, ref, msg)
+		termPrintf("  %-4s %-30s %s\n", sev, ref, msg)
 	}
 }
 

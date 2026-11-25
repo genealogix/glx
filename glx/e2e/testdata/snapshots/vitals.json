@@ -1,0 +1,48 @@
+{
+  "person_id": "person-robert-thompson",
+  "vitals": [
+    {
+      "label": "Name",
+      "value": "Robert Thompson"
+    },
+    {
+      "label": "Sex",
+      "value": "male"
+    },
+    {
+      "label": "Birth",
+      "value": "April 12, 1850, Springfield"
+    },
+    {
+      "label": "Christening",
+      "value": "—"
+    },
+    {
+      "label": "Death",
+      "value": "—"
+    },
+    {
+      "label": "Burial",
+      "value": "—"
+    }
+  ],
+  "events": [
+    {
+      "id": "event-birth-robert",
+      "entity": {
+        "date": "1850-04-12",
+        "participants": [
+          {
+            "person": "person-robert-thompson",
+            "role": "subject"
+          }
+        ],
+        "place": "place-springfield",
+        "properties": {
+          "description": "Birth of Robert Thompson in Springfield, Illinois"
+        },
+        "type": "birth"
+      }
+    }
+  ]
+}

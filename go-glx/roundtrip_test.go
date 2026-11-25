@@ -207,7 +207,6 @@ func TestGEDCOMToMultiFileRoundTrip(t *testing.T) {
 			// Create serializer with vocabularies included
 			opts := &SerializerOptions{
 				Validate: false,
-				Pretty:   true,
 			}
 			serializer := NewSerializer(opts)
 			err = serializeMultiFileTest(serializer, glx1, tempDir)
@@ -283,7 +282,6 @@ func TestSingleToMultiToSingleRoundTrip(t *testing.T) {
 			// Create serializer with vocabularies for multi-file
 			optsMulti := &SerializerOptions{
 				Validate: false,
-				Pretty:   true,
 			}
 			serializerMulti := NewSerializer(optsMulti)
 			err = serializeMultiFileTest(serializerMulti, glx2, multiDir)
@@ -363,7 +361,6 @@ func TestVocabularyPreservation(t *testing.T) {
 		// Create serializer with vocabularies included
 		opts := &SerializerOptions{
 			Validate: false,
-			Pretty:   true,
 		}
 		serializer := NewSerializer(opts)
 

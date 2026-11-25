@@ -17,7 +17,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"os"
 	"slices"
 	"sort"
 	"strings"
@@ -126,7 +125,7 @@ func queryEntities(entityType glxlib.EntityType, opts *queryOpts) error {
 		return err
 	}
 
-	archive, err := loadArchiveForQuery(opts.Archive)
+	archive, err := loadArchiveForRead(SystemIOStreams(), opts.Archive)
 	if err != nil {
 		return err
 	}
@@ -164,28 +163,6 @@ func queryEntities(entityType glxlib.EntityType, opts *queryOpts) error {
 	default:
 		return fmt.Errorf("unknown entity type: %s", entityType)
 	}
-}
-
-// loadArchiveForQuery loads an archive from a path (directory or single file).
-func loadArchiveForQuery(path string) (*glxlib.GLXFile, error) {
-	info, err := os.Stat(path)
-	if err != nil {
-		return nil, fmt.Errorf("cannot access path: %w", err)
-	}
-
-	if info.IsDir() {
-		archive, duplicates, err := LoadArchiveCached(path)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load archive: %w", err)
-		}
-		for _, d := range duplicates {
-			fmt.Fprintf(os.Stderr, "Warning: %s\n", d)
-		}
-
-		return archive, nil
-	}
-
-	return readSingleFileArchive(path, false)
 }
 
 // queryPersons filters and displays persons.
@@ -243,11 +220,11 @@ func queryPersons(archive *glxlib.GLXFile, opts queryOpts) error {
 			detail += "  aka: " + strings.Join(akaNames, ", ")
 		}
 
-		fmt.Printf("  %s  %s\n", id, detail)
+		termPrintf("  %s  %s\n", id, detail)
 		count++
 	}
 
-	fmt.Printf("\n%d person(s) found\n", count)
+	termPrintf("\n%d person(s) found\n", count)
 
 	return nil
 }
@@ -268,11 +245,11 @@ func queryEvents(archive *glxlib.GLXFile, opts *queryOpts) error {
 		if date == "" {
 			date = "(no date)"
 		}
-		fmt.Printf("  %s  %s  %s\n", id, event.Type, date)
+		termPrintf("  %s  %s  %s\n", id, event.Type, date)
 		count++
 	}
 
-	fmt.Printf("\n%d event(s) found\n", count)
+	termPrintf("\n%d event(s) found\n", count)
 
 	return nil
 }
@@ -303,11 +280,11 @@ func queryAssertions(archive *glxlib.GLXFile, opts *queryOpts) error {
 		if a.Confidence != "" {
 			detail += "  [" + a.Confidence + "]"
 		}
-		fmt.Printf("  %s  %s\n", id, detail)
+		termPrintf("  %s  %s\n", id, detail)
 		count++
 	}
 
-	fmt.Printf("\n%d assertion(s) found\n", count)
+	termPrintf("\n%d assertion(s) found\n", count)
 
 	return nil
 }
@@ -324,11 +301,11 @@ func querySources(archive *glxlib.GLXFile, opts *queryOpts) error {
 			continue
 		}
 
-		fmt.Printf("  %s  %s\n", id, source.Title)
+		termPrintf("  %s  %s\n", id, source.Title)
 		count++
 	}
 
-	fmt.Printf("\n%d source(s) found\n", count)
+	termPrintf("\n%d source(s) found\n", count)
 
 	return nil
 }
@@ -349,11 +326,11 @@ func queryRelationships(archive *glxlib.GLXFile, opts *queryOpts) error {
 		for _, p := range rel.Participants {
 			participants = append(participants, p.Person)
 		}
-		fmt.Printf("  %s  %s  [%s]\n", id, rel.Type, strings.Join(participants, ", "))
+		termPrintf("  %s  %s  [%s]\n", id, rel.Type, strings.Join(participants, ", "))
 		count++
 	}
 
-	fmt.Printf("\n%d relationship(s) found\n", count)
+	termPrintf("\n%d relationship(s) found\n", count)
 
 	return nil
 }
@@ -374,11 +351,11 @@ func queryPlaces(archive *glxlib.GLXFile, opts *queryOpts) error {
 		if placeType != "" {
 			placeType = "  (" + placeType + ")"
 		}
-		fmt.Printf("  %s  %s%s\n", id, place.Name, placeType)
+		termPrintf("  %s  %s%s\n", id, place.Name, placeType)
 		count++
 	}
 
-	fmt.Printf("\n%d place(s) found\n", count)
+	termPrintf("\n%d place(s) found\n", count)
 
 	return nil
 }
@@ -389,10 +366,10 @@ func queryCitations(archive *glxlib.GLXFile) error {
 
 	for _, id := range ids {
 		cit := archive.Citations[id]
-		fmt.Printf("  %s  source:%s\n", id, cit.SourceID)
+		termPrintf("  %s  source:%s\n", id, cit.SourceID)
 	}
 
-	fmt.Printf("\n%d citation(s) found\n", len(ids))
+	termPrintf("\n%d citation(s) found\n", len(ids))
 
 	return nil
 }
@@ -409,11 +386,11 @@ func queryRepositories(archive *glxlib.GLXFile, opts *queryOpts) error {
 			continue
 		}
 
-		fmt.Printf("  %s  %s\n", id, repo.Name)
+		termPrintf("  %s  %s\n", id, repo.Name)
 		count++
 	}
 
-	fmt.Printf("\n%d repository(ies) found\n", count)
+	termPrintf("\n%d repository(ies) found\n", count)
 
 	return nil
 }
@@ -428,10 +405,10 @@ func queryMedia(archive *glxlib.GLXFile) error {
 		if title == "" {
 			title = m.URI
 		}
-		fmt.Printf("  %s  %s\n", id, title)
+		termPrintf("  %s  %s\n", id, title)
 	}
 
-	fmt.Printf("\n%d media found\n", len(ids))
+	termPrintf("\n%d media found\n", len(ids))
 
 	return nil
 }
@@ -464,11 +441,11 @@ func queryResearchLogs(archive *glxlib.GLXFile, opts *queryOpts) error {
 		if n := len(log.Leads); n > 0 {
 			line += fmt.Sprintf("  (%d %s)", n, pluralize(n, "lead", "leads"))
 		}
-		fmt.Println(line)
+		termPrintln(line)
 		count++
 	}
 
-	fmt.Printf("\n%d research logs found\n", count)
+	termPrintf("\n%d research logs found\n", count)
 
 	return nil
 }
@@ -505,10 +482,10 @@ func queryStudies(archive *glxlib.GLXFile) error {
 		if status == "" {
 			status = "-"
 		}
-		fmt.Printf("  %s  [%s/%s]  %s\n", id, studyType, status, s.Title)
+		termPrintf("  %s  [%s/%s]  %s\n", id, studyType, status, s.Title)
 	}
 
-	fmt.Printf("\n%d studies found\n", len(ids))
+	termPrintf("\n%d studies found\n", len(ids))
 
 	return nil
 }

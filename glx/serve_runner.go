@@ -105,7 +105,7 @@ func serveArchive(streams *IOStreams, opts serveOptions) error {
 		}
 	}
 
-	archive, err := loadArchiveForSummary(opts.ArchivePath)
+	archive, err := loadArchiveForRead(SystemIOStreams(), opts.ArchivePath)
 	if err != nil {
 		return err
 	}

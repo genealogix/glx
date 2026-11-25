@@ -126,11 +126,11 @@ studies: {}
 // printSingleFileSummary reports what a single-file init produced, including
 // the Git lines describing whether the archive is under version control.
 func printSingleFileSummary(targetDir string, gitLines []string) {
-	fmt.Printf("Initialized single-file GENEALOGIX archive: archive.glx in %s\n", targetDir)
+	termPrintf("Initialized single-file GENEALOGIX archive: archive.glx in %s\n", targetDir)
 	for _, line := range gitLines {
-		fmt.Println(line)
+		termPrintln(line)
 	}
-	fmt.Printf("Add entities under the appropriate type keys (persons, sources, etc.) in %s\n", targetDir)
+	termPrintf("Add entities under the appropriate type keys (persons, sources, etc.) in %s\n", targetDir)
 }
 
 // createMultiFileArchive creates a multi-file GLX archive directory structure
@@ -165,7 +165,7 @@ func createMultiFileArchive(numTestData int) error {
 	}
 
 	if numTestData > 0 {
-		fmt.Printf("Generating test data for %d persons...\n", numTestData)
+		termPrintf("Generating test data for %d persons...\n", numTestData)
 		testData, err := glxlib.GenerateTestData(numTestData)
 		if err != nil {
 			return fmt.Errorf("failed to generate test data: %w", err)
@@ -173,7 +173,7 @@ func createMultiFileArchive(numTestData int) error {
 		if err := writeTestData(testData); err != nil {
 			return fmt.Errorf("failed to write test data: %w", err)
 		}
-		fmt.Println("Test data generated successfully.")
+		termPrintln("Test data generated successfully.")
 	}
 
 	return nil
@@ -186,18 +186,18 @@ func printMultiFileSummary(targetDir string, gitLines []string) {
 	if targetDir == "." {
 		targetDir = "the current directory"
 	}
-	fmt.Printf("Initialized multi-file GENEALOGIX repository in %s\n", targetDir)
-	fmt.Println("Created directories:")
-	fmt.Println("  Core: persons/, relationships/, events/, places/")
-	fmt.Println("  Evidence: sources/, citations/, repositories/, assertions/")
-	fmt.Println("  Media: media/")
-	fmt.Println("  Research: research_logs/, studies/")
-	fmt.Println("Created .gitignore and README.md")
+	termPrintf("Initialized multi-file GENEALOGIX repository in %s\n", targetDir)
+	termPrintln("Created directories:")
+	termPrintln("  Core: persons/, relationships/, events/, places/")
+	termPrintln("  Evidence: sources/, citations/, repositories/, assertions/")
+	termPrintln("  Media: media/")
+	termPrintln("  Research: research_logs/, studies/")
+	termPrintln("Created .gitignore and README.md")
 	for _, line := range gitLines {
-		fmt.Println(line)
+		termPrintln(line)
 	}
-	fmt.Println("")
-	fmt.Println("Each .glx file should have entity type keys at the top level.")
+	termPrintln("")
+	termPrintln("Each .glx file should have entity type keys at the top level.")
 }
 
 // writeTestData writes test data to entity files.

@@ -17,7 +17,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
@@ -25,17 +24,17 @@ import (
 
 // diffArchives loads two archives and prints their diff.
 func diffArchives(path1, path2, person string, verbose, short, jsonOutput bool) error {
-	old, err := loadArchiveForDiff(path1)
+	oldArchive, err := loadArchiveForRead(SystemIOStreams(), path1)
 	if err != nil {
 		return fmt.Errorf("loading %s: %w", path1, err)
 	}
 
-	new, err := loadArchiveForDiff(path2)
+	newArchive, err := loadArchiveForRead(SystemIOStreams(), path2)
 	if err != nil {
 		return fmt.Errorf("loading %s: %w", path2, err)
 	}
 
-	result := glxlib.DiffArchives(old, new, person)
+	result := glxlib.DiffArchives(oldArchive, newArchive, person)
 
 	switch {
 	case jsonOutput:
@@ -51,32 +50,10 @@ func diffArchives(path1, path2, person string, verbose, short, jsonOutput bool) 
 	return nil
 }
 
-// loadArchiveForDiff loads an archive from a path (directory or single file).
-func loadArchiveForDiff(path string) (*glxlib.GLXFile, error) {
-	info, err := os.Stat(path)
-	if err != nil {
-		return nil, fmt.Errorf("cannot access path: %w", err)
-	}
-
-	if info.IsDir() {
-		archive, duplicates, loadErr := LoadArchiveCached(path)
-		if loadErr != nil {
-			return nil, fmt.Errorf("failed to load archive: %w", loadErr)
-		}
-		for _, d := range duplicates {
-			fmt.Fprintf(os.Stderr, "Warning: %s\n", d)
-		}
-
-		return archive, nil
-	}
-
-	return readSingleFileArchive(path, false)
-}
-
 // printDiffSummary prints the default summary view.
 func printDiffSummary(result *glxlib.DiffResult) {
 	if len(result.Changes) == 0 {
-		fmt.Println("No changes.")
+		termPrintln("No changes.")
 
 		return
 	}
@@ -87,34 +64,34 @@ func printDiffSummary(result *glxlib.DiffResult) {
 
 	for _, entityType := range entityTypes {
 		changes := groups[entityType]
-		fmt.Printf("\n%s\n", strings.ToUpper(entityType.String()))
+		termPrintf("\n%s\n", strings.ToUpper(entityType.String()))
 
 		for _, c := range changes {
 			prefix := changePrefix(c.Kind)
-			fmt.Printf("  %s %-38s  %s\n", prefix, c.ID, c.Summary)
+			termPrintf("  %s %-38s  %s\n", prefix, c.ID, c.Summary)
 
 			// For modified entities, show field changes inline (up to 3).
 			// Skip when only 1 field changed — the summary already shows it.
 			if c.Kind == glxlib.ChangeModified && len(c.Fields) > 1 {
 				limit := min(len(c.Fields), 3)
 				for _, f := range c.Fields[:limit] {
-					fmt.Printf("    %-36s  %s → %s\n", f.Path+":", f.OldValue, f.NewValue)
+					termPrintf("    %-36s  %s → %s\n", f.Path+":", f.OldValue, f.NewValue)
 				}
 				if len(c.Fields) > limit {
-					fmt.Printf("    ... and %d more field(s)\n", len(c.Fields)-limit)
+					termPrintf("    ... and %d more field(s)\n", len(c.Fields)-limit)
 				}
 			}
 		}
 	}
 
-	fmt.Println()
+	termPrintln()
 	printDiffStatsLine(result)
 }
 
 // printDiffVerbose prints all field-level details for modified entities.
 func printDiffVerbose(result *glxlib.DiffResult) {
 	if len(result.Changes) == 0 {
-		fmt.Println("No changes.")
+		termPrintln("No changes.")
 
 		return
 	}
@@ -124,23 +101,23 @@ func printDiffVerbose(result *glxlib.DiffResult) {
 
 	for _, entityType := range entityTypes {
 		changes := groups[entityType]
-		fmt.Printf("\n%s\n", strings.ToUpper(entityType.String()))
+		termPrintf("\n%s\n", strings.ToUpper(entityType.String()))
 
 		for _, c := range changes {
 			prefix := changePrefix(c.Kind)
-			fmt.Printf("  %s %s\n", prefix, c.ID)
+			termPrintf("  %s %s\n", prefix, c.ID)
 
 			if c.Kind == glxlib.ChangeModified {
 				for _, f := range c.Fields {
-					fmt.Printf("      %-30s  %s → %s\n", f.Path+":", f.OldValue, f.NewValue)
+					termPrintf("      %-30s  %s → %s\n", f.Path+":", f.OldValue, f.NewValue)
 				}
 			} else {
-				fmt.Printf("      %s\n", c.Summary)
+				termPrintf("      %s\n", c.Summary)
 			}
 		}
 	}
 
-	fmt.Println()
+	termPrintln()
 	printDiffStatsLine(result)
 }
 
@@ -164,7 +141,7 @@ func printDiffShort(result *glxlib.DiffResult) {
 		parts = append(parts, fmt.Sprintf("%d new citation(s)", s.NewCitations))
 	}
 
-	fmt.Println(strings.Join(parts, " | "))
+	termPrintln(strings.Join(parts, " | "))
 }
 
 // printDiffJSON outputs the result as JSON.
@@ -173,7 +150,7 @@ func printDiffJSON(result *glxlib.DiffResult) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal JSON: %w", err)
 	}
-	fmt.Println(string(data))
+	machinePrintln(string(data))
 
 	return nil
 }
@@ -181,7 +158,7 @@ func printDiffJSON(result *glxlib.DiffResult) error {
 // printDiffStatsLine prints the summary stats footer.
 func printDiffStatsLine(result *glxlib.DiffResult) {
 	s := result.Stats
-	fmt.Printf("Summary: +%d added, ~%d modified, -%d removed\n", s.Added, s.Modified, s.Removed)
+	termPrintf("Summary: +%d added, ~%d modified, -%d removed\n", s.Added, s.Modified, s.Removed)
 
 	extras := make([]string, 0, 4)
 	if s.ConfidenceUpgrades > 0 {
@@ -198,7 +175,7 @@ func printDiffStatsLine(result *glxlib.DiffResult) {
 	}
 
 	if len(extras) > 0 {
-		fmt.Printf("         %s\n", strings.Join(extras, ", "))
+		termPrintf("         %s\n", strings.Join(extras, ", "))
 	}
 }
 

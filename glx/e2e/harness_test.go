@@ -38,14 +38,94 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// glxBinary is the path of the CLI built by TestMain.
+// glxBinary is the path of the CLI built by TestMain. Tests reach it through
+// cliBinary, never directly, so the build inputs are recorded first.
 var glxBinary string
+
+// buildInputs lists every file the CLI binary is built from inside this
+// module: Go sources and embedded files of each non-standard package the CLI
+// imports, plus go.mod and go.sum. TestMain fills it in before building.
+var buildInputs []string
+
+var recordBuildInputsOnce sync.Once
+
+// errNoBuildInputs means go list named no file for the CLI to depend on.
+var errNoBuildInputs = errors.New("listing CLI build inputs: go list returned no files")
+
+// cliBinary returns the path of the CLI built by TestMain, after reading every
+// build input once. The e2e package does not import the CLI, so without the
+// reads the Go test cache would not know the binary depends on those files
+// and would replay a cached pass after a CLI change (#1309). The test cache
+// only records files a test reads once the suite is running, which is why
+// this happens here, on first use, and not in TestMain.
+//
+// Reading the files covers an edit; it does not cover an addition, which
+// changes no file already listed. So each directory holding a build input is
+// listed as well: the test cache hashes a directory's entry names when a test
+// opens it, so a new Go file in a package, or a new file beside an embedded
+// one, changes a recorded input and forces a rerun.
+func cliBinary() string {
+	recordBuildInputsOnce.Do(func() {
+		dirs := map[string]bool{}
+		for _, p := range buildInputs {
+			_, _ = os.ReadFile(p) //nolint:gosec // paths come from go list over this module
+			dirs[filepath.Dir(p)] = true
+		}
+		for _, d := range slices.Sorted(maps.Keys(dirs)) {
+			_, _ = os.ReadDir(d)
+		}
+	})
+
+	return glxBinary
+}
+
+// listBuildInputs asks go list for the module-local files the CLI package
+// ".." is built from.
+func listBuildInputs() ([]string, error) {
+	// One "<dir>\t<file>" line per Go, cgo and embedded file of every
+	// non-standard package; the main module's go.mod alone on its line.
+	const format = `{{if not .Standard}}{{$d := .Dir}}` +
+		`{{range .GoFiles}}{{$d}}{{"\t"}}{{.}}{{"\n"}}{{end}}` +
+		`{{range .CgoFiles}}{{$d}}{{"\t"}}{{.}}{{"\n"}}{{end}}` +
+		`{{range .EmbedFiles}}{{$d}}{{"\t"}}{{.}}{{"\n"}}{{end}}` +
+		`{{with .Module}}{{if .Main}}{{.GoMod}}{{"\n"}}{{end}}{{end}}{{end}}`
+	out, err := exec.CommandContext(context.Background(), "go", "list", "-deps", "-f", format, "..").Output()
+	if err != nil {
+		return nil, fmt.Errorf("listing CLI build inputs: %w", err)
+	}
+
+	seen := map[string]bool{}
+	var paths []string
+	add := func(p string) {
+		if p != "" && !seen[p] {
+			seen[p] = true
+			paths = append(paths, p)
+		}
+	}
+	for line := range strings.Lines(string(out)) {
+		dir, name, found := strings.Cut(strings.TrimRight(line, "\r\n"), "\t")
+		if !found {
+			// The main module's go.mod; go.sum sits beside it.
+			add(dir)
+			add(filepath.Join(filepath.Dir(dir), "go.sum"))
+
+			continue
+		}
+		add(filepath.Join(dir, name))
+	}
+	if len(paths) == 0 {
+		return nil, errNoBuildInputs
+	}
+
+	return paths, nil
+}
 
 func TestMain(m *testing.M) {
 	code, err := buildAndRun(m)
@@ -73,6 +153,9 @@ func buildAndRun(m *testing.M) (int, error) {
 
 	// The test's cwd is this package's directory (glx/e2e), so ".." is the
 	// CLI's package main.
+	if buildInputs, err = listBuildInputs(); err != nil {
+		return 0, err
+	}
 	build := exec.CommandContext(context.Background(), "go", "build", "-o", bin, "..")
 	build.Stdout = os.Stderr
 	build.Stderr = os.Stderr
@@ -118,7 +201,7 @@ func runGLXWithStdin(t *testing.T, workDir, input string, args ...string) result
 func runGLXWithIO(t *testing.T, extraEnv []string, in io.Reader, workDir string, args ...string) result {
 	t.Helper()
 
-	cmd := exec.CommandContext(t.Context(), glxBinary, args...) //nolint:gosec // args come from the test, not user input
+	cmd := exec.CommandContext(t.Context(), cliBinary(), args...) //nolint:gosec // args come from the test, not user input
 	cmd.Dir = workDir
 	cmd.Stdin = in
 	// Pin the cache mode. Without this the subprocess inherits whatever

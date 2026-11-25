@@ -777,14 +777,14 @@ func TestAnalyzeConflicts_TemporalListsOverlappingOnly(t *testing.T) {
 }
 
 func TestAnalyzeConflicts_TemporalPropertiesExample(t *testing.T) {
-	archive, err := loadArchiveForAnalyze("../docs/examples/temporal-properties")
+	archive, err := loadArchiveForRead(SystemIOStreams(), "../docs/examples/temporal-properties")
 	require.NoError(t, err)
 
 	require.Empty(t, mustAnalyzeConflicts(archive))
 }
 
 func TestAnalyzeConflicts_TemporalPropertiesExampleSingleFile(t *testing.T) {
-	archive, err := loadArchiveForAnalyze("../docs/examples/temporal-properties/archive.glx")
+	archive, err := loadArchiveForRead(SystemIOStreams(), "../docs/examples/temporal-properties/archive.glx")
 	require.NoError(t, err)
 
 	require.Empty(t, mustAnalyzeConflicts(archive))

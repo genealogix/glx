@@ -66,6 +66,9 @@ func linkFamilySearchARK(io *IOStreams, opts *linkOptions) error {
 		return err
 	}
 
+	if err := refuseSingleFileArchive("link", opts.ArchivePath); err != nil {
+		return err
+	}
 	archive, duplicates, err := LoadArchiveWithOptions(opts.ArchivePath, false)
 	if err != nil {
 		return fmt.Errorf("loading archive: %w", err)

@@ -55,7 +55,7 @@ func censusAdd(templatePath, archivePath string, dryRun, verbose bool) error {
 	}
 
 	if dryRun {
-		fmt.Println("\n(dry run — no files written)")
+		termPrintln("\n(dry run — no files written)")
 
 		return nil
 	}
@@ -66,7 +66,7 @@ func censusAdd(templatePath, archivePath string, dryRun, verbose bool) error {
 		return fmt.Errorf("failed to write entities: %w", err)
 	}
 
-	fmt.Printf("Wrote %d entity files to %s\n", count, archivePath)
+	termPrintf("Wrote %d entity files to %s\n", count, archivePath)
 
 	return nil
 }
@@ -95,6 +95,12 @@ func loadArchiveForCensus(path string) (*glxlib.GLXFile, error) {
 		return nil, fmt.Errorf("cannot access path: %w", err)
 	}
 
+	// The single-file refusal comes first so `--archive archive.glx` gets the
+	// glx split guidance too, not only the bare "not a directory" error.
+	if err := refuseSingleFileArchive("census add", path); err != nil {
+		return nil, err
+	}
+
 	if !info.IsDir() {
 		return nil, fmt.Errorf("census requires an archive directory, but %s is not a directory", path)
 	}
@@ -104,7 +110,7 @@ func loadArchiveForCensus(path string) (*glxlib.GLXFile, error) {
 		return nil, fmt.Errorf("failed to load archive: %w", loadErr)
 	}
 	for _, d := range duplicates {
-		fmt.Fprintf(os.Stderr, "Warning: %s\n", d)
+		termErrorf("Warning: %s\n", d)
 	}
 
 	return archive, nil
@@ -255,28 +261,28 @@ func validateCensusRefs(result *glxlib.CensusResult, existing *glxlib.GLXFile) e
 
 // printCensusSummary prints a summary of what was generated.
 func printCensusSummary(result *glxlib.CensusResult) {
-	fmt.Println("Census Import Summary")
-	fmt.Println("=====================")
-	fmt.Printf("  Event:      %s\n", result.EventID)
-	fmt.Printf("  Source:     %s\n", result.SourceID)
-	fmt.Printf("  Citation:   %s\n", result.CitationID)
-	fmt.Printf("  Place:      %s\n", result.PlaceID)
+	termPrintln("Census Import Summary")
+	termPrintln("=====================")
+	termPrintf("  Event:      %s\n", result.EventID)
+	termPrintf("  Source:     %s\n", result.SourceID)
+	termPrintf("  Citation:   %s\n", result.CitationID)
+	termPrintf("  Place:      %s\n", result.PlaceID)
 
 	if len(result.NewPersonIDs) > 0 {
-		fmt.Printf("\n  New persons (%d):\n", len(result.NewPersonIDs))
+		termPrintf("\n  New persons (%d):\n", len(result.NewPersonIDs))
 		for _, id := range result.NewPersonIDs {
-			fmt.Printf("    + %s\n", id)
+			termPrintf("    + %s\n", id)
 		}
 	}
 
 	if len(result.MatchedIDs) > 0 {
-		fmt.Printf("\n  Matched existing persons (%d):\n", len(result.MatchedIDs))
+		termPrintf("\n  Matched existing persons (%d):\n", len(result.MatchedIDs))
 		for _, id := range result.MatchedIDs {
-			fmt.Printf("    = %s\n", id)
+			termPrintf("    = %s\n", id)
 		}
 	}
 
-	fmt.Printf("\n  New places:     %d\n", len(result.Place))
-	fmt.Printf("  New sources:    %d\n", len(result.Source))
-	fmt.Printf("  Assertions:     %d\n", len(result.Assertions))
+	termPrintf("\n  New places:     %d\n", len(result.Place))
+	termPrintf("  New sources:    %d\n", len(result.Source))
+	termPrintf("  Assertions:     %d\n", len(result.Assertions))
 }

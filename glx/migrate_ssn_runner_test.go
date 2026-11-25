@@ -307,3 +307,23 @@ func TestMigrateArchive_SsnMultiFileRoundTrip(t *testing.T) {
 	// Second invocation is a benign no-op.
 	require.NoError(t, migrateArchive(dir))
 }
+
+// A person carrying both properties is left alone with a warning that quotes
+// the archive-controlled person ID. The ID must reach the terminal with its
+// control bytes escaped, whatever writer the caller passes (#1208).
+func TestMigrateSsnToNationalID_ConflictWarningIsSanitized(t *testing.T) {
+	id := "person-\x1b]0;pwned\x07"
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			id: {Properties: map[string]any{"ssn": "1", "national_id": "2"}},
+		},
+	}
+
+	var warn bytes.Buffer
+	migrateSsnToNationalID(archive, &warn)
+
+	assert.Contains(t, warn.String(), "carries both legacy")
+	assert.NotContains(t, warn.String(), "\x1b")
+	assert.NotContains(t, warn.String(), "\x07")
+	assert.Contains(t, warn.String(), sanitizeForTerminal(id))
+}

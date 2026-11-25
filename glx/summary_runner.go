@@ -16,7 +16,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"slices"
 	"sort"
 	"strconv"
@@ -96,48 +95,9 @@ var summarySkippedProperties = map[string]bool{
 	"gender": true, "sex": true,
 }
 
-// loadArchiveForSummary loads an archive from a path (directory or single file).
-func loadArchiveForSummary(path string) (*glxlib.GLXFile, error) {
-	info, err := os.Stat(path)
-	if err != nil {
-		return nil, fmt.Errorf("cannot access path: %w", err)
-	}
-
-	if info.IsDir() {
-		archive, duplicates, err := LoadArchiveCached(path)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load archive: %w", err)
-		}
-		for _, d := range duplicates {
-			fmt.Fprintf(os.Stderr, "Warning: %s\n", d)
-		}
-
-		return archive, nil
-	}
-
-	archive, err := readSingleFileArchive(path, false)
-	if err != nil {
-		return nil, err
-	}
-
-	// Single-file archives don't merge standard vocabularies during load (unlike
-	// directory archives via LoadArchiveCached), so populate them here.
-	// summary is read-only and mergeStandardVocabularies only fills empty
-	// vocabulary maps, so any archive-defined vocabulary is preserved. This lets
-	// place-reference properties (e.g. residence) resolve to place names
-	// regardless of whether the archive is a directory or a single file. Unlike
-	// the directory path, no InvalidateCache call is needed: summary never runs
-	// validation, so there is no cached validation result to invalidate.
-	if err := mergeStandardVocabularies(archive); err != nil {
-		return nil, fmt.Errorf("failed to load standard vocabularies: %w", err)
-	}
-
-	return archive, nil
-}
-
 // showSummary loads an archive and displays a comprehensive person profile.
 func showSummary(archivePath, personQuery string, jsonOutput ...bool) error {
-	archive, err := loadArchiveForSummary(archivePath)
+	archive, err := loadArchiveForRead(SystemIOStreams(), archivePath)
 	if err != nil {
 		return err
 	}
@@ -150,7 +110,7 @@ func showSummary(archivePath, personQuery string, jsonOutput ...bool) error {
 		return err
 	}
 
-	fmt.Printf("=== %s ===\n\n", personID)
+	termPrintf("=== %s ===\n\n", personID)
 
 	printIdentitySection(person)
 	printVitalEventsSection(personID, person, archive)
@@ -318,21 +278,21 @@ func formatNameType(t string) string {
 // data when the user has recorded it.
 func printIdentitySection(person *glxlib.Person) {
 	name := extractPersonName(person)
-	fmt.Printf("  %-18s%s\n", "Name:", name)
+	termPrintf("  %-18s%s\n", "Name:", name)
 
-	fmt.Printf("  %-18s%s\n", "Sex:", displayOrDash(personSex(person)))
+	termPrintf("  %-18s%s\n", "Sex:", displayOrDash(personSex(person)))
 
 	if identity := displayableGenderIdentity(person); identity != "" {
-		fmt.Printf("  %-18s%s\n", "Gender:", identity)
+		termPrintf("  %-18s%s\n", "Gender:", identity)
 	}
 
 	if status := glxlib.PersonStatus(person); status != "" {
-		fmt.Printf("  %-18s%s\n", "Status:", sanitizeForTerminal(status))
+		termPrintf("  %-18s%s\n", "Status:", sanitizeForTerminal(status))
 	}
 
 	variants := extractAllNameVariants(person)
 	if len(variants) > 1 {
-		fmt.Printf("  Alternate Names:\n")
+		termPrintf("  Alternate Names:\n")
 
 		// Group by type
 		grouped := map[string][]string{}
@@ -354,45 +314,45 @@ func printIdentitySection(person *glxlib.Person) {
 		for _, key := range typeOrder {
 			label := formatNameType(key)
 			values := grouped[key]
-			fmt.Printf("    %-16s%s\n", label+":", strings.Join(values, ", "))
+			termPrintf("    %-16s%s\n", label+":", strings.Join(values, ", "))
 		}
 	}
 
-	fmt.Println()
+	termPrintln()
 }
 
 // printVitalEventsSection prints birth, christening, death, burial.
 func printVitalEventsSection(personID string, person *glxlib.Person, archive *glxlib.GLXFile) {
-	fmt.Println(sectionHeader("Vital Events"))
+	termPrintln(sectionHeader("Vital Events"))
 
 	// Birth: from events
 	birth := findEventForPerson(personID, "birth", archive)
-	fmt.Printf("  %-18s%s\n", "Birth:", displayOrDash(birth))
+	termPrintf("  %-18s%s\n", "Birth:", displayOrDash(birth))
 
 	// Christening/Baptism: from events
 	christening := findEventForPerson(personID, "christening", archive)
 	if christening == "" {
 		christening = findEventForPerson(personID, "baptism", archive)
 	}
-	fmt.Printf("  %-18s%s\n", "Christening:", displayOrDash(christening))
+	termPrintf("  %-18s%s\n", "Christening:", displayOrDash(christening))
 
 	// Death: from events
 	death := findEventForPerson(personID, "death", archive)
-	fmt.Printf("  %-18s%s\n", "Death:", displayOrDash(death))
+	termPrintf("  %-18s%s\n", "Death:", displayOrDash(death))
 
 	// Burial/Cremation: events only
 	burial := findEventForPerson(personID, "burial", archive)
 	if burial == "" {
 		burial = findEventForPerson(personID, "cremation", archive)
 	}
-	fmt.Printf("  %-18s%s\n", "Burial:", displayOrDash(burial))
+	termPrintf("  %-18s%s\n", "Burial:", displayOrDash(burial))
 
-	fmt.Println()
+	termPrintln()
 }
 
 // printLifeEventsSection prints non-vital events and temporal person properties.
 func printLifeEventsSection(personID string, person *glxlib.Person, archive *glxlib.GLXFile) {
-	fmt.Println(sectionHeader("Life Events"))
+	termPrintln(sectionHeader("Life Events"))
 
 	hasContent := false
 
@@ -417,7 +377,7 @@ func printLifeEventsSection(personID string, person *glxlib.Person, archive *glx
 			label = glxlib.AppearanceLabel(event, archive) + " (" + role + "):"
 		}
 		detail := formatSummaryEventDatePlace(event, archive)
-		fmt.Printf("  %-18s%s\n", label, detail)
+		termPrintf("  %-18s%s\n", label, detail)
 		hasContent = true
 	}
 
@@ -450,10 +410,10 @@ func printLifeEventsSection(personID string, person *glxlib.Person, archive *glx
 	}
 
 	if !hasContent {
-		fmt.Println("  (none)")
+		termPrintln("  (none)")
 	}
 
-	fmt.Println()
+	termPrintln()
 }
 
 // printTemporalProperty prints a person property value, handling temporal lists.
@@ -487,7 +447,7 @@ func printTemporalProperty(label string, raw any, resolve func(string) string) b
 			if date != "" {
 				display += " (" + date + ")"
 			}
-			fmt.Printf("  %-18s%s\n", label+":", display)
+			termPrintf("  %-18s%s\n", label+":", display)
 		}
 
 		return len(list) > 0
@@ -496,7 +456,7 @@ func printTemporalProperty(label string, raw any, resolve func(string) string) b
 	// Structured map with "value" key
 	if m, ok := raw.(map[string]any); ok {
 		if v, exists := m["value"]; exists {
-			fmt.Printf("  %-18s%s\n", label+":", resolve(fmt.Sprint(v)))
+			termPrintf("  %-18s%s\n", label+":", resolve(fmt.Sprint(v)))
 
 			return true
 		}
@@ -504,7 +464,7 @@ func printTemporalProperty(label string, raw any, resolve func(string) string) b
 
 	// Simple string
 	if s, ok := raw.(string); ok {
-		fmt.Printf("  %-18s%s\n", label+":", resolve(s))
+		termPrintf("  %-18s%s\n", label+":", resolve(s))
 
 		return true
 	}
@@ -514,12 +474,12 @@ func printTemporalProperty(label string, raw any, resolve func(string) string) b
 
 // printFamilySection prints spouses, parents, and siblings.
 func printFamilySection(personID string, archive *glxlib.GLXFile) {
-	fmt.Println(sectionHeader("Family"))
+	termPrintln(sectionHeader("Family"))
 
 	// Spouses
 	spouses := findSpouses(personID, archive)
 	if len(spouses) == 0 {
-		fmt.Printf("  %-18s%s\n", "Spouse:", "(none)")
+		termPrintf("  %-18s%s\n", "Spouse:", "(none)")
 	}
 	for _, sp := range spouses {
 		detail := withHypotheticalMarker(sp.PersonName, sp.Hypothetical)
@@ -533,7 +493,7 @@ func printFamilySection(personID string, archive *glxlib.GLXFile) {
 		if len(parts) > 0 {
 			detail += "  (m. " + strings.Join(parts, ", ") + ")"
 		}
-		fmt.Printf("  %-18s%s\n", "Spouse:", detail)
+		termPrintf("  %-18s%s\n", "Spouse:", detail)
 	}
 
 	fam := newFamilyLinks(archive)
@@ -543,8 +503,8 @@ func printFamilySection(personID string, archive *glxlib.GLXFile) {
 	// stay visible; hypothetical parents carry the "(?)" marker.
 	ownParents, stepParents := splitStep(fam.parents(personID))
 	if len(ownParents) == 0 {
-		fmt.Printf("  %-18s%s\n", "Father:", "(unknown)")
-		fmt.Printf("  %-18s%s\n", "Mother:", "(unknown)")
+		termPrintf("  %-18s%s\n", "Father:", "(unknown)")
+		termPrintf("  %-18s%s\n", "Mother:", "(unknown)")
 	}
 	// Two or more surviving birth fathers (or mothers) are alternatives the
 	// research has not yet decided between, not several fathers.
@@ -554,23 +514,23 @@ func printFamilySection(personID string, archive *glxlib.GLXFile) {
 		if competing[e.PersonID] {
 			name += "  (alternative)"
 		}
-		fmt.Printf("  %-18s%s\n", parentLabel(summaryPersonSex(e.PersonID, archive))+":", name)
+		termPrintf("  %-18s%s\n", parentLabel(summaryPersonSex(e.PersonID, archive))+":", name)
 	}
 	for _, e := range stepParents {
-		fmt.Printf("  %-18s%s\n", stepParentLabel(summaryPersonSex(e.PersonID, archive))+":", withHypotheticalMarker(summaryPersonName(e.PersonID, archive), e.Hypothetical))
+		termPrintf("  %-18s%s\n", stepParentLabel(summaryPersonSex(e.PersonID, archive))+":", withHypotheticalMarker(summaryPersonName(e.PersonID, archive), e.Hypothetical))
 	}
 	if excluded := fam.excludedParents(personID); len(excluded) > 0 {
 		names := make([]string, 0, len(excluded))
 		for _, id := range excluded {
 			names = append(names, summaryPersonName(id, archive))
 		}
-		fmt.Printf("  %-18s%s\n", "Excluded:", strings.Join(names, ", ")+"  (disproven parent)")
+		termPrintf("  %-18s%s\n", "Excluded:", strings.Join(names, ", ")+"  (disproven parent)")
 	}
 
 	// Siblings, kept apart from half- and step-siblings.
 	siblings := fam.siblings(personID)
 	if len(siblings) == 0 {
-		fmt.Printf("  %-18s%s\n", "Siblings:", "(none found)")
+		termPrintf("  %-18s%s\n", "Siblings:", "(none found)")
 	}
 	for _, group := range []struct{ kind, label string }{
 		{siblingKindFull, "Siblings:"},
@@ -584,11 +544,11 @@ func printFamilySection(personID string, archive *glxlib.GLXFile) {
 			}
 		}
 		if len(names) > 0 {
-			fmt.Printf("  %-18s%s\n", group.label, strings.Join(names, ", "))
+			termPrintf("  %-18s%s\n", group.label, strings.Join(names, ", "))
 		}
 	}
 
-	fmt.Println()
+	termPrintln()
 }
 
 // summaryPersonName returns a person's display name, or the ID when the
@@ -617,11 +577,11 @@ func printOtherRelationshipsSection(personID string, archive *glxlib.GLXFile) {
 		return
 	}
 
-	fmt.Println(sectionHeader("Relationships"))
+	termPrintln(sectionHeader("Relationships"))
 	for _, r := range rels {
-		fmt.Printf("  %-18s%s\n", r.Label+":", withHypotheticalMarker(r.OtherName, r.Hypothetical))
+		termPrintf("  %-18s%s\n", r.Label+":", withHypotheticalMarker(r.OtherName, r.Hypothetical))
 	}
-	fmt.Println()
+	termPrintln()
 }
 
 // printLifeHistorySection prints an auto-generated biographical narrative.
@@ -631,8 +591,8 @@ func printLifeHistorySection(personID string, person *glxlib.Person, archive *gl
 		return
 	}
 
-	fmt.Println(sectionHeader("Life History"))
-	fmt.Printf("  %s\n\n", history)
+	termPrintln(sectionHeader("Life History"))
+	termPrintf("  %s\n\n", history)
 }
 
 // ============================================================================

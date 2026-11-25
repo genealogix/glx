@@ -74,7 +74,7 @@ func TestValidateJSONPathSingleFileReferences(t *testing.T) {
 		Events:  map[string]*glxlib.Event{"event-a": {Type: "birth", Date: "1900", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}}},
 	}
 	require.NoError(t, glxlib.MergeStandardVocabularies(archive))
-	data, err := createSerializer(false, false, "").SerializeSingleFileBytes(archive)
+	data, err := createSerializer(false, "").SerializeSingleFileBytes(archive)
 	require.NoError(t, err)
 	file := filepath.Join(t.TempDir(), "archive.glx")
 	require.NoError(t, os.WriteFile(file, data, 0o600))
@@ -88,7 +88,7 @@ func TestValidateJSONPathSingleFileReferences(t *testing.T) {
 	require.Equal(t, []string{"event-a"}, result.Report.UnbackedEvents)
 
 	archive.Events["event-a"].Participants[0].Person = "person-missing"
-	data, err = createSerializer(false, false, "").SerializeSingleFileBytes(archive)
+	data, err = createSerializer(false, "").SerializeSingleFileBytes(archive)
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(file, data, 0o600))
 	result, err = validateJSONPath(file, false)

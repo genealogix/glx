@@ -1,0 +1,52 @@
+{
+  "person_id": "person-robert-thompson",
+  "name": "Robert Thompson",
+  "entries": [
+    {
+      "date": "1850-04-12",
+      "sort_key": "0102396860:1",
+      "label": "Birth",
+      "detail": "Springfield",
+      "event_id": "event-birth-robert",
+      "is_family": false,
+      "event_type": "birth"
+    },
+    {
+      "date": "1852-08-30",
+      "sort_key": "0102397731:1",
+      "label": "Birth of spouse (Mary Thompson)",
+      "detail": "Springfield",
+      "event_id": "event-birth-mary",
+      "is_family": true,
+      "event_type": "birth"
+    },
+    {
+      "date": "1875-06-15",
+      "sort_key": "0102406055:1",
+      "label": "Marriage",
+      "detail": "Springfield",
+      "event_id": "event-marriage-1875",
+      "is_family": false,
+      "event_type": "marriage",
+      "title": "Thompson Wedding"
+    },
+    {
+      "date": "1878-03-22",
+      "sort_key": "0102407066:1",
+      "label": "Birth of child (Alice Thompson)",
+      "detail": "Springfield",
+      "event_id": "event-birth-alice",
+      "is_family": true,
+      "event_type": "birth"
+    },
+    {
+      "date": "1881-11-05",
+      "sort_key": "0102408390:1",
+      "label": "Birth of child (Robert Thompson Jr.)",
+      "detail": "Springfield",
+      "event_id": "event-birth-robert-jr",
+      "is_family": true,
+      "event_type": "birth"
+    }
+  ]
+}

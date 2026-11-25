@@ -128,7 +128,7 @@ func TestConfidenceConsumersSkipNullAssertions(t *testing.T) {
 			}
 			path := filepath.Join(t.TempDir(), "archive.glx")
 			require.NoError(t, os.WriteFile(path, []byte(data), 0o644))
-			archive, err := loadArchiveForStats(path)
+			archive, err := loadArchiveForRead(SystemIOStreams(), path)
 			require.NoError(t, err)
 			require.Contains(t, archive.Assertions, "assertion-null")
 			require.Nil(t, archive.Assertions["assertion-null"])

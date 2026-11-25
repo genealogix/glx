@@ -16,7 +16,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 
@@ -54,7 +53,7 @@ var familyRelationshipTypes = map[string]bool{
 
 // showTimeline loads an archive and displays a chronological timeline for a person.
 func showTimeline(archivePath, personQuery string, includeFamily bool, jsonOutput ...bool) error {
-	archive, err := loadArchiveForTimeline(archivePath)
+	archive, err := loadArchiveForRead(SystemIOStreams(), archivePath)
 	if err != nil {
 		return err
 	}
@@ -71,28 +70,6 @@ func showTimeline(archivePath, personQuery string, includeFamily bool, jsonOutpu
 	printTimeline(personID, extractPersonName(archive.Persons[personID]), entries)
 
 	return nil
-}
-
-// loadArchiveForTimeline loads an archive from a path (directory or single file).
-func loadArchiveForTimeline(path string) (*glxlib.GLXFile, error) {
-	info, err := os.Stat(path)
-	if err != nil {
-		return nil, fmt.Errorf("cannot access path: %w", err)
-	}
-
-	if info.IsDir() {
-		archive, duplicates, err := LoadArchiveCached(path)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load archive: %w", err)
-		}
-		for _, d := range duplicates {
-			fmt.Fprintf(os.Stderr, "Warning: %s\n", d)
-		}
-
-		return archive, nil
-	}
-
-	return readSingleFileArchive(path, false)
 }
 
 // findPersonForTimeline looks up a person by exact ID or name substring.
@@ -580,11 +557,11 @@ func timelineResolvePlaceName(placeID string, archive *glxlib.GLXFile) string {
 
 // printTimeline prints the timeline in a formatted table.
 func printTimeline(personID, personName string, entries []timelineEntry) {
-	fmt.Printf("\nTimeline for %s (%s):\n\n", personID, personName)
+	termPrintf("\nTimeline for %s (%s):\n\n", personID, personName)
 
 	if len(entries) == 0 {
-		fmt.Println("  No events found.")
-		fmt.Println()
+		termPrintln("  No events found.")
+		termPrintln()
 
 		return
 	}
@@ -616,25 +593,25 @@ func printTimeline(personID, personName string, entries []timelineEntry) {
 		date := displayDate(e.Date)
 
 		if e.Detail != "" {
-			fmt.Printf("  %-18s  %-*s  %s\n", date, maxLabel, e.Label, e.Detail)
+			termPrintf("  %-18s  %-*s  %s\n", date, maxLabel, e.Label, e.Detail)
 		} else {
-			fmt.Printf("  %-18s  %-*s\n", date, maxLabel, e.Label)
+			termPrintf("  %-18s  %-*s\n", date, maxLabel, e.Label)
 		}
 	}
 
 	if len(undated) > 0 {
-		fmt.Println()
-		fmt.Println("  Undated:")
+		termPrintln()
+		termPrintln("  Undated:")
 		for i := range undated {
 			e := &undated[i]
 			date := displayDate(e.Date)
 			if e.Detail != "" {
-				fmt.Printf("  %-18s  %-*s  %s\n", date, maxLabel, e.Label, e.Detail)
+				termPrintf("  %-18s  %-*s  %s\n", date, maxLabel, e.Label, e.Detail)
 			} else {
-				fmt.Printf("  %-18s  %-*s\n", date, maxLabel, e.Label)
+				termPrintf("  %-18s  %-*s\n", date, maxLabel, e.Label)
 			}
 		}
 	}
 
-	fmt.Printf("\n  %d event(s) shown\n\n", len(entries))
+	termPrintf("\n  %d event(s) shown\n\n", len(entries))
 }

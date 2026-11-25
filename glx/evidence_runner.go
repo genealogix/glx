@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
@@ -27,7 +26,7 @@ import (
 // showEvidence loads an archive, resolves the subject, and prints the grouped
 // evidence for the requested property in text or JSON form.
 func showEvidence(io *IOStreams, archivePath, subjectQuery, property, format string, options ...glxlib.ComparisonOptions) error {
-	archive, err := loadArchiveForEvidence(io, archivePath)
+	archive, err := loadArchiveForRead(io, archivePath)
 	if err != nil {
 		return err
 	}
@@ -52,45 +51,6 @@ func showEvidence(io *IOStreams, archivePath, subjectQuery, property, format str
 	default:
 		return fmt.Errorf("%w: %q", ErrEvidenceUnknownFormat, format)
 	}
-}
-
-// loadArchiveForEvidence loads an archive from a path (directory or single
-// file), mirroring loadArchiveForSummary. Duplicate-ID warnings go to ErrOut.
-func loadArchiveForEvidence(io *IOStreams, path string) (*glxlib.GLXFile, error) {
-	info, err := os.Stat(path)
-	if err != nil {
-		return nil, fmt.Errorf("cannot access path: %w", err)
-	}
-
-	if info.IsDir() {
-		archive, duplicates, err := LoadArchiveCached(path)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load archive: %w", err)
-		}
-		for _, d := range duplicates {
-			io.Errorf("Warning: %s\n", d)
-		}
-
-		return archive, nil
-	}
-
-	archive, err := readSingleFileArchive(path, false)
-	if err != nil {
-		return nil, err
-	}
-
-	// Single-file archives don't merge standard vocabularies during load (unlike
-	// directory archives via LoadArchiveCached), so populate them here.
-	// evidence is read-only and mergeStandardVocabularies only fills empty
-	// vocabulary maps, so any archive-defined vocabulary is preserved. This
-	// lets reference-type properties (e.g. residence) resolve to place/person/
-	// event names regardless of whether the archive is a directory or a single
-	// file — matching loadArchiveForSummary's behavior.
-	if err := mergeStandardVocabularies(archive); err != nil {
-		return nil, fmt.Errorf("failed to load standard vocabularies: %w", err)
-	}
-
-	return archive, nil
 }
 
 // findEvidenceSubject resolves the subject argument of `glx evidence` to any

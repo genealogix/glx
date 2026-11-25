@@ -145,7 +145,7 @@ func TestMergeArchives_DiskRoundTrip(t *testing.T) {
 	srcDir := t.TempDir()
 
 	// Initialize dest with one person
-	destSerializer := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false, Pretty: true})
+	destSerializer := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false})
 	destArchive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
 			"person-a": {Properties: map[string]any{"name": "Person A"}},
@@ -184,7 +184,7 @@ func TestMergeArchives_PreviewLeavesFilesystemUnchanged(t *testing.T) {
 	destDir := t.TempDir()
 	srcDir := t.TempDir()
 
-	serializer := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false, Pretty: true})
+	serializer := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false})
 
 	destArchive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
@@ -245,7 +245,7 @@ func TestMergeArchives_DotDestination(t *testing.T) {
 	destDir := t.TempDir()
 	srcDir := t.TempDir()
 
-	serializer := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false, Pretty: true})
+	serializer := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false})
 
 	destArchive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
@@ -286,7 +286,7 @@ func TestMergeArchives_PreviewShowsDuplicates(t *testing.T) {
 	destDir := t.TempDir()
 	srcDir := t.TempDir()
 
-	serializer := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false, Pretty: true})
+	serializer := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false})
 
 	destArchive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
@@ -354,7 +354,7 @@ func TestMergeArchives_CopiesSourceMediaBinariesAndPreservesDestBinaries(t *test
 	destDir := t.TempDir()
 	srcDir := t.TempDir()
 
-	serializer := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false, Pretty: true})
+	serializer := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false})
 
 	destArchive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
@@ -554,7 +554,7 @@ func TestMergeArchives_SkipsBinaryWhenMediaEntityConflicts(t *testing.T) {
 	destDir := t.TempDir()
 	srcDir := t.TempDir()
 
-	serializer := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false, Pretty: true})
+	serializer := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false})
 
 	destArchive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{"person-a": {Properties: map[string]any{"name": "A"}}},
@@ -606,7 +606,7 @@ func TestMergeArchives_PreviewReportsPlannedMediaCopies(t *testing.T) {
 	destDir := t.TempDir()
 	srcDir := t.TempDir()
 
-	serializer := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false, Pretty: true})
+	serializer := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false})
 
 	destArchive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{"person-a": {Properties: map[string]any{"name": "A"}}},
@@ -683,7 +683,7 @@ func TestMergeArchives_PreviewNoDuplicates(t *testing.T) {
 	destDir := t.TempDir()
 	srcDir := t.TempDir()
 
-	serializer := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false, Pretty: true})
+	serializer := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false})
 
 	destArchive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{

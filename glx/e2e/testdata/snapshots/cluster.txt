@@ -1,0 +1,12 @@
+
+Associates of Robert Thompson (person-robert-thompson):
+
+  Shared Events:
+    Mary Thompson (person-mary-thompson) — bride  [Thompson Wedding]  (score: 2)
+
+  Same Place, Same Period:
+    Alice Thompson (person-alice-thompson)  [Same place: Springfield (1878)]  (score: 1)
+    Robert Thompson Jr. (person-robert-thompson-jr)  [Same place: Springfield (1881)]  (score: 1)
+
+  3 associate(s) found
+

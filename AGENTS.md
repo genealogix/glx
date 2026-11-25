@@ -119,7 +119,8 @@ Person, Event, Relationship, Place, Source, Citation, Repository, Media, Asserti
 
 - Unit tests for all new functions; integration tests for conversion paths; E2E for CLI commands
 - Codecov reports against `codecov.yml` targets (patch coverage at least 80%, project coverage may drop at most 1%); it is not a required check, but treat a miss as something to fix
-- **E2E harness lives in `glx/e2e/`** — `TestMain` builds the real binary once, `runGLX(t, workDir, args...)` executes it with a cwd and returns stdout/stderr/exit code, `copyExample` stages a `docs/examples/*` archive, and `snapshotTree`/`diffTrees` assert exactly which files a command changed. Runner-level tests (`*_runner_test.go`) call the function below cobra and cannot see flag parsing, argument validation, or cwd-dependent behaviour — every command that writes to an archive should have at least one `glx/e2e/<command>_test.go` case
+- **E2E harness lives in `glx/e2e/`** — `TestMain` builds the real binary once, `runGLX(t, workDir, args...)` executes it with a cwd and returns stdout/stderr/exit code, `copyExample` stages a `docs/examples/*` archive, and `snapshotTree`/`diffTrees` assert exactly which files a command changed. Runner-level tests (`*_runner_test.go`) call the function below cobra and cannot see flag parsing, argument validation, or cwd-dependent behaviour — every command that writes to an archive should have at least one `glx/e2e/<command>_test.go` case. Tests reach the binary through `cliBinary()`, which records the CLI's build inputs so the Go test cache notices a CLI change
+- **CLI output snapshots** live in `glx/e2e/testdata/snapshots/`: after an intended output change, regenerate with `go test ./glx/e2e/ -run TestReadCommands_OutputSnapshots -update` and review the diff
 - Key test files: `glx/testdata/gedcom/5.5.1/shakespeare-family/shakespeare.ged` (31 persons), `glx/testdata/gedcom/7.0/minimal-valid/minimal70.ged`
 
 ## Common Tasks

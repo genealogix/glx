@@ -686,39 +686,34 @@ func TestCreateSerializer(t *testing.T) {
 	tests := []struct {
 		name      string
 		validate  bool
-		pretty    bool
 		indent    string
 		checkOpts func(s *glxlib.DefaultSerializer) bool
 	}{
 		{
 			name:     "default options",
 			validate: false,
-			pretty:   false,
 			indent:   "",
 		},
 		{
 			name:     "with validation",
 			validate: true,
-			pretty:   false,
 			indent:   "",
 		},
 		{
-			name:     "with pretty print",
+			name:     "with indent",
 			validate: false,
-			pretty:   true,
 			indent:   "  ",
 		},
 		{
 			name:     "all options enabled",
 			validate: true,
-			pretty:   true,
 			indent:   "    ",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			serializer := createSerializer(tt.validate, tt.pretty, tt.indent)
+			serializer := createSerializer(tt.validate, tt.indent)
 			if serializer == nil {
 				t.Error("createSerializer() returned nil")
 			}
@@ -965,11 +960,11 @@ func TestWriteArchiveInPlace(t *testing.T) {
 
 		// Seed with foreign files the archive must preserve
 		foreignFiles := map[string][]byte{
-			"README.md":                   []byte("# Archive\n\nUser notes.\n"),
-			".gitignore":           []byte("*.log\n"),
-			".git/HEAD":            []byte("ref: refs/heads/main\n"),
-			".git/config":          []byte("[core]\n\trepositoryformatversion = 0\n"),
-			".git/refs/heads/main": []byte("abc123\n"),
+			"README.md":             []byte("# Archive\n\nUser notes.\n"),
+			".gitignore":            []byte("*.log\n"),
+			".git/HEAD":             []byte("ref: refs/heads/main\n"),
+			".git/config":           []byte("[core]\n\trepositoryformatversion = 0\n"),
+			".git/refs/heads/main":  []byte("abc123\n"),
 			".vscode/settings.json": []byte(`{}`),
 			"notes/research.md":     []byte("Research notes.\n"),
 		}
@@ -1011,7 +1006,6 @@ func TestWriteArchiveInPlace(t *testing.T) {
 			t.Errorf("expected 2 persons, got %d", len(loaded.Persons))
 		}
 	})
-
 
 	t.Run("nil archive fails without touching the archive", func(t *testing.T) {
 		tmpDir := t.TempDir()

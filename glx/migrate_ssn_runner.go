@@ -92,7 +92,7 @@ func renamePersonSsnProperties(archive *glxlib.GLXFile, warnOut io.Writer, confl
 			_, _ = fmt.Fprintf(warnOut,
 				"Warning: person %s carries both legacy `ssn` and `national_id` "+
 					"properties — leaving `ssn` (and its assertions) in place to "+
-					"avoid overwriting `national_id`. Reconcile manually.\n", personID)
+					"avoid overwriting `national_id`. Reconcile manually.\n", sanitizeForTerminal(personID))
 
 			continue
 		}

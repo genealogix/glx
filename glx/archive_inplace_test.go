@@ -537,7 +537,7 @@ func TestWriteArchiveInPlace_PropertyVocabularyWritesOnlyChanges(t *testing.T) {
 	var written *glxlib.GLXFile
 	for relPath, data := range files {
 		if strings.HasPrefix(filepath.ToSlash(relPath), "vocabularies/") {
-			written, err = createSerializer(false, false, "").DeserializeSingleFileBytes(data)
+			written, err = createSerializer(false, "").DeserializeSingleFileBytes(data)
 			require.NoError(t, err)
 		}
 	}

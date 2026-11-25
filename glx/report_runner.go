@@ -16,7 +16,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 
@@ -25,7 +24,7 @@ import (
 
 // confidenceReport generates a confidence summary report for a GLX archive.
 func confidenceReport(archivePath string) error {
-	archive, err := loadArchiveForReport(archivePath)
+	archive, err := loadArchiveForRead(SystemIOStreams(), archivePath)
 	if err != nil {
 		return err
 	}
@@ -34,31 +33,6 @@ func confidenceReport(archivePath string) error {
 	printConfidenceReport(&report)
 
 	return nil
-}
-
-// loadArchiveForReport loads a GLX archive from a path (directory or single file).
-func loadArchiveForReport(path string) (*glxlib.GLXFile, error) {
-	info, err := os.Stat(path)
-	if err != nil {
-		return nil, fmt.Errorf("cannot access path: %w", err)
-	}
-
-	if info.IsDir() {
-		archive, duplicates, err := LoadArchiveCached(path)
-		if err != nil {
-			return nil, err
-		}
-		if len(duplicates) > 0 {
-			fmt.Fprintf(os.Stderr, "Warning: %d duplicate entity IDs found:\n", len(duplicates))
-			for _, d := range duplicates {
-				fmt.Fprintf(os.Stderr, "  - %s\n", d)
-			}
-		}
-
-		return archive, nil
-	}
-
-	return readSingleFileArchive(path, false)
 }
 
 // reportData holds the analyzed confidence report data.
@@ -191,35 +165,35 @@ func buildConfidenceOrder(counts map[string]int) []string {
 
 // printConfidenceReport outputs the report to stdout.
 func printConfidenceReport(report *reportData) {
-	fmt.Println("Confidence Summary Report")
-	fmt.Println(strings.Repeat("=", 40))
+	termPrintln("Confidence Summary Report")
+	termPrintln(strings.Repeat("=", 40))
 
 	if report.TotalAssertions == 0 {
-		fmt.Println("\nNo assertions found in this archive.")
+		termPrintln("\nNo assertions found in this archive.")
 	} else {
 		// Confidence breakdown
-		fmt.Printf("\nAssertions: %d total\n\n", report.TotalAssertions)
-		fmt.Println("  Confidence Level    Count")
-		fmt.Println("  " + strings.Repeat("-", 30))
+		termPrintf("\nAssertions: %d total\n\n", report.TotalAssertions)
+		termPrintln("  Confidence Level    Count")
+		termPrintln("  " + strings.Repeat("-", 30))
 		for _, level := range report.ConfidenceOrder {
-			fmt.Printf("  %-20s %d\n", level, report.ByConfidence[level])
+			termPrintf("  %-20s %d\n", level, report.ByConfidence[level])
 		}
 
 		// Assertions without confidence
 		if len(report.NoConfidence) > 0 {
-			fmt.Printf("\nAssertions without confidence level (%d):\n", len(report.NoConfidence))
+			termPrintf("\nAssertions without confidence level (%d):\n", len(report.NoConfidence))
 			for _, a := range report.NoConfidence {
 				desc := formatAssertionDesc(a)
-				fmt.Printf("  - %s: %s\n", a.ID, desc)
+				termPrintf("  - %s: %s\n", a.ID, desc)
 			}
 		}
 
 		// Assertions without citations
 		if len(report.NoCitations) > 0 {
-			fmt.Printf("\nAssertions without citations (%d):\n", len(report.NoCitations))
+			termPrintf("\nAssertions without citations (%d):\n", len(report.NoCitations))
 			for _, a := range report.NoCitations {
 				desc := formatAssertionDesc(a)
-				fmt.Printf("  - %s: %s\n", a.ID, desc)
+				termPrintf("  - %s: %s\n", a.ID, desc)
 			}
 		}
 	}
@@ -227,8 +201,8 @@ func printConfidenceReport(report *reportData) {
 	// Unbacked entities
 	hasUnbacked := len(report.UnbackedPersons) > 0 || len(report.UnbackedEvents) > 0 || len(report.UnbackedRelations) > 0
 	if hasUnbacked {
-		fmt.Println("\nEntities no assertion reaches (directly, as a participant, or via an asserted event or relationship):")
-		fmt.Println("  Assertion reachability includes unsourced or disproven assertions; it does not measure sourcing or proof.")
+		termPrintln("\nEntities no assertion reaches (directly, as a participant, or via an asserted event or relationship):")
+		termPrintln("  Assertion reachability includes unsourced or disproven assertions; it does not measure sourcing or proof.")
 		printUnbackedList("Persons", report.UnbackedPersons)
 		printUnbackedList("Events", report.UnbackedEvents)
 		printUnbackedList("Relationships", report.UnbackedRelations)
@@ -247,5 +221,5 @@ func printUnbackedList(label string, ids []string) {
 	if len(ids) == 0 {
 		return
 	}
-	fmt.Printf("  %s (%d): %s\n", label, len(ids), strings.Join(ids, ", "))
+	termPrintf("  %s (%d): %s\n", label, len(ids), strings.Join(ids, ", "))
 }

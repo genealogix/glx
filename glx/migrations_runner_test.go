@@ -461,7 +461,7 @@ func TestShowMigrations_ValidationErrors(t *testing.T) {
 func writeMigrationTestArchive(t *testing.T) string {
 	t.Helper()
 
-	data, err := createSerializer(false, false, "").SerializeSingleFileBytes(migrationArchive())
+	data, err := createSerializer(false, "").SerializeSingleFileBytes(migrationArchive())
 	if err != nil {
 		t.Fatalf("failed to serialize archive: %v", err)
 	}

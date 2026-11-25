@@ -32,7 +32,7 @@ func connectMCP(t *testing.T, dir string, args ...string) (*mcpsdk.ClientSession
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(t.Context()), 30*time.Second)
 	t.Cleanup(cancel)
-	cmd := exec.CommandContext(ctx, glxBinary, append([]string{"--quiet", "mcp", "serve"}, args...)...)
+	cmd := exec.CommandContext(ctx, cliBinary(), append([]string{"--quiet", "mcp", "serve"}, args...)...)
 	cmd.Dir = dir
 	cmd.Env = append(envWithout(os.Environ(), "GLX_CACHE"), "GLX_CACHE=auto")
 	stderr := &bytes.Buffer{}

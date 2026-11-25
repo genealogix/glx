@@ -115,7 +115,7 @@ func loadArchiveFromFiles(rootPath string, files map[string][]byte, schemaValida
 	// the same fallback first: otherwise a directory archive missing, say,
 	// source-types.glx fails on a value `glx add` accepted from the standard
 	// vocabulary (#1355).
-	serializer := createSerializer(schemaValidate, false, "")
+	serializer := createSerializer(schemaValidate, "")
 	serializer.Options.StandardVocabularyFallback = schemaValidate
 	glx, duplicates, err := serializer.DeserializeMultiFileFromMap(files)
 	if err != nil {
@@ -153,10 +153,9 @@ func sanitizeDuplicateWarnings(duplicates []string) []string {
 }
 
 // createSerializer creates a new serializer with the specified options
-func createSerializer(validate, pretty bool, indent string) *glxlib.DefaultSerializer {
+func createSerializer(validate bool, indent string) *glxlib.DefaultSerializer {
 	opts := &glxlib.SerializerOptions{
 		Validate: validate,
-		Pretty:   pretty,
 		Indent:   indent,
 	}
 
@@ -171,7 +170,7 @@ func readSingleFileArchive(path string, validate bool) (*glxlib.GLXFile, error) 
 		return nil, fmt.Errorf("failed to read file: %w", err)
 	}
 
-	serializer := createSerializer(validate, false, "")
+	serializer := createSerializer(validate, "")
 	glx, err := serializer.DeserializeSingleFileBytes(data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load archive: %w", err)
@@ -192,7 +191,7 @@ func writeSingleFileArchive(path string, glx *glxlib.GLXFile, validate bool) err
 // deliberately private archive (0600, say) does not come back world-readable
 // because the write went through a fresh temp file.
 func writeSingleFileArchiveWithMode(path string, glx *glxlib.GLXFile, validate bool, perm os.FileMode) error {
-	serializer := createSerializer(validate, true, "  ")
+	serializer := createSerializer(validate, "  ")
 
 	yamlBytes, err := serializer.SerializeSingleFileBytes(glx)
 	if err != nil {
@@ -212,7 +211,7 @@ func writeSingleFileArchiveWithMode(path string, glx *glxlib.GLXFile, validate b
 // effects to commit can fail on serialization or validation *before* any of
 // them happen — see the GEDZIP import path, which stages media first.
 func serializeMultiFileArchive(glx *glxlib.GLXFile, validate bool) (map[string][]byte, error) {
-	serializer := createSerializer(validate, true, "  ")
+	serializer := createSerializer(validate, "  ")
 
 	files, err := serializer.SerializeMultiFileToMap(glx)
 	if err != nil {
@@ -243,7 +242,7 @@ func writeMultiFileArchive(dirPath string, glx *glxlib.GLXFile, validate bool) e
 // append to an archive rather than rewrite it. Returns the number of entity
 // files written.
 func writePartialArchive(dirPath string, partial *glxlib.GLXFile) (int, error) {
-	serializer := createSerializer(false, true, "  ")
+	serializer := createSerializer(false, "  ")
 
 	files, err := serializer.SerializeMultiFileToMap(partial)
 	if err != nil {

@@ -1,0 +1,50 @@
+[
+  {
+    "entity_type": "events",
+    "entity_id": "event-birth-alice",
+    "field": "place",
+    "value": "place-springfield"
+  },
+  {
+    "entity_type": "events",
+    "entity_id": "event-birth-mary",
+    "field": "place",
+    "value": "place-springfield"
+  },
+  {
+    "entity_type": "events",
+    "entity_id": "event-birth-robert",
+    "field": "place",
+    "value": "place-springfield"
+  },
+  {
+    "entity_type": "events",
+    "entity_id": "event-birth-robert-jr",
+    "field": "place",
+    "value": "place-springfield"
+  },
+  {
+    "entity_type": "events",
+    "entity_id": "event-marriage-1875",
+    "field": "place",
+    "value": "place-springfield"
+  },
+  {
+    "entity_type": "places",
+    "entity_id": "place-springfield",
+    "field": "id",
+    "value": "place-springfield"
+  },
+  {
+    "entity_type": "citations",
+    "entity_id": "citation-robert-birth",
+    "field": "properties.text_from_source",
+    "value": "Robert Thompson, male, born April 12, 1850, Springfield"
+  },
+  {
+    "entity_type": "repositories",
+    "entity_id": "repository-sangamon-county-courthouse",
+    "field": "address",
+    "value": "200 South Ninth Street, Springfield, IL 62701"
+  }
+]

@@ -16,26 +16,29 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
-	"os"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 // findDuplicates loads an archive and scans for potential duplicate persons.
+// errPersonNotInArchive reports a person filter that names no person.
+var errPersonNotInArchive = errors.New("not found in archive")
+
 func findDuplicates(archivePath string, threshold float64, personFilter string, jsonOutput bool) error {
 	if threshold < 0.0 || threshold > 1.0 {
 		return fmt.Errorf("--threshold must be between 0.0 and 1.0, got %.2f", threshold)
 	}
 
-	archive, err := loadArchiveForDuplicates(archivePath)
+	archive, err := loadArchiveForRead(SystemIOStreams(), archivePath)
 	if err != nil {
 		return err
 	}
 
 	if personFilter != "" {
 		if _, ok := archive.Persons[personFilter]; !ok {
-			return fmt.Errorf("person %q not found in archive", personFilter)
+			return fmt.Errorf("person %q %w%s", personFilter, errPersonNotInArchive, archivePathHint("duplicates", personFilter))
 		}
 	}
 
@@ -58,54 +61,32 @@ func findDuplicates(archivePath string, threshold float64, personFilter string, 
 	return nil
 }
 
-// loadArchiveForDuplicates loads an archive from a path (directory or single file).
-func loadArchiveForDuplicates(path string) (*glxlib.GLXFile, error) {
-	info, err := os.Stat(path)
-	if err != nil {
-		return nil, fmt.Errorf("cannot access path: %w", err)
-	}
-
-	if info.IsDir() {
-		archive, duplicates, loadErr := LoadArchiveCached(path)
-		if loadErr != nil {
-			return nil, fmt.Errorf("failed to load archive: %w", loadErr)
-		}
-		for _, d := range duplicates {
-			fmt.Fprintf(os.Stderr, "Warning: %s\n", d)
-		}
-
-		return archive, nil
-	}
-
-	return readSingleFileArchive(path, false)
-}
-
 // printDuplicatesText prints duplicate pairs in a human-readable format.
 func printDuplicatesText(result *glxlib.DuplicateResult, archive *glxlib.GLXFile) {
 	if len(result.Pairs) == 0 {
-		fmt.Printf("No potential duplicates found (threshold: %.2f).\n", result.Threshold)
+		termPrintf("No potential duplicates found (threshold: %.2f).\n", result.Threshold)
 
 		return
 	}
 
-	fmt.Printf("Potential duplicates (threshold: %.2f):\n", result.Threshold)
+	termPrintf("Potential duplicates (threshold: %.2f):\n", result.Threshold)
 
 	for _, pair := range result.Pairs {
-		fmt.Println()
+		termPrintln()
 
 		nameA := personLabel(archive, pair.PersonA)
 		nameB := personLabel(archive, pair.PersonB)
 
-		fmt.Printf("  %-38s  %s\n", pair.PersonA, nameA)
-		fmt.Printf("  %-38s  %s\n", pair.PersonB, nameB)
-		fmt.Printf("  Score: %.2f\n", pair.Score)
+		termPrintf("  %-38s  %s\n", pair.PersonA, nameA)
+		termPrintf("  %-38s  %s\n", pair.PersonB, nameB)
+		termPrintf("  Score: %.2f\n", pair.Score)
 
 		for _, sig := range pair.Signals {
-			fmt.Printf("    %-26s  %.2f  (%s)\n", sig.Name+":", sig.Score, sig.Detail)
+			termPrintf("    %-26s  %.2f  (%s)\n", sig.Name+":", sig.Score, sig.Detail)
 		}
 	}
 
-	fmt.Printf("\nFound %d potential duplicate pair(s).\n", len(result.Pairs))
+	termPrintf("\nFound %d potential duplicate pair(s).\n", len(result.Pairs))
 }
 
 // personLabel returns "Name (b. YEAR)" for display.
@@ -133,7 +114,7 @@ func printDuplicatesJSON(result *glxlib.DuplicateResult) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal JSON: %w", err)
 	}
-	fmt.Println(string(data))
+	machinePrintln(string(data))
 
 	return nil
 }

@@ -270,7 +270,7 @@ assertions:
 	}
 	for name, content := range cases {
 		t.Run(name, func(t *testing.T) {
-			serializer := createSerializer(false, true, "  ")
+			serializer := createSerializer(false, "  ")
 			before, err := serializer.DeserializeSingleFileBytes([]byte(content))
 			if err != nil {
 				t.Fatal(err)
@@ -309,7 +309,7 @@ func TestAddSearch_FindsEscapedIDAndRejectsEscapedDuplicate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	serializer := createSerializer(false, true, "  ")
+	serializer := createSerializer(false, "  ")
 	fragment, err := serializer.DeserializeSingleFileBytes(op.newData)
 	if err != nil {
 		t.Fatal(err)

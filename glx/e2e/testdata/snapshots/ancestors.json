@@ -1,0 +1,82 @@
+{
+  "direction": "ancestors",
+  "root": {
+    "person_id": "person-alice-thompson",
+    "name": "Alice Thompson",
+    "dates": "(b. 1878-03-22)",
+    "rel_type": "",
+    "step": false,
+    "hypothetical": false,
+    "children": [
+      {
+        "person_id": "person-mary-thompson",
+        "name": "Mary Thompson",
+        "dates": "(b. 1852-08-30)",
+        "rel_type": "parent_child",
+        "step": false,
+        "hypothetical": false,
+        "children": null
+      },
+      {
+        "person_id": "person-robert-thompson",
+        "name": "Robert Thompson",
+        "dates": "(b. 1850-04-12)",
+        "rel_type": "parent_child",
+        "step": false,
+        "hypothetical": false,
+        "children": null
+      }
+    ]
+  },
+  "suggestions": [
+    {
+      "person_id": "person-mary-thompson",
+      "category": "gap",
+      "priority": "high",
+      "year": 0,
+      "message": "Mary Thompson — no parent_child relationship found"
+    },
+    {
+      "person_id": "person-mary-thompson",
+      "category": "census",
+      "priority": "high",
+      "year": 1860,
+      "message": "Mary Thompson — search 1860 US census (age ~8, Springfield) — likely in parents' household"
+    },
+    {
+      "person_id": "person-mary-thompson",
+      "category": "census",
+      "priority": "high",
+      "year": 1880,
+      "message": "Mary Thompson — search 1880 US census (age ~28, Springfield) — first census to list parents' birthplaces"
+    },
+    {
+      "person_id": "person-robert-thompson",
+      "category": "gap",
+      "priority": "high",
+      "year": 0,
+      "message": "Robert Thompson — no parent_child relationship found"
+    },
+    {
+      "person_id": "person-robert-thompson",
+      "category": "census",
+      "priority": "high",
+      "year": 1850,
+      "message": "Robert Thompson — search 1850 US census (age ~0, Springfield) — likely in parents' household"
+    },
+    {
+      "person_id": "person-robert-thompson",
+      "category": "census",
+      "priority": "high",
+      "year": 1860,
+      "message": "Robert Thompson — search 1860 US census (age ~10, Springfield) — likely in parents' household"
+    },
+    {
+      "person_id": "person-robert-thompson",
+      "category": "census",
+      "priority": "high",
+      "year": 1880,
+      "message": "Robert Thompson — search 1880 US census (age ~30, Springfield) — first census to list parents' birthplaces"
+    }
+  ]
+}

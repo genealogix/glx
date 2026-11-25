@@ -15,45 +15,43 @@
 package main
 
 import (
-	"fmt"
-
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 // printArchiveStatistics prints entity counts from a GLX archive
 func printArchiveStatistics(glx *glxlib.GLXFile) {
-	fmt.Println("\nImport statistics:")
-	fmt.Printf("  Persons:       %d\n", len(glx.Persons))
-	fmt.Printf("  Events:        %d\n", len(glx.Events))
-	fmt.Printf("  Relationships: %d\n", len(glx.Relationships))
-	fmt.Printf("  Places:        %d\n", len(glx.Places))
-	fmt.Printf("  Sources:       %d\n", len(glx.Sources))
-	fmt.Printf("  Citations:     %d\n", len(glx.Citations))
-	fmt.Printf("  Repositories:  %d\n", len(glx.Repositories))
-	fmt.Printf("  Media:         %d\n", len(glx.Media))
-	fmt.Printf("  Assertions:    %d\n", len(glx.Assertions))
+	termPrintln("\nImport statistics:")
+	termPrintf("  Persons:       %d\n", len(glx.Persons))
+	termPrintf("  Events:        %d\n", len(glx.Events))
+	termPrintf("  Relationships: %d\n", len(glx.Relationships))
+	termPrintf("  Places:        %d\n", len(glx.Places))
+	termPrintf("  Sources:       %d\n", len(glx.Sources))
+	termPrintf("  Citations:     %d\n", len(glx.Citations))
+	termPrintf("  Repositories:  %d\n", len(glx.Repositories))
+	termPrintf("  Media:         %d\n", len(glx.Media))
+	termPrintf("  Assertions:    %d\n", len(glx.Assertions))
 }
 
 // printVerboseArchiveStatistics prints entity counts with a header message
 func printVerboseArchiveStatistics(glx *glxlib.GLXFile, message string) {
-	fmt.Println(message)
-	fmt.Printf("  Persons:       %d\n", len(glx.Persons))
-	fmt.Printf("  Events:        %d\n", len(glx.Events))
-	fmt.Printf("  Relationships: %d\n", len(glx.Relationships))
-	fmt.Printf("  Places:        %d\n", len(glx.Places))
-	fmt.Printf("  Sources:       %d\n", len(glx.Sources))
-	fmt.Printf("  Citations:     %d\n", len(glx.Citations))
-	fmt.Printf("  Repositories:  %d\n", len(glx.Repositories))
-	fmt.Printf("  Media:         %d\n", len(glx.Media))
-	fmt.Printf("  Assertions:    %d\n", len(glx.Assertions))
+	termPrintln(message)
+	termPrintf("  Persons:       %d\n", len(glx.Persons))
+	termPrintf("  Events:        %d\n", len(glx.Events))
+	termPrintf("  Relationships: %d\n", len(glx.Relationships))
+	termPrintf("  Places:        %d\n", len(glx.Places))
+	termPrintf("  Sources:       %d\n", len(glx.Sources))
+	termPrintf("  Citations:     %d\n", len(glx.Citations))
+	termPrintf("  Repositories:  %d\n", len(glx.Repositories))
+	termPrintf("  Media:         %d\n", len(glx.Media))
+	termPrintf("  Assertions:    %d\n", len(glx.Assertions))
 }
 
 // printSuccessSingleFile prints a success message for single-file operations
 func printSuccessSingleFile(operation, path string) {
-	fmt.Printf("✓ Successfully %s to %s\n", operation, path)
+	termPrintf("✓ Successfully %s to %s\n", operation, path)
 }
 
 // printSuccessMultiFile prints a success message for multi-file operations
 func printSuccessMultiFile(operation, path string) {
-	fmt.Printf("✓ Successfully %s to %s/\n", operation, path)
+	termPrintf("✓ Successfully %s to %s/\n", operation, path)
 }

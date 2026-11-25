@@ -1,0 +1,110 @@
+{
+  "person_id": "person-robert-thompson",
+  "person_name": "Robert Thompson",
+  "birth_date": "1850-04-12",
+  "birth_place": "Springfield",
+  "records": [
+    {
+      "category": "census",
+      "label": "1850 US Census (age ~0)",
+      "found": false,
+      "description": "first census to list individual names; likely in parents' household"
+    },
+    {
+      "category": "census",
+      "label": "1860 US Census (age ~10)",
+      "found": false
+    },
+    {
+      "category": "census",
+      "label": "1870 US Census (age ~20)",
+      "found": false,
+      "priority": "high",
+      "description": "may show in parents' household"
+    },
+    {
+      "category": "census",
+      "label": "1880 US Census (age ~30)",
+      "found": false,
+      "priority": "high",
+      "description": "first census to list parents' birthplaces"
+    },
+    {
+      "category": "census",
+      "label": "1890 US Census (age ~40)",
+      "found": false,
+      "description": "mostly destroyed (1921 fire)"
+    },
+    {
+      "category": "census",
+      "label": "1900 US Census (age ~50)",
+      "found": false
+    },
+    {
+      "category": "census",
+      "label": "1910 US Census (age ~60)",
+      "found": false
+    },
+    {
+      "category": "census",
+      "label": "1920 US Census (age ~70)",
+      "found": false
+    },
+    {
+      "category": "census",
+      "label": "1930 US Census (age ~80)",
+      "found": false
+    },
+    {
+      "category": "census",
+      "label": "1940 US Census (age ~90)",
+      "found": false
+    },
+    {
+      "category": "census",
+      "label": "1950 US Census (age ~100)",
+      "found": false
+    },
+    {
+      "category": "vital",
+      "label": "Birth record",
+      "found": true,
+      "source_ref": "event-birth-robert"
+    },
+    {
+      "category": "vital",
+      "label": "Death record",
+      "found": false,
+      "priority": "medium"
+    },
+    {
+      "category": "vital",
+      "label": "Marriage record — Mary Thompson",
+      "found": false,
+      "priority": "medium",
+      "description": "event-marriage-1875 is recorded, but no citation, source or media backs it"
+    },
+    {
+      "category": "other",
+      "label": "Probate/will",
+      "found": false
+    },
+    {
+      "category": "other",
+      "label": "Land records",
+      "found": false
+    },
+    {
+      "category": "other",
+      "label": "Military records",
+      "found": false
+    },
+    {
+      "category": "other",
+      "label": "Church records",
+      "found": false
+    }
+  ],
+  "found": 1,
+  "expected": 18
+}

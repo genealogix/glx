@@ -16,7 +16,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/go-git/go-git/v5"
@@ -131,7 +130,7 @@ func gitInitLines(dir string, noGit bool) []string {
 
 	res, err := initArchiveGitRepo(dir)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: could not initialize Git repository: %v\n", err)
+		termErrorf("Warning: could not initialize Git repository: %v\n", err)
 
 		return []string{noRepoAdvice}
 	}

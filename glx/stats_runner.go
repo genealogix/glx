@@ -15,8 +15,6 @@
 package main
 
 import (
-	"fmt"
-	"os"
 	"sort"
 
 	glxlib "github.com/genealogix/glx/go-glx"
@@ -29,7 +27,7 @@ func printEntityCounts(archive *glxlib.GLXFile) {
 
 // showStats loads a GLX archive and prints summary statistics.
 func showStats(path string) error {
-	archive, err := loadArchiveForStats(path)
+	archive, err := loadArchiveForRead(SystemIOStreams(), path)
 	if err != nil {
 		return err
 	}
@@ -39,37 +37,6 @@ func showStats(path string) error {
 	printEntityCoverage(archive)
 
 	return nil
-}
-
-// loadArchiveForStats loads an archive from a path (directory or single file).
-func loadArchiveForStats(path string) (*glxlib.GLXFile, error) {
-	info, err := os.Stat(path)
-	if err != nil {
-		return nil, fmt.Errorf("cannot access path: %w", err)
-	}
-
-	if info.IsDir() {
-		archive, duplicates, err := LoadArchiveCached(path)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load archive: %w", err)
-		}
-		if len(duplicates) > 0 {
-			sort.Strings(duplicates)
-			fmt.Fprintf(os.Stderr, "Warning: %d duplicate entity IDs found:\n", len(duplicates))
-			for _, d := range duplicates {
-				fmt.Fprintf(os.Stderr, "  - %s\n", d)
-			}
-		}
-
-		return archive, nil
-	}
-
-	archive, err := readSingleFileArchive(path, false)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load archive: %w", err)
-	}
-
-	return archive, nil
 }
 
 // printConfidenceDistribution prints a breakdown of assertions by confidence level.
@@ -121,10 +88,10 @@ func printConfidenceDistribution(archive *glxlib.GLXFile) {
 		levels = append(levels, "(unset)")
 	}
 
-	fmt.Println("\nAssertion confidence:")
+	termPrintln("\nAssertion confidence:")
 	for _, level := range levels {
 		pct := float64(counts[level]) / float64(total) * 100
-		fmt.Printf("  %-12s %4d  (%5.1f%%)\n", level, counts[level], pct)
+		termPrintf("  %-12s %4d  (%5.1f%%)\n", level, counts[level], pct)
 	}
 }
 
@@ -140,11 +107,11 @@ func printEntityCoverage(archive *glxlib.GLXFile) {
 
 	coverage := glxlib.ComputeAssertionCoverage(archive)
 
-	fmt.Println("\nDirect assertion references (entity is an assertion's subject):")
+	termPrintln("\nDirect assertion references (entity is an assertion's subject):")
 	printEntityCoverageRows(coverage.Direct, archive)
 
-	fmt.Println("\nEvidence coverage (assertion reachability):")
-	fmt.Println("  Includes unsourced or disproven assertions and place ancestors; percentages do not measure sourcing or proof.")
+	termPrintln("\nEvidence coverage (assertion reachability):")
+	termPrintln("  Includes unsourced or disproven assertions and place ancestors; percentages do not measure sourcing or proof.")
 	printEntityCoverageRows(coverage.Evidence, archive)
 }
 
@@ -173,11 +140,11 @@ func countCovered[V any](covered map[string]bool, entities map[string]V) int {
 // printCoverageRow prints a single coverage line with percentage.
 func printCoverageRow(label string, covered, total int) {
 	if total == 0 {
-		fmt.Printf("  %-15s  -\n", label)
+		termPrintf("  %-15s  -\n", label)
 
 		return
 	}
 
 	pct := float64(covered) / float64(total) * 100
-	fmt.Printf("  %-15s %d/%d  (%.1f%%)\n", label, covered, total, pct)
+	termPrintf("  %-15s %d/%d  (%.1f%%)\n", label, covered, total, pct)
 }

@@ -57,7 +57,7 @@ func exportToGEDCOM(inputPath, outputPath, format string, verbose, privatizeLivi
 
 	// Export to GEDCOM
 	if verbose {
-		fmt.Printf("Exporting to GEDCOM %s format\n", format)
+		termPrintf("Exporting to GEDCOM %s format\n", format)
 	}
 
 	data, result, err := glxlib.ExportGEDCOM(glx, version, logWriter)
@@ -110,7 +110,7 @@ func applyExportPrivacy(glx *glxlib.GLXFile, privatizeLiving, verbose bool) {
 
 	redacted := glxlib.PrivatizeLiving(glx, time.Now(), glxlib.LivingThresholdYears)
 	if verbose {
-		fmt.Printf("Privatized %d living persons before export (events redacted: %d, events scrubbed: %d, relationships redacted: %d, assertions dropped: %d)\n",
+		termPrintf("Privatized %d living persons before export (events redacted: %d, events scrubbed: %d, relationships redacted: %d, assertions dropped: %d)\n",
 			redacted.PersonsRedacted, redacted.EventsRedacted, redacted.EventsScrubbed,
 			redacted.RelationshipsRedacted, redacted.AssertionsDropped)
 	}
@@ -130,7 +130,7 @@ func loadGLXArchive(inputPath string, verbose bool) (*glxlib.GLXFile, error) {
 	if info.IsDir() {
 		// Multi-file archive
 		if verbose {
-			fmt.Printf("Loading multi-file archive: %s\n", inputPath)
+			termPrintf("Loading multi-file archive: %s\n", inputPath)
 		}
 
 		glx, _, err := LoadArchiveCached(inputPath)
@@ -147,7 +147,7 @@ func loadGLXArchive(inputPath string, verbose bool) (*glxlib.GLXFile, error) {
 
 	// Single-file archive
 	if verbose {
-		fmt.Printf("Loading single-file archive: %s\n", inputPath)
+		termPrintf("Loading single-file archive: %s\n", inputPath)
 	}
 
 	glx, err := readSingleFileArchive(inputPath, false)
@@ -173,18 +173,18 @@ func ensureGEDExtension(path string) string {
 
 // printExportSuccess prints export completion message with statistics
 func printExportSuccess(outputPath string, result *glxlib.ExportResult) {
-	fmt.Printf("✓ Successfully exported to %s (GEDCOM %s)\n", outputPath, result.Version)
-	fmt.Println("\nExport statistics:")
-	fmt.Printf("  Persons:       %d\n", result.Statistics.PersonsExported)
-	fmt.Printf("  Families:      %d\n", result.Statistics.FamiliesExported)
-	fmt.Printf("  Sources:       %d\n", result.Statistics.SourcesExported)
-	fmt.Printf("  Repositories:  %d\n", result.Statistics.RepositoriesExported)
-	fmt.Printf("  Media:         %d\n", result.Statistics.MediaExported)
+	termPrintf("✓ Successfully exported to %s (GEDCOM %s)\n", outputPath, result.Version)
+	termPrintln("\nExport statistics:")
+	termPrintf("  Persons:       %d\n", result.Statistics.PersonsExported)
+	termPrintf("  Families:      %d\n", result.Statistics.FamiliesExported)
+	termPrintf("  Sources:       %d\n", result.Statistics.SourcesExported)
+	termPrintf("  Repositories:  %d\n", result.Statistics.RepositoriesExported)
+	termPrintf("  Media:         %d\n", result.Statistics.MediaExported)
 
 	if len(result.Statistics.Warnings) > 0 {
-		fmt.Printf("\nWarnings (%d):\n", len(result.Statistics.Warnings))
+		termPrintf("\nWarnings (%d):\n", len(result.Statistics.Warnings))
 		for _, w := range result.Statistics.Warnings {
-			fmt.Printf("  [%s %s] %s\n", w.EntityType, w.EntityID, w.Message)
+			termPrintf("  [%s %s] %s\n", w.EntityType, w.EntityID, w.Message)
 		}
 	}
 }

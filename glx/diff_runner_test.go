@@ -143,6 +143,6 @@ func TestDiffArchives_Integration_PersonFilter(t *testing.T) {
 }
 
 func TestLoadArchiveForDiff_InvalidPath(t *testing.T) {
-	_, err := loadArchiveForDiff("/nonexistent/path")
+	_, err := loadArchiveForRead(SystemIOStreams(), "/nonexistent/path")
 	assert.Error(t, err)
 }

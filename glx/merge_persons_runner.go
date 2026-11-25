@@ -162,7 +162,7 @@ func loadMergeFiles(path string, files map[string][]byte, directory bool) (*glxl
 
 		return archive, nil
 	}
-	archive, err := createSerializer(false, false, "").DeserializeSingleFileBytes(files[""])
+	archive, err := createSerializer(false, "").DeserializeSingleFileBytes(files[""])
 	if err != nil {
 		return nil, err
 	}

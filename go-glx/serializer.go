@@ -48,9 +48,6 @@ type SerializerOptions struct {
 	// Validate determines whether to validate the archive before serialization
 	Validate bool
 
-	// Pretty determines whether to use pretty-print formatting (indentation, etc.)
-	Pretty bool
-
 	// Indent specifies the indentation string for YAML output (default: "  ")
 	Indent string
 
@@ -68,7 +65,6 @@ type SerializerOptions struct {
 func DefaultSerializerOptions() *SerializerOptions {
 	return &SerializerOptions{
 		Validate: true,
-		Pretty:   true,
 		Indent:   "  ",
 	}
 }

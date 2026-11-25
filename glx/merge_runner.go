@@ -141,7 +141,7 @@ func mergeArchives(srcPath, destPath string, preview bool, threshold float64) er
 			return fmt.Errorf("failed to load destination archive: %w", loadErr)
 		}
 		for _, d := range dupes {
-			fmt.Fprintf(os.Stderr, "Warning (dest): %s\n", d)
+			termErrorf("Warning (dest): %s\n", d)
 		}
 		dest = loaded
 		destFiles = files
@@ -166,7 +166,7 @@ func mergeArchives(srcPath, destPath string, preview bool, threshold float64) er
 			return fmt.Errorf("failed to load source archive: %w", loadErr)
 		}
 		for _, d := range dupes {
-			fmt.Fprintf(os.Stderr, "Warning (src): %s\n", d)
+			termErrorf("Warning (src): %s\n", d)
 		}
 		src = loaded
 	} else {
@@ -227,7 +227,7 @@ func mergeArchives(srcPath, destPath string, preview bool, threshold float64) er
 	}
 
 	// Report
-	fmt.Printf("Merging %s into %s\n\n", srcPath, destPath)
+	termPrintf("Merging %s into %s\n\n", srcPath, destPath)
 	printMergeReport(result)
 
 	// Show cross-archive duplicates in preview mode
@@ -237,13 +237,13 @@ func mergeArchives(srcPath, destPath string, preview bool, threshold float64) er
 
 	if preview {
 		if result.MediaFilesPlanned > 0 {
-			fmt.Printf("\n  Would copy %d media file(s) into %s", result.MediaFilesPlanned, glxlib.MediaFilesDir)
+			termPrintf("\n  Would copy %d media file(s) into %s", result.MediaFilesPlanned, glxlib.MediaFilesDir)
 			if result.MediaFilesRenamed > 0 {
-				fmt.Printf(" (%d renamed to avoid name collisions)", result.MediaFilesRenamed)
+				termPrintf(" (%d renamed to avoid name collisions)", result.MediaFilesRenamed)
 			}
-			fmt.Println("")
+			termPrintln("")
 		}
-		fmt.Println("\n(preview — no files written)")
+		termPrintln("\n(preview — no files written)")
 
 		return nil
 	}
@@ -318,7 +318,7 @@ func warnOrphanSourceMedia(srcPath string, src *glxlib.GLXFile) {
 	}
 	srcFiles, err := archiveMediaFilesDir(srcPath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: could not inspect source media/files: %v; single-file destination cannot hold binaries, so they will not be copied. Merged Media URIs may dangle.\n", err)
+		termErrorf("Warning: could not inspect source media/files: %v; single-file destination cannot hold binaries, so they will not be copied. Merged Media URIs may dangle.\n", err)
 
 		return
 	}
@@ -327,14 +327,14 @@ func warnOrphanSourceMedia(srcPath string, src *glxlib.GLXFile) {
 	}
 	entries, err := listMediaFilenames(srcFiles)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: could not read source media/files: %v; single-file destination cannot hold binaries, so they will not be copied. Merged Media URIs may dangle.\n", err)
+		termErrorf("Warning: could not read source media/files: %v; single-file destination cannot hold binaries, so they will not be copied. Merged Media URIs may dangle.\n", err)
 
 		return
 	}
 	if len(entries) == 0 {
 		return
 	}
-	fmt.Fprintf(os.Stderr,
+	termErrorf(
 		"Warning: source has %d file(s) under %s; single-file destination cannot hold binaries, so they will not be copied. Merged Media URIs may dangle.\n",
 		len(entries), glxlib.MediaFilesDir,
 	)
@@ -342,7 +342,7 @@ func warnOrphanSourceMedia(srcPath string, src *glxlib.GLXFile) {
 
 func printMergeReport(result *mergeResult) {
 	if result.TotalNew() > 0 {
-		fmt.Println("  New entities:")
+		termPrintln("  New entities:")
 		printEntityCount("persons", result.NewPersons)
 		printEntityCount("events", result.NewEvents)
 		printEntityCount("relationships", result.NewRelationships)
@@ -355,28 +355,28 @@ func printMergeReport(result *mergeResult) {
 		printEntityCount("studies", result.NewStudies)
 		printEntityCount("media", result.NewMedia)
 	} else {
-		fmt.Println("  No new entities to merge.")
+		termPrintln("  No new entities to merge.")
 	}
 
 	if len(result.Conflicts) > 0 {
-		fmt.Printf("\n  Conflicts (%d — skipped, destination kept):\n", len(result.Conflicts))
+		termPrintf("\n  Conflicts (%d — skipped, destination kept):\n", len(result.Conflicts))
 		for _, d := range result.Conflicts {
-			fmt.Printf("    %s\n", d)
+			termPrintf("    %s\n", d)
 		}
 	}
 
 	if result.IdenticalEntities > 0 {
-		fmt.Printf("\n  %d identical entities skipped\n", result.IdenticalEntities)
+		termPrintf("\n  %d identical entities skipped\n", result.IdenticalEntities)
 	}
 
 	if result.IdenticalVocabulary > 0 {
-		fmt.Printf("\n  %d identical vocabulary/property entries skipped\n", result.IdenticalVocabulary)
+		termPrintf("\n  %d identical vocabulary/property entries skipped\n", result.IdenticalVocabulary)
 	}
 }
 
 func printEntityCount(name string, count int) {
 	if count > 0 {
-		fmt.Printf("    %d %s\n", count, name)
+		termPrintf("    %d %s\n", count, name)
 	}
 }
 
@@ -387,14 +387,14 @@ func printMediaCopyReport(result *mergeResult) {
 	if result.MediaFilesPlanned == 0 {
 		return
 	}
-	fmt.Printf("  Media files: %d copied", result.MediaFilesCopied)
+	termPrintf("  Media files: %d copied", result.MediaFilesCopied)
 	if result.MediaFilesRenamed > 0 {
-		fmt.Printf(", %d renamed to avoid name collisions", result.MediaFilesRenamed)
+		termPrintf(", %d renamed to avoid name collisions", result.MediaFilesRenamed)
 	}
 	if result.MediaFilesSkipped > 0 {
-		fmt.Printf(", %d skipped (entity conflict)", result.MediaFilesSkipped)
+		termPrintf(", %d skipped (entity conflict)", result.MediaFilesSkipped)
 	}
-	fmt.Println("")
+	termPrintln("")
 }
 
 // printCrossArchiveDuplicates renders potential duplicates found between two archives.
@@ -403,19 +403,19 @@ func printMediaCopyReport(result *mergeResult) {
 // origin archive.
 func printCrossArchiveDuplicates(result *glxlib.DuplicateResult, dest, src *glxlib.GLXFile, origDestPersonIDs map[string]struct{}) {
 	if len(result.Pairs) == 0 {
-		fmt.Printf("\n  No potential cross-archive duplicates found (threshold: %.2f)\n", result.Threshold)
+		termPrintf("\n  No potential cross-archive duplicates found (threshold: %.2f)\n", result.Threshold)
 
 		return
 	}
 
-	fmt.Printf("\n  Potential cross-archive duplicates (%d, threshold: %.2f):\n", len(result.Pairs), result.Threshold)
+	termPrintf("\n  Potential cross-archive duplicates (%d, threshold: %.2f):\n", len(result.Pairs), result.Threshold)
 	for _, pair := range result.Pairs {
 		nameA := crossArchivePersonLabel(pair.PersonA, dest, src, origDestPersonIDs)
 		nameB := crossArchivePersonLabel(pair.PersonB, dest, src, origDestPersonIDs)
-		fmt.Printf("    %s ↔ %s  (score: %.2f)\n", nameA, nameB, pair.Score)
+		termPrintf("    %s ↔ %s  (score: %.2f)\n", nameA, nameB, pair.Score)
 		for _, sig := range pair.Signals {
 			if sig.Score > 0 {
-				fmt.Printf("      %s: %.2f (%s)\n", sig.Name, sig.Score, sig.Detail)
+				termPrintf("      %s: %.2f (%s)\n", sig.Name, sig.Score, sig.Detail)
 			}
 		}
 	}

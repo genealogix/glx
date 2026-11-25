@@ -1,0 +1,36 @@
+{
+  "person": "person-robert-thompson",
+  "person_name": "Robert Thompson",
+  "entries": [
+    {
+      "date": "1850-04-12",
+      "place_id": "place-springfield",
+      "place": "Springfield, Illinois, United States",
+      "region": "Illinois",
+      "label": "Birth",
+      "role": "subject"
+    },
+    {
+      "date": "1875-06-15",
+      "place_id": "place-springfield",
+      "place": "Springfield, Illinois, United States",
+      "region": "Illinois",
+      "label": "Thompson Wedding",
+      "role": "groom"
+    },
+    {
+      "date": "1878-03-22",
+      "place_id": "place-springfield",
+      "place": "Springfield, Illinois, United States",
+      "region": "Illinois",
+      "label": "Birth of child (Alice Thompson)"
+    },
+    {
+      "date": "1881-11-05",
+      "place_id": "place-springfield",
+      "place": "Springfield, Illinois, United States",
+      "region": "Illinois",
+      "label": "Birth of child (Robert Thompson Jr.)"
+    }
+  ]
+}

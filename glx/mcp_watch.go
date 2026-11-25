@@ -194,7 +194,7 @@ func (s *mcpArchiveSource) load(capture *mcpSourceCapture) (*mcpArchiveBackend, 
 	if s.directory {
 		archive, duplicates, err = loadArchiveFromFiles(s.path, capture.files, false)
 	} else {
-		archive, err = createSerializer(false, false, "").DeserializeSingleFileBytes(capture.files["."])
+		archive, err = createSerializer(false, "").DeserializeSingleFileBytes(capture.files["."])
 	}
 	if err != nil {
 		return nil, err

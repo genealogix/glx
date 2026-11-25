@@ -35,7 +35,7 @@ func joinArchive(inputDir, outputPath string, validate, verbose bool, showFirstE
 
 	// Load multi-file archive
 	if verbose {
-		fmt.Printf("Loading multi-file archive: %s\n", inputDir)
+		termPrintf("Loading multi-file archive: %s\n", inputDir)
 	}
 
 	glx, duplicates, err := LoadArchiveWithOptions(inputDir, validate)
@@ -44,9 +44,9 @@ func joinArchive(inputDir, outputPath string, validate, verbose bool, showFirstE
 	}
 
 	if len(duplicates) > 0 {
-		fmt.Printf("Warning: found %d duplicate entity IDs\n", len(duplicates))
+		termPrintf("Warning: found %d duplicate entity IDs\n", len(duplicates))
 		for _, dup := range duplicates {
-			fmt.Printf("  - %s\n", dup)
+			termPrintf("  - %s\n", dup)
 		}
 	}
 
@@ -56,7 +56,7 @@ func joinArchive(inputDir, outputPath string, validate, verbose bool, showFirstE
 
 	// Serialize to single-file format
 	if verbose {
-		fmt.Printf("\nWriting single-file archive: %s\n", outputPath)
+		termPrintf("\nWriting single-file archive: %s\n", outputPath)
 	}
 
 	// Write archive (no validation on save since we already validated on load)

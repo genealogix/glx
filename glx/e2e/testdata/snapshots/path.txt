@@ -1,0 +1,9 @@
+
+Path from person-alice-thompson to person-robert-thompson-jr (2 hop(s)):
+
+  Alice Thompson (person-alice-thompson)
+    - child in parent child ->
+  Mary Thompson (person-mary-thompson)
+    - parent in parent child ->
+  Robert Thompson Jr. (person-robert-thompson-jr)
+

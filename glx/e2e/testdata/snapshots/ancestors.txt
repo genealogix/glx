@@ -1,0 +1,12 @@
+Alice Thompson  (b. 1878-03-22)  person-alice-thompson
+├── Mary Thompson  (b. 1852-08-30)  person-mary-thompson
+└── Robert Thompson  (b. 1850-04-12)  person-robert-thompson
+
+  Research suggestions:
+  ! Mary Thompson — no parent_child relationship found
+  ! Mary Thompson — search 1860 US census (age ~8, Springfield) — likely in parents' household
+  ! Mary Thompson — search 1880 US census (age ~28, Springfield) — first census to list parents' birthplaces
+  ! Robert Thompson — no parent_child relationship found
+  ! Robert Thompson — search 1850 US census (age ~0, Springfield) — likely in parents' household
+  ! Robert Thompson — search 1860 US census (age ~10, Springfield) — likely in parents' household
+  ! Robert Thompson — search 1880 US census (age ~30, Springfield) — first census to list parents' birthplaces

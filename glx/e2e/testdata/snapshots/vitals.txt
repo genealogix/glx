@@ -1,0 +1,10 @@
+
+Vitals for person-robert-thompson:
+
+  Name         Robert Thompson
+  Sex          male
+  Birth        April 12, 1850, Springfield
+  Christening  —
+  Death        —
+  Burial       —
+

@@ -16,7 +16,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
@@ -30,7 +29,7 @@ type vitalRecord struct {
 
 // showVitals loads an archive and displays vitals for a person.
 func showVitals(archivePath, personQuery string, jsonOutput ...bool) error {
-	archive, err := loadArchiveForVitals(archivePath)
+	archive, err := loadArchiveForRead(SystemIOStreams(), archivePath)
 	if err != nil {
 		return err
 	}
@@ -47,28 +46,6 @@ func showVitals(archivePath, personQuery string, jsonOutput ...bool) error {
 	printVitals(personID, vitals)
 
 	return nil
-}
-
-// loadArchiveForVitals loads an archive from a path (directory or single file).
-func loadArchiveForVitals(path string) (*glxlib.GLXFile, error) {
-	info, err := os.Stat(path)
-	if err != nil {
-		return nil, fmt.Errorf("cannot access path: %w", err)
-	}
-
-	if info.IsDir() {
-		archive, duplicates, err := LoadArchiveCached(path)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load archive: %w", err)
-		}
-		for _, d := range duplicates {
-			fmt.Fprintf(os.Stderr, "Warning: %s\n", d)
-		}
-
-		return archive, nil
-	}
-
-	return readSingleFileArchive(path, false)
 }
 
 // findPerson looks up a person by exact ID or by name substring match.
@@ -226,9 +203,9 @@ func printVitals(personID string, vitals []vitalRecord) {
 		}
 	}
 
-	fmt.Printf("\nVitals for %s:\n\n", personID)
+	termPrintf("\nVitals for %s:\n\n", personID)
 	for _, v := range vitals {
-		fmt.Printf("  %-*s  %s\n", maxLabel, v.Label, v.Value)
+		termPrintf("  %-*s  %s\n", maxLabel, v.Label, v.Value)
 	}
-	fmt.Println()
+	termPrintln()
 }

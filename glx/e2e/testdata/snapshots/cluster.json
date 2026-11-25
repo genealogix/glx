@@ -1,0 +1,45 @@
+{
+  "person_id": "person-robert-thompson",
+  "person_name": "Robert Thompson",
+  "associates": [
+    {
+      "person_id": "person-mary-thompson",
+      "person_name": "Mary Thompson",
+      "score": 2,
+      "links": [
+        {
+          "type": "event_coparticipant",
+          "event_id": "event-marriage-1875",
+          "place_id": "place-springfield",
+          "label": "Thompson Wedding",
+          "role": "bride",
+          "year": 1875
+        }
+      ]
+    },
+    {
+      "person_id": "person-alice-thompson",
+      "person_name": "Alice Thompson",
+      "score": 1,
+      "links": [
+        {
+          "type": "place_overlap",
+          "place_id": "place-springfield",
+          "label": "Same place: Springfield (1878)"
+        }
+      ]
+    },
+    {
+      "person_id": "person-robert-thompson-jr",
+      "person_name": "Robert Thompson Jr.",
+      "score": 1,
+      "links": [
+        {
+          "type": "place_overlap",
+          "place_id": "place-springfield",
+          "label": "Same place: Springfield (1881)"
+        }
+      ]
+    }
+  ]
+}
