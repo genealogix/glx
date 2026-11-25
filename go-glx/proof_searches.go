@@ -16,8 +16,10 @@ package glx
 
 import (
 	"fmt"
+	"regexp"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -114,6 +116,10 @@ func eventLogQuestions(event *Event, personID string) ([]string, bool) {
 			out = append(out, topicDeath)
 		case isMarriageEventType(event.Type) && isMarriagePrincipal(p.Role):
 			out = append(out, topicMarriage)
+		case !isBirthEventType(event.Type) && !isDeathEventType(event.Type) && !isMarriageEventType(event.Type) && isEventPrincipal(p.Role):
+			// A census, residence or other record the person is the subject
+			// of: the log is about them, and its question (if any) says which
+			// proof its searches serve.
 		default:
 			continue
 		}
@@ -121,6 +127,17 @@ func eventLogQuestions(event *Event, personID string) ([]string, bool) {
 	}
 
 	return out, about
+}
+
+// isEventPrincipal reports whether a role makes the person what a non-vital
+// event is about, rather than a witness, informant or official.
+func isEventPrincipal(role string) bool {
+	switch role {
+	case "", ParticipantRoleSubject, ParticipantRolePrincipal, ParticipantRoleHouseholdHead:
+		return true
+	default:
+		return false
+	}
 }
 
 // logQuestionProperty reads the log's `question` property: a question key or
@@ -172,6 +189,10 @@ func collectScopedProofSearches(personID, topic string, archive *GLXFile) (scope
 				SourceType: proofSearchSourceType(s, archive),
 				Result:     s.Result,
 				Notes:      strings.Join(s.Notes, "; "),
+
+				relationship: log.Subject.Relationship,
+				event:        log.Subject.Event,
+				years:        proofSearchYears(s, archive),
 			}
 			if matches {
 				scoped = append(scoped, search)
@@ -197,6 +218,38 @@ func proofSearchSourceType(s *Search, archive *GLXFile) string {
 	return ""
 }
 
+// recordYearPattern matches a year a record could be for.
+var recordYearPattern = regexp.MustCompile(`\b(1[5-9]\d\d|20\d\d)\b`)
+
+// proofSearchYears returns the years the searched record is for: its
+// source's date, and any year its source title, collection or query names
+// ("1850 US Census").
+func proofSearchYears(s *Search, archive *GLXFile) []int {
+	src := archive.Sources[s.SourceID]
+	if src == nil {
+		if cit := archive.Citations[s.CitationID]; cit != nil {
+			src = archive.Sources[cit.SourceID]
+		}
+	}
+	texts := []string{s.Collection, s.Query}
+	var years []int
+	if src != nil {
+		if year := src.Date.Year(); year != 0 {
+			years = append(years, year)
+		}
+		texts = append(texts, src.Title)
+	}
+	for _, text := range texts {
+		for _, match := range recordYearPattern.FindAllString(text, -1) {
+			if year, err := strconv.Atoi(match); err == nil && !slices.Contains(years, year) {
+				years = append(years, year)
+			}
+		}
+	}
+
+	return years
+}
+
 // gapSourceTypes returns the source types whose search answers a coverage gap.
 func gapSourceTypes(gap *ProofGap) []string {
 	switch {
@@ -218,9 +271,12 @@ func gapSourceTypes(gap *ProofGap) []string {
 }
 
 // markSearchedGaps records, on each gap, the question's searches in a source of
-// the gap's type, whatever they found. A searched gap is reported with its
-// results and no longer heads the next steps.
-func markSearchedGaps(gaps []ProofGap, searches []ProofSearch) {
+// the gap's type, whatever they found. A census gap counts only the searches
+// for its year, and a marriage-record gap only the searches of a log about
+// that marriage: a search whose scope cannot be established leaves the
+// specific gap open. A searched gap is reported with its results and no longer
+// heads the next steps.
+func markSearchedGaps(gaps []ProofGap, searches []ProofSearch, archive *GLXFile) {
 	for i := range gaps {
 		types := gapSourceTypes(&gaps[i])
 		if len(types) == 0 {
@@ -228,7 +284,7 @@ func markSearchedGaps(gaps []ProofGap, searches []ProofSearch) {
 		}
 		counts := map[string]int{}
 		for j := range searches {
-			if !slices.Contains(types, searches[j].SourceType) {
+			if !slices.Contains(types, searches[j].SourceType) || !searchCoversGap(&searches[j], &gaps[i], archive) {
 				continue
 			}
 			result := searches[j].Result
@@ -263,10 +319,49 @@ func markSearchedGaps(gaps []ProofGap, searches []ProofSearch) {
 	}
 }
 
+// searchCoversGap reports whether a search is scoped to the gap's census year
+// or marriage, when the gap is for one.
+func searchCoversGap(search *ProofSearch, gap *ProofGap, archive *GLXFile) bool {
+	if gap.year != 0 && !slices.Contains(search.years, gap.year) {
+		return false
+	}
+	if gap.relationshipID == "" {
+		return true
+	}
+	if search.relationship == gap.relationshipID {
+		return true
+	}
+	if search.event == "" || archive == nil {
+		return false
+	}
+	rel := archive.Relationships[gap.relationshipID]
+	event := archive.Events[search.event]
+	if rel == nil || event == nil {
+		return false
+	}
+	if rel.StartEvent != "" {
+		return rel.StartEvent == search.event
+	}
+	// The log's wedding names the couple of the relationship.
+	couple := 0
+	for _, p := range rel.Participants {
+		if p.Person == "" || !isCouplePrincipal(p.Role) {
+			continue
+		}
+		if !isMarriageEventPrincipal(event, p.Person) {
+			return false
+		}
+		couple++
+	}
+
+	return couple >= 2 && isMarriageEventType(event.Type)
+}
+
 // negativeSearchSummary describes a question's searches when nothing answers
-// it: all negative (a negative conclusion), or some still outstanding. A search
-// not yet run, needing a visit, with an unclear result or in an inaccessible
-// source tested nothing, so it is outstanding rather than negative.
+// it: all negative (a negative conclusion), or some still outstanding. Only a
+// not_found result is negative; a search not yet run, needing a visit, with an
+// unclear result, in an inaccessible source, or with any other result tested
+// nothing, so it is outstanding.
 func negativeSearchSummary(searches []ProofSearch) (string, bool) {
 	if len(searches) == 0 {
 		return "", false
@@ -274,10 +369,13 @@ func negativeSearchSummary(searches []ProofSearch) (string, bool) {
 	outstanding := 0
 	for i := range searches {
 		switch searches[i].Result {
-		case SearchResultNotSearched, SearchResultRequiresVisit, SearchResultInconclusive, SearchResultUnavailable, "":
-			outstanding++
+		case SearchResultNotFound:
 		case SearchResultFound, SearchResultPartial:
 			return "", false
+		default:
+			// Not run, needing a visit, unclear, inaccessible, or an archive's
+			// own result (pending_review): only not_found is negative.
+			outstanding++
 		}
 	}
 	if outstanding > 0 {

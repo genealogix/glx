@@ -108,6 +108,8 @@ type ProofGap struct {
 	Searched string `json:"searched,omitempty"`
 	// relationshipID is the couple relationship a marriage-record gap is for.
 	relationshipID string
+	// year is the census year a census gap is for.
+	year int
 }
 
 // ConflictValue is one competing value within a conflict.
@@ -144,6 +146,11 @@ type ProofSearch struct {
 	Source     string `json:"source,omitempty"`
 	Result     string `json:"result,omitempty"`
 	Notes      string `json:"notes,omitempty"`
+	// relationship and event are the log's subject, which scope a search to
+	// one marriage; years are the years its source or collection names.
+	relationship string
+	event        string
+	years        []int
 }
 
 // ProofExcludedAlternative is a candidate answer the evidence rules out (every
@@ -231,8 +238,17 @@ func buildProof(personID string, person *Person, topic string, archive *GLXFile,
 	})
 	// A rejected candidate's assertions stay in the evidence, but its own
 	// status already reports them: they never enter conflict detection, so an
-	// excluded alternative cannot leave the question CONFLICTED.
-	conflicts := detectProofConflicts(withoutRejected(relevant, candidates.rejected), archive, opts.Comparison)
+	// excluded alternative cannot leave the question CONFLICTED. The
+	// participation and existence claims a candidate's status settles are not
+	// judged again either.
+	conflictInput := withoutRejected(withoutRejected(relevant, candidates.rejected), candidates.governed)
+	if topic == topicChildren {
+		conflictInput = slices.DeleteFunc(conflictInput, func(pa proofAssertion) bool { return !childrenConflictRelevant(&pa, personID) })
+	}
+	conflicts := detectProofConflictsFor(conflictInput, archive, topic == topicOccupation || topic == topicIdentity, opts.Comparison)
+	if topic == topicBirth || topic == topicDeath {
+		conflicts = append(conflicts, vitalValueConflicts(relevant, archive)...)
+	}
 	if topic == topicDeath {
 		conflicts = append(conflicts, vitalChronologyConflicts(archive, personID, all, opts.Comparison)...)
 	}
@@ -240,10 +256,9 @@ func buildProof(personID string, person *Person, topic string, archive *GLXFile,
 	conclusionEvidence := relevant
 	excluded := candidates.alternatives
 	if topic == topicParentage {
-		parents, _ := parentageCandidates(personID, archive, parentLinks, standings)
-		parents = slices.DeleteFunc(parents, func(c parentCandidate) bool { return !answersInclude(candidates.answers, c.personID) })
+		parents := competingParents(personID, archive, parentLinks, standings, &candidates)
 		conflicts = append(conflicts, parentageConflicts(personID, parents, archive, opts.Comparison)...)
-		conclusionEvidence = parentageSupport(relevant, personID, parentLinks, standings)
+		conclusionEvidence = parentageSupport(relevant, personID, parentLinks, standings, archive)
 	}
 	conclusionEvidence = slices.DeleteFunc(slices.Clone(conclusionEvidence), func(pa proofAssertion) bool { return candidates.rejected[pa.a] })
 	gaps := collectProofGaps(personID, person, topic, archive, opts.Coverage)
@@ -255,7 +270,7 @@ func buildProof(personID string, person *Person, topic string, archive *GLXFile,
 		gaps = slices.DeleteFunc(gaps, func(g ProofGap) bool { return g.relationshipID != "" && drop[g.relationshipID] })
 	}
 	searches, otherSearches := collectScopedProofSearches(personID, topic, archive)
-	markSearchedGaps(gaps, searches)
+	markSearchedGaps(gaps, searches, archive)
 
 	conclusion, summary := concludeProof(topic, personID, archive, conclusionEvidence, conflicts, gaps, &candidates, searches)
 
@@ -286,6 +301,145 @@ func answersInclude(answers []ProofAnswer, personID string) bool {
 	}
 
 	return false
+}
+
+// competingParents returns the surviving birth parents to compare: the linked
+// parents that are answers, with the facts of their rejected links removed,
+// and the parents named only by birth-record or parent_child claims. Adoptive
+// and foster parents are not birth parents and are never compared.
+func competingParents(personID string, archive *GLXFile, links []ParentChildLink, standings *RelationshipStandingIndex, candidates *proofCandidates) []parentCandidate {
+	parents, _ := parentageCandidates(personID, archive, links, standings)
+	parents = slices.DeleteFunc(parents, func(c parentCandidate) bool { return !answersInclude(candidates.answers, c.personID) })
+	listed := map[string]bool{}
+	for i := range parents {
+		listed[parents[i].personID] = true
+		parents[i].birthFacts = slices.DeleteFunc(parents[i].birthFacts, func(f ResearchFact) bool {
+			return !f.Synthetic && candidates.rejected[archive.Assertions[f.ID]]
+		})
+	}
+	for i := range candidates.answers {
+		answer := &candidates.answers[i]
+		if answer.PersonID == "" || listed[answer.PersonID] {
+			continue
+		}
+		var facts []ResearchFact
+		for _, id := range answer.Assertions {
+			a := archive.Assertions[id]
+			if a == nil || AssertionIsDisproven(a) || candidates.rejected[a] || !birthParentClaim(a, archive) {
+				continue
+			}
+			fact := researchFact(&proofAssertion{id: id, a: a, subjectID: a.Subject.ID()})
+			fact.Fact.Value = answer.PersonID
+			facts = append(facts, fact)
+		}
+		if len(facts) == 0 {
+			continue
+		}
+		sex := ""
+		if parent := archive.Persons[answer.PersonID]; parent != nil {
+			sex = propertyString(parent.Properties, PersonPropertySex)
+		}
+		listed[answer.PersonID] = true
+		parents = append(parents, parentCandidate{personID: answer.PersonID, name: personName(archive, answer.PersonID), sex: sex, birthFacts: facts})
+	}
+
+	return parents
+}
+
+// birthParentClaim reports whether an assertion names a birth parent: a
+// parent on a birth or baptism, or a claim on a (biological) parent_child
+// relationship. Adoptive, foster and step claims are not.
+func birthParentClaim(a *Assertion, archive *GLXFile) bool {
+	if a.Subject.Event != "" {
+		return a.Participant != nil && a.Participant.Role == ParticipantRoleParent
+	}
+	rel := archive.Relationships[a.Subject.Relationship]
+	if rel == nil || rel.Type != RelationshipTypeParentChild && rel.Type != RelationshipTypeBiologicalParentChild {
+		return false
+	}
+
+	return a.Participant == nil || !IsStepRole(a.Participant.Role) && a.Participant.Role != ParticipantRoleAdoptiveParent && a.Participant.Role != roleKeyFosterParent
+}
+
+// childrenConflictRelevant reports whether an assertion bears on who the
+// children were, rather than on a child's birth record itself: a relationship
+// claim, the existence of a birth record, or a claim of the parent or the
+// child taking part in it. The record's date, place and other participants
+// stay in the evidence as context.
+func childrenConflictRelevant(pa *proofAssertion, personID string) bool {
+	if pa.relType != "" {
+		return true
+	}
+	p := pa.a.Participant
+	if p == nil {
+		return pa.a.Property == ""
+	}
+
+	return p.Person == personID && IsParentSideRole(p.Role) || isVitalPrincipal(pa.eventType, p.Role)
+}
+
+// vitalValueConflicts reports a birth or death value that one assertion proves
+// and another disproves: both cannot stand, whatever the other values are.
+func vitalValueConflicts(relevant []proofAssertion, archive *GLXFile) []ConflictGroup {
+	type valueKey struct{ subject, property, value string }
+	groups := map[valueKey][]*proofAssertion{}
+	var order []valueKey
+	for i := range relevant {
+		pa := &relevant[i]
+		if pa.synthetic || pa.a.Participant != nil || pa.a.Property == "" || strings.TrimSpace(pa.a.Value) == "" {
+			continue
+		}
+		key := valueKey{subject: pa.a.Subject.Type().String() + ":" + pa.subjectID, property: pa.a.Property, value: normalizeProofValue(pa.a.Value)}
+		if pa.factKey != "" {
+			key.subject = pa.factKey
+		}
+		if pa.factProperty != "" {
+			key.property = pa.factProperty
+		}
+		if _, seen := groups[key]; !seen {
+			order = append(order, key)
+		}
+		groups[key] = append(groups[key], pa)
+	}
+	var out []ConflictGroup
+	for _, key := range order {
+		group := groups[key]
+		assertions := make([]*Assertion, len(group))
+		for i, pa := range group {
+			assertions[i] = pa.a
+		}
+		if ResolveProofStatus(assertions) != ProofStatusConflicting {
+			continue
+		}
+		facts := make([]ResearchFact, len(group))
+		values := map[string]ConflictValue{}
+		for i, pa := range group {
+			facts[i] = researchFact(pa)
+			status := AssertionProofStatus(pa.a)
+			if _, seen := values[status]; !seen {
+				values[status] = ConflictValue{Value: proofAssertionValue(pa.a, archive) + " " + status, Confidence: pa.a.Confidence, Status: pa.a.Status}
+			}
+		}
+		statuses := make([]string, 0, len(values))
+		for status := range values {
+			statuses = append(statuses, status)
+		}
+		sort.Strings(statuses)
+		list := make([]ConflictValue, len(statuses))
+		for i, status := range statuses {
+			list[i] = values[status]
+		}
+		subject := describeProofSubject(group[0], archive)
+		if subject == "" {
+			subject = key.subject
+		}
+		out = append(out, ConflictGroup{
+			Facts: facts, Verdict: VerdictDisputed, Definite: true,
+			Subject: subject, Property: key.property + " (proven and disproven assertions)", Values: list,
+		})
+	}
+
+	return out
 }
 
 // withoutRejected returns the assertions no rejected candidate holds.
@@ -704,10 +858,16 @@ func proofAssertionValue(a *Assertion, archive *GLXFile) string {
 // subject/property and reports whether the disagreement has been resolved via
 // the assertion `status` field (proven over disproven).
 func detectProofConflicts(relevant []proofAssertion, archive *GLXFile, options ...ComparisonOptions) []ConflictGroup {
-	type conflictKey struct {
-		subject  string
-		property string
-	}
+	return detectProofConflictsFor(relevant, archive, false, options...)
+}
+
+// detectProofConflictsFor is detectProofConflicts for a proof question. With
+// multiValued, an occupation is compared value by value, as the occupation
+// and identity questions read it: they list every job held as its own answer,
+// so two jobs held at once are not a contradiction there, while a job proven
+// and disproven for one period still is. The conflict reports (analyze,
+// evidence, PersonConflicts) keep the shared single-value verdicts.
+func detectProofConflictsFor(relevant []proofAssertion, archive *GLXFile, multiValued bool, options ...ComparisonOptions) []ConflictGroup {
 	type conflictGroup struct {
 		label      string // human-readable subject label, "" for the person subject
 		assertions []*Assertion
@@ -726,15 +886,7 @@ func detectProofConflicts(relevant []proofAssertion, archive *GLXFile, options .
 
 			continue
 		}
-		subjectKey := pa.a.Subject.Type().String() + ":" + pa.subjectID
-		if pa.factKey != "" {
-			subjectKey = pa.factKey
-		}
-		property := pa.a.Property
-		if pa.factProperty != "" {
-			property = pa.factProperty
-		}
-		key := conflictKey{subject: subjectKey, property: property}
+		key := proofConflictKeyOf(pa, multiValued)
 		g, seen := groups[key]
 		if !seen {
 			g = &conflictGroup{label: describeProofSubject(pa, archive)}
@@ -749,8 +901,11 @@ func detectProofConflicts(relevant []proofAssertion, archive *GLXFile, options .
 		if order[i].subject != order[j].subject {
 			return order[i].subject < order[j].subject
 		}
+		if order[i].property != order[j].property {
+			return order[i].property < order[j].property
+		}
 
-		return order[i].property < order[j].property
+		return order[i].value < order[j].value
 	})
 
 	for _, key := range order {
@@ -795,6 +950,39 @@ func detectProofConflicts(relevant []proofAssertion, archive *GLXFile, options .
 	}
 
 	return conflicts
+}
+
+// conflictKey identifies the fact a group of assertions disagrees about.
+type conflictKey struct {
+	subject  string
+	property string
+	// value separates the values of a multi-valued property (an occupation,
+	// in a proof question): two jobs held at once do not contradict each
+	// other, while the statuses of one value still do.
+	value string
+}
+
+// proofConflictKeyOf returns the fact an assertion is about: the person's
+// shared vital fact when it has one, else its subject and property.
+func proofConflictKeyOf(pa *proofAssertion, multiValued bool) conflictKey {
+	key := conflictKey{subject: pa.a.Subject.Type().String() + ":" + pa.subjectID, property: pa.a.Property}
+	if pa.factKey != "" {
+		key.subject = pa.factKey
+	}
+	if pa.factProperty != "" {
+		key.property = pa.factProperty
+	}
+	if multiValued && multiValuedProperty(key.property) {
+		key.value = normalizeProofValue(pa.a.Value)
+	}
+
+	return key
+}
+
+// multiValuedProperty reports whether a person can hold several values of a
+// property at once, so different values are not a conflict.
+func multiValuedProperty(property string) bool {
+	return property == PersonPropertyOccupation
 }
 
 // distinctProofValues returns the distinct values asserted for a
@@ -894,6 +1082,7 @@ func collectProofGaps(personID string, person *Person, topic string, archive *GL
 			Description: rec.Description,
 
 			relationshipID: rec.relationshipID,
+			year:           rec.year,
 		})
 	}
 
@@ -1026,9 +1215,11 @@ func conclusionLevel(topic, personID string, relevant []proofAssertion, candidat
 		// surviving answer, never lifted by a stronger one beside it.
 		level = candidates.level
 	case topic == topicIdentity && candidates.found:
-		// A same-person link is only as strong as its weakest accepted link:
-		// a proven occupation cannot lift a probable link to PROVEN.
-		level = min(level, candidates.level)
+		// A same-person link is only as strong as its weakest accepted link,
+		// whichever endpoint its assertions name: a proven occupation cannot
+		// lift a probable link to PROVEN, and a proven link establishes the
+		// identity from either side.
+		level = candidates.level
 	}
 
 	return level

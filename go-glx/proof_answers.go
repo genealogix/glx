@@ -207,6 +207,9 @@ type proofCandidate struct {
 	event        string
 	assertions   []*Assertion
 	extra        string // strongest status of corroborating claims outside the candidate's own assertions
+	// corroborating are the claims behind extra: they belong to the candidate,
+	// so they leave conflict detection with it when it is excluded.
+	corroborating []*Assertion
 }
 
 func (c *proofCandidate) add(assertions ...*Assertion) {
@@ -244,6 +247,11 @@ type proofCandidates struct {
 	// question, and never enter conflict detection (the candidate's own status
 	// already reports them).
 	rejected map[*Assertion]bool
+	// governed holds the participation and existence assertions of every
+	// candidate: the candidate's own status settles them, so generic conflict
+	// detection does not judge them again. Date, place and value assertions
+	// are not governed.
+	governed map[*Assertion]bool
 	notes    []string // extra summary sentences (e.g. distinguished namesakes)
 	// answeredRelationships are the relationships behind the surviving answers.
 	answeredRelationships map[string]bool
@@ -267,18 +275,36 @@ func isAnswerStatus(status string) bool {
 // (two relationships to one parent or spouse) are resolved one by one and then
 // combined into a single answer.
 func resolveCandidates(candidates []*proofCandidate, archive *GLXFile, ids map[*Assertion]string, labels map[string]string) proofCandidates {
-	out := proofCandidates{used: true, level: supportStrong, rejected: map[*Assertion]bool{}, answeredRelationships: map[string]bool{}}
+	out := proofCandidates{used: true, level: supportStrong, rejected: map[*Assertion]bool{}, governed: map[*Assertion]bool{}, answeredRelationships: map[string]bool{}}
 	statuses := make([]string, len(candidates))
 	answered := map[string]bool{}
+	kept := map[*Assertion]bool{}
 	for i, c := range candidates {
 		statuses[i] = c.status()
 		if isAnswerStatus(statuses[i]) {
 			answered[c.role] = true
+			for _, a := range c.corroborating {
+				kept[a] = true
+			}
+		}
+		for _, a := range c.assertions {
+			if a.Property == "" {
+				out.governed[a] = true
+			}
 		}
 	}
 	answerIndex := map[string]int{}
 	for i, c := range candidates {
 		out.place(c, statuses[i], answered[c.role], candidateLabel(c, archive, labels), ids, answerIndex)
+		if !isAnswerStatus(statuses[i]) {
+			// A corroborating claim goes with its candidate, unless an accepted
+			// candidate also rests on it.
+			for _, a := range c.corroborating {
+				if !kept[a] {
+					out.rejected[a] = true
+				}
+			}
+		}
 	}
 	for i := range out.answers {
 		out.level = min(out.level, proofStatusSupport(out.answers[i].Status))
@@ -327,7 +353,7 @@ func (out *proofCandidates) addAnswer(c *proofCandidate, status, label string, a
 	if c.personID != "" {
 		key := c.role + "\x00" + c.personID
 		if j, seen := answerIndex[key]; seen {
-			mergeProofAnswer(&out.answers[j], status, assertionIDs)
+			mergeProofAnswer(&out.answers[j], c, status, assertionIDs)
 
 			return
 		}
@@ -359,11 +385,13 @@ func candidateLabel(c *proofCandidate, archive *GLXFile, labels map[string]strin
 
 // mergeProofAnswer combines a second accepted claim about the same person
 // (another relationship to the same parent or spouse) into its answer. Any one
-// accepted claim establishes the person, so the stronger status stands.
-func mergeProofAnswer(answer *ProofAnswer, status string, assertionIDs []string) {
+// accepted claim establishes the person, so the stronger status stands, with
+// the relationship, event and date of the candidate that supplies it.
+func mergeProofAnswer(answer *ProofAnswer, c *proofCandidate, status string, assertionIDs []string) {
 	if proofStatusRank(status) > proofStatusRank(answer.Status) || answer.Status == ProofStatusUnsupported && status != ProofStatusUnsupported {
 		answer.Status = status
 		answer.Conclusion = statusConclusion(status)
+		answer.Relationship, answer.Event, answer.Date = c.relationship, c.event, c.date
 	}
 	for _, id := range assertionIDs {
 		if !slices.Contains(answer.Assertions, id) {
@@ -400,7 +428,7 @@ func candidateConflict(c *proofCandidate, label string, ids map[*Assertion]strin
 	facts := make([]ResearchFact, 0, len(c.assertions))
 	values := map[string]*ConflictValue{}
 	for _, a := range c.assertions {
-		facts = append(facts, researchFact(&proofAssertion{id: ids[a], a: a, subjectID: c.relationship + c.event}))
+		facts = append(facts, researchFact(&proofAssertion{id: ids[a], a: a, subjectID: a.Subject.ID()}))
 		status := AssertionProofStatus(a)
 		if values[status] == nil {
 			values[status] = &ConflictValue{Value: label + " " + status, Confidence: a.Confidence, Status: a.Status}
@@ -550,6 +578,18 @@ func parentageAnswerCandidates(personID string, archive *GLXFile, relevant []pro
 	for i := range relevant {
 		pa := &relevant[i]
 		p := pa.a.Participant
+		if !pa.synthetic && claimedChildOf(pa, personID, archive) {
+			// The person is claimed as the child of a relationship that lists
+			// only the parents: its recorded parents are candidates.
+			relID := pa.a.Subject.Relationship
+			for _, parent := range archive.Relationships[relID].Participants {
+				if parent.Person != "" && parent.Person != personID && IsParentSideRole(parent.Role) && !IsStepRole(parent.Role) {
+					newParent("rel:"+relID+":"+parent.Person, parent.Person, relID).add(standings.LinkAssertions(relID, parent.Person, personID)...)
+				}
+			}
+
+			continue
+		}
 		if pa.synthetic || p == nil || p.Person == "" || p.Person == personID || !IsParentSideRole(p.Role) || IsStepRole(p.Role) {
 			continue
 		}
@@ -613,6 +653,9 @@ func (s *candidateSet) linked(personID string) []*proofCandidate {
 // corroborate records a claim that supports the candidate without deciding it:
 // it can raise the status, never lower it, and a disproven one says nothing.
 func (c *proofCandidate) corroborate(a *Assertion) {
+	if !slices.Contains(c.corroborating, a) {
+		c.corroborating = append(c.corroborating, a)
+	}
 	if status := AssertionProofStatus(a); status != ProofStatusDisproven && proofStatusRank(status) > proofStatusRank(c.extra) {
 		c.extra = status
 	}
@@ -630,19 +673,17 @@ func marriageAnswerCandidates(personID string, archive *GLXFile, standings *Rela
 	set := newCandidateSet(ParticipantRoleSpouse)
 	for _, relID := range sortedKeys(archive.Relationships) {
 		rel := archive.Relationships[relID]
-		if rel == nil || !isSpouseRelationshipType(rel.Type) || !hasParticipant(personID, rel.Participants) {
+		if rel == nil || !isSpouseRelationshipType(rel.Type) || !isCoupleMember(rel.Participants, personID) {
 			continue
 		}
 		for _, p := range rel.Participants {
-			if p.Person == "" || p.Person == personID {
+			if p.Person == "" || p.Person == personID || !isCouplePrincipal(p.Role) {
 				continue
 			}
-			c := set.get("rel:"+relID+":"+p.Person, p.Person)
-			c.relationship = relID
-			c.add(principalClaims(standings.LinkAssertions(relID, personID, p.Person))...)
+			addSpouseRelationship(set, relID, personID, p.Person, standings)
 		}
 	}
-	addMarriageRelationshipClaims(set, personID, archive)
+	addMarriageRelationshipClaims(set, personID, archive, standings)
 	eventAssertions := assertionsByEvent(archive)
 	for _, eventID := range sortedKeys(archive.Events) {
 		event := archive.Events[eventID]
@@ -678,35 +719,74 @@ func isCouplePrincipal(role string) bool {
 	return isMarriagePrincipal(role) || role == RelationshipTypePartner
 }
 
-// addMarriageRelationshipClaims weighs claims that the person belongs to a
-// couple relationship that does not list them (or, disproven, that they do
-// not): the counterparts recorded opposite the claimed role are candidates.
-func addMarriageRelationshipClaims(set *candidateSet, personID string, archive *GLXFile) {
+// isCoupleMember reports whether the person is listed in a couple role.
+func isCoupleMember(participants []Participant, personID string) bool {
+	for _, p := range participants {
+		if p.Person == personID && isCouplePrincipal(p.Role) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// addSpouseRelationship makes the spouse of one couple relationship a
+// candidate, decided by the relationship's own assertions and the couple
+// claims about the two of them.
+func addSpouseRelationship(set *candidateSet, relID, personID, spouse string, standings *RelationshipStandingIndex) {
+	c := set.get("rel:"+relID+":"+spouse, spouse)
+	c.relationship = relID
+	c.add(principalClaims(standings.LinkAssertions(relID, personID, spouse))...)
+}
+
+// addMarriageRelationshipClaims weighs couple claims that a relationship does
+// not yet record: that the person belongs to a couple relationship that does
+// not list them (the counterparts recorded opposite the claimed role are
+// candidates), and that someone not listed is the spouse in a relationship
+// that lists the person.
+func addMarriageRelationshipClaims(set *candidateSet, personID string, archive *GLXFile, standings *RelationshipStandingIndex) {
 	for _, id := range sortedKeys(archive.Assertions) {
 		a := archive.Assertions[id]
-		if a == nil || a.Participant == nil || a.Participant.Person != personID || !isCouplePrincipal(a.Participant.Role) {
+		if a == nil || a.Participant == nil || a.Participant.Person == "" || !isCouplePrincipal(a.Participant.Role) {
 			continue
 		}
 		relID := a.Subject.Relationship
 		rel := archive.Relationships[relID]
-		if rel == nil || !isSpouseRelationshipType(rel.Type) || hasParticipant(personID, rel.Participants) {
+		if rel == nil || !isSpouseRelationshipType(rel.Type) || hasParticipant(a.Participant.Person, rel.Participants) {
 			continue
 		}
-		for _, spouse := range coupleCounterparts(rel.Participants, personID, a.Participant.Role) {
-			c := set.get("rel:"+relID+":"+spouse, spouse)
-			c.relationship = relID
-			c.add(a)
+		switch {
+		case a.Participant.Person == personID:
+			for _, spouse := range coupleCounterparts(rel.Participants, personID, a.Participant.Role) {
+				c := set.get("rel:"+relID+":"+spouse, spouse)
+				c.relationship = relID
+				c.add(a)
+			}
+		case isCoupleMember(rel.Participants, personID) && slices.Contains(coupleCounterparts([]Participant{*a.Participant}, personID, coupleRole(rel.Participants, personID)), a.Participant.Person):
+			addSpouseRelationship(set, relID, personID, a.Participant.Person, standings)
 		}
 	}
 }
 
+// coupleRole returns the person's role in a couple relationship.
+func coupleRole(participants []Participant, personID string) string {
+	for _, p := range participants {
+		if p.Person == personID && isCouplePrincipal(p.Role) {
+			return p.Role
+		}
+	}
+
+	return ""
+}
+
 // coupleCounterparts returns the relationship participants a person in the
 // given role would be coupled with: the groom for a bride, the bride for a
-// groom, otherwise everyone else.
+// groom, otherwise the other members of the couple. A witness or officiant is
+// nobody's spouse.
 func coupleCounterparts(participants []Participant, personID, role string) []string {
 	var out []string
 	for _, p := range participants {
-		if p.Person == "" || p.Person == personID || slices.Contains(out, p.Person) {
+		if p.Person == "" || p.Person == personID || slices.Contains(out, p.Person) || !isCouplePrincipal(p.Role) {
 			continue
 		}
 		if role == ParticipantRoleBride && p.Role != ParticipantRoleGroom || role == ParticipantRoleGroom && p.Role != ParticipantRoleBride {
@@ -857,8 +937,10 @@ func opposingPrincipals(participants []Participant, personID, role string) []str
 
 // childrenAnswerCandidates gathers the person's children: the child side of
 // every non-step parent_child link where the person is a parent, one candidate
-// per link, and the principal of every birth or baptism where the person is
-// recorded, or only claimed, as parent.
+// per link; the children of a relationship the person is only claimed to be a
+// parent in, and a child only claimed for a relationship that lists the
+// person; and the principal (recorded or only claimed) of every birth or
+// baptism where the person is recorded, or only claimed, as parent.
 func childrenAnswerCandidates(personID string, archive *GLXFile, links []ParentChildLink, standings *RelationshipStandingIndex) []*proofCandidate {
 	set := newCandidateSet(ParticipantRoleChild)
 	for _, link := range links {
@@ -869,6 +951,7 @@ func childrenAnswerCandidates(personID string, archive *GLXFile, links []ParentC
 		c.relationship = link.RelationshipID
 		c.add(standings.LinkAssertions(link.RelationshipID, link.ParentID, link.ChildID)...)
 	}
+	addChildRelationshipClaims(set, personID, archive, standings)
 	eventAssertions := assertionsByEvent(archive)
 	for _, eventID := range sortedKeys(archive.Events) {
 		event := archive.Events[eventID]
@@ -879,14 +962,85 @@ func childrenAnswerCandidates(personID string, archive *GLXFile, links []ParentC
 		if !eventHasParent(event, personID) && len(claims) == 0 {
 			continue
 		}
+		recorded := map[string]bool{}
 		for _, p := range event.Participants {
 			if p.Person != "" && p.Person != personID && isVitalPrincipal(event.Type, p.Role) {
+				recorded[p.Person] = true
 				addBirthRecordChild(set, eventID, p.Person, claims)
 			}
+		}
+		// A child named only by a claim of the record is decided by that claim
+		// together with the record's parent claims.
+		for _, a := range eventAssertions[eventID] {
+			p := a.Participant
+			if p == nil || p.Person == "" || p.Person == personID || recorded[p.Person] || !isVitalPrincipal(event.Type, p.Role) {
+				continue
+			}
+			addBirthRecordChild(set, eventID, p.Person, append(slices.Clone(claims), childClaims(p.Person, event.Type, eventAssertions[eventID])...))
+			recorded[p.Person] = true
 		}
 	}
 
 	return set.order
+}
+
+// childClaims returns the claims that the person is the principal of a birth
+// or baptism.
+func childClaims(childID, eventType string, assertions []*Assertion) []*Assertion {
+	var out []*Assertion
+	for _, a := range assertions {
+		if a.Participant != nil && a.Participant.Person == childID && isVitalPrincipal(eventType, a.Participant.Role) {
+			out = append(out, a)
+		}
+	}
+
+	return out
+}
+
+// addChildRelationshipClaims weighs parent_child claims a relationship does
+// not yet record: that the person is a parent in a relationship that does not
+// list them (its recorded children are candidates), and that someone not
+// listed is the child of a relationship that lists the person as parent.
+func addChildRelationshipClaims(set *candidateSet, personID string, archive *GLXFile, standings *RelationshipStandingIndex) {
+	for _, id := range sortedKeys(archive.Assertions) {
+		a := archive.Assertions[id]
+		if a == nil || a.Participant == nil || a.Participant.Person == "" || IsStepRole(a.Participant.Role) {
+			continue
+		}
+		relID := a.Subject.Relationship
+		rel := archive.Relationships[relID]
+		if rel == nil || !IsParentChildRelationshipType(rel.Type) || strings.EqualFold(rel.Type, RelationshipTypeStepParent) || hasParticipant(a.Participant.Person, rel.Participants) {
+			continue
+		}
+		var children []string
+		switch {
+		case a.Participant.Person == personID && IsParentSideRole(a.Participant.Role):
+			for _, p := range rel.Participants {
+				if p.Person != "" && IsChildSideRole(p.Role) && !IsStepRole(p.Role) && !slices.Contains(children, p.Person) {
+					children = append(children, p.Person)
+				}
+			}
+		case IsChildSideRole(a.Participant.Role) && isRecordedParent(rel.Participants, personID):
+			children = []string{a.Participant.Person}
+		}
+		for _, child := range children {
+			c := set.get("rel:"+relID+":"+child, child)
+			c.relationship = relID
+			c.add(standings.LinkAssertions(relID, personID, child)...)
+		}
+	}
+}
+
+// isRecordedParent reports whether the person is listed in a non-step parent
+// role.
+func isRecordedParent(participants []Participant, personID string) bool {
+	for _, p := range participants {
+		if p.Person == personID && IsParentSideRole(p.Role) && !IsStepRole(p.Role) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // addBirthRecordChild weighs a birth or baptism of a possible child. A
@@ -932,9 +1086,12 @@ func eventHasParent(event *Event, personID string) bool {
 	return false
 }
 
-// sameIdentityCandidates gathers the person's possibly_same_person links.
+// sameIdentityCandidates gathers the person's possibly_same_person links, one
+// candidate per other person: two links between the same pair answer the
+// same identity question, so a proven and a disproven one conflict.
 func sameIdentityCandidates(personID string, archive *GLXFile, standings *RelationshipStandingIndex) []*proofCandidate {
 	var order []*proofCandidate
+	byPerson := map[string]*proofCandidate{}
 	for _, relID := range sortedKeys(archive.Relationships) {
 		rel := archive.Relationships[relID]
 		if rel == nil || rel.Type != RelationshipTypePossiblySamePerson || !hasParticipant(personID, rel.Participants) {
@@ -944,9 +1101,13 @@ func sameIdentityCandidates(personID string, archive *GLXFile, standings *Relati
 			if p.Person == "" || p.Person == personID {
 				continue
 			}
-			c := &proofCandidate{key: relID + ":" + p.Person, personID: p.Person, role: RelationshipTypePossiblySamePerson, relationship: relID}
+			c := byPerson[p.Person]
+			if c == nil {
+				c = &proofCandidate{key: p.Person, personID: p.Person, role: RelationshipTypePossiblySamePerson, relationship: relID}
+				byPerson[p.Person] = c
+				order = append(order, c)
+			}
 			c.add(standings.LinkAssertions(relID, personID, p.Person)...)
-			order = append(order, c)
 		}
 	}
 
@@ -969,8 +1130,11 @@ func propertyAnswerCandidates(personID, property string, archive *GLXFile, relev
 	set := &propertyCandidateSet{property: property, byKey: map[string]*proofCandidate{}, byValue: map[string][]*proofCandidate{}}
 	for i := range relevant {
 		pa := &relevant[i]
-		if value := assertionPropertyValue(pa.a, property); !pa.synthetic && value != "" {
-			set.get(value, string(pa.a.Date)).add(pa.a)
+		if pa.synthetic {
+			continue
+		}
+		for _, entry := range assertionPropertyEntries(pa.a, property) {
+			set.get(entry.value, entry.date).add(pa.a)
 		}
 	}
 	if person := archive.Persons[personID]; person != nil {
@@ -1041,22 +1205,26 @@ func (s *propertyCandidateSet) recordedOnEvent(eventID string, raw any) {
 	}
 }
 
-// assertionPropertyValue returns the value an assertion claims for a person
-// property: its own value, or, for a participant claim, the property recorded
-// on the participant (participant.properties.occupation).
-func assertionPropertyValue(a *Assertion, property string) string {
+// assertionPropertyEntries returns the values an assertion claims for a
+// person property: its own value, or, for a participant claim, every entry of
+// the property recorded on the participant (participant.properties.occupation),
+// each with its own date and else the assertion's.
+func assertionPropertyEntries(a *Assertion, property string) []propertyEntry {
 	if a.Participant != nil {
-		if entries := temporalPropertyEntries(a.Participant.Properties[property]); len(entries) > 0 {
-			return entries[0].value
+		entries := temporalPropertyEntries(a.Participant.Properties[property])
+		for i := range entries {
+			if entries[i].date == "" {
+				entries[i].date = string(a.Date)
+			}
 		}
 
-		return ""
+		return entries
 	}
-	if a.Property == property {
-		return a.Value
+	if a.Property == property && strings.TrimSpace(a.Value) != "" {
+		return []propertyEntry{{value: a.Value, date: string(a.Date)}}
 	}
 
-	return ""
+	return nil
 }
 
 // propertyEntry is one value of a simple or temporal property, with the date
@@ -1104,7 +1272,8 @@ func temporalPropertyEntries(raw any) []propertyEntry {
 }
 
 // sharedPropertyHolders names the other people recorded with the same value of
-// a property (two men holding one office), with the dates recorded for them.
+// a property (two men holding one office), with the dates recorded for them:
+// on the person, on an event participation, or in a claim about either.
 func sharedPropertyHolders(personID, property, value string, archive *GLXFile) []string {
 	key := normalizeProofValue(value)
 	dates := map[string][]string{}
@@ -1118,27 +1287,41 @@ func sharedPropertyHolders(personID, property, value string, archive *GLXFile) [
 			dates[id] = append(dates[id], date)
 		}
 	}
+	addEntries := func(id string, entries []propertyEntry) {
+		if id == "" || id == personID {
+			return
+		}
+		for _, entry := range entries {
+			if normalizeProofValue(entry.value) == key {
+				addDate(id, entry.date)
+			}
+		}
+	}
 	for _, id := range sortedKeys(archive.Assertions) {
 		a := archive.Assertions[id]
-		if a == nil {
+		if a == nil || AssertionIsDisproven(a) {
 			continue
 		}
-		other := a.Subject.Person
-		if other == "" || other == personID || a.Property != property || AssertionIsDisproven(a) || normalizeProofValue(a.Value) != key {
-			continue
+		switch {
+		case a.Participant != nil && a.Subject.Event != "":
+			addEntries(a.Participant.Person, assertionPropertyEntries(a, property))
+		case a.Participant == nil:
+			addEntries(a.Subject.Person, assertionPropertyEntries(a, property))
 		}
-		addDate(other, string(a.Date))
+	}
+	for _, eventID := range sortedKeys(archive.Events) {
+		if event := archive.Events[eventID]; event != nil {
+			for _, p := range event.Participants {
+				addEntries(p.Person, temporalPropertyEntries(p.Properties[property]))
+			}
+		}
 	}
 	for _, id := range sortedKeys(archive.Persons) {
 		person := archive.Persons[id]
 		if id == personID || person == nil {
 			continue
 		}
-		for _, entry := range temporalPropertyEntries(person.Properties[property]) {
-			if normalizeProofValue(entry.value) == key {
-				addDate(id, entry.date)
-			}
-		}
+		addEntries(id, temporalPropertyEntries(person.Properties[property]))
 	}
 	labels := DistinguishPersonNames(archive, append([]string{personID}, ids...))
 	out := make([]string, 0, len(ids))
@@ -1275,7 +1458,7 @@ func buildProofCandidates(topic, personID string, archive *GLXFile, relevant []p
 // own: a disputed link is never set aside because another link is accepted.
 // The identity is only as strong as its weakest accepted link.
 func identityOutcome(personID string, archive *GLXFile, resolved *proofCandidates) proofCandidates {
-	out := proofCandidates{used: true, rejected: resolved.rejected, conflicts: resolved.conflicts, level: supportStrong}
+	out := proofCandidates{used: true, rejected: resolved.rejected, governed: resolved.governed, conflicts: resolved.conflicts, level: supportStrong}
 	openLink := func(relID, label, status string) {
 		out.conflicts = append(out.conflicts, ConflictGroup{
 			Subject: relID, Property: RelationshipTypePossiblySamePerson,

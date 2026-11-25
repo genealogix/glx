@@ -436,7 +436,7 @@ func TestMarkSearchedGapsAndProbatePriority(t *testing.T) {
 		{SourceType: SourceTypeChurchRegister, Result: SearchResultUnavailable},
 		{SourceType: SourceTypeProbate},
 		{SourceType: SourceTypeCensus, Result: SearchResultNotFound},
-	})
+	}, nil)
 	assert.Equal(t, "2 searches: 1 not_found, 1 unavailable", gaps[0].Searched)
 	assert.Equal(t, "1 search: 1 searched", gaps[1].Searched)
 	assert.Equal(t, "1 search: 1 not_found", gaps[2].Searched)

@@ -368,7 +368,7 @@ func TestBuildProof_IdentityIgnoresOthersEventFacts(t *testing.T) {
 // A planned search covers no gap.
 func TestMarkSearchedGaps_PlannedSearchCoversNothing(t *testing.T) {
 	gaps := []ProofGap{{Label: "Church records", Priority: severityHigh}}
-	markSearchedGaps(gaps, []ProofSearch{{SourceType: SourceTypeChurchRegister, Result: SearchResultNotSearched}})
+	markSearchedGaps(gaps, []ProofSearch{{SourceType: SourceTypeChurchRegister, Result: SearchResultNotSearched}}, nil)
 	assert.Empty(t, gaps[0].Searched)
 	assert.Contains(t, appendNextSteps("", gaps), "Church records")
 }

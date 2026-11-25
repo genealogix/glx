@@ -163,6 +163,9 @@ func isVitalPrincipal(eventType, role string) bool {
 		return true
 	case ParticipantRoleChild:
 		return isBirthEventType(eventType)
+	case ParticipantRoleGodchild:
+		// The person baptized.
+		return eventType == EventTypeBaptism || eventType == EventTypeChristening
 	case participationRoleDeceased, participationRoleDecedent:
 		return isDeathEventType(eventType)
 	default:

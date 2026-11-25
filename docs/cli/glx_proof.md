@@ -51,12 +51,14 @@ engagements are context: they name no spouse.
 Searches are listed under the question their research log serves: set the log's
 `question` property (e.g. `question: parentage`), or give it a marriage, parent_child or
 event subject (a marriage log serves children only when its question names
-them; an event log serves its principals, not a witness or informant). Other
-logs about the person are counted as other research, and serve the identity
-question. A gap searched in a source of its type is marked with the search
-results and no longer heads the next steps; a not_searched entry is a plan and
-marks nothing. Children are concluded absent only when every logged search
-came back not_found.
+them; an event log serves its principals, not a witness or informant, and a
+census or other record log the question it names). Other logs about the person
+are counted as other research, and serve the identity question. A gap searched
+in a source of its type is marked with the search results and no longer heads
+the next steps: a census gap only by searches for its year, a marriage-record
+gap only by a log about that marriage. A not_searched entry is a plan and marks
+nothing. Children are concluded absent only when every logged search came back
+not_found; any other result is outstanding.
 
 Only definite unresolved conflicts make a conclusion CONFLICTED. Possible
 conflicts are marked "possible — check" and reduce support. Undated temporal

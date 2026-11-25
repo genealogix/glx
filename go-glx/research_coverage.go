@@ -45,6 +45,8 @@ type CoverageRecord struct {
 	// for, so proof can drop the gap of an excluded marriage by identity
 	// rather than by the spouse's display name.
 	relationshipID string
+	// year is the census year of a census record.
+	year int
 }
 
 // CoverageResult holds the full coverage output for a person.
@@ -466,6 +468,7 @@ func buildCensusRecords(birthYear, deathYear int, schedules []*CensusSchedule, s
 			rec := CoverageRecord{
 				Category: coverageCategoryCensus,
 				Label:    schedule.CoverageLabel(year, age),
+				year:     year,
 			}
 
 			// Check if we have this census
