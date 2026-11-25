@@ -76,7 +76,7 @@ The easiest way to get started is with the included [Dev Container](https://cont
 # GitHub Codespaces: Click "Code" → "Codespaces" → "Create codespace on main"
 ```
 
-The container provides Go 1.27, Node.js 24, GitHub CLI, and the version of golangci-lint pinned by the repo. Go can download the toolchain required by `go.mod` if it is newer than the base image. Setup downloads both Go modules and installs the website and schema dependencies from their lockfiles. It installs the Git hooks with lefthook once the workspace is ready.
+The container provides Go 1.27, Node.js 24, GitHub CLI, and the version of golangci-lint pinned by the repo. Go can download the toolchain required by `go.mod` if it is newer than the base image. Setup downloads the Go modules for the root module and `ci-tools/go.mod` and installs the website and schema dependencies from their lockfiles. It installs the Git hooks with lefthook once the workspace is ready.
 
 ```bash
 make build && make test
@@ -85,7 +85,7 @@ npm run dev --prefix website
 
 Use **GLX docs and converter (VitePress)** in the Ports panel (5173) for the website. To preview an archive with `bin/glx serve`, use **GLX archive viewer** (8080). Keep archive previews private.
 
-After switching branches, run `make install-deps` if dependency files changed, or `bash .devcontainer/install-tools.sh` if `.golangci-lint-version` changed. To run the browser tests, first install Chromium and its system dependencies with `cd website && npx playwright install --with-deps chromium`, then run `npm run test:converter` from `website/`.
+After switching branches, run `make install-deps` if dependency files changed (it runs `npm ci`, which deletes and reinstalls `node_modules` and fails if a `package-lock.json` is out of sync with its `package.json`; run `npm install` in that directory to update the lockfile first), or `bash .devcontainer/install-tools.sh` if `.golangci-lint-version` changed. To run the browser tests, first install Chromium and its system dependencies with `cd website && npx playwright install --with-deps chromium`, then run `npm run test:converter` from `website/`.
 
 Release-only tools such as [GoReleaser](https://goreleaser.com/install/) and [Syft](https://github.com/anchore/syft#installation) are not installed; add them only if running `make release-snapshot`.
 
@@ -97,7 +97,7 @@ git clone https://github.com/YOUR_USERNAME/glx.git
 cd glx
 git remote add upstream https://github.com/genealogix/glx.git
 
-# Install dependencies
+# Install dependencies (npm ci: reinstalls node_modules from the lockfiles)
 make install-deps
 
 # Build and verify

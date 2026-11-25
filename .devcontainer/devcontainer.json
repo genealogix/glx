@@ -9,7 +9,7 @@
     "ghcr.io/devcontainers/features/github-cli:1": {}
   },
   "onCreateCommand": "bash .devcontainer/install-tools.sh",
-  "updateContentCommand": "make -j4 install-deps",
+  "updateContentCommand": "make -j4 -Otarget install-deps",
   "postCreateCommand": "make install-hooks",
   "waitFor": "postCreateCommand",
   "forwardPorts": [5173, 8080],
