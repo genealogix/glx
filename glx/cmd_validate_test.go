@@ -190,6 +190,7 @@ func TestRunValidate_ComprehensiveBrokenReferences(t *testing.T) {
 		{"events", "event-birth", "Role", "head-of-household"}:                    true,
 		{"events", "event-baptism", "Type", "event-type-nonexistent"}:             true,
 		{"places", "place-leeds", "ParentID", "place-nonexistent-parent"}:         true,
+		{"places", "place-york", "Type", "place-type-nonexistent"}:                true,
 		{"sources", "source-register", "RepositoryID", "repository-nonexistent"}:  true,
 		{"citations", "citation-birth", "SourceID", "source-nonexistent"}:         true,
 		{"citations", "citation-birth", "RepositoryID", "repository-nonexistent"}: true,

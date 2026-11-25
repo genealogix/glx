@@ -1,5 +1,12 @@
 places:
   place-leeds:
     name: "Leeds"
+    # A valid type from this fixture's customized place_types vocabulary,
+    # beside the broken parent reference.
+    type: city
     parent: place-nonexistent-parent
+  place-york:
+    name: "York"
+    # Broken vocabulary reference (place_types), not an entity reference.
+    type: place-type-nonexistent
 
