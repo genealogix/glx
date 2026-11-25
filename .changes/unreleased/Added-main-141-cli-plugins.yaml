@@ -1,0 +1,5 @@
+kind: Added
+body: '**[CLI plugins](docs/guides/cli-plugins.md)** — Run `glx <name>` to invoke a trusted `glx-<name>` executable from `PATH`, and `glx --plugins` to see what''s installed. Built-ins take precedence. GLX handles options before the plugin name and passes everything after it unchanged, along with standard input, output and error. The plugin''s exit status is preserved. This release adds discovery and dispatch only; there is no archive protocol, SDK or installer.'
+time: '2026-11-25T00:00:00Z'
+custom:
+  Issue: '#95, #904'
