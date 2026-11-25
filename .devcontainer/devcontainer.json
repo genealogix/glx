@@ -1,6 +1,7 @@
 {
   "name": "GLX development",
   "image": "mcr.microsoft.com/devcontainers/go:1.27",
+  "containerEnv": { "GOTOOLCHAIN": "auto" },
   "features": {
     "ghcr.io/devcontainers/features/node:1": {
       "version": "24"

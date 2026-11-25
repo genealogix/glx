@@ -76,7 +76,7 @@ The easiest way to get started is with the included [Dev Container](https://cont
 # GitHub Codespaces: Click "Code" → "Codespaces" → "Create codespace on main"
 ```
 
-The container provides Go 1.27, Node.js 24, GitHub CLI, and the version of golangci-lint pinned by the repo. Setup downloads both Go modules and installs the website and schema dependencies from their lockfiles. It installs the Git hooks with lefthook once the workspace is ready.
+The container provides Go 1.27, Node.js 24, GitHub CLI, and the version of golangci-lint pinned by the repo. Go can download the toolchain required by `go.mod` if it is newer than the base image. Setup downloads both Go modules and installs the website and schema dependencies from their lockfiles. It installs the Git hooks with lefthook once the workspace is ready.
 
 ```bash
 make build && make test
