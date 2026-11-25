@@ -68,6 +68,7 @@ var invalidFixtures = map[string]invalidFixture{
 		"events[event-birth].Role references non-existent participant_roles: head-of-household",
 		"events[event-baptism].Type references non-existent event_types: event-type-nonexistent",
 		"places[place-leeds].ParentID references non-existent places: place-nonexistent-parent",
+		"places[place-york].Type references non-existent place_types: place-type-nonexistent",
 		"sources[source-register].RepositoryID references non-existent repositories: repository-nonexistent",
 	}},
 	"duplicate-ids": {errors: []string{
