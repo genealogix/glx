@@ -124,7 +124,7 @@ func buildPlacesJSON(archive *glxlib.GLXFile) (*placeAnalysis, error) {
 }
 
 func showStatsJSON(path string) error {
-	archive, err := loadArchiveForStats(path)
+	archive, err := loadArchiveForRead(SystemIOStreams(), path)
 	if err != nil {
 		return err
 	}
@@ -137,7 +137,7 @@ func showStatsJSON(path string) error {
 }
 
 func showPlacesJSON(path string) error {
-	archive, err := loadArchiveForPlaces(path)
+	archive, err := loadArchiveForRead(SystemIOStreams(), path)
 	if err != nil {
 		return err
 	}

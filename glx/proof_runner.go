@@ -48,7 +48,7 @@ func showProof(io *IOStreams, archivePath, personQuery, question, format string,
 		return fmt.Errorf("%w %q (valid: %s)", errUnknownQuestion, question, strings.Join(glxlib.ProofQuestions(), ", "))
 	}
 
-	archive, err := loadArchiveForEvidence(io, archivePath)
+	archive, err := loadArchiveForRead(io, archivePath)
 	if err != nil {
 		return err
 	}

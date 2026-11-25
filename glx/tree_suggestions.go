@@ -224,8 +224,8 @@ func printAncestorSuggestions(suggestions []ancestorSuggestion) {
 		return
 	}
 
-	fmt.Println()
-	fmt.Println("  Research suggestions:")
+	termPrintln()
+	termPrintln("  Research suggestions:")
 
 	for _, s := range suggestions {
 		marker := " "
@@ -233,6 +233,6 @@ func printAncestorSuggestions(suggestions []ancestorSuggestion) {
 			marker = "!"
 		}
 
-		fmt.Printf("  %s %s\n", marker, s.Message)
+		termPrintf("  %s %s\n", marker, s.Message)
 	}
 }

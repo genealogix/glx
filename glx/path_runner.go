@@ -18,7 +18,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 
@@ -64,7 +63,7 @@ func showPath(archivePath, fromQuery, toQuery string, maxHops int, acceptedOnly,
 		return fmt.Errorf("--max-hops must be at least 1, got %d", maxHops)
 	}
 
-	archive, err := loadArchiveForPath(archivePath)
+	archive, err := loadArchiveForRead(SystemIOStreams(), archivePath)
 	if err != nil {
 		return err
 	}
@@ -98,28 +97,6 @@ func showPath(archivePath, fromQuery, toQuery string, maxHops int, acceptedOnly,
 	printPathText(result)
 
 	return nil
-}
-
-// loadArchiveForPath loads an archive from a path.
-func loadArchiveForPath(path string) (*glxlib.GLXFile, error) {
-	info, err := os.Stat(path)
-	if err != nil {
-		return nil, fmt.Errorf("cannot access path: %w", err)
-	}
-
-	if info.IsDir() {
-		archive, duplicates, loadErr := LoadArchiveCached(path)
-		if loadErr != nil {
-			return nil, fmt.Errorf("failed to load archive: %w", loadErr)
-		}
-		for _, d := range duplicates {
-			fmt.Fprintf(os.Stderr, "Warning: %s\n", d)
-		}
-
-		return archive, nil
-	}
-
-	return readSingleFileArchive(path, false)
 }
 
 // resolvePersonForPath finds a person by exact ID or name substring.
@@ -398,27 +375,27 @@ func pathPersonName(archive *glxlib.GLXFile, personID string) string {
 // printPathText prints the path in a human-readable format.
 func printPathText(result *pathResult) {
 	if result.Message != "" {
-		fmt.Printf("\n  %s between %s and %s\n\n", result.Message, result.From, result.To)
+		termPrintf("\n  %s between %s and %s\n\n", result.Message, result.From, result.To)
 
 		return
 	}
 
-	fmt.Printf("\nPath from %s to %s (%d hop(s)):\n\n", result.From, result.To, result.Hops)
+	termPrintf("\nPath from %s to %s (%d hop(s)):\n\n", result.From, result.To, result.Hops)
 
 	for _, hop := range result.Path {
-		fmt.Printf("  %s (%s)\n", hop.PersonName, hop.PersonID)
+		termPrintf("  %s (%s)\n", hop.PersonName, hop.PersonID)
 		if hop.RelType != "" {
 			relLabel := withHypotheticalMarker(formatRelLabel(hop.RelType, hop.Role), hop.Hypothetical)
-			fmt.Printf("    - %s ->\n", relLabel)
+			termPrintf("    - %s ->\n", relLabel)
 		}
 	}
 
 	if result.HypotheticalHops > 0 {
-		fmt.Printf("\n  %s %d of %d hop(s) follow a relationship recorded only as a hypothesis.\n",
+		termPrintf("\n  %s %d of %d hop(s) follow a relationship recorded only as a hypothesis.\n",
 			hypotheticalMarker, result.HypotheticalHops, result.Hops)
 	}
 
-	fmt.Println()
+	termPrintln()
 }
 
 // formatRelLabel creates a display label from relationship type and role.
@@ -437,7 +414,7 @@ func printPathJSON(result *pathResult) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal JSON: %w", err)
 	}
-	fmt.Println(string(data))
+	machinePrintln(string(data))
 
 	return nil
 }

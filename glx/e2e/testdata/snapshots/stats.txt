@@ -1,0 +1,26 @@
+Entity counts:
+  Persons:       4
+  Events:        5
+  Relationships: 3
+  Places:        3
+  Sources:       1
+  Citations:     1
+  Repositories:  1
+  Media:         0
+  Assertions:    1
+
+Assertion confidence:
+  high            1  (100.0%)
+
+Direct assertion references (entity is an assertion's subject):
+  Persons         0/4  (0.0%)
+  Events          1/5  (20.0%)
+  Relationships   0/3  (0.0%)
+  Places          0/3  (0.0%)
+
+Evidence coverage (assertion reachability):
+  Includes unsourced or disproven assertions and place ancestors; percentages do not measure sourcing or proof.
+  Persons         1/4  (25.0%)
+  Events          1/5  (20.0%)
+  Relationships   0/3  (0.0%)
+  Places          3/3  (100.0%)

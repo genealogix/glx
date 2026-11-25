@@ -643,7 +643,7 @@ func TestMergeArchives_SingleFileDestWarnsAboutSourceBinaries(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Join(srcDir, "media", "files"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "media", "files", "photo.jpg"), []byte("SRC"), 0o644))
 
-	serializer := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false, Pretty: true})
+	serializer := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false})
 	srcArchive := &glxlib.GLXFile{
 		Media: map[string]*glxlib.Media{"media-src": {URI: "media/files/photo.jpg"}},
 	}

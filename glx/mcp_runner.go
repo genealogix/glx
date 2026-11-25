@@ -131,7 +131,7 @@ func loadMCPArchiveContext(ctx context.Context, path string) (*mcpArchiveBackend
 			return nil, canceled
 		}
 		if err == nil {
-			archive, err = createSerializer(false, false, "").DeserializeSingleFileBytes(data)
+			archive, err = createSerializer(false, "").DeserializeSingleFileBytes(data)
 		}
 	}
 	if err != nil {

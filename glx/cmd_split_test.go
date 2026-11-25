@@ -58,7 +58,6 @@ func createTestSingleFileArchive(t *testing.T, tmpDir string) string {
 	// Serialize to single file
 	serializer := glxlib.NewSerializer(&glxlib.SerializerOptions{
 		Validate: false,
-		Pretty:   true,
 	})
 
 	data, err := serializer.SerializeSingleFileBytes(glxFile)
@@ -283,7 +282,6 @@ func TestSplitArchive_AllEntityTypes(t *testing.T) {
 
 	serializer := glxlib.NewSerializer(&glxlib.SerializerOptions{
 		Validate: false,
-		Pretty:   true,
 	})
 
 	data, err := serializer.SerializeSingleFileBytes(glxFile)
@@ -336,7 +334,6 @@ func TestSplitArchive_EmptyArchive(t *testing.T) {
 
 	serializer := glxlib.NewSerializer(&glxlib.SerializerOptions{
 		Validate: false,
-		Pretty:   true,
 	})
 
 	data, err := serializer.SerializeSingleFileBytes(glxFile)
@@ -396,7 +393,6 @@ func TestSplitArchive_LargeArchive(t *testing.T) {
 
 	serializer := glxlib.NewSerializer(&glxlib.SerializerOptions{
 		Validate: false,
-		Pretty:   true,
 	})
 
 	data, err := serializer.SerializeSingleFileBytes(glxFile)

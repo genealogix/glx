@@ -57,6 +57,9 @@ type addContext struct {
 // loadAddContext loads the archive and surfaces any duplicate-ID warnings
 // from the multi-file loader to stderr.
 func loadAddContext(io *IOStreams, archivePath string) (*addContext, error) {
+	if err := refuseSingleFileArchive("add", archivePath); err != nil {
+		return nil, err
+	}
 	archive, duplicates, err := LoadArchiveWithOptions(archivePath, false)
 	if err != nil {
 		return nil, fmt.Errorf("loading archive: %w", err)

@@ -1,0 +1,23 @@
+=== person-robert-thompson ===
+
+  Name:             Robert Thompson
+  Sex:              male
+
+── Vital Events ──────────────────────────────────
+  Birth:            April 12, 1850, Springfield
+  Christening:      —
+  Death:            —
+  Burial:           —
+
+── Life Events ───────────────────────────────────
+  (none)
+
+── Family ────────────────────────────────────────
+  Spouse:           Mary Thompson  (m. 1875-06-15, Springfield)
+  Father:           (unknown)
+  Mother:           (unknown)
+  Siblings:         (none found)
+
+── Life History ──────────────────────────────────
+  Robert Thompson was born on April 12, 1850 in Springfield. He married Mary Thompson on June 15, 1875 in Springfield. He had two children: Alice and Robert.
+

@@ -1,0 +1,27 @@
+Proof Summary: When and where was Robert Thompson born? (person-robert-thompson)
+
+  Question: When and where was Robert Thompson born?
+
+  Evidence Collected:
+    1. Sangamon County, Illinois - Register of Births (citation-robert-birth)
+       -> birth event (1850-04-12): date = 1850-04-12 [confidence: high, status: proven]
+       -> Birth date confirmed by the Sangamon County civil birth register
+
+  Evidence Gaps:
+    [ ] 1850 US Census (age ~0) -- first census to list individual names; likely in parents' household
+    [ ] 1860 US Census (age ~10)
+    [ ] 1870 US Census (age ~20) -- HIGH PRIORITY -- may show in parents' household
+    [ ] 1880 US Census (age ~30) -- HIGH PRIORITY -- first census to list parents' birthplaces
+    [ ] 1890 US Census (age ~40) -- mostly destroyed (1921 fire)
+    [ ] 1900 US Census (age ~50)
+    [ ] 1910 US Census (age ~60)
+    [ ] 1920 US Census (age ~70)
+    [ ] 1930 US Census (age ~80)
+    [ ] 1940 US Census (age ~90)
+    [ ] 1950 US Census (age ~100)
+    [ ] Church records
+
+  Conflicts: None identified
+
+  Conclusion: PROVEN
+    Birth: 1850-04-12, Springfield. Priority: locate 1870 US Census (age ~20); 1880 US Census (age ~30).

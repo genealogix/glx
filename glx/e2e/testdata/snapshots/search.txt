@@ -1,0 +1,17 @@
+Found 8 match(es) for "Springfield":
+
+  Events (5):
+    event-birth-alice  place: place-springfield
+    event-birth-mary  place: place-springfield
+    event-birth-robert  place: place-springfield
+    event-birth-robert-jr  place: place-springfield
+    event-marriage-1875  place: place-springfield
+
+  Places (1):
+    place-springfield  id: place-springfield
+
+  Citations (1):
+    citation-robert-birth  properties.text_from_source: Robert Thompson, male, born April 12, 1850, Springfield
+
+  Repositories (1):
+    repository-sangamon-county-courthouse  address: 200 South Ninth Street, Springfield, IL 62701

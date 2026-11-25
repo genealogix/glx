@@ -797,7 +797,7 @@ func showSearch(archivePath, query string, caseSensitive bool, typeFilter string
 		return err
 	}
 
-	archive, err := loadArchiveForQuery(archivePath)
+	archive, err := loadArchiveForRead(SystemIOStreams(), archivePath)
 	if err != nil {
 		return err
 	}
@@ -825,13 +825,13 @@ func showSearch(archivePath, query string, caseSensitive bool, typeFilter string
 		if err != nil {
 			return fmt.Errorf("failed to marshal results: %w", err)
 		}
-		fmt.Println(string(data))
+		machinePrintln(string(data))
 
 		return nil
 	}
 
 	if len(results) == 0 {
-		fmt.Printf("No matches found for %q\n", query)
+		termPrintf("No matches found for %q\n", query)
 
 		return nil
 	}
@@ -842,7 +842,7 @@ func showSearch(archivePath, query string, caseSensitive bool, typeFilter string
 		groups[r.EntityType] = append(groups[r.EntityType], r)
 	}
 
-	fmt.Printf("Found %d match(es) for %q:\n", len(results), query)
+	termPrintf("Found %d match(es) for %q:\n", len(results), query)
 
 	for _, et := range searchEntityTypes {
 		group, ok := groups[et.Key]
@@ -854,9 +854,9 @@ func showSearch(archivePath, query string, caseSensitive bool, typeFilter string
 			return group[i].EntityID < group[j].EntityID
 		})
 
-		fmt.Printf("\n  %s (%d):\n", et.DisplayName, len(group))
+		termPrintf("\n  %s (%d):\n", et.DisplayName, len(group))
 		for _, r := range group {
-			fmt.Printf("    %s  %s: %s\n", r.EntityID, r.Field, r.Value)
+			termPrintf("    %s  %s: %s\n", r.EntityID, r.Field, r.Value)
 		}
 	}
 

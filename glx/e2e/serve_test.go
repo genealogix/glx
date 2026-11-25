@@ -75,7 +75,7 @@ type servedViewer struct {
 // the URL it prints. The process is stopped when the test ends.
 func startServe(t *testing.T, workDir string, args ...string) *servedViewer {
 	t.Helper()
-	cmd := exec.CommandContext(t.Context(), glxBinary, append([]string{"serve", "--port", "0"}, args...)...) //nolint:gosec // test-controlled args
+	cmd := exec.CommandContext(t.Context(), cliBinary(), append([]string{"serve", "--port", "0"}, args...)...) //nolint:gosec // test-controlled args
 	cmd.Dir = workDir
 	cmd.Env = envWithout(os.Environ(), "GLX_CACHE")
 	pipe, err := cmd.StdoutPipe()

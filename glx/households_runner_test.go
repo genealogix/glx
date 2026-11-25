@@ -259,7 +259,7 @@ func TestBuildHouseholds_PlaceAndYearFilters(t *testing.T) {
 func writeHouseholdsArchive(t *testing.T) string {
 	t.Helper()
 	archive := newHouseholdsArchive()
-	data, err := glxlib.NewSerializer(&glxlib.SerializerOptions{Pretty: true, Indent: "  "}).SerializeSingleFileBytes(archive)
+	data, err := glxlib.NewSerializer(&glxlib.SerializerOptions{Indent: "  "}).SerializeSingleFileBytes(archive)
 	require.NoError(t, err)
 	path := filepath.Join(t.TempDir(), "archive.glx")
 	require.NoError(t, os.WriteFile(path, data, 0o600))

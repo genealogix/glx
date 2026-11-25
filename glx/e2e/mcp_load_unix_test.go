@@ -65,7 +65,7 @@ func TestMCPNonWatchNamedPipes(t *testing.T) {
 			}
 			ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
 			defer cancel()
-			cmd := exec.CommandContext(ctx, glxBinary, "mcp", "serve", archivePath)
+			cmd := exec.CommandContext(ctx, cliBinary(), "mcp", "serve", archivePath)
 			cmd.Env = append(envWithout(os.Environ(), "GLX_CACHE"), "GLX_CACHE=auto")
 			output, err := cmd.CombinedOutput()
 			require.NoError(t, ctx.Err(), "MCP startup blocked opening named pipe: %s", output)
@@ -92,7 +92,7 @@ func TestMCPNonWatchIgnoresExcludedNamedPipes(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, glxBinary, "mcp", "serve", dir)
+	cmd := exec.CommandContext(ctx, cliBinary(), "mcp", "serve", dir)
 	cmd.Env = append(envWithout(os.Environ(), "GLX_CACHE"), "GLX_CACHE=auto")
 	output, err := cmd.CombinedOutput()
 	require.NoError(t, ctx.Err(), "MCP blocked reading an excluded path: %s", output)

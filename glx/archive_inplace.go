@@ -306,7 +306,7 @@ func (c glxCollection) setMapEntry(g *glxlib.GLXFile, key string, value reflect.
 // parse is an error rather than a gap, since a gap would send its
 // collections to a guessed filename.
 var standardVocabularyPaths = sync.OnceValues(func() (map[string]string, error) {
-	serializer := createSerializer(false, false, "")
+	serializer := createSerializer(false, "")
 	paths := make(map[string]string)
 	for filename, data := range glxlib.StandardVocabularies() {
 		fragment, err := serializer.DeserializeSingleFileBytes(data)
@@ -389,7 +389,7 @@ func (p *inPlacePlan) fragmentFor(relPath string) *glxlib.GLXFile {
 // (relative path -> contents, as collectGLXFilesFromDir returns them) hold
 // final. See writeArchiveInPlace for the rules.
 func planInPlaceWrites(files map[string][]byte, final *glxlib.GLXFile, policy rewritePolicy) ([]fileOp, error) {
-	serializer := createSerializer(false, true, "  ")
+	serializer := createSerializer(false, "  ")
 
 	plan := &inPlacePlan{
 		files:        files,
@@ -494,7 +494,7 @@ func (p *inPlacePlan) materializeReferencedVocabularies(ops []fileOp, final *glx
 		}
 	}
 
-	archive, _, err := createSerializer(false, false, "").DeserializeMultiFileFromMap(written)
+	archive, _, err := createSerializer(false, "").DeserializeMultiFileFromMap(written)
 	if err != nil {
 		return false, fmt.Errorf("failed to read back the planned archive: %w", err)
 	}

@@ -65,7 +65,7 @@ func renameEntities(archivePath, oldID, newID string, dryRun bool) error {
 
 	// Validate against the whole archive. The merged archive is discarded
 	// afterwards; the per-file fragments below are what get written.
-	whole, duplicates, err := createSerializer(false, false, "").DeserializeMultiFileFromMap(files)
+	whole, duplicates, err := createSerializer(false, "").DeserializeMultiFileFromMap(files)
 	if err != nil {
 		return fmt.Errorf("failed to load archive: %w", err)
 	}
@@ -73,7 +73,7 @@ func renameEntities(archivePath, oldID, newID string, dryRun bool) error {
 	// this path deserializes directly rather than going through
 	// LoadArchiveWithOptions, so it must sanitize them itself (#925).
 	for _, d := range sanitizeDuplicateWarnings(duplicates) {
-		fmt.Fprintf(os.Stderr, "Warning: %s\n", d)
+		termErrorf("Warning: %s\n", d)
 	}
 
 	result, err := glxlib.RenameEntity(whole, oldID, newID)
@@ -108,11 +108,11 @@ func renameEntities(archivePath, oldID, newID string, dryRun bool) error {
 		return err
 	}
 
-	fmt.Printf("Renaming %s → %s (%s)\n", oldID, newID, result.EntityType)
-	fmt.Printf("  Updated %d change(s) in %d file(s)\n", result.RefsUpdated, countTouchedFiles(ops))
+	termPrintf("Renaming %s → %s (%s)\n", oldID, newID, result.EntityType)
+	termPrintf("  Updated %d change(s) in %d file(s)\n", result.RefsUpdated, countTouchedFiles(ops))
 
 	if dryRun {
-		fmt.Println("\n(dry run — no files written)")
+		termPrintln("\n(dry run — no files written)")
 
 		return nil
 	}
@@ -135,11 +135,11 @@ func renameInSingleFile(archivePath, oldID, newID string, dryRun bool, perm os.F
 		return err
 	}
 
-	fmt.Printf("Renaming %s → %s (%s)\n", oldID, newID, result.EntityType)
-	fmt.Printf("  Updated %d change(s)\n", result.RefsUpdated)
+	termPrintf("Renaming %s → %s (%s)\n", oldID, newID, result.EntityType)
+	termPrintf("  Updated %d change(s)\n", result.RefsUpdated)
 
 	if dryRun {
-		fmt.Println("\n(dry run — no files written)")
+		termPrintln("\n(dry run — no files written)")
 
 		return nil
 	}
@@ -183,7 +183,7 @@ func (op *fileOp) perm() os.FileMode {
 // (the canonical filename for newID) by emitting a delete of the old path and
 // a create of the new one.
 func planRenameWrites(files map[string][]byte, whole *glxlib.GLXFile, entityType glxlib.EntityType, oldID, newID, newName string) ([]fileOp, error) {
-	serializer := createSerializer(false, true, "  ")
+	serializer := createSerializer(false, "  ")
 
 	// Walk in sorted order so the plan (and therefore any rollback) is
 	// deterministic regardless of map iteration order. Track existing paths

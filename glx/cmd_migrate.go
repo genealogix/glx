@@ -147,7 +147,7 @@ func migrateArchive(archivePath string) error {
 			return fmt.Errorf("failed to load archive: %w", loadErr)
 		}
 		for _, d := range duplicates {
-			fmt.Fprintf(os.Stderr, "Warning: %s\n", d)
+			termErrorf("Warning: %s\n", d)
 		}
 		archive = loaded
 		loadedFiles = files
@@ -244,15 +244,15 @@ func migrateArchive(archivePath string) error {
 				if legacyGenderRemaining == 1 {
 					noun, verb = "property", "remains"
 				}
-				fmt.Printf("Gender→sex rename skipped (archive already post-split) but %d legacy `gender` %s %s unmigrated; rename manually to preserve intent.\n",
+				termPrintf("Gender→sex rename skipped (archive already post-split) but %d legacy `gender` %s %s unmigrated; rename manually to preserve intent.\n",
 					legacyGenderRemaining, noun, verb)
 			} else {
-				fmt.Println("Gender→sex rename skipped (archive already post-split); no legacy `gender` properties remain.")
+				termPrintln("Gender→sex rename skipped (archive already post-split); no legacy `gender` properties remain.")
 			}
 
 			return nil
 		}
-		fmt.Println("No deprecated properties found. Archive is already up to date.")
+		termPrintln("No deprecated properties found. Archive is already up to date.")
 
 		return nil
 	}
@@ -270,12 +270,12 @@ func migrateArchive(archivePath string) error {
 		}
 	}
 
-	fmt.Println("Migration complete:")
-	fmt.Printf("  %-27s%d\n", "Events created:", report.EventsCreated)
-	fmt.Printf("  %-27s%d\n", "Events merged:", report.EventsMerged)
-	fmt.Printf("  %-27s%d\n", "Properties removed:", report.PropertiesRemoved)
-	fmt.Printf("  %-27s%d\n", "Assertions migrated:", report.AssertionsMigrated)
-	fmt.Printf("  %-27s%d\n", "Vocab entries removed:", report.VocabEntriesRemoved)
+	termPrintln("Migration complete:")
+	termPrintf("  %-27s%d\n", "Events created:", report.EventsCreated)
+	termPrintf("  %-27s%d\n", "Events merged:", report.EventsMerged)
+	termPrintf("  %-27s%d\n", "Properties removed:", report.PropertiesRemoved)
+	termPrintf("  %-27s%d\n", "Assertions migrated:", report.AssertionsMigrated)
+	termPrintf("  %-27s%d\n", "Vocab entries removed:", report.VocabEntriesRemoved)
 	if migrateRenameGenderToSex {
 		if report.GenderRenameSkipped {
 			if legacyGenderRemaining > 0 {
@@ -283,37 +283,37 @@ func migrateArchive(archivePath string) error {
 				if legacyGenderRemaining == 1 {
 					noun, verb = "property", "remains"
 				}
-				fmt.Printf("  Gender→sex rename:         skipped (archive post-split; %d legacy `gender` %s %s)\n",
+				termPrintf("  Gender→sex rename:         skipped (archive post-split; %d legacy `gender` %s %s)\n",
 					legacyGenderRemaining, noun, verb)
 			} else {
-				fmt.Println("  Gender→sex rename:         skipped (archive already post-split; no legacy data)")
+				termPrintln("  Gender→sex rename:         skipped (archive already post-split; no legacy data)")
 			}
 		} else {
-			fmt.Printf("  %-27s%d\n", "Gender→sex properties:", report.PropertiesRenamed)
-			fmt.Printf("  %-27s%d\n", "Gender→sex assertions:", report.AssertionsRenamed)
-			fmt.Printf("  %-27s%d\n", "Gender→sex vocab entries:", report.VocabEntriesRenamed)
+			termPrintf("  %-27s%d\n", "Gender→sex properties:", report.PropertiesRenamed)
+			termPrintf("  %-27s%d\n", "Gender→sex assertions:", report.AssertionsRenamed)
+			termPrintf("  %-27s%d\n", "Gender→sex vocab entries:", report.VocabEntriesRenamed)
 		}
 	}
 	if migrateConfidenceDisputedToStatus {
-		fmt.Printf("  %-27s%d\n", "Confidence→status moves:", report.ConfidenceDisputedConverted)
+		termPrintf("  %-27s%d\n", "Confidence→status moves:", report.ConfidenceDisputedConverted)
 		if report.ConfidenceDisputedStatusConflicts > 0 {
-			fmt.Printf("  %-27s%d (existing status preserved; review warnings)\n",
+			termPrintf("  %-27s%d (existing status preserved; review warnings)\n",
 				"  status conflicts:", report.ConfidenceDisputedStatusConflicts)
 		}
 	}
 	if migrateSourceDescriptionToProperty {
-		fmt.Printf("  %-27s%d\n", "Source descriptions migrated:", report.SourceDescriptionsConverted)
+		termPrintf("  %-27s%d\n", "Source descriptions migrated:", report.SourceDescriptionsConverted)
 	}
 	if migrateMediaDescriptionToProperty {
-		fmt.Printf("  %-27s%d\n", "Media descriptions migrated:", report.MediaDescriptionsConverted)
+		termPrintf("  %-27s%d\n", "Media descriptions migrated:", report.MediaDescriptionsConverted)
 	}
 	if migrateRenameSsnToNationalID {
-		fmt.Printf("  %-27s%d\n", "Ssn→national_id properties:", report.SsnPropertiesRenamed)
-		fmt.Printf("  %-27s%d\n", "Ssn→national_id assertions:", report.SsnAssertionsRenamed)
-		fmt.Printf("  %-27s%d\n", "Ssn→national_id vocab:", report.SsnVocabEntriesRenamed)
+		termPrintf("  %-27s%d\n", "Ssn→national_id properties:", report.SsnPropertiesRenamed)
+		termPrintf("  %-27s%d\n", "Ssn→national_id assertions:", report.SsnAssertionsRenamed)
+		termPrintf("  %-27s%d\n", "Ssn→national_id vocab:", report.SsnVocabEntriesRenamed)
 	}
 	if migrateStripEventTitleYear {
-		fmt.Printf("  %-27s%d\n", "Event title years stripped:", report.EventTitleYearsStripped)
+		termPrintf("  %-27s%d\n", "Event title years stripped:", report.EventTitleYearsStripped)
 	}
 
 	return nil

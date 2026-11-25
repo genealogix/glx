@@ -1,0 +1,25 @@
+{
+  "from": "person-alice-thompson",
+  "to": "person-robert-thompson-jr",
+  "hops": 2,
+  "path": [
+    {
+      "person_id": "person-alice-thompson",
+      "person_name": "Alice Thompson",
+      "relationship_id": "rel-parent-alice",
+      "relationship_type": "parent_child",
+      "role": "child"
+    },
+    {
+      "person_id": "person-mary-thompson",
+      "person_name": "Mary Thompson",
+      "relationship_id": "rel-parent-robert-jr",
+      "relationship_type": "parent_child",
+      "role": "parent"
+    },
+    {
+      "person_id": "person-robert-thompson-jr",
+      "person_name": "Robert Thompson Jr."
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "person_id": "person-robert-thompson",
+  "person_name": "Robert Thompson",
+  "question": "birth",
+  "question_text": "When and where was Robert Thompson born?",
+  "evidence": [
+    {
+      "assertion_id": "assertion-robert-birth-date",
+      "subject": "birth event (1850-04-12)",
+      "property": "date",
+      "value": "1850-04-12",
+      "confidence": "high",
+      "status": "proven",
+      "notes": "Birth date confirmed by the Sangamon County civil birth register",
+      "support": [
+        {
+          "ref": "citation-robert-birth",
+          "kind": "citation",
+          "source_id": "source-sangamon-births",
+          "source_title": "Sangamon County, Illinois - Register of Births",
+          "locator": "Volume 1, Page 47, Entry 312"
+        }
+      ]
+    }
+  ],
+  "gaps": [
+    {
+      "label": "1850 US Census (age ~0)",
+      "description": "first census to list individual names; likely in parents' household"
+    },
+    {
+      "label": "1860 US Census (age ~10)"
+    },
+    {
+      "label": "1870 US Census (age ~20)",
+      "priority": "high",
+      "description": "may show in parents' household"
+    },
+    {
+      "label": "1880 US Census (age ~30)",
+      "priority": "high",
+      "description": "first census to list parents' birthplaces"
+    },
+    {
+      "label": "1890 US Census (age ~40)",
+      "description": "mostly destroyed (1921 fire)"
+    },
+    {
+      "label": "1900 US Census (age ~50)"
+    },
+    {
+      "label": "1910 US Census (age ~60)"
+    },
+    {
+      "label": "1920 US Census (age ~70)"
+    },
+    {
+      "label": "1930 US Census (age ~80)"
+    },
+    {
+      "label": "1940 US Census (age ~90)"
+    },
+    {
+      "label": "1950 US Census (age ~100)"
+    },
+    {
+      "label": "Church records"
+    }
+  ],
+  "conflicts": null,
+  "conclusion": "PROVEN",
+  "summary": "Birth: 1850-04-12, Springfield. Priority: locate 1870 US Census (age ~20); 1880 US Census (age ~30)."
+}

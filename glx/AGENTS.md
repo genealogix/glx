@@ -24,6 +24,17 @@ func runValidate(_ *cobra.Command, args []string) error {
 }
 ```
 
+## Terminal Output
+
+Never call `fmt.Print*`, or `fmt.Fprint*` with `os.Stdout`/`os.Stderr`, in CLI code. Write
+through `IOStreams` or the `term*` helpers in `term_output.go`, which escape terminal control
+characters in archive-controlled text; `machinePrintln` is for JSON and other machine output
+only. `TestNoBareTerminalPrints` enforces this.
+
+Read-only commands load an archive with `loadArchiveForRead`, never their own `os.Stat` /
+`LoadArchiveCached` / `readSingleFileArchive` sequence. Commands that write the multi-file
+layout call `refuseSingleFileArchive` before loading.
+
 ## Unused Parameters
 
 `_` parameters are ONLY acceptable when required by an interface (cobra handlers). For regular functions, remove unused parameters entirely and update call sites.

@@ -166,7 +166,7 @@ func TestExplorationJSONCitationAndEmptyResults(t *testing.T) {
 
 func TestExplorationJSONRunnerOutput(t *testing.T) {
 	archivePath := "../docs/examples/complete-family"
-	archive, err := loadArchiveForSummary(archivePath)
+	archive, err := loadArchiveForRead(SystemIOStreams(), archivePath)
 	require.NoError(t, err)
 	personID := sortedKeys(archive.Persons)[0]
 	tests := map[string]func() error{

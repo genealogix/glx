@@ -15,8 +15,6 @@
 package main
 
 import (
-	"fmt"
-	"os"
 	"sort"
 	"strings"
 
@@ -25,13 +23,13 @@ import (
 
 // analyzePlaces loads an archive and reports place quality issues.
 func analyzePlaces(path string) error {
-	archive, err := loadArchiveForPlaces(path)
+	archive, err := loadArchiveForRead(SystemIOStreams(), path)
 	if err != nil {
 		return err
 	}
 
 	if len(archive.Places) == 0 {
-		fmt.Println("No places found in archive.")
+		termPrintln("No places found in archive.")
 
 		return nil
 	}
@@ -40,33 +38,6 @@ func analyzePlaces(path string) error {
 	printPlaceAnalysis(analysis)
 
 	return nil
-}
-
-// loadArchiveForPlaces loads an archive from a path (directory or single file).
-func loadArchiveForPlaces(path string) (*glxlib.GLXFile, error) {
-	info, err := os.Stat(path)
-	if err != nil {
-		return nil, fmt.Errorf("cannot access path: %w", err)
-	}
-
-	if info.IsDir() {
-		archive, duplicates, err := LoadArchiveCached(path)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load archive: %w", err)
-		}
-		for _, d := range duplicates {
-			fmt.Fprintf(os.Stderr, "Warning: %s\n", d)
-		}
-
-		return archive, nil
-	}
-
-	archive, err := readSingleFileArchive(path, false)
-	if err != nil {
-		return nil, err
-	}
-
-	return archive, nil
 }
 
 // placeAnalysis holds the results of place quality analysis.
@@ -278,14 +249,14 @@ func collectPlaceRefsFromProperty(raw any, referenced map[string]struct{}) {
 
 // printPlaceAnalysis prints the analysis results.
 func printPlaceAnalysis(a *placeAnalysis) {
-	fmt.Printf("Place analysis: %d places\n", a.Total)
+	termPrintf("Place analysis: %d places\n", a.Total)
 
 	issues := 0
 
 	// Duplicate names
 	if len(a.Duplicates) > 0 {
 		issues += len(a.Duplicates)
-		fmt.Println("\nDuplicate names (ambiguous):")
+		termPrintln("\nDuplicate names (ambiguous):")
 
 		names := make([]string, 0, len(a.Duplicates))
 		for name := range a.Duplicates {
@@ -297,9 +268,9 @@ func printPlaceAnalysis(a *placeAnalysis) {
 			ids := a.Duplicates[name]
 			sort.Strings(ids)
 			displayName := a.DuplicateOriginals[name]
-			fmt.Printf("  \"%s\" appears %d times:\n", displayName, len(ids))
+			termPrintf("  \"%s\" appears %d times:\n", displayName, len(ids))
 			for _, id := range ids {
-				fmt.Printf("    %s  %s\n", id, a.Canonical[id])
+				termPrintf("    %s  %s\n", id, a.Canonical[id])
 			}
 		}
 	}
@@ -307,49 +278,49 @@ func printPlaceAnalysis(a *placeAnalysis) {
 	// Missing coordinates
 	if len(a.MissingCoords) > 0 {
 		issues += len(a.MissingCoords)
-		fmt.Printf("\nMissing coordinates (%d of %d):\n", len(a.MissingCoords), a.Total)
+		termPrintf("\nMissing coordinates (%d of %d):\n", len(a.MissingCoords), a.Total)
 		for _, id := range a.MissingCoords {
-			fmt.Printf("  %s  %s\n", id, a.Canonical[id])
+			termPrintf("  %s  %s\n", id, a.Canonical[id])
 		}
 	}
 
 	// Missing type
 	if len(a.MissingType) > 0 {
 		issues += len(a.MissingType)
-		fmt.Printf("\nMissing type (%d of %d):\n", len(a.MissingType), a.Total)
+		termPrintf("\nMissing type (%d of %d):\n", len(a.MissingType), a.Total)
 		for _, id := range a.MissingType {
-			fmt.Printf("  %s  %s\n", id, a.Canonical[id])
+			termPrintf("  %s  %s\n", id, a.Canonical[id])
 		}
 	}
 
 	// No parent
 	if len(a.NoParent) > 0 {
 		issues += len(a.NoParent)
-		fmt.Printf("\nNo parent (hierarchy gap):\n")
+		termPrintf("\nNo parent (hierarchy gap):\n")
 		for _, id := range a.NoParent {
-			fmt.Printf("  %s  %s\n", id, a.Canonical[id])
+			termPrintf("  %s  %s\n", id, a.Canonical[id])
 		}
 	}
 
 	// Dangling parent
 	if len(a.DanglingParent) > 0 {
 		issues += len(a.DanglingParent)
-		fmt.Printf("\nDangling parent (references missing place):\n")
+		termPrintf("\nDangling parent (references missing place):\n")
 		for _, id := range a.DanglingParent {
-			fmt.Printf("  %s  %s  (parent: %s)\n", id, a.Canonical[id], a.DanglingParentIDs[id])
+			termPrintf("  %s  %s  (parent: %s)\n", id, a.Canonical[id], a.DanglingParentIDs[id])
 		}
 	}
 
 	// Unreferenced
 	if len(a.Unreferenced) > 0 {
 		issues += len(a.Unreferenced)
-		fmt.Printf("\nUnreferenced (not used by any event, person property, assertion, or as parent):\n")
+		termPrintf("\nUnreferenced (not used by any event, person property, assertion, or as parent):\n")
 		for _, id := range a.Unreferenced {
-			fmt.Printf("  %s  %s\n", id, a.Canonical[id])
+			termPrintf("  %s  %s\n", id, a.Canonical[id])
 		}
 	}
 
 	if issues == 0 {
-		fmt.Println("\nNo issues found.")
+		termPrintln("\nNo issues found.")
 	}
 }

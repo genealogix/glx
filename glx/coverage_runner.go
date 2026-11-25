@@ -17,7 +17,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
@@ -38,7 +37,7 @@ func showCoverage(archivePath, personQuery, country string, jsonOutput bool) err
 		return err
 	}
 
-	archive, err := loadArchiveForCoverage(archivePath)
+	archive, err := loadArchiveForRead(SystemIOStreams(), archivePath)
 	if err != nil {
 		return err
 	}
@@ -60,28 +59,6 @@ func showCoverage(archivePath, personQuery, country string, jsonOutput bool) err
 	printCoverageText(result)
 
 	return nil
-}
-
-// loadArchiveForCoverage loads an archive from a path.
-func loadArchiveForCoverage(path string) (*glxlib.GLXFile, error) {
-	info, err := os.Stat(path)
-	if err != nil {
-		return nil, fmt.Errorf("cannot access path: %w", err)
-	}
-
-	if info.IsDir() {
-		archive, duplicates, loadErr := LoadArchiveCached(path)
-		if loadErr != nil {
-			return nil, fmt.Errorf("failed to load archive: %w", loadErr)
-		}
-		for _, d := range duplicates {
-			fmt.Fprintf(os.Stderr, "Warning: %s\n", d)
-		}
-
-		return archive, nil
-	}
-
-	return readSingleFileArchive(path, false)
 }
 
 // findPersonForCoverage finds a person by ID or name substring.
@@ -123,7 +100,7 @@ func printCoverageText(result *coverageResult) {
 		name = result.PersonID
 	}
 
-	fmt.Printf("Source Coverage for %s (%s)\n", name, result.PersonID)
+	termPrintf("Source Coverage for %s (%s)\n", name, result.PersonID)
 
 	// Summary line
 	var parts []string
@@ -144,7 +121,7 @@ func printCoverageText(result *coverageResult) {
 		parts = append(parts, "Died: unknown")
 	}
 	if len(parts) > 0 {
-		fmt.Printf("%s\n", strings.Join(parts, " | "))
+		termPrintf("%s\n", strings.Join(parts, " | "))
 	}
 
 	// Group by category
@@ -168,7 +145,7 @@ func printCoverageText(result *coverageResult) {
 			continue
 		}
 
-		fmt.Printf("\n  %s:\n", cat.label)
+		termPrintf("\n  %s:\n", cat.label)
 		for _, r := range catRecords {
 			marker := "[ ]"
 			if r.Found {
@@ -189,11 +166,11 @@ func printCoverageText(result *coverageResult) {
 				line += " -- " + r.Description
 			}
 
-			fmt.Println(line)
+			termPrintln(line)
 		}
 	}
 
-	fmt.Printf("\n  Coverage: %d of %d expected records found (%d%%)\n",
+	termPrintf("\n  Coverage: %d of %d expected records found (%d%%)\n",
 		result.Found, result.Expected, coveragePercent(result.Found, result.Expected))
 	printCoverageAppearances(result.AppearsIn)
 }
@@ -205,7 +182,7 @@ func printCoverageAppearances(appearances []coverageAppearance) {
 		return
 	}
 
-	fmt.Println("\n  Appears in (other people's records, not counted above):")
+	termPrintln("\n  Appears in (other people's records, not counted above):")
 	for _, a := range appearances {
 		line := "    " + a.Label
 		if a.Role != "" {
@@ -215,7 +192,7 @@ func printCoverageAppearances(appearances []coverageAppearance) {
 		if a.Date != "" {
 			line += ", " + a.Date
 		}
-		fmt.Println(line)
+		termPrintln(line)
 	}
 }
 
@@ -233,7 +210,7 @@ func printCoverageJSON(result *coverageResult) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal JSON: %w", err)
 	}
-	fmt.Println(string(data))
+	machinePrintln(string(data))
 
 	return nil
 }

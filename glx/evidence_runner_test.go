@@ -178,7 +178,7 @@ func writeTempArchive(t *testing.T, archive *glxlib.GLXFile) string {
 	t.Helper()
 	// Validate:false — the condensed fixtures intentionally omit vocab/schema
 	// scaffolding irrelevant to evidence grouping.
-	ser := glxlib.NewSerializer(&glxlib.SerializerOptions{Pretty: true, Indent: "  "})
+	ser := glxlib.NewSerializer(&glxlib.SerializerOptions{Indent: "  "})
 	data, err := ser.SerializeSingleFileBytes(archive)
 	if err != nil {
 		t.Fatalf("serialize: %v", err)
@@ -245,7 +245,7 @@ func TestLoadArchiveForEvidence_SingleFileMergesVocabularies(t *testing.T) {
 	}
 
 	streams, _, _ := TestIOStreams()
-	archive, err := loadArchiveForEvidence(streams, archivePath)
+	archive, err := loadArchiveForRead(streams, archivePath)
 	if err != nil {
 		t.Fatalf("loadArchiveForEvidence: %v", err)
 	}

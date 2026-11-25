@@ -1149,7 +1149,7 @@ func TestLoadArchiveForSummary_SingleFileReadError(t *testing.T) {
 	bad := filepath.Join(dir, "archive.glx")
 	require.NoError(t, os.WriteFile(bad, []byte("persons: [unterminated\n"), 0o644))
 
-	_, err := loadArchiveForSummary(bad)
+	_, err := loadArchiveForRead(SystemIOStreams(), bad)
 	require.Error(t, err)
 }
 

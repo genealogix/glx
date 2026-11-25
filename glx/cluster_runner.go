@@ -18,7 +18,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -61,7 +60,7 @@ type clusterResult struct {
 
 // showCluster loads an archive and displays FAN club analysis for a person.
 func showCluster(archivePath, personQuery, filterPlace string, beforeYear, afterYear int, jsonOutput bool) error {
-	archive, err := loadArchiveForCluster(archivePath)
+	archive, err := loadArchiveForRead(SystemIOStreams(), archivePath)
 	if err != nil {
 		return err
 	}
@@ -80,28 +79,6 @@ func showCluster(archivePath, personQuery, filterPlace string, beforeYear, after
 	printClusterText(result)
 
 	return nil
-}
-
-// loadArchiveForCluster loads an archive from a path.
-func loadArchiveForCluster(path string) (*glxlib.GLXFile, error) {
-	info, err := os.Stat(path)
-	if err != nil {
-		return nil, fmt.Errorf("cannot access path: %w", err)
-	}
-
-	if info.IsDir() {
-		archive, duplicates, loadErr := LoadArchiveCached(path)
-		if loadErr != nil {
-			return nil, fmt.Errorf("failed to load archive: %w", loadErr)
-		}
-		for _, d := range duplicates {
-			fmt.Fprintf(os.Stderr, "Warning: %s\n", d)
-		}
-
-		return archive, nil
-	}
-
-	return readSingleFileArchive(path, false)
 }
 
 // resolvePersonForCluster finds a person by exact ID or name substring.
@@ -677,10 +654,10 @@ func clusterResolvePlaceName(placeID string, archive *glxlib.GLXFile) string {
 
 // printClusterText prints the cluster in human-readable format.
 func printClusterText(result *clusterResult) {
-	fmt.Printf("\nAssociates of %s (%s):\n", result.PersonName, result.PersonID)
+	termPrintf("\nAssociates of %s (%s):\n", result.PersonName, result.PersonID)
 
 	if len(result.Associates) == 0 {
-		fmt.Println("\n  No associates found.")
+		termPrintln("\n  No associates found.")
 
 		return
 	}
@@ -715,14 +692,14 @@ func printClusterText(result *clusterResult) {
 			}
 		}
 		if len(entries) > 0 {
-			fmt.Printf("\n  %s:\n", group.label)
+			termPrintf("\n  %s:\n", group.label)
 			for _, e := range entries {
-				fmt.Println(e)
+				termPrintln(e)
 			}
 		}
 	}
 
-	fmt.Printf("\n  %d associate(s) found\n\n", len(result.Associates))
+	termPrintf("\n  %d associate(s) found\n\n", len(result.Associates))
 }
 
 // printClusterJSON outputs the result as JSON.
@@ -731,7 +708,7 @@ func printClusterJSON(result *clusterResult) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal JSON: %w", err)
 	}
-	fmt.Println(string(data))
+	machinePrintln(string(data))
 
 	return nil
 }

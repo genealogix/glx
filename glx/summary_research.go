@@ -32,14 +32,14 @@ func printResearchSection(personID string, archive *glxlib.GLXFile) {
 		return
 	}
 
-	fmt.Println(sectionHeader("Research"))
+	termPrintln(sectionHeader("Research"))
 	for i, id := range ids {
 		if i > 0 {
-			fmt.Println()
+			termPrintln()
 		}
 		printResearchLogSummary(id, personID, archive.ResearchLogs[id])
 	}
-	fmt.Println()
+	termPrintln()
 }
 
 // researchLogIDsForPerson returns, sorted, the IDs of research logs whose
@@ -69,18 +69,18 @@ func printResearchLogSummary(id, personID string, log *glxlib.ResearchLog) {
 	if log.Subject == nil || log.Subject.Person != personID {
 		header += "  (candidate in a lead)"
 	}
-	fmt.Println(header)
+	termPrintln(header)
 
 	objective := log.Objective
 	if objective == "" {
 		objective = log.Title
 	}
 	if objective != "" {
-		fmt.Printf("    %-14s%s\n", "Objective:", objective)
+		termPrintf("    %-14s%s\n", "Objective:", objective)
 	}
 
 	if n := log.CountSearchResults(glxlib.SearchResultNotSearched); n > 0 {
-		fmt.Printf("    %-14s%d planned %s not yet performed\n", "Outstanding:", n, pluralize(n, "search", "searches"))
+		termPrintf("    %-14s%d planned %s not yet performed\n", "Outstanding:", n, pluralize(n, "search", "searches"))
 	}
 
 	if len(log.Leads) == 0 {
@@ -113,9 +113,9 @@ func printResearchLogSummary(id, personID string, log *glxlib.ResearchLog) {
 			counts = append(counts, fmt.Sprintf("%d %s", byStatus[status], status))
 		}
 	}
-	fmt.Printf("    %-14s%s\n", "Leads:", strings.Join(counts, ", "))
+	termPrintf("    %-14s%s\n", "Leads:", strings.Join(counts, ", "))
 	for _, lead := range open {
-		fmt.Printf("      - %s\n", formatOpenLead(lead))
+		termPrintf("      - %s\n", formatOpenLead(lead))
 	}
 }
 

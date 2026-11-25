@@ -372,7 +372,7 @@ func (s *viewerServer) readStandalonePerson(id string) (*storedPerson, error) {
 		return nil, ErrServePersonNotStandalone
 	}
 
-	file, _, err := createSerializer(false, false, "").DeserializeMultiFileFromMap(map[string][]byte{relPath: data})
+	file, _, err := createSerializer(false, "").DeserializeMultiFileFromMap(map[string][]byte{relPath: data})
 	if err != nil {
 		return nil, fmt.Errorf("reading %s: %w", relPath, err)
 	}
@@ -460,7 +460,7 @@ func (s *viewerServer) updatePerson(id string, req *personUpdateRequest) error {
 		return err
 	}
 
-	files, err := createSerializer(false, true, "  ").SerializeMultiFileToMap(partial)
+	files, err := createSerializer(false, "  ").SerializeMultiFileToMap(partial)
 	if err != nil {
 		return fmt.Errorf("serializing person: %w", err)
 	}

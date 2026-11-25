@@ -107,7 +107,7 @@ func TestCacheRoundTripFidelity(t *testing.T) {
 			orig, _, err := LoadArchiveWithOptions(ex, false)
 			require.NoError(t, err)
 
-			ser := glxlib.NewSerializer(&glxlib.SerializerOptions{Pretty: true, Indent: "  "})
+			ser := glxlib.NewSerializer(&glxlib.SerializerOptions{Indent: "  "})
 			origFiles, err := ser.SerializeMultiFileToMap(orig)
 			require.NoError(t, err)
 
@@ -159,7 +159,7 @@ func TestCacheRoundTripExoticProperties(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, header.Counts.Persons)
 
-	ser := glxlib.NewSerializer(&glxlib.SerializerOptions{Pretty: true, Indent: "  "})
+	ser := glxlib.NewSerializer(&glxlib.SerializerOptions{Indent: "  "})
 	origFiles, err := ser.SerializeMultiFileToMap(orig)
 	require.NoError(t, err)
 	gotFiles, err := ser.SerializeMultiFileToMap(got)

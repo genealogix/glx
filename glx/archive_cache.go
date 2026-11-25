@@ -641,7 +641,7 @@ func LoadArchiveCached(path string) (*glxlib.GLXFile, []string, error) {
 
 	if cacheable && mode == cacheModeAuto {
 		if werr := writeCache(path, archive, duplicates); werr != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to write archive cache: %v\n", werr)
+			termErrorf("Warning: failed to write archive cache: %v\n", werr)
 		}
 	}
 

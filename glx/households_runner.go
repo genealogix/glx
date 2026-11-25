@@ -110,7 +110,7 @@ func showHouseholds(io *IOStreams, archivePath string, opts householdsOptions) e
 	}
 
 	// Same loader as glx evidence: directory or single file, read-only.
-	archive, err := loadArchiveForEvidence(io, archivePath)
+	archive, err := loadArchiveForRead(io, archivePath)
 	if err != nil {
 		return err
 	}

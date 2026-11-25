@@ -183,7 +183,7 @@ func walkOwnGLXFiles(dir string, fn func(absPath, rel string) error) error {
 func roundTripExampleArchive(t *testing.T, ex exampleArchive, entitySchemas map[EntityType]*jsonschema.Schema) {
 	t.Helper()
 
-	serializer := NewSerializer(&SerializerOptions{Validate: false, Pretty: true})
+	serializer := NewSerializer(&SerializerOptions{Validate: false})
 
 	// Step 1: read input bytes; produce the first struct snapshot and the
 	// canonical "input map" used for the semantic-equality check.

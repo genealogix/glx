@@ -136,7 +136,7 @@ func showMigrations(io *IOStreams, archivePath, personQuery, pattern string, inc
 		}
 	}
 
-	archive, err := loadArchiveForEvidence(io, archivePath)
+	archive, err := loadArchiveForRead(io, archivePath)
 	if err != nil {
 		return err
 	}

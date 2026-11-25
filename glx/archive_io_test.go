@@ -686,39 +686,34 @@ func TestCreateSerializer(t *testing.T) {
 	tests := []struct {
 		name      string
 		validate  bool
-		pretty    bool
 		indent    string
 		checkOpts func(s *glxlib.DefaultSerializer) bool
 	}{
 		{
 			name:     "default options",
 			validate: false,
-			pretty:   false,
 			indent:   "",
 		},
 		{
 			name:     "with validation",
 			validate: true,
-			pretty:   false,
 			indent:   "",
 		},
 		{
-			name:     "with pretty print",
+			name:     "with indent",
 			validate: false,
-			pretty:   true,
 			indent:   "  ",
 		},
 		{
 			name:     "all options enabled",
 			validate: true,
-			pretty:   true,
 			indent:   "    ",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			serializer := createSerializer(tt.validate, tt.pretty, tt.indent)
+			serializer := createSerializer(tt.validate, tt.indent)
 			if serializer == nil {
 				t.Error("createSerializer() returned nil")
 			}

@@ -39,7 +39,7 @@ func exportToJSONLD(inputPath, outputPath string, verbose, privatizeLiving bool)
 	var logWriter *os.File
 	if verbose {
 		logWriter = os.Stderr
-		fmt.Println("Exporting to JSON-LD format")
+		termPrintln("Exporting to JSON-LD format")
 	}
 
 	data, result, err := glxlib.ExportJSONLD(glx, logWriter)
@@ -76,22 +76,22 @@ func ensureJSONLDExtension(path string) string {
 }
 
 func printJSONLDExportSuccess(outputPath string, result *glxlib.ExportResult) {
-	fmt.Printf("✓ Successfully exported to %s (JSON-LD %s)\n", outputPath, result.Version)
-	fmt.Println("\nExport statistics:")
-	fmt.Printf("  Persons:        %d\n", result.Statistics.PersonsExported)
-	fmt.Printf("  Events:         %d\n", result.Statistics.EventsProcessed)
-	fmt.Printf("  Places:         %d\n", result.Statistics.PlacesResolved)
-	fmt.Printf("  Relationships:  %d\n", result.Statistics.RelationshipsExported)
-	fmt.Printf("  Sources:        %d\n", result.Statistics.SourcesExported)
-	fmt.Printf("  Citations:      %d\n", result.Statistics.CitationsExported)
-	fmt.Printf("  Repositories:   %d\n", result.Statistics.RepositoriesExported)
-	fmt.Printf("  Media:          %d\n", result.Statistics.MediaExported)
-	fmt.Printf("  Assertions:     %d\n", result.Statistics.AssertionsExported)
+	termPrintf("✓ Successfully exported to %s (JSON-LD %s)\n", outputPath, result.Version)
+	termPrintln("\nExport statistics:")
+	termPrintf("  Persons:        %d\n", result.Statistics.PersonsExported)
+	termPrintf("  Events:         %d\n", result.Statistics.EventsProcessed)
+	termPrintf("  Places:         %d\n", result.Statistics.PlacesResolved)
+	termPrintf("  Relationships:  %d\n", result.Statistics.RelationshipsExported)
+	termPrintf("  Sources:        %d\n", result.Statistics.SourcesExported)
+	termPrintf("  Citations:      %d\n", result.Statistics.CitationsExported)
+	termPrintf("  Repositories:   %d\n", result.Statistics.RepositoriesExported)
+	termPrintf("  Media:          %d\n", result.Statistics.MediaExported)
+	termPrintf("  Assertions:     %d\n", result.Statistics.AssertionsExported)
 
 	if len(result.Statistics.Warnings) > 0 {
-		fmt.Printf("\nWarnings (%d):\n", len(result.Statistics.Warnings))
+		termPrintf("\nWarnings (%d):\n", len(result.Statistics.Warnings))
 		for _, w := range result.Statistics.Warnings {
-			fmt.Printf("  [%s %s] %s\n", w.EntityType, w.EntityID, w.Message)
+			termPrintf("  [%s %s] %s\n", w.EntityType, w.EntityID, w.Message)
 		}
 	}
 }

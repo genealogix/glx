@@ -187,6 +187,9 @@ type addSearchOptions struct {
 // file is left byte-for-byte untouched. A --citation is also rolled up into
 // the log's own citations list, as the research-log spec recommends.
 func addSearch(io *IOStreams, opts *addSearchOptions) error {
+	if err := refuseSingleFileArchive("add search", opts.ArchivePath); err != nil {
+		return err
+	}
 	files, err := collectGLXFilesFromDir(opts.ArchivePath)
 	if err != nil {
 		return fmt.Errorf("loading archive: %w", err)
@@ -304,7 +307,7 @@ func withSearch(log *glxlib.ResearchLog, search *glxlib.Search) *glxlib.Research
 // file is re-serialized as a fragment, the same way `glx rename` rewrites the
 // files it touches, so its layout (single- or multi-entity) is kept.
 func planAddSearchWrite(files map[string][]byte, logID string, search *glxlib.Search) (fileOp, error) {
-	serializer := createSerializer(false, true, "  ")
+	serializer := createSerializer(false, "  ")
 
 	relPaths := make([]string, 0, len(files))
 	for relPath := range files {

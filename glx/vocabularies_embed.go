@@ -29,7 +29,7 @@ func createStandardVocabularies() error {
 		}
 	}
 
-	fmt.Println("Created standard vocabulary files in vocabularies/")
+	termPrintln("Created standard vocabulary files in vocabularies/")
 
 	return nil
 }
