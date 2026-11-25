@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**Browser conversion of large GEDCOM files** — Write single-file GLX in batches so temporary YAML buffers can be reclaimed while preparing the download.'
+time: '2026-11-24T00:01:23Z'
+custom:
+  Issue: '#1446'

@@ -135,18 +135,28 @@ func walkGLXFiles(rootDir string, visit func(relPath string, data []byte, err er
 // rather than reported as an escape, and a start that is itself a link out of
 // the archive is refused. Paths passed to visit are relative to rootDir.
 func walkGLXFilesUnder(rootDir, start string, visit func(relPath string, data []byte, err error) error) error {
+	return walkGLXFilesUnderReading(rootDir, start, (*os.Root).ReadFile, visit)
+}
+
+// A custom reader lets long-running watchers reject special files without
+// duplicating the archive membership, symlink containment and exclusion rules.
+func walkGLXFilesUnderReading(rootDir, start string, readFile func(*os.Root, string) ([]byte, error), visit func(string, []byte, error) error) error {
 	root, err := os.OpenRoot(rootDir)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = root.Close() }()
 
-	return walkGLXFilesUnderRoot(root, rootDir, start, visit)
+	return walkGLXFilesUnderRootReading(root, rootDir, start, readFile, visit)
 }
 
 // An already-open root keeps a writer's final snapshot anchored to the archive
 // it staged, even if an ancestor directory is renamed during the operation.
 func walkGLXFilesUnderRoot(root *os.Root, rootDir, start string, visit func(relPath string, data []byte, err error) error) error {
+	return walkGLXFilesUnderRootReading(root, rootDir, start, (*os.Root).ReadFile, visit)
+}
+
+func walkGLXFilesUnderRootReading(root *os.Root, rootDir, start string, readFile func(*os.Root, string) ([]byte, error), visit func(string, []byte, error) error) error {
 	// Resolved root for symlink-target containment checks. If the root itself
 	// cannot be resolved, fall back to the literal path: os.Root still
 	// enforces containment at read time, so the only thing lost is the
@@ -174,7 +184,7 @@ func walkGLXFilesUnderRoot(root *os.Root, rootDir, start string, visit func(relP
 			return nil
 		}
 
-		data, readErr := root.ReadFile(entryPath)
+		data, readErr := readFile(root, entryPath)
 		if readErr == nil && runtime.GOOS == goosWindows {
 			// On Windows, Git stores symlinks as text files containing the
 			// target path. Detect these and read the actual target file. A

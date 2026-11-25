@@ -171,7 +171,7 @@ func buildHouseholds(archive *glxlib.GLXFile, personID string, opts householdsOp
 		if opts.Year != 0 && year != opts.Year {
 			continue
 		}
-		if opts.PlaceID != "" && event.PlaceID != opts.PlaceID && !placeIsDescendant(event.PlaceID, opts.PlaceID, archive) {
+		if !eventInPlace(event, opts.PlaceID, archive) {
 			continue
 		}
 		result.Households = append(result.Households, buildHousehold(archive, eventID, event, year, opts.Neighbors))

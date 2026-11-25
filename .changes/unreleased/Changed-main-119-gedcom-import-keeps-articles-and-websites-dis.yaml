@@ -1,0 +1,5 @@
+kind: Changed
+body: '**GEDCOM import keeps articles and websites distinct** — A GEDCOM `TYPE article` now imports as `article` rather than `book`, and `TYPE website` as `website` rather than `database`. A source with no `TYPE` whose title names Wikipedia, an encyclopedia or a magazine is inferred as `article`, and one naming a website, web page or blog as `website`, instead of `other`. The `database` type is relabelled "Database" and now covers searchable record collections and compiled databases, such as indexes and online family trees, whether online or offline.'
+time: '2026-11-24T00:00:45Z'
+custom:
+  Issue: '#1513'

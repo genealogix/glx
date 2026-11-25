@@ -1,0 +1,5 @@
+kind: Changed
+body: '**GEDCOM 7.0 percent-encoded media names are decoded in the archive** — `FILE media/CharlotteBront%C3%AB.jpg` used to become `media/files/CharlotteBront%C3%AB.jpg` on disk and in `uri`, which a reader decoding `uri` as a URI could not find. The archive file and `uri` now use `CharlotteBrontë.jpg`, matching `original_filename`. GEDCOM 5.5.1 names are unchanged.'
+time: '2026-11-24T00:00:39Z'
+custom:
+  Issue: '#1152'

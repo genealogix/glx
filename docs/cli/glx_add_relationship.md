@@ -17,6 +17,16 @@ repeatable) for parent-child relationships, --participant person-id:role for
 arbitrary roles. --start-event and --end-event must reference existing
 events.
 
+A relationship of the same type between the same participants in the same
+roles as an existing one is refused, naming the existing relationship; pass
+--force to add it anyway. Types and roles are compared ignoring case. Two
+relationships whose --start-event values, or whose --end-event values, are
+both set and differ (a couple who married twice) are not duplicates, and a
+relationship the archive's assertions have disproven is not counted. A
+parent-child relationship is also refused when every parent-to-child link it
+records is already recorded by another relationship (for example inside a
+two-parent relationship), and added with a warning when only some are.
+
 ```
 glx add relationship [flags]
 ```

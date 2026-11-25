@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**GEDCOM round trips keep `original_filename`** — Export dropped it, so a re-import recorded GLX''s own collision-renamed name (`photo-2.jpg`) as if it were the source''s. `glx export` now writes it as `_ORIG` under `FILE`, and import reads it back ahead of any inferred name.'
+time: '2026-11-24T00:01:21Z'
+custom:
+  Issue: '#1149'

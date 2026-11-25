@@ -320,12 +320,20 @@ func (idx *siteIndex) indexParentChild() {
 		}
 		edge := [2]string{link.ParentID, link.ChildID}
 		idx.parents[link.ChildID] = appendUnique(idx.parents[link.ChildID], link.ParentID)
-		idx.children[link.ParentID] = appendUnique(idx.children[link.ParentID], link.ChildID)
 		if link.Standing == glxlib.RelationshipStandingAccepted {
 			accepted[edge] = true
 			delete(idx.hypotheticalEdges, edge)
 		} else if !accepted[edge] {
 			idx.hypotheticalEdges[edge] = true
+		}
+	}
+	// The descendant chart draws children in birth order, as the family
+	// groups on each person page list them: both read familyLinks.childLinks.
+	for parentID := range idx.family.childrenOf {
+		for _, link := range idx.family.childLinks(parentID) {
+			if !link.Step {
+				idx.children[parentID] = appendUnique(idx.children[parentID], link.ChildID)
+			}
 		}
 	}
 }
@@ -426,11 +434,11 @@ func buildPersonPage(id string, person *glxlib.Person, archive *glxlib.GLXFile, 
 	birth, death := vitalEvents(id, archive)
 	if birth != nil {
 		page.BirthDate = displayDateOrBlank(string(birth.Date))
-		page.BirthPlace = placeFullName(birth.PlaceID, archive)
+		page.BirthPlace = placeFullNameAt(birth.PlaceID, birth.Date, archive)
 	}
 	if death != nil {
 		page.DeathDate = displayDateOrBlank(string(death.Date))
-		page.DeathPlace = placeFullName(death.PlaceID, archive)
+		page.DeathPlace = placeFullNameAt(death.PlaceID, death.Date, archive)
 	}
 	page.LifeSpan = lifeSpan(birth, death)
 
@@ -450,7 +458,8 @@ func buildPersonPage(id string, person *glxlib.Person, archive *glxlib.GLXFile, 
 func buildTimelineRows(personID string, archive *glxlib.GLXFile) []timelineRow {
 	entries := collectTimelineEntries(personID, archive, true)
 	rows := make([]timelineRow, 0, len(entries))
-	for _, e := range entries {
+	for i := range entries {
+		e := &entries[i]
 		// Parsing preserves a recoverable year and calendar even when the
 		// archive carries a date whose remaining text cannot be interpreted.
 		date, err := glxlib.DateString(e.Date).Parse()
@@ -687,6 +696,26 @@ func buildSearchIndex(model *siteModel) []searchEntry {
 // personLinks resolves a list of person IDs to navigation links, sorted by name.
 // files maps each person ID to its collision-safe HTML filename.
 func personLinks(ids []string, archive *glxlib.GLXFile, files map[string]string) []personLink {
+	return sortLinksByName(orderedPersonLinks(ids, archive, files))
+}
+
+// sortLinksByName sorts links by name, then ID, in place and returns them.
+func sortLinksByName(links []personLink) []personLink {
+	sort.SliceStable(links, func(i, j int) bool {
+		if links[i].Name != links[j].Name {
+			return links[i].Name < links[j].Name
+		}
+
+		return links[i].ID < links[j].ID
+	})
+
+	return links
+}
+
+// orderedPersonLinks resolves person IDs to navigation links in the order
+// given, skipping people missing from the archive. Children and siblings come
+// from the family graph already in birth order, which this keeps.
+func orderedPersonLinks(ids []string, archive *glxlib.GLXFile, files map[string]string) []personLink {
 	if len(ids) == 0 {
 		return nil
 	}
@@ -705,14 +734,6 @@ func personLinks(ids []string, archive *glxlib.GLXFile, files map[string]string)
 		})
 	}
 
-	sort.SliceStable(links, func(i, j int) bool {
-		if links[i].Name != links[j].Name {
-			return links[i].Name < links[j].Name
-		}
-
-		return links[i].ID < links[j].ID
-	})
-
 	return links
 }
 
@@ -723,8 +744,8 @@ func personLinks(ids []string, archive *glxlib.GLXFile, files map[string]string)
 func buildFamilyGroups(page *personPage, id string, archive *glxlib.GLXFile, idx *siteIndex) {
 	ownParents, stepParents := splitStep(idx.family.parents(id))
 	ownChildren, stepChildren := splitStep(idx.family.children(id))
-	page.Parents = familyEdgeLinks(ownParents, archive, idx)
-	page.StepParents = familyEdgeLinks(stepParents, archive, idx)
+	page.Parents = sortLinksByName(familyEdgeLinks(ownParents, archive, idx))
+	page.StepParents = sortLinksByName(familyEdgeLinks(stepParents, archive, idx))
 	page.Children = familyEdgeLinks(ownChildren, archive, idx)
 	page.StepChildren = familyEdgeLinks(stepChildren, archive, idx)
 
@@ -746,20 +767,20 @@ func buildFamilyGroups(page *personPage, id string, archive *glxlib.GLXFile, idx
 			full = append(full, sib.PersonID)
 		}
 	}
-	page.Siblings = flagHypothetical(personLinks(full, archive, idx.files), hypo)
-	page.HalfSiblings = flagHypothetical(personLinks(half, archive, idx.files), hypo)
-	page.StepSiblings = flagHypothetical(personLinks(step, archive, idx.files), hypo)
+	page.Siblings = flagHypothetical(orderedPersonLinks(full, archive, idx.files), hypo)
+	page.HalfSiblings = flagHypothetical(orderedPersonLinks(half, archive, idx.files), hypo)
+	page.StepSiblings = flagHypothetical(orderedPersonLinks(step, archive, idx.files), hypo)
 }
 
-// familyEdgeLinks resolves family edges to navigation links (sorted by name,
-// as personLinks sorts them), carrying each edge's hypothetical flag.
+// familyEdgeLinks resolves family edges to navigation links in the edges'
+// order (birth order for children; callers sort parents by name), carrying each edge's hypothetical flag.
 func familyEdgeLinks(edges []familyEdge, archive *glxlib.GLXFile, idx *siteIndex) []personLink {
 	hypo := make(map[string]bool, len(edges))
 	for _, e := range edges {
 		hypo[e.PersonID] = e.Hypothetical
 	}
 
-	return flagHypothetical(personLinks(edgeIDs(edges), archive, idx.files), hypo)
+	return flagHypothetical(orderedPersonLinks(edgeIDs(edges), archive, idx.files), hypo)
 }
 
 // flagHypothetical sets each link's Hypothetical flag from hypo, keyed by ID.
@@ -800,28 +821,26 @@ func lifeSpan(birth, death *glxlib.Event) string {
 
 // placeFullName builds a hierarchical place name by walking parent places,
 // e.g. "Boston, Massachusetts, United States". Falls back to the place ID when
-// the place has no name, and guards against cyclic parent references.
+// the place has no name, and guards against cyclic parent references. It
+// follows each place's default parent.
 func placeFullName(placeID string, archive *glxlib.GLXFile) string {
+	return placeFullNameAt(placeID, "", archive)
+}
+
+// placeFullNameAt is placeFullName for the hierarchy as it stood at date (an
+// event's date), following at each level the parent that applied then
+// (#225).
+func placeFullNameAt(placeID string, date glxlib.DateString, archive *glxlib.GLXFile) string {
 	if placeID == "" {
 		return ""
 	}
 	var parts []string
-	seen := map[string]bool{}
-	current := placeID
-	for current != "" && !seen[current] {
-		seen[current] = true
-		place, ok := archive.Places[current]
-		if !ok || place == nil {
-			parts = append(parts, current)
-
-			break
-		}
-		name := place.Name
-		if name == "" {
-			name = current
+	for _, id := range archive.PlacePathAt(placeID, date) {
+		name := id
+		if place := archive.Places[id]; place != nil && place.Name != "" {
+			name = place.Name
 		}
 		parts = append(parts, name)
-		current = place.ParentID
 	}
 
 	return strings.Join(parts, ", ")

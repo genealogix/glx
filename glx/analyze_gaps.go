@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -23,15 +24,39 @@ import (
 
 // analyzeGaps detects missing data that should be findable for each person.
 func analyzeGaps(archive *glxlib.GLXFile) []AnalysisIssue {
+	issues, _ := analyzeGapsContext(context.Background(), archive)
+
+	return issues
+}
+
+func analyzeGapsContext(ctx context.Context, archive *glxlib.GLXFile) ([]AnalysisIssue, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	var issues []AnalysisIssue
 
 	personEvents := buildPersonEventIndex(archive)
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	childHasParents := buildChildHasParentsIndex(archive)
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	childHasPlaceholderParents := buildChildHasPlaceholderParentsIndex(archive)
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	spouseRels := buildSpouseRelIndex(archive)
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	marriagePairs := buildMarriagePairIndex(archive)
 
 	for _, id := range sortedPersonIDs(archive.Persons) {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		person := archive.Persons[id]
 		// A placeholder has no records to find until it is identified;
 		// analyzeSuggestions reports it as open instead (#191).
@@ -59,6 +84,9 @@ func analyzeGaps(archive *glxlib.GLXFile) []AnalysisIssue {
 
 		// Check each spouse relationship for a corresponding marriage event
 		for _, sp := range spouseRels[id] {
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
 			if glxlib.IsUnresolvedPlaceholder(archive.Persons[sp.spouseID]) {
 				continue
 			}
@@ -88,7 +116,11 @@ func analyzeGaps(archive *glxlib.GLXFile) []AnalysisIssue {
 		}
 	}
 
-	return issues
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	return issues, nil
 }
 
 // buildChildHasParentsIndex returns a set of person IDs that appear as a child

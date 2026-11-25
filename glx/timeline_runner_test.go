@@ -28,37 +28,45 @@ import (
 )
 
 func TestDateSortKey(t *testing.T) {
-	tests := []struct {
-		input string
-		want  string
-	}{
-		{"1850-01-15", "01850-01-15"},
-		{"1850-01", "01850-01"},
-		{"1850", "01850"},
-		{"ABT 1880", "01880"},
-		{"BEF 1920-01-15", "01920-01-15"},
-		{"AFT 1900", "01900"},
-		{"BET 1880 AND 1890", "01880"},
-		{"CAL 1855", "01855"},
-		{"800", "00800"},
-		{"476", "00476"},
-		{"ABT 476", "00476"},
-		{"BET 900 AND 1000", "00900"},
-		{"15 MAR 800", "00800-03-15"},
-		{"15 MAR 1850", "01850-03-15"},
-		{"TO 1950", "01950"},
-		{"0044-03-15 BCE", "-99955-03-15"},
-		{"BET 0100 BCE AND 0050 BCE", "-99899"},
-		{"HEBREW 15 TSH 5765", "05765"},
-		{"HEBREW 15 TSH 10000", "10000"},
-		{"", "\xff"},
-		{"unknown", "\xff"},
+	// Equivalent inputs sort together; assertions describe ordering rather
+	// than the private encoding of the sort key.
+	for _, pair := range [][2]string{
+		{"1850-01-15", "15 JAN 1850"},
+		{"1850-01", "1850-01-01"},
+		{"ABT 1880", "1880"},
+		{"BET 1880 AND 1890", "1880"},
+		{"CAL 1855", "1855"},
+		{"ABT 476", "476"},
+		{"BET 900 AND 1000", "900"},
+		{"15 MAR 800", "0800-03-15"},
+		{"TO 1950", "1950"},
+		{"BET 0100 BCE AND 0050 BCE", "0100 BCE"},
+		{"JULIAN 1645-10-12", "1645-10-22"},
+	} {
+		if dateSortKey(pair[0]) != dateSortKey(pair[1]) {
+			t.Errorf("equivalent dates differ: %v", pair)
+		}
 	}
-
-	for _, tt := range tests {
-		got := dateSortKey(tt.input)
-		if got != tt.want {
-			t.Errorf("dateSortKey(%q) = %q, want %q", tt.input, got, tt.want)
+	for _, pair := range [][2]string{
+		{"1850-01-15", "15 MAR 1850"},
+		{"BEF 1920-01-15", "1920-01-15"},
+		{"1920-01-15", "AFT 1920-01-15"},
+		{"BEF 1920", "1920"},
+		{"1920-12-31", "AFT 1920"},
+		{"BEF 1920-03", "1920-03-01"},
+		{"1920-03-31", "AFT 1920-03"},
+		{"0044-03-15 BCE", "0043 BCE"},
+		{"0100 BCE", "0044 BCE"},
+		{"9999", "10000"},
+		{"HEBREW 15 TSH 5765", "HEBREW 15 TSH 10000"},
+	} {
+		if dateSortKey(pair[0]) >= dateSortKey(pair[1]) {
+			t.Errorf("wrong order: %v", pair)
+		}
+	}
+	for _, value := range []string{"", "unknown"} {
+		if dateSortKey(value) != "\xff" {
+			t.Errorf("undated key: %q", value)
 		}
 	}
 }

@@ -485,6 +485,8 @@ func TestExportGEDCOM_Associations551KeepDistinctEventsAndNotes(t *testing.T) {
 		}
 	}
 	require.Empty(t, glx.Validate().Errors)
+	// The repeated rows carry different notes, so they are distinct
+	// appearances and validation does not report them as duplicates.
 	require.Empty(t, glx.Validate().Warnings)
 	ged, _ := exportGEDCOMString(t, glx, GEDCOM551)
 	for _, owner := range []string{"@I1@", "@I2@"} {

@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**Archive merge previews show only actual differences** — Identical entities are counted separately; conflicts name the fields and both values. Identical media metadata retains available source binaries when the destination file is missing, and reused binaries are revalidated before publication. Destination metadata is preserved, and genuinely conflicting media still skips the source binary. Identical media whose destination already holds a different binary under its name keeps that binary and is no longer reported as a URI conflict. Loading duplicate entity definitions within one archive remains an error. **Go API:** `GLXFile.MergeArchive` returns an `ArchiveMergeResult` with the conflicts, both counts and the identical IDs by entity type.'
+time: '2026-11-24T00:01:29Z'
+custom:
+  Issue: '#1461'

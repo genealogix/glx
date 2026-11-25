@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**GEDCOM dialect fidelity** — 5.5.1 calendar escapes sit inside date endpoints; 7.0 media use `FILE.FORM` media types and long values no longer use removed `CONC` tags. Typed external IDs retain their authority (`REFN.TYPE` in 5.5.1, `EXID.TYPE` URIs in 7.0), including source and repository IDs. Media identifiers import through the same `EXID`/`REFN` reader and shared standard vocabulary, including embedded and fileless media. Individual event ages are exported from the hosted participant and imported back there. 5.5.1 associations with unique GLX event context restore participants and notes; unscoped or ambiguous associations retain a referenced social relationship and warn. Empty-URI media retain titles, media types and identifiers where representable, with an explicit diagnostic about the missing required file reference; no path is invented. Long-note continuation whitespace is retained.'
+time: '2026-11-24T00:01:35Z'
+custom:
+  Issue: '#1491, #1490, #1477, #1459, #1389, #1515, #1527'

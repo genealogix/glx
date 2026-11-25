@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**glx writes two-space YAML** — `SerializerOptions.Indent` was documented and passed by every writer, but nothing read it, so every file glx wrote was indented four spaces: out of step with the specification and the examples, and rewriting one value in a hand-written file reflowed every line of it. The serializer now honours `Indent`, which defaults to two spaces (an empty value means the default). A file glx wrote before this change is re-indented once, the next time glx rewrites it.'
+time: '2026-11-24T00:01:18Z'
+custom:
+  Issue: '#1427'

@@ -5,7 +5,7 @@ Upstream-Contact: https://github.com/genealogix/glx
 # Go source files have full Apache 2.0 headers enforced by goheader linter.
 # This file covers all other files that cannot have inline SPDX headers.
 
-Files: glx/*.go go-glx/*.go
+Files: glx/*.go go-glx/*.go mcp/*.go
 Copyright: 2025 Oracynth, Inc.
 License: Apache-2.0
 

@@ -48,6 +48,12 @@ var maxGEDZIPEntryBytes int64 = 512 << 20
 // Go's fs.FS abstraction without extracting the entire archive to a temporary
 // directory.
 func importGEDZIP(gedzipPath, outputPath, format string, validate, verbose bool, showFirstErrors int, out ...io.Writer) error {
+	return importGEDZIPWithPlatform(gedzipPath, outputPath, format, glxlib.GEDCOMPlatformAuto, validate, verbose, showFirstErrors, out...)
+}
+
+// importGEDZIPWithPlatform is importGEDZIP with a forced platform adapter
+// (glxlib.GEDCOMPlatformAuto to detect it from HEAD.SOUR).
+func importGEDZIPWithPlatform(gedzipPath, outputPath, format, platform string, validate, verbose bool, showFirstErrors int, out ...io.Writer) error {
 	output := resolveOutputWriter(out...)
 
 	if verbose {
@@ -74,7 +80,7 @@ func importGEDZIP(gedzipPath, outputPath, format string, validate, verbose bool,
 	}
 
 	limitedBundle := &sizeLimitedFS{inner: zr}
-	glx, result, err := glxlib.ImportGEDZIP(limitedBundle, nil)
+	glx, result, err := glxlib.ImportGEDZIPWithOptions(limitedBundle, nil, glxlib.ImportOptions{Platform: platform})
 	if err != nil {
 		// sizeLimitedFile already names the offending entry and the limit, so
 		// the error is returned as-is rather than re-wrapped against a guessed
@@ -84,11 +90,28 @@ func importGEDZIP(gedzipPath, outputPath, format string, validate, verbose bool,
 		return err
 	}
 
+	if verbose {
+		reportImportPlatform(output, result)
+	}
+
 	// Surface any non-standard GEDCOM entry or other import warnings
 	for _, w := range result.Statistics.Warnings {
 		if w.Tag == glxlib.WarningTagGEDZIP {
 			_, _ = fmt.Fprintf(output, "Warning: %s\n", w.Message)
 		}
+	}
+	if importMediaSourcePaths {
+		recordMediaSourcePaths(glx, result.MediaFiles)
+	}
+	// Hold the media directory from allocation through publication or
+	// rollback, so a concurrent import cannot reuse a binary this one may
+	// still roll back (#1443).
+	if len(result.MediaFiles) > 0 {
+		unlock, err := lockImportMedia(importMediaDir(outputPath, format), output)
+		if err != nil {
+			return err
+		}
+		defer unlock()
 	}
 	if err := allocateImportMediaDestinations(glx, result.MediaFiles, importMediaDir(outputPath, format), "", limitedBundle); err != nil {
 		return fmt.Errorf("reserving media destinations: %w", err)

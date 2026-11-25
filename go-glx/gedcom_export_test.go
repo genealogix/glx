@@ -722,7 +722,7 @@ func TestExportPlaceSubrecords_Empty(t *testing.T) {
 		PlaceStrings: make(map[string]string),
 	}
 
-	result := exportPlaceSubrecords("", expCtx)
+	result := exportPlaceSubrecords("", "", expCtx)
 	assert.Nil(t, result)
 }
 
@@ -745,7 +745,7 @@ func TestExportPlaceSubrecords_WithCoordinates(t *testing.T) {
 		},
 	}
 
-	records := exportPlaceSubrecords("place-1", expCtx)
+	records := exportPlaceSubrecords("place-1", "", expCtx)
 	require.Len(t, records, 1)
 
 	placRecord := records[0]
@@ -1193,7 +1193,7 @@ func TestExportMedia_Basic70(t *testing.T) {
 	// GEDCOM 7.0: MIME under FILE
 	require.NotEmpty(t, fileRecord.SubRecords)
 	mimeRecord := fileRecord.SubRecords[0]
-	assert.Equal(t, GedcomTagMime, mimeRecord.Tag)
+	assert.Equal(t, GedcomTagForm, mimeRecord.Tag)
 	assert.Equal(t, MimeTypePNG, mimeRecord.Value)
 }
 
@@ -1510,7 +1510,7 @@ func TestExportGEDCOM_WithSourcesAndMedia_GEDCOM70(t *testing.T) {
 
 	// Media with MIME (not FORM)
 	assert.Contains(t, output, "@O1@ OBJE")
-	assert.Contains(t, output, "MIME "+MimeTypePNG)
+	assert.Contains(t, output, "FORM "+MimeTypePNG)
 
 	// CROP subrecord
 	assert.Contains(t, output, "CROP")

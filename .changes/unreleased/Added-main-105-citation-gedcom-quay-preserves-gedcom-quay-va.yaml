@@ -1,0 +1,5 @@
+kind: Added
+body: Citation `gedcom_quay` preserves GEDCOM QUAY values 0–3 through import/export without inferring assertion confidence; legacy notes remain notes.
+time: '2026-11-24T00:00:03Z'
+custom:
+  Issue: '#515'

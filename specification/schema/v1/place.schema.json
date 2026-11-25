@@ -17,9 +17,33 @@
       "additionalProperties": true
     },
     "parent": {
-      "type": "string",
-      "pattern": "^[a-zA-Z0-9-]{1,64}$",
-      "description": "Reference to parent place in hierarchy"
+      "description": "Reference to the parent place in the hierarchy: a place ID, or, when the place's jurisdiction changed over time, a list of {value, date} entries giving the parent for each period",
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9-]{1,64}$"
+        },
+        {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["value"],
+            "properties": {
+              "value": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9-]{1,64}$",
+                "description": "Reference to the parent place during this period"
+              },
+              "date": {
+                "type": "string",
+                "description": "Period the parent applied (e.g., 'FROM 1811 TO 1816-12-10'); an entry without a date is the default parent"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      ]
     },
     "type": {
       "type": "string",

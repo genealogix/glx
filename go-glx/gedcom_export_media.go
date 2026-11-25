@@ -15,8 +15,10 @@
 package glx
 
 import (
+	"net/url"
 	"sort"
 	"strconv"
+	"strings"
 )
 
 // mimeToGEDCOMFormat maps MIME types back to GEDCOM 5.5.1 FORM values.
@@ -44,6 +46,13 @@ func buildMimeToGEDCOMFormat() map[string]string {
 	return result
 }
 
+// Note prefixes that carry a fileless media object's title and media type,
+// which GEDCOM can only hold under the missing FILE. Import reads them back.
+const (
+	filelessMediaTitlePrefix = "Media title: "
+	filelessMediaTypePrefix  = "Media type: "
+)
+
 // exportMedia converts a GLX Media to a GEDCOM OBJE record.
 func exportMedia(mediaID string, media *Media, expCtx *ExportContext) *GEDCOMRecord {
 	xref := expCtx.MediaXRefMap[mediaID]
@@ -58,15 +67,25 @@ func exportMedia(mediaID string, media *Media, expCtx *ExportContext) *GEDCOMRec
 	if media.URI != "" {
 		fileRecord := &GEDCOMRecord{
 			Tag:        GedcomTagFile,
-			Value:      media.URI,
+			Value:      exportFileRef(media.URI, expCtx.Version),
 			SubRecords: []*GEDCOMRecord{},
 		}
 
+		// The original filename travels as a GLX extension tag, so that a
+		// GLX → GEDCOM → GLX round trip keeps it instead of replacing it with
+		// the archive's own canonical name (#1149). Other readers ignore it.
+		if original, ok := getStringProperty(media.Properties, MediaPropertyOriginalFilename); ok && original != "" {
+			fileRecord.SubRecords = append(fileRecord.SubRecords, &GEDCOMRecord{
+				Tag:   GedcomTagOrig,
+				Value: original,
+			})
+		}
+
 		if expCtx.Version == GEDCOM70 {
-			// GEDCOM 7.0: MIME under FILE
+			// GEDCOM 7.0: FORM holds the media type under FILE
 			if media.MimeType != "" {
 				fileRecord.SubRecords = append(fileRecord.SubRecords, &GEDCOMRecord{
-					Tag:   GedcomTagMime,
+					Tag:   GedcomTagForm,
 					Value: media.MimeType,
 				})
 			}
@@ -125,6 +144,18 @@ func exportMedia(mediaID string, media *Media, expCtx *ExportContext) *GEDCOMRec
 			if cropRecord != nil {
 				record.SubRecords = append(record.SubRecords, cropRecord)
 			}
+		}
+	}
+
+	// EXID/REFN identify the object, independently of whether a file exists.
+	record.SubRecords = append(record.SubRecords, exportEntityExternalIDs(media.Properties, expCtx.ExportIndex.MediaProperties, expCtx.Version)...)
+	if media.URI == "" {
+		expCtx.addExportWarning(EntityTypeMedia, mediaID, "media has no URI; GEDCOM requires a FILE reference, so the object cannot be fully represented; available title and media type are retained in valid structures or notes where supported")
+		if expCtx.Version == GEDCOM70 && media.Title != "" {
+			record.SubRecords = append(record.SubRecords, &GEDCOMRecord{Tag: GedcomTagNote, Value: filelessMediaTitlePrefix + media.Title})
+		}
+		if media.MimeType != "" {
+			record.SubRecords = append(record.SubRecords, &GEDCOMRecord{Tag: GedcomTagNote, Value: filelessMediaTypePrefix + media.MimeType})
 		}
 	}
 
@@ -195,4 +226,22 @@ func formatCropValue(val any) string {
 	default:
 		return ""
 	}
+}
+
+// exportFileRef writes a media URI as a FILE payload. A GEDCOM 7.0 FILE is a
+// URI reference, and the importer percent-decodes a local one
+// (originalFilenameFor), so a local path is percent-encoded segment by
+// segment: without it a file literally named photo%20.jpg would export as
+// photo%20.jpg and come back as "photo .jpg". 5.5.1 payloads are plain paths
+// and URLs are already URIs, so both are written as they are.
+func exportFileRef(uri string, version GEDCOMVersion) string {
+	if version != GEDCOM70 || !classifyFileRef(uri) {
+		return uri
+	}
+	segments := strings.Split(strings.ReplaceAll(uri, `\`, "/"), "/")
+	for i, segment := range segments {
+		segments[i] = url.PathEscape(segment)
+	}
+
+	return strings.Join(segments, "/")
 }

@@ -1,0 +1,5 @@
+kind: Added
+body: MCP `search` reuses CLI text and external-identifier matching across all eleven entity collections, with collection/case filters, pagination, 80-character previews and a 256 KiB result limit. Searches use the loaded snapshot and cooperatively cancel without returning partial results.
+time: '2026-11-24T00:00:07Z'
+custom:
+  Issue: '#1528'

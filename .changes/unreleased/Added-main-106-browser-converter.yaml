@@ -1,0 +1,5 @@
+kind: Added
+body: '**Browser converter** — Convert GEDCOM to a single GLX file or a ZIP of a multi-file GLX archive. Export single-file GLX as GEDCOM 5.5.1 or 7.0. The converter runs on your device and displays conversion warnings.'
+time: '2026-11-24T00:00:04Z'
+custom:
+  Issue: '#1446'

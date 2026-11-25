@@ -454,7 +454,12 @@ func TestSearchSearchEntry_EveryFieldMatches(t *testing.T) {
 	}
 
 	matchAll := func(_ string) bool { return true }
-	results := searchResearchLogs(archive, matchAll)
+	var results []searchResult
+	require.True(t, searchResearchLogs(t.Context(), archive, matchAll, func(result searchResult) bool {
+		results = append(results, result)
+
+		return true
+	}))
 
 	// Map field path → expected, so any future Search field that's added must
 	// also get a path here or the test fails informatively.

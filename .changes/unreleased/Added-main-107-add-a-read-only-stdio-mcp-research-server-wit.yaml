@@ -1,0 +1,5 @@
+kind: Added
+body: Add a read-only stdio MCP research server with sixteen structured tools, archive resources, a research prompt, extensible Go protocol API, and JSON output for research commands. Optional `glx mcp serve --watch` reloads stable source changes without reconnecting and keeps the previous snapshot available on read/parse errors. Release notices include the new dependencies; the SDK's documentation-only license metadata exception is scoped and pinned by a tested guard.
+time: '2026-11-24T00:00:05Z'
+custom:
+  Issue: '#198'

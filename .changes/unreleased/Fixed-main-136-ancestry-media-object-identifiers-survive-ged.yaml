@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**Ancestry media object identifiers survive GEDCOM import** — `_OID` and `_CLON._OID` are retained as typed `external_ids`, including embedded objects and empty file references, and survive export/re-import in both GEDCOM dialects. Uses the same `ancestry`/`ancestry_clone` representation as the media-import work in PR #1478.'
+time: '2026-11-24T00:01:34Z'
+custom:
+  Issue: '#1527, PR #1536'

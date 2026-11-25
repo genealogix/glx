@@ -1,0 +1,5 @@
+kind: Fixed
+body: '**Children and siblings are listed in birth order everywhere** — `glx descendants` printed a person''s children in ID order, `publish` person pages listed children and siblings by name, and `summary` sorted children by birth year only and siblings by ID, so the same family came out in different orders. Every view now sorts by the full birth date, falling back to christening and then baptism (the usual record before civil registration), with undated people last and the ID breaking ties. The date used is the one each view shows (the event `FindPersonEvent` returns); a `BEF` date sorts just before the day it names, and `JULIAN` dates are converted before they are compared. This covers `descendants`, `summary` (children and siblings), `publish` (person pages and descendant charts), the `serve` tree, and the `CHIL` lines of GEDCOM export. **Go API:** new `NewBirthOrder` builds the shared ordering, `SortByBirth` sorts any slice by it, and `glxdate.Date.OrderingDay` returns the Julian Day Number it sorts on.'
+time: '2026-11-24T00:01:28Z'
+custom:
+  Issue: '#1504'

@@ -15,6 +15,8 @@
 package glx
 
 import (
+	"context"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -154,4 +156,48 @@ func TestParentChildRoleHelpers(t *testing.T) {
 	assert.False(t, IsStepRole("child"))
 	assert.True(t, IsParentChildRelationshipType("Step_Parent"))
 	assert.False(t, IsParentChildRelationshipType(RelationshipTypeGuardian))
+}
+
+//nolint:containedctx // Test context implementation, not a stored request context.
+type cancelStandingContext struct {
+	context.Context
+	cancel context.CancelFunc
+	calls  atomic.Int32
+	after  int32
+}
+
+func (c *cancelStandingContext) Err() error {
+	if c.calls.Add(1) == c.after {
+		c.cancel()
+	}
+
+	return c.Context.Err()
+}
+
+func TestRelationshipContextParityAndActiveCancellation(t *testing.T) {
+	archive := standingArchive()
+	index, err := NewRelationshipStandingIndexContext(t.Context(), archive)
+	require.NoError(t, err)
+	require.Equal(t, NewRelationshipStandingIndex(archive), index)
+	links, err := ParentChildLinksContext(t.Context(), archive, nil)
+	require.NoError(t, err)
+	require.Equal(t, ParentChildLinks(archive, nil), links)
+	for _, operation := range []func(context.Context) error{
+		func(ctx context.Context) error {
+			_, err := NewRelationshipStandingIndexContext(ctx, archive)
+
+			return err
+		},
+		func(ctx context.Context) error {
+			_, err := ParentChildLinksContext(ctx, archive, index)
+
+			return err
+		},
+	} {
+		base, cancel := context.WithCancel(t.Context())
+		ctx := &cancelStandingContext{Context: base, cancel: cancel, after: 3}
+		require.ErrorIs(t, operation(ctx), context.Canceled)
+		require.EqualValues(t, 3, ctx.calls.Load())
+		cancel()
+	}
 }
