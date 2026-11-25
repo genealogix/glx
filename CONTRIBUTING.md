@@ -61,7 +61,7 @@ What to expect when you pick one up:
 
 ### Prerequisites
 
-- **Go** ([install](https://golang.org/doc/install)) — use the version in [`go.mod`](go.mod).
+- **Go** ([install](https://golang.org/doc/install)) — use the version in `go.mod`.
 - **Git** ([install](https://git-scm.com/downloads))
 - **Node.js 24** — matches CI for the website, browser converter, and schema validation.
 
