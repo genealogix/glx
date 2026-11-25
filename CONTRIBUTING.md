@@ -61,9 +61,9 @@ What to expect when you pick one up:
 
 ### Prerequisites
 
-- **Go 1.27+** ([install](https://golang.org/doc/install)) — the project uses Go 1.27 in go.mod
+- **Go** ([install](https://golang.org/doc/install)) — use the version in `go.mod`.
 - **Git** ([install](https://git-scm.com/downloads))
-- **Node.js** — for website builds (`npm install` in `website/`) and schema validation (`npm ci --prefix specification`)
+- **Node.js 24** — matches CI for the website, browser converter, and schema validation.
 
 ### Dev Container
 
@@ -76,7 +76,18 @@ The easiest way to get started is with the included [Dev Container](https://cont
 # GitHub Codespaces: Click "Code" → "Codespaces" → "Create codespace on main"
 ```
 
-The container includes Go, Node.js, golangci-lint, and lefthook (pre-commit hooks installed automatically at create time). `goreleaser` and `syft` are **not** installed in the container — they're only needed for `make release-snapshot` (maintainer/release work) and should be installed manually on demand ([goreleaser](https://goreleaser.com/install/), [syft](https://github.com/anchore/syft#installation)).
+The container provides Go 1.27, Node.js 24, GitHub CLI, and the version of golangci-lint pinned by the repo. Go can download the toolchain required by `go.mod` if it is newer than the base image. Setup downloads the Go modules for the root module and `ci-tools/go.mod` and installs the website and schema dependencies from their lockfiles. It installs the Git hooks with lefthook once the workspace is ready.
+
+```bash
+make build && make test
+npm run dev --prefix website
+```
+
+Use **GLX docs and converter (VitePress)** in the Ports panel (5173) for the website. To preview an archive with `bin/glx serve`, use **GLX archive viewer** (8080). Keep archive previews private.
+
+After switching branches, run `make install-deps` if dependency files changed (it runs `npm ci`, which deletes and reinstalls `node_modules` and fails if a `package-lock.json` is out of sync with its `package.json`; run `npm install` in that directory to update the lockfile first), or `bash .devcontainer/install-tools.sh` if `.golangci-lint-version` changed. To run the browser tests, first install Chromium and its system dependencies with `cd website && npx playwright install --with-deps chromium`, then run `npm run test:converter` from `website/`.
+
+Release-only tools such as [GoReleaser](https://goreleaser.com/install/) and [Syft](https://github.com/anchore/syft#installation) are not installed; add them only if running `make release-snapshot`.
 
 ### Manual Setup
 
@@ -86,7 +97,7 @@ git clone https://github.com/YOUR_USERNAME/glx.git
 cd glx
 git remote add upstream https://github.com/genealogix/glx.git
 
-# Install dependencies
+# Install dependencies (npm ci: reinstalls node_modules from the lockfiles)
 make install-deps
 
 # Build and verify
@@ -96,8 +107,7 @@ make build
 # Run tests
 make test
 
-# (Optional) Install schema validation tooling
-npm ci --prefix specification
+# Validate the schemas
 make check-schemas
 ```
 
