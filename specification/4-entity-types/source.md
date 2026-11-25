@@ -20,6 +20,8 @@ Sources can include:
 - Military records and service files
 - Newspapers and periodicals
 - Published family histories and genealogies
+- Journal, magazine, and reference articles
+- Websites, informational web pages, and blogs
 - Wills, probate records, and court documents
 - Land records and deeds
 - Immigration and naturalization records
@@ -114,7 +116,9 @@ Common source types:
 - `immigration` - Passenger lists, naturalization records
 - `directory` - City directories, telephone books
 - `book` - Published genealogies, family histories
-- `database` - Online databases, compiled records
+- `article` - Journal, magazine, and reference articles, whether print or online
+- `website` - Websites, informational web pages, and blogs
+- `database` - Structured, searchable record collections and compiled databases, such as indexes and online family trees, whether online or offline
 - `oral_history` - Interviews, recorded memories
 - `correspondence` - Letters, emails, personal papers
 - `photograph` - Photo collections
@@ -130,10 +134,15 @@ Common source types:
 - `social_media` - Social media posts and profiles
 - `other` - Other source types
 
+Use `article` for individual journal, magazine, and encyclopedia articles, and `website` for websites, informational pages, or blogs without a more specific source type. A post or profile on a social-media platform is `social_media`; a blog on its own site is a `website`. Use `database` for searchable record collections and compiled databases such as indexes and online family trees, and `book` for published monographs. Online access does not change the type: a digitized birth certificate remains a `vital_record`.
+
 Example:
 
 ```yaml
-type: church_register
+sources:
+  source-seven-years-war:
+    title: "Seven Years' War (Wikipedia)"
+    type: article
 ```
 
 ### `authors`

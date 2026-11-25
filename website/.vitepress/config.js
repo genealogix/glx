@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process'
 import { defineConfig } from 'vitepress'
 import { fileURLToPath } from 'url'
 import path from 'path'
@@ -15,6 +16,7 @@ const websiteNodeModules = path.resolve(__dirname, '../node_modules')
 const rewrites = {
   // Website homepage
   'website/index.md': 'index.md',
+  'website/convert.md': 'convert.md',
 
   // Docs section - specific files first
   'docs/quickstart.md': 'quickstart.md',
@@ -56,7 +58,7 @@ const rewrites = {
 }
 
 
-export default defineConfig({
+const config = {
   title: 'GENEALOGIX',
   description: 'A modern, evidence-first, Git-native genealogy data standard',
 
@@ -70,7 +72,8 @@ export default defineConfig({
   // Exclude vendored markdown so the build (and sitemap) only indexes our own
   // pages. Specifically:
   // - node_modules: vendored deps.
-  // - CLAUDE.md files anywhere: internal Claude collaboration guides; the
+  // - AGENTS.md and CLAUDE.md files anywhere: internal agent instruction files
+  //   (each CLAUDE.md is a one-line import stub of the AGENTS.md beside it); the
   //   `feedback_no_claude_artifacts` rule keeps these out of public output.
   // - docs/superpowers/**: internal planning and implementation specs that
   //   should not be served from the public site.
@@ -86,6 +89,7 @@ export default defineConfig({
   //   its README links to .claude/ files that VitePress doesn't build.
   srcExclude: [
     '**/node_modules/**',
+    '**/AGENTS.md',
     '**/CLAUDE.md',
     'docs/superpowers/**',
     'docs/gedcom-spec/**',
@@ -96,12 +100,15 @@ export default defineConfig({
     'scripts/**',
   ],
 
-  // Head configuration
-  head: [
-    ['link', { rel: 'icon', href: '/logo.svg', type: 'image/svg+xml' }],
-    ['script', { async: '', src: 'https://www.googletagmanager.com/gtag/js?id=G-N2YJJJFE6K' }],
-    ['script', {}, 'window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag(\'js\', new Date());\ngtag(\'config\', \'G-N2YJJJFE6K\');']
-  ],
+  head: [['link', { rel: 'icon', href: '/logo.svg', type: 'image/svg+xml' }]],
+  // The converter gets its own document without the site's analytics script.
+  transformHead({ pageData }) {
+    if (pageData.relativePath === 'convert.md') return
+    return [
+      ['script', { async: '', src: 'https://www.googletagmanager.com/gtag/js?id=G-N2YJJJFE6K' }],
+      ['script', {}, 'window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag(\'js\', new Date());\ngtag(\'config\', \'G-N2YJJJFE6K\');']
+    ]
+  },
 
   // Sitemap generation
   sitemap: {
@@ -144,6 +151,12 @@ export default defineConfig({
     nav: [
       { text: 'Home', link: '/' },
       { text: 'Quickstart', link: '/quickstart' },
+      {
+        text: 'Tools',
+        items: [
+          { text: 'GEDCOM ↔ GLX Converter', link: '/convert' }
+        ]
+      },
       { text: 'CLI', link: '/cli' },
       {
         text: 'Specification',
@@ -367,7 +380,10 @@ export default defineConfig({
             { text: 'glx descendants', link: '/cli/glx_descendants' },
             { text: 'glx cite', link: '/cli/glx_cite' },
             { text: 'glx path', link: '/cli/glx_path' },
-            { text: 'glx serve', link: '/cli/glx_serve' }
+            { text: 'glx serve', link: '/cli/glx_serve' },
+            { text: 'glx mcp', link: '/cli/glx_mcp' },
+            { text: 'glx mcp serve', link: '/cli/glx_mcp_serve' },
+            { text: 'MCP research guide', link: '/mcp' }
           ]
         },
         {
@@ -517,4 +533,21 @@ export default defineConfig({
       provider: 'local'
     }
   }
+}
+
+export default defineConfig(({ command, mode }) => {
+  // Cloudflare Pages invokes VitePress directly. Generate the same assets
+  // for that build and local development, and let preview use the built files.
+  if (command === 'build' || mode === 'development') {
+    try {
+      execFileSync(process.execPath, [path.resolve(__dirname, '../scripts/build-converter.mjs')], { stdio: 'inherit' })
+    } catch (error) {
+      // A published build must ship the converter, so it still fails. A docs
+      // contributor without Go can preview every other page in development;
+      // only the converter page's Convert button stops working.
+      if (command === 'build') throw error
+      console.warn(`The converter was not built (${error.message}). Install Go from go.mod to use /convert locally.`)
+    }
+  }
+  return config
 })

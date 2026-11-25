@@ -48,6 +48,7 @@ glx stats [path] [flags]
 
 ```
   -h, --help   help for stats
+      --json   Output as JSON
 ```
 
 ### Options inherited from parent commands

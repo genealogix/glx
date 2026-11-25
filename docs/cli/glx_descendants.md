@@ -41,6 +41,7 @@ glx descendants <person-id> [flags]
   -a, --archive string    Archive path (directory or single file) (default ".")
   -g, --generations int   Maximum number of generations (0 for unlimited)
   -h, --help              help for descendants
+      --json              Output as JSON
 ```
 
 ### Options inherited from parent commands

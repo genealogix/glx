@@ -315,7 +315,7 @@ events:
 | `line` | string | No | Line number on the page |
 | `notes` | string \| string[] | No | Notes about the neighbor |
 
-`glx households --neighbors` shows them, and `glx cluster` counts a neighbor linked to a person as an associate.
+`glx households --neighbors` shows them, `glx cluster` counts a neighbor linked to a person as an associate, and `glx analyze` suggests cross-referencing any neighbor not yet tied to the household by a relationship or a shared non-census event.
 
 ## File Organization
 
@@ -371,7 +371,7 @@ In GEDCOM 7.0, every other participant becomes an `ASSO` under the event with a 
 
 GEDCOM 5.5.1 permits `ASSO` only directly under `INDI`, not under an event or `FAM`. Export therefore writes each association on the event's principal or household host; for a family event it writes it on each known spouse. `RELA` carries the participant's role label, and `NOTE` carries participant notes and descriptive event context (type, GEDCOM tag, archive event ID, date, place and subjects). A role label longer than 5.5.1's 25-character `RELA` limit, or containing a line break, is preserved in a note with `RELA Participant`.
 
-This 5.5.1 representation uses standard structures for interoperability. Its event link is descriptive text, and importing it does not reconstruct the event's participants. Use GEDCOM 7.0 when structured event associations and participant-role round trips are needed.
+This 5.5.1 representation uses standard structures for interoperability. GLX import restores the participant when the descriptive context identifies exactly one event hosted by that person. Ambiguous or unscoped associations become an `associate` relationship that retains the original relation and notes, with a warning. Delimiter-bearing context values are encoded together as JSON inside the context note; older plain-text context remains readable. Use GEDCOM 7.0 for direct structured event associations and participant-role interchange.
 
 An event that no record can carry, such as one whose only participant is a witness, is named in the export warnings.
 

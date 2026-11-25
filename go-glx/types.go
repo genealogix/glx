@@ -17,6 +17,9 @@ package glx
 import (
 	"bytes"
 	"fmt"
+	"maps"
+	"slices"
+	"strings"
 
 	"go.yaml.in/yaml/v3"
 )
@@ -241,14 +244,26 @@ type EventNeighbor struct {
 }
 
 // Place represents a geographical location.
+//
+// The `parent` field is written either as a plain place ID or, when the
+// place's jurisdiction changed over time, as a dated list of
+// {value, date} entries (#225). Use EffectiveParentID for date-unaware
+// resolution and GLXFile.PlacePathsAt for date-scoped ancestry.
 type Place struct {
-	Name       string         `yaml:"name"`
-	ParentID   string         `refType:"places"            yaml:"parent,omitempty"`
-	Type       string         `refType:"place_types"       yaml:"type,omitempty"`
-	Latitude   *float64       `yaml:"latitude,omitempty"`
-	Longitude  *float64       `yaml:"longitude,omitempty"`
-	Properties map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (jurisdiction, place_format, etc.)
-	Notes      NoteList       `yaml:"notes,omitempty"`
+	Name string `yaml:"name"`
+	// ParentID is the default parent place. For the plain string form it is
+	// the parent as written. When ParentHistory is non-empty it is derived from
+	// it on load (see DefaultParentOf) and ignored on write: ParentHistory is
+	// then authoritative, so change it through SetParentHistory.
+	ParentID string `refType:"places" yaml:"parent,omitempty"`
+	// ParentHistory is the temporal form of `parent`, in file order. Empty for
+	// a place written with the plain string form.
+	ParentHistory []PlaceParentPeriod `yaml:"-"`
+	Type          string              `refType:"place_types"       yaml:"type,omitempty"`
+	Latitude      *float64            `yaml:"latitude,omitempty"`
+	Longitude     *float64            `yaml:"longitude,omitempty"`
+	Properties    map[string]any      `yaml:"properties,omitempty"` // Vocabulary-defined properties (jurisdiction, place_format, etc.)
+	Notes         NoteList            `yaml:"notes,omitempty"`
 }
 
 // Source represents a source of information.
@@ -457,7 +472,7 @@ type Media struct {
 	Title      string         `yaml:"title,omitempty"`
 	Date       DateString     `yaml:"date,omitempty"`
 	Source     string         `refType:"sources"           yaml:"source,omitempty"`
-	Properties map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (description, subjects, width, height, duration, file_size, crop, medium, photographer, location, original_filename, blob_size)
+	Properties map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (description, subjects, width, height, duration, file_size, crop, medium, photographer, location, original_filename, blob_size, external_ids)
 	Notes      NoteList       `yaml:"notes,omitempty"`
 }
 
@@ -557,70 +572,89 @@ type TemporalValue struct {
 // entries (e.g., standard vocabularies present in both archives) are silently
 // skipped and counted.
 func (g *GLXFile) Merge(other *GLXFile) (conflicts []string, identicalSkipped int) {
+	result := g.merge(other, false)
+
+	return result.Conflicts, result.IdenticalVocabulary
+}
+
+// ArchiveMergeResult reports what MergeArchive did with the source archive.
+type ArchiveMergeResult struct {
+	// Conflicts lists each ID defined differently in both archives, naming
+	// the fields that differ. The destination's value is kept.
+	Conflicts []string
+	// IdenticalEntities counts source entities skipped because the
+	// destination already held an identical entity under the same ID.
+	IdenticalEntities int
+	// IdenticalVocabulary counts the identical vocabulary and property
+	// definitions skipped the same way.
+	IdenticalVocabulary int
+	// Identical holds the IDs behind IdenticalEntities, keyed by entity map
+	// name ("persons", "media", ...). The destination's entity, not the
+	// source's, is the one left in the archive under each of these IDs.
+	Identical map[string][]string
+}
+
+// MergeArchive combines a complete archive into g, keeping destination values.
+// Unlike Merge, which detects duplicate definitions while loading archive files,
+// identical entities are skipped. Conflicts describe the fields that differ.
+func (g *GLXFile) MergeArchive(other *GLXFile) *ArchiveMergeResult {
+	return g.merge(other, true)
+}
+
+func (g *GLXFile) merge(other *GLXFile, deduplicateEntities bool) *ArchiveMergeResult {
 	g.initMaps()
 	g.validation = nil // invalidate cached validation since maps are being mutated
-	conflicts = make([]string, 0, 10)
+	result := &ArchiveMergeResult{Conflicts: make([]string, 0, 10), Identical: map[string][]string{}}
 
 	// Merge metadata (first one wins; report conflict if both have content)
 	if other.ImportMetadata != nil && other.ImportMetadata.hasContent() {
 		if g.ImportMetadata != nil && g.ImportMetadata.hasContent() {
-			conflicts = append(conflicts, "conflict metadata: metadata appears in multiple files")
+			result.Conflicts = append(result.Conflicts, "conflict metadata: metadata appears in multiple files")
 		} else {
 			g.ImportMetadata = other.ImportMetadata
 		}
 	}
 
-	// Merge entities — always report conflicts (entity ID collisions are significant)
-	conflicts = append(conflicts, mergeMap("persons", g.Persons, other.Persons)...)
-	conflicts = append(conflicts, mergeMap("relationships", g.Relationships, other.Relationships)...)
-	conflicts = append(conflicts, mergeMap("events", g.Events, other.Events)...)
-	conflicts = append(conflicts, mergeMap("places", g.Places, other.Places)...)
-	conflicts = append(conflicts, mergeMap("sources", g.Sources, other.Sources)...)
-	conflicts = append(conflicts, mergeMap("citations", g.Citations, other.Citations)...)
-	conflicts = append(conflicts, mergeMap("repositories", g.Repositories, other.Repositories)...)
-	conflicts = append(conflicts, mergeMap("assertions", g.Assertions, other.Assertions)...)
-	conflicts = append(conflicts, mergeMap("media", g.Media, other.Media)...)
-	conflicts = append(conflicts, mergeMap("research_logs", g.ResearchLogs, other.ResearchLogs)...)
-	conflicts = append(conflicts, mergeMap("studies", g.Studies, other.Studies)...)
+	// Loading individual files remains strict: any entity ID defined twice is
+	// a conflict. Archive merging skips identical entities.
+	addEntities := func(mapType string, c, identical []string) {
+		result.Conflicts = append(result.Conflicts, c...)
+		if len(identical) > 0 {
+			result.Identical[mapType] = identical
+			result.IdenticalEntities += len(identical)
+		}
+	}
+	addEntities(mergeEntityMap("persons", g.Persons, other.Persons, deduplicateEntities))
+	addEntities(mergeEntityMap("relationships", g.Relationships, other.Relationships, deduplicateEntities))
+	addEntities(mergeEntityMap("events", g.Events, other.Events, deduplicateEntities))
+	addEntities(mergeEntityMap("places", g.Places, other.Places, deduplicateEntities))
+	addEntities(mergeEntityMap("sources", g.Sources, other.Sources, deduplicateEntities))
+	addEntities(mergeEntityMap("citations", g.Citations, other.Citations, deduplicateEntities))
+	addEntities(mergeEntityMap("repositories", g.Repositories, other.Repositories, deduplicateEntities))
+	addEntities(mergeEntityMap("assertions", g.Assertions, other.Assertions, deduplicateEntities))
+	addEntities(mergeEntityMap("media", g.Media, other.Media, deduplicateEntities))
+	addEntities(mergeEntityMap("research_logs", g.ResearchLogs, other.ResearchLogs, deduplicateEntities))
+	addEntities(mergeEntityMap("studies", g.Studies, other.Studies, deduplicateEntities))
 
 	// Helper to accumulate mergeMapDedup results
-	addDedup := func(c []string, s int) {
-		conflicts = append(conflicts, c...)
-		identicalSkipped += s
+	addDedup := func(c, identical []string) {
+		result.Conflicts = append(result.Conflicts, c...)
+		result.IdenticalVocabulary += len(identical)
 	}
 
-	// Merge vocabularies — silently skip identical entries, report only true conflicts
-	addDedup(mergeMapDedup("event_types", g.EventTypes, other.EventTypes))
-	addDedup(mergeMapDedup("relationship_types", g.RelationshipTypes, other.RelationshipTypes))
-	addDedup(mergeMapDedup("place_types", g.PlaceTypes, other.PlaceTypes))
-	addDedup(mergeMapDedup("source_types", g.SourceTypes, other.SourceTypes))
-	addDedup(mergeMapDedup("repository_types", g.RepositoryTypes, other.RepositoryTypes))
-	addDedup(mergeMapDedup("media_types", g.MediaTypes, other.MediaTypes))
-	addDedup(mergeMapDedup("sex_types", g.SexTypes, other.SexTypes))
-	addDedup(mergeMapDedup("gender_types", g.GenderTypes, other.GenderTypes))
-	addDedup(mergeMapDedup("legal_statuses", g.LegalStatuses, other.LegalStatuses))
-	addDedup(mergeMapDedup("source_natures", g.SourceNatures, other.SourceNatures))
-	addDedup(mergeMapDedup("information_types", g.InformationTypes, other.InformationTypes))
-	addDedup(mergeMapDedup("participant_roles", g.ParticipantRoles, other.ParticipantRoles))
-	addDedup(mergeMapDedup("confidence_levels", g.ConfidenceLevels, other.ConfidenceLevels))
-	addDedup(mergeMapDedup("search_result_types", g.SearchResultTypes, other.SearchResultTypes))
-	addDedup(mergeMapDedup("research_log_status_types", g.ResearchLogStatusTypes, other.ResearchLogStatusTypes))
-	addDedup(mergeMapDedup("lead_statuses", g.LeadStatuses, other.LeadStatuses))
-	addDedup(mergeMapDedup("person_statuses", g.PersonStatuses, other.PersonStatuses))
-	addDedup(mergeMapDedup("study_types", g.StudyTypes, other.StudyTypes))
-	addDedup(mergeMapDedup("study_statuses", g.StudyStatuses, other.StudyStatuses))
+	// Merge vocabularies — silently skip identical entries, report only true
+	// conflicts. Both lists come from the same table, so index i names the
+	// same vocabulary on g and other.
+	otherVocabs := other.vocabFields()
+	for i, f := range g.vocabFields() {
+		addDedup(mergeMapDedup(f.Key, *f.Map, *otherVocabs[i].Map))
+	}
+	otherProps := other.propertyFields()
+	for i, f := range g.propertyFields() {
+		addDedup(mergeMapDedup(f.Key, *f.Map, *otherProps[i].Map))
+	}
 
-	// Merge property vocabularies — same dedup behavior
-	addDedup(mergeMapDedup("person_properties", g.PersonProperties, other.PersonProperties))
-	addDedup(mergeMapDedup("event_properties", g.EventProperties, other.EventProperties))
-	addDedup(mergeMapDedup("relationship_properties", g.RelationshipProperties, other.RelationshipProperties))
-	addDedup(mergeMapDedup("place_properties", g.PlaceProperties, other.PlaceProperties))
-	addDedup(mergeMapDedup("media_properties", g.MediaProperties, other.MediaProperties))
-	addDedup(mergeMapDedup("repository_properties", g.RepositoryProperties, other.RepositoryProperties))
-	addDedup(mergeMapDedup("citation_properties", g.CitationProperties, other.CitationProperties))
-	addDedup(mergeMapDedup("source_properties", g.SourceProperties, other.SourceProperties))
-
-	return conflicts, identicalSkipped
+	return result
 }
 
 // initMaps ensures all entity and vocabulary maps are initialized (non-nil).
@@ -661,86 +695,15 @@ func (g *GLXFile) initMaps() {
 	if g.Studies == nil {
 		g.Studies = make(map[string]*Study)
 	}
-	if g.EventTypes == nil {
-		g.EventTypes = make(map[string]*VocabularyEntry)
+	for _, f := range g.vocabFields() {
+		if *f.Map == nil {
+			*f.Map = make(map[string]*VocabularyEntry)
+		}
 	}
-	if g.RelationshipTypes == nil {
-		g.RelationshipTypes = make(map[string]*VocabularyEntry)
-	}
-	if g.PlaceTypes == nil {
-		g.PlaceTypes = make(map[string]*VocabularyEntry)
-	}
-	if g.SourceTypes == nil {
-		g.SourceTypes = make(map[string]*VocabularyEntry)
-	}
-	if g.RepositoryTypes == nil {
-		g.RepositoryTypes = make(map[string]*VocabularyEntry)
-	}
-	if g.MediaTypes == nil {
-		g.MediaTypes = make(map[string]*VocabularyEntry)
-	}
-	if g.SexTypes == nil {
-		g.SexTypes = make(map[string]*VocabularyEntry)
-	}
-	if g.GenderTypes == nil {
-		g.GenderTypes = make(map[string]*VocabularyEntry)
-	}
-	if g.SearchResultTypes == nil {
-		g.SearchResultTypes = make(map[string]*VocabularyEntry)
-	}
-	if g.ResearchLogStatusTypes == nil {
-		g.ResearchLogStatusTypes = make(map[string]*VocabularyEntry)
-	}
-	if g.LeadStatuses == nil {
-		g.LeadStatuses = make(map[string]*VocabularyEntry)
-	}
-	if g.PersonStatuses == nil {
-		g.PersonStatuses = make(map[string]*VocabularyEntry)
-	}
-	if g.StudyTypes == nil {
-		g.StudyTypes = make(map[string]*VocabularyEntry)
-	}
-	if g.StudyStatuses == nil {
-		g.StudyStatuses = make(map[string]*VocabularyEntry)
-	}
-	if g.LegalStatuses == nil {
-		g.LegalStatuses = make(map[string]*VocabularyEntry)
-	}
-	if g.SourceNatures == nil {
-		g.SourceNatures = make(map[string]*VocabularyEntry)
-	}
-	if g.InformationTypes == nil {
-		g.InformationTypes = make(map[string]*VocabularyEntry)
-	}
-	if g.ParticipantRoles == nil {
-		g.ParticipantRoles = make(map[string]*VocabularyEntry)
-	}
-	if g.ConfidenceLevels == nil {
-		g.ConfidenceLevels = make(map[string]*VocabularyEntry)
-	}
-	if g.PersonProperties == nil {
-		g.PersonProperties = make(map[string]*PropertyDefinition)
-	}
-	if g.EventProperties == nil {
-		g.EventProperties = make(map[string]*PropertyDefinition)
-	}
-	if g.RelationshipProperties == nil {
-		g.RelationshipProperties = make(map[string]*PropertyDefinition)
-	}
-	if g.PlaceProperties == nil {
-		g.PlaceProperties = make(map[string]*PropertyDefinition)
-	}
-	if g.MediaProperties == nil {
-		g.MediaProperties = make(map[string]*PropertyDefinition)
-	}
-	if g.RepositoryProperties == nil {
-		g.RepositoryProperties = make(map[string]*PropertyDefinition)
-	}
-	if g.CitationProperties == nil {
-		g.CitationProperties = make(map[string]*PropertyDefinition)
-	}
-	if g.SourceProperties == nil {
-		g.SourceProperties = make(map[string]*PropertyDefinition)
+	for _, f := range g.propertyFields() {
+		if *f.Map == nil {
+			*f.Map = make(map[string]*PropertyDefinition)
+		}
 	}
 }
 
@@ -764,26 +727,66 @@ func mergeMap[T any](mapType string, dest, src map[string]*T) []string {
 
 // mergeMapDedup merges src into dest, silently skipping entries where the key
 // exists and the value is semantically equal. Only reports conflicts where the
-// same key maps to a different value. Uses YAML marshaling for comparison so
-// that nil maps/slices and empty maps/slices are treated as equivalent (both
-// omitted by omitempty tags).
-func mergeMapDedup[T any](mapType string, dest, src map[string]*T) (conflicts []string, skipped int) {
+// same key maps to a different value, naming the fields that differ. Uses YAML
+// marshaling for comparison so that nil maps/slices and empty maps/slices are
+// treated as equivalent (both omitted by omitempty tags). It returns the IDs it
+// skipped as identical, in sorted order, as are the conflicts.
+func mergeMapDedup[T any](mapType string, dest, src map[string]*T) (conflicts, identical []string) {
 	if dest == nil || src == nil {
-		return nil, 0
+		return nil, nil
 	}
-	for k, v := range src {
-		if existing, exists := dest[k]; exists {
-			if yamlEqual(existing, v) {
-				skipped++
-			} else {
-				conflicts = append(conflicts, fmt.Sprintf("conflict %s ID: %s", mapType, k))
-			}
-		} else {
-			dest[k] = v
+	for _, id := range slices.Sorted(maps.Keys(src)) {
+		incoming := src[id]
+		existing, exists := dest[id]
+		if !exists {
+			dest[id] = incoming
+
+			continue
 		}
+		if yamlEqual(existing, incoming) {
+			identical = append(identical, id)
+
+			continue
+		}
+		conflicts = append(conflicts, describeConflict(mapType, id, existing, incoming))
 	}
 
-	return conflicts, skipped
+	return conflicts, identical
+}
+
+// mergeEntityMap merges one entity map: strictly (every shared ID is a
+// conflict) while loading the files of one archive, or with mergeMapDedup when
+// merging two archives. It returns mapType first so the caller can key the
+// identical IDs by it.
+func mergeEntityMap[T any](mapType string, dest, src map[string]*T, deduplicate bool) (string, []string, []string) {
+	if !deduplicate {
+		return mapType, mergeMap(mapType, dest, src), nil
+	}
+	conflicts, identical := mergeMapDedup(mapType, dest, src)
+
+	return mapType, conflicts, identical
+}
+
+// describeConflict names each field that differs between the two values.
+// yamlEqual decides that they differ; when the field-level diff cannot place
+// the difference, the message says so rather than naming no field.
+func describeConflict[T any](mapType, id string, existing, incoming *T) string {
+	var message strings.Builder
+	fmt.Fprintf(&message, "conflict %s ID: %s", mapType, id)
+	fields := compareEntity(existing, incoming)
+	for _, field := range fields {
+		if field.Path == "" {
+			fmt.Fprintf(&message, "; %s here, %s in source", field.OldValue, field.NewValue)
+
+			continue
+		}
+		fmt.Fprintf(&message, "; %s: %s here, %s in source", field.Path, field.OldValue, field.NewValue)
+	}
+	if len(fields) == 0 {
+		message.WriteString("; the values serialize differently, but no single field differs")
+	}
+
+	return message.String()
 }
 
 // yamlEqual compares two values by YAML-marshaling both. This correctly treats

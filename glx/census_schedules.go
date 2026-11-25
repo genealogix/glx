@@ -81,18 +81,7 @@ func censusSchedulesForPlaces(refs []string, archive *glxlib.GLXFile) []*censusS
 	return schedules
 }
 
-func censusSchedulesForPerson(archive *glxlib.GLXFile, personID string) []*censusSchedule {
-	schedules, _ := glxlib.CensusSchedulesForPerson(archive, personID, glxlib.CoverageOptions{CensusCountry: censusCountryFallback})
-
-	return schedules
-}
 func allCensusYears() []int { return glxlib.CensusYears() }
-func buildPersonPlaceIndex(archive *glxlib.GLXFile) map[string][]string {
-	index, _ := glxlib.PersonPlaceIndex(archive)
-
-	return index
-}
-
 func scheduleForCountry(schedules []*censusSchedule, country string) *censusSchedule {
 	for _, schedule := range schedules {
 		if schedule.Country == country {
@@ -108,14 +97,14 @@ type datedPlace = glxlib.CensusDatedPlace
 
 const placeTypeTerritory = "territory"
 
-func buildPersonDatedPlaceIndex(archive *glxlib.GLXFile) map[string][]datedPlace {
-	index, _ := glxlib.PersonDatedPlaceIndex(archive)
+func personCensusPlaceIndex(archive *glxlib.GLXFile) map[string][]glxlib.CensusPlaceObservation {
+	index, _ := glxlib.PersonCensusPlaceIndex(archive)
 
 	return index
 }
 
-func datedPlacesForPerson(archive *glxlib.GLXFile, personID string) []datedPlace {
-	places, _ := glxlib.DatedPlacesForPerson(archive, personID)
+func censusSchedulesForObservations(archive *glxlib.GLXFile, places []glxlib.CensusPlaceObservation) []*censusSchedule {
+	schedules, _ := glxlib.CensusSchedulesForObservations(archive, places, glxlib.CoverageOptions{CensusCountry: censusCountryFallback})
 
-	return places
+	return schedules
 }

@@ -186,10 +186,23 @@ const (
 	RelationshipPropertyEndedOn          = "ended_on"           // Date the relationship ended; use end_event when the boundary is a documented event
 )
 
+// Standard Citation Property Names - commonly used properties on Citation entities
+const (
+	CitationPropertyURL = "url" // Link to the cited record online
+)
+
 // Standard Media Property Names - commonly used properties on Media entities
 const (
 	MediaPropertyOriginalFilename = "original_filename" // Source filename before import canonicalization or collision renaming
 	MediaPropertyBlobSize         = "blob_size"         // Length in bytes of the encoded GEDCOM 5.5.1 BLOB text as the BLOB/CONT lines joined with newlines (pre-decode; includes the line separators, not the decoded file size)
+	MediaPropertyExternalIDs      = "external_ids"      // Identifiers from external systems, such as Ancestry's media object id (_OID)
+	MediaPropertySourcePath       = "source_path"       // FILE reference as written in the imported GEDCOM, when glx import --media-source-paths records it
+)
+
+// External identifier types recorded on media from vendor GEDCOM tags.
+const (
+	ExternalIDTypeAncestry      = "ancestry"       // Ancestry media object id (OBJE._OID)
+	ExternalIDTypeAncestryClone = "ancestry_clone" // media object id of the tree an Ancestry tree was cloned from (OBJE._CLON._OID)
 )
 
 // Deprecated property constants - these properties have been removed from the spec.
@@ -424,19 +437,22 @@ const (
 	GedcomTagFile   = "FILE"   // File reference
 	GedcomTagForm   = "FORM"   // Format
 	GedcomTagCrop   = "CROP"   // Crop coordinates (GEDCOM 7.0)
-	GedcomTagMime   = "MIME"   // MIME type (GEDCOM 7.0)
+	GedcomTagOrig   = "_ORIG"  // Original filename under FILE (GLX extension, written by glx export)
+	GedcomTagMime   = "MIME"   // Legacy nonstandard MIME tag (read for compatibility)
 	GedcomTagMedi   = "MEDI"   // Media type (GEDCOM 5.5.1)
 	GedcomTagTop    = "TOP"    // Top coordinate
 	GedcomTagLeft   = "LEFT"   // Left coordinate
 	GedcomTagHeight = "HEIGHT" // Height
 	GedcomTagWidth  = "WIDTH"  // Width
 	GedcomTagBlob   = "BLOB"   // Binary large object (GEDCOM 5.5.1, deprecated)
+	GedcomTagOID    = "_OID"   // Ancestry media object id
+	GedcomTagClon   = "_CLON"  // Ancestry clone provenance block
 )
 
 // GEDCOM Tags - Citation/Evidence
 const (
 	GedcomTagPage = "PAGE" // Page/location within source
-	GedcomTagQuay = "QUAY" // Quality assessment (preserved in citation notes)
+	GedcomTagQuay = "QUAY" // Citation quality assessment (citation property gedcom_quay; notes when invalid)
 	GedcomTagCont = "CONT" // Continuation on new line
 	GedcomTagConc = "CONC" // Concatenation (same line)
 )
@@ -450,6 +466,9 @@ const (
 	GedcomTagVers = "VERS" // Version
 	GedcomTagCorp = "CORP" // Corporation
 )
+
+// GedcomTagRefn is the GEDCOM 5.5.1 user reference number tag.
+const GedcomTagRefn = "REFN"
 
 // GEDCOM Tags - GEDCOM 7.0 Specific
 const (
@@ -527,7 +546,9 @@ const (
 	SourceTypeImmigration        = "immigration"         // Passenger lists, naturalization records
 	SourceTypeDirectory          = "directory"           // City directories, telephone books
 	SourceTypeBook               = "book"                // Published genealogies, family histories
-	SourceTypeDatabase           = "database"            // Online databases, compiled records
+	SourceTypeArticle            = "article"             // Journal, magazine, and reference articles
+	SourceTypeWebsite            = "website"             // Websites, informational web pages, and blogs
+	SourceTypeDatabase           = "database"            // Searchable record collections and compiled databases
 	SourceTypeOralHistory        = "oral_history"        // Interviews, recorded memories
 	SourceTypeCorrespondence     = "correspondence"      // Letters, emails, personal papers
 	SourceTypePhotograph         = "photograph"          // Photograph collections
@@ -562,6 +583,8 @@ var standardSourceTypes = map[string]bool{
 	SourceTypeImmigration:        true,
 	SourceTypeDirectory:          true,
 	SourceTypeBook:               true,
+	SourceTypeArticle:            true,
+	SourceTypeWebsite:            true,
 	SourceTypeDatabase:           true,
 	SourceTypeOralHistory:        true,
 	SourceTypeCorrespondence:     true,
@@ -579,12 +602,25 @@ var standardSourceTypes = map[string]bool{
 	SourceTypeOther:              true,
 }
 
+// MissingStandardSourceTypeHint explains a source type rejected by an
+// archive's own source_types vocabulary when the key is a standard type: an
+// archive initialized before the type was added keeps its older vocabulary,
+// so the fix is to copy the entry, not to pick another type. It returns ""
+// for a key that is not a standard source type.
+func MissingStandardSourceTypeHint(key string) string {
+	if !standardSourceTypes[key] {
+		return ""
+	}
+
+	return `"` + key + `" is a standard source type missing from this archive's vocabularies/source-types.glx; copy its entry from the standard source-types vocabulary`
+}
+
 // gedcomSourceTypeMapping maps GEDCOM source type values to GLX source types.
 // Package-level to avoid allocation on every call.
 var gedcomSourceTypeMapping = map[string]string{
 	"book":       SourceTypeBook,
-	"article":    SourceTypeBook,
-	"website":    SourceTypeDatabase,
+	"article":    SourceTypeArticle,
+	"website":    SourceTypeWebsite,
 	"database":   SourceTypeDatabase,
 	"census":     SourceTypeCensus,
 	"vital":      SourceTypeVitalRecord,

@@ -154,7 +154,7 @@ func ExportGEDCOM(glx *GLXFile, version GEDCOMVersion, logWriter io.Writer) ([]b
 		expCtx.Stats.PersonsExported, expCtx.Stats.FamiliesExported, expCtx.Stats.RepositoriesExported, expCtx.Stats.SourcesExported, expCtx.Stats.MediaExported)
 
 	// Serialize to bytes
-	data := serializeGEDCOMRecords(records)
+	data := serializeGEDCOMVersion(records, version)
 
 	// Build result
 	versionStr := GEDCOMVersion551
@@ -187,6 +187,13 @@ type ExportContext struct {
 
 	// Place cache: placeID -> full GEDCOM place string
 	PlaceStrings map[string]string
+
+	// datedPlaceStrings caches place strings resolved at an event date for
+	// places with temporal parents (#225), keyed by placeID + "|" + date.
+	datedPlaceStrings map[string]string
+	// temporalPlaceParents caches whether any place has a temporal parent;
+	// nil until first computed.
+	temporalPlaceParents *bool
 
 	// PersonEvents maps person ID -> event IDs the person's INDI record
 	// carries: those where the person is principal (or, for an event with no

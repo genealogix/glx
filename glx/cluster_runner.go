@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -142,6 +143,15 @@ func resolvePersonForCluster(archive *glxlib.GLXFile, query string) (string, err
 
 // buildCluster performs FAN club analysis for a person.
 func buildCluster(personID string, archive *glxlib.GLXFile, filterPlace string, beforeYear, afterYear int) *clusterResult {
+	result, _ := buildClusterContext(context.Background(), personID, archive, filterPlace, beforeYear, afterYear)
+
+	return result
+}
+
+func buildClusterContext(ctx context.Context, personID string, archive *glxlib.GLXFile, filterPlace string, beforeYear, afterYear int) (*clusterResult, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	person := archive.Persons[personID]
 	personName := "(unknown)"
 	if person != nil {
@@ -151,26 +161,23 @@ func buildCluster(personID string, archive *glxlib.GLXFile, filterPlace string, 
 	// Build a map of associate person ID → links
 	linkMap := make(map[string][]associateLink)
 
-	// 1. Census household connections
-	collectCensusLinks(personID, archive, linkMap, filterPlace, beforeYear, afterYear)
-
-	// 2. Census page neighbors (#180)
-	collectCensusNeighborLinks(personID, archive, linkMap, filterPlace, beforeYear, afterYear)
-
-	// 3. Event co-participant connections (non-census)
-	collectEventLinks(personID, archive, linkMap, filterPlace, beforeYear, afterYear)
-
-	// 4. Place overlap connections
-	collectPlaceLinks(personID, archive, linkMap, filterPlace, beforeYear, afterYear)
-
-	// Convert to sorted associate list
-	associates := buildAssociateList(linkMap, archive)
+	var associates []associate
+	if err := runContextPhases(
+		ctx,
+		func() { collectCensusLinks(personID, archive, linkMap, filterPlace, beforeYear, afterYear) },
+		func() { collectCensusNeighborLinks(personID, archive, linkMap, filterPlace, beforeYear, afterYear) },
+		func() { collectEventLinks(personID, archive, linkMap, filterPlace, beforeYear, afterYear) },
+		func() { collectPlaceLinks(personID, archive, linkMap, filterPlace, beforeYear, afterYear) },
+		func() { associates = buildAssociateList(linkMap, archive) },
+	); err != nil {
+		return nil, err
+	}
 
 	return &clusterResult{
 		PersonID:   personID,
 		PersonName: personName,
 		Associates: associates,
-	}
+	}, nil
 }
 
 // collectCensusLinks finds people in the same census events.
@@ -191,10 +198,8 @@ func collectCensusLinks(personID string, archive *glxlib.GLXFile, linkMap map[st
 			continue
 		}
 
-		if filterPlace != "" && event.PlaceID != filterPlace {
-			if !placeIsDescendant(event.PlaceID, filterPlace, archive) {
-				continue
-			}
+		if !eventInPlace(event, filterPlace, archive) {
+			continue
 		}
 
 		label := event.Title
@@ -236,7 +241,7 @@ func collectCensusNeighborLinks(personID string, archive *glxlib.GLXFile, linkMa
 		if !yearInRange(year, beforeYear, afterYear) {
 			continue
 		}
-		if filterPlace != "" && event.PlaceID != filterPlace && !placeIsDescendant(event.PlaceID, filterPlace, archive) {
+		if !eventInPlace(event, filterPlace, archive) {
 			continue
 		}
 
@@ -332,10 +337,8 @@ func collectEventLinks(personID string, archive *glxlib.GLXFile, linkMap map[str
 			continue
 		}
 
-		if filterPlace != "" && event.PlaceID != filterPlace {
-			if !placeIsDescendant(event.PlaceID, filterPlace, archive) {
-				continue
-			}
+		if !eventInPlace(event, filterPlace, archive) {
+			continue
 		}
 
 		label := event.Title
@@ -370,7 +373,7 @@ func collectEventLinks(personID string, archive *glxlib.GLXFile, linkMap map[str
 // collectPlaceLinks finds people associated with the same places in overlapping time periods.
 func collectPlaceLinks(personID string, archive *glxlib.GLXFile, linkMap map[string][]associateLink, filterPlace string, beforeYear, afterYear int) {
 	// Build: which places does the target person appear at (with years)?
-	targetPlaces := personPlaceYears(personID, archive)
+	targetPlaces := personPlaceYears(personID, archive, filterPlace)
 	if len(targetPlaces) == 0 {
 		return
 	}
@@ -383,7 +386,7 @@ func collectPlaceLinks(personID string, archive *glxlib.GLXFile, linkMap map[str
 	}
 
 	// Precompute place-year index for all persons to avoid O(P×E) rescanning.
-	placeIndex := buildPlaceYearIndex(personID, archive)
+	placeIndex := buildPlaceYearIndex(personID, archive, filterPlace)
 
 	// Iterate in sorted order for deterministic output
 	sortedOtherIDs := make([]string, 0, len(placeIndex))
@@ -401,11 +404,6 @@ func collectPlaceLinks(personID string, archive *glxlib.GLXFile, linkMap map[str
 		otherPlaces := placeIndex[otherID]
 		for _, placeID := range sortedPlaceIDs {
 			targetYears := filteredTargetPlaces[placeID]
-			if filterPlace != "" && placeID != filterPlace {
-				if !placeIsDescendant(placeID, filterPlace, archive) {
-					continue
-				}
-			}
 
 			otherYears, ok := otherPlaces[placeID]
 			if !ok {
@@ -439,10 +437,10 @@ func collectPlaceLinks(personID string, archive *glxlib.GLXFile, linkMap map[str
 }
 
 // buildPlaceYearIndex precomputes place-year sets for all persons except the target.
-func buildPlaceYearIndex(excludeID string, archive *glxlib.GLXFile) map[string]placeYearSet {
+func buildPlaceYearIndex(excludeID string, archive *glxlib.GLXFile, filterPlace string) map[string]placeYearSet {
 	index := make(map[string]placeYearSet)
 	for _, event := range archive.Events {
-		if event == nil || event.PlaceID == "" {
+		if event == nil || event.PlaceID == "" || !eventInPlace(event, filterPlace, archive) {
 			continue
 		}
 		year := extractDateYear(string(event.Date))
@@ -499,11 +497,11 @@ func filterYears(years []int, beforeYear, afterYear int) []int {
 type placeYearSet map[string][]int
 
 // personPlaceYears collects all places and years a person is associated with via events.
-func personPlaceYears(personID string, archive *glxlib.GLXFile) placeYearSet {
+func personPlaceYears(personID string, archive *glxlib.GLXFile, filterPlace string) placeYearSet {
 	result := make(placeYearSet)
 
 	for _, event := range archive.Events {
-		if event == nil || event.PlaceID == "" {
+		if event == nil || event.PlaceID == "" || !eventInPlace(event, filterPlace, archive) {
 			continue
 		}
 		if !clusterEventHasParticipant(personID, event) {
@@ -611,23 +609,11 @@ func clusterEventHasParticipant(personID string, event *glxlib.Event) bool {
 	return false
 }
 
-// placeIsDescendant checks if placeID is a descendant of ancestorID in the place hierarchy.
-func placeIsDescendant(placeID, ancestorID string, archive *glxlib.GLXFile) bool {
-	visited := make(map[string]bool)
-	current := placeID
-	for current != "" && !visited[current] {
-		visited[current] = true
-		place, ok := archive.Places[current]
-		if !ok || place == nil {
-			return false
-		}
-		if place.ParentID == ancestorID {
-			return true
-		}
-		current = place.ParentID
-	}
-
-	return false
+// eventInPlace filters observations before they are reduced to years. A
+// partial date can match more than one jurisdiction, but an impossible
+// historical path cannot put a dated event in that jurisdiction.
+func eventInPlace(event *glxlib.Event, placeID string, archive *glxlib.GLXFile) bool {
+	return placeID == "" || event.PlaceID == placeID || archive.PlaceMayHaveAncestorAt(event.PlaceID, placeID, event.Date)
 }
 
 // yearInRange checks if a year falls within the filter range.

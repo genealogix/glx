@@ -8,6 +8,8 @@ layout: doc
 
 Guide for converting GEDCOM files to GENEALOGIX format using the automated import tool.
 
+Use the [browser converter](../../website/convert.md) to download a single GLX file or a ZIP of a multi-file archive from a GEDCOM file. Extract the ZIP to get the archive folder.
+
 ## Key Differences
 
 Understanding how GENEALOGIX differs from GEDCOM helps you get the most out of your migration.
@@ -64,7 +66,26 @@ glx import family.ged -o family.glx --format single
 | `--format` | `-f` | `multi` | Output format: `multi` or `single` |
 | `--no-validate` | | `false` | Skip validation before saving |
 | `--verbose` | `-v` | `false` | Show detailed import progress |
+| `--media-source-paths` | | `false` | Preserve the media paths as written; folder names may be private |
 | `--show-first-errors` | | `10` | Number of validation errors to show (0 for all) |
+| `--platform` | | (detected) | Force a platform adapter instead of detecting it from `HEAD.SOUR` |
+| `--list-platforms` | | `false` | List the platform adapters and exit |
+
+### Platform Adapters
+
+Ancestry, Family Tree Maker, RootsMagic and other programs each write their own custom tags. The importer reads the exporting program from the file's `HEAD.SOUR` record and, before converting, rewrites that program's custom tags into the standard GEDCOM structures it already maps. On both plain GEDCOM and GEDZIP imports, `--verbose` prints the adapter it chose and how many tags of each kind it rewrote.
+
+| Platform | `--platform` | Rewrites |
+|----------|--------------|----------|
+| Ancestry | `ancestry` | `_MILT` → `military_service` event (its value kept as `event_subtype`); `_DCAUSE` → the death event's `cause` (a death event is created if there is none); `_APID` on a citation → `external_ids` plus a `url` to the Ancestry record, on a source → `external_ids`; HTML markup in notes stripped; `_UID` → `external_ids` |
+| Family Tree Maker | `ftm` | Same as Ancestry |
+| MyHeritage | `myheritage` | `_UID` → `external_ids`; HTML markup in notes stripped |
+| RootsMagic | `rootsmagic` | `_UID` → `external_ids` |
+| Legacy Family Tree | `legacy` | `_UID` → `external_ids` |
+| Findmypast | `findmypast` | `_UID` → `external_ids` |
+| Anything else | `generic` | Nothing |
+
+`_UID` is rewritten on individuals, sources and repositories, the records whose external IDs are kept. A custom tag no adapter maps is still preserved on persons under `gedcom_extensions`, exactly as without an adapter. A `_DCAUSE` that carries its own citations, or names a cause when the death event already has one, is left as an extension rather than merged. An adapter only rewrites a structure it can convert without loss: a `_MILT` whose value breaks onto a `CONT` line, whose `TYPE` has sub-records, or that holds a sub-record the event converter does not map (a vendor tag such as `_CUSTOM`, or `RESN`), is left as an extension whole, and a `_UID` or `_APID` with sub-records of its own is left as it is. A `CONC` continuation is folded into the `_MILT` value first. Stripping HTML keeps a link's destination, as `label (url)`, and a note with a link that cannot be paired with its closing tag is kept exactly as written.
 
 ### Single-File vs Multi-File
 
@@ -140,9 +161,13 @@ Unknown event types fall back to Title Case of the snake_case type (e.g., `milit
 
 The importer handles three types of media references:
 
-- **Relative file paths**: Copied to `media/files/` in your archive, with paths rewritten automatically. Duplicate filenames are deduplicated (e.g., `photo.jpg` → `photo-2.jpg`), and the source file's basename is preserved in `media.properties.original_filename`. A GEDCOM 7.0 `FILE` payload is a URI reference, so a percent-encoded basename is decoded before it is recorded (`CharlotteBront%C3%AB.jpg` → `CharlotteBrontë.jpg`) — a malformed encoding, or one that decodes to something that is not a bare filename, keeps the raw basename. GEDCOM 5.5.1 payloads are plain paths and are recorded verbatim, so a literal `%` survives untouched. A ref already pointing into `media/files/` (a re-imported GLX export) is not stamped — its basename is the canonicalized name, not an original — unless a collision during the new import renames it, in which case the pre-rename name is recorded.
+- **Relative file paths**: Copied to `media/files/` in your archive, with paths rewritten automatically. Duplicate filenames are deduplicated (e.g., `photo.jpg` → `photo-2.jpg`), and the source file's basename is preserved in `media.properties.original_filename`. A GEDCOM 7.0 `FILE` payload is a URI reference, so a percent-encoded basename is decoded, and the archive file, its `uri` and `original_filename` all use the decoded name (`CharlotteBront%C3%AB.jpg` → `CharlotteBrontë.jpg`). A malformed encoding, or one that decodes to something that is not a bare filename, keeps the raw basename. GEDCOM 5.5.1 payloads are plain paths and are used verbatim, so a literal `%` survives untouched. When only the other spelling exists next to the GEDCOM (a literal `%`-named file under 7.0), `original_filename` names the file that was actually copied. With `--media-source-paths`, `media.properties.source_path` also keeps the reference's directory, so `photos/photo.jpg` and `backup/photo.jpg` stay distinguishable; it is off by default because folder names can be private. A ref already pointing into `media/files/` (a re-imported GLX export) is not stamped — its basename is the canonicalized name, not an original — unless a collision during the new import renames it, in which case the pre-rename name is recorded.
 - **URLs and absolute paths**: Preserved as-is in the media entity's URI field.
 - **BLOB data** (GEDCOM 5.5.1): Binary data is decoded and written to files in `media/files/`.
+
+A GEDCOM 7.0 `OBJE` with several `FILE` structures becomes one media entity per `FILE`, because a media entity has one `uri`. Each keeps the object's title, notes, crop and identifiers, plus its own file's format and title, and every record that points to the `OBJE` links all of them.
+
+Imports that write media to the same `media/files/` directory, such as single-file archives side by side, take turns: a second import waits for the first to finish instead of reusing a file the first may still roll back.
 
 ::: warning Media source directory
 Relative file paths in the GEDCOM are resolved from the directory containing the `.ged` file. Make sure media files are accessible at those paths before importing.
@@ -263,7 +288,9 @@ If no `TYPE` tag is present, the importer infers the source type from keywords i
 | `DATA.DATE` | `citation.properties.source_date` | When the source recorded the information |
 | `DATA.TEXT` | `citation.properties.text_from_source` | Transcription from source |
 | `TEXT` | `citation.properties.text_from_source` | GEDCOM 5.5.1 direct text |
-| `QUAY` | `citation.notes` | Quality assessment preserved as note |
+| `QUAY` | `citation.properties.gedcom_quay` | Original integer 0–3 retained for GEDCOM round-trip; not assertion confidence |
+| `EXID` | `citation.properties.external_ids` | |
+| `WWW` | `citation.properties.url` | Not a standard citation tag; written by some programs and by the Ancestry adapter for `_APID` |
 | `NOTE` | `citation.notes` | |
 | `OBJE` | `citation.media` | |
 
@@ -288,7 +315,8 @@ Repositories are automatically deduplicated by name, city, and country. If two G
 
 | GEDCOM Tag | GLX Field | Notes |
 |------------|-----------|-------|
-| `FILE` | `media.uri` | Relative paths rewritten to `media/files/`; source basename kept in `media.properties.original_filename` (percent-decoded for 7.0; import-only, not emitted on export) |
+| `FILE` | `media.uri` | One media entity per `FILE`. Relative paths rewritten to `media/files/` (percent-decoded for 7.0); source basename kept in `media.properties.original_filename` |
+| `FILE._ORIG` | `media.properties.original_filename` | GLX extension: `glx export` writes the original filename here and `glx import` reads it back, so a round trip keeps it |
 | `FILE.FORM` | (MIME inference) | GEDCOM 5.5.1 format |
 | `FILE.MIME` | `media.mime_type` | GEDCOM 7.0 explicit MIME |
 | `FILE.TITL` | `media.title` | |
@@ -297,6 +325,9 @@ Repositories are automatically deduplicated by name, city, and country. If two G
 | `TITL` | `media.title` | |
 | `CROP` | `media.properties.crop` | GEDCOM 7.0 crop coordinates |
 | `NOTE` | `media.notes` | |
+| `EXID` | `media.properties.external_ids` | With `EXID.TYPE` as the identifier type |
+| `_OID` | `media.properties.external_ids` | Ancestry media object id, type `ancestry` |
+| `_CLON._OID` | `media.properties.external_ids` | Media id in the tree an Ancestry tree was cloned from, type `ancestry_clone` |
 | `BLOB` | (decoded to file) | GEDCOM 5.5.1 deprecated binary data |
 
 ## Common Challenges
@@ -547,8 +578,8 @@ Most differences are handled transparently by the importer, but it helps to know
 | Feature | GEDCOM 5.5.1 | GEDCOM 7.0 |
 |---------|-------------|------------|
 | **Shared notes** | `NOTE` records with XRef | `SNOTE` tag |
-| **Media MIME types** | Inferred from `FORM` tag | Explicit `MIME` tag |
-| **External IDs** | Not supported | `EXID` tag with optional `TYPE` |
+| **Media MIME types** | Format name in `FILE.FORM` | Media type in `FILE.FORM` |
+| **External IDs** | `REFN` with `TYPE` | `EXID` with authority `TYPE` |
 | **Negative assertions** | Not supported | `NO` tag (e.g., `NO BIRT`) |
 | **Crop coordinates** | Not supported | `CROP` tag on media |
 | **Extension schemas** | Convention only (`_` prefix) | `SCHMA` tag with URI definitions |
@@ -556,7 +587,26 @@ Most differences are handled transparently by the importer, but it helps to know
 | **Binary data** | `BLOB` tag (deprecated) | Not supported |
 | **Void pointers** | Not used | `@VOID@` for embedded structures |
 
-GEDCOM 5.5.1 exports associations between people using standard person-level structures. Family-event associations appear on each known spouse, with event type, archive event ID, date, place and subjects in notes. These notes describe the event link; the importer does not reconstruct event participants from person-level associations. Choose GEDCOM 7.0 to round-trip structured event associations and participant roles.
+GEDCOM 5.5.1 exports associations between people using standard person-level structures. Family-event associations appear on each known spouse, with event type, archive event ID, date, place and subjects in notes. The importer restores participants when these notes identify one event; otherwise it retains a referenced social relationship and warns. GEDCOM 7.0 uses structured event associations directly.
+
+## Export and round trips
+
+When exporting back to GEDCOM, identifier authorities are retained as
+`REFN.TYPE` in 5.5.1 and `EXID.TYPE` in 7.0. Known short authority names such
+as `wikitree` become authority URIs in 7.0; unknown names use an opaque
+`urn:glx:external-id:` URI. A bare identifier remains untyped.
+
+An individual's event age belongs to that participant and exports as `AGE`.
+In 5.5.1, an event's other participants use individual-level `ASSO` records
+with an event-context note. Import restores them when that context identifies
+one event. Unscoped or ambiguous associations become referenced `associate`
+relationships with the original relation and notes, plus an import warning.
+
+GEDCOM 7.0 media types use `FILE.FORM`. Media with no URI cannot supply the
+required file reference: export warns, keeps identifiers at the object level,
+and retains the available title and media type in notes where necessary.
+It never invents a filename. Long 7.0 values stay on one line, with `CONT`
+only for actual newlines; 5.5.1 retains `CONC` wrapping.
 
 ## See Also
 

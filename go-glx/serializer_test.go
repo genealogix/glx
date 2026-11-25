@@ -15,10 +15,14 @@
 package glx
 
 import (
+	"archive/zip"
 	"bytes"
 	"errors"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -110,6 +114,51 @@ func TestSerializeSingleFileBytes(t *testing.T) {
 	}
 	if surname != "Doe" {
 		t.Errorf("Expected surname 'Doe', got %q", surname)
+	}
+}
+
+func TestSerializeSingleFileLargeCollections(t *testing.T) {
+	// Unpadded and mixed IDs across several batches: go-yaml orders digit
+	// runs numerically, and the batches must split in that same order.
+	people := make(map[string]*Person, 3*yamlBatchSize+3)
+	for index := range 3 * yamlBatchSize {
+		id := fmt.Sprintf("person-%d", index)
+		people[id] = &Person{Notes: NoteList{"First line\n\n  Indented text\n\n"}}
+	}
+	people["Person-7"] = &Person{}
+	people["person-007a"] = &Person{}
+	people["person-5"].Properties = map[string]any{"description": "\tIndented\nNext line"}
+	people["null"] = nil
+	archive := &GLXFile{
+		ImportMetadata: &Metadata{},
+		Persons:        people,
+		Events:         map[string]*Event{},
+		EventTypes:     map[string]*VocabularyEntry{"birth": {Label: "Birth"}},
+	}
+	expected := *archive
+	expected.ImportMetadata = nil
+	before, err := marshalYAML(&expected, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	serializer := NewSerializer(&SerializerOptions{Validate: false})
+	actual, err := serializer.SerializeSingleFileBatchedBytes(archive)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(actual, before) {
+		t.Fatal("batched YAML differed from the standard encoding")
+	}
+	if standard, err := serializer.SerializeSingleFileBytes(archive); err != nil || !bytes.Equal(actual, standard) {
+		t.Fatalf("batched YAML differed from SerializeSingleFileBytes (err %v)", err)
+	}
+	parsed, err := serializer.DeserializeSingleFileBytes(actual)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(parsed.Persons) != len(people) || parsed.EventTypes["birth"].Label != "Birth" || archive.ImportMetadata == nil {
+		t.Fatal("large archive round trip did not preserve the expected data")
 	}
 }
 
@@ -288,6 +337,129 @@ assertions: {}
 	// Check content
 	if len(glx.Persons) != 1 {
 		t.Errorf("Expected 1 person, got %d", len(glx.Persons))
+	}
+}
+
+func TestSerializeQuotesTabLedTextOutsideNotes(t *testing.T) {
+	text := "\tIndented\nNext line"
+	archive := &GLXFile{
+		Sources: map[string]*Source{"s1": {Title: text, Properties: map[string]any{"description": text}}},
+		Events:  map[string]*Event{"e1": {Properties: map[string]any{"list": []any{"plain", text}}}},
+	}
+	serializer := NewSerializer(&SerializerOptions{Validate: false})
+
+	data, err := serializer.SerializeSingleFileBytes(archive)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := serializer.DeserializeSingleFileBytes(data)
+	if err != nil {
+		t.Fatalf("single file did not read back: %v\n%s", err, data)
+	}
+	if parsed.Sources["s1"].Title != text || parsed.Sources["s1"].Properties["description"] != text ||
+		parsed.Events["e1"].Properties["list"].([]any)[1] != text {
+		t.Fatalf("tab-led text changed in the round trip:\n%s", data)
+	}
+
+	files, err := serializer.SerializeMultiFileToMap(archive)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := serializer.DeserializeMultiFileFromMap(files); err != nil {
+		t.Fatalf("multi-file archive did not read back: %v", err)
+	}
+}
+
+func TestYAMLKeyLessMatchesEncoder(t *testing.T) {
+	keys := []string{
+		"person-10", "person-2", "person-02", "person-1a", "Person-3", "p", "person-",
+		"a1b2", "a01b", "a1b10", "I1", "I12", "I2", "x0", "x00", "x", "é1", "e1", "k1", "k10", "k2",
+	}
+	values := make(map[string]int, len(keys))
+	for _, key := range keys {
+		values[key] = 0
+	}
+	encoded, err := yaml.Marshal(values)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var want []string
+	for line := range strings.SplitSeq(strings.TrimSpace(string(encoded)), "\n") {
+		key, _, _ := strings.Cut(line, ": ")
+		want = append(want, key)
+	}
+	got := slices.Clone(keys)
+	slices.SortFunc(got, func(a, b string) int {
+		if yamlKeyLess(a, b) {
+			return -1
+		}
+		if yamlKeyLess(b, a) {
+			return 1
+		}
+
+		return 0
+	})
+	if !slices.Equal(got, want) {
+		t.Fatalf("got %v, go-yaml wrote %v", got, want)
+	}
+}
+
+func TestWriteMultiFileZIP(t *testing.T) {
+	archive := &GLXFile{
+		ImportMetadata: &Metadata{SourceSystem: "GEDCOM exporter"},
+		Persons: map[string]*Person{
+			"Person-B": {Notes: NoteList{"A note"}},
+			"person-a": {Properties: map[string]any{"name": "Jane Doe"}},
+		},
+	}
+	serializer := NewSerializer(&SerializerOptions{Validate: false})
+	want, err := serializer.SerializeMultiFileToMap(archive)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var output bytes.Buffer
+	if err := serializer.WriteMultiFileZIP(archive, &output); err != nil {
+		t.Fatal(err)
+	}
+	reader, err := zip.NewReader(bytes.NewReader(output.Bytes()), int64(output.Len()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range reader.File {
+		file, err := entry.Open()
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := io.ReadAll(file)
+		closeErr := file.Close()
+		if err := errors.Join(err, closeErr); err != nil {
+			t.Fatal(err)
+		}
+		expected, exists := want[entry.Name]
+		if !exists || !bytes.Equal(data, expected) {
+			t.Fatalf("unexpected content for ZIP entry %s", entry.Name)
+		}
+		delete(want, entry.Name)
+	}
+	if len(want) != 0 {
+		t.Fatalf("%d expected files missing from the ZIP", len(want))
+	}
+
+	var repeated bytes.Buffer
+	if err := serializer.WriteMultiFileZIP(archive, &repeated); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(output.Bytes(), repeated.Bytes()) {
+		t.Fatal("ZIP output varied across repeated serializations")
+	}
+}
+
+func TestWriteMultiFileZIPRejectsFilenameCollisions(t *testing.T) {
+	archive := &GLXFile{Persons: map[string]*Person{"Person-A": {}, "person-a": {}}}
+	serializer := NewSerializer(&SerializerOptions{Validate: false})
+	if err := serializer.WriteMultiFileZIP(archive, io.Discard); !errors.Is(err, ErrCaseInsensitiveCollision) {
+		t.Fatalf("expected a filename collision, got %v", err)
 	}
 }
 

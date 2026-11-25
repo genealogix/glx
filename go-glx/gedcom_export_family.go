@@ -16,6 +16,7 @@ package glx
 
 import (
 	"fmt"
+	"reflect"
 	"slices"
 	"sort"
 	"strconv"
@@ -121,9 +122,11 @@ func reconstructFamilies(expCtx *ExportContext) {
 	// family of its parent set, synthesizing a FAM when no marriage matches.
 	attachChildrenToFamilies(expCtx, relIDs, parentToFamilies, parentPairToFamily)
 
-	// Step 3: Sort children within each family and assign XRefs
+	// Step 3: Put children in birth order within each family, as GEDCOM
+	// expects CHIL lines to run, and assign XRefs
+	order := NewBirthOrder(expCtx.GLX)
 	for i, family := range expCtx.Families {
-		sort.Strings(family.ChildIDs)
+		order.Sort(family.ChildIDs)
 		xref := fmt.Sprintf("@F%d@", i+1)
 		family.FamilyXRef = xref
 		expCtx.FamilyXRefMap[family.RelationshipID] = xref
@@ -179,7 +182,7 @@ func exportFamily(family *ExportFamily, expCtx *ExportContext) *GEDCOMRecord {
 		}
 	}
 
-	// CHIL (sorted by child person ID)
+	// CHIL (in birth order, undated children last, the ID breaking ties)
 	for _, childID := range family.ChildIDs {
 		if xref, ok := expCtx.PersonXRefMap[childID]; ok {
 			record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
@@ -201,21 +204,27 @@ func exportFamily(family *ExportFamily, expCtx *ExportContext) *GEDCOMRecord {
 				}
 			}
 
-			// DIV from end_event
-			if rel.EndEvent != "" {
-				divRecord := exportFamilyEvent(rel.EndEvent, GedcomTagDiv, expCtx, family.HusbandID, family.WifeID)
-				if divRecord != nil {
-					record.SubRecords = append(record.SubRecords, divRecord)
+			// DIV or ANUL from end_event, only when the end event is a
+			// divorce or annulment. A marriage ended by a death writes
+			// nothing on the FAM: the death is exported on the person (#1498).
+			endEventID := ""
+			if endTag := familyEndEventTag(rel.EndEvent, expCtx); endTag != "" {
+				endEventID = rel.EndEvent
+				endRecord := exportFamilyEvent(rel.EndEvent, endTag, expCtx, family.HusbandID, family.WifeID)
+				if endRecord != nil {
+					record.SubRecords = append(record.SubRecords, endRecord)
 				}
 			}
 
 			// Other family events: events where both spouses participate with role "spouse"
 			familyEvents := findFamilyEvents(family.HusbandID, family.WifeID,
-				rel.StartEvent, rel.EndEvent, expCtx)
+				rel.StartEvent, endEventID, expCtx)
 			record.SubRecords = append(record.SubRecords, familyEvents...)
 
 			// FAM-level relationship properties mapped to GEDCOM tags (e.g. NCHI)
 			record.SubRecords = append(record.SubRecords, exportMappedRelationshipProperties(rel, expCtx)...)
+
+			exportEntitySourceRefs(EntityTypeRelationships, family.RelationshipID, rel.Properties, expCtx, record)
 
 			// NOTE from relationship
 			for _, note := range rel.Notes {
@@ -271,15 +280,20 @@ func exportMappedRelationshipProperties(rel *Relationship, expCtx *ExportContext
 }
 
 // formatCountProperty renders an integer-typed property value as a GEDCOM
-// payload. YAML decoding yields int (or int64/float64 depending on source), and
+// payload. YAML decoding yields int (or int64/float64 depending on source; any
+// Go integer or float kind is accepted for values built in code), and
 // a non-numeric value imported from a malformed NCHI is preserved as a string.
 // Returns "" for absent or unsupported value shapes.
 func formatCountProperty(value any) string {
 	switch v := value.(type) {
 	case int:
 		return strconv.Itoa(v)
-	case int64:
-		return strconv.FormatInt(v, 10)
+	case int8, int16, int32, int64:
+		return strconv.FormatInt(reflect.ValueOf(v).Int(), 10)
+	case uint, uint8, uint16, uint32, uint64:
+		return strconv.FormatUint(reflect.ValueOf(v).Uint(), 10)
+	case float32:
+		return strconv.FormatFloat(float64(v), 'f', -1, 32)
 	case float64:
 		// Render losslessly rather than truncating: an integral float (3.0)
 		// becomes "3", while a fractional value (3.5) keeps its precision
@@ -288,6 +302,28 @@ func formatCountProperty(value any) string {
 		return strconv.FormatFloat(v, 'f', -1, 64)
 	case string:
 		return v
+	default:
+		return ""
+	}
+}
+
+// familyEndEventTag returns the FAM tag that a relationship's end event is
+// written as: DIV for a divorce, ANUL for an annulment. Any other end event
+// (a death or burial, most often) has no FAM tag meaning "ended by this", so
+// it returns "" and the event is left to its own exporter (#1498).
+func familyEndEventTag(eventID string, expCtx *ExportContext) string {
+	if eventID == "" {
+		return ""
+	}
+	event, ok := expCtx.GLX.Events[eventID]
+	if !ok || event == nil {
+		return ""
+	}
+	// Read the tag from the vocabulary, as every other export path does, so a
+	// custom event type mapped to DIV or ANUL is written the same way.
+	switch tag := expCtx.ExportIndex.EventTypes[event.Type]; tag {
+	case GedcomTagDiv, GedcomTagAnul:
+		return tag
 	default:
 		return ""
 	}
@@ -319,7 +355,7 @@ func exportFamilyEvent(eventID, gedcomTag string, expCtx *ExportContext, hostIDs
 	}
 
 	// PLAC
-	placRecords := exportPlaceSubrecords(event.PlaceID, expCtx)
+	placRecords := exportPlaceSubrecords(event.PlaceID, event.Date, expCtx)
 	if placRecords != nil {
 		record.SubRecords = append(record.SubRecords, placRecords...)
 	}
@@ -352,7 +388,14 @@ func exportFamilyEvent(eventID, gedcomTag string, expCtx *ExportContext, hostIDs
 	// TYPE: a generic EVEN names its event type (#1320); otherwise the
 	// marriage_type property takes precedence, then event_subtype via exportEventPropertySubrecords
 	hasExplicitType := false
-	if genericType := genericEventTypeRecord(event, expCtx); genericType != nil && gedcomTag == GedcomTagEven {
+	genericType := genericEventTypeRecord(event, expCtx)
+	if ownTag := expCtx.ExportIndex.EventTypes[event.Type]; genericType == nil && gedcomTag == GedcomTagEven &&
+		ownTag != "" && !gedcomFamilyEventTags[ownTag] {
+		// An event whose own tag cannot go under FAM, written as EVEN
+		// (see findFamilyEvents): TYPE names its event type.
+		genericType = eventTypeLabelRecord(event, expCtx)
+	}
+	if genericType != nil && gedcomTag == GedcomTagEven {
 		record.SubRecords = append(record.SubRecords, genericType)
 		hasExplicitType = true
 	} else if marriageType, ok := event.Properties[PropertyMarriageType].(string); ok && marriageType != "" {
@@ -422,6 +465,16 @@ func findFamilyEvents(husbandID, wifeID, startEventID, endEventID string, expCtx
 		gedcomTag, ok := expCtx.ExportIndex.EventTypes[event.Type]
 		if !ok || gedcomTag == "" {
 			continue
+		}
+		if !gedcomFamilyEventTags[gedcomTag] {
+			// Individual-only tags (DEAT, BURI, EMIG, ...) never go under FAM,
+			// even when both spouses are listed with role "spouse" (#1498).
+			// An INDI that hosts the event carries it; one no INDI hosts stays
+			// on the FAM as an EVEN naming its type, so it is not dropped.
+			if len(eventHostIDs(event)) > 0 {
+				continue
+			}
+			gedcomTag = GedcomTagEven
 		}
 
 		// Reuse exportFamilyEvent to get full sub-record export (DATE, PLAC, NOTE, SOUR, properties)

@@ -503,11 +503,11 @@ func evidenceConflicts(assertions []*Assertion, def *PropertyDefinition, archive
 	var conflicts []EvidenceConflict
 	facts := make([]FactValue, len(assertions))
 	for i, a := range assertions {
-		facts[i] = AssertionFact(a)
+		facts[i] = comparisonFact(a, archive)
 	}
 	for _, c := range compareFacts(facts, def, archive.Places, opts) {
 		if c.IsConflict() {
-			conflicts = append(conflicts, EvidenceConflict{Verdict: c.Verdict, Values: []FactValue{facts[c.Left], facts[c.Right]}})
+			conflicts = append(conflicts, EvidenceConflict{Verdict: c.Verdict, Values: []FactValue{AssertionFact(assertions[c.Left]), AssertionFact(assertions[c.Right])}})
 		}
 	}
 

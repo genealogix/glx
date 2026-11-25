@@ -67,19 +67,8 @@ func testDataRoles(relType string) []string {
 func GenerateTestData(numPeople int) (*GLXFile, error) {
 	gofakeit.GlobalFaker = gofakeit.New(0)
 
-	glxFile := &GLXFile{
-		Persons:       make(map[string]*Person),
-		Relationships: make(map[string]*Relationship),
-		Events:        make(map[string]*Event),
-		Places:        make(map[string]*Place),
-		Sources:       make(map[string]*Source),
-		Citations:     make(map[string]*Citation),
-		Repositories:  make(map[string]*Repository),
-		Assertions:    make(map[string]*Assertion),
-		Media:         make(map[string]*Media),
-		ResearchLogs:  make(map[string]*ResearchLog),
-		Studies:       make(map[string]*Study),
-	}
+	glxFile := &GLXFile{}
+	glxFile.initMaps()
 
 	// Generate a repository for the sources
 	repoID := EntityIDPrefixRepository + gofakeit.UUID()

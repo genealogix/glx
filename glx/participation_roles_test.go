@@ -242,14 +242,14 @@ func TestCollectMigrationEntries_RolesAndResidencePeriods(t *testing.T) {
 	assert.True(t, probate.Excluded, "an absent legatee was not at the estate's place")
 
 	// The baptism is in Dearborn, where Lewis lived only to 1810; no
-	// bounded residence covers 1812, so a present godparent counts
+	// bounded residence covers 1812; attendance still does not imply residence
 	baptism := migrationEntryByLabel(t, entries, "Baptism")
-	assert.False(t, baptism.Excluded)
+	assert.True(t, baptism.Excluded)
 
 	sale := migrationEntryByLabel(t, entries, "Sale of farm")
 	assert.False(t, sale.Excluded, "a principal is present")
 
-	movements := computeMovements(entries)
+	movements := computeMovements(entries, archive)
 	require.Len(t, movements, 3, "movements: %+v", movements)
 	assert.Equal(t, "North Carolina", movements[0].FromRegion)
 	assert.Equal(t, "Indiana", movements[0].ToRegion)
@@ -284,7 +284,7 @@ func TestCollectMigrationEntries_ResidenceWinsOverEventPlace(t *testing.T) {
 	census := migrationEntryByLabel(t, entries, "1810 Census")
 	assert.False(t, census.Excluded)
 
-	for _, m := range computeMovements(entries) {
+	for _, m := range computeMovements(entries, archive) {
 		assert.NotEqual(t, "North Carolina", m.ToRegion, "no move back to North Carolina: %+v", m)
 	}
 }

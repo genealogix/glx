@@ -60,7 +60,7 @@ func TestMigrationDuplicateRolesKeepPresentObservation(t *testing.T) {
 	}
 	entries := collectMigrationEntries("p", archive)
 	require.Len(t, entries, 3)
-	require.Len(t, computeMovements(entries), 1, "the excluded duplicate cannot hide real presence")
+	require.Len(t, computeMovements(entries, archive), 1, "the excluded duplicate cannot hide real presence")
 }
 
 func TestMigrationNilEntitiesAndCycles(t *testing.T) {
