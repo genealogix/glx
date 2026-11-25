@@ -19,8 +19,9 @@ import (
 )
 
 // ChronologyBounds expresses Gregorian and Julian date bounds on the same
-// Julian-day axis. Other calendars return Known=false. Unlike Timing, these
-// bounds can be compared across calendars. Approximation uses ValueBounds'
+// Julian-day axis. Other calendars and dates with no day in their calendar
+// return Known=false. Unlike Timing, these bounds can be compared across
+// calendars. Approximation uses ValueBounds'
 // tolerance and does not make uncertain dates exact.
 func (d Date) ChronologyBounds(approximationYears int) Bounds {
 	calendar := d.Calendar()
@@ -31,48 +32,41 @@ func (d Date) ChronologyBounds(approximationYears int) Bounds {
 	if !bounds.Known {
 		return bounds
 	}
+	start, startKnown := chronologicalPoint(d.Start(), calendar)
+	end, endKnown := chronologicalPoint(d.End(), calendar)
+	// The parser preserves nominal dates such as an unqualified 29 Feb
+	// 1700. They have no position in that calendar, even in BEF or AFT.
+	if (startKnown && start.Start >= start.End) || (endKnown && end.Start >= end.End) {
+		return Bounds{}
+	}
 	bounds.Outer = Interval{chronologyEndpoint(bounds.Outer.Start, calendar), chronologyEndpoint(bounds.Outer.End, calendar)}
 	if bounds.Inner.Start < bounds.Inner.End {
-		bounds.Inner = Interval{chronologyEndpoint(bounds.Inner.Start, calendar), chronologyEndpoint(bounds.Inner.End, calendar)}
+		if d.IsRange() {
+			// Take the last actual day of the start component. Civil
+			// ordinals reserve February 29 even in common years.
+			bounds.Inner = Interval{start.End - 1, end.Start + 1}
+		} else {
+			bounds.Inner = bounds.Outer
+		}
 	}
 
 	return bounds
+}
+
+func chronologicalPoint(d Date, calendar Calendar) (Interval, bool) {
+	bounds, known := pointBounds(d)
+	if !known {
+		return Interval{}, false
+	}
+
+	return Interval{chronologyEndpoint(bounds.Start, calendar), chronologyEndpoint(bounds.End, calendar)}, true
 }
 
 func chronologyEndpoint(key int, calendar Calendar) int {
 	if key == math.MinInt || key == math.MaxInt {
 		return key
 	}
-	year := floorQuotient(key, civilYearDays)
-	ordinal := key - year*civilYearDays
-	month := 1
-	for ordinal >= daysInMonth[month] && month < 12 {
-		ordinal -= daysInMonth[month]
-		month++
-	}
+	year, month, day := decodeOrdinal(key)
 
-	return calendarJulianDay(year, month, ordinal+1, calendar)
-}
-
-// calendarJulianDay uses astronomical years, including zero for 1 BCE.
-//
-//nolint:mnd // Standard proleptic Gregorian/Julian day-number formula constants.
-func calendarJulianDay(year, month, day int, calendar Calendar) int {
-	shift := (14 - month) / 12
-	y, m := year+4800-shift, month+12*shift-3
-	base := day + (153*m+2)/5 + 365*y + floorQuotient(y, 4)
-	if calendar == CalendarJulian {
-		return base - 32083
-	}
-
-	return base - floorQuotient(y, 100) + floorQuotient(y, 400) - 32045
-}
-
-func floorQuotient(a, b int) int {
-	quotient := a / b
-	if a%b < 0 {
-		quotient--
-	}
-
-	return quotient
+	return julianDayNumber(year, month, day, calendar == CalendarGregorian)
 }

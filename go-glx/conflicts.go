@@ -148,7 +148,7 @@ func compareFacts(values []FactValue, definition *PropertyDefinition, places map
 }
 
 func compareFactPair(a, b FactValue, def *PropertyDefinition, places map[string]*Place, opts ComparisonOptions) FactComparison {
-	verdict := compareValues(a.Value, b.Value, def, places, opts)
+	verdict := compareValues(a, b, def, places, opts)
 	if verdict == VerdictAgree || verdict == VerdictRefinement {
 		return FactComparison{Verdict: verdict}
 	}
@@ -161,7 +161,10 @@ func compareFactPair(a, b FactValue, def *PropertyDefinition, places map[string]
 		case glxdate.PossibleOverlap:
 			verdict = VerdictPossible
 		case glxdate.DefiniteOverlap:
-			verdict = VerdictDefinite
+			// Coincident observations do not resolve an uncertain jurisdiction.
+			if verdict != VerdictPossible || def.ReferenceType != EntityTypePlaces.String() {
+				verdict = VerdictDefinite
+			}
 		}
 	}
 	definite := verdict == VerdictDefinite
@@ -180,18 +183,15 @@ func IsTemporalProperty(def *PropertyDefinition) bool {
 	return def != nil && def.Temporal != nil && *def.Temporal
 }
 
-func compareValues(a, b string, def *PropertyDefinition, places map[string]*Place, opts ComparisonOptions) Verdict {
+func compareValues(left, right FactValue, def *PropertyDefinition, places map[string]*Place, opts ComparisonOptions) Verdict {
+	a, b := left.Value, right.Value
 	if a == b {
 		return VerdictAgree
 	}
 	if def != nil {
 		switch {
 		case def.ReferenceType == EntityTypePlaces.String():
-			if placeAncestor(a, b, places) || placeAncestor(b, a, places) {
-				return VerdictRefinement
-			}
-
-			return VerdictDefinite
+			return comparePlaceValues(left, right, def, places)
 		case def.ReferenceType != "", def.VocabularyType != "":
 			return VerdictDefinite
 		case def.ValueType == conflictDateType:
@@ -224,6 +224,40 @@ func compareValues(a, b string, def *PropertyDefinition, places map[string]*Plac
 	return VerdictDefinite
 }
 
+func comparePlaceValues(left, right FactValue, def *PropertyDefinition, places map[string]*Place) Verdict {
+	archive := GLXFile{Places: places}
+	leftContains, maybeLeft := placeClaimContains(&archive, left, right, def)
+	rightContains, maybeRight := placeClaimContains(&archive, right, left, def)
+	if leftContains || rightContains {
+		return VerdictRefinement
+	}
+	if maybeLeft || maybeRight {
+		return VerdictPossible
+	}
+
+	return VerdictDefinite
+}
+
+// placeClaimContains checks refinement at the times the claims can share.
+// Two records of a fixed fact can disagree about its date while agreeing on
+// its place: consider both dates rather than declaring an additional place
+// conflict merely because the dates do not intersect. Time-varying properties
+// instead use their overlapping period (no overlap is ordinary history).
+func placeClaimContains(archive *GLXFile, broad, fine FactValue, def *PropertyDefinition) (certain, possible bool) {
+	if !IsTemporalProperty(def) && broad.Date != "" && fine.Date != "" && broad.Date != fine.Date {
+		a, aOK := parentPeriodSpan(broad.Date)
+		b, bOK := parentPeriodSpan(fine.Date)
+		if aOK && bOK && !a.Intersects(b) {
+			atA, maybeA := archive.placeAncestorForDates(fine.Value, broad.Value, broad.Date)
+			atB, maybeB := archive.placeAncestorForDates(fine.Value, broad.Value, fine.Date)
+
+			return atA && atB, maybeA || maybeB
+		}
+	}
+
+	return archive.placeAncestorForDates(fine.Value, broad.Value, broad.Date, fine.Date)
+}
+
 func foldFactText(s string) string {
 	var b strings.Builder
 	for _, r := range strings.ToLower(s) {
@@ -233,23 +267,6 @@ func foldFactText(s string) string {
 	}
 
 	return strings.Join(strings.Fields(b.String()), " ")
-}
-
-func placeAncestor(ancestor, child string, places map[string]*Place) bool {
-	seen := make(map[string]bool)
-	for child != "" && !seen[child] {
-		if child == ancestor {
-			return true
-		}
-		seen[child] = true
-		p := places[child]
-		if p == nil {
-			return false
-		}
-		child = p.ParentID
-	}
-
-	return false
 }
 
 // ConflictProperty returns vocabulary semantics, including structural event
@@ -301,4 +318,18 @@ func AssertionFact(a *Assertion) FactValue {
 	}
 
 	return FactValue{Value: a.Value, Date: a.Date, Confidence: a.Confidence, Status: a.Status}
+}
+
+// comparisonFact supplies the date of an event when comparing its structural
+// place claims, without assigning an inferred date to the stored assertion or
+// to the original claim shown in reports. An explicit claim date takes priority.
+func comparisonFact(a *Assertion, archive *GLXFile) FactValue {
+	f := AssertionFact(a)
+	if a != nil && f.Date == "" && a.Property == eventFieldPlace {
+		if event := archive.Events[a.Subject.Event]; event != nil {
+			f.Date = event.Date
+		}
+	}
+
+	return f
 }

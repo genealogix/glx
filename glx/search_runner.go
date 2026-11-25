@@ -292,8 +292,14 @@ func searchPlaces(ctx context.Context, archive *glxlib.GLXFile, matchFn func(str
 		if matchFn(place.Type) && !visit(searchResult{glxlib.EntityTypePlaces, id, searchFieldType, place.Type}) {
 			return false
 		}
-		if matchFn(place.ParentID) && !visit(searchResult{glxlib.EntityTypePlaces, id, searchFieldParent, place.ParentID}) {
-			return false
+		for _, parentID := range place.ParentIDs() {
+			if matchFn(parentID) {
+				if !visit(searchResult{glxlib.EntityTypePlaces, id, searchFieldParent, parentID}) {
+					return false
+				}
+
+				break
+			}
 		}
 		if matchFn(place.Notes.String()) && !visit(searchResult{glxlib.EntityTypePlaces, id, searchFieldNotes, truncate(place.Notes.String())}) {
 			return false
