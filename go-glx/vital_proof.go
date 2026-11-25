@@ -43,7 +43,11 @@ func structuralVitalFieldAvailable(archive *GLXFile, personID, eventID, property
 		if !hasVitalSemantics(definition, property) {
 			continue
 		}
-		comparison := compareFacts([]FactValue{{Value: claim.Value, Date: claim.Date}, {Value: value}}, definition, archive.Places, ComparisonOptions{})
+		stored := FactValue{Value: value}
+		if property == eventFieldPlace {
+			stored.Date = event.Date
+		}
+		comparison := compareFacts([]FactValue{{Value: claim.Value, Date: claim.Date}, stored}, definition, archive.Places, ComparisonOptions{})
 		agrees := len(comparison) > 0 && comparison[0].Verdict == VerdictAgree
 		disproven := AssertionIsDisproven(claim)
 		// Disproving a value that certainly differs says nothing against the

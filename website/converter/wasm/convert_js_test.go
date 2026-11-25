@@ -38,13 +38,13 @@ func convertBytes(data []byte, destination string, prepare func()) ([]byte, summ
 	return output.Bytes(), report, nil
 }
 
-// checkCompatibilityFields re-checks only Source and Media, the two structs
+// checkCompatibilityFields re-checks only Source, Media and Place, the structs
 // whose UnmarshalYAML decodes through Node.Decode and so ignores KnownFields.
 // Any other struct in the archive that gains an UnmarshalYAML would silently
 // accept misspelled fields on export until it is added there.
 func TestCompatibilityCheckCoversEveryStructUnmarshaller(t *testing.T) {
 	unmarshaler := reflect.TypeFor[yaml.Unmarshaler]()
-	covered := map[reflect.Type]bool{reflect.TypeFor[glxlib.Source](): true, reflect.TypeFor[glxlib.Media](): true}
+	covered := map[reflect.Type]bool{reflect.TypeFor[glxlib.Source](): true, reflect.TypeFor[glxlib.Media](): true, reflect.TypeFor[glxlib.Place](): true}
 	seen := map[reflect.Type]bool{}
 	var walk func(reflect.Type)
 	walk = func(kind reflect.Type) {
@@ -68,6 +68,44 @@ func TestCompatibilityCheckCoversEveryStructUnmarshaller(t *testing.T) {
 		}
 	}
 	walk(reflect.TypeFor[glxlib.GLXFile]())
+}
+
+// placeFields must carry every YAML key of glxlib.Place, or a misspelling
+// check would reject a real field.
+func TestPlaceFieldsMirrorPlace(t *testing.T) {
+	keys := func(kind reflect.Type) map[string]bool {
+		out := map[string]bool{}
+		for field := range kind.Fields() {
+			if name, _, _ := strings.Cut(field.Tag.Get("yaml"), ","); name != "" && name != "-" {
+				out[name] = true
+			}
+		}
+
+		return out
+	}
+	want, got := keys(reflect.TypeFor[glxlib.Place]()), keys(reflect.TypeFor[placeFields]())
+	if !reflect.DeepEqual(want, got) {
+		t.Errorf("placeFields keys %v, glxlib.Place keys %v", got, want)
+	}
+}
+
+func TestCheckCompatibilityFieldsPlaces(t *testing.T) {
+	for name, tc := range map[string]struct {
+		yaml string
+		ok   bool
+	}{
+		"plain parent":            {"places:\n  p1:\n    name: A\n    parent: p2\n", true},
+		"temporal parent":         {"places:\n  p1:\n    name: A\n    parent:\n      - value: p2\n        date: FROM 1811 TO 1816\n      - value: p3\n", true},
+		"misspelled place field":  {"places:\n  p1:\n    name: A\n    parnet: p2\n", false},
+		"misspelled period field": {"places:\n  p1:\n    name: A\n    parent:\n      - value: p2\n        dat: \"1811\"\n", false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			err := checkCompatibilityFields([]byte(tc.yaml))
+			if (err == nil) != tc.ok {
+				t.Errorf("checkCompatibilityFields() error = %v, want ok=%v", err, tc.ok)
+			}
+		})
+	}
 }
 
 func TestHasBLOBTag(t *testing.T) {

@@ -124,7 +124,8 @@ func TestMigrations_ChildBurialElsewhereIsNotAMove(t *testing.T) {
 }
 
 func TestMigrations_MoveBetweenVillagesOfOneDistrict(t *testing.T) {
-	movements := computeMovements(collectMigrationEntries("p-jg", parishRegisterArchive()))
+	archive := parishRegisterArchive()
+	movements := computeMovements(collectMigrationEntries("p-jg", archive), archive)
 
 	require.Len(t, movements, 1, "movements: %+v", movements)
 	assert.Equal(t, migrationMovement{
@@ -203,7 +204,7 @@ func TestMigrations_LessSpecificObservationIsNotAMove(t *testing.T) {
 	}
 	archive.Events["event-jane-birth"].PlaceID = "place-millbrook"
 
-	assert.Empty(t, computeMovements(collectMigrationEntries("person-jane-webb", archive)))
+	assert.Empty(t, computeMovements(collectMigrationEntries("person-jane-webb", archive), archive))
 }
 
 func TestTimeline_OtherPeoplesRecordsAreLabeled(t *testing.T) {

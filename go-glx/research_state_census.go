@@ -44,25 +44,36 @@ var stateCensusYears = map[string][]int{
 }
 
 // resolveStateFromPlace walks the place hierarchy to find the US state name.
-// Returns the empty string if no state-type ancestor is found.
+// Returns the empty string if no state-type ancestor is found. It follows
+// each place's default parent.
 func resolveStateFromPlace(placeRef string, archive *GLXFile) string {
-	if placeRef == "" || archive == nil {
+	return resolveStateFromPlaceAt(placeRef, "", archive)
+}
+
+// resolveStateFromPlaceAt reports a state only when every feasible path
+// names the same one. In particular a state record is not marked found from
+// an event with an ambiguous location.
+func resolveStateFromPlaceAt(placeRef string, date DateString, archive *GLXFile) string {
+	if archive == nil {
 		return ""
 	}
-
-	visited := make(map[string]bool)
-	current := placeRef
-
-	for current != "" && !visited[current] {
-		visited[current] = true
-		place, ok := archive.Places[current]
-		if !ok || place == nil {
+	var state string
+	for i, path := range archive.PlacePathsAt(placeRef, date) {
+		name := stateOnPath(path, archive)
+		if i != 0 && state != name {
 			return ""
 		}
-		if place.Type == PlaceTypeState {
-			return place.Name
+		state = name
+	}
+
+	return state
+}
+
+func stateOnPath(path []string, archive *GLXFile) string {
+	for _, id := range path {
+		if p := archive.Places[id]; p != nil && p.Type == PlaceTypeState {
+			return p.Name
 		}
-		current = place.ParentID
 	}
 
 	return ""
@@ -91,8 +102,10 @@ func collectPersonStates(archive *GLXFile, events []personSourceInfo) []string {
 		if ev.PlaceID == "" {
 			continue
 		}
-		if s := resolveStateFromPlace(ev.PlaceID, archive); s != "" {
-			stateSet[s] = true
+		for _, path := range archive.PlacePathsAt(ev.PlaceID, ev.Date) {
+			if state := stateOnPath(path, archive); state != "" {
+				stateSet[state] = true
+			}
 		}
 	}
 
@@ -196,7 +209,7 @@ func findStateCensusMatch(year int, state string, sources, events []personSource
 		}
 		// Place-based matching: resolve event place to this state
 		if archive != nil && e.PlaceID != "" {
-			if resolveStateFromPlace(e.PlaceID, archive) == state {
+			if resolveStateFromPlaceAt(e.PlaceID, e.Date, archive) == state {
 				return e.Ref
 			}
 		}

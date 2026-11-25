@@ -139,8 +139,8 @@ func suggestParentCensusRecords(personID string, person *glxlib.Person, archive 
 
 	// Key census years for finding parents, on the schedules of the countries
 	// this person's places name (#186)
-	datedPlaces := datedPlacesForPerson(archive, personID)
-	for _, schedule := range censusSchedulesForPerson(archive, personID) {
+	datedPlaces, _ := glxlib.CensusPlacesForPerson(archive, personID)
+	for _, schedule := range censusSchedulesForObservations(archive, datedPlaces) {
 		suggestions = append(suggestions,
 			scheduleParentCensusSuggestions(archive, schedule, personID, name, placeName, birthYear, existingCensus, datedPlaces)...)
 	}
@@ -160,7 +160,7 @@ func scheduleParentCensusSuggestions(
 	personID, name, placeName string,
 	birthYear int,
 	existingCensus map[int]bool,
-	datedPlaces []datedPlace,
+	datedPlaces []glxlib.CensusPlaceObservation,
 ) []ancestorSuggestion {
 	var suggestions []ancestorSuggestion
 
@@ -171,7 +171,7 @@ func scheduleParentCensusSuggestions(
 		if existingCensus[year] {
 			continue
 		}
-		survival := schedule.Survival(year, datedPlaces, archive)
+		survival := schedule.SurvivalAt(year, datedPlaces, archive)
 		if survival.Lost {
 			continue
 		}
