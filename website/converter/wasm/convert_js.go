@@ -195,7 +195,7 @@ func exportGEDCOM(data []byte, version glxlib.GEDCOMVersion, output io.Writer) (
 		return summary{}, errGLX
 	}
 
-	if len(archive.Sources) > 0 || len(archive.Media) > 0 {
+	if len(archive.Sources) > 0 || len(archive.Media) > 0 || len(archive.Places) > 0 {
 		if err := checkCompatibilityFields(data); err != nil {
 			return summary{}, fmt.Errorf("could not read GLX: %w", err)
 		}
@@ -228,9 +228,10 @@ func exportGEDCOM(data []byte, version glxlib.GEDCOMVersion, output io.Writer) (
 	return report, nil
 }
 
-// Source and Media have legacy-description unmarshallers that use Node.Decode,
-// which does not inherit KnownFields. Check these records without those methods
-// before allowing their compatibility conversion to hide misspelled fields.
+// Source and Media have legacy-description unmarshallers, and Place a
+// temporal-parent unmarshaller, that use Node.Decode, which does not inherit
+// KnownFields. Check these records without those methods before allowing
+// their compatibility conversion to hide misspelled fields.
 // TestCompatibilityCheckCoversEveryStructUnmarshaller fails if another struct
 // in the archive gains such an unmarshaller without being added here.
 func checkCompatibilityFields(data []byte) error {
@@ -245,6 +246,7 @@ func checkCompatibilityFields(data []byte) error {
 			mediaFields `yaml:",inline"`
 			Description string `yaml:"description,omitempty"`
 		} `yaml:"media"`
+		Places map[string]*placeFields `yaml:"places"`
 		// Other sections were already checked by the GLXFile decoder above.
 		// A yaml.Node takes them as a shallow copy of the parsed tree rather
 		// than rebuilding every person and event as generic maps.
@@ -255,4 +257,52 @@ func checkCompatibilityFields(data []byte) error {
 	decoder.KnownFields(true)
 
 	return decoder.Decode(&archive)
+}
+
+// placeFields mirrors glxlib.Place for the strict field check. Place cannot be
+// embedded inline because its `parent` key is a string there but may be a
+// dated list in the file. TestPlaceFieldsMirrorPlace keeps the two in step.
+type placeFields struct {
+	Name       string            `yaml:"name"`
+	Parent     placeParentFields `yaml:"parent,omitempty"`
+	Type       string            `yaml:"type,omitempty"`
+	Latitude   *float64          `yaml:"latitude,omitempty"`
+	Longitude  *float64          `yaml:"longitude,omitempty"`
+	Properties map[string]any    `yaml:"properties,omitempty"`
+	Notes      glxlib.NoteList   `yaml:"notes,omitempty"`
+}
+
+// placeParentFields accepts a place's parent as a place ID or a list of
+// {value, date} entries, rejecting unknown keys in the entries.
+type placeParentFields struct{}
+
+type placeParentPeriodFields glxlib.PlaceParentPeriod
+
+func (*placeParentFields) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind == yaml.AliasNode && node.Alias != nil {
+		node = node.Alias
+	}
+	if node.Kind != yaml.SequenceNode {
+		var id string
+
+		return node.Decode(&id)
+	}
+	for _, entry := range node.Content {
+		if entry.Kind == yaml.AliasNode && entry.Alias != nil {
+			entry = entry.Alias
+		}
+		if entry.Kind == yaml.MappingNode {
+			for i := 0; i < len(entry.Content); i += 2 {
+				if key := entry.Content[i].Value; key != "value" && key != "date" {
+					return fmt.Errorf("line %d: field %s not found in place parent entry: %w", entry.Content[i].Line, key, errGLX)
+				}
+			}
+		}
+		var period placeParentPeriodFields
+		if err := entry.Decode(&period); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

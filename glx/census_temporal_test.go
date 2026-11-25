@@ -142,8 +142,8 @@ func censusTemporalLeads(t *testing.T, archive *glxlib.GLXFile) map[string]strin
 	}
 	issues := suggestCensusSearches(archive)
 	analyzeLeads := make([]string, 0, len(issues))
-	for _, issue := range issues {
-		analyzeLeads = append(analyzeLeads, issue.Message)
+	for i := range issues {
+		analyzeLeads = append(analyzeLeads, issues[i].Message)
 	}
 	suggestions := suggestParentCensusRecords(person, archive.Persons[person], archive, nil)
 	ancestorLeads := make([]string, 0, len(suggestions))
