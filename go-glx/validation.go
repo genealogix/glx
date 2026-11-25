@@ -222,6 +222,11 @@ func (glx *GLXFile) validateStructReferences(
 	for i := range entityVal.NumField() {
 		field := entityTypeVal.Field(i)
 		fieldVal := entityVal.Field(i)
+		// Temporal places validate the full parent list separately, not the
+		// compatibility field an SDK caller might not have synchronized.
+		if entityTypeVal == reflect.TypeFor[Place]() && field.Name == "ParentID" && entityVal.FieldByName("ParentHistory").Len() > 0 {
+			continue
+		}
 		refType := field.Tag.Get("refType")
 		if refType == "" {
 			glx.validateNestedStructs(entityType, entityID, fieldVal, result)
@@ -1090,8 +1095,7 @@ func (glx *GLXFile) validatePlaceHierarchyCycles(result *ValidationResult) {
 }
 
 // validatePlaceParentHistory checks temporal place parents (#225): every
-// entry's parent must exist (the default parent is already checked through
-// ParentID's refType), every date must be a valid GLX date, and two entries
+// entry's parent must exist, every date must be a valid GLX date, and two entries
 // naming different parents should not certainly overlap in time.
 func (glx *GLXFile) validatePlaceParentHistory(result *ValidationResult) {
 	for _, placeID := range slices.Sorted(maps.Keys(glx.Places)) {
@@ -1101,15 +1105,15 @@ func (glx *GLXFile) validatePlaceParentHistory(result *ValidationResult) {
 		}
 		for i, period := range place.ParentHistory {
 			field := fmt.Sprintf("%s[%d]", placeFieldParent, i)
-			switch {
-			case period.Value == "":
+			switch period.Value {
+			case "":
 				result.Errors = append(result.Errors, ValidationError{
 					SourceType:  EntityTypePlaces,
 					SourceID:    placeID,
 					SourceField: field,
 					Message:     fmt.Sprintf("places[%s].%s: parent entry has no value", placeID, field),
 				})
-			case period.Value != place.ParentID:
+			default:
 				glx.checkReference(EntityTypePlaces, placeID, field, string(EntityTypePlaces), period.Value, result)
 			}
 			if period.Date != "" {
@@ -1137,7 +1141,7 @@ func (glx *GLXFile) warnOverlappingParentPeriods(placeID string, periods []Place
 				continue
 			}
 			b, ok := parentPeriodCore(periods[j].Date)
-			if !ok || max(a.lo, b.lo) > min(a.hi, b.hi) {
+			if !ok || !a.Intersects(b) {
 				continue
 			}
 			result.Warnings = append(result.Warnings, ValidationWarning{

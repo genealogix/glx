@@ -80,11 +80,17 @@ places:
 
 A marriage in Wayne County dated 1814 is then "Wayne County, Indiana Territory", and one dated 1817 is "Wayne County, Indiana". The plain string form remains valid and means the place had one parent throughout; use the list only where the hierarchy actually changed.
 
-**Resolving the parent for a date.** Tools that have a date in hand (an event's date, a residence period) use the entry whose period overlaps that date the most; on a tie, the earlier entry in the list. A year-only date such as `1816` therefore resolves to Indiana Territory, which covers most of 1816. When no period overlaps the date, an undated entry is used if there is one, otherwise the entry whose period is nearest to the date.
+**Historical paths.** Follow every parent edge within the days still possible after the preceding edges. A place can have more than one plausible jurisdiction for a year, but a chain whose edges never applied on the same day is not a historical path. Research tools can suggest all census schedules reached by plausible paths; they do not rank those schedules or infer where the person lived on census day. Proof treats a broader place as a refinement only when the dated evidence supports containment, not merely because one place once belonged to the other.
+
+A single historical label, such as an event's GEDCOM `PLAC`, uses the shared part of the plausible paths, starting at the recorded place. It stops when alternatives diverge or a time period has no recorded parent. Thus a marriage dated only `1816` has the label “Wayne County” in the example above. A label is a projection, not a substitute for the native place ID and its history: reimporting those GEDCOM labels cannot recover the original temporal links.
+
+For applications that explicitly request **one immediate parent**, the Go library's `ParentAt` uses the dated entry with the greatest overlap (earlier list position breaks a tie). With no overlap, it returns an explicit undated default, otherwise the nearest usable period. This convenience selects Indiana Territory for Wayne County in 1816; it is not proof of a jurisdiction and should not be chained to build a historical path.
 
 **Default parent.** Where no date applies (a list of all places, the place's own page, JSON-LD export), tools use the default parent: the first entry without a `date`, if any; otherwise the most recent entry — the one whose period ends last, an open-ended `FROM` period counting as ending last. In the example above the default parent of Wayne County is Indiana.
 
-Entry dates use the [date format](../2-core-concepts.md#date-format-standard); `FROM … TO …`, open-ended `FROM …` and `TO …` ranges are the natural fit. Periods for different parents should not overlap: boundaries that touch at the stated precision (`TO 1972` followed by `FROM 1972`) are fine, but a genuine overlap is reported as a validation warning.
+Entry dates use the [date format](../2-core-concepts.md#date-format-standard). Use `FROM … TO …`, `FROM …` and `TO …` for a duration. An exact day in both parents' durations is a real overlap and produces a warning: if one parent ended on June 30, start the next on July 1. A shared year or month of transition need not mean any day was shared. An uncertain occurrence (`BET … AND …`, `ABT`, `CAL`, `EST`, `INT`) is not a certain duration. `BEF` and `AFT` exclude the stated boundary. Dates that cannot be placed on a timeline, including malformed or reversed dates, cannot establish a historical parent.
+
+The scalar form still works with older readers. A reader must support the list form before an archive can exchange parent histories with it. Native GLX retains the individual entries, their dates, their order and the place identity.
 
 ## Fields
 

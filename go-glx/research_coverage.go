@@ -319,26 +319,13 @@ func AppearanceLabel(event *Event, archive *GLXFile) string {
 	}
 }
 
-// coverageDatedPlaces returns the dated places of a person's events, for
-// working out which state or territory they were in at a census (#1333).
-func coverageDatedPlaces(events []personSourceInfo) []CensusDatedPlace {
-	var places []CensusDatedPlace
-	for _, e := range events {
-		if e.PlaceID != "" && e.Year != 0 {
-			places = append(places, CensusDatedPlace{Year: e.Year, PlaceID: e.PlaceID})
-		}
-	}
-
-	return places
-}
-
 // coveragePlaceRefs returns the place references of a person's events, for
 // resolving which countries' census schedules apply to them.
-func coveragePlaceRefs(events []personSourceInfo) []datedPlaceRef {
-	var refs []datedPlaceRef
+func coveragePlaceRefs(events []personSourceInfo) []CensusPlaceObservation {
+	var refs []CensusPlaceObservation
 	for _, e := range events {
 		if e.PlaceID != "" {
-			refs = append(refs, datedPlaceRef{placeID: e.PlaceID, date: e.Date})
+			refs = append(refs, CensusPlaceObservation{PlaceID: e.PlaceID, Date: e.Date})
 		}
 	}
 
@@ -457,7 +444,7 @@ func buildCensusRecords(birthYear, deathYear int, schedules []*CensusSchedule, s
 	}
 
 	var records []CoverageRecord
-	places := coverageDatedPlaces(presentEvents)
+	places := coveragePlaceRefs(presentEvents)
 
 	for _, schedule := range schedules {
 		for _, year := range schedule.Years {
@@ -467,7 +454,7 @@ func buildCensusRecords(birthYear, deathYear int, schedules []*CensusSchedule, s
 			if year > upperBound {
 				break
 			}
-			survival := schedule.Survival(year, places, archive)
+			survival := schedule.SurvivalAt(year, places, archive)
 			// Approximate age at this census year (may be 0 if census year == birth year)
 			age := year - birthYear
 			note := schedule.Notes[year]

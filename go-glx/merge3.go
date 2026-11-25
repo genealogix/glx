@@ -1200,7 +1200,11 @@ func stringSet(s []string) map[string]struct{} {
 // string form to the dated list (or an edit to one entry) is taken whole.
 func mergePlaceParent(path string, merged, base, ours, theirs *Place, conflicts []Merge3Conflict) []Merge3Conflict {
 	parentEq := func(a, b *Place) bool {
-		return a.ParentID == b.ParentID && slices.Equal(a.ParentHistory, b.ParentHistory)
+		if a.HasTemporalParent() || b.HasTemporalParent() {
+			return slices.Equal(a.ParentHistory, b.ParentHistory)
+		}
+
+		return a.ParentID == b.ParentID
 	}
 	parentValue := func(p *Place) any {
 		if len(p.ParentHistory) > 0 {
@@ -1224,7 +1228,7 @@ func mergePlaceParent(path string, merged, base, ours, theirs *Place, conflicts 
 			TheirsValue: parentValue(theirs),
 		})
 	}
-	merged.ParentID = winner.ParentID
+	merged.ParentID = winner.EffectiveParentID()
 	merged.ParentHistory = slices.Clone(winner.ParentHistory)
 
 	return conflicts

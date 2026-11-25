@@ -83,7 +83,7 @@ export function normalizeDialect(node, isSchema = true) {
 // so widening a field — `{type: string, pattern}` becoming `oneOf: [{type:
 // string, pattern}, {type: array, …}]` — reads as removing `type` and adding
 // `oneOf`, i.e. breaking, although every value valid before is still valid.
-// collapseWidenings finds those nodes in the current schema and puts the base
+// collapseWidenings recognizes direct, positive property constraints and puts the base
 // node back in their place before the diff, so the widening itself passes and
 // any other change around it is still diffed. A node counts as a widening only
 // when it is nothing but an anyOf/oneOf one of whose branches is the base node
@@ -119,21 +119,25 @@ function isWidening(base, current) {
   });
 }
 
+// Limit the exception to direct property constraints in a reference-free
+// schema. Replacing a descendant of `not` or `oneOf` may loosen that node
+// but tighten the enclosing schema. A reference can reuse an otherwise
+// positive property in exactly such a position. Delegate all those cases to
+// the strict diff rather than guessing the polarity of arbitrary schemas.
+function containsReference(node) {
+  return node !== null && typeof node === "object" && Object.entries(node).some(
+    ([keyword, value]) => ["$ref", "$dynamicRef", "$recursiveRef"].includes(keyword) || containsReference(value));
+}
+
 export function collapseWidenings(base, current) {
-  if (isWidening(base, current)) return base;
-  if (Array.isArray(current)) {
-    if (!Array.isArray(base) || base.length !== current.length) return current;
-    return current.map((n, i) => collapseWidenings(base[i], n));
+  if (!base?.properties || !current?.properties || containsReference(base) || containsReference(current)) return current;
+  const properties = { ...current.properties };
+  for (const [name, schema] of Object.entries(properties)) {
+    if (Object.hasOwn(base.properties, name) && isWidening(base.properties[name], schema)) {
+      properties[name] = base.properties[name];
+    }
   }
-  if (current === null || typeof current !== "object" || base === null || typeof base !== "object") {
-    return current;
-  }
-  const out = {};
-  for (const [key, value] of Object.entries(current)) {
-    // Plain data is compared as written, never reinterpreted as a schema.
-    out[key] = DATA_VALUED_KEYWORDS.has(key) || !(key in base) ? value : collapseWidenings(base[key], value);
-  }
-  return out;
+  return { ...current, properties };
 }
 
 // Enum widening is monotone in ordinary property constraints, but can narrow

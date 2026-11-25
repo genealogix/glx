@@ -247,10 +247,8 @@ type EventNeighbor struct {
 //
 // The `parent` field is written either as a plain place ID or, when the
 // place's jurisdiction changed over time, as a dated list of
-// {value, date} entries (#225). ParentID always holds the default parent, so
-// date-unaware code can keep reading it; ParentHistory holds the dated list
-// when there is one. See place_parent.go for the resolution rules and the
-// date-aware helpers (ParentAt, ParentIDs).
+// {value, date} entries (#225). Use EffectiveParentID for date-unaware
+// resolution and GLXFile.PlacePathsAt for date-scoped ancestry.
 type Place struct {
 	Name string `yaml:"name"`
 	// ParentID is the default parent place. For the plain string form it is

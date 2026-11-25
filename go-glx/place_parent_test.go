@@ -404,3 +404,69 @@ func TestThreeWayMerge_TemporalPlaceParent(t *testing.T) {
 		assert.Equal(t, "places[place-wayne-in].parent", conflicts[0].Path)
 	})
 }
+
+func TestPlace_ParentHistoryAuthoritative(t *testing.T) {
+	periods := []PlaceParentPeriod{{Value: "old", Date: "TO 1840"}, {Value: "new", Date: "FROM 1841"}}
+	place := &Place{Name: "Village"}
+	place.SetParentHistory(periods)
+	periods[1].Value = "not-a-parent"
+	assert.Equal(t, "new", place.EffectiveParentID())
+	assert.Equal(t, "new", place.ParentAt("1842"))
+	assert.Equal(t, []string{"new", "old"}, place.ParentIDs())
+
+	place.ParentHistory[1].Value = "latest"
+	assert.Equal(t, "latest", place.EffectiveParentID())
+	assert.Equal(t, "latest", place.ParentAt(""))
+	assert.Equal(t, []string{"latest", "old"}, place.ParentIDs())
+	data, err := yaml.Marshal(place)
+	require.NoError(t, err)
+	var decoded Place
+	require.NoError(t, yaml.Unmarshal(data, &decoded))
+	assert.Equal(t, place.EffectiveParentID(), decoded.ParentID)
+	assert.Equal(t, place.ParentIDs(), decoded.ParentIDs())
+	archive := &GLXFile{Places: map[string]*Place{}}
+	archive.Places["village"] = place
+	archive.Places["old"] = &Place{Name: "Old"}
+	archive.Places["latest"] = &Place{Name: "Latest"}
+	assert.Empty(t, archive.Validate().Errors)
+	place.SetParentHistory(nil)
+	assert.False(t, place.HasTemporalParent())
+	assert.Equal(t, "latest", place.ParentID)
+	assert.Equal(t, []string{"latest"}, place.ParentIDs())
+}
+
+func TestPlaceParentRejectsDuplicateYAMLKeys(t *testing.T) {
+	var place Place
+	err := yaml.Unmarshal([]byte("name: Village\nparent:\n  - value: old\nparent: new\n"), &place)
+	require.ErrorContains(t, err, "duplicate")
+}
+
+func TestPlaceParentSharesCalendarAndUncertainty(t *testing.T) {
+	place := &Place{ParentHistory: []PlaceParentPeriod{
+		{Value: "old", Date: "TO 1700-03-10"},
+		{Value: "new", Date: "FROM 1700-03-11"},
+	}}
+	assert.Equal(t, "new", place.ParentAt("JULIAN 1700-02-29"))
+	assert.Equal(t, "new", place.ParentAt("1700-03-11"))
+	assert.Equal(t, "old", place.ParentAt("BEF 1700-03-11"))
+
+	place.SetParentHistory([]PlaceParentPeriod{
+		{Value: "earlier", Date: "TO 2 BCE"},
+		{Value: "later", Date: "FROM 1"},
+	})
+	assert.Equal(t, "later", place.ParentAt("0001-12-31 BCE"))
+
+	for _, date := range []DateString{"BET 1841-01-01 AND 1841-12-31", "1841", "ABT 1841-07-01", "CAL 1841-07-01", "EST 1841-07-01", "INT 1841-07-01 (record)", "BEF 1842", "AFT 1840", "FROM 1842 TO 1840", "1841-02-30"} {
+		_, ok := parentPeriodCore(date)
+		assert.False(t, ok, "%s does not prove overlap", date)
+	}
+
+	archive := &GLXFile{}
+	result := &ValidationResult{}
+	archive.warnOverlappingParentPeriods("village", []PlaceParentPeriod{
+		{Value: "old", Date: "TO 1900-02-28"},
+		{Value: "new", Date: "FROM 1900-02"},
+	}, result)
+	require.Len(t, result.Warnings, 1)
+	assert.Contains(t, result.Warnings[0].Message, "periods overlap")
+}
