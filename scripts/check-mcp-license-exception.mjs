@@ -27,7 +27,7 @@ export function verifyMCPLicenseException({ goMod, goSum, notice, workflow, othe
   const actionPins = workflow.split(/\r?\n/)
     .map(line => line.split('#')[0].trim())
     .filter(line => line.startsWith('uses: actions/dependency-review-action@'))
-  if (actionPins.length !== 1 || actionPins[0] !== 'uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294') {
+  if (actionPins.length !== 1 || actionPins[0] !== 'uses: actions/dependency-review-action@bbc44d14a204704ccc493733616cd1e93a0321ec') {
     throw new Error('Review the MCP SDK license exception when updating the dependency-review action')
   }
   // Git checkouts may use CRLF; preserve license content, not newline encoding.

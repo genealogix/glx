@@ -32,7 +32,7 @@ for (const [name, changed] of [
   ['second module checksum', { otherManifests: [{ name: 'future/go.sum', contents: `${modulePath} v1.9.0 h1:unreviewed` }] }],
   ['workspace', { otherManifests: [{ name: 'go.work', contents: 'go 1.27.4\nuse ../unreviewed-sdk' }] }],
   ['workspace sums', { otherManifests: [{ name: 'go.work.sum', contents: '' }] }],
-  ['changed action semantics', { workflow: files.workflow.replace('a1d282b36b6f3519aa1f3fc636f609c47dddb294', '0000000000000000000000000000000000000000') }],
+  ['changed action semantics', { workflow: files.workflow.replace('bbc44d14a204704ccc493733616cd1e93a0321ec', '0000000000000000000000000000000000000000') }],
   ['case-variant SDK requirement', { goMod: `${files.goMod}\nrequire github.com/ModelContextProtocol/go-sdk v1.9.0\n` }],
   ['case-variant secondary module', { otherManifests: [{ name: 'other/go.mod', contents: 'require github.com/ModelContextProtocol/go-sdk v1.9.0' }] }],
   ['duplicate notice', { notice: files.notice + files.notice }],
