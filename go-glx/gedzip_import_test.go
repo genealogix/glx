@@ -687,3 +687,29 @@ func writeUnsupportedMethodZip(t *testing.T, zipPath, entryName string) {
 type passthroughWriteCloser struct{ io.Writer }
 
 func (passthroughWriteCloser) Close() error { return nil }
+
+// original_filename names the bundle member a 7.0 reference resolved to
+// (#1153): the decoded file when that is what the bundle holds, and the
+// literal %-named file when only that is present.
+func TestImportGEDZIP_OriginalFilenameNamesTheResolvedMember(t *testing.T) {
+	for _, tc := range []struct {
+		name, member, wantOriginal string
+	}{
+		{"decoded member", "media/CharlotteBrontë.jpg", "CharlotteBrontë.jpg"},
+		{"literal percent member", "media/CharlotteBront%C3%AB.jpg", "CharlotteBront%C3%AB.jpg"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			zr := buildMemZip(t, map[string][]byte{
+				"gedcom.ged": []byte(gedcom7WithEncodedMedia),
+				tc.member:    []byte("jpeg-content"),
+			})
+			glx, result, err := ImportGEDZIP(zr, nil)
+			require.NoError(t, err)
+			require.Len(t, result.MediaFiles, 1)
+			mf := result.MediaFiles[0]
+			require.Equal(t, tc.member, mf.MemberPath)
+			require.Equal(t, tc.wantOriginal, glx.Media[mf.MediaID].Properties[MediaPropertyOriginalFilename])
+			require.Equal(t, MediaFilesDir+"/CharlotteBrontë.jpg", glx.Media[mf.MediaID].URI, "the archive names the file decoded (#1152)")
+		})
+	}
+}

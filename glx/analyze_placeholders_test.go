@@ -42,7 +42,8 @@ func parentChild(parent, child string) *glxlib.Relationship {
 
 func issueMessagesFor(issues []AnalysisIssue, person string) []string {
 	var messages []string
-	for _, issue := range issues {
+	for i := range issues {
+		issue := &issues[i]
 		if issue.Person == person {
 			messages = append(messages, issue.Message)
 		}

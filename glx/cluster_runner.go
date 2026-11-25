@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -142,6 +143,15 @@ func resolvePersonForCluster(archive *glxlib.GLXFile, query string) (string, err
 
 // buildCluster performs FAN club analysis for a person.
 func buildCluster(personID string, archive *glxlib.GLXFile, filterPlace string, beforeYear, afterYear int) *clusterResult {
+	result, _ := buildClusterContext(context.Background(), personID, archive, filterPlace, beforeYear, afterYear)
+
+	return result
+}
+
+func buildClusterContext(ctx context.Context, personID string, archive *glxlib.GLXFile, filterPlace string, beforeYear, afterYear int) (*clusterResult, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	person := archive.Persons[personID]
 	personName := "(unknown)"
 	if person != nil {
@@ -151,26 +161,23 @@ func buildCluster(personID string, archive *glxlib.GLXFile, filterPlace string, 
 	// Build a map of associate person ID → links
 	linkMap := make(map[string][]associateLink)
 
-	// 1. Census household connections
-	collectCensusLinks(personID, archive, linkMap, filterPlace, beforeYear, afterYear)
-
-	// 2. Census page neighbors (#180)
-	collectCensusNeighborLinks(personID, archive, linkMap, filterPlace, beforeYear, afterYear)
-
-	// 3. Event co-participant connections (non-census)
-	collectEventLinks(personID, archive, linkMap, filterPlace, beforeYear, afterYear)
-
-	// 4. Place overlap connections
-	collectPlaceLinks(personID, archive, linkMap, filterPlace, beforeYear, afterYear)
-
-	// Convert to sorted associate list
-	associates := buildAssociateList(linkMap, archive)
+	var associates []associate
+	if err := runContextPhases(
+		ctx,
+		func() { collectCensusLinks(personID, archive, linkMap, filterPlace, beforeYear, afterYear) },
+		func() { collectCensusNeighborLinks(personID, archive, linkMap, filterPlace, beforeYear, afterYear) },
+		func() { collectEventLinks(personID, archive, linkMap, filterPlace, beforeYear, afterYear) },
+		func() { collectPlaceLinks(personID, archive, linkMap, filterPlace, beforeYear, afterYear) },
+		func() { associates = buildAssociateList(linkMap, archive) },
+	); err != nil {
+		return nil, err
+	}
 
 	return &clusterResult{
 		PersonID:   personID,
 		PersonName: personName,
 		Associates: associates,
-	}
+	}, nil
 }
 
 // collectCensusLinks finds people in the same census events.

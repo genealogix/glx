@@ -458,7 +458,8 @@ func buildPersonPage(id string, person *glxlib.Person, archive *glxlib.GLXFile, 
 func buildTimelineRows(personID string, archive *glxlib.GLXFile) []timelineRow {
 	entries := collectTimelineEntries(personID, archive, true)
 	rows := make([]timelineRow, 0, len(entries))
-	for _, e := range entries {
+	for i := range entries {
+		e := &entries[i]
 		// Parsing preserves a recoverable year and calendar even when the
 		// archive carries a date whose remaining text cannot be interpreted.
 		date, err := glxlib.DateString(e.Date).Parse()

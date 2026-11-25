@@ -41,17 +41,26 @@ func extractEventYear(archive *glxlib.GLXFile, personID, eventType string) int {
 // geographic (sibling birthplace outliers).
 func analyzeConsistency(archive *glxlib.GLXFile) []AnalysisIssue {
 	var issues []AnalysisIssue
-
-	issues = append(issues, checkBirthAfterDeath(archive)...)
-	issues = append(issues, checkParentYoungerThanChild(archive)...)
-	issues = append(issues, checkEventAfterDeath(archive)...)
-	issues = append(issues, checkVitalChronology(archive)...)
-	issues = append(issues, checkImplausibleLifespan(archive)...)
-	issues = append(issues, checkMarriageBeforeBirth(archive)...)
-	issues = append(issues, checkDuplicateSiblingNames(archive)...)
-	issues = append(issues, checkSiblingBirthplaceOutlier(archive)...)
+	for _, check := range consistencyChecks() {
+		issues = append(issues, check(archive)...)
+	}
 
 	return issues
+}
+
+// consistencyChecks lists the consistency checks in report order. The CLI and the MCP server both run this list,
+// so a new check reaches both.
+func consistencyChecks() []func(*glxlib.GLXFile) []AnalysisIssue {
+	return []func(*glxlib.GLXFile) []AnalysisIssue{
+		checkBirthAfterDeath,
+		checkParentYoungerThanChild,
+		checkEventAfterDeath,
+		checkVitalChronology,
+		checkImplausibleLifespan,
+		checkMarriageBeforeBirth,
+		checkDuplicateSiblingNames,
+		checkSiblingBirthplaceOutlier,
+	}
 }
 
 // checkBirthAfterDeath reports persons whose death year precedes their birth year.

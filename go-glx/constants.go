@@ -186,11 +186,17 @@ const (
 	RelationshipPropertyEndedOn          = "ended_on"           // Date the relationship ended; use end_event when the boundary is a documented event
 )
 
+// Standard Citation Property Names - commonly used properties on Citation entities
+const (
+	CitationPropertyURL = "url" // Link to the cited record online
+)
+
 // Standard Media Property Names - commonly used properties on Media entities
 const (
 	MediaPropertyOriginalFilename = "original_filename" // Source filename before import canonicalization or collision renaming
 	MediaPropertyBlobSize         = "blob_size"         // Length in bytes of the encoded GEDCOM 5.5.1 BLOB text as the BLOB/CONT lines joined with newlines (pre-decode; includes the line separators, not the decoded file size)
 	MediaPropertyExternalIDs      = "external_ids"      // Identifiers from external systems, such as Ancestry's media object id (_OID)
+	MediaPropertySourcePath       = "source_path"       // FILE reference as written in the imported GEDCOM, when glx import --media-source-paths records it
 )
 
 // External identifier types recorded on media from vendor GEDCOM tags.
@@ -431,6 +437,7 @@ const (
 	GedcomTagFile   = "FILE"   // File reference
 	GedcomTagForm   = "FORM"   // Format
 	GedcomTagCrop   = "CROP"   // Crop coordinates (GEDCOM 7.0)
+	GedcomTagOrig   = "_ORIG"  // Original filename under FILE (GLX extension, written by glx export)
 	GedcomTagMime   = "MIME"   // Legacy nonstandard MIME tag (read for compatibility)
 	GedcomTagMedi   = "MEDI"   // Media type (GEDCOM 5.5.1)
 	GedcomTagTop    = "TOP"    // Top coordinate
@@ -445,7 +452,7 @@ const (
 // GEDCOM Tags - Citation/Evidence
 const (
 	GedcomTagPage = "PAGE" // Page/location within source
-	GedcomTagQuay = "QUAY" // Quality assessment (preserved in citation notes)
+	GedcomTagQuay = "QUAY" // Citation quality assessment (citation property gedcom_quay; notes when invalid)
 	GedcomTagCont = "CONT" // Continuation on new line
 	GedcomTagConc = "CONC" // Concatenation (same line)
 )

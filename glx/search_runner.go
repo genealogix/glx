@@ -15,10 +15,10 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 
@@ -110,506 +110,570 @@ type searchResult struct {
 	Value      string // the matching value (truncated for display)
 }
 
+// searchScalarField preserves each field's legacy display truncation policy.
+type searchScalarField struct {
+	field   string
+	value   string
+	shorten bool
+}
+
+func searchFields(ctx context.Context, entityType glxlib.EntityType, id string, fields []searchScalarField, matchFn func(string) bool, visit func(searchResult) bool) bool {
+	for _, field := range fields {
+		if ctx.Err() != nil {
+			return false
+		}
+		if !matchFn(field.value) {
+			continue
+		}
+		value := field.value
+		if field.shorten {
+			value = truncate(value)
+		}
+		if !visit(searchResult{entityType, id, field.field, value}) {
+			return false
+		}
+	}
+
+	return true
+}
+
 // searchProps searches a properties map (sorted keys for deterministic output)
-// and appends any matches to results. The prefix distinguishes entity-level
+// and visits any matches. The prefix distinguishes entity-level
 // properties ("properties.") from participant-level ("participant.properties.").
 // Property values are enumerated via propertyScalars so every value in the
 // canonical GLX shapes (string, map-with-"value", []any temporal list) is
 // searchable; the first matching value within a property is recorded.
-func searchProps(entityType glxlib.EntityType, id, prefix string, props map[string]any, matchFn func(string) bool) []searchResult {
-	var results []searchResult
+func searchProps(ctx context.Context, entityType glxlib.EntityType, id, prefix string, props map[string]any, matchFn func(string) bool, visit func(searchResult) bool) bool {
 	keys := make([]string, 0, len(props))
 	for k := range props {
+		if ctx.Err() != nil {
+			return false
+		}
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 	for _, key := range keys {
+		if ctx.Err() != nil {
+			return false
+		}
 		for _, s := range propertyScalars(props[key]) {
+			if ctx.Err() != nil {
+				return false
+			}
 			if matchFn(s) {
-				results = append(results, searchResult{entityType, id, prefix + key, truncate(s)})
+				if !visit(searchResult{entityType, id, prefix + key, truncate(s)}) {
+					return false
+				}
 
 				break
 			}
 		}
 	}
 
-	return results
+	return true
 }
 
-// searchSlice searches a string slice (ref IDs, authors, etc.) and appends matches.
-func searchSlice(entityType glxlib.EntityType, id, field string, items []string, matchFn func(string) bool) []searchResult {
-	var results []searchResult
+// searchSlice visits matching string slice values (ref IDs, authors, etc.).
+func searchSlice(ctx context.Context, entityType glxlib.EntityType, id, field string, items []string, matchFn func(string) bool, visit func(searchResult) bool) bool {
 	for _, item := range items {
-		if matchFn(item) {
-			results = append(results, searchResult{entityType, id, field, truncate(item)})
+		if ctx.Err() != nil {
+			return false
+		}
+		if matchFn(item) && !visit(searchResult{entityType, id, field, truncate(item)}) {
+			return false
 		}
 	}
 
-	return results
+	return true
 }
 
-// searchParticipants searches participants and appends matches.
-func searchParticipants(entityType glxlib.EntityType, id string, participants []glxlib.Participant, matchFn func(string) bool) []searchResult {
-	var results []searchResult
+// searchParticipants visits matching participant fields.
+func searchParticipants(ctx context.Context, entityType glxlib.EntityType, id string, participants []glxlib.Participant, matchFn func(string) bool, visit func(searchResult) bool) bool {
 	for _, p := range participants {
-		if matchFn(p.Person) {
-			results = append(results, searchResult{entityType, id, "participant", p.Person})
+		if ctx.Err() != nil {
+			return false
 		}
-		if matchFn(p.Role) {
-			results = append(results, searchResult{entityType, id, "participant.role", p.Role})
+		if matchFn(p.Person) && !visit(searchResult{entityType, id, "participant", p.Person}) {
+			return false
 		}
-		if matchFn(p.Notes.String()) {
-			results = append(results, searchResult{entityType, id, "participant.notes", truncate(p.Notes.String())})
+		if matchFn(p.Role) && !visit(searchResult{entityType, id, "participant.role", p.Role}) {
+			return false
 		}
-		results = append(results, searchProps(entityType, id, "participant.properties.", p.Properties, matchFn)...)
+		if matchFn(p.Notes.String()) && !visit(searchResult{entityType, id, "participant.notes", truncate(p.Notes.String())}) {
+			return false
+		}
+		if !searchProps(ctx, entityType, id, "participant.properties.", p.Properties, matchFn, visit) {
+			return false
+		}
 	}
 
-	return results
+	return true
 }
 
 // searchPersons searches all Person entities in the archive.
-func searchPersons(archive *glxlib.GLXFile, matchFn func(string) bool) []searchResult {
-	var results []searchResult
+func searchPersons(ctx context.Context, archive *glxlib.GLXFile, matchFn func(string) bool, visit func(searchResult) bool) bool {
 	for _, id := range sortedKeys(archive.Persons) {
+		if ctx.Err() != nil {
+			return false
+		}
 		person := archive.Persons[id]
 		if person == nil {
 			continue
 		}
-		if matchFn(id) {
-			results = append(results, searchResult{glxlib.EntityTypePersons, id, searchFieldID, id})
+		if matchFn(id) && !visit(searchResult{glxlib.EntityTypePersons, id, searchFieldID, id}) {
+			return false
 		}
-		results = append(results, searchProps(glxlib.EntityTypePersons, id, "properties.", person.Properties, matchFn)...)
-		if matchFn(person.Notes.String()) {
-			results = append(results, searchResult{glxlib.EntityTypePersons, id, searchFieldNotes, truncate(person.Notes.String())})
+		if !searchProps(ctx, glxlib.EntityTypePersons, id, "properties.", person.Properties, matchFn, visit) {
+			return false
+		}
+		if matchFn(person.Notes.String()) && !visit(searchResult{glxlib.EntityTypePersons, id, searchFieldNotes, truncate(person.Notes.String())}) {
+			return false
 		}
 	}
 
-	return results
+	return true
 }
 
 // searchEvents searches all Event entities in the archive.
-func searchEvents(archive *glxlib.GLXFile, matchFn func(string) bool) []searchResult {
-	var results []searchResult
+func searchEvents(ctx context.Context, archive *glxlib.GLXFile, matchFn func(string) bool, visit func(searchResult) bool) bool {
 	for _, id := range sortedKeys(archive.Events) {
+		if ctx.Err() != nil {
+			return false
+		}
 		ev := archive.Events[id]
 		if ev == nil {
 			continue
 		}
-		if matchFn(id) {
-			results = append(results, searchResult{glxlib.EntityTypeEvents, id, searchFieldID, id})
+		if matchFn(id) && !visit(searchResult{glxlib.EntityTypeEvents, id, searchFieldID, id}) {
+			return false
 		}
-		if matchFn(ev.Title) {
-			results = append(results, searchResult{glxlib.EntityTypeEvents, id, searchFieldTitle, ev.Title})
+		if matchFn(ev.Title) && !visit(searchResult{glxlib.EntityTypeEvents, id, searchFieldTitle, ev.Title}) {
+			return false
 		}
-		if matchFn(ev.Type) {
-			results = append(results, searchResult{glxlib.EntityTypeEvents, id, searchFieldType, ev.Type})
+		if matchFn(ev.Type) && !visit(searchResult{glxlib.EntityTypeEvents, id, searchFieldType, ev.Type}) {
+			return false
 		}
-		if matchFn(string(ev.Date)) {
-			results = append(results, searchResult{glxlib.EntityTypeEvents, id, eventFieldDate, string(ev.Date)})
+		if matchFn(string(ev.Date)) && !visit(searchResult{glxlib.EntityTypeEvents, id, eventFieldDate, string(ev.Date)}) {
+			return false
 		}
-		if matchFn(ev.PlaceID) {
-			results = append(results, searchResult{glxlib.EntityTypeEvents, id, eventFieldPlace, ev.PlaceID})
+		if matchFn(ev.PlaceID) && !visit(searchResult{glxlib.EntityTypeEvents, id, eventFieldPlace, ev.PlaceID}) {
+			return false
 		}
-		if matchFn(ev.Notes.String()) {
-			results = append(results, searchResult{glxlib.EntityTypeEvents, id, searchFieldNotes, truncate(ev.Notes.String())})
+		if matchFn(ev.Notes.String()) && !visit(searchResult{glxlib.EntityTypeEvents, id, searchFieldNotes, truncate(ev.Notes.String())}) {
+			return false
 		}
-		results = append(results, searchProps(glxlib.EntityTypeEvents, id, "properties.", ev.Properties, matchFn)...)
-		results = append(results, searchParticipants(glxlib.EntityTypeEvents, id, ev.Participants, matchFn)...)
+		if !searchProps(ctx, glxlib.EntityTypeEvents, id, "properties.", ev.Properties, matchFn, visit) {
+			return false
+		}
+		if !searchParticipants(ctx, glxlib.EntityTypeEvents, id, ev.Participants, matchFn, visit) {
+			return false
+		}
 	}
 
-	return results
+	return true
 }
 
 // searchPlaces searches all Place entities in the archive.
-func searchPlaces(archive *glxlib.GLXFile, matchFn func(string) bool) []searchResult {
-	var results []searchResult
+func searchPlaces(ctx context.Context, archive *glxlib.GLXFile, matchFn func(string) bool, visit func(searchResult) bool) bool {
 	for _, id := range sortedKeys(archive.Places) {
+		if ctx.Err() != nil {
+			return false
+		}
 		place := archive.Places[id]
 		if place == nil {
 			continue
 		}
-		if matchFn(id) {
-			results = append(results, searchResult{glxlib.EntityTypePlaces, id, searchFieldID, id})
+		if matchFn(id) && !visit(searchResult{glxlib.EntityTypePlaces, id, searchFieldID, id}) {
+			return false
 		}
-		if matchFn(place.Name) {
-			results = append(results, searchResult{glxlib.EntityTypePlaces, id, searchFieldName, place.Name})
+		if matchFn(place.Name) && !visit(searchResult{glxlib.EntityTypePlaces, id, searchFieldName, place.Name}) {
+			return false
 		}
-		if matchFn(place.Type) {
-			results = append(results, searchResult{glxlib.EntityTypePlaces, id, searchFieldType, place.Type})
+		if matchFn(place.Type) && !visit(searchResult{glxlib.EntityTypePlaces, id, searchFieldType, place.Type}) {
+			return false
 		}
 		for _, parentID := range place.ParentIDs() {
 			if matchFn(parentID) {
-				results = append(results, searchResult{glxlib.EntityTypePlaces, id, searchFieldParent, parentID})
+				if !visit(searchResult{glxlib.EntityTypePlaces, id, searchFieldParent, parentID}) {
+					return false
+				}
 
 				break
 			}
 		}
-		if matchFn(place.Notes.String()) {
-			results = append(results, searchResult{glxlib.EntityTypePlaces, id, searchFieldNotes, truncate(place.Notes.String())})
+		if matchFn(place.Notes.String()) && !visit(searchResult{glxlib.EntityTypePlaces, id, searchFieldNotes, truncate(place.Notes.String())}) {
+			return false
 		}
-		results = append(results, searchProps(glxlib.EntityTypePlaces, id, "properties.", place.Properties, matchFn)...)
+		if !searchProps(ctx, glxlib.EntityTypePlaces, id, "properties.", place.Properties, matchFn, visit) {
+			return false
+		}
 	}
 
-	return results
+	return true
 }
 
 // searchSources searches all Source entities in the archive.
-func searchSources(archive *glxlib.GLXFile, matchFn func(string) bool) []searchResult {
-	var results []searchResult
+func searchSources(ctx context.Context, archive *glxlib.GLXFile, matchFn func(string) bool, visit func(searchResult) bool) bool {
 	for _, id := range sortedKeys(archive.Sources) {
+		if ctx.Err() != nil {
+			return false
+		}
 		src := archive.Sources[id]
 		if src == nil {
 			continue
 		}
-		if matchFn(id) {
-			results = append(results, searchResult{glxlib.EntityTypeSources, id, searchFieldID, id})
+		if !searchFields(ctx, glxlib.EntityTypeSources, id, []searchScalarField{
+			{searchFieldID, id, false},
+			{searchFieldTitle, src.Title, false},
+			{searchFieldType, src.Type, false},
+			{eventFieldDate, string(src.Date), false},
+			{searchFieldRepository, src.RepositoryID, false},
+			{"language", src.Language, false},
+			{searchFieldNotes, src.Notes.String(), true},
+		}, matchFn, visit) {
+			return false
 		}
-		if matchFn(src.Title) {
-			results = append(results, searchResult{glxlib.EntityTypeSources, id, searchFieldTitle, src.Title})
+		if !searchSlice(ctx, glxlib.EntityTypeSources, id, "author", src.Authors, matchFn, visit) {
+			return false
 		}
-		if matchFn(src.Type) {
-			results = append(results, searchResult{glxlib.EntityTypeSources, id, searchFieldType, src.Type})
+		if !searchSlice(ctx, glxlib.EntityTypeSources, id, "media", src.Media, matchFn, visit) {
+			return false
 		}
-		if matchFn(string(src.Date)) {
-			results = append(results, searchResult{glxlib.EntityTypeSources, id, eventFieldDate, string(src.Date)})
+		if !searchProps(ctx, glxlib.EntityTypeSources, id, "properties.", src.Properties, matchFn, visit) {
+			return false
 		}
-		if matchFn(src.RepositoryID) {
-			results = append(results, searchResult{glxlib.EntityTypeSources, id, searchFieldRepository, src.RepositoryID})
-		}
-		if matchFn(src.Language) {
-			results = append(results, searchResult{glxlib.EntityTypeSources, id, "language", src.Language})
-		}
-		if matchFn(src.Notes.String()) {
-			results = append(results, searchResult{glxlib.EntityTypeSources, id, searchFieldNotes, truncate(src.Notes.String())})
-		}
-		results = append(results, searchSlice(glxlib.EntityTypeSources, id, "author", src.Authors, matchFn)...)
-		results = append(results, searchSlice(glxlib.EntityTypeSources, id, "media", src.Media, matchFn)...)
-		results = append(results, searchProps(glxlib.EntityTypeSources, id, "properties.", src.Properties, matchFn)...)
 	}
 
-	return results
+	return true
 }
 
 // searchCitations searches all Citation entities in the archive.
-func searchCitations(archive *glxlib.GLXFile, matchFn func(string) bool) []searchResult {
-	var results []searchResult
+func searchCitations(ctx context.Context, archive *glxlib.GLXFile, matchFn func(string) bool, visit func(searchResult) bool) bool {
 	for _, id := range sortedKeys(archive.Citations) {
+		if ctx.Err() != nil {
+			return false
+		}
 		cit := archive.Citations[id]
 		if cit == nil {
 			continue
 		}
-		if matchFn(id) {
-			results = append(results, searchResult{glxlib.EntityTypeCitations, id, searchFieldID, id})
+		if matchFn(id) && !visit(searchResult{glxlib.EntityTypeCitations, id, searchFieldID, id}) {
+			return false
 		}
-		if matchFn(cit.SourceID) {
-			results = append(results, searchResult{glxlib.EntityTypeCitations, id, searchFieldSource, cit.SourceID})
+		if matchFn(cit.SourceID) && !visit(searchResult{glxlib.EntityTypeCitations, id, searchFieldSource, cit.SourceID}) {
+			return false
 		}
-		if matchFn(cit.RepositoryID) {
-			results = append(results, searchResult{glxlib.EntityTypeCitations, id, searchFieldRepository, cit.RepositoryID})
+		if matchFn(cit.RepositoryID) && !visit(searchResult{glxlib.EntityTypeCitations, id, searchFieldRepository, cit.RepositoryID}) {
+			return false
 		}
-		if matchFn(cit.Notes.String()) {
-			results = append(results, searchResult{glxlib.EntityTypeCitations, id, searchFieldNotes, truncate(cit.Notes.String())})
+		if matchFn(cit.Notes.String()) && !visit(searchResult{glxlib.EntityTypeCitations, id, searchFieldNotes, truncate(cit.Notes.String())}) {
+			return false
 		}
-		results = append(results, searchSlice(glxlib.EntityTypeCitations, id, "media", cit.Media, matchFn)...)
-		results = append(results, searchProps(glxlib.EntityTypeCitations, id, "properties.", cit.Properties, matchFn)...)
+		if !searchSlice(ctx, glxlib.EntityTypeCitations, id, "media", cit.Media, matchFn, visit) {
+			return false
+		}
+		if !searchProps(ctx, glxlib.EntityTypeCitations, id, "properties.", cit.Properties, matchFn, visit) {
+			return false
+		}
 	}
 
-	return results
+	return true
 }
 
 // searchRepositories searches all Repository entities in the archive.
-func searchRepositories(archive *glxlib.GLXFile, matchFn func(string) bool) []searchResult {
-	var results []searchResult
+func searchRepositories(ctx context.Context, archive *glxlib.GLXFile, matchFn func(string) bool, visit func(searchResult) bool) bool {
 	for _, id := range sortedKeys(archive.Repositories) {
+		if ctx.Err() != nil {
+			return false
+		}
 		repo := archive.Repositories[id]
 		if repo == nil {
 			continue
 		}
-		if matchFn(id) {
-			results = append(results, searchResult{glxlib.EntityTypeRepositories, id, searchFieldID, id})
+		if !searchFields(ctx, glxlib.EntityTypeRepositories, id, []searchScalarField{
+			{searchFieldID, id, false},
+			{searchFieldName, repo.Name, false},
+			{searchFieldType, repo.Type, false},
+			{"address", repo.Address, false},
+			{searchFieldCity, repo.City, false},
+			{searchFieldState, repo.State, false},
+			{searchFieldPostalCode, repo.PostalCode, false},
+			{searchFieldCountry, repo.Country, false},
+			{"website", repo.Website, false},
+			{searchFieldNotes, repo.Notes.String(), true},
+		}, matchFn, visit) {
+			return false
 		}
-		if matchFn(repo.Name) {
-			results = append(results, searchResult{glxlib.EntityTypeRepositories, id, searchFieldName, repo.Name})
+		if !searchProps(ctx, glxlib.EntityTypeRepositories, id, "properties.", repo.Properties, matchFn, visit) {
+			return false
 		}
-		if matchFn(repo.Type) {
-			results = append(results, searchResult{glxlib.EntityTypeRepositories, id, searchFieldType, repo.Type})
-		}
-		if matchFn(repo.Address) {
-			results = append(results, searchResult{glxlib.EntityTypeRepositories, id, "address", repo.Address})
-		}
-		if matchFn(repo.City) {
-			results = append(results, searchResult{glxlib.EntityTypeRepositories, id, searchFieldCity, repo.City})
-		}
-		if matchFn(repo.State) {
-			results = append(results, searchResult{glxlib.EntityTypeRepositories, id, searchFieldState, repo.State})
-		}
-		if matchFn(repo.PostalCode) {
-			results = append(results, searchResult{glxlib.EntityTypeRepositories, id, searchFieldPostalCode, repo.PostalCode})
-		}
-		if matchFn(repo.Country) {
-			results = append(results, searchResult{glxlib.EntityTypeRepositories, id, searchFieldCountry, repo.Country})
-		}
-		if matchFn(repo.Website) {
-			results = append(results, searchResult{glxlib.EntityTypeRepositories, id, "website", repo.Website})
-		}
-		if matchFn(repo.Notes.String()) {
-			results = append(results, searchResult{glxlib.EntityTypeRepositories, id, searchFieldNotes, truncate(repo.Notes.String())})
-		}
-		results = append(results, searchProps(glxlib.EntityTypeRepositories, id, "properties.", repo.Properties, matchFn)...)
 	}
 
-	return results
+	return true
 }
 
 // searchAssertions searches all Assertion entities in the archive.
-func searchAssertions(archive *glxlib.GLXFile, matchFn func(string) bool) []searchResult {
-	var results []searchResult
+func searchAssertions(ctx context.Context, archive *glxlib.GLXFile, matchFn func(string) bool, visit func(searchResult) bool) bool {
 	for _, id := range sortedKeys(archive.Assertions) {
+		if ctx.Err() != nil {
+			return false
+		}
 		a := archive.Assertions[id]
 		if a == nil {
 			continue
 		}
-		if matchFn(id) {
-			results = append(results, searchResult{glxlib.EntityTypeAssertions, id, searchFieldID, id})
+		if !searchFields(ctx, glxlib.EntityTypeAssertions, id, []searchScalarField{
+			{searchFieldID, id, false},
+			{"subject.person", a.Subject.Person, false},
+			{"subject.event", a.Subject.Event, false},
+			{"subject.relationship", a.Subject.Relationship, false},
+			{"subject.place", a.Subject.Place, false},
+			{searchFieldProperty, a.Property, false},
+			{searchFieldValue, a.Value, false},
+			{eventFieldDate, string(a.Date), false},
+			{"confidence", a.Confidence, false},
+			{searchFieldStatus, a.Status, false},
+			{searchFieldNotes, a.Notes.String(), true},
+		}, matchFn, visit) {
+			return false
 		}
-		if matchFn(a.Subject.Person) {
-			results = append(results, searchResult{glxlib.EntityTypeAssertions, id, "subject.person", a.Subject.Person})
+		if !searchSlice(ctx, glxlib.EntityTypeAssertions, id, "source", a.Sources, matchFn, visit) {
+			return false
 		}
-		if matchFn(a.Subject.Event) {
-			results = append(results, searchResult{glxlib.EntityTypeAssertions, id, "subject.event", a.Subject.Event})
+		if !searchSlice(ctx, glxlib.EntityTypeAssertions, id, "citation", a.Citations, matchFn, visit) {
+			return false
 		}
-		if matchFn(a.Subject.Relationship) {
-			results = append(results, searchResult{glxlib.EntityTypeAssertions, id, "subject.relationship", a.Subject.Relationship})
+		if !searchSlice(ctx, glxlib.EntityTypeAssertions, id, "media", a.Media, matchFn, visit) {
+			return false
 		}
-		if matchFn(a.Subject.Place) {
-			results = append(results, searchResult{glxlib.EntityTypeAssertions, id, "subject.place", a.Subject.Place})
-		}
-		if matchFn(a.Property) {
-			results = append(results, searchResult{glxlib.EntityTypeAssertions, id, searchFieldProperty, a.Property})
-		}
-		if matchFn(a.Value) {
-			results = append(results, searchResult{glxlib.EntityTypeAssertions, id, searchFieldValue, a.Value})
-		}
-		if matchFn(string(a.Date)) {
-			results = append(results, searchResult{glxlib.EntityTypeAssertions, id, eventFieldDate, string(a.Date)})
-		}
-		if matchFn(a.Confidence) {
-			results = append(results, searchResult{glxlib.EntityTypeAssertions, id, "confidence", a.Confidence})
-		}
-		if matchFn(a.Status) {
-			results = append(results, searchResult{glxlib.EntityTypeAssertions, id, searchFieldStatus, a.Status})
-		}
-		if matchFn(a.Notes.String()) {
-			results = append(results, searchResult{glxlib.EntityTypeAssertions, id, searchFieldNotes, truncate(a.Notes.String())})
-		}
-		results = append(results, searchSlice(glxlib.EntityTypeAssertions, id, "source", a.Sources, matchFn)...)
-		results = append(results, searchSlice(glxlib.EntityTypeAssertions, id, "citation", a.Citations, matchFn)...)
-		results = append(results, searchSlice(glxlib.EntityTypeAssertions, id, "media", a.Media, matchFn)...)
 		if a.Participant != nil {
-			results = append(results, searchParticipants(glxlib.EntityTypeAssertions, id, []glxlib.Participant{*a.Participant}, matchFn)...)
+			if !searchParticipants(ctx, glxlib.EntityTypeAssertions, id, []glxlib.Participant{*a.Participant}, matchFn, visit) {
+				return false
+			}
 		}
 	}
 
-	return results
+	return true
 }
 
 // searchRelationships searches all Relationship entities in the archive.
-func searchRelationships(archive *glxlib.GLXFile, matchFn func(string) bool) []searchResult {
-	var results []searchResult
+func searchRelationships(ctx context.Context, archive *glxlib.GLXFile, matchFn func(string) bool, visit func(searchResult) bool) bool {
 	for _, id := range sortedKeys(archive.Relationships) {
+		if ctx.Err() != nil {
+			return false
+		}
 		rel := archive.Relationships[id]
 		if rel == nil {
 			continue
 		}
-		if matchFn(id) {
-			results = append(results, searchResult{glxlib.EntityTypeRelationships, id, searchFieldID, id})
+		if matchFn(id) && !visit(searchResult{glxlib.EntityTypeRelationships, id, searchFieldID, id}) {
+			return false
 		}
-		if matchFn(rel.Type) {
-			results = append(results, searchResult{glxlib.EntityTypeRelationships, id, searchFieldType, rel.Type})
+		if matchFn(rel.Type) && !visit(searchResult{glxlib.EntityTypeRelationships, id, searchFieldType, rel.Type}) {
+			return false
 		}
-		if matchFn(rel.StartEvent) {
-			results = append(results, searchResult{glxlib.EntityTypeRelationships, id, "start_event", rel.StartEvent})
+		if matchFn(rel.StartEvent) && !visit(searchResult{glxlib.EntityTypeRelationships, id, "start_event", rel.StartEvent}) {
+			return false
 		}
-		if matchFn(rel.EndEvent) {
-			results = append(results, searchResult{glxlib.EntityTypeRelationships, id, "end_event", rel.EndEvent})
+		if matchFn(rel.EndEvent) && !visit(searchResult{glxlib.EntityTypeRelationships, id, "end_event", rel.EndEvent}) {
+			return false
 		}
-		if matchFn(rel.Notes.String()) {
-			results = append(results, searchResult{glxlib.EntityTypeRelationships, id, searchFieldNotes, truncate(rel.Notes.String())})
+		if matchFn(rel.Notes.String()) && !visit(searchResult{glxlib.EntityTypeRelationships, id, searchFieldNotes, truncate(rel.Notes.String())}) {
+			return false
 		}
-		results = append(results, searchParticipants(glxlib.EntityTypeRelationships, id, rel.Participants, matchFn)...)
-		results = append(results, searchProps(glxlib.EntityTypeRelationships, id, "properties.", rel.Properties, matchFn)...)
+		if !searchParticipants(ctx, glxlib.EntityTypeRelationships, id, rel.Participants, matchFn, visit) {
+			return false
+		}
+		if !searchProps(ctx, glxlib.EntityTypeRelationships, id, "properties.", rel.Properties, matchFn, visit) {
+			return false
+		}
 	}
 
-	return results
+	return true
 }
 
 // searchMedia searches all Media entities in the archive.
-func searchMedia(archive *glxlib.GLXFile, matchFn func(string) bool) []searchResult {
-	var results []searchResult
+func searchMedia(ctx context.Context, archive *glxlib.GLXFile, matchFn func(string) bool, visit func(searchResult) bool) bool {
 	for _, id := range sortedKeys(archive.Media) {
+		if ctx.Err() != nil {
+			return false
+		}
 		m := archive.Media[id]
 		if m == nil {
 			continue
 		}
-		if matchFn(id) {
-			results = append(results, searchResult{glxlib.EntityTypeMedia, id, searchFieldID, id})
+		if !searchFields(ctx, glxlib.EntityTypeMedia, id, []searchScalarField{
+			{searchFieldID, id, false},
+			{searchFieldTitle, m.Title, false},
+			{searchFieldType, m.Type, false},
+			{searchFieldURI, m.URI, false},
+			{searchFieldMIMEType, m.MimeType, false},
+			{searchFieldHash, m.Hash, false},
+			{eventFieldDate, string(m.Date), false},
+			{searchFieldSource, m.Source, false},
+			{searchFieldNotes, m.Notes.String(), true},
+		}, matchFn, visit) {
+			return false
 		}
-		if matchFn(m.Title) {
-			results = append(results, searchResult{glxlib.EntityTypeMedia, id, searchFieldTitle, m.Title})
+		if !searchProps(ctx, glxlib.EntityTypeMedia, id, "properties.", m.Properties, matchFn, visit) {
+			return false
 		}
-		if matchFn(m.Type) {
-			results = append(results, searchResult{glxlib.EntityTypeMedia, id, searchFieldType, m.Type})
-		}
-		if matchFn(m.URI) {
-			results = append(results, searchResult{glxlib.EntityTypeMedia, id, searchFieldURI, m.URI})
-		}
-		if matchFn(m.MimeType) {
-			results = append(results, searchResult{glxlib.EntityTypeMedia, id, searchFieldMIMEType, m.MimeType})
-		}
-		if matchFn(m.Hash) {
-			results = append(results, searchResult{glxlib.EntityTypeMedia, id, searchFieldHash, m.Hash})
-		}
-		if matchFn(string(m.Date)) {
-			results = append(results, searchResult{glxlib.EntityTypeMedia, id, eventFieldDate, string(m.Date)})
-		}
-		if matchFn(m.Source) {
-			results = append(results, searchResult{glxlib.EntityTypeMedia, id, searchFieldSource, m.Source})
-		}
-		if matchFn(m.Notes.String()) {
-			results = append(results, searchResult{glxlib.EntityTypeMedia, id, searchFieldNotes, truncate(m.Notes.String())})
-		}
-		results = append(results, searchProps(glxlib.EntityTypeMedia, id, "properties.", m.Properties, matchFn)...)
 	}
 
-	return results
+	return true
 }
 
 // searchResearchLogs searches all ResearchLog entities in the archive.
 // Each Search entry inside a log is searched as a separate result so that
 // matches on the query/result/citation fields are addressable.
-func searchResearchLogs(archive *glxlib.GLXFile, matchFn func(string) bool) []searchResult {
+func searchResearchLogs(ctx context.Context, archive *glxlib.GLXFile, matchFn func(string) bool, visit func(searchResult) bool) bool {
 	const et = glxlib.EntityTypeResearchLogs
 
-	var results []searchResult
 	for _, id := range sortedKeys(archive.ResearchLogs) {
+		if ctx.Err() != nil {
+			return false
+		}
 		log := archive.ResearchLogs[id]
 		if log == nil {
 			continue
 		}
-		results = append(results, searchResearchLogFields(et, id, log, matchFn)...)
-		results = append(results, searchSlice(et, id, "citations", log.Citations, matchFn)...)
-		for i := range log.Searches {
-			results = append(results, searchSearchEntry(et, id, i, &log.Searches[i], matchFn)...)
+		if !searchResearchLogFields(ctx, et, id, log, matchFn, visit) {
+			return false
 		}
-		results = append(results, searchProps(et, id, "properties.", log.Properties, matchFn)...)
+		if !searchSlice(ctx, et, id, "citations", log.Citations, matchFn, visit) {
+			return false
+		}
+		for i := range log.Searches {
+			if ctx.Err() != nil {
+				return false
+			}
+			if !searchSearchEntry(ctx, et, id, i, &log.Searches[i], matchFn, visit) {
+				return false
+			}
+		}
+		if !searchProps(ctx, et, id, "properties.", log.Properties, matchFn, visit) {
+			return false
+		}
 	}
 
-	return results
+	return true
 }
 
 // searchResearchLogFields enumerates the scalar string fields of a ResearchLog.
-func searchResearchLogFields(et glxlib.EntityType, id string, log *glxlib.ResearchLog, matchFn func(string) bool) []searchResult {
-	var results []searchResult
-	if matchFn(id) {
-		results = append(results, searchResult{et, id, searchFieldID, id})
+func searchResearchLogFields(ctx context.Context, et glxlib.EntityType, id string, log *glxlib.ResearchLog, matchFn func(string) bool, visit func(searchResult) bool) bool {
+	if ctx.Err() != nil {
+		return false
 	}
-	if matchFn(log.Title) {
-		results = append(results, searchResult{et, id, searchFieldTitle, log.Title})
+	if matchFn(id) && !visit(searchResult{et, id, searchFieldID, id}) {
+		return false
 	}
-	if matchFn(log.Researcher) {
-		results = append(results, searchResult{et, id, searchFieldResearcher, log.Researcher})
+	if matchFn(log.Title) && !visit(searchResult{et, id, searchFieldTitle, log.Title}) {
+		return false
 	}
-	if matchFn(log.Objective) {
-		results = append(results, searchResult{et, id, searchFieldObjective, truncate(log.Objective)})
+	if matchFn(log.Researcher) && !visit(searchResult{et, id, searchFieldResearcher, log.Researcher}) {
+		return false
 	}
-	if matchFn(log.Status) {
-		results = append(results, searchResult{et, id, searchFieldStatus, log.Status})
+	if matchFn(log.Objective) && !visit(searchResult{et, id, searchFieldObjective, truncate(log.Objective)}) {
+		return false
 	}
-	if matchFn(string(log.Date)) {
-		results = append(results, searchResult{et, id, eventFieldDate, string(log.Date)})
+	if matchFn(log.Status) && !visit(searchResult{et, id, searchFieldStatus, log.Status}) {
+		return false
 	}
-	if matchFn(log.Conclusions) {
-		results = append(results, searchResult{et, id, searchFieldConclusions, truncate(log.Conclusions)})
+	if matchFn(string(log.Date)) && !visit(searchResult{et, id, eventFieldDate, string(log.Date)}) {
+		return false
 	}
-	if matchFn(log.Notes.String()) {
-		results = append(results, searchResult{et, id, searchFieldNotes, truncate(log.Notes.String())})
+	if matchFn(log.Conclusions) && !visit(searchResult{et, id, searchFieldConclusions, truncate(log.Conclusions)}) {
+		return false
+	}
+	if matchFn(log.Notes.String()) && !visit(searchResult{et, id, searchFieldNotes, truncate(log.Notes.String())}) {
+		return false
 	}
 
-	return results
+	return true
 }
 
 // searchSearchEntry enumerates the scalar string fields of one embedded Search.
 // Field paths are prefixed `searches[i].` so per-search matches are addressable.
-func searchSearchEntry(et glxlib.EntityType, id string, idx int, s *glxlib.Search, matchFn func(string) bool) []searchResult {
+func searchSearchEntry(ctx context.Context, et glxlib.EntityType, id string, idx int, s *glxlib.Search, matchFn func(string) bool, visit func(searchResult) bool) bool {
+	if ctx.Err() != nil {
+		return false
+	}
 	prefix := fmt.Sprintf("searches[%d].", idx)
 
-	var results []searchResult
-	if matchFn(s.RepositoryID) {
-		results = append(results, searchResult{et, id, prefix + "repository", s.RepositoryID})
+	if matchFn(s.RepositoryID) && !visit(searchResult{et, id, prefix + "repository", s.RepositoryID}) {
+		return false
 	}
-	if matchFn(s.SourceID) {
-		results = append(results, searchResult{et, id, prefix + "source", s.SourceID})
+	if matchFn(s.SourceID) && !visit(searchResult{et, id, prefix + "source", s.SourceID}) {
+		return false
 	}
-	if matchFn(s.Collection) {
-		results = append(results, searchResult{et, id, prefix + "collection", s.Collection})
+	if matchFn(s.Collection) && !visit(searchResult{et, id, prefix + "collection", s.Collection}) {
+		return false
 	}
-	if matchFn(s.Query) {
-		results = append(results, searchResult{et, id, prefix + "query", truncate(s.Query)})
+	if matchFn(s.Query) && !visit(searchResult{et, id, prefix + "query", truncate(s.Query)}) {
+		return false
 	}
-	if matchFn(s.Result) {
-		results = append(results, searchResult{et, id, prefix + "result", s.Result})
+	if matchFn(s.Result) && !visit(searchResult{et, id, prefix + "result", s.Result}) {
+		return false
 	}
-	if matchFn(s.CitationID) {
-		results = append(results, searchResult{et, id, prefix + "citation", s.CitationID})
+	if matchFn(s.CitationID) && !visit(searchResult{et, id, prefix + "citation", s.CitationID}) {
+		return false
 	}
-	if matchFn(string(s.Date)) {
-		results = append(results, searchResult{et, id, prefix + "date", string(s.Date)})
+	if matchFn(string(s.Date)) && !visit(searchResult{et, id, prefix + "date", string(s.Date)}) {
+		return false
 	}
-	if matchFn(s.Notes.String()) {
-		results = append(results, searchResult{et, id, prefix + "notes", truncate(s.Notes.String())})
+	if matchFn(s.Notes.String()) && !visit(searchResult{et, id, prefix + "notes", truncate(s.Notes.String())}) {
+		return false
 	}
 
-	return results
+	return true
 }
 
 // searchStudies searches all Study entities in the archive.
-func searchStudies(archive *glxlib.GLXFile, matchFn func(string) bool) []searchResult {
+func searchStudies(ctx context.Context, archive *glxlib.GLXFile, matchFn func(string) bool, visit func(searchResult) bool) bool {
 	const et = glxlib.EntityTypeStudies
 
-	var results []searchResult
 	for _, id := range sortedKeys(archive.Studies) {
+		if ctx.Err() != nil {
+			return false
+		}
 		s := archive.Studies[id]
 		if s == nil {
 			continue
 		}
-		if matchFn(id) {
-			results = append(results, searchResult{et, id, searchFieldID, id})
+		if matchFn(id) && !visit(searchResult{et, id, searchFieldID, id}) {
+			return false
 		}
-		if matchFn(s.Title) {
-			results = append(results, searchResult{et, id, searchFieldTitle, s.Title})
+		if matchFn(s.Title) && !visit(searchResult{et, id, searchFieldTitle, s.Title}) {
+			return false
 		}
-		if matchFn(s.Type) {
-			results = append(results, searchResult{et, id, searchFieldType, s.Type})
+		if matchFn(s.Type) && !visit(searchResult{et, id, searchFieldType, s.Type}) {
+			return false
 		}
-		if matchFn(s.Status) {
-			results = append(results, searchResult{et, id, searchFieldStatus, s.Status})
+		if matchFn(s.Status) && !visit(searchResult{et, id, searchFieldStatus, s.Status}) {
+			return false
 		}
-		if matchFn(string(s.DateRange)) {
-			results = append(results, searchResult{et, id, searchFieldDateRange, string(s.DateRange)})
+		if matchFn(string(s.DateRange)) && !visit(searchResult{et, id, searchFieldDateRange, string(s.DateRange)}) {
+			return false
 		}
-		if matchFn(s.Notes.String()) {
-			results = append(results, searchResult{et, id, searchFieldNotes, truncate(s.Notes.String())})
+		if matchFn(s.Notes.String()) && !visit(searchResult{et, id, searchFieldNotes, truncate(s.Notes.String())}) {
+			return false
 		}
-		results = append(results, searchSlice(et, id, "places", s.Places, matchFn)...)
-		results = append(results, searchSlice(et, id, "sources", s.Sources, matchFn)...)
-		results = append(results, searchProps(et, id, "properties.", s.Properties, matchFn)...)
+		if !searchSlice(ctx, et, id, "places", s.Places, matchFn, visit) {
+			return false
+		}
+		if !searchSlice(ctx, et, id, "sources", s.Sources, matchFn, visit) {
+			return false
+		}
+		if !searchProps(ctx, et, id, "properties.", s.Properties, matchFn, visit) {
+			return false
+		}
 	}
 
-	return results
+	return true
 }
 
 // searchFuncs maps entity type keys to their search functions.
-var searchFuncs = map[glxlib.EntityType]func(*glxlib.GLXFile, func(string) bool) []searchResult{
+var searchFuncs = map[glxlib.EntityType]func(context.Context, *glxlib.GLXFile, func(string) bool, func(searchResult) bool) bool{
 	glxlib.EntityTypePersons:       searchPersons,
 	glxlib.EntityTypeEvents:        searchEvents,
 	glxlib.EntityTypePlaces:        searchPlaces,
@@ -626,25 +690,44 @@ var searchFuncs = map[glxlib.EntityType]func(*glxlib.GLXFile, func(string) bool)
 // searchArchive searches entities for the given query string. If typeFilter is
 // non-empty, only that entity type is searched; otherwise all types are searched.
 func searchArchive(archive *glxlib.GLXFile, query string, caseSensitive bool, typeFilter string) []searchResult {
-	matchFn := containsMatch(query, caseSensitive)
+	var results []searchResult
+	if err := visitSearchArchiveContext(context.Background(), archive, query, caseSensitive, typeFilter, func(result searchResult) bool {
+		results = append(results, result)
 
-	// Early dispatch: search only the requested type.
-	if typeFilter != "" {
-		if fn, ok := searchFuncs[glxlib.EntityType(typeFilter)]; ok {
-			return fn(archive, matchFn)
-		}
-
+		return true
+	}); err != nil {
 		return nil
 	}
 
-	results := make([]searchResult, 0, len(archive.Persons)+len(archive.Events))
+	return results
+}
+
+// visitSearchArchiveContext shares field matching and ordering with the CLI,
+// without retaining every match. Returning false from visit stops the scan.
+// Cancellation is checked between entities and within nested collections;
+// callers discard partial results when an error is returned.
+func visitSearchArchiveContext(ctx context.Context, archive *glxlib.GLXFile, query string, caseSensitive bool, typeFilter string, visit func(searchResult) bool) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if archive == nil {
+		return glxlib.ErrNilArchive
+	}
+	matchFn := containsMatch(query, caseSensitive)
+	if typeFilter != "" {
+		if fn, ok := searchFuncs[glxlib.EntityType(typeFilter)]; ok {
+			fn(ctx, archive, matchFn, visit)
+		}
+
+		return ctx.Err()
+	}
 	for _, et := range searchEntityTypes {
-		if fn, ok := searchFuncs[et.Key]; ok {
-			results = append(results, fn(archive, matchFn)...)
+		if !searchFuncs[et.Key](ctx, archive, matchFn, visit) {
+			break
 		}
 	}
 
-	return results
+	return ctx.Err()
 }
 
 // containsMatch returns a match function for the given query.
@@ -690,11 +773,11 @@ func deduplicateResults(results []searchResult) []searchResult {
 	return deduped
 }
 
-// showSearch loads an archive and performs a full-text search.
-func showSearch(archivePath, query string, caseSensitive bool, typeFilter string, jsonOutput bool) error {
+// normalizeSearchInput applies the CLI's query and collection validation.
+func normalizeSearchInput(query, typeFilter string) (string, string, error) {
 	query = strings.TrimSpace(query)
 	if query == "" {
-		return errSearchQueryEmpty
+		return "", "", errSearchQueryEmpty
 	}
 
 	// Validate --type filter
@@ -706,31 +789,23 @@ func showSearch(archivePath, query string, caseSensitive bool, typeFilter string
 				valid = append(valid, et.Key.String())
 			}
 
-			return fmt.Errorf("unknown type %q (valid: %s): %w", typeFilter, strings.Join(valid, ", "), errUnknownSearchType)
+			return "", "", fmt.Errorf("unknown type %q (valid: %s): %w", typeFilter, strings.Join(valid, ", "), errUnknownSearchType)
 		}
 	}
 
-	info, err := os.Stat(archivePath)
+	return query, typeFilter, nil
+}
+
+// showSearch loads an archive and performs a full-text search.
+func showSearch(archivePath, query string, caseSensitive bool, typeFilter string, jsonOutput bool) error {
+	query, typeFilter, err := normalizeSearchInput(query, typeFilter)
 	if err != nil {
-		return fmt.Errorf("cannot access path: %w", err)
+		return err
 	}
 
-	var archive *glxlib.GLXFile
-	if info.IsDir() {
-		loaded, duplicates, loadErr := LoadArchiveCached(archivePath)
-		if loadErr != nil {
-			return fmt.Errorf("failed to load archive: %w", loadErr)
-		}
-		for _, d := range duplicates {
-			fmt.Fprintf(os.Stderr, "Warning: %s\n", d)
-		}
-		archive = loaded
-	} else {
-		loaded, loadErr := readSingleFileArchive(archivePath, false)
-		if loadErr != nil {
-			return loadErr
-		}
-		archive = loaded
+	archive, err := loadArchiveForQuery(archivePath)
+	if err != nil {
+		return err
 	}
 
 	results := searchArchive(archive, query, caseSensitive, typeFilter)

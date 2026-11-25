@@ -71,16 +71,16 @@ func loadArchiveForPlaces(path string) (*glxlib.GLXFile, error) {
 
 // placeAnalysis holds the results of place quality analysis.
 type placeAnalysis struct {
-	Total              int
-	Canonical          map[string]string   // placeID -> canonical path
-	Duplicates         map[string][]string // normalized name -> list of placeIDs with that name
-	DuplicateOriginals map[string]string   // normalized name -> first original-cased name seen
-	MissingCoords      []string            // placeIDs without coordinates
-	MissingType        []string            // placeIDs without a type
-	NoParent           []string            // non-country/region placeIDs without a parent
-	DanglingParent     []string            // placeIDs whose parent doesn't exist
-	DanglingParentIDs  map[string]string   // placeID -> missing parent ID
-	Unreferenced       []string            // placeIDs not referenced by any event, assertion, or parent
+	Total              int                 `json:"total"`
+	Canonical          map[string]string   `json:"canonical"`           // placeID -> canonical path
+	Duplicates         map[string][]string `json:"duplicates"`          // normalized name -> list of placeIDs with that name
+	DuplicateOriginals map[string]string   `json:"duplicate_originals"` // normalized name -> first original-cased name seen
+	MissingCoords      []string            `json:"missing_coordinates"` // placeIDs without coordinates
+	MissingType        []string            `json:"missing_type"`        // placeIDs without a type
+	NoParent           []string            `json:"no_parent"`           // non-country/region placeIDs without a parent
+	DanglingParent     []string            `json:"dangling_parent"`     // placeIDs whose parent doesn't exist
+	DanglingParentIDs  map[string]string   `json:"dangling_parent_ids"` // placeID -> missing parent ID
+	Unreferenced       []string            `json:"unreferenced"`        // placeIDs not referenced by any event, assertion, or parent
 }
 
 // placeRefPropertyKeys are person/assertion properties that reference places.
@@ -108,7 +108,8 @@ func buildPlaceAnalysis(archive *glxlib.GLXFile) *placeAnalysis {
 	}
 
 	// Build canonical paths and detect issues
-	for id, place := range archive.Places {
+	for _, id := range sortedKeys(archive.Places) {
+		place := archive.Places[id]
 		if place == nil {
 			continue
 		}
