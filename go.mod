@@ -3,7 +3,7 @@ module github.com/genealogix/glx
 go 1.27.4
 
 require (
-	github.com/brianvoe/gofakeit/v7 v7.18.2
+	github.com/brianvoe/gofakeit/v7 v7.18.9
 	github.com/go-git/go-git/v5 v5.19.3
 	github.com/modelcontextprotocol/go-sdk v1.8.0
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
