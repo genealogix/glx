@@ -33,10 +33,14 @@ const coverageLabelProbate = "Probate/will"
 // researchLogQuestions returns the proof questions a research log serves for
 // the person, and whether the log concerns the person at all. An explicit
 // `question` property wins. Otherwise the log's subject decides: a marriage
-// serves marriage and children, a parent_child relationship parentage (for the
-// child) or children (for the parent), a possibly_same_person link identity,
-// and an event the question of its type. A log about the person with no
-// question serves none, and its searches are reported as other research.
+// serves marriage (a search for a couple's marriage record does not test for
+// children, so a marriage log serves children only when its question names
+// them), a parent_child relationship parentage (for the child) or children
+// (for the parent), a possibly_same_person link identity, and an event the
+// question of its type for its principals (and children for a birth's parent).
+// A log about an event the person only witnessed, sponsored or informed is not
+// about them. A log about the person with no question serves none, and its
+// searches are reported as other research.
 func researchLogQuestions(log *ResearchLog, personID string, archive *GLXFile) ([]string, bool) {
 	if log == nil || log.Subject == nil {
 		return nil, false
@@ -76,7 +80,7 @@ func relationshipLogQuestions(rel *Relationship, personID string) ([]string, boo
 		about = true
 		switch {
 		case rel.Type == RelationshipTypeMarriage || rel.Type == RelationshipTypePartner:
-			out = append(out, topicMarriage, topicChildren)
+			out = append(out, topicMarriage)
 		case IsParentChildRelationshipType(rel.Type) && IsChildSideRole(p.Role):
 			out = append(out, topicParentage)
 		case IsParentChildRelationshipType(rel.Type) && IsParentSideRole(p.Role):
@@ -101,17 +105,19 @@ func eventLogQuestions(event *Event, personID string) ([]string, bool) {
 		if p.Person != personID {
 			continue
 		}
-		about = true
 		switch {
 		case isBirthEventType(event.Type) && isVitalPrincipal(event.Type, p.Role):
 			out = append(out, topicBirth, topicParentage)
-		case isBirthEventType(event.Type) && IsParentSideRole(p.Role):
+		case isBirthEventType(event.Type) && IsParentSideRole(p.Role) && !IsStepRole(p.Role):
 			out = append(out, topicChildren)
-		case isDeathEventType(event.Type):
+		case isDeathEventType(event.Type) && isVitalPrincipal(event.Type, p.Role):
 			out = append(out, topicDeath)
-		case isMarriageEventType(event.Type):
+		case isMarriageEventType(event.Type) && isMarriagePrincipal(p.Role):
 			out = append(out, topicMarriage)
+		default:
+			continue
 		}
+		about = true
 	}
 
 	return out, about
@@ -226,6 +232,10 @@ func markSearchedGaps(gaps []ProofGap, searches []ProofSearch) {
 				continue
 			}
 			result := searches[j].Result
+			if result == SearchResultNotSearched {
+				// A planned search covers nothing yet.
+				continue
+			}
 			if result == "" {
 				result = "searched"
 			}
@@ -254,7 +264,9 @@ func markSearchedGaps(gaps []ProofGap, searches []ProofSearch) {
 }
 
 // negativeSearchSummary describes a question's searches when nothing answers
-// it: all negative (a negative conclusion), or some still outstanding.
+// it: all negative (a negative conclusion), or some still outstanding. A search
+// not yet run, needing a visit, with an unclear result or in an inaccessible
+// source tested nothing, so it is outstanding rather than negative.
 func negativeSearchSummary(searches []ProofSearch) (string, bool) {
 	if len(searches) == 0 {
 		return "", false
@@ -262,7 +274,7 @@ func negativeSearchSummary(searches []ProofSearch) (string, bool) {
 	outstanding := 0
 	for i := range searches {
 		switch searches[i].Result {
-		case SearchResultNotSearched, SearchResultRequiresVisit, "":
+		case SearchResultNotSearched, SearchResultRequiresVisit, SearchResultInconclusive, SearchResultUnavailable, "":
 			outstanding++
 		case SearchResultFound, SearchResultPartial:
 			return "", false

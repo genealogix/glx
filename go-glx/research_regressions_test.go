@@ -275,7 +275,9 @@ func TestResearchAPI_ParticipantProofEvidence(t *testing.T) {
 				require.Equal(t, glxlib.ConclusionInsufficient, proof.Conclusion)
 			} else {
 				require.Equal(t, glxlib.ConclusionProven, proof.Conclusion)
-				require.Contains(t, proof.Summary, "Alex (q)")
+				// A claim-only parent is a candidate answer of its own (named
+				// "Alex"); the other questions answer from the claim itself.
+				require.Contains(t, proof.Summary, "Alex")
 				archive.Assertions["claim"].Status = "disproven"
 				proof, err = glxlib.BuildProof(archive, "p", tc.topic, glxlib.ProofOptions{})
 				require.NoError(t, err)

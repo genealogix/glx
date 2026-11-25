@@ -106,6 +106,8 @@ type ProofGap struct {
 	// gap's type, e.g. "12 searches: 11 not_found, 1 requires_visit". A
 	// searched gap is still listed but no longer heads the next steps.
 	Searched string `json:"searched,omitempty"`
+	// relationshipID is the couple relationship a marriage-record gap is for.
+	relationshipID string
 }
 
 // ConflictValue is one competing value within a conflict.
@@ -227,7 +229,10 @@ func buildProof(personID string, person *Person, topic string, archive *GLXFile,
 
 		return a.Timing().Outer.Start < b.Timing().Outer.Start
 	})
-	conflicts := withoutRejectedDisputes(detectProofConflicts(relevant, archive, opts.Comparison), relevant, candidates.rejected)
+	// A rejected candidate's assertions stay in the evidence, but its own
+	// status already reports them: they never enter conflict detection, so an
+	// excluded alternative cannot leave the question CONFLICTED.
+	conflicts := detectProofConflicts(withoutRejected(relevant, candidates.rejected), archive, opts.Comparison)
 	if topic == topicDeath {
 		conflicts = append(conflicts, vitalChronologyConflicts(archive, personID, all, opts.Comparison)...)
 	}
@@ -246,8 +251,8 @@ func buildProof(personID string, person *Person, topic string, archive *GLXFile,
 		gaps = append(gaps, *gap)
 	}
 	if topic == topicMarriage {
-		drop := alternativeGapLabels(excluded, archive)
-		gaps = slices.DeleteFunc(gaps, func(g ProofGap) bool { return drop[g.Label] })
+		drop := excludedMarriageRelationships(&candidates)
+		gaps = slices.DeleteFunc(gaps, func(g ProofGap) bool { return g.relationshipID != "" && drop[g.relationshipID] })
 	}
 	searches, otherSearches := collectScopedProofSearches(personID, topic, archive)
 	markSearchedGaps(gaps, searches)
@@ -283,32 +288,13 @@ func answersInclude(answers []ProofAnswer, personID string) bool {
 	return false
 }
 
-// withoutRejectedDisputes drops the participation and existence disputes of
-// an excluded or contested alternative: a rejected candidate is listed under
-// the alternatives, not reported as a conflict about the answer.
-func withoutRejectedDisputes(conflicts []ConflictGroup, relevant []proofAssertion, rejected map[*Assertion]bool) []ConflictGroup {
+// withoutRejected returns the assertions no rejected candidate holds.
+func withoutRejected(relevant []proofAssertion, rejected map[*Assertion]bool) []proofAssertion {
 	if len(rejected) == 0 {
-		return conflicts
-	}
-	rejectedIDs := map[string]bool{}
-	for i := range relevant {
-		if rejected[relevant[i].a] {
-			rejectedIDs[relevant[i].id] = true
-		}
+		return relevant
 	}
 
-	return slices.DeleteFunc(conflicts, func(c ConflictGroup) bool {
-		if c.Property != "participation" && c.Property != "existence" {
-			return false
-		}
-		for i := range c.Facts {
-			if !rejectedIDs[c.Facts[i].ID] {
-				return false
-			}
-		}
-
-		return len(c.Facts) > 0
-	})
+	return slices.DeleteFunc(slices.Clone(relevant), func(pa proofAssertion) bool { return rejected[pa.a] })
 }
 
 // appendClaimOnlyParticipations adds the assertions that name the person as a
@@ -469,8 +455,16 @@ func assertionRelevant(topic string, pa *proofAssertion, personID string) bool {
 	case topicChildren:
 		return childrenAssertionRelevant(pa)
 	case topicOccupation:
-		return pa.a.Property == PersonPropertyOccupation &&
-			(pa.subjectIsPerson() || pa.eventType != "" && pa.a.Participant != nil && pa.a.Participant.Person == personID)
+		// A claim on the person, or on their participation in an event: the
+		// assertion format puts an event participant's occupation under
+		// participant.properties, not in property.
+		if pa.subjectIsPerson() {
+			return pa.a.Property == PersonPropertyOccupation
+		}
+		p := pa.a.Participant
+
+		return pa.eventType != "" && p != nil && p.Person == personID &&
+			(pa.a.Property == PersonPropertyOccupation || p.Properties[PersonPropertyOccupation] != nil)
 	case topicIdentity:
 		// Who a person was rests on everything recorded about them: their own
 		// assertions, the events they take part in (in whatever role), and the
@@ -636,10 +630,11 @@ func relationshipCounterpartRule(relType, personRole string) (string, func(Parti
 }
 
 // relationshipCounterparts returns the other party an assertion is about: its
-// participant when that is someone else, otherwise every participant on the
-// other side of the relationship.
+// participant when that is someone on the other side, otherwise every
+// participant on the other side of the relationship. A participant on the
+// person's own side (the co-parent of a child) is not a counterpart.
 func relationshipCounterparts(pa *proofAssertion, personID string, rel *Relationship, want func(Participant) bool) []string {
-	if p := pa.a.Participant; p != nil && p.Person != "" && p.Person != personID {
+	if p := pa.a.Participant; p != nil && p.Person != "" && p.Person != personID && want(*p) {
 		return []string{p.Person}
 	}
 	var ids []string
@@ -892,6 +887,8 @@ func collectProofGaps(personID string, person *Person, topic string, archive *GL
 			Label:       rec.Label,
 			Priority:    priority,
 			Description: rec.Description,
+
+			relationshipID: rec.relationshipID,
 		})
 	}
 
@@ -960,8 +957,20 @@ func concludeProof(topic, personID string, archive *GLXFile, relevant []proofAss
 		answer, found = candidates.answerText, candidates.found
 	}
 	answer, found, proxyBound := vitalProofAnswer(topic, personID, archive, relevant, answer, found)
+	// Candidates that were all excluded settle the question: the assertions
+	// about the rejected answers (a ruled-out marriage's date, an excluded
+	// parent's baptism claim) cannot supply one through the fallbacks.
+	exhausted := byCandidates && !candidates.found
+	if exhausted {
+		return concludeUnanswered(topic, gaps, candidates, searches)
+	}
 	if !byCandidates || !found {
 		answer, found = resolvedConflictAnswer(topic, personID, archive, relevant, conflicts, answer, found)
+	}
+	if !found && topic == topicIdentity && candidates.found {
+		// An accepted same-person link answers who the person was; its
+		// statement is carried by the candidate notes below.
+		answer, found = "", true
 	}
 	if !found {
 		// The archive's structural data (events/relationships/name) yields no
@@ -983,6 +992,11 @@ func concludeProof(topic, personID string, archive *GLXFile, relevant []proofAss
 		// One answer per candidate: the question stands at its weakest
 		// surviving answer, never lifted by a stronger one beside it.
 		level = candidates.level
+	}
+	if topic == topicIdentity && candidates.found {
+		// A same-person link is only as strong as its weakest accepted link:
+		// a proven occupation cannot lift a probable link to PROVEN.
+		level = min(level, candidates.level)
 	}
 	if caveat != "" {
 		level = min(level, supportWeak)
@@ -1244,10 +1258,16 @@ func answerFromAssertions(relevant []proofAssertion, archive *GLXFile, topic, pe
 // relationship names the parents. It supports the answer without supplying it,
 // so answerFromAssertions still ignores it.
 func proofAssertionSupportsQuestion(pa *proofAssertion, topic, personID string) bool {
+	p := pa.a.Participant
+	if topic == topicIdentity && pa.eventType != "" {
+		// An event's date or place proves something about the event, not who
+		// the person was. Event evidence scores for identity only when it
+		// asserts the person's own participation.
+		return p != nil && p.Person == personID
+	}
 	if proofAssertionAnswersQuestion(pa, topic, personID) {
 		return true
 	}
-	p := pa.a.Participant
 	if topic == topicIdentity && p != nil && p.Person == personID {
 		// The person's own participation in a record evidences who they were.
 		return true
@@ -1275,7 +1295,9 @@ func proofPropertyAnswersQuestion(subject EntityRef, eventType, relationshipType
 	case topicDeath:
 		return subject.Person != "" && (kind == EventTypeDeath || kind == EventTypeBurial) && field != "" || isDeathEventType(eventType) && (vitalField || kind == EventTypeDeath && field == conflictDateType)
 	case topicMarriage:
-		return isMarriageEventType(eventType) && vitalField ||
+		// Banns, licenses, contracts and engagements prepare a marriage; only
+		// the wedding's date or place answers when it took place.
+		return eventType == EventTypeMarriage && vitalField ||
 			(relationshipType == RelationshipTypeMarriage || relationshipType == RelationshipTypePartner) && (property == ParticipantRoleSpouse || property == RelationshipTypePartner)
 	default:
 		return true

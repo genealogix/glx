@@ -253,7 +253,7 @@ func childrenProofArchive() *GLXFile {
 		Assertions: map[string]*Assertion{
 			"pc": {Subject: EntityRef{Relationship: "pc"}, Participant: &Participant{Person: "k", Role: ParticipantRoleChild}, Confidence: "high", Status: statusDisproven},
 		},
-		ResearchLogs: map[string]*ResearchLog{"kids": {Subject: &EntityRef{Relationship: "m"}, Searches: []Search{
+		ResearchLogs: map[string]*ResearchLog{"kids": {Subject: &EntityRef{Relationship: "m"}, Properties: map[string]any{ResearchLogQuestionProperty: []any{"marriage", "children"}}, Searches: []Search{
 			{SourceID: "kb", Query: "Baptisms 1669-1680", Result: SearchResultNotFound},
 			{SourceID: "kb", Query: "Baptisms 1681-1691", Result: SearchResultNotFound},
 		}}},
@@ -276,11 +276,23 @@ func TestBuildProof_Children(t *testing.T) {
 		}
 	}
 
-	// An outstanding search leaves the question open.
-	archive.ResearchLogs["kids"].Searches[1].Result = SearchResultRequiresVisit
+	// A marriage log that does not name the children question searched for
+	// the marriage, not for children: its empty results prove nothing.
+	archive.ResearchLogs["kids"].Properties = nil
 	result = mustProof(t, archive, "c", QuestionChildren)
 	assert.Equal(t, ConclusionInsufficient, result.Conclusion)
-	assert.Contains(t, result.Summary, "1 of 2 logged searches still outstanding.")
+	assert.Empty(t, result.Searches)
+	archive.ResearchLogs["kids"].Properties = map[string]any{ResearchLogQuestionProperty: "children"}
+
+	// An outstanding, inconclusive or inaccessible search leaves the question
+	// open.
+	for _, outcome := range []string{SearchResultRequiresVisit, SearchResultInconclusive, SearchResultUnavailable} {
+		archive.ResearchLogs["kids"].Searches[1].Result = outcome
+		result = mustProof(t, archive, "c", QuestionChildren)
+		assert.Equal(t, ConclusionInsufficient, result.Conclusion, outcome)
+		assert.Contains(t, result.Summary, "1 of 2 logged searches still outstanding.", outcome)
+	}
+	archive.ResearchLogs["kids"].Searches[1].Result = SearchResultRequiresVisit
 
 	// A child baptized with the person as parent is an answer.
 	archive.Assertions["pc"].Status = statusProven
@@ -377,7 +389,8 @@ func TestResearchLogQuestions(t *testing.T) {
 	archive.Events = map[string]*Event{
 		"bapt": {Type: EventTypeBaptism, Participants: []Participant{{Person: "k", Role: ParticipantRoleSubject}, {Person: "c", Role: ParticipantRoleParent}}},
 		"bur":  {Type: EventTypeBurial, Participants: []Participant{{Person: "c", Role: ParticipantRoleSubject}}},
-		"wed":  {Type: EventTypeMarriage, Participants: []Participant{{Person: "c", Role: ParticipantRoleBride}}},
+		"wed":  {Type: EventTypeMarriage, Participants: []Participant{{Person: "c", Role: ParticipantRoleBride}, {Person: "h", Role: ParticipantRoleWitness}}},
+		"died": {Type: EventTypeDeath, Participants: []Participant{{Person: "k", Role: ParticipantRoleSubject}, {Person: "c", Role: ParticipantRoleInformant}}},
 	}
 	cases := []struct {
 		subject EntityRef
@@ -386,7 +399,8 @@ func TestResearchLogQuestions(t *testing.T) {
 		want    []string
 		about   bool
 	}{
-		{EntityRef{Relationship: "m"}, "c", nil, []string{topicMarriage, topicChildren}, true},
+		{EntityRef{Relationship: "m"}, "c", nil, []string{topicMarriage}, true},
+		{EntityRef{Relationship: "m"}, "c", map[string]any{"question": "marriage, children"}, []string{topicMarriage, topicChildren}, true},
 		{EntityRef{Relationship: "pc"}, "k", nil, []string{topicParentage}, true},
 		{EntityRef{Relationship: "pc"}, "c", nil, []string{topicChildren}, true},
 		{EntityRef{Relationship: "same"}, "c", nil, []string{topicIdentity}, true},
@@ -394,6 +408,10 @@ func TestResearchLogQuestions(t *testing.T) {
 		{EntityRef{Event: "bapt"}, "c", nil, []string{topicChildren}, true},
 		{EntityRef{Event: "bur"}, "c", nil, []string{topicDeath}, true},
 		{EntityRef{Event: "wed"}, "c", nil, []string{topicMarriage}, true},
+		// A witness or informant is not what the log is about.
+		{EntityRef{Event: "wed"}, "h", nil, nil, false},
+		{EntityRef{Event: "died"}, "c", nil, nil, false},
+		{EntityRef{Event: "died"}, "k", nil, []string{topicDeath}, true},
 		{EntityRef{Person: "c"}, "c", nil, nil, true},
 		{EntityRef{Person: "c"}, "c", map[string]any{"question": "parents, Death, bogus"}, []string{topicParentage, topicDeath}, true},
 		{EntityRef{Person: "c"}, "c", map[string]any{"question": []string{"issue"}}, []string{topicChildren}, true},

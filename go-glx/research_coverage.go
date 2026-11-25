@@ -41,6 +41,10 @@ type CoverageRecord struct {
 	SourceRef   string `json:"source_ref,omitempty"`
 	Priority    string `json:"priority,omitempty"`
 	Description string `json:"description,omitempty"`
+	// relationshipID is the couple relationship a marriage record is wanted
+	// for, so proof can drop the gap of an excluded marriage by identity
+	// rather than by the spouse's display name.
+	relationshipID string
 }
 
 // CoverageResult holds the full coverage output for a person.
@@ -620,6 +624,8 @@ func buildMarriageRecords(personID string, archive *GLXFile, evidenced, estimate
 			Label:    "Marriage record — " + spouseDisplayName(spouseID, archive),
 			Found:    found,
 			Priority: boolPriority(!found, severityMedium),
+
+			relationshipID: relID,
 		}
 		if found {
 			rec.SourceRef = ref

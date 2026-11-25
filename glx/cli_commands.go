@@ -1991,14 +1991,24 @@ Questions with several possible answers (parents, spouses, children, occupations
 same-person links) resolve each candidate on its own: proven, probable,
 speculative, or unsupported answers are listed with their own status, and the
 question stands at its weakest answer. A candidate whose assertions are all
-disproven, or all disputed, is listed under "Alternatives Excluded" and never
-counts; one with both a proven and a disproven assertion is a conflict.
+disproven is listed under "Alternatives Excluded" and never counts, as is one
+whose assertions are all disputed beside an accepted answer in the same role.
+A disputed candidate with no accepted alternative, a candidate with both a
+proven and a disproven assertion, and every open same-person link are
+unresolved conflicts. Each relationship or claim is resolved on its own before
+the answers about one person are combined, and an occupation claimed for
+different periods is one candidate per period. Banns, licenses, contracts and
+engagements are context: they name no spouse.
 
 Searches are listed under the question their research log serves: set the log's
 ` + "`question`" + ` property (e.g. ` + "`question: parentage`" + `), or give it a marriage, parent_child or
-event subject. Other logs about the person are counted as other research, and
-serve the identity question. A gap searched in a source of its type is marked
-with the search results and no longer heads the next steps.
+event subject (a marriage log serves children only when its question names
+them; an event log serves its principals, not a witness or informant). Other
+logs about the person are counted as other research, and serve the identity
+question. A gap searched in a source of its type is marked with the search
+results and no longer heads the next steps; a not_searched entry is a plan and
+marks nothing. Children are concluded absent only when every logged search
+came back not_found.
 
 Only definite unresolved conflicts make a conclusion CONFLICTED. Possible
 conflicts are marked "possible — check" and reduce support. Undated temporal
