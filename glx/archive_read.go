@@ -84,7 +84,16 @@ func loadArchiveForRead(streams *IOStreams, path string) (*glxlib.GLXFile, error
 //     a mixed layout whose single file silently lacked the new entity.
 //
 // A directory counts as a single-file archive when its root holds exactly one
-// .glx file and none of the multi-file layout's type directories exist.
+// .glx file and none of the multi-file layout's directories exist. Both tests
+// follow the loader's rules (walkGLXFiles), so the refusal and the load agree
+// on what the archive is:
+//
+//   - layout directory names match case-insensitively (PERSONS/ is persons/);
+//   - a media/ directory holding only the binary store media/files/ is not
+//     multi-file layout: `glx import --format single` puts it beside the file;
+//   - dot-prefixed names (._archive.glx, .git/) are not archive content;
+//   - a root .glx entry that is a relative symlink to a regular file inside
+//     the archive counts, as the loader reads it; one that escapes does not.
 func refuseSingleFileArchive(command, path string) error {
 	// A missing or unreadable path is left for the loader to report.
 	singleFile := ""
@@ -107,25 +116,35 @@ func refuseSingleFileArchive(command, path string) error {
 // singleFileArchiveInDir returns the path of the one .glx file at dir's root
 // when dir has the single-file layout, and "" otherwise.
 func singleFileArchiveInDir(dir string) string {
-	layoutDirs := make([]string, 0, 1+len(glxlib.AllEntityTypes))
-	layoutDirs = append(layoutDirs, glxlib.ArchiveDirVocabularies)
-	for _, et := range glxlib.AllEntityTypes {
-		layoutDirs = append(layoutDirs, et.String())
-	}
-	for _, name := range layoutDirs {
-		if fi, err := os.Stat(filepath.Join(dir, name)); err == nil && fi.IsDir() {
-			return ""
-		}
-	}
-
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return ""
 	}
+	resolvedRoot, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		return ""
+	}
+
 	var glxFiles []string
 	for _, e := range entries {
-		if e.Type().IsRegular() && strings.EqualFold(filepath.Ext(e.Name()), ".glx") {
-			glxFiles = append(glxFiles, filepath.Join(dir, e.Name()))
+		name := e.Name()
+		if isDotName(name) {
+			continue
+		}
+		full := filepath.Join(dir, name)
+		info, err := os.Stat(full)
+		if err != nil {
+			continue
+		}
+		if info.IsDir() {
+			if isMultiFileLayoutDir(full, name) {
+				return ""
+			}
+
+			continue
+		}
+		if isGLXFile(name) && info.Mode().IsRegular() && rootEntryIsContained(resolvedRoot, full, e) {
+			glxFiles = append(glxFiles, full)
 		}
 	}
 	if len(glxFiles) != 1 {
@@ -134,6 +153,66 @@ func singleFileArchiveInDir(dir string) string {
 
 	return glxFiles[0]
 }
+
+// isMultiFileLayoutDir reports whether the root directory name is one the
+// multi-file layout creates, compared case-insensitively. media/ counts only
+// when it holds more than the binary store media/files/, which a single-file
+// archive with media also has.
+func isMultiFileLayoutDir(path, name string) bool {
+	if strings.EqualFold(name, mediaDirName) {
+		entries, err := os.ReadDir(path)
+		if err != nil {
+			return true
+		}
+		for _, e := range entries {
+			if isDotName(e.Name()) {
+				continue
+			}
+			if !e.IsDir() || !strings.EqualFold(e.Name(), mediaFilesSubdir) {
+				return true
+			}
+		}
+
+		return false
+	}
+	if strings.EqualFold(name, glxlib.ArchiveDirVocabularies) {
+		return true
+	}
+	for _, et := range glxlib.AllEntityTypes {
+		if strings.EqualFold(name, et.String()) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// rootEntryIsContained reports whether a root .glx entry is one the loader
+// reads: a regular file, or a relative symlink whose target resolves inside
+// the archive and outside any dot-prefixed directory. walkGLXFiles refuses an
+// absolute link and one that escapes the root.
+func rootEntryIsContained(resolvedRoot, full string, e os.DirEntry) bool {
+	if e.Type()&os.ModeSymlink == 0 {
+		return true
+	}
+	target, err := os.Readlink(full)
+	if err != nil || filepath.IsAbs(target) {
+		return false
+	}
+	resolved, err := filepath.EvalSymlinks(full)
+	if err != nil {
+		return false
+	}
+	rel, err := filepath.Rel(resolvedRoot, resolved)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return false
+	}
+
+	return !pathHasDotComponent(filepath.ToSlash(rel))
+}
+
+// mediaFilesSubdir is the binary store's name inside media/ (glxlib.MediaFilesDir).
+const mediaFilesSubdir = "files"
 
 // archivePathHint returns a hint to append to a "not found" error when a
 // command's positional person argument names an existing archive (a directory

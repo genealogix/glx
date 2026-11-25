@@ -1,0 +1,16 @@
+{
+  "total": 3,
+  "canonical": {
+    "place-illinois": "Illinois, United States",
+    "place-springfield": "Springfield, Illinois, United States",
+    "place-united-states": "United States"
+  },
+  "duplicates": {},
+  "duplicate_originals": {},
+  "missing_coordinates": [],
+  "missing_type": [],
+  "no_parent": [],
+  "dangling_parent": [],
+  "dangling_parent_ids": {},
+  "unreferenced": []
+}

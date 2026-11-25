@@ -163,6 +163,61 @@ func TestSingleFileArchiveInDir(t *testing.T) {
 		writeTestSingleFile(t, path)
 		assert.Equal(t, path, singleFileArchiveInDir(dir))
 	})
+
+	t.Run("upper-case layout directory means multi-file layout", func(t *testing.T) {
+		dir := t.TempDir()
+		writeTestSingleFile(t, filepath.Join(dir, "family.glx"))
+		require.NoError(t, os.Mkdir(filepath.Join(dir, "PERSONS"), 0o755))
+		assert.Empty(t, singleFileArchiveInDir(dir))
+	})
+
+	t.Run("media holding only the binary store is still single-file", func(t *testing.T) {
+		dir := t.TempDir()
+		path := filepath.Join(dir, "family.glx")
+		writeTestSingleFile(t, path)
+		require.NoError(t, os.MkdirAll(filepath.Join(dir, "media", "files"), 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "media", "files", "photo.jpg"), []byte("x"), 0o644))
+		assert.Equal(t, path, singleFileArchiveInDir(dir))
+	})
+
+	t.Run("media holding entity files means multi-file layout", func(t *testing.T) {
+		dir := t.TempDir()
+		writeTestSingleFile(t, filepath.Join(dir, "family.glx"))
+		require.NoError(t, os.MkdirAll(filepath.Join(dir, "media", "files"), 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "media", "media-a.glx"), []byte("media: {}\n"), 0o644))
+		assert.Empty(t, singleFileArchiveInDir(dir))
+	})
+
+	t.Run("dot-prefixed sidecar is not counted", func(t *testing.T) {
+		dir := t.TempDir()
+		path := filepath.Join(dir, "family.glx")
+		writeTestSingleFile(t, path)
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "._family.glx"), []byte{0, 5, 22, 7}, 0o644))
+		assert.Equal(t, path, singleFileArchiveInDir(dir))
+	})
+
+	t.Run("contained relative symlink is counted", func(t *testing.T) {
+		dir := t.TempDir()
+		require.NoError(t, os.Mkdir(filepath.Join(dir, "data"), 0o755))
+		writeTestSingleFile(t, filepath.Join(dir, "data", "archive.yaml"))
+		link := filepath.Join(dir, "archive.glx")
+		if err := os.Symlink(filepath.Join("data", "archive.yaml"), link); err != nil {
+			t.Skipf("symlinks unavailable: %v", err)
+		}
+		assert.Equal(t, link, singleFileArchiveInDir(dir))
+	})
+
+	t.Run("symlink escaping the archive is not counted", func(t *testing.T) {
+		outside := filepath.Join(t.TempDir(), "elsewhere.glx")
+		writeTestSingleFile(t, outside)
+		dir := t.TempDir()
+		path := filepath.Join(dir, "family.glx")
+		writeTestSingleFile(t, path)
+		if err := os.Symlink(outside, filepath.Join(dir, "other.glx")); err != nil {
+			t.Skipf("symlinks unavailable: %v", err)
+		}
+		assert.Equal(t, path, singleFileArchiveInDir(dir))
+	})
 }
 
 func TestArchivePathHint(t *testing.T) {
@@ -188,4 +243,16 @@ func TestArchivePathHint(t *testing.T) {
 		writeTestSingleFile(t, path)
 		assert.Contains(t, archivePathHint("summary", path), "glx summary --archive "+path)
 	})
+}
+
+// census add pointed at the .glx file itself gets the single-file refusal
+// with the glx split guidance, not only "not a directory".
+func TestLoadArchiveForCensus_SingleFilePathRefused(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "family.glx")
+	writeTestSingleFile(t, path)
+
+	_, err := loadArchiveForCensus(path)
+	require.ErrorIs(t, err, ErrSingleFileArchiveUnsupported)
+	assert.Contains(t, err.Error(), "glx census add")
+	assert.Contains(t, err.Error(), "glx split "+path)
 }

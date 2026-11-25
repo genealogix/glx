@@ -165,7 +165,7 @@ func migrateArchive(archivePath string) error {
 	}
 
 	if migrateRenameGenderToSex {
-		genderReport := migrateGenderToSex(archive, os.Stderr)
+		genderReport := migrateGenderToSex(archive, termStderr())
 		report.PropertiesRenamed += genderReport.PropertiesRenamed
 		report.AssertionsRenamed += genderReport.AssertionsRenamed
 		report.VocabEntriesRenamed += genderReport.VocabEntriesRenamed
@@ -173,7 +173,7 @@ func migrateArchive(archivePath string) error {
 	}
 
 	if migrateConfidenceDisputedToStatus {
-		confidenceMigrationReport := migrateConfidenceDisputed(archive, os.Stderr)
+		confidenceMigrationReport := migrateConfidenceDisputed(archive, termStderr())
 		report.ConfidenceDisputedConverted += confidenceMigrationReport.ConfidenceDisputedConverted
 		report.ConfidenceDisputedStatusConflicts += confidenceMigrationReport.ConfidenceDisputedStatusConflicts
 	}
@@ -191,7 +191,7 @@ func migrateArchive(archivePath string) error {
 	}
 
 	if migrateRenameSsnToNationalID {
-		ssnReport := migrateSsnToNationalID(archive, os.Stderr)
+		ssnReport := migrateSsnToNationalID(archive, termStderr())
 		report.SsnPropertiesRenamed += ssnReport.SsnPropertiesRenamed
 		report.SsnAssertionsRenamed += ssnReport.SsnAssertionsRenamed
 		report.SsnVocabEntriesRenamed += ssnReport.SsnVocabEntriesRenamed

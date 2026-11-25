@@ -24,14 +24,15 @@ import (
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
-// resolveOutputWriter returns the first provided non-nil writer, or os.Stdout
-// when no optional writer is supplied.
+// resolveOutputWriter returns the first provided non-nil writer, or a
+// terminal-sanitizing stdout writer when no optional writer is supplied: the
+// import progress lines quote file paths and archive-controlled names.
 func resolveOutputWriter(out ...io.Writer) io.Writer {
 	if len(out) > 0 && out[0] != nil {
 		return out[0]
 	}
 
-	return os.Stdout
+	return termStdout()
 }
 
 // importGEDCOM imports a GEDCOM or GEDZIP file and converts it to GLX format.
@@ -69,7 +70,7 @@ func importGEDCOMWithPlatform(gedcomPath, outputPath, format, platform string, v
 
 	// Import GEDCOM file
 	if verbose {
-		_, _ = fmt.Fprintf(output, "Importing GEDCOM file: %s\n", gedcomPath)
+		_, _ = fmt.Fprintf(output, "Importing GEDCOM file: %s\n", sanitizeForTerminal(gedcomPath))
 	}
 
 	// Open GEDCOM file

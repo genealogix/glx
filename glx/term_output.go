@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 )
 
@@ -58,6 +59,32 @@ func termErrorf(format string, args ...any) {
 func termErrorln(args ...any) {
 	fmt.Fprint(os.Stderr, sanitizeForTerminal(fmt.Sprintln(args...)))
 }
+
+// terminalWriter is an io.Writer over stdout or stderr that sanitizes each
+// write for the terminal. It is for passing to a helper that takes a writer
+// for human-readable diagnostics (a migration warning, a verbose progress
+// line), so the raw stream is never forwarded where archive-controlled text
+// is printed. Each write is sanitized on its own, so a caller must render a
+// line in one write (as fmt.Fprintf does) rather than byte by byte.
+type terminalWriter struct{ stderr bool }
+
+func (w terminalWriter) Write(p []byte) (int, error) {
+	dst := os.Stdout
+	if w.stderr {
+		dst = os.Stderr
+	}
+	if _, err := dst.WriteString(sanitizeForTerminal(string(p))); err != nil {
+		return 0, err
+	}
+
+	return len(p), nil
+}
+
+// termStdout returns a writer to stdout that sanitizes for the terminal.
+func termStdout() io.Writer { return terminalWriter{} }
+
+// termStderr returns a writer to stderr that sanitizes for the terminal.
+func termStderr() io.Writer { return terminalWriter{stderr: true} }
 
 // machinePrintln writes s and a newline to stdout byte for byte. It is for
 // machine-readable output (--format json and the like) that a consumer

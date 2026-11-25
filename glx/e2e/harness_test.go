@@ -65,10 +65,21 @@ var errNoBuildInputs = errors.New("listing CLI build inputs: go list returned no
 // and would replay a cached pass after a CLI change (#1309). The test cache
 // only records files a test reads once the suite is running, which is why
 // this happens here, on first use, and not in TestMain.
+//
+// Reading the files covers an edit; it does not cover an addition, which
+// changes no file already listed. So each directory holding a build input is
+// listed as well: the test cache hashes a directory's entry names when a test
+// opens it, so a new Go file in a package, or a new file beside an embedded
+// one, changes a recorded input and forces a rerun.
 func cliBinary() string {
 	recordBuildInputsOnce.Do(func() {
+		dirs := map[string]bool{}
 		for _, p := range buildInputs {
 			_, _ = os.ReadFile(p) //nolint:gosec // paths come from go list over this module
+			dirs[filepath.Dir(p)] = true
+		}
+		for _, d := range slices.Sorted(maps.Keys(dirs)) {
+			_, _ = os.ReadDir(d)
 		}
 	})
 

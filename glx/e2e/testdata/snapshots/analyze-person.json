@@ -1,0 +1,180 @@
+{
+  "summary": {
+    "conflict": 0,
+    "consistency": 0,
+    "evidence": 0,
+    "gap": 2,
+    "suggestion": 26
+  },
+  "issues": [
+    {
+      "category": "gap",
+      "severity": "high",
+      "person": "person-robert-thompson",
+      "message": "Robert Thompson — no death date or place",
+      "property": "death_event"
+    },
+    {
+      "category": "gap",
+      "severity": "medium",
+      "person": "person-robert-thompson",
+      "message": "Robert Thompson — no parents (no parent_child relationship as child)"
+    },
+    {
+      "category": "suggestion",
+      "severity": "info",
+      "person": "person-robert-thompson",
+      "message": "Robert Thompson — search 1850 US census (alive, no census event) — first census to list individual names"
+    },
+    {
+      "category": "suggestion",
+      "severity": "info",
+      "person": "person-robert-thompson",
+      "message": "Robert Thompson — search 1860 US census (alive, no census event)"
+    },
+    {
+      "category": "suggestion",
+      "severity": "info",
+      "person": "person-robert-thompson",
+      "message": "Robert Thompson — search 1870 US census (alive, no census event)"
+    },
+    {
+      "category": "suggestion",
+      "severity": "info",
+      "person": "person-robert-thompson",
+      "message": "Robert Thompson — search 1880 US census (alive, no census event) — first census to list parents' birthplaces — would also cover: Alice Thompson (~2)"
+    },
+    {
+      "category": "suggestion",
+      "severity": "info",
+      "person": "person-robert-thompson",
+      "message": "Robert Thompson — search 1890 US census (alive, no census event) — mostly destroyed (1921 fire) — would also cover: Alice Thompson (~12), Robert Thompson Jr. (~9)"
+    },
+    {
+      "category": "suggestion",
+      "severity": "info",
+      "person": "person-robert-thompson",
+      "message": "Robert Thompson — search 1900 US census (alive, no census event)"
+    },
+    {
+      "category": "suggestion",
+      "severity": "info",
+      "person": "person-robert-thompson",
+      "message": "Robert Thompson — search 1910 US census (alive, no census event)"
+    },
+    {
+      "category": "suggestion",
+      "severity": "info",
+      "person": "person-robert-thompson",
+      "message": "Robert Thompson — search 1920 US census (alive, no census event)"
+    },
+    {
+      "category": "suggestion",
+      "severity": "info",
+      "person": "person-robert-thompson",
+      "message": "Robert Thompson — search 1930 US census (alive, no census event)"
+    },
+    {
+      "category": "suggestion",
+      "severity": "info",
+      "person": "person-robert-thompson",
+      "message": "Robert Thompson — search 1940 US census (alive, no census event)"
+    },
+    {
+      "category": "suggestion",
+      "severity": "info",
+      "person": "person-robert-thompson",
+      "message": "Robert Thompson — search 1950 US census (alive, no census event)"
+    },
+    {
+      "category": "suggestion",
+      "severity": "info",
+      "person": "person-robert-thompson",
+      "message": "Robert Thompson — search 1880 census for Alice Thompson (child, age ~2) — lists parents' birthplaces"
+    },
+    {
+      "category": "suggestion",
+      "severity": "info",
+      "person": "person-robert-thompson",
+      "message": "Robert Thompson — search 1890 census for Alice Thompson (child, age ~12) — lists parents' birthplaces"
+    },
+    {
+      "category": "suggestion",
+      "severity": "info",
+      "person": "person-robert-thompson",
+      "message": "Robert Thompson — search 1900 census for Alice Thompson (child, age ~22) — lists parents' birthplaces"
+    },
+    {
+      "category": "suggestion",
+      "severity": "info",
+      "person": "person-robert-thompson",
+      "message": "Robert Thompson — search 1910 census for Alice Thompson (child, age ~32) — lists parents' birthplaces"
+    },
+    {
+      "category": "suggestion",
+      "severity": "info",
+      "person": "person-robert-thompson",
+      "message": "Robert Thompson — search 1920 census for Alice Thompson (child, age ~42) — lists parents' birthplaces"
+    },
+    {
+      "category": "suggestion",
+      "severity": "info",
+      "person": "person-robert-thompson",
+      "message": "Robert Thompson — search 1930 census for Alice Thompson (child, age ~52) — lists parents' birthplaces"
+    },
+    {
+      "category": "suggestion",
+      "severity": "info",
+      "person": "person-robert-thompson",
+      "message": "Robert Thompson — search 1940 census for Alice Thompson (child, age ~62) — lists parents' birthplaces"
+    },
+    {
+      "category": "suggestion",
+      "severity": "info",
+      "person": "person-robert-thompson",
+      "message": "Robert Thompson — search 1950 census for Alice Thompson (child, age ~72) — lists parents' birthplaces"
+    },
+    {
+      "category": "suggestion",
+      "severity": "info",
+      "person": "person-robert-thompson",
+      "message": "Robert Thompson — search 1890 census for Robert Thompson Jr. (child, age ~9) — lists parents' birthplaces"
+    },
+    {
+      "category": "suggestion",
+      "severity": "info",
+      "person": "person-robert-thompson",
+      "message": "Robert Thompson — search 1900 census for Robert Thompson Jr. (child, age ~19) — lists parents' birthplaces"
+    },
+    {
+      "category": "suggestion",
+      "severity": "info",
+      "person": "person-robert-thompson",
+      "message": "Robert Thompson — search 1910 census for Robert Thompson Jr. (child, age ~29) — lists parents' birthplaces"
+    },
+    {
+      "category": "suggestion",
+      "severity": "info",
+      "person": "person-robert-thompson",
+      "message": "Robert Thompson — search 1920 census for Robert Thompson Jr. (child, age ~39) — lists parents' birthplaces"
+    },
+    {
+      "category": "suggestion",
+      "severity": "info",
+      "person": "person-robert-thompson",
+      "message": "Robert Thompson — search 1930 census for Robert Thompson Jr. (child, age ~49) — lists parents' birthplaces"
+    },
+    {
+      "category": "suggestion",
+      "severity": "info",
+      "person": "person-robert-thompson",
+      "message": "Robert Thompson — search 1940 census for Robert Thompson Jr. (child, age ~59) — lists parents' birthplaces"
+    },
+    {
+      "category": "suggestion",
+      "severity": "info",
+      "person": "person-robert-thompson",
+      "message": "Robert Thompson — search 1950 census for Robert Thompson Jr. (child, age ~69) — lists parents' birthplaces"
+    }
+  ]
+}

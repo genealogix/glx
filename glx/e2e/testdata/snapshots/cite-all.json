@@ -1,0 +1,16 @@
+{
+  "citations": [
+    {
+      "id": "citation-robert-birth",
+      "text": "\"Sangamon County, Illinois - Register of Births\", vital_record, Sangamon County Courthouse - County Clerk, Volume 1, Page 47, Entry 312.",
+      "citation": {
+        "notes": "Primary source - civil birth register",
+        "properties": {
+          "locator": "Volume 1, Page 47, Entry 312",
+          "text_from_source": "Robert Thompson, male, born April 12, 1850, Springfield"
+        },
+        "source": "source-sangamon-births"
+      }
+    }
+  ]
+}

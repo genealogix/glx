@@ -95,12 +95,14 @@ func loadArchiveForCensus(path string) (*glxlib.GLXFile, error) {
 		return nil, fmt.Errorf("cannot access path: %w", err)
 	}
 
-	if !info.IsDir() {
-		return nil, fmt.Errorf("census requires an archive directory, but %s is not a directory", path)
-	}
-
+	// The single-file refusal comes first so `--archive archive.glx` gets the
+	// glx split guidance too, not only the bare "not a directory" error.
 	if err := refuseSingleFileArchive("census add", path); err != nil {
 		return nil, err
+	}
+
+	if !info.IsDir() {
+		return nil, fmt.Errorf("census requires an archive directory, but %s is not a directory", path)
 	}
 
 	archive, duplicates, loadErr := LoadArchiveWithOptions(path, false)

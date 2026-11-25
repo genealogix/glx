@@ -1,0 +1,57 @@
+{
+  "entity_counts": {
+    "assertions": 1,
+    "citations": 1,
+    "events": 5,
+    "media": 0,
+    "persons": 4,
+    "places": 3,
+    "relationships": 3,
+    "repositories": 1,
+    "research_logs": 0,
+    "sources": 1,
+    "studies": 0
+  },
+  "assertion_confidence": {
+    "high": 1
+  },
+  "coverage": {
+    "direct": {
+      "events": {
+        "covered": 1,
+        "total": 5
+      },
+      "persons": {
+        "covered": 0,
+        "total": 4
+      },
+      "places": {
+        "covered": 0,
+        "total": 3
+      },
+      "relationships": {
+        "covered": 0,
+        "total": 3
+      }
+    },
+    "evidence": {
+      "events": {
+        "covered": 1,
+        "total": 5
+      },
+      "persons": {
+        "covered": 1,
+        "total": 4
+      },
+      "places": {
+        "covered": 3,
+        "total": 3
+      },
+      "relationships": {
+        "covered": 0,
+        "total": 3
+      }
+    },
+    "note": "Evidence coverage includes unsourced or disproven assertions and place ancestors; counts do not measure sourcing or proof. An empty confidence key denotes an unset confidence level."
+  }
+}

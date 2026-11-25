@@ -162,3 +162,19 @@ func isStdStream(expr ast.Expr) bool {
 
 	return ok && isIdent(sel.X, "os") && (sel.Sel.Name == "Stdout" || sel.Sel.Name == "Stderr")
 }
+
+// termStderr is the writer runners pass to helpers that print diagnostics; it
+// must sanitize what it forwards rather than hand the raw stream on.
+func TestTermStderrSanitizes(t *testing.T) {
+	const in = "id \x1b[2Jx\n"
+	var n int
+	var werr error
+	_, got := captureStd(t, func() { n, werr = termStderr().Write([]byte(in)) })
+
+	if werr != nil || n != len(in) {
+		t.Fatalf("Write = %d, %v; want %d, nil", n, werr, len(in))
+	}
+	if strings.Contains(got, "\x1b") || !strings.Contains(got, "id ") {
+		t.Errorf("stderr = %q, want the escape sequence neutralized", got)
+	}
+}

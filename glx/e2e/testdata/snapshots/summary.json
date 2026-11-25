@@ -1,0 +1,129 @@
+{
+  "excluded_parents": [],
+  "person_id": "person-robert-thompson",
+  "names": [
+    {
+      "value": "Robert Thompson",
+      "name_type": ""
+    }
+  ],
+  "vitals": [
+    {
+      "label": "Name",
+      "value": "Robert Thompson"
+    },
+    {
+      "label": "Sex",
+      "value": "male"
+    },
+    {
+      "label": "Birth",
+      "value": "April 12, 1850, Springfield"
+    },
+    {
+      "label": "Christening",
+      "value": "—"
+    },
+    {
+      "label": "Death",
+      "value": "—"
+    },
+    {
+      "label": "Burial",
+      "value": "—"
+    }
+  ],
+  "timeline": [
+    {
+      "date": "1850-04-12",
+      "sort_key": "0102396860:1",
+      "label": "Birth",
+      "detail": "Springfield",
+      "event_id": "event-birth-robert",
+      "is_family": false,
+      "event_type": "birth"
+    },
+    {
+      "date": "1852-08-30",
+      "sort_key": "0102397731:1",
+      "label": "Birth of spouse (Mary Thompson)",
+      "detail": "Springfield",
+      "event_id": "event-birth-mary",
+      "is_family": true,
+      "event_type": "birth"
+    },
+    {
+      "date": "1875-06-15",
+      "sort_key": "0102406055:1",
+      "label": "Marriage",
+      "detail": "Springfield",
+      "event_id": "event-marriage-1875",
+      "is_family": false,
+      "event_type": "marriage",
+      "title": "Thompson Wedding"
+    },
+    {
+      "date": "1878-03-22",
+      "sort_key": "0102407066:1",
+      "label": "Birth of child (Alice Thompson)",
+      "detail": "Springfield",
+      "event_id": "event-birth-alice",
+      "is_family": true,
+      "event_type": "birth"
+    },
+    {
+      "date": "1881-11-05",
+      "sort_key": "0102408390:1",
+      "label": "Birth of child (Robert Thompson Jr.)",
+      "detail": "Springfield",
+      "event_id": "event-birth-robert-jr",
+      "is_family": true,
+      "event_type": "birth"
+    }
+  ],
+  "parents": [],
+  "children": [
+    {
+      "person_id": "person-alice-thompson",
+      "step": false,
+      "hypothetical": false,
+      "alternative": false
+    },
+    {
+      "person_id": "person-robert-thompson-jr",
+      "step": false,
+      "hypothetical": false,
+      "alternative": false
+    }
+  ],
+  "siblings": [],
+  "spouses": [
+    {
+      "person_id": "person-mary-thompson",
+      "person_name": "Mary Thompson",
+      "rel_type": "marriage",
+      "marriage_date": "1875-06-15",
+      "marriage_place": "Springfield",
+      "hypothetical": false
+    }
+  ],
+  "other_relationships": null,
+  "narrative": "Robert Thompson was born on April 12, 1850 in Springfield. He married Mary Thompson on June 15, 1875 in Springfield. He had two children: Alice and Robert.",
+  "assertions": [],
+  "research_logs": [],
+  "research_log_refs": [],
+  "research_log_count": 0,
+  "research_logs_included": true,
+  "person": {
+    "properties": {
+      "name": {
+        "fields": {
+          "given": "Robert",
+          "surname": "Thompson"
+        },
+        "value": "Robert Thompson"
+      },
+      "sex": "male"
+    }
+  }
+}

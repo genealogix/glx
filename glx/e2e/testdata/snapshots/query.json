@@ -1,0 +1,67 @@
+{
+  "entity_type": "persons",
+  "count": 4,
+  "entities": [
+    {
+      "id": "person-alice-thompson",
+      "entity": {
+        "properties": {
+          "name": {
+            "fields": {
+              "given": "Alice",
+              "surname": "Thompson"
+            },
+            "value": "Alice Thompson"
+          },
+          "sex": "female"
+        }
+      }
+    },
+    {
+      "id": "person-mary-thompson",
+      "entity": {
+        "properties": {
+          "name": {
+            "fields": {
+              "given": "Mary",
+              "surname": "Thompson"
+            },
+            "value": "Mary Thompson"
+          },
+          "sex": "female"
+        }
+      }
+    },
+    {
+      "id": "person-robert-thompson",
+      "entity": {
+        "properties": {
+          "name": {
+            "fields": {
+              "given": "Robert",
+              "surname": "Thompson"
+            },
+            "value": "Robert Thompson"
+          },
+          "sex": "male"
+        }
+      }
+    },
+    {
+      "id": "person-robert-thompson-jr",
+      "entity": {
+        "properties": {
+          "name": {
+            "fields": {
+              "given": "Robert",
+              "suffix": "Jr.",
+              "surname": "Thompson"
+            },
+            "value": "Robert Thompson Jr."
+          },
+          "sex": "male"
+        }
+      }
+    }
+  ]
+}
