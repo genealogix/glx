@@ -224,25 +224,33 @@ func canonicalCountry(name string) string {
 // name of the first country-type ancestor, or the empty string when the chain
 // reaches its root without one. Only places explicitly typed `country` count,
 // so a hierarchy that stops at a state or a city resolves to nothing rather
-// than guessing from the root place's name.
+// than guessing from the root place's name. It follows each place's default
+// parent; resolveCountryFromPlaceAt follows the parents valid at a date.
 func resolveCountryFromPlace(placeRef string, archive *GLXFile) string {
-	if placeRef == "" || archive == nil {
-		return ""
-	}
+	return resolveCountryFromPlaceAt(placeRef, "", archive)
+}
 
-	visited := make(map[string]bool)
-	current := placeRef
-
-	for current != "" && !visited[current] {
-		visited[current] = true
-		place, ok := archive.Places[current]
-		if !ok || place == nil {
+// resolveCountryFromPlaceAt returns the country only if every feasible path
+// names the same one. The schedule selector below intentionally preserves all
+// of the alternatives instead.
+func resolveCountryFromPlaceAt(placeRef string, date DateString, archive *GLXFile) string {
+	var country string
+	for i, path := range archive.PlacePathsAt(placeRef, date) {
+		name := countryOnPath(path, archive)
+		if i != 0 && country != name {
 			return ""
 		}
-		if place.Type == PlaceTypeCountry {
-			return place.Name
+		country = name
+	}
+
+	return country
+}
+
+func countryOnPath(path []string, archive *GLXFile) string {
+	for _, id := range path {
+		if p := archive.Places[id]; p != nil && p.Type == PlaceTypeCountry {
+			return p.Name
 		}
-		current = place.ParentID
 	}
 
 	return ""
@@ -259,17 +267,37 @@ func resolveCountryFromPlace(placeRef string, archive *GLXFile) string {
 // Mecklenburg is worse than suggesting nothing. Only when no place puts the
 // person in any country at all does censusCountryFallback apply.
 func censusSchedulesForPlaces(placeRefs []string, archive *GLXFile, fallback string) []*CensusSchedule {
+	refs := make([]CensusPlaceObservation, len(placeRefs))
+	for i, ref := range placeRefs {
+		refs[i] = CensusPlaceObservation{PlaceID: ref}
+	}
+
+	return censusSchedulesForDatedPlaces(refs, archive, fallback)
+}
+
+// CensusPlaceObservation is the place and full date of an event that puts a
+// person there. An empty date identifies a place but cannot bracket a census.
+type CensusPlaceObservation struct {
+	PlaceID string
+	Date    DateString
+}
+
+// censusSchedulesForDatedPlaces is censusSchedulesForPlaces for place
+// references that carry their event's date.
+func censusSchedulesForDatedPlaces(placeRefs []CensusPlaceObservation, archive *GLXFile, fallback string) []*CensusSchedule {
 	countries := make(map[string]bool)
 	sawCountry := false
 
 	for _, ref := range placeRefs {
-		name := resolveCountryFromPlace(ref, archive)
-		if name == "" {
-			continue
-		}
-		sawCountry = true
-		if canonical := canonicalCountry(name); canonical != "" {
-			countries[canonical] = true
+		for _, path := range archive.PlacePathsAt(ref.PlaceID, ref.Date) {
+			name := countryOnPath(path, archive)
+			if name == "" {
+				continue
+			}
+			sawCountry = true
+			if canonical := canonicalCountry(name); canonical != "" {
+				countries[canonical] = true
+			}
 		}
 	}
 
@@ -336,23 +364,48 @@ func buildPersonPlaceIndex(archive *GLXFile) map[string][]string {
 	return index
 }
 
-// censusSchedulesForPerson returns the census schedules that apply to one
-// person. Callers looping over every person should build a
-// buildPersonPlaceIndex once and call censusSchedulesForPlaces instead.
+// censusSchedulesForPerson returns the schedules supported by that person's
+// event places, keeping the observations' original date precision.
 func censusSchedulesForPerson(archive *GLXFile, personID, fallback string) []*CensusSchedule {
-	var placeRefs []string
-	for _, event := range archive.Events {
+	return censusSchedulesForDatedPlaces(censusPlacesForPerson(archive, personID), archive, fallback)
+}
+
+func censusPlacesForPerson(archive *GLXFile, personID string) []CensusPlaceObservation {
+	var places []CensusPlaceObservation
+	for _, eventID := range sortedKeys(archive.Events) {
+		event := archive.Events[eventID]
 		if event == nil || event.PlaceID == "" {
 			continue
 		}
-		for _, p := range event.Participants {
-			if p.Person == personID {
-				placeRefs = append(placeRefs, event.PlaceID)
+		participation, _, _ := EventParticipation(event, personID, archive.ParticipantRoles)
+		if participation.Present {
+			places = append(places, CensusPlaceObservation{PlaceID: event.PlaceID, Date: event.Date})
+		}
+	}
 
-				break
+	return places
+}
+
+func personCensusPlaceIndex(archive *GLXFile) map[string][]CensusPlaceObservation {
+	index := make(map[string][]CensusPlaceObservation)
+	for _, eventID := range sortedKeys(archive.Events) {
+		event := archive.Events[eventID]
+		if event == nil || event.PlaceID == "" {
+			continue
+		}
+		// Decide presence per person over the whole event, as
+		// censusPlacesForPerson does, so analyze and tree agree.
+		seen := make(map[string]bool)
+		for _, p := range event.Participants {
+			if p.Person == "" || seen[p.Person] {
+				continue
+			}
+			seen[p.Person] = true
+			if participation, _, _ := EventParticipation(event, p.Person, archive.ParticipantRoles); participation.Present {
+				index[p.Person] = append(index[p.Person], CensusPlaceObservation{PlaceID: event.PlaceID, Date: event.Date})
 			}
 		}
 	}
 
-	return censusSchedulesForPlaces(placeRefs, archive, fallback)
+	return index
 }

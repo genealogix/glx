@@ -51,3 +51,31 @@ func TestChronologyBounds_CalendarEquivalenceAndIntervals(t *testing.T) {
 	gregorianYear, _ := Parse("1700")
 	assert.Equal(t, 365, gregorianYear.ChronologyBounds(2).Outer.End-gregorianYear.ChronologyBounds(2).Outer.Start)
 }
+
+func TestChronologyBounds_CertainDurationStartsOnCalendarValidDay(t *testing.T) {
+	for _, test := range []struct {
+		duration string
+		firstDay string
+	}{
+		{"FROM 1900-02 TO 1900-03", "1900-02-28"},
+		{"FROM 2000-02 TO 2000-03", "2000-02-29"},
+		{"JULIAN FROM 1900-02 TO 1900-03", "JULIAN 1900-02-29"},
+	} {
+		t.Run(test.duration, func(t *testing.T) {
+			duration, err := Parse(test.duration)
+			require.NoError(t, err)
+			firstDay, err := Parse(test.firstDay)
+			require.NoError(t, err)
+			assert.Equal(t, firstDay.ChronologyBounds(0).Outer.Start, duration.ChronologyBounds(0).Inner.Start)
+		})
+	}
+}
+
+func TestChronologyBounds_NominalDayCannotAnchorAnInterval(t *testing.T) {
+	for _, date := range []string{"1900-02-29", "BEF 1900-02-29", "AFT 1900-02-29", "FROM 1900-02-29 TO 1900-03-15"} {
+		d, err := Parse(date)
+		require.NoError(t, err, "the date remains readable as written")
+		assert.False(t, d.ChronologyBounds(0).Known, date)
+	}
+	assert.True(t, MustParse("JULIAN 1900-02-29").ChronologyBounds(0).Known)
+}

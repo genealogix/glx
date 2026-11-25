@@ -56,6 +56,43 @@ func CensusSchedulesForPerson(archive *GLXFile, personID string, opts CoverageOp
 	return cloneCensusSchedules(censusSchedulesForPerson(archive, personID, country)), nil
 }
 
+// CensusSchedulesForObservations returns owned schedules for all feasible
+// countries at the observations' dates. Fallback applies only when no
+// observation identifies any country.
+func CensusSchedulesForObservations(archive *GLXFile, places []CensusPlaceObservation, opts CoverageOptions) ([]*CensusSchedule, error) {
+	if archive == nil {
+		return nil, ErrNilArchive
+	}
+	country, err := parseCensusCountry(opts.CensusCountry)
+	if err != nil {
+		return nil, err
+	}
+
+	return cloneCensusSchedules(censusSchedulesForDatedPlaces(places, archive, country)), nil
+}
+
+// PersonCensusPlaceIndex maps people to their place observations in event-ID
+// order. Unlike a year-only index, it preserves dates for resolving ancestry.
+func PersonCensusPlaceIndex(archive *GLXFile) (map[string][]CensusPlaceObservation, error) {
+	if archive == nil {
+		return nil, ErrNilArchive
+	}
+
+	return personCensusPlaceIndex(archive), nil
+}
+
+// CensusPlacesForPerson returns place observations for an exact person ID.
+func CensusPlacesForPerson(archive *GLXFile, personID string) ([]CensusPlaceObservation, error) {
+	if archive == nil {
+		return nil, ErrNilArchive
+	}
+	if err := requirePerson(archive, personID, "person"); err != nil {
+		return nil, err
+	}
+
+	return censusPlacesForPerson(archive, personID), nil
+}
+
 func cloneCensusSchedules(schedules []*CensusSchedule) []*CensusSchedule {
 	out := make([]*CensusSchedule, 0, len(schedules))
 	for _, schedule := range schedules {

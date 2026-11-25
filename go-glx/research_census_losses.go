@@ -15,6 +15,7 @@
 package glx
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 )
@@ -139,28 +140,16 @@ func jurisdictionKey(name string) string {
 	return strings.Join(strings.Fields(strings.ToLower(name)), " ")
 }
 
-// resolveJurisdictionFromPlace walks the place hierarchy upward and returns
-// the name and type of the first place typed `state` or `territory`. Both are
-// empty when the walk reaches a country, or the root, before any state or
-// territory.
-func resolveJurisdictionFromPlace(placeRef string, archive *GLXFile) (jurisdiction, jurisdictionType string) {
-	if placeRef == "" || archive == nil {
-		return "", ""
-	}
-
-	visited := make(map[string]bool)
-	current := placeRef
-
-	for current != "" && !visited[current] {
-		visited[current] = true
-		place, ok := archive.Places[current]
-		if !ok || place == nil || place.Type == PlaceTypeCountry {
-			return "", ""
+// jurisdictionOnPath finds the nearest state or territory before the country.
+func jurisdictionOnPath(path []string, archive *GLXFile) (name, placeType string) {
+	for _, id := range path {
+		p := archive.Places[id]
+		if p == nil || p.Type == PlaceTypeCountry {
+			break
 		}
-		if place.Type == PlaceTypeState || place.Type == placeTypeTerritory {
-			return place.Name, place.Type
+		if p.Type == PlaceTypeState || p.Type == placeTypeTerritory {
+			return p.Name, p.Type
 		}
-		current = place.ParentID
 	}
 
 	return "", ""
@@ -242,14 +231,28 @@ type CensusYearSurvival struct {
 	Note string
 }
 
-// Survival reports whether the schedules for year survive where the person
-// was. The person's whereabouts are taken from their dated places in this
-// schedule's country (or in no named country): the latest at or before the
-// census year and the earliest at or after it, which bracket the census.
-// Each of those places is resolved to its state or territory. The census is
-// lost only when all of them are total losses; a place with no state or
-// territory, or without an established total loss, keeps the census suggested.
+// Survival checks where the person is recorded when only the observation
+// year is known. Use SurvivalAt to preserve more precise observation dates.
 func (s *CensusSchedule) Survival(year int, places []CensusDatedPlace, archive *GLXFile) CensusYearSurvival {
+	if s == nil || archive == nil || len(s.losses[year]) == 0 {
+		return CensusYearSurvival{}
+	}
+	obs := make([]CensusPlaceObservation, 0, len(places))
+	for _, p := range places {
+		if p.Year > 0 {
+			obs = append(obs, CensusPlaceObservation{PlaceID: p.PlaceID, Date: censusYearDate(p.Year)})
+		}
+	}
+
+	return s.SurvivalAt(year, obs, archive)
+}
+
+// SurvivalAt checks the latest observations at or before a census year and
+// the earliest at or after it on the schedule's side. For each location, both
+// its recorded jurisdiction and its jurisdiction in the census year must be
+// known total losses to omit the lead. A change in the same place's hierarchy
+// can keep a lead open but cannot establish the person's census-day residence.
+func (s *CensusSchedule) SurvivalAt(year int, places []CensusPlaceObservation, archive *GLXFile) CensusYearSurvival {
 	if s == nil || archive == nil {
 		return CensusYearSurvival{}
 	}
@@ -258,25 +261,55 @@ func (s *CensusSchedule) Survival(year int, places []CensusDatedPlace, archive *
 		return CensusYearSurvival{}
 	}
 
-	before, after := s.bracketingYears(year, places, archive)
-	if before == 0 && after == 0 {
+	var before, after censusLossBracket
+	censusDate := censusYearDate(year)
+	for _, p := range places {
+		observedYear := ExtractFirstYear(string(p.Date))
+		if observedYear <= 0 || (observedYear < before.year || (after.year != 0 && observedYear > after.year)) {
+			continue
+		}
+		local, foreign := s.locationLosses(losses, p.PlaceID, p.Date, archive)
+		if len(local) == 0 {
+			continue // Observation is known to be in a different country.
+		}
+		if p.Date != censusDate {
+			// Keep the observation date's uncertainty: a path that was
+			// foreign then still means the person may have left.
+			projected, projectedForeign := s.locationLosses(losses, p.PlaceID, censusDate, archive)
+			local = append(local, projected...)
+			foreign = foreign || projectedForeign
+		}
+		if foreign {
+			// A changed country does not prove this schedule's records were lost.
+			local = append(local, censusJurisdictionLoss{})
+		}
+		if observedYear <= year {
+			before.add(observedYear, local)
+		}
+		if observedYear >= year {
+			after.add(observedYear, local)
+		}
+	}
+	if before.year == 0 && after.year == 0 {
 		return CensusYearSurvival{}
 	}
 
+	return summarizeCensusLoss(before, after)
+}
+
+func summarizeCensusLoss(brackets ...censusLossBracket) CensusYearSurvival {
 	allLost := true
 	seen := make(map[string]bool)
 	var notes []string
-	for _, dp := range places {
-		if (dp.Year != before && dp.Year != after) || !s.placeInCountry(dp.PlaceID, archive) {
-			continue
-		}
-		loss, known := lookupJurisdictionLoss(losses, dp.PlaceID, archive)
-		if !known || loss.partial {
-			allLost = false
-		}
-		if known && !seen[loss.note] {
-			seen[loss.note] = true
-			notes = append(notes, loss.note)
+	for _, bracket := range brackets {
+		for _, loss := range bracket.losses {
+			if loss.note == "" || loss.partial {
+				allLost = false
+			}
+			if loss.note != "" && !seen[loss.note] {
+				seen[loss.note] = true
+				notes = append(notes, loss.note)
+			}
 		}
 	}
 	if allLost {
@@ -287,48 +320,55 @@ func (s *CensusSchedule) Survival(year int, places []CensusDatedPlace, archive *
 	return CensusYearSurvival{Note: strings.Join(notes, "; ")}
 }
 
-// placeInCountry reports whether a place resolves to this schedule's country,
-// or names no country at all (the schedule then applies through
-// censusCountryFallback, and the place is still the best evidence of where
-// the person was).
-func (s *CensusSchedule) placeInCountry(placeID string, archive *GLXFile) bool {
-	country := resolveCountryFromPlace(placeID, archive)
-
-	return country == "" || canonicalCountry(country) == s.Country
+type censusLossBracket struct {
+	year   int
+	losses []censusJurisdictionLoss
 }
 
-// lookupJurisdictionLoss resolves a place to its state or territory and looks
-// it up in one year's loss entries. A territory-typed place named without the
-// word ("Indiana", type territory) also matches the "Indiana Territory" entry.
-func lookupJurisdictionLoss(losses map[string]censusJurisdictionLoss, placeID string, archive *GLXFile) (censusJurisdictionLoss, bool) {
-	name, placeType := resolveJurisdictionFromPlace(placeID, archive)
+func (b *censusLossBracket) add(year int, losses []censusJurisdictionLoss) {
+	if year != b.year {
+		b.year = year
+		b.losses = nil
+	}
+	b.losses = append(b.losses, losses...)
+}
+
+func censusYearDate(year int) DateString {
+	return DateString(fmt.Sprintf("%04d", year))
+}
+
+func (s *CensusSchedule) locationLosses(losses map[string]censusJurisdictionLoss, placeID string, date DateString, archive *GLXFile) (local []censusJurisdictionLoss, foreign bool) {
+	paths := archive.PlacePathsAt(placeID, date)
+	if len(paths) == 0 {
+		return []censusJurisdictionLoss{{}}, false // Unresolved location isn't evidence of loss.
+	}
+
+	for _, path := range paths {
+		country := countryOnPath(path, archive)
+		if country != "" && canonicalCountry(country) != s.Country {
+			foreign = true
+
+			continue
+		}
+		name, placeType := jurisdictionOnPath(path, archive)
+		local = append(local, lookupJurisdictionLoss(losses, name, placeType))
+	}
+
+	return local, foreign
+}
+
+// lookupJurisdictionLoss also accepts a territory-typed name without the
+// suffix, such as "Indiana" rendered as "Indiana Territory" in the table.
+func lookupJurisdictionLoss(losses map[string]censusJurisdictionLoss, name, placeType string) censusJurisdictionLoss {
 	if name == "" {
-		return censusJurisdictionLoss{}, false
+		return censusJurisdictionLoss{}
 	}
 	key := jurisdictionKey(name)
 	if placeType == placeTypeTerritory && !strings.HasSuffix(key, " territory") {
 		if loss, ok := losses[key+" territory"]; ok {
-			return loss, true
-		}
-	}
-	loss, ok := losses[key]
-
-	return loss, ok
-}
-
-// bracketingYears finds the nearest dated locations in this schedule's country.
-func (s *CensusSchedule) bracketingYears(year int, places []CensusDatedPlace, archive *GLXFile) (before, after int) {
-	for _, dp := range places {
-		if !s.placeInCountry(dp.PlaceID, archive) {
-			continue
-		}
-		if dp.Year <= year && dp.Year > before {
-			before = dp.Year
-		}
-		if dp.Year >= year && (after == 0 || dp.Year < after) {
-			after = dp.Year
+			return loss
 		}
 	}
 
-	return before, after
+	return losses[key]
 }

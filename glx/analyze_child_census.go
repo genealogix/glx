@@ -36,7 +36,7 @@ const childCensusParentBirthplaceYear = 1880
 func suggestChildCensusRecords(archive *glxlib.GLXFile) []AnalysisIssue {
 	childHasParents := buildChildHasParentsIndex(archive)
 	parentToChildren := buildParentToChildrenIndex(archive)
-	personPlaces := buildPersonPlaceIndex(archive)
+	personPlaces := personCensusPlaceIndex(archive)
 
 	// Precompute census year index once
 	personCensusYears := make(map[string]map[int]bool)
@@ -101,7 +101,7 @@ func suggestChildCensusRecords(archive *glxlib.GLXFile) []AnalysisIssue {
 
 			existing := personCensusYears[childID]
 
-			schedule := scheduleForCountry(censusSchedulesForPlaces(personPlaces[childID], archive), countryUnitedStates)
+			schedule := scheduleForCountry(censusSchedulesForObservations(archive, personPlaces[childID]), countryUnitedStates)
 			if schedule == nil {
 				continue
 			}

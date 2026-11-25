@@ -757,7 +757,7 @@ func detectProofConflicts(relevant []proofAssertion, archive *GLXFile, options .
 		g := groups[key]
 		raw := make([]FactValue, len(g.assertions))
 		for i, a := range g.assertions {
-			raw[i] = AssertionFact(a)
+			raw[i] = comparisonFact(a, archive)
 		}
 		evaluation := evaluateFacts(raw, ConflictProperty(archive, g.assertions[0].Subject, g.assertions[0].Property), archive.Places, comparisonOptions(options))
 		selected := make([]*Assertion, 0, len(evaluation.Selected))

@@ -249,7 +249,7 @@ func TestCollectMigrationEntries_RolesAndResidencePeriods(t *testing.T) {
 	sale := migrationEntryByLabel(t, entries, "Sale of farm")
 	assert.False(t, sale.Excluded, "a principal is present")
 
-	movements := computeMovements(entries)
+	movements := computeMovements(entries, archive)
 	require.Len(t, movements, 3, "movements: %+v", movements)
 	assert.Equal(t, "North Carolina", movements[0].FromRegion)
 	assert.Equal(t, "Indiana", movements[0].ToRegion)
@@ -284,7 +284,7 @@ func TestCollectMigrationEntries_ResidenceWinsOverEventPlace(t *testing.T) {
 	census := migrationEntryByLabel(t, entries, "1810 Census")
 	assert.False(t, census.Excluded)
 
-	for _, m := range computeMovements(entries) {
+	for _, m := range computeMovements(entries, archive) {
 		assert.NotEqual(t, "North Carolina", m.ToRegion, "no move back to North Carolina: %+v", m)
 	}
 }
