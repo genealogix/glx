@@ -174,6 +174,7 @@ const config = {
         text: 'Guides',
         items: [
           { text: 'Hands-On CLI Guide', link: '/guides/hands-on-cli-guide' },
+          { text: 'CLI Plugins', link: '/guides/cli-plugins' },
           { text: 'Best Practices', link: '/guides/best-practices' },
           { text: 'Git Workflow', link: '/guides/git-workflow' },
           { text: 'Migration from GEDCOM', link: '/guides/migration-from-gedcom' }
@@ -433,6 +434,7 @@ const config = {
           text: 'User Guides',
           items: [
             { text: 'Hands-On CLI Guide', link: '/guides/hands-on-cli-guide' },
+            { text: 'CLI Plugins', link: '/guides/cli-plugins' },
             { text: 'Best Practices', link: '/guides/best-practices' },
             { text: 'Git Workflow', link: '/guides/git-workflow' },
             { text: 'Migration from GEDCOM', link: '/guides/migration-from-gedcom' }
