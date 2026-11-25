@@ -455,16 +455,7 @@ func assertionRelevant(topic string, pa *proofAssertion, personID string) bool {
 	case topicChildren:
 		return childrenAssertionRelevant(pa)
 	case topicOccupation:
-		// A claim on the person, or on their participation in an event: the
-		// assertion format puts an event participant's occupation under
-		// participant.properties, not in property.
-		if pa.subjectIsPerson() {
-			return pa.a.Property == PersonPropertyOccupation
-		}
-		p := pa.a.Participant
-
-		return pa.eventType != "" && p != nil && p.Person == personID &&
-			(pa.a.Property == PersonPropertyOccupation || p.Properties[PersonPropertyOccupation] != nil)
+		return occupationAssertionRelevant(pa, personID)
 	case topicIdentity:
 		// Who a person was rests on everything recorded about them: their own
 		// assertions, the events they take part in (in whatever role), and the
@@ -475,6 +466,20 @@ func assertionRelevant(topic string, pa *proofAssertion, personID string) bool {
 	default:
 		return false
 	}
+}
+
+// occupationAssertionRelevant reports whether an assertion claims the
+// person's occupation: on the person, or on their participation in an event.
+// The assertion format puts an event participant's occupation under
+// participant.properties, not in property.
+func occupationAssertionRelevant(pa *proofAssertion, personID string) bool {
+	if pa.subjectIsPerson() {
+		return pa.a.Property == PersonPropertyOccupation
+	}
+	p := pa.a.Participant
+
+	return pa.eventType != "" && p != nil && p.Person == personID &&
+		(pa.a.Property == PersonPropertyOccupation || p.Properties[PersonPropertyOccupation] != nil)
 }
 
 // childrenAssertionRelevant reports whether an assertion bears on the person's
@@ -952,52 +957,13 @@ func concludeProof(topic, personID string, archive *GLXFile, relevant []proofAss
 	}
 	byCandidates := candidates.used && topic != topicIdentity
 
-	answer, found := deriveProofAnswer(topic, personID, archive)
-	if byCandidates {
-		answer, found = candidates.answerText, candidates.found
-	}
-	answer, found, proxyBound := vitalProofAnswer(topic, personID, archive, relevant, answer, found)
-	// Candidates that were all excluded settle the question: the assertions
-	// about the rejected answers (a ruled-out marriage's date, an excluded
-	// parent's baptism claim) cannot supply one through the fallbacks.
-	exhausted := byCandidates && !candidates.found
-	if exhausted {
-		return concludeUnanswered(topic, gaps, candidates, searches)
-	}
-	if !byCandidates || !found {
-		answer, found = resolvedConflictAnswer(topic, personID, archive, relevant, conflicts, answer, found)
-	}
-	if !found && topic == topicIdentity && candidates.found {
-		// An accepted same-person link answers who the person was; its
-		// statement is carried by the candidate notes below.
-		answer, found = "", true
-	}
-	if !found {
-		// The archive's structural data (events/relationships/name) yields no
-		// answer, but relevant assertions may still carry one — e.g. legacy
-		// person-subject born_on/born_at/died_on/died_at assertions (which have
-		// no event to denormalize onto), or an event whose Date/PlaceID was
-		// never filled in while an assertion records the value. Fall back to the
-		// gathered evidence so collected assertions can still drive a conclusion
-		// instead of a spurious INSUFFICIENT EVIDENCE.
-		answer, found = answerFromAssertions(relevant, archive, topic, personID)
-	}
+	answer, found, proxyBound := proofAnswer(topic, personID, archive, relevant, conflicts, candidates)
 	if !found {
 		return concludeUnanswered(topic, gaps, candidates, searches)
 	}
 	answer = joinSentences(append([]string{answer}, candidates.notes...)...)
 
-	level := supportLevel(relevant, topic, personID)
-	if byCandidates && candidates.found {
-		// One answer per candidate: the question stands at its weakest
-		// surviving answer, never lifted by a stronger one beside it.
-		level = candidates.level
-	}
-	if topic == topicIdentity && candidates.found {
-		// A same-person link is only as strong as its weakest accepted link:
-		// a proven occupation cannot lift a probable link to PROVEN.
-		level = min(level, candidates.level)
-	}
+	level := conclusionLevel(topic, personID, relevant, candidates)
 	if caveat != "" {
 		level = min(level, supportWeak)
 		answer += " " + caveat
@@ -1012,6 +978,60 @@ func concludeProof(topic, personID string, archive *GLXFile, relevant []proofAss
 	default:
 		return proofConclusionInsufficient, unsupportedSummary(topic, answer, gaps, candidates, byCandidates, proxyBound)
 	}
+}
+
+// proofAnswer finds the answer a conclusion is drawn from, and whether it is a
+// rite's bound on a vital event.
+func proofAnswer(topic, personID string, archive *GLXFile, relevant []proofAssertion, conflicts []ConflictGroup, candidates *proofCandidates) (string, bool, bool) {
+	byCandidates := candidates.used && topic != topicIdentity
+	// Candidates that were all excluded settle the question: the assertions
+	// about the rejected answers (a ruled-out marriage's date, an excluded
+	// parent's baptism claim) cannot supply one through the fallbacks.
+	if byCandidates && !candidates.found {
+		return "", false, false
+	}
+	answer, found := deriveProofAnswer(topic, personID, archive)
+	if byCandidates {
+		answer, found = candidates.answerText, candidates.found
+	}
+	answer, found, proxyBound := vitalProofAnswer(topic, personID, archive, relevant, answer, found)
+	if !byCandidates || !found {
+		answer, found = resolvedConflictAnswer(topic, personID, archive, relevant, conflicts, answer, found)
+	}
+	if !found && topic == topicIdentity && candidates.found {
+		// An accepted same-person link answers who the person was; its
+		// statement is carried by the candidate notes.
+		return "", true, proxyBound
+	}
+	if !found {
+		// The archive's structural data (events/relationships/name) yields no
+		// answer, but relevant assertions may still carry one — e.g. legacy
+		// person-subject born_on/born_at/died_on/died_at assertions (which have
+		// no event to denormalize onto), or an event whose Date/PlaceID was
+		// never filled in while an assertion records the value. Fall back to the
+		// gathered evidence so collected assertions can still drive a conclusion
+		// instead of a spurious INSUFFICIENT EVIDENCE.
+		answer, found = answerFromAssertions(relevant, archive, topic, personID)
+	}
+
+	return answer, found, proxyBound
+}
+
+// conclusionLevel scores the support for an answered question.
+func conclusionLevel(topic, personID string, relevant []proofAssertion, candidates *proofCandidates) int {
+	level := supportLevel(relevant, topic, personID)
+	switch {
+	case candidates.used && topic != topicIdentity && candidates.found:
+		// One answer per candidate: the question stands at its weakest
+		// surviving answer, never lifted by a stronger one beside it.
+		level = candidates.level
+	case topic == topicIdentity && candidates.found:
+		// A same-person link is only as strong as its weakest accepted link:
+		// a proven occupation cannot lift a probable link to PROVEN.
+		level = min(level, candidates.level)
+	}
+
+	return level
 }
 
 // vitalProofAnswer replaces or bounds a birth or death answer when no
