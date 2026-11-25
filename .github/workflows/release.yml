@@ -136,9 +136,27 @@ jobs:
       # call actions/attest directly; with no predicate it emits the SLSA
       # provenance predicate. Verify: gh attestation verify --owner genealogix <file>
       - name: Attest build provenance
+        id: attest
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-checksums: ./dist/checksums.txt
+
+      # Attach the provenance bundle to the release. OpenSSF Scorecard's
+      # Signed-Releases check only counts provenance that is a release asset
+      # named *.intoto.jsonl; the copy in the attestation API alone scores as
+      # "does not have provenance". Offline verify:
+      #   gh attestation verify <file> --bundle glx.intoto.jsonl --repo genealogix/glx
+      # GoReleaser created the release as a draft (.goreleaser.yml release.draft),
+      # so the upload lands before publish and publishing is the last write to
+      # the release, which Immutable Releases requires (#931).
+      - name: Attach provenance and publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BUNDLE_PATH: ${{ steps.attest.outputs.bundle-path }}
+        run: |
+          cp "$BUNDLE_PATH" glx.intoto.jsonl
+          gh release upload "$GITHUB_REF_NAME" glx.intoto.jsonl --repo "$GITHUB_REPOSITORY"
+          gh release edit "$GITHUB_REF_NAME" --draft=false --repo "$GITHUB_REPOSITORY"
 
       - name: Announce release on Discord
         if: success() && env.DISCORD_WEBHOOK != ''
