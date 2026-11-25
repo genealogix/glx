@@ -8,11 +8,22 @@ help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
 
 ## Dependencies
-install-deps: ## Install Go modules and npm packages
-	@echo "Installing Go dependencies..."
+# Use the same lockfile-based dependency setup locally and in Dev Containers.
+# Independent prerequisites let prebuilds download them in parallel.
+.PHONY: deps-go deps-ci-tools deps-spec deps-website
+install-deps: deps-go deps-ci-tools deps-spec deps-website ## Install Go modules and locked npm packages
+
+deps-go:
 	go mod download
-	@echo "Installing website dependencies..."
-	cd website && npm install
+
+deps-ci-tools:
+	go mod download -modfile=ci-tools/go.mod
+
+deps-spec:
+	npm ci --prefix specification
+
+deps-website:
+	npm ci --prefix website
 
 # lefthook version pin — bump alongside any hook-compatibility changes
 LEFTHOOK_VERSION ?= v2.1.8
