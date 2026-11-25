@@ -242,6 +242,9 @@ func collectReferencedPlaces(archive *glxlib.GLXFile) map[string]struct{} {
 	// Places referenced as parents in any period (only if the parent exists
 	// and is non-nil)
 	for _, place := range archive.Places {
+		if place == nil {
+			continue
+		}
 		for _, parentID := range place.ParentIDs() {
 			if parent, ok := archive.Places[parentID]; ok && parent != nil {
 				referenced[parentID] = struct{}{}
