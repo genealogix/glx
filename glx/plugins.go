@@ -25,10 +25,10 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 // pluginPrefix is the naming convention for discoverable plugins. Any executable
@@ -45,31 +45,12 @@ const pluginPrefix = "glx-"
 // to find.
 const osWindows = "windows"
 
-// pluginsFlag and quietFlag are the long-form CLI flag tokens recognized by the
-// pre-cobra interception path in run(). Hoisted to named constants to
-// satisfy the goconst linter (each token recurs across this file and its tests)
-// and to keep the flag-string spellings single-sourced. The `=`-attached forms
-// used for value-bearing parses are derived as `pluginsFlag + "="` /
-// `quietFlag + "="` at the call sites.
-const (
-	pluginsFlag    = "--plugins"
-	quietFlag      = "--quiet"
-	quietShortFlag = "-q"
-)
-
-// rootFlagPlugins and rootFlagQuiet are the dash-less flag names rootBoolFlag
-// reports, so callers can tell which root flag a token set.
+// Flag names and the quiet shorthand shared by Cobra and the prefix parser.
 const (
 	rootFlagPlugins = "plugins"
 	rootFlagQuiet   = "quiet"
+	quietShorthand  = "q"
 )
-
-// quietValuePrefixes are the value-attached spellings pflag accepts for the
-// boolean quiet flag. pflag's short-argument parser checks for an `=` before it
-// falls back to a bool's implicit "true", so `-q=true` and `-q=false` are both
-// valid invocations alongside the long `--quiet=...` forms. Package-level so the
-// list is not rebuilt for every argument scanned.
-var quietValuePrefixes = [...]string{quietFlag + "=", quietShortFlag + "="}
 
 // exitPluginStartFailure is the exit code returned when the plugin executable
 // cannot be started at all (vs. starting and exiting non-zero). 127 matches the
@@ -471,132 +452,40 @@ func knownCommandNames(root *cobra.Command) map[string]bool {
 	return out
 }
 
-// endOfFlags is the conventional end-of-options marker. pflag stops parsing
-// flags at it and cobra's subcommand lookup (stripFlags) stops there too, so
-// every token after it is positional and none of them names a subcommand.
-const endOfFlags = "--"
-
-// firstSubcommandToken returns the first non-flag token in args (the candidate
-// subcommand name) and the args that follow it. Tokens starting with "-" are
-// skipped on the way to the first positional argument; this matches how git
-// resolves its subcommand when global flags appear before it.
-//
-// The scan stops at the `--` end-of-flags marker and reports no subcommand,
-// matching cobra: `glx -- foo` does not run a `foo` subcommand, so it must not
-// dispatch a `glx-foo` plugin either, and `glx -- --plugins` must not be read
-// as the --plugins flag.
-//
-// IMPORTANT (tripwire for future contributors): this helper assumes every
-// global/root flag is a boolean (no value follows it). If a value-taking
-// persistent root flag is ever added (e.g., `--config <path>`), this scan will
-// misread the value as the subcommand. Adding such a flag MUST be paired with
-// teaching this function to consult `rootCmd.PersistentFlags()` so it can skip
-// past the value of value-taking flags. Today's root flags (`-q`/`--quiet`,
-// `--plugins`) are both booleans, so the simple scan is correct. Note that a
-// boolean flag never consumes a following token: pflag gives bool flags an
-// implicit value, so `glx --quiet false` sets quiet and treats `false` as the
-// subcommand (cobra reports `unknown command "false"`). This scan agrees.
-//
-// Args before the resolved token are NOT forwarded to a plugin in Phase 1 — a
-// deliberate simplification that mirrors git's behavior with global flags.
-func firstSubcommandToken(args []string) (name string, rest []string, ok bool) {
-	for i, a := range args {
-		if a == endOfFlags {
-			return "", nil, false
-		}
-		if a == "" || strings.HasPrefix(a, "-") {
-			continue
-		}
-
-		return a, args[i+1:], true
-	}
-
-	return "", nil, false
+// pluginInvocation contains only the options GLX owns. args starts at the
+// first positional argument; the plugin's arguments are never parsed here.
+type pluginInvocation struct {
+	args        []string
+	list        bool
+	quiet       bool
+	help        bool
+	version     bool
+	pluginsFlag bool
 }
 
-// rootBoolFlag recognizes one spelling of the root command's boolean flags as
-// pflag would parse it: the bare forms (`--plugins`, `--quiet`, `-q`) and the
-// value-attached forms (`--plugins=<bool>`, `--quiet=<bool>`, `-q=<bool>`).
-// It returns the flag's long name without dashes and the value pflag would
-// assign. ok is false for anything else — a positional token, `--`, an
-// unrecognized flag, or a value-attached form whose value pflag would reject
-// (which cobra reports as an invalid argument).
-func rootBoolFlag(a string) (name string, value, ok bool) {
-	switch a {
-	case pluginsFlag:
-		return rootFlagPlugins, true, true
-	case quietFlag, quietShortFlag:
-		return rootFlagQuiet, true, true
+// parsePluginInvocation uses pflag's normal boolean and shorthand syntax
+// without touching Cobra's shared flag values. If GLX gains another global
+// option, register it here too before allowing it on the plugin path.
+func parsePluginInvocation(args []string) (pluginInvocation, bool) {
+	var invocation pluginInvocation
+	flags := pflag.NewFlagSet("glx plugin prefix", pflag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	flags.SetInterspersed(false)
+	flags.BoolVarP(&invocation.quiet, rootFlagQuiet, quietShorthand, false, "")
+	flags.BoolVar(&invocation.list, rootFlagPlugins, false, "")
+	flags.BoolVarP(&invocation.help, "help", "h", false, "")
+	flags.BoolVarP(&invocation.version, "version", "v", false, "")
+	if err := flags.Parse(args); err != nil || flags.ArgsLenAtDash() >= 0 {
+		return pluginInvocation{}, false
 	}
-	if raw, found := strings.CutPrefix(a, pluginsFlag+"="); found {
-		b, err := strconv.ParseBool(raw)
+	invocation.args = flags.Args()
+	invocation.pluginsFlag = flags.Changed(rootFlagPlugins)
 
-		return rootFlagPlugins, b, err == nil
-	}
-	for _, prefix := range quietValuePrefixes {
-		if raw, found := strings.CutPrefix(a, prefix); found {
-			b, err := strconv.ParseBool(raw)
-
-			return rootFlagQuiet, b, err == nil
-		}
-	}
-
-	return "", false, false
+	return invocation, true
 }
 
-// pluginsFlagRequested reports whether `glx <args>` is a request to list
-// plugins: --plugins resolves to true and nothing else on the command line
-// would make cobra do something different. Every token must be a recognized
-// spelling of a root boolean flag (see rootBoolFlag); a subcommand, the `--`
-// marker, an unknown flag (`glx --plugins --bogus`), or an unparseable value
-// makes this return false so cobra reports the problem with its usual error
-// instead of the listing silently swallowing it. When a flag is repeated the
-// last occurrence wins, as it does in pflag (`--plugins --plugins=false` does
-// not list).
-//
-// The check runs before cobra parses args because rootCmd has no Run handler —
-// making it runnable to read the flag via RunE would suppress cobra's standard
-// "unknown command" error for typos.
-func pluginsFlagRequested(args []string) bool {
-	requested := false
-	for _, a := range args {
-		name, value, ok := rootBoolFlag(a)
-		if !ok {
-			return false
-		}
-		if name == rootFlagPlugins {
-			requested = value
-		}
-	}
-
-	return requested
-}
-
-// quietFlagRequested reports the value pflag would give --quiet for args: each
-// recognized spelling (`-q`, `--quiet`, `--quiet=<bool>`, `-q=<bool>`) sets it,
-// and the last one wins, so `-q --quiet=false` is not quiet. Both the long and
-// shorthand value-attached spellings are recognized because pflag accepts
-// both. Scanning stops at the `--` end-of-flags marker, after which pflag reads
-// nothing as a flag.
-//
-// Used by run() to honor the established `--quiet` contract for the
-// `glx --plugins` listing path, which runs before cobra parses flags into the
-// package-level quietOutput variable.
-func quietFlagRequested(args []string) bool {
-	quiet := false
-	for _, a := range args {
-		if a == endOfFlags {
-			break
-		}
-		if name, value, ok := rootBoolFlag(a); ok && name == rootFlagQuiet {
-			quiet = value
-		}
-	}
-
-	return quiet
-}
-
-// pluginDispatchTarget decides whether `glx <args>` should be redirected to a
+// pluginDispatchTarget takes the positional arguments after the GLX prefix and
+// decides whether `glx <args>` should be redirected to a
 // discovered plugin instead of letting cobra handle it. It returns the plugin
 // to invoke and the args to forward, or ok=false if run() should fall
 // through to cobra (which will handle the built-in, print "unknown command",
@@ -618,10 +507,10 @@ func quietFlagRequested(args []string) bool {
 // `glx-validate` plugin cannot shadow the bundled `validate` command just
 // because the user typed `glx VALIDATE`.
 func pluginDispatchTarget(root *cobra.Command, args []string, pathEnv, pathExt string, isWindows bool) (Plugin, []string, bool) {
-	name, rest, ok := firstSubcommandToken(args)
-	if !ok {
+	if len(args) == 0 {
 		return Plugin{}, nil, false
 	}
+	name := args[0]
 	if strings.HasPrefix(name, "__complete") {
 		return Plugin{}, nil, false
 	}
@@ -637,5 +526,5 @@ func pluginDispatchTarget(root *cobra.Command, args []string, pathEnv, pathExt s
 		return Plugin{}, nil, false
 	}
 
-	return p, rest, true
+	return p, args[1:], true
 }

@@ -27,6 +27,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // fakeDirEntry / fakeFileInfo let us drive pluginNameFromEntry deterministically
@@ -442,128 +444,42 @@ func TestFindPlugin_AgreesWithDiscovery(t *testing.T) {
 	}
 }
 
-func TestFirstSubcommandToken(t *testing.T) {
-	tests := []struct {
-		name     string
-		args     []string
-		wantName string
-		wantRest []string
-		wantOk   bool
-	}{
-		{"nil", nil, "", nil, false},
-		{"empty", []string{}, "", nil, false},
-		{"only --plugins", []string{"--plugins"}, "", nil, false},
-		{"only --help", []string{"--help"}, "", nil, false},
-		{"single sub", []string{"foo"}, "foo", []string{}, true},
-		{"sub with flags", []string{"foo", "--x", "y"}, "foo", []string{"--x", "y"}, true},
-		{"global flag then sub", []string{"-q", "foo", "bar"}, "foo", []string{"bar"}, true},
-		{"long global then sub", []string{"--quiet", "validate"}, "validate", []string{}, true},
-		{"cobra-internal __complete", []string{"__complete", "validate"}, "__complete", []string{"validate"}, true},
-		// `--` ends flag parsing and cobra finds no subcommand after it, so
-		// neither may this scan: `glx -- foo` must not dispatch glx-foo.
-		{"-- then positional", []string{"--", "foo"}, "", nil, false},
-		{"-- then --plugins", []string{"--", "--plugins"}, "", nil, false},
-		{"flag, --, positional", []string{"-q", "--", "foo"}, "", nil, false},
-		{"sub before -- keeps -- in rest", []string{"foo", "--", "x"}, "foo", []string{"--", "x"}, true},
-		// pflag never consumes a token after a bool flag (it has an implicit
-		// value), so cobra reads `glx --quiet false` as subcommand "false".
-		{"--quiet false: value token is the subcommand", []string{"--quiet", "false", "foo"}, "false", []string{"foo"}, true},
-		{"-q false: value token is the subcommand", []string{"-q", "false"}, "false", []string{}, true},
-		{"--plugins true: value token is the subcommand", []string{"--plugins", "true"}, "true", []string{}, true},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			gotName, gotRest, gotOk := firstSubcommandToken(tt.args)
-			if gotOk != tt.wantOk || gotName != tt.wantName || !slices.Equal(gotRest, tt.wantRest) {
-				t.Errorf("firstSubcommandToken(%v) = (%q, %v, %v); want (%q, %v, %v)",
-					tt.args, gotName, gotRest, gotOk, tt.wantName, tt.wantRest, tt.wantOk)
-			}
-		})
-	}
-}
-
-func TestPluginsFlagRequested(t *testing.T) {
+func TestParsePluginInvocation(t *testing.T) {
 	tests := []struct {
 		name string
 		args []string
-		want bool
+		want pluginInvocation
+		ok   bool
 	}{
-		{"nil", nil, false},
-		{"bare --plugins", []string{"--plugins"}, true},
-		{"--plugins after global flag", []string{"-q", "--plugins"}, true},
-		{"--plugins=true (value-attached truthy)", []string{"--plugins=true"}, true},
-		{"--plugins=1 (value-attached truthy)", []string{"--plugins=1"}, true},
-		{"--plugins=false (value-attached falsey)", []string{"--plugins=false"}, false},
-		{"--plugins=garbage (unparseable value)", []string{"--plugins=garbage"}, false},
-		{"--plugins before a subcommand → subcommand wins", []string{"--plugins", "foo"}, false},
-		{"--plugins after a subcommand", []string{"foo", "--plugins"}, false},
-		{"unrelated invocation", []string{"validate", "/some/dir"}, false},
-		{"--plugins with -q=true", []string{"--plugins", "-q=true"}, true},
-		{"--plugins with --quiet=false", []string{"--quiet=false", "--plugins"}, true},
-		// Anything cobra would reject or treat differently falls through so
-		// cobra reports it instead of the listing swallowing it.
-		{"--plugins with unknown flag", []string{"--plugins", "--bogus"}, false},
-		{"--plugins with unknown short flag", []string{"-x", "--plugins"}, false},
-		{"--plugins with --help", []string{"--plugins", "--help"}, false},
-		{"--plugins with unparseable -q value", []string{"--plugins", "-q=garbage"}, false},
-		{"--plugins after --", []string{"--", "--plugins"}, false},
-		{"--plugins before --", []string{"--plugins", "--"}, false},
-		// pflag does not consume a space-separated bool value: `true` is a
-		// subcommand to cobra (unknown command "true"), so no listing.
-		{"--plugins true (space-separated value)", []string{"--plugins", "true"}, false},
-		{"--plugins false (space-separated value)", []string{"--plugins", "false"}, false},
-		// Last occurrence wins, as in pflag.
-		{"--plugins then --plugins=false", []string{"--plugins", "--plugins=false"}, false},
-		{"--plugins=false then --plugins", []string{"--plugins=false", "--plugins"}, true},
+		{"empty", nil, pluginInvocation{}, true},
+		{"plain invocation", []string{"foo"}, pluginInvocation{args: []string{"foo"}}, true},
+		{"untouched suffix", []string{"-qq", "foo", "--help", "--", "", "-q"}, pluginInvocation{quiet: true, args: []string{"foo", "--help", "--", "", "-q"}}, true},
+		{"last quiet wins", []string{"--quiet", "-q=false", "foo"}, pluginInvocation{args: []string{"foo"}}, true},
+		{"space-separated bool value is positional", []string{"--quiet", "false", "foo"}, pluginInvocation{quiet: true, args: []string{"false", "foo"}}, true},
+		{"quiet listing", []string{"-qq", "--plugins=1"}, pluginInvocation{quiet: true, list: true, pluginsFlag: true}, true},
+		{"last listing value wins", []string{"--plugins", "--plugins=false"}, pluginInvocation{pluginsFlag: true}, true},
+		{"listing flag before plugin name", []string{"--plugins", "foo"}, pluginInvocation{list: true, pluginsFlag: true, args: []string{"foo"}}, true},
+		{"listing flag after plugin name", []string{"foo", "--plugins"}, pluginInvocation{args: []string{"foo", "--plugins"}}, true},
+		{"help shorthand cluster", []string{"-qh", "foo"}, pluginInvocation{quiet: true, help: true, args: []string{"foo"}}, true},
+		{"version before plugin name", []string{"--version", "foo"}, pluginInvocation{version: true, args: []string{"foo"}}, true},
+		{"disabled help and version", []string{"--help=false", "-v=false", "foo"}, pluginInvocation{args: []string{"foo"}}, true},
+		{"unknown long flag", []string{"--bogus", "foo"}, pluginInvocation{}, false},
+		{"unknown short flag in cluster", []string{"-qx", "foo"}, pluginInvocation{}, false},
+		{"invalid quiet value", []string{"--quiet=bogus", "foo"}, pluginInvocation{}, false},
+		{"invalid listing value", []string{"--plugins=bogus"}, pluginInvocation{}, false},
+		{"leading terminator", []string{"-q", "--", "foo"}, pluginInvocation{}, false},
+		{"trailing terminator without plugin", []string{"--plugins", "--"}, pluginInvocation{}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := pluginsFlagRequested(tt.args); got != tt.want {
-				t.Errorf("pluginsFlagRequested(%v) = %v; want %v", tt.args, got, tt.want)
-			}
-		})
-	}
-}
-
-func TestQuietFlagRequested(t *testing.T) {
-	tests := []struct {
-		name string
-		args []string
-		want bool
-	}{
-		{"nil", nil, false},
-		{"-q short", []string{"-q"}, true},
-		{"--quiet long", []string{"--quiet"}, true},
-		{"--quiet=true", []string{"--quiet=true"}, true},
-		{"--quiet=1", []string{"--quiet=1"}, true},
-		{"--quiet=false", []string{"--quiet=false"}, false},
-		{"--quiet=garbage", []string{"--quiet=garbage"}, false},
-		// pflag accepts the value-attached shorthand form for bool flags, so
-		// `-q=true` must be honored here exactly like `--quiet=true`.
-		{"-q=true", []string{"-q=true"}, true},
-		{"-q=1", []string{"-q=1"}, true},
-		{"-q=false", []string{"-q=false"}, false},
-		{"-q=garbage", []string{"-q=garbage"}, false},
-		{"-q=true before --plugins", []string{"-q=true", "--plugins"}, true},
-		{"-q before --plugins", []string{"-q", "--plugins"}, true},
-		// Last occurrence wins, as in pflag.
-		{"-q then --quiet=false", []string{"-q", "--quiet=false"}, false},
-		{"--quiet=false then -q", []string{"--quiet=false", "-q"}, true},
-		{"-q=true then -q=false", []string{"-q=true", "-q=false", "--plugins"}, false},
-		// A space-separated value is not consumed by pflag: `-q false` is
-		// quiet with a positional "false" (which cobra then rejects).
-		{"-q false (space-separated value)", []string{"-q", "false"}, true},
-		{"--quiet false (space-separated value)", []string{"--quiet", "false"}, true},
-		// Nothing after `--` is a flag.
-		{"-q after --", []string{"--", "-q"}, false},
-		{"-q before --", []string{"-q", "--", "x"}, true},
-		{"unrelated", []string{"validate", "/path"}, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := quietFlagRequested(tt.args); got != tt.want {
-				t.Errorf("quietFlagRequested(%v) = %v; want %v", tt.args, got, tt.want)
-			}
+			got, ok := parsePluginInvocation(tt.args)
+			assert.Equal(t, tt.ok, ok)
+			assert.Equal(t, tt.want.list, got.list)
+			assert.Equal(t, tt.want.quiet, got.quiet)
+			assert.Equal(t, tt.want.help, got.help)
+			assert.Equal(t, tt.want.version, got.version)
+			assert.Equal(t, tt.want.pluginsFlag, got.pluginsFlag)
+			assert.True(t, slices.Equal(tt.want.args, got.args), "args = %q; want %q", got.args, tt.want.args)
 		})
 	}
 }
@@ -615,7 +531,6 @@ func TestPluginDispatchTarget(t *testing.T) {
 		// fall through to cobra's "unknown command" error even with the plugin
 		// installed.
 		{"unix: __foo dispatches to plugin", []string{"__foo", "arg"}, false, true, "__foo", []string{"arg"}},
-		{"no subcommand (only flags) falls through", []string{"--plugins"}, false, false, "", nil},
 		{"empty args falls through", []string{}, false, false, "", nil},
 
 		// Windows-style dispatch: isWindows=true, lookup is lowercased.

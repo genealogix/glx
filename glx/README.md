@@ -225,6 +225,7 @@ Build, test, and contribution workflow — prerequisites, `make` targets, DCO si
 - [Examples](../docs/examples/README.md)
 - [Test Data Documentation](https://github.com/genealogix/glx/blob/main/glx/testdata/README.md)
 - [CLI Command Reference](../docs/cli/index.md)
+- [CLI Plugins](../docs/guides/cli-plugins.md)
 
 ## License
 

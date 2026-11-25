@@ -158,22 +158,24 @@ func run(args []string, stderr io.Writer) (code int) {
 	// below see them when enumerating known command names.
 	ensureBuiltinSubcommands(rootCmd)
 
-	if pluginsFlagRequested(args) {
-		listPlugins(
-			discoverPlugins(pathEnv, pathExt),
-			knownCommandNames(rootCmd),
-			quietFlagRequested(args),
-			os.Stdout,
-		)
+	if prefix, ok := parsePluginInvocation(args); ok {
+		if len(prefix.args) == 0 && prefix.list && !prefix.help && !prefix.version {
+			listPlugins(discoverPlugins(pathEnv, pathExt), knownCommandNames(rootCmd), prefix.quiet, os.Stdout)
 
-		return 0
+			return 0
+		}
+		if !prefix.pluginsFlag {
+			if p, rest, found := pluginDispatchTarget(rootCmd, prefix.args, pathEnv, pathExt, isWindows); found {
+				if !prefix.help && !prefix.version {
+					return runPlugin(context.Background(), p, rest, os.Stdin, os.Stdout, stderr)
+				}
+				// GLX help/version belongs to the prefix. Do not let Cobra
+				// reparse the would-be plugin's arguments as GLX options.
+				args = args[:len(args)-len(prefix.args)]
+			}
+		}
 	}
-
-	if p, rest, ok := pluginDispatchTarget(rootCmd, args, pathEnv, pathExt, isWindows); ok {
-		return runPlugin(context.Background(), p, rest, os.Stdin, os.Stdout, stderr)
-	}
-	// No plugin to dispatch: fall through so cobra handles built-ins, prints
-	// help, or emits its standard "unknown command" error for typos.
+	// No plugin action: let Cobra handle built-ins, help/version and errors.
 
 	stop := watchInterrupts(stderr)
 	defer stop()
@@ -250,12 +252,12 @@ func exactNamedArgs(names ...string) cobra.PositionalArgs {
 
 func init() {
 	rootCmd.SetVersionTemplate("glx version {{.Version}}\n")
-	rootCmd.PersistentFlags().BoolVarP(&quietOutput, "quiet", "q", false,
+	rootCmd.PersistentFlags().BoolVarP(&quietOutput, rootFlagQuiet, quietShorthand, false,
 		"Suppress non-error output (where supported)")
 	// `--plugins` is registered for --help and docs visibility only; the flag is
 	// handled in run() before cobra parses, because making rootCmd runnable
 	// to read it via RunE would suppress cobra's "unknown command" error for typos.
-	rootCmd.Flags().Bool("plugins", false, "List discovered glx-<name> plugins found on PATH")
+	rootCmd.Flags().Bool(rootFlagPlugins, false, "List discovered glx-<name> plugins found on PATH")
 	rootCmd.AddCommand(importCmd)
 	rootCmd.AddCommand(exportCmd)
 	rootCmd.AddCommand(initCmd)
