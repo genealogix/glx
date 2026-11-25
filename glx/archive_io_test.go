@@ -960,11 +960,11 @@ func TestWriteArchiveInPlace(t *testing.T) {
 
 		// Seed with foreign files the archive must preserve
 		foreignFiles := map[string][]byte{
-			"README.md":                   []byte("# Archive\n\nUser notes.\n"),
-			".gitignore":           []byte("*.log\n"),
-			".git/HEAD":            []byte("ref: refs/heads/main\n"),
-			".git/config":          []byte("[core]\n\trepositoryformatversion = 0\n"),
-			".git/refs/heads/main": []byte("abc123\n"),
+			"README.md":             []byte("# Archive\n\nUser notes.\n"),
+			".gitignore":            []byte("*.log\n"),
+			".git/HEAD":             []byte("ref: refs/heads/main\n"),
+			".git/config":           []byte("[core]\n\trepositoryformatversion = 0\n"),
+			".git/refs/heads/main":  []byte("abc123\n"),
 			".vscode/settings.json": []byte(`{}`),
 			"notes/research.md":     []byte("Research notes.\n"),
 		}
@@ -1006,7 +1006,6 @@ func TestWriteArchiveInPlace(t *testing.T) {
 			t.Errorf("expected 2 persons, got %d", len(loaded.Persons))
 		}
 	})
-
 
 	t.Run("nil archive fails without touching the archive", func(t *testing.T) {
 		tmpDir := t.TempDir()
