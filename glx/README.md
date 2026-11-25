@@ -210,6 +210,7 @@ glx validate persons/ events/   # several directories are validated as one archi
 - ➕ **Add** - Create person, place, event, repository, source, citation, relationship, assertion, research log, or study entities from CLI flags with vocabulary and reference validation
 - 🧾 **Research Logging** - Append searches, including negative results, to a research log one at a time with `glx add search`
 - 🔄 **Migrate** - Convert deprecated person properties to birth/death events
+- 🔌 **Plugins** - Discover and run third-party `glx-<name>` executables from PATH (git-style fallback); list with `glx --plugins`
 - 🖥️ **Serve** - Run a local web server with a browser-based viewer (dashboard, person profiles, family tree, sources); `--edit` adds person and relationship editing
 - ⚡ **Cache** - Build a binary archive cache (`.glx/cache.bin`) so repeated commands skip the YAML parse; transparently used by read commands, with git + filesystem staleness detection
 
@@ -224,6 +225,7 @@ Build, test, and contribution workflow — prerequisites, `make` targets, DCO si
 - [Examples](../docs/examples/README.md)
 - [Test Data Documentation](https://github.com/genealogix/glx/blob/main/glx/testdata/README.md)
 - [CLI Command Reference](../docs/cli/index.md)
+- [CLI Plugins](../docs/guides/cli-plugins.md)
 
 ## License
 
