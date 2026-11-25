@@ -60,7 +60,7 @@ func (s *DefaultSerializer) WriteSingleFileBatched(archive *GLXFile, output io.W
 			}
 		}
 
-		return marshalArchiveInBatches(reflect.ValueOf(withoutEmptyMetadata(archive)).Elem(), output)
+		return marshalArchiveInBatches(reflect.ValueOf(withoutEmptyMetadata(archive)).Elem(), output, s.Options.Indent)
 	}
 
 	encoded, err := s.SerializeSingleFileBytes(archive)
@@ -75,7 +75,7 @@ func (s *DefaultSerializer) WriteSingleFileBatched(archive *GLXFile, output io.W
 // go-yaml retains an emitter slot for each event until the encoder finishes.
 // Start a new encoder for each batch so the slots for a whole archive do not
 // have to fit in memory. All batches still form one YAML mapping document.
-func marshalArchiveInBatches(fields reflect.Value, output io.Writer) error {
+func marshalArchiveInBatches(fields reflect.Value, output io.Writer, indent string) error {
 	for descriptor, field := range fields.Fields() {
 		tag := descriptor.Tag.Get("yaml")
 		if tag == "" || field.IsZero() {
@@ -83,7 +83,7 @@ func marshalArchiveInBatches(fields reflect.Value, output io.Writer) error {
 		}
 		key, _, _ := strings.Cut(tag, ",")
 		if field.Kind() == reflect.Map && field.Len() > yamlBatchSize {
-			if err := appendYAMLCollection(output, key, field); err != nil {
+			if err := appendYAMLCollection(output, key, field, indent); err != nil {
 				return err
 			}
 
@@ -92,7 +92,7 @@ func marshalArchiveInBatches(fields reflect.Value, output io.Writer) error {
 		if field.Kind() == reflect.Map && field.Len() == 0 {
 			continue
 		}
-		encoded, err := marshalYAML(map[string]any{key: field.Interface()})
+		encoded, err := marshalYAML(map[string]any{key: field.Interface()}, indent)
 		if err != nil {
 			return err
 		}
@@ -104,7 +104,7 @@ func marshalArchiveInBatches(fields reflect.Value, output io.Writer) error {
 	return nil
 }
 
-func appendYAMLCollection(output io.Writer, key string, collection reflect.Value) error {
+func appendYAMLCollection(output io.Writer, key string, collection reflect.Value, indent string) error {
 	keys := collection.MapKeys()
 	// Split in go-yaml's own key order, so the batches concatenate to the
 	// same listing as one encoding of the whole map.
@@ -126,7 +126,7 @@ func appendYAMLCollection(output io.Writer, key string, collection reflect.Value
 			batch.SetMapIndex(id, collection.MapIndex(id))
 		}
 
-		encoded, err := marshalYAML(map[string]any{key: batch.Interface()})
+		encoded, err := marshalYAML(map[string]any{key: batch.Interface()}, indent)
 		if err != nil {
 			return err
 		}

@@ -107,7 +107,7 @@ func (s *DefaultSerializer) SerializeSingleFileBytes(glx *GLXFile) ([]byte, erro
 	// Normalize empty metadata so omitempty suppresses it.
 	glx = withoutEmptyMetadata(glx)
 
-	yamlBytes, err := marshalYAML(glx)
+	yamlBytes, err := marshalYAML(glx, s.Options.Indent)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal YAML: %w", err)
 	}
@@ -168,7 +168,7 @@ func (s *DefaultSerializer) serializeMultiFile(glx *GLXFile, writeFile func(stri
 	// Serialize metadata if present and non-empty
 	if glx.ImportMetadata != nil && glx.ImportMetadata.hasContent() {
 		metaWrapper := map[string]*Metadata{"metadata": glx.ImportMetadata}
-		yamlBytes, err := marshalYAML(metaWrapper)
+		yamlBytes, err := marshalYAML(metaWrapper, s.Options.Indent)
 		if err != nil {
 			return fmt.Errorf("failed to marshal metadata: %w", err)
 		}
@@ -178,43 +178,43 @@ func (s *DefaultSerializer) serializeMultiFile(glx *GLXFile, writeFile func(stri
 	}
 
 	// Serialize entities by type
-	if err := serializeEntitiesWrapped(glx.Persons, "persons", "person", writeFile); err != nil {
+	if err := serializeEntitiesWrapped(glx.Persons, "persons", "person", s.Options.Indent, writeFile); err != nil {
 		return err
 	}
-	if err := serializeEntitiesWrapped(glx.Events, "events", "event", writeFile); err != nil {
+	if err := serializeEntitiesWrapped(glx.Events, "events", "event", s.Options.Indent, writeFile); err != nil {
 		return err
 	}
-	if err := serializeEntitiesWrapped(glx.Relationships, "relationships", "relationship", writeFile); err != nil {
+	if err := serializeEntitiesWrapped(glx.Relationships, "relationships", "relationship", s.Options.Indent, writeFile); err != nil {
 		return err
 	}
-	if err := serializeEntitiesWrapped(glx.Places, "places", "place", writeFile); err != nil {
+	if err := serializeEntitiesWrapped(glx.Places, "places", "place", s.Options.Indent, writeFile); err != nil {
 		return err
 	}
-	if err := serializeEntitiesWrapped(glx.Sources, "sources", "source", writeFile); err != nil {
+	if err := serializeEntitiesWrapped(glx.Sources, "sources", "source", s.Options.Indent, writeFile); err != nil {
 		return err
 	}
-	if err := serializeEntitiesWrapped(glx.Citations, "citations", "citation", writeFile); err != nil {
+	if err := serializeEntitiesWrapped(glx.Citations, "citations", "citation", s.Options.Indent, writeFile); err != nil {
 		return err
 	}
-	if err := serializeEntitiesWrapped(glx.Repositories, "repositories", "repository", writeFile); err != nil {
+	if err := serializeEntitiesWrapped(glx.Repositories, "repositories", "repository", s.Options.Indent, writeFile); err != nil {
 		return err
 	}
-	if err := serializeEntitiesWrapped(glx.Media, "media", "media", writeFile); err != nil {
+	if err := serializeEntitiesWrapped(glx.Media, "media", "media", s.Options.Indent, writeFile); err != nil {
 		return err
 	}
-	if err := serializeEntitiesWrapped(glx.Assertions, "assertions", "assertion", writeFile); err != nil {
+	if err := serializeEntitiesWrapped(glx.Assertions, "assertions", "assertion", s.Options.Indent, writeFile); err != nil {
 		return err
 	}
-	if err := serializeEntitiesWrapped(glx.ResearchLogs, "research_logs", "research-log", writeFile); err != nil {
+	if err := serializeEntitiesWrapped(glx.ResearchLogs, "research_logs", "research-log", s.Options.Indent, writeFile); err != nil {
 		return err
 	}
 
-	return serializeEntitiesWrapped(glx.Studies, "studies", "study", writeFile)
+	return serializeEntitiesWrapped(glx.Studies, "studies", "study", s.Options.Indent, writeFile)
 }
 
 // serializeEntitiesWrapped serializes each entity as a standard GLX file:
 // {collectionKey: {entityID: entity}}. Derives filenames deterministically from entity IDs.
-func serializeEntitiesWrapped[T any](entities map[string]*T, dirName, entityType string, writeFile func(string, []byte) error) error {
+func serializeEntitiesWrapped[T any](entities map[string]*T, dirName, entityType, indent string, writeFile func(string, []byte) error) error {
 	lowercaseToID := make(map[string]string, len(entities))
 
 	for _, entityID := range sortedKeys(entities) {
@@ -235,7 +235,7 @@ func serializeEntitiesWrapped[T any](entities map[string]*T, dirName, entityType
 		}
 
 		// Marshal to YAML
-		yamlBytes, err := marshalYAML(wrapper)
+		yamlBytes, err := marshalYAML(wrapper, indent)
 		if err != nil {
 			return fmt.Errorf("failed to marshal %s %s: %w", entityType, entityID, err)
 		}
@@ -273,48 +273,8 @@ func (s *DefaultSerializer) DeserializeSingleFileBytes(data []byte) (*GLXFile, e
 // DeserializeMultiFileFromMap loads a GLX archive from a map of relative paths to file contents.
 // Returns the loaded archive, a list of duplicate entity IDs, and any error.
 func (s *DefaultSerializer) DeserializeMultiFileFromMap(files map[string][]byte) (*GLXFile, []string, error) {
-	glx := &GLXFile{
-		Persons:       make(map[string]*Person),
-		Events:        make(map[string]*Event),
-		Relationships: make(map[string]*Relationship),
-		Places:        make(map[string]*Place),
-		Sources:       make(map[string]*Source),
-		Citations:     make(map[string]*Citation),
-		Repositories:  make(map[string]*Repository),
-		Media:         make(map[string]*Media),
-		Assertions:    make(map[string]*Assertion),
-		ResearchLogs:  make(map[string]*ResearchLog),
-		Studies:       make(map[string]*Study),
-
-		EventTypes:             make(map[string]*VocabularyEntry),
-		ParticipantRoles:       make(map[string]*VocabularyEntry),
-		ConfidenceLevels:       make(map[string]*VocabularyEntry),
-		RelationshipTypes:      make(map[string]*VocabularyEntry),
-		PlaceTypes:             make(map[string]*VocabularyEntry),
-		SourceTypes:            make(map[string]*VocabularyEntry),
-		RepositoryTypes:        make(map[string]*VocabularyEntry),
-		MediaTypes:             make(map[string]*VocabularyEntry),
-		SexTypes:               make(map[string]*VocabularyEntry),
-		GenderTypes:            make(map[string]*VocabularyEntry),
-		SearchResultTypes:      make(map[string]*VocabularyEntry),
-		ResearchLogStatusTypes: make(map[string]*VocabularyEntry),
-		LeadStatuses:           make(map[string]*VocabularyEntry),
-		PersonStatuses:         make(map[string]*VocabularyEntry),
-		StudyTypes:             make(map[string]*VocabularyEntry),
-		StudyStatuses:          make(map[string]*VocabularyEntry),
-		LegalStatuses:          make(map[string]*VocabularyEntry),
-		SourceNatures:          make(map[string]*VocabularyEntry),
-		InformationTypes:       make(map[string]*VocabularyEntry),
-
-		PersonProperties:       make(map[string]*PropertyDefinition),
-		EventProperties:        make(map[string]*PropertyDefinition),
-		RelationshipProperties: make(map[string]*PropertyDefinition),
-		PlaceProperties:        make(map[string]*PropertyDefinition),
-		MediaProperties:        make(map[string]*PropertyDefinition),
-		RepositoryProperties:   make(map[string]*PropertyDefinition),
-		CitationProperties:     make(map[string]*PropertyDefinition),
-		SourceProperties:       make(map[string]*PropertyDefinition),
-	}
+	glx := &GLXFile{}
+	glx.initMaps()
 
 	var allConflicts []string
 	origins := newKeyOrigins()

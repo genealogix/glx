@@ -137,7 +137,7 @@ func TestSerializeSingleFileLargeCollections(t *testing.T) {
 	}
 	expected := *archive
 	expected.ImportMetadata = nil
-	before, err := marshalYAML(&expected)
+	before, err := marshalYAML(&expected, "")
 	if err != nil {
 		t.Fatal(err)
 	}

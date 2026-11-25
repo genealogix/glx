@@ -149,6 +149,15 @@ func copyMediaFile(gedcomDir, relativePath, destPath string) error {
 // openMediaSourceFile applies the same raw-then-decoded FILE resolution for
 // both content matching and the subsequent copy.
 func openMediaSourceFile(gedcomDir, relativePath string) (*os.File, error) {
+	f, _, err := resolveMediaSourceFile(gedcomDir, relativePath)
+
+	return f, err
+}
+
+// resolveMediaSourceFile opens a FILE reference's source and also returns the
+// relative path that opened: the reference as written, or its percent-decoded
+// form when only that exists.
+func resolveMediaSourceFile(gedcomDir, relativePath string) (*os.File, string, error) {
 	// Normalize backslashes to forward slashes for cross-platform compatibility
 	// (belt-and-braces: MediaFileSource.RelativePath is already slash-normalized
 	// at import, but direct callers may supply raw Windows path separators).
@@ -157,41 +166,41 @@ func openMediaSourceFile(gedcomDir, relativePath string) (*os.File, error) {
 	// Prevent path traversal attacks from GEDCOM FILE references
 	srcPath := filepath.Join(gedcomDir, normalized)
 	if !isPathWithin(srcPath, gedcomDir) {
-		return nil, fmt.Errorf("path traversal detected in media reference %s: %w", relativePath, ErrPathEscapesDir)
+		return nil, "", fmt.Errorf("path traversal detected in media reference %s: %w", relativePath, ErrPathEscapesDir)
 	}
 	src, err := openWithin(gedcomDir, srcPath)
 	if err == nil {
-		return src, nil
+		return src, normalized, nil
 	}
 
 	// Only fall back to URL-decoded path if the source file does not exist.
 	// Other errors (permissions, disk full, etc.) should be returned immediately.
 	if !os.IsNotExist(err) {
-		return nil, fmt.Errorf("opening media file from %s: %w", srcPath, err)
+		return nil, "", fmt.Errorf("opening media file from %s: %w", srcPath, err)
 	}
 
 	// Try URL-decoded version (e.g., "CharlotteBront%C3%AB.jpg" -> "CharlotteBrontë.jpg")
 	decoded, decodeErr := url.PathUnescape(normalized)
 	if decodeErr != nil {
-		return nil, fmt.Errorf("failed to decode media path %q: %w", normalized, decodeErr)
+		return nil, "", fmt.Errorf("failed to decode media path %q: %w", normalized, decodeErr)
 	}
 	if decoded == normalized {
-		return nil, fmt.Errorf("%w: %s", ErrMediaFileNotFound, srcPath)
+		return nil, "", fmt.Errorf("%w: %s", ErrMediaFileNotFound, srcPath)
 	}
 
 	decodedPath := filepath.Join(gedcomDir, decoded)
 	if !isPathWithin(decodedPath, gedcomDir) {
-		return nil, fmt.Errorf("path traversal detected in media reference %s: %w", relativePath, ErrPathEscapesDir)
+		return nil, "", fmt.Errorf("path traversal detected in media reference %s: %w", relativePath, ErrPathEscapesDir)
 	}
 	src, err = openWithin(gedcomDir, decodedPath)
 	if err == nil {
-		return src, nil
+		return src, decoded, nil
 	}
 	if os.IsNotExist(err) {
-		return nil, fmt.Errorf("%w: %s", ErrMediaFileNotFound, decodedPath)
+		return nil, "", fmt.Errorf("%w: %s", ErrMediaFileNotFound, decodedPath)
 	}
 
-	return nil, fmt.Errorf("opening media file from %s: %w", decodedPath, err)
+	return nil, "", fmt.Errorf("opening media file from %s: %w", decodedPath, err)
 }
 
 // writeFileFrom streams src into a newly created file at dst, removing the

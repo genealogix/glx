@@ -132,6 +132,23 @@ func (source *MediaFileSource) SetMediaURI(media *Media, filename string) {
 	}
 }
 
+// ResolveOriginalFilename records which file the FILE reference actually
+// named, once a caller has found it: opened is the path that resolved, raw or
+// percent-decoded. The importer can only guess between the two (it has no
+// filesystem), so original_filename it stamped from the guess is replaced
+// with opened's basename (#1153). A value it did not stamp, such as one the
+// archive already carried, is left alone.
+func (source *MediaFileSource) ResolveOriginalFilename(media *Media, opened string) {
+	actual := path.Base(strings.ReplaceAll(opened, `\`, "/"))
+	if actual == "" || actual == "." || actual == source.OriginalFilename {
+		return
+	}
+	source.OriginalFilename = actual
+	if source.originalFilenameRecorded && media != nil && media.Properties != nil {
+		media.Properties[MediaPropertyOriginalFilename] = actual
+	}
+}
+
 // RecordOriginalFilename preserves the source's interpreted FILE basename
 // unless a pre-existing property already supplies provenance.
 func (source *MediaFileSource) RecordOriginalFilename(media *Media) {
@@ -154,6 +171,21 @@ type ImportResult struct {
 	Statistics ImportStatistics
 	Version    string
 	MediaFiles []MediaFileSource
+
+	// Platform is the name of the GEDCOM platform adapter that ran
+	// ("generic" when none matched), and PlatformLabel its display name.
+	Platform      string
+	PlatformLabel string
+	// PlatformRewrites counts, per original tag, the platform-specific
+	// structures the adapter rewrote into standard GEDCOM.
+	PlatformRewrites GEDCOMAdapterRewrites
+}
+
+// ImportOptions configures a GEDCOM import.
+type ImportOptions struct {
+	// Platform forces a platform adapter by name (see GEDCOMPlatforms).
+	// GEDCOMPlatformAuto (empty) detects it from HEAD.SOUR.
+	Platform string
 }
 
 // ImportStatistics tracks import metrics
@@ -375,6 +407,10 @@ type ConversionContext struct {
 	SourceIDMap     map[string]string
 	RepositoryIDMap map[string]string
 	MediaIDMap      map[string]string
+	// MediaFileGroups maps an OBJE XRef with several FILEs to the Media IDs
+	// it became, one per FILE (#1308); MediaIDMap holds the first. Nil until
+	// such an OBJE is seen.
+	MediaFileGroups map[string][]string
 	PlaceIDMap      map[string]string
 
 	// Content-based deduplication maps (name/content -> GLX ID)
@@ -434,6 +470,12 @@ type FamilyLink struct {
 // If logWriter is non-nil, import progress and diagnostics are written to it.
 // The caller is responsible for closing the writer if needed.
 func ImportGEDCOM(reader io.Reader, logWriter io.Writer) (*GLXFile, *ImportResult, error) {
+	return ImportGEDCOMWithOptions(reader, logWriter, ImportOptions{})
+}
+
+// ImportGEDCOMWithOptions imports a GEDCOM file as ImportGEDCOM does, with
+// the given options.
+func ImportGEDCOMWithOptions(reader io.Reader, logWriter io.Writer, opts ImportOptions) (*GLXFile, *ImportResult, error) {
 	// Create logger
 	logger := NewImportLogger(logWriter)
 
@@ -449,18 +491,15 @@ func ImportGEDCOM(reader io.Reader, logWriter io.Writer) (*GLXFile, *ImportResul
 
 	logger.LogInfo("Detected GEDCOM version: " + versionString)
 
-	// Create GLX file
-	glx := &GLXFile{
-		Persons:       make(map[string]*Person),
-		Events:        make(map[string]*Event),
-		Relationships: make(map[string]*Relationship),
-		Places:        make(map[string]*Place),
-		Sources:       make(map[string]*Source),
-		Repositories:  make(map[string]*Repository),
-		Media:         make(map[string]*Media),
-		Citations:     make(map[string]*Citation),
-		Assertions:    make(map[string]*Assertion),
+	// Rewrite the exporting platform's dialect into standard GEDCOM (#96)
+	adapter, rewrites, err := applyGEDCOMAdapter(records, opts.Platform, logger)
+	if err != nil {
+		return nil, nil, err
 	}
+
+	// Create GLX file
+	glx := &GLXFile{}
+	glx.initMaps()
 
 	// Load standard vocabularies into GLXFile so validation works
 	if err := LoadStandardVocabulariesIntoGLX(glx); err != nil {
@@ -507,8 +546,11 @@ func ImportGEDCOM(reader io.Reader, logWriter io.Writer) (*GLXFile, *ImportResul
 	// Build result
 	result := &ImportResult{
 		Statistics: conv.Stats,
-		Version:    versionString,
-		MediaFiles: conv.MediaFileSources,
+		Version:          versionString,
+		MediaFiles:       conv.MediaFileSources,
+		Platform:         adapter.Name(),
+		PlatformLabel:    adapter.Label(),
+		PlatformRewrites: rewrites,
 	}
 
 	return glx, result, nil

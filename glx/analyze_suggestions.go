@@ -96,6 +96,7 @@ func suggestionChecks() []func(*glxlib.GLXFile) []AnalysisIssue {
 		suggestCensusSearches,
 		suggestVitalRecords,
 		suggestChildCensusRecords,
+		suggestCensusNeighbors,
 		reportResearchPlaceholders,
 	}
 }

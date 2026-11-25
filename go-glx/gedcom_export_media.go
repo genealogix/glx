@@ -15,8 +15,10 @@
 package glx
 
 import (
+	"net/url"
 	"sort"
 	"strconv"
+	"strings"
 )
 
 // mimeToGEDCOMFormat maps MIME types back to GEDCOM 5.5.1 FORM values.
@@ -65,8 +67,18 @@ func exportMedia(mediaID string, media *Media, expCtx *ExportContext) *GEDCOMRec
 	if media.URI != "" {
 		fileRecord := &GEDCOMRecord{
 			Tag:        GedcomTagFile,
-			Value:      media.URI,
+			Value:      exportFileRef(media.URI, expCtx.Version),
 			SubRecords: []*GEDCOMRecord{},
+		}
+
+		// The original filename travels as a GLX extension tag, so that a
+		// GLX → GEDCOM → GLX round trip keeps it instead of replacing it with
+		// the archive's own canonical name (#1149). Other readers ignore it.
+		if original, ok := getStringProperty(media.Properties, MediaPropertyOriginalFilename); ok && original != "" {
+			fileRecord.SubRecords = append(fileRecord.SubRecords, &GEDCOMRecord{
+				Tag:   GedcomTagOrig,
+				Value: original,
+			})
 		}
 
 		if expCtx.Version == GEDCOM70 {
@@ -214,4 +226,22 @@ func formatCropValue(val any) string {
 	default:
 		return ""
 	}
+}
+
+// exportFileRef writes a media URI as a FILE payload. A GEDCOM 7.0 FILE is a
+// URI reference, and the importer percent-decodes a local one
+// (originalFilenameFor), so a local path is percent-encoded segment by
+// segment: without it a file literally named photo%20.jpg would export as
+// photo%20.jpg and come back as "photo .jpg". 5.5.1 payloads are plain paths
+// and URLs are already URIs, so both are written as they are.
+func exportFileRef(uri string, version GEDCOMVersion) string {
+	if version != GEDCOM70 || !classifyFileRef(uri) {
+		return uri
+	}
+	segments := strings.Split(strings.ReplaceAll(uri, `\`, "/"), "/")
+	for i, segment := range segments {
+		segments[i] = url.PathEscape(segment)
+	}
+
+	return strings.Join(segments, "/")
 }

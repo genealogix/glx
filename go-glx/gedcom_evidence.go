@@ -155,6 +155,19 @@ func prepareCitationFromSOUR(sourRecord *GEDCOMRecord, conv *ConversionContext) 
 				}
 			}
 
+		case GedcomTagWww:
+			// Link to the cited record. Not a GEDCOM citation tag, but written
+			// under citations by some platforms and by the Ancestry adapter
+			// for an _APID record pointer (#96).
+			if url := strings.TrimSpace(sub.Value); url != "" {
+				if citation.Properties == nil {
+					citation.Properties = make(map[string]any)
+				}
+				if _, exists := citation.Properties[CitationPropertyURL]; !exists {
+					citation.Properties[CitationPropertyURL] = url
+				}
+			}
+
 		case GedcomTagQuay:
 			// Keep the original citation assessment separate from assertion confidence.
 			propertyKey, mapped := conv.GEDCOMIndex.CitationProperties[sub.Tag]
@@ -190,9 +203,7 @@ func prepareCitationFromSOUR(sourRecord *GEDCOMRecord, conv *ConversionContext) 
 
 		case GedcomTagObje:
 			// Media linked to citation (reference or embedded)
-			if mediaID := resolveOBJE(sub, conv); mediaID != "" {
-				citation.Media = append(citation.Media, mediaID)
-			}
+			citation.Media = append(citation.Media, resolveOBJE(sub, conv)...)
 		}
 	}
 
