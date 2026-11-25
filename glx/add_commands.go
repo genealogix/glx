@@ -407,7 +407,11 @@ At most one of --subject-person, --subject-event, --subject-relationship,
 --subject-place may be given. --status is validated against the
 research_log_status_types vocabulary. The derived ID is "research-log-" plus
 the --title, else the subject, else the --objective; --id overrides it.
-Repeated --citation IDs are included once, in the order first supplied.`,
+Repeated --citation IDs are included once, in the order first supplied.
+--question names the proof question the log serves (parentage, birth, death,
+marriage, children, occupation, identity, or an alias); it is stored as the
+log's ` + "`question`" + ` property, and "glx proof" lists the log's searches only under
+that question.`,
 	Example: `  # Open a log about a person
   glx add research-log --id rl-death --subject-person person-lewis-little \
     --objective "Verify the reported 1826 intestate death" --status in_progress \
@@ -415,7 +419,11 @@ Repeated --citation IDs are included once, in the order first supplied.`,
 
   # Log with a title, researcher and date
   glx add research-log --title "1860 census, Jane Webb" --researcher "I. Schepp" \
-    --date 2026-09-17 --status open --archive ./archive`,
+    --date 2026-09-17 --status open --archive ./archive
+
+  # Log that serves the parentage proof
+  glx add research-log --id rl-parents --subject-person person-jane-webb \
+    --question parentage --archive ./archive`,
 	Args: cobra.NoArgs,
 	RunE: runAddResearchLog,
 }
@@ -631,6 +639,7 @@ func init() {
 	addResearchLogCmd.Flags().StringVar(&addResearchLogOpts.Researcher, "researcher", "", "Name or identifier of the researcher")
 	addResearchLogCmd.Flags().StringVar(&addResearchLogOpts.Conclusions, "conclusions", "", "Summary of findings")
 	addResearchLogCmd.Flags().StringArrayVar(&addResearchLogOpts.Citations, "citation", nil, "Citation ID produced by this log (repeatable)")
+	addResearchLogCmd.Flags().StringArrayVar(&addResearchLogOpts.Questions, "question", nil, "Proof question the log serves, e.g. parentage (repeatable; see glx proof)")
 
 	// search
 	addSearchCmd.Flags().StringVarP(&addSearchOpts.ArchivePath, "archive", "a", ".", "Archive path (directory)")

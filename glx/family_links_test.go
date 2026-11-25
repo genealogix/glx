@@ -274,7 +274,7 @@ func TestBuildProof_ParentageExcludesDisproven(t *testing.T) {
 
 	result := mustBuildProof("person-lewis", archive.Persons["person-lewis"], topicParentage, archive)
 	assert.Empty(t, result.Conflicts)
-	assert.Equal(t, []proofExcludedAlternative{{PersonID: "person-jacob", Name: "Jacob Little", Relationship: "rel-pc-jacob"}}, result.Excluded)
+	assert.Equal(t, []proofExcludedAlternative{{PersonID: "person-jacob", Name: "Jacob Little", Relationship: "rel-pc-jacob", Role: "father", Status: glxlib.ProofStatusDisproven, Assertions: []string{"a-jacob"}}}, result.Excluded)
 	assert.Equal(t, proofConclusionPossible, result.Conclusion)
 	assert.Contains(t, result.Summary, "Parents identified: John Little.")
 	assert.NotContains(t, result.Summary, "Jacob")

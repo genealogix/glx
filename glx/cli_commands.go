@@ -2028,7 +2028,34 @@ Supported research questions:
   birth       When and where was the person born?
   death       When and where did the person die?
   marriage    Whom did the person marry?
-  identity    Who was the person (name)?
+  children    Who were the person's children?
+  occupation  What occupation or office did the person hold?
+  identity    Who was the person, and which namesakes are they told apart from?
+
+Questions with several possible answers (parents, spouses, children, occupations,
+same-person links) resolve each candidate on its own: proven, probable,
+speculative, or unsupported answers are listed with their own status, and the
+question stands at its weakest answer. A candidate whose assertions are all
+disproven is listed under "Alternatives Excluded" and never counts, as is one
+whose assertions are all disputed beside an accepted answer in the same role.
+A disputed candidate with no accepted alternative, a candidate with both a
+proven and a disproven assertion, and every open same-person link are
+unresolved conflicts. Each relationship or claim is resolved on its own before
+the answers about one person are combined, and an occupation claimed for
+different periods is one candidate per period. Banns, licenses, contracts and
+engagements are context: they name no spouse.
+
+Searches are listed under the question their research log serves: set the log's
+` + "`question`" + ` property (e.g. ` + "`question: parentage`" + `), or give it a marriage, parent_child or
+event subject (a marriage log serves children only when its question names
+them; an event log serves its principals, not a witness or informant, and a
+census or other record log the question it names). Other logs about the person
+are counted as other research, and serve the identity question. A gap searched
+in a source of its type is marked with the search results and no longer heads
+the next steps: a census gap only by searches for its year, a marriage-record
+gap only by a log about that marriage. A not_searched entry is a plan and marks
+nothing. Children are concluded absent only when every logged search came back
+not_found; any other result is outstanding.
 
 Only definite unresolved conflicts make a conclusion CONFLICTED. Possible
 conflicts are marked "possible — check" and reduce support. Undated temporal
@@ -2053,7 +2080,7 @@ The person argument can be an exact entity ID or a name substring.`,
 
 func init() {
 	proofCmd.Flags().StringVarP(&proofArchive, "archive", "a", ".", "Archive path (directory or single file)")
-	proofCmd.Flags().StringVar(&proofQuestion, "question", "", "Research question (parentage, birth, death, marriage, identity)")
+	proofCmd.Flags().StringVar(&proofQuestion, "question", "", "Research question (parentage, birth, death, marriage, children, occupation, identity)")
 	proofCmd.Flags().StringVarP(&proofFormat, "format", "f", "", "Output format (text, json, markdown)")
 	_ = proofCmd.MarkFlagRequired("question")
 }

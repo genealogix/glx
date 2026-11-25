@@ -120,7 +120,7 @@ func printProofText(io *IOStreams, result *proofResult) {
 		io.Println("    (none identified)")
 	}
 	for i := range result.Gaps {
-		io.Println("    [ ] " + gapLine(&result.Gaps[i], " -- ", "HIGH PRIORITY"))
+		io.Println("    " + gapMarker(&result.Gaps[i]) + " " + gapLine(&result.Gaps[i], " -- ", "HIGH PRIORITY"))
 	}
 
 	if len(result.Searches) > 0 {
@@ -128,6 +128,9 @@ func printProofText(io *IOStreams, result *proofResult) {
 		for i := range result.Searches {
 			io.Println("    " + formatSearchLine(&result.Searches[i]))
 		}
+	}
+	if line := otherResearchLine(result.OtherSearches); line != "" {
+		io.Printf("\n  %s\n", line)
 	}
 
 	io.Printf("\n  Conflicts: ")
@@ -140,10 +143,23 @@ func printProofText(io *IOStreams, result *proofResult) {
 		}
 	}
 
+	if len(result.Answers) > 0 {
+		io.Printf("\n  Answers:\n")
+		for i := range result.Answers {
+			io.Println("    = " + answerLine(&result.Answers[i]))
+			for _, holder := range result.Answers[i].SharedWith {
+				io.Println("      also recorded for " + holder)
+			}
+		}
+	}
+
 	if len(result.Excluded) > 0 {
 		io.Printf("\n  Alternatives Excluded:\n")
 		for i := range result.Excluded {
-			io.Println("    x " + excludedAlternativeLine(&result.Excluded[i]))
+			io.Println("    x " + excludedAlternativeLine(&result.Excluded[i], " -- ", ""))
+			if detail := excludedAlternativeDetail(&result.Excluded[i]); detail != "" {
+				io.Println("      " + detail)
+			}
 		}
 	}
 
@@ -289,6 +305,9 @@ func gapLine(g *proofGap, sep, highLabel string) string {
 	if g.Description != "" {
 		line += sep + g.Description
 	}
+	if g.Searched != "" {
+		line += sep + "searched: " + g.Searched
+	}
 
 	return line
 }
@@ -361,12 +380,117 @@ func printProofMarkdown(io *IOStreams, result *proofResult) {
 	}
 	printMarkdownGaps(io, result.Gaps)
 	printMarkdownSearches(io, result.Searches)
+	if line := otherResearchLine(result.OtherSearches); line != "" {
+		io.Printf("\n_%s_\n", line)
+	}
 	printMarkdownConflicts(io, result.Conflicts)
+	printMarkdownAnswers(io, result.Answers)
 	printMarkdownExcluded(io, result.Excluded)
 }
 
-func excludedAlternativeLine(e *proofExcludedAlternative) string {
-	return e.Name + " (" + e.Relationship + ") -- all assertions disproven"
+// answerLine renders one surviving answer with its own status.
+func answerLine(a *proofAnswer) string {
+	line := a.Label
+	if a.Role != "" && a.Role != glxlib.PersonPropertyOccupation {
+		line = strings.ReplaceAll(a.Role, "_", " ") + ": " + line
+	}
+	if a.Relationship != "" {
+		line += " [" + a.Relationship + "]"
+	} else if a.Event != "" {
+		line += " [" + a.Event + "]"
+	}
+	line += " -- " + a.Conclusion
+	if a.Status == glxlib.ProofStatusSpeculative || a.Status == glxlib.ProofStatusUnsupported {
+		line += " (" + a.Status + ")"
+	}
+
+	return line
+}
+
+// printMarkdownAnswers renders the per-candidate answers as Markdown.
+func printMarkdownAnswers(io *IOStreams, answers []proofAnswer) {
+	if len(answers) == 0 {
+		return
+	}
+	io.Printf("\n## Answers\n\n")
+	for i := range answers {
+		io.Printf("- %s\n", strings.Replace(answerLine(&answers[i]), " -- ", " — ", 1))
+		for _, holder := range answers[i].SharedWith {
+			io.Printf("  - also recorded for %s\n", holder)
+		}
+	}
+}
+
+// otherResearchLine counts the searches of logs about the person that serve
+// another question, so they are acknowledged without crowding this one.
+func otherResearchLine(searches []proofSearch) string {
+	if len(searches) == 0 {
+		return ""
+	}
+	logs := map[string]bool{}
+	for i := range searches {
+		logs[searches[i].Log] = true
+	}
+	count := fmt.Sprintf("%d searches", len(searches))
+	if len(searches) == 1 {
+		count = "1 search"
+	}
+	logNoun := "logs"
+	if len(logs) == 1 {
+		logNoun = "log"
+	}
+
+	return fmt.Sprintf("Other research on this person: %s in %d research %s not scoped to this question (set a log's question property to list it here).", count, len(logs), logNoun)
+}
+
+// gapMarker checks off a gap that this question's searches have covered.
+func gapMarker(g *proofGap) string {
+	if g.Searched != "" {
+		return "[~]"
+	}
+
+	return "[ ]"
+}
+
+// excludedAlternativeLine names an excluded candidate, the record it was
+// excluded from, and why: "Jacob Little (rel-pc-jacob) -- all assertions
+// disproven". sep separates the reason; quote wraps each record ID.
+func excludedAlternativeLine(e *proofExcludedAlternative, sep, quote string) string {
+	line := e.Name
+	if e.Role == "distinguished_from" {
+		line = "distinguished from " + line
+	}
+	var refs []string
+	for _, ref := range []string{e.Relationship, e.Event} {
+		if ref != "" {
+			refs = append(refs, quote+ref+quote)
+		}
+	}
+	if len(refs) > 0 {
+		line += " (" + strings.Join(refs, ", ") + ")"
+	}
+	if e.Status == glxlib.ProofStatusDisputed {
+		return line + sep + "every surviving assertion disputed"
+	}
+
+	return line + sep + "all assertions disproven"
+}
+
+// excludedAlternativeDetail lists the assertions, citations and note behind an
+// excluded candidate.
+func excludedAlternativeDetail(e *proofExcludedAlternative) string {
+	var parts []string
+	if len(e.Assertions) > 0 {
+		parts = append(parts, "assertions: "+strings.Join(e.Assertions, ", "))
+	}
+	if len(e.Citations) > 0 {
+		parts = append(parts, "citations: "+strings.Join(e.Citations, ", "))
+	}
+	if e.Notes != "" {
+		parts = append(parts, e.Notes)
+	}
+
+	return strings.Join(parts, "; ")
 }
 
 // printMarkdownExcluded renders the excluded-alternatives section as Markdown.
@@ -377,7 +501,10 @@ func printMarkdownExcluded(io *IOStreams, excluded []proofExcludedAlternative) {
 	io.Printf("\n## Alternatives Excluded\n\n")
 	for i := range excluded {
 		e := &excluded[i]
-		io.Printf("- %s (`%s`) — all assertions disproven\n", e.Name, e.Relationship)
+		io.Printf("- %s\n", excludedAlternativeLine(e, " — ", "`"))
+		if detail := excludedAlternativeDetail(e); detail != "" {
+			io.Printf("  - %s\n", detail)
+		}
 	}
 }
 
@@ -410,7 +537,11 @@ func printMarkdownGaps(io *IOStreams, gaps []proofGap) {
 		io.Println("_None identified._")
 	}
 	for i := range gaps {
-		io.Println("- [ ] " + gapLine(&gaps[i], " — ", "**HIGH PRIORITY**"))
+		marker := "- [ ] "
+		if gaps[i].Searched != "" {
+			marker = "- [x] "
+		}
+		io.Println(marker + gapLine(&gaps[i], " — ", "**HIGH PRIORITY**"))
 	}
 }
 
@@ -455,4 +586,5 @@ type (
 	proofSearch              = glxlib.ProofSearch
 	proofResult              = glxlib.ProofResult
 	proofExcludedAlternative = glxlib.ProofExcludedAlternative
+	proofAnswer              = glxlib.ProofAnswer
 )

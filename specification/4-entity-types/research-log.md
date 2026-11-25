@@ -93,7 +93,7 @@ A log with only an entity ID is a valid, minimal placeholder; `objective` and a 
 | `leads` | array | List of [ResearchLead](#researchlead) entries, the research alternatives under investigation |
 | `citations` | array | Citations produced by this log (denormalized from per-search refs) |
 | `conclusions` | string | Summary of findings |
-| `properties` | object | Vocabulary-extensible metadata. There is no research-log property vocabulary in this revision, so keys are not validated and unknown keys do not produce warnings |
+| `properties` | object | Vocabulary-extensible metadata. There is no research-log property vocabulary in this revision, so keys are not validated and unknown keys do not produce warnings. Tools may read a `question` key naming the research question (or list of questions) the log serves, such as `parentage` or `[marriage, children]`; `glx proof` lists a log's searches only under that question |
 | `notes` | string \| string[] | Free-form notes about the log |
 
 ## Search

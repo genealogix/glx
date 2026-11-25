@@ -189,8 +189,8 @@ The same rules govern the census rows in `glx coverage`.
 Where `glx analyze` scans the whole archive for problems, `glx proof` answers one
 question about one person and assembles the evidence into a proof argument
 following the [Genealogical Proof Standard](https://bcgcertification.org/ethics-standards/)
-(GPS). Supported questions are `parentage`, `birth`, `death`, `marriage`, and
-`identity`:
+(GPS). Supported questions are `parentage`, `birth`, `death`, `marriage`,
+`children`, `occupation`, and `identity`:
 
 ```bash
 glx proof "Eddard Stark" --question parentage
@@ -202,19 +202,38 @@ Proof Summary: Who are the parents of Eddard Stark? (person-eddard-stark)
   Question: Who are the parents of Eddard Stark?
 
   Evidence Collected:
-    1. Histories & Lore of Winterfell (citation-winterfell-lore)
-       -> parent_child relationship: existence asserted [confidence: high]
-       -> Lists Rickard Stark as father.
+    (none)
 
   Evidence Gaps:
-    [ ] Birth record
+    [ ] Probate/will -- often names heirs (children) and surviving spouse
     [ ] Church records
 
   Conflicts: None identified
 
-  Conclusion: PROVEN
-    Parents identified: Rickard Stark.
+  Answers:
+    = mother: Flint [rel-pc-flint-eddard-stark] -- INSUFFICIENT EVIDENCE (unsupported)
+    = father: Rickard Stark [rel-pc-rickard-stark-eddard-stark] -- INSUFFICIENT EVIDENCE (unsupported)
+
+  Conclusion: INSUFFICIENT EVIDENCE
+    Parents not yet identified. Recorded without a supporting assertion: Flint, Rickard Stark.
 ```
+
+The archive records both parent links but no assertion cites either, so each
+answer is `unsupported`. Questions with several possible answers (parents,
+spouses, children, occupations, same-person links) resolve each one on its own
+and the question stands at its weakest answer: a proven mother does not lift a
+probable father to PROVEN. A candidate whose assertions are all disproven, or
+all disputed beside another answer, is listed under "Alternatives Excluded"
+with its assertions and citations. Evidence lines name the other party of a
+relationship ("child of Rickard Stark (person-rickard-stark)"), and two people
+of one name are told apart by their life dates and ID.
+
+Searches are listed under the question their research log serves. Give a log a
+question with `glx add research-log --question parentage` (stored as its
+`question` property), or a marriage, parent-child or event subject; other logs
+about the person are counted on one "Other research" line and serve `identity`.
+A gap whose source type this question's searches have covered is marked `[~]`
+with their results and no longer heads the next steps.
 
 The command gathers every assertion relevant to the question (including
 assertions on the person's events and relationships), resolves their citations

@@ -144,11 +144,13 @@ func parentageConflicts(personID string, candidates []parentCandidate, archive *
 
 // Relationship properties and step links are context rather than parentage
 // evidence. Participant claims apply only to the edges naming that person.
-func parentageLinkRelevant(pa *proofAssertion, personID string, links []ParentChildLink) bool {
+func parentageLinkRelevant(pa *proofAssertion, personID string, links []ParentChildLink, archive *GLXFile) bool {
 	if pa.a.Subject.Relationship == "" {
 		return true
 	}
-	if pa.a.Property != "" {
+	// An assertion of the relationship's own type claims the relationship
+	// exists as recorded (#1548); any other property is context.
+	if pa.a.Property != "" && !relationshipTypeAssertion(pa.a, archive) {
 		return false
 	}
 	for _, link := range links {
@@ -160,9 +162,22 @@ func parentageLinkRelevant(pa *proofAssertion, personID string, links []ParentCh
 		}
 	}
 	// #1313 also accepts participant evidence before that parent has been
-	// denormalized into the relationship's participant list.
+	// denormalized into the relationship's participant list, and a claim that
+	// the person is the child of a relationship listing only the parents.
 
-	return parentageClaimOnly(pa, personID, links)
+	return parentageClaimOnly(pa, personID, links) || claimedChildOf(pa, personID, archive)
+}
+
+// claimedChildOf reports whether the assertion claims the person as the
+// (non-step) child of a parent_child relationship that does not list them.
+func claimedChildOf(pa *proofAssertion, personID string, archive *GLXFile) bool {
+	p := pa.a.Participant
+	if p == nil || p.Person != personID || !IsChildSideRole(p.Role) || IsStepRole(p.Role) {
+		return false
+	}
+	rel := archive.Relationships[pa.a.Subject.Relationship]
+
+	return rel != nil && IsParentChildRelationshipType(rel.Type) && !strings.EqualFold(rel.Type, RelationshipTypeStepParent) && !hasParticipant(personID, rel.Participants)
 }
 
 func parentageClaimOnly(pa *proofAssertion, personID string, links []ParentChildLink) bool {
@@ -181,7 +196,7 @@ func parentageClaimOnly(pa *proofAssertion, personID string, links []ParentChild
 
 // Retain rejected assertions in Evidence, but never let them or a rejected
 // participant strengthen or supply a fallback answer to the conclusion.
-func parentageSupport(relevant []proofAssertion, personID string, links []ParentChildLink, standings *RelationshipStandingIndex) []proofAssertion {
+func parentageSupport(relevant []proofAssertion, personID string, links []ParentChildLink, standings *RelationshipStandingIndex, archive *GLXFile) []proofAssertion {
 	supported := map[*Assertion]bool{}
 	for _, link := range links {
 		if link.ChildID != personID || link.Step || link.Standing == RelationshipStandingDisproven {
@@ -194,7 +209,8 @@ func parentageSupport(relevant []proofAssertion, personID string, links []Parent
 	var result []proofAssertion
 	for i := range relevant {
 		pa := &relevant[i]
-		if pa.a.Subject.Relationship == "" || supported[pa.a] || (parentageClaimOnly(pa, personID, links) && standings.Link(pa.subjectID, personID, pa.a.Participant.Person) != RelationshipStandingDisproven) {
+		if pa.a.Subject.Relationship == "" || supported[pa.a] || claimedChildOf(pa, personID, archive) ||
+			(parentageClaimOnly(pa, personID, links) && standings.Link(pa.subjectID, personID, pa.a.Participant.Person) != RelationshipStandingDisproven) {
 			result = append(result, *pa)
 		}
 	}

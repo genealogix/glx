@@ -51,6 +51,10 @@ const (
 	standingStatusDisputed     = "disputed"
 )
 
+// relationshipPropertyType is the property a relationship-subject assertion
+// uses to assert the relationship's own type.
+const relationshipPropertyType = "type"
+
 // hypotheticalAssertionConfidence holds the confidence values that mark an
 // assertion as a hypothesis. "low" is the standard vocabulary's weakest level;
 // "tentative" and "disputed" are legacy confidence tokens that carried the same
@@ -136,8 +140,8 @@ func StandingFromAssertions(assertions []*Assertion) RelationshipStanding {
 //
 // Only assertions about the relationship's existence count: an assertion whose
 // subject is the relationship and that has no `property` (an existential
-// assertion), or that names a `participant` (it asserts that person's place in
-// the relationship). An assertion about one of the relationship's properties
+// assertion), one asserting the relationship's own `type`, or one that names a
+// `participant` (it asserts that person's place in the relationship). An assertion about one of the relationship's properties
 // (say a disproven start date) says nothing about whether the people were
 // related, so it is ignored.
 type RelationshipStandingIndex struct {
@@ -188,7 +192,7 @@ func buildRelationshipStandingIndex(archive *GLXFile, canceled func() error) (*R
 			return nil, err
 		}
 		a := archive.Assertions[id]
-		if a == nil || a.Subject.Relationship == "" || a.Property != "" {
+		if a == nil || a.Subject.Relationship == "" || (a.Property != "" && !relationshipTypeAssertion(a, archive)) {
 			continue
 		}
 		relID := a.Subject.Relationship
@@ -210,6 +214,19 @@ func buildRelationshipStandingIndex(archive *GLXFile, canceled func() error) (*R
 	}
 
 	return idx, nil
+}
+
+// relationshipTypeAssertion reports whether a relationship-subject assertion
+// asserts the relationship's own type (`property: type`, value the recorded
+// type). It claims the relationship exists as recorded, so it weighs on the
+// relationship's standing like an existential assertion.
+func relationshipTypeAssertion(a *Assertion, archive *GLXFile) bool {
+	if a.Property != relationshipPropertyType || a.Value == "" {
+		return false
+	}
+	rel := archive.Relationships[a.Subject.Relationship]
+
+	return rel != nil && strings.EqualFold(strings.TrimSpace(a.Value), rel.Type)
 }
 
 // Relationship returns the standing of a relationship as a whole: its

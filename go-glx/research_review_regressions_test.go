@@ -357,7 +357,9 @@ func TestResearchAPI_OnlyAnsweringClaimsStrengthenProof(t *testing.T) {
 				Assertions:      map[string]*glxlib.Assertion{"context": {Subject: glxlib.EntityRef{Event: "event"}, Property: "ceremony", Value: "home", Confidence: "high", Status: "proven"}},
 			}
 			if kind == "marriage" {
-				archive.Relationships = map[string]*glxlib.Relationship{"couple": {Type: "marriage", Participants: []glxlib.Participant{{Person: "p", Role: "spouse"}, {Person: "q", Role: "spouse"}}}}
+				// The wedding names only p, so it belongs to q's marriage only
+				// because the relationship names it as its start event.
+				archive.Relationships = map[string]*glxlib.Relationship{"couple": {Type: "marriage", StartEvent: "event", Participants: []glxlib.Participant{{Person: "p", Role: "spouse"}, {Person: "q", Role: "spouse"}}}}
 			}
 			proof, err := glxlib.BuildProof(archive, "p", kind, glxlib.ProofOptions{})
 			require.NoError(t, err)

@@ -167,7 +167,7 @@ func TestCanonicalQuestion(t *testing.T) {
 
 func TestProofQuestionKeys(t *testing.T) {
 	keys := proofQuestionKeys()
-	assert.Equal(t, []string{"parentage", "birth", "death", "marriage", "identity"}, keys)
+	assert.Equal(t, []string{"parentage", "birth", "death", "marriage", "children", "occupation", "identity"}, keys)
 }
 
 func TestQuestionText(t *testing.T) {
@@ -202,7 +202,9 @@ func TestAssertionRelevant(t *testing.T) {
 	assert.True(t, assertionRelevant("marriage", partnerRel, "person-test"))
 
 	assert.True(t, assertionRelevant("identity", nameProp, "person-test"))
-	assert.False(t, assertionRelevant("identity", occProp, "person-test"))
+	assert.True(t, assertionRelevant("identity", occProp, "person-test"), "identity weighs every assertion about the person (#1508)")
+	assert.True(t, assertionRelevant("occupation", occProp, "person-test"))
+	assert.False(t, assertionRelevant("occupation", nameProp, "person-test"))
 }
 
 func TestBuildProof_BirthResolvedConflict(t *testing.T) {
@@ -236,9 +238,12 @@ func TestBuildProof_Parentage(t *testing.T) {
 	archive := newTestArchiveForProof()
 	result := testBuildProof("person-jane", archive.Persons["person-jane"], "parentage", archive)
 
-	assert.Equal(t, proofConclusionProven, result.Conclusion)
-	assert.Contains(t, result.Summary, "Robert Webb")
-	assert.Contains(t, result.Summary, "Mary Webb")
+	// Robert's link is cited; Mary's is recorded with no assertion, so the
+	// question stands at its weaker answer (#1484).
+	assert.Equal(t, proofConclusionInsufficient, result.Conclusion)
+	assert.Contains(t, result.Summary, "Parents identified: Mary Webb, Robert Webb.")
+	assert.Contains(t, result.Summary, "Robert Webb: PROVEN")
+	assert.Contains(t, result.Summary, "No assertion supports Mary Webb.")
 	// The existential parentage assertion is collected as evidence.
 	require.Len(t, result.Evidence, 1)
 	assert.Equal(t, "assertion-jane-parentage", result.Evidence[0].AssertionID)
@@ -250,6 +255,11 @@ func TestBuildProof_ParentageChildParticipant(t *testing.T) {
 	archive := newTestArchiveForProof()
 	archive.Assertions["assertion-jane-parentage"] = &Assertion{
 		Subject:     EntityRef{Relationship: "rel-jane-robert"},
+		Participant: &Participant{Person: "person-jane", Role: ParticipantRoleChild},
+		Citations:   []string{"cit-1880"}, Confidence: "high", Status: statusProven,
+	}
+	archive.Assertions["assertion-jane-mother"] = &Assertion{
+		Subject:     EntityRef{Relationship: "rel-jane-mary"},
 		Participant: &Participant{Person: "person-jane", Role: ParticipantRoleChild},
 		Citations:   []string{"cit-1880"}, Confidence: "high", Status: statusProven,
 	}
@@ -340,16 +350,29 @@ func TestBuildProof_IdentityInsufficientWithoutAssertion(t *testing.T) {
 	assert.Equal(t, proofConclusionInsufficient, result.Conclusion)
 }
 
-func TestCollectProofSearches(t *testing.T) {
+func TestCollectScopedProofSearches(t *testing.T) {
 	archive := newTestArchiveForProof()
-	searches := collectProofSearches("person-jane", archive)
+	// A log about the person that names no question is other research (#1368).
+	scoped, other := collectScopedProofSearches("person-jane", topicParentage, archive)
+	assert.Empty(t, scoped)
+	require.Len(t, other, 2)
 
-	require.Len(t, searches, 2)
-	assert.Equal(t, SearchResultFound, searches[0].Result)
-	assert.Equal(t, SearchResultNotFound, searches[1].Result)
+	archive.ResearchLogs["log-jane"].Properties = map[string]any{ResearchLogQuestionProperty: []any{"parents", "birth"}}
+	scoped, other = collectScopedProofSearches("person-jane", topicParentage, archive)
+	require.Len(t, scoped, 2)
+	assert.Empty(t, other)
+	assert.Equal(t, SearchResultFound, scoped[0].Result)
+	assert.Equal(t, SearchResultNotFound, scoped[1].Result)
+	assert.Equal(t, "log-jane", scoped[0].Log)
+	assert.Equal(t, SourceTypeCensus, scoped[0].SourceType)
+	scoped, other = collectScopedProofSearches("person-jane", topicMarriage, archive)
+	assert.Empty(t, scoped)
+	assert.Len(t, other, 2)
 
 	// A person with no research log has no searches.
-	assert.Empty(t, collectProofSearches("person-robert", archive))
+	scoped, other = collectScopedProofSearches("person-robert", topicParentage, archive)
+	assert.Empty(t, scoped)
+	assert.Empty(t, other)
 }
 
 func TestBuildProof_SearchNotes(t *testing.T) {
@@ -359,6 +382,7 @@ func TestBuildProof_SearchNotes(t *testing.T) {
 		{Query: "Deed Book A", Result: SearchResultRequiresVisit, Notes: NoteList{"Contact the clerk"}},
 		{Query: "1830 census", Result: SearchResultNotSearched},
 	}
+	archive.ResearchLogs["log-jane"].Properties = map[string]any{ResearchLogQuestionProperty: QuestionIdentity}
 
 	result, err := BuildProof(archive, "person-jane", QuestionIdentity, ProofOptions{})
 	require.NoError(t, err)

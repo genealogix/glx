@@ -41,6 +41,12 @@ type CoverageRecord struct {
 	SourceRef   string `json:"source_ref,omitempty"`
 	Priority    string `json:"priority,omitempty"`
 	Description string `json:"description,omitempty"`
+	// relationshipID is the couple relationship a marriage record is wanted
+	// for, so proof can drop the gap of an excluded marriage by identity
+	// rather than by the spouse's display name.
+	relationshipID string
+	// year is the census year of a census record.
+	year int
 }
 
 // CoverageResult holds the full coverage output for a person.
@@ -462,6 +468,7 @@ func buildCensusRecords(birthYear, deathYear int, schedules []*CensusSchedule, s
 			rec := CoverageRecord{
 				Category: coverageCategoryCensus,
 				Label:    schedule.CoverageLabel(year, age),
+				year:     year,
 			}
 
 			// Check if we have this census
@@ -620,6 +627,8 @@ func buildMarriageRecords(personID string, archive *GLXFile, evidenced, estimate
 			Label:    "Marriage record — " + spouseDisplayName(spouseID, archive),
 			Found:    found,
 			Priority: boolPriority(!found, severityMedium),
+
+			relationshipID: relID,
 		}
 		if found {
 			rec.SourceRef = ref
@@ -706,7 +715,7 @@ func buildOtherRecords(sources, events []personSourceInfo, probateHighPriority b
 	probateFound := probateRef != "" || hasSourceType(sources, SourceTypeProbate, "")
 	rec := CoverageRecord{
 		Category: coverageCategoryOther,
-		Label:    "Probate/will",
+		Label:    coverageLabelProbate,
 		Found:    probateFound,
 	}
 	if probateFound {
