@@ -1,5 +1,5 @@
 {
-  "name": "GENEALOGIX Spec",
+  "name": "GLX development",
   "image": "mcr.microsoft.com/devcontainers/go:1.27",
   "features": {
     "ghcr.io/devcontainers/features/node:1": {
@@ -7,21 +7,19 @@
     },
     "ghcr.io/devcontainers/features/github-cli:1": {}
   },
-  "onCreateCommand": {
-    "go-tools": "set -e; v=\"$(tr -d '[:space:]' < .golangci-lint-version)\"; printf '%s' \"$v\" | grep -qE '^v[0-9]+\\.[0-9]+\\.[0-9]+$' || { echo \"invalid .golangci-lint-version: $v (expected vMAJOR.MINOR.PATCH)\" >&2; exit 1; }; tmpfile=$(mktemp); trap 'rm -f \"$tmpfile\"' EXIT; curl -sSfL \"https://raw.githubusercontent.com/golangci/golangci-lint/${v}/install.sh\" -o \"$tmpfile\" && sh \"$tmpfile\" -b \"$(go env GOPATH)/bin\" \"$v\"",
-    "install-hooks": "make install-hooks"
+  "onCreateCommand": "bash .devcontainer/install-tools.sh",
+  "updateContentCommand": "make -j4 install-deps",
+  "postCreateCommand": "make install-hooks",
+  "waitFor": "postCreateCommand",
+  "forwardPorts": [5173, 8080],
+  "portsAttributes": {
+    "5173": { "label": "GLX docs and converter (VitePress)", "onAutoForward": "notify" },
+    "8080": { "label": "GLX archive viewer", "onAutoForward": "silent" }
   },
-  "updateContentCommand": {
-    "go-deps": "go mod download",
-    "spec-deps": "cd specification && npm ci",
-    "website-deps": "cd website && npm ci"
-  },
-  "forwardPorts": [5173],
   "customizations": {
     "vscode": {
       "settings": {
         "go.toolsManagement.autoUpdate": true,
-        "go.useLanguageServer": true,
         "eslint.workingDirectories": ["website"],
         "editor.formatOnSave": true,
         "[go]": { "editor.defaultFormatter": "golang.Go" },
@@ -35,7 +33,6 @@
         "esbenp.prettier-vscode",
         "dbaeumer.vscode-eslint",
         "github.vscode-github-actions",
-        "anthropic.claude-code",
         "Vue.volar",
         "redhat.vscode-yaml",
         "DavidAnson.vscode-markdownlint"
